@@ -51,6 +51,7 @@ const appShellRuntimeStatus: AppShellRuntimeStatus = {
 
 const appShellBottomNavigation: AppShellNavigationItem[] = [
   { href: "/app", label: "Orbit AI", route: "/app" },
+  { href: "/app/profile", label: "资料", route: "/app/profile" },
   { href: "/app/contacts", label: "人脉", route: "/app/contacts" },
   { href: "/app/events", label: "活动", route: "/app/events" },
   { href: "/app/followups", label: "跟进", route: "/app/followups" },
@@ -92,7 +93,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       routeSupportLinks={routeSupportLinks}
       runtimeStatus={appShellRuntimeStatus}
       topActions={appShellTopActions}
-      variant={activeRoute === "/app" ? "ai-command" : "standard"}
+      variant="ai-command"
     >
       {children}
     </AppShell>

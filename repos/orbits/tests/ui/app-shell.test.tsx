@@ -543,6 +543,7 @@ test("app layout owns shell state as typed props without auth access", () => {
   assert.match(layoutSource, /label: "Add a relationship source"/);
   for (const label of [
     "Orbit AI",
+    "资料",
     "人脉",
     "活动",
     "跟进",
@@ -556,7 +557,8 @@ test("app layout owns shell state as typed props without auth access", () => {
   assert.match(layoutSource, /const pathname = usePathname\(\)/);
   assert.match(layoutSource, /resolveOrbitAppRoute\(pathname\)/);
   assert.match(layoutSource, /routeSupportLinks=/);
-  assert.match(layoutSource, /variant=\{activeRoute === "\/app" \? "ai-command" : "standard"\}/);
+  assert.match(layoutSource, /variant="ai-command"/);
+  assert.doesNotMatch(layoutSource, /variant=\{activeRoute === "\/app" \? "ai-command" : "standard"\}/);
   assert.match(layoutSource, /pathname === "\/app\/contacts\/new"/);
   assert.doesNotMatch(
     layoutSource,

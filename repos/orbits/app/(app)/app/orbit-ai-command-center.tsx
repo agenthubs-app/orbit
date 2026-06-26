@@ -1,4 +1,5 @@
 import { createOrbitAiCommandService } from "../../../features/orbit-ai/service-factory";
+import type { OrbitAiPanel } from "../../../features/orbit-ai/contract";
 import { Chip } from "../../../shared/ui/primitives";
 
 type OrbitAiCommandSearchParams = Record<string, string | string[] | undefined>;
@@ -21,10 +22,35 @@ function readSearchParam(
 }
 
 const orbitAiCommandStyles = `
+.orbit-ai-command-center {
+  --orbit-ai-dark: #16181d;
+  --orbit-ai-ink: #16171a;
+  --orbit-ai-line: #24262c;
+  --orbit-ai-teal: #6fe3c0;
+  --orbit-ai-teal-deep: #0e8b6b;
+  --orbit-ai-panel: #ffffff;
+  --orbit-ai-canvas: #f3f4f6;
+  --orbit-ai-canvas-strong: #ecedf0;
+  --orbit-ai-copy: #2c2e34;
+  --orbit-ai-muted: #6b6f78;
+  --orbit-ai-warning: #c0863a;
+  --orbit-ai-radius: 8px;
+  background: var(--orbit-ai-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.36);
+  color: #f3f4f6;
+  display: grid;
+  grid-template-columns: 76px minmax(min(100%, 390px), 0.82fr) minmax(min(100%, 520px), 1.18fr);
+  min-height: calc(100vh - 24px);
+  overflow: hidden;
+}
+
 .orbit-ai-command-center,
+.orbit-ai-rail,
+.orbit-ai-nav,
 .orbit-ai-chat,
 .orbit-ai-side-stage,
-.orbit-ai-command-center .orbit-ai-stage-grid,
 .orbit-ai-stage-grid,
 .orbit-ai-stage-row,
 .orbit-ai-command-row,
@@ -32,7 +58,8 @@ const orbitAiCommandStyles = `
 .orbit-ai-orbit-panel,
 .orbit-ai-orbit-stage,
 .orbit-ai-task-panel,
-.orbit-ai-action-bar {
+.orbit-ai-action-bar,
+.orbit-ai-rail-foot {
   min-width: 0;
 }
 
@@ -48,23 +75,94 @@ const orbitAiCommandStyles = `
   width: 1px;
 }
 
-.orbit-ai-command-center {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 247, 245, 0.92) 48%, rgba(246, 246, 241, 0.96)),
-    var(--orbit-color-surface);
-  border: 1px solid rgba(23, 33, 31, 0.12);
-  border-radius: 10px;
-  box-shadow: 0 26px 60px rgba(23, 33, 31, 0.14);
+.orbit-ai-rail {
+  align-content: start;
+  background: var(--orbit-ai-ink);
+  border-right: 1px solid var(--orbit-ai-line);
   display: grid;
-  grid-template-columns: minmax(min(100%, 360px), 0.92fr) minmax(min(100%, 420px), 1.08fr);
-  min-height: calc(100vh - 160px);
-  overflow: hidden;
+  gap: 16px;
+  grid-template-rows: auto 1fr auto;
+  padding: 13px 8px;
+}
+
+.orbit-ai-rail-brand {
+  align-items: center;
+  background: rgba(111, 227, 192, 0.12);
+  border: 1px solid rgba(111, 227, 192, 0.2);
+  border-radius: var(--orbit-ai-radius);
+  color: var(--orbit-ai-teal);
+  display: inline-flex;
+  font-family: var(--orbit-font-mono);
+  font-size: 0.78rem;
+  font-weight: 820;
+  height: 46px;
+  justify-content: center;
+  line-height: 1;
+  text-decoration: none;
+  width: 60px;
+}
+
+.orbit-ai-nav {
+  align-content: start;
+  display: grid;
+  gap: 8px;
+}
+
+.orbit-ai-nav-link {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--orbit-ai-radius);
+  color: rgba(255, 255, 255, 0.52);
+  display: inline-flex;
+  flex-direction: column;
+  font-size: 0.7rem;
+  font-weight: 650;
+  gap: 5px;
+  justify-content: center;
+  min-height: 58px;
+  padding: 7px 3px;
+  text-align: center;
+  text-decoration: none;
+  width: 60px;
+}
+
+.orbit-ai-nav-link svg {
+  flex: none;
+}
+
+.orbit-ai-nav-link:hover,
+.orbit-ai-nav-link[aria-current="page"] {
+  background: rgba(111, 227, 192, 0.12);
+  border-color: rgba(111, 227, 192, 0.16);
+  color: var(--orbit-ai-teal);
+}
+
+.orbit-ai-rail-foot {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.58);
+  display: grid;
+  font-size: 0.7rem;
+  gap: 7px;
+  justify-items: center;
+  line-height: 1.35;
+  margin: 0;
+  text-align: center;
+}
+
+.orbit-ai-rail-foot span:first-child {
+  background: var(--orbit-ai-warning);
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px rgba(192, 134, 58, 0.16);
+  height: 7px;
+  width: 7px;
 }
 
 .orbit-ai-chat {
   align-content: stretch;
-  background: rgba(255, 255, 255, 0.84);
-  border-right: 1px solid rgba(23, 33, 31, 0.12);
+  background: #ffffff;
+  border-right: 1px solid var(--orbit-ai-canvas-strong);
+  color: var(--orbit-ai-copy);
   display: grid;
   grid-template-rows: auto 1fr auto;
 }
@@ -76,9 +174,9 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-chat-header {
-  border-bottom: 1px solid rgba(23, 33, 31, 0.1);
+  border-bottom: 1px solid var(--orbit-ai-canvas-strong);
   display: grid;
-  gap: var(--orbit-space-md);
+  gap: 16px;
 }
 
 .orbit-ai-chat-topline {
@@ -90,7 +188,7 @@ const orbitAiCommandStyles = `
 
 .orbit-ai-live-row {
   align-items: center;
-  color: var(--orbit-color-primary);
+  color: var(--orbit-ai-teal-deep);
   display: flex;
   font-family: var(--orbit-font-mono);
   font-size: 0.76rem;
@@ -106,9 +204,9 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-language-link {
-  border: 1px solid rgba(23, 33, 31, 0.14);
+  border: 1px solid #e6e7eb;
   border-radius: 999px;
-  color: var(--orbit-color-muted);
+  color: #82868f;
   font-size: 0.76rem;
   font-weight: 720;
   line-height: 1.2;
@@ -117,13 +215,12 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-language-link[aria-current="true"] {
-  background: #17211f;
-  color: var(--orbit-color-text);
+  background: var(--orbit-ai-dark);
   color: #ffffff;
 }
 
 .orbit-ai-live-dot {
-  background: var(--orbit-color-success, #166534);
+  background: var(--orbit-ai-teal);
   border-radius: 999px;
   display: inline-block;
   height: 9px;
@@ -133,15 +230,15 @@ const orbitAiCommandStyles = `
 .orbit-ai-chat h2,
 .orbit-ai-stage-heading h2,
 .orbit-ai-orbit-copy strong {
-  color: var(--orbit-color-text);
+  color: var(--orbit-ai-copy);
   font-family: var(--orbit-font-display);
   letter-spacing: 0;
   margin: 0;
 }
 
 .orbit-ai-chat h2 {
-  font-size: clamp(2rem, 4.8vw, 3.4rem);
-  line-height: 1.04;
+  font-size: clamp(1.85rem, 4vw, 2.45rem);
+  line-height: 1.18;
 }
 
 .orbit-ai-chat-header p,
@@ -162,7 +259,7 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-message {
-  border-radius: 10px;
+  border-radius: 14px;
   display: grid;
   gap: var(--orbit-space-xs);
   max-width: 34rem;
@@ -171,8 +268,9 @@ const orbitAiCommandStyles = `
 
 .orbit-ai-message-user {
   justify-self: end;
-  background: #17211f;
-  color: #ffffff;
+  background: var(--orbit-ai-dark);
+  border-radius: 14px 14px 4px 14px;
+  color: #f2f4f1;
 }
 
 .orbit-ai-message-user p,
@@ -181,11 +279,11 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-message-assistant {
-  background: transparent;
-  border-left: 3px solid var(--orbit-color-primary);
-  border-radius: 0;
+  background: #ffffff;
+  border: 1px solid var(--orbit-ai-canvas-strong);
+  border-radius: 14px 14px 14px 4px;
+  box-shadow: 0 1px 2px rgba(17, 18, 34, 0.04);
   justify-self: start;
-  padding-left: 14px;
 }
 
 .orbit-ai-message span,
@@ -201,8 +299,8 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-command-dock {
-  background: rgba(249, 251, 250, 0.92);
-  border-top: 1px solid rgba(23, 33, 31, 0.1);
+  background: #fafafb;
+  border-top: 1px solid var(--orbit-ai-canvas-strong);
   display: grid;
   gap: var(--orbit-space-sm);
 }
@@ -231,20 +329,20 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-command-link {
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(23, 33, 31, 0.14);
-  color: #17211f;
+  background: #ffffff;
+  border: 1px solid #e4e5e9;
+  color: #3b3e45;
 }
 
 .orbit-ai-command-link:hover {
-  border-color: var(--orbit-color-primary);
-  color: var(--orbit-color-primary);
+  border-color: var(--orbit-ai-teal-deep);
+  color: var(--orbit-ai-teal-deep);
 }
 
 .orbit-ai-chat-input {
   align-items: center;
-  background: var(--orbit-color-surface);
-  border: 1px solid rgba(23, 33, 31, 0.18);
+  background: #ffffff;
+  border: 1px solid #d4d6dc;
   border-radius: 999px;
   display: flex;
   gap: var(--orbit-space-sm);
@@ -259,8 +357,8 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-chat-input button {
-  background: #17211f;
-  border-color: #17211f;
+  background: var(--orbit-ai-dark);
+  border-color: var(--orbit-ai-dark);
   border-radius: 999px;
   color: var(--orbit-color-primary-text);
   min-width: 84px;
@@ -268,21 +366,25 @@ const orbitAiCommandStyles = `
 
 .orbit-ai-side-stage {
   align-content: start;
+  background: var(--orbit-ai-canvas);
+  color: var(--orbit-ai-copy);
   display: grid;
-  gap: 14px;
+  gap: 13px;
   grid-template-rows: auto 1fr;
-  padding: 14px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: 16px;
 }
 
 .orbit-ai-orbit-panel {
   align-items: center;
-  background:
-    linear-gradient(135deg, rgba(23, 33, 31, 0.98), rgba(25, 68, 68, 0.96));
-  border-radius: 10px;
-  color: #ffffff;
+  background: #16181d;
+  border: 1px solid #24262c;
+  border-radius: var(--orbit-ai-radius);
+  color: #f3f4f6;
   display: grid;
   gap: var(--orbit-space-lg);
-  grid-template-columns: minmax(0, 0.68fr) minmax(240px, 1fr);
+  grid-template-columns: minmax(0, 0.72fr) minmax(220px, 1fr);
   overflow: hidden;
   padding: 18px;
 }
@@ -294,7 +396,7 @@ const orbitAiCommandStyles = `
 
 .orbit-ai-orbit-copy strong {
   color: #ffffff;
-  font-size: clamp(1.7rem, 3.4vw, 2.8rem);
+  font-size: clamp(1.55rem, 3vw, 2.45rem);
   line-height: 1.08;
 }
 
@@ -306,21 +408,21 @@ const orbitAiCommandStyles = `
 .orbit-ai-orbit-stage {
   aspect-ratio: 1;
   margin: 0 auto;
-  max-width: 320px;
+  max-width: 280px;
   position: relative;
-  width: min(100%, 320px);
+  width: min(100%, 280px);
 }
 
 .orbit-ai-ring {
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(111, 227, 192, 0.24);
   border-radius: 999px;
   inset: var(--ring-inset);
   position: absolute;
 }
 
 .orbit-ai-ring-1 { --ring-inset: 34%; }
-.orbit-ai-ring-2 { --ring-inset: 21%; border-color: rgba(232, 242, 240, 0.2); }
-.orbit-ai-ring-3 { --ring-inset: 8%; border-color: rgba(197, 181, 151, 0.32); }
+.orbit-ai-ring-2 { --ring-inset: 21%; border-color: rgba(95, 224, 192, 0.2); }
+.orbit-ai-ring-3 { --ring-inset: 8%; border-color: rgba(79, 164, 126, 0.34); }
 
 .orbit-ai-source-line {
   background: rgba(255, 255, 255, 0.18);
@@ -350,8 +452,9 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-center-node {
-  background: #ffffff;
-  color: #17211f;
+  background: var(--orbit-ai-teal);
+  box-shadow: 0 0 36px rgba(111, 227, 192, 0.36);
+  color: #10221d;
   height: 72px;
   left: 50%;
   top: 50%;
@@ -371,9 +474,9 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-task-panel {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(23, 33, 31, 0.1);
-  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid var(--orbit-ai-canvas-strong);
+  border-radius: var(--orbit-ai-radius);
   display: grid;
   gap: var(--orbit-space-md);
   padding: 16px;
@@ -401,10 +504,10 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-status-strip span {
-  background: rgba(232, 242, 240, 0.82);
-  border: 1px solid rgba(21, 94, 117, 0.18);
+  background: #e7f5ef;
+  border: 1px solid rgba(14, 139, 107, 0.16);
   border-radius: 999px;
-  color: var(--orbit-color-primary);
+  color: #0e8b6b;
   font-size: 0.78rem;
   font-weight: 760;
   padding: 5px 9px;
@@ -412,7 +515,7 @@ const orbitAiCommandStyles = `
 
 .orbit-ai-stage-row {
   align-items: start;
-  border-top: 1px solid rgba(23, 33, 31, 0.1);
+  border-top: 1px solid var(--orbit-ai-canvas-strong);
   display: grid;
   gap: var(--orbit-space-sm);
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -420,7 +523,7 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-stage-row h3 {
-  color: var(--orbit-color-text);
+  color: var(--orbit-ai-copy);
   font-size: 1rem;
   line-height: 1.25;
   margin: 0;
@@ -428,9 +531,9 @@ const orbitAiCommandStyles = `
 
 .orbit-ai-stage-index {
   align-items: center;
-  background: rgba(23, 33, 31, 0.06);
+  background: #f1f2f4;
   border-radius: 999px;
-  color: var(--orbit-color-text);
+  color: var(--orbit-ai-copy);
   display: inline-flex;
   font-family: var(--orbit-font-mono);
   font-size: 0.74rem;
@@ -442,21 +545,21 @@ const orbitAiCommandStyles = `
 
 .orbit-ai-stage-action {
   background: transparent;
-  border: 1px solid rgba(23, 33, 31, 0.18);
-  color: #17211f;
+  border: 1px solid #d4d6dc;
+  color: var(--orbit-ai-copy);
   min-height: 36px;
   width: fit-content;
 }
 
 .orbit-ai-function-note {
-  border-left: 3px solid rgba(21, 94, 117, 0.28);
+  border-left: 3px solid rgba(14, 139, 107, 0.24);
   padding-left: var(--orbit-space-sm);
 }
 
 .orbit-ai-action-bar {
   align-items: center;
-  background: #17211f;
-  border-radius: 10px;
+  background: var(--orbit-ai-dark);
+  border-radius: var(--orbit-ai-radius);
   color: #ffffff;
   display: grid;
   gap: var(--orbit-space-sm);
@@ -480,7 +583,7 @@ const orbitAiCommandStyles = `
   background: #ffffff;
   border: 1px solid #ffffff;
   border-radius: 999px;
-  color: #17211f;
+  color: var(--orbit-ai-dark);
   display: inline-flex;
   font-weight: 800;
   justify-content: center;
@@ -491,15 +594,35 @@ const orbitAiCommandStyles = `
   white-space: normal;
 }
 
-@media (max-width: 900px) {
-  .orbit-ai-command-center,
+@media (max-width: 980px) {
+  .orbit-ai-command-center {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .orbit-ai-rail {
+    align-items: center;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    overflow-x: auto;
+  }
+
+  .orbit-ai-nav {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+  }
+
+  .orbit-ai-rail-foot {
+    min-width: 92px;
+  }
+
   .orbit-ai-orbit-panel {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .orbit-ai-chat {
     border-right: 0;
-    border-bottom: 1px solid var(--orbit-color-border);
+    border-bottom: 1px solid var(--orbit-ai-canvas-strong);
   }
 
   .orbit-ai-stage-action,
@@ -512,6 +635,28 @@ const orbitAiCommandStyles = `
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+@media (max-width: 620px) {
+  .orbit-ai-command-center {
+    border-radius: 0;
+    min-height: 100vh;
+  }
+
+  .orbit-ai-chat-header,
+  .orbit-ai-chat-feed,
+  .orbit-ai-command-dock,
+  .orbit-ai-side-stage {
+    padding: 16px;
+  }
+
+  .orbit-ai-rail {
+    padding-inline: 10px;
+  }
+
+  .orbit-ai-nav-link {
+    min-width: 58px;
+  }
+}
 `;
 
 const orbitNodePositions = [
@@ -520,6 +665,122 @@ const orbitNodePositions = [
   { x: "33%", y: "78%" },
   { x: "18%", y: "36%" },
 ] as const;
+
+const orbitAiNavPanels = [
+  "home",
+  "people",
+  "events",
+  "schedule",
+  "followups",
+  "dashboard",
+  "agent",
+] as const satisfies readonly OrbitAiPanel[];
+
+const orbitAiNavLabels: Record<
+  "zh" | "en",
+  Record<(typeof orbitAiNavPanels)[number], string>
+> = {
+  en: {
+    agent: "Review",
+    dashboard: "Health",
+    events: "Events",
+    followups: "Follow",
+    home: "Orbit AI",
+    people: "People",
+    schedule: "Schedule",
+  },
+  zh: {
+    agent: "下一步",
+    dashboard: "健康",
+    events: "活动",
+    followups: "跟进",
+    home: "Orbit AI",
+    people: "人脉",
+    schedule: "日程",
+  },
+};
+
+function orbitPanelHref(language: "zh" | "en", panel: OrbitAiPanel): string {
+  const params = new URLSearchParams();
+
+  if (panel !== "home") {
+    params.set("panel", panel);
+  }
+
+  if (language === "en") {
+    params.set("lang", "en");
+  }
+
+  const queryString = params.toString();
+
+  return queryString ? `/app?${queryString}` : "/app";
+}
+
+function OrbitAiNavIcon({ panel }: { panel: OrbitAiPanel }) {
+  if (panel === "events") {
+    return (
+      <svg aria-hidden="true" fill="none" height="21" viewBox="0 0 24 24" width="21">
+        <rect height="15" rx="2" stroke="currentColor" strokeWidth="1.7" width="17" x="3.5" y="5" />
+        <path d="M7 3v4M17 3v4M4 10h16" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+
+  if (panel === "people") {
+    return (
+      <svg aria-hidden="true" fill="none" height="21" viewBox="0 0 24 24" width="21">
+        <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M3.8 20a5.4 5.4 0 0 1 10.4 0M16.4 10.4a2.6 2.6 0 1 0 0-5.2M17.4 14.6c1.9.5 3.1 1.9 3.6 4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+
+  if (panel === "schedule") {
+    return (
+      <svg aria-hidden="true" fill="none" height="21" viewBox="0 0 24 24" width="21">
+        <rect height="16" rx="2" stroke="currentColor" strokeWidth="1.7" width="18" x="3" y="4.5" />
+        <path d="M3 9h18M8 2.5v4M16 2.5v4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+        <circle cx="8" cy="13.5" fill="currentColor" r="1.1" />
+        <circle cx="12" cy="13.5" fill="currentColor" r="1.1" />
+      </svg>
+    );
+  }
+
+  if (panel === "followups") {
+    return (
+      <svg aria-hidden="true" fill="none" height="21" viewBox="0 0 24 24" width="21">
+        <path d="M4 5h16v11H8l-4 4V5Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" />
+        <path d="M8 9h8M8 12.5h5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+
+  if (panel === "dashboard") {
+    return (
+      <svg aria-hidden="true" fill="none" height="21" viewBox="0 0 24 24" width="21">
+        <path d="M4 17l4.3-4.3 3.2 3.2L19.5 8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+        <path d="M4 20h16" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+
+  if (panel === "agent") {
+    return (
+      <svg aria-hidden="true" fill="none" height="21" viewBox="0 0 24 24" width="21">
+        <path d="m5 12 4 4 10-10" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+        <path d="M4 20h16" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" fill="none" height="21" viewBox="0 0 24 24" width="21">
+      <ellipse cx="12" cy="12" rx="8" ry="3.8" stroke="currentColor" strokeWidth="1.5" transform="rotate(30 12 12)" />
+      <ellipse cx="12" cy="12" rx="8" ry="3.8" stroke="currentColor" strokeWidth="1.5" transform="rotate(-32 12 12)" />
+      <circle cx="12" cy="12" fill="currentColor" r="2.4" />
+    </svg>
+  );
+}
 
 const orbitAiUiCopy = {
   en: {
@@ -530,18 +791,20 @@ const orbitAiUiCopy = {
     commandLabel: "Suggested commands",
     conversationAriaLabel: "Orbit AI conversation",
     functionNote:
-      "Function panels connect chat to events, people, follow-ups, conversations, health, and next moves while keeping every action in reviewed preview.",
+      "Function panels connect chat to events, people, schedule, follow-ups, conversations, health, and next moves while keeping every action in reviewed preview.",
     headerBody:
       "Start with a goal. Orbit opens the right function panel beside the conversation so you can inspect sources and act from the same place.",
     heading: "Ask Orbit AI",
     inputLabel: "Ask Orbit",
     inputPlaceholder: "Ask Orbit...",
     languageAriaLabel: "Language",
+    navigationAriaLabel: "Orbit AI navigation",
     orbitAriaLabel: "Live relationship orbit",
     orbitBody:
       "The orbit shows who can be pulled into the current task while the panel keeps the concrete workflow visible.",
     orbitLabel: "Live relationship orbit",
     orbitMetric: "142 nodes connected",
+    railSafety: "Review only",
     sendLabel: "Send",
     sideStageAriaLabel: "Orbit functional side stage",
     sourceDetailsLabel: "Orbit AI source details",
@@ -560,18 +823,20 @@ const orbitAiUiCopy = {
     commandLabel: "可以直接问",
     conversationAriaLabel: "Orbit AI 对话记录",
     functionNote:
-      "功能面板会把聊天接到活动、人脉、跟进、对话、关系健康和下一步；所有动作先停在预览里。",
+      "功能面板会把聊天接到活动、人脉、日程、跟进、对话、关系健康和下一步；所有动作先停在预览里。",
     headerBody:
       "先说目标。Orbit 会把合适的功能面板打开在旁边，来源和下一步放在同一屏。",
     heading: "问 Orbit AI",
     inputLabel: "问 Orbit",
     inputPlaceholder: "例如：帮我找下周该见的人",
     languageAriaLabel: "语言",
+    navigationAriaLabel: "Orbit AI 导航",
     orbitAriaLabel: "实时关系轨道",
     orbitBody:
       "关系轨道显示哪些人能被拉进当前任务，右侧面板保留具体工作流。",
     orbitLabel: "实时关系轨道",
     orbitMetric: "142 个关系节点",
+    railSafety: "确认后才执行",
     sendLabel: "发送",
     sideStageAriaLabel: "Orbit 功能侧栏",
     sourceDetailsLabel: "Orbit AI 来源详情",
@@ -602,9 +867,41 @@ export function OrbitAiCommandCenter({
       className="orbit-ai-command-center"
       data-orbit-ai-command-center="true"
       data-orbit-ai-layout="relationship-console"
+      data-reference-style="orbit-ui-reference"
       lang={data.language === "zh" ? "zh-Hans" : "en"}
     >
       <style>{orbitAiCommandStyles}</style>
+      <nav aria-label={copy.navigationAriaLabel} className="orbit-ai-rail">
+        <a
+          aria-label="Orbit AI"
+          className="orbit-ai-rail-brand"
+          href={orbitPanelHref(data.language, "home")}
+        >
+          AI
+        </a>
+        <div className="orbit-ai-nav">
+          {orbitAiNavPanels.map((panel) => {
+            const isActive = panel === data.panel;
+
+            return (
+              <a
+                aria-current={isActive ? "page" : undefined}
+                className="orbit-ai-nav-link"
+                data-orbit-ai-nav-panel={panel}
+                href={orbitPanelHref(data.language, panel)}
+                key={panel}
+              >
+                <OrbitAiNavIcon panel={panel} />
+                <span>{orbitAiNavLabels[data.language][panel]}</span>
+              </a>
+            );
+          })}
+        </div>
+        <p className="orbit-ai-rail-foot">
+          <span aria-hidden="true" />
+          <span>{copy.railSafety}</span>
+        </p>
+      </nav>
       <section aria-label={copy.chatAriaLabel} className="orbit-ai-chat">
         <header className="orbit-ai-chat-header">
           <div className="orbit-ai-chat-topline">
@@ -724,7 +1021,7 @@ export function OrbitAiCommandCenter({
             <span>{copy.statusEvidence}</span>
             <span>{copy.statusPreview}</span>
           </div>
-          <div className="orbit-ai-stage-grid">
+          <div className={`orbit-ai-stage-grid orbit-ai-stage-grid-${data.panel}`}>
             {data.stageItems.map((item, index) => (
               <article className="orbit-ai-stage-row" key={`${data.panel}:${item.title}`}>
                 <span className="orbit-ai-stage-index">

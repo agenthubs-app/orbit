@@ -3,6 +3,7 @@ export const ORBIT_AI_PANELS = [
   "events",
   "people",
   "followups",
+  "schedule",
   "agent",
   "dashboard",
 ] as const;

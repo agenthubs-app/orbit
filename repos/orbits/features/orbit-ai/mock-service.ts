@@ -23,24 +23,30 @@ const panelWords: Record<OrbitAiPanel, readonly string[]> = {
   followups: ["follow", "followup", "follow-up", "draft", "message", "跟进", "草稿", "消息", "回访"],
   home: [],
   people: ["people", "person", "intro", "introduce", "contact", "人脉", "联系人", "介绍", "见谁"],
+  schedule: ["schedule", "calendar", "timeline", "date", "日程", "日历", "时间线", "安排"],
 };
 
-const commandLinkLabels: Record<OrbitAiLanguage, Record<Exclude<OrbitAiPanel, "home" | "dashboard">, string>> = {
+const commandLinkLabels: Record<
+  OrbitAiLanguage,
+  Record<Exclude<OrbitAiPanel, "home" | "dashboard">, string>
+> = {
   en: {
     agent: "Review next moves",
     events: "Recommend events",
     followups: "Prepare follow-up",
     people: "Recommend people",
+    schedule: "Check schedule",
   },
   zh: {
     agent: "检查下一步",
     events: "推荐活动",
     followups: "准备跟进",
     people: "推荐人脉",
+    schedule: "查看日程",
   },
 };
 
-const panelOrder = ["events", "people", "followups", "agent"] as const;
+const panelOrder = ["events", "people", "schedule", "followups", "agent"] as const;
 
 const languageNames: Record<OrbitAiLanguage, string> = {
   en: "English",
@@ -68,6 +74,13 @@ const englishFallbackItems: readonly OrbitAiStageItem[] = [
     href: "/app/followups",
     label: "Follow-ups",
     title: "Follow-up queue",
+  },
+  {
+    actionLabel: "Review schedule",
+    body: "Place events, follow-ups, and held actions on one review-first timeline.",
+    href: "/app?panel=schedule&lang=en",
+    label: "Schedule",
+    title: "Schedule timeline",
   },
   {
     actionLabel: "Open conversations",
@@ -113,6 +126,13 @@ const chineseFallbackItems: readonly OrbitAiStageItem[] = [
     href: "/app/followups",
     label: "跟进",
     title: "跟进队列",
+  },
+  {
+    actionLabel: "查看日程",
+    body: "把活动、跟进和待确认动作放在同一条时间线上。",
+    href: "/app?panel=schedule",
+    label: "日程",
+    title: "日程时间线",
   },
   {
     actionLabel: "打开对话",
@@ -192,7 +212,7 @@ function resolvePanel(input: OrbitAiCommandInput): OrbitAiPanel {
 
   const prompt = normalizeText(input.prompt);
 
-  for (const panel of ["events", "people", "followups", "agent", "dashboard"] as const) {
+  for (const panel of ["events", "people", "schedule", "followups", "agent", "dashboard"] as const) {
     if (panelWords[panel].some((word) => prompt.includes(word))) {
       return panel;
     }
@@ -420,6 +440,59 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
               ? "Relationship promises staged for review before outreach."
               : "所有关系承诺先进入复核，再进入对外动作。",
           stageTitle: language === "en" ? "Follow-up queue" : "跟进队列",
+        });
+      }
+
+      if (panel === "schedule") {
+        const eventItems =
+          payload?.upcomingEvents.slice(0, 2).map((event) =>
+            itemFromParts({
+              actionLabel: language === "en" ? "Open event workspace" : "打开活动工作区",
+              body:
+                language === "en"
+                  ? `${event.startsAt} · ${event.goal}`
+                  : `${event.startsAt} · 先确认活动目标和相关联系人。`,
+              href: "/app/events",
+              label: language === "en" ? "Event" : "活动",
+              title: event.title,
+            }),
+          ) ?? [];
+        const followupItems =
+          payload?.pendingTasks.slice(0, 2).map((task) =>
+            itemFromParts({
+              actionLabel: language === "en" ? "Open follow-ups" : "打开跟进",
+              body:
+                language === "en"
+                  ? task.recommendedAction
+                  : "跟进草稿保持待确认，不会自动发送。",
+              href: "/app/followups",
+              label: language === "en" ? "Follow-up" : "跟进",
+              title: task.title,
+            }),
+          ) ?? [];
+        const records = [...eventItems, ...followupItems];
+
+        return success({
+          assistantMessage:
+            language === "en"
+              ? "I placed the upcoming relationship work on one review-first schedule. Nothing is sent or booked automatically."
+              : "我把接下来的关系工作排成一条日程线。所有待确认动作都只是草稿，不会自动发送或预约。",
+          commandLinks,
+          evidenceIds: baseEvidence,
+          language,
+          languageOptions,
+          orbitContacts,
+          panel,
+          prompt,
+          sideEffectsExecuted: false,
+          stageCtaHref: "/app?panel=schedule",
+          stageCtaLabel: language === "en" ? "Review schedule" : "查看日程",
+          stageItems: records.length > 0 ? records : fallbackItems(language).slice(0, 4),
+          stageSubtitle:
+            language === "en"
+              ? "Events, follow-ups, and held actions on a single timeline."
+              : "活动、跟进和待确认动作排在同一条时间线上。",
+          stageTitle: language === "en" ? "Schedule timeline" : "日程时间线",
         });
       }
 

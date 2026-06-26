@@ -5,7 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { AppShell } from "../../shared/ui/app-shell";
+import { AppShell, resolveOrbitAppRoute } from "../../shared/ui/app-shell";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -113,7 +113,10 @@ test("/app AI shell suppresses legacy workspace chrome", async () => {
   assert.doesNotMatch(html, /data-app-shell-primary-action="true"/);
   assert.doesNotMatch(html, /data-runtime-status="compact"/);
   assert.doesNotMatch(html, /Know who needs your attention/);
-  assert.match(html, /href="\/app"[^>]*>Orbit AI<\/a>/);
+  assert.doesNotMatch(html, /aria-label="Bottom navigation"/);
+  assert.match(html, /data-reference-style="orbit-ui-reference"/);
+  assert.match(html, /aria-label="Orbit AI 导航"/);
+  assert.match(html, /data-orbit-ai-nav-panel="home"[\s\S]*?>Orbit AI<\/span>/);
   assert.match(html, /aria-current="page"/);
 });
 
@@ -127,11 +130,26 @@ test("/app opens as an AI chat command center with a functional side stage", asy
   assert.match(html, /告诉我你想推进哪类机会/);
   assert.match(html, /aria-label="Orbit 功能侧栏"/);
   assert.match(html, /实时关系轨道/);
-  assert.match(html, /从聊天打开功能面板/);
+  assert.match(html, /功能面板会把聊天接到活动、人脉、日程、跟进、对话、关系健康和下一步/);
   assert.match(html, /href="\/app\?lang=en"[^>]*>English<\/a>/);
+  for (const expected of [
+    { panel: "home", label: "Orbit AI" },
+    { panel: "people", label: "人脉" },
+    { panel: "events", label: "活动" },
+    { panel: "schedule", label: "日程" },
+    { panel: "followups", label: "跟进" },
+    { panel: "dashboard", label: "健康" },
+    { panel: "agent", label: "下一步" },
+  ]) {
+    assert.match(
+      html,
+      new RegExp(`data-orbit-ai-nav-panel="${expected.panel}"[\\s\\S]*?>${expected.label}</span>`),
+    );
+  }
   for (const expected of [
     { href: "/app?panel=events", label: "推荐活动" },
     { href: "/app?panel=people", label: "推荐人脉" },
+    { href: "/app?panel=schedule", label: "查看日程" },
     { href: "/app?panel=followups", label: "准备跟进" },
     { href: "/app?panel=agent", label: "检查下一步" },
   ]) {
@@ -160,20 +178,24 @@ test("/app keeps English as the secondary language option", async () => {
   assert.match(html, /lang="en"/);
   assert.match(html, /Ask Orbit AI/);
   assert.match(html, /What are you trying to achieve in Tokyo\?/);
-  assert.match(html, /Open a function panel from chat/);
+  assert.match(html, /Function panels connect chat to events, people, schedule, follow-ups/);
   assert.match(html, /href="\/app"[^>]*>中文<\/a>/);
   assert.match(html, /href="\/app\?panel=events&amp;lang=en"[^>]*>Recommend events<\/a>/);
+  assert.match(html, /href="\/app\?panel=schedule&amp;lang=en"[^>]*>Check schedule<\/a>/);
 });
 
 test("/app uses a relationship console layout instead of a card stack", async () => {
   const html = await renderAppHome({ panel: "events" });
 
   assert.match(html, /data-orbit-ai-layout="relationship-console"/);
+  assert.match(html, /data-reference-style="orbit-ui-reference"/);
   assert.match(html, /data-visual-signature="relationship-field"/);
   assert.match(html, /aria-label="当前任务面板"/);
   assert.match(html, /data-action-bar="reviewed-preview"/);
   assert.match(html, /待确认/);
   assert.match(html, /来源已绑定/);
+  assert.match(html, /#16181d/);
+  assert.match(html, /#6fe3c0/);
   assert.doesNotMatch(html, /orbit-ai-stage-card/);
 });
 
@@ -196,6 +218,12 @@ test("/app side stage opens functional panels from AI intent", async () => {
       expectedTitle: "跟进队列",
       expectedCopy: "给 Akari Mori 发送摘要",
       expectedAction: "打开跟进",
+    },
+    {
+      panel: "schedule",
+      expectedTitle: "日程时间线",
+      expectedCopy: "活动、跟进和待确认动作",
+      expectedAction: "查看日程",
     },
     {
       panel: "agent",
@@ -240,7 +268,7 @@ test("/app AI command stage summarizes functional paths with clear links", async
 
   assert.match(html, /功能面板/);
   assert.match(html, /活动、人脉、跟进、对话、关系健康和下一步/);
-  assert.doesNotMatch(html, />\s*<\/(?:a|button)>/);
+  assert.doesNotMatch(html, /<(?:a|button)\b[^>]*>\s*<\/(?:a|button)>/);
 });
 
 test("/app AI command center exposes responsive stage guardrails", async () => {
@@ -249,17 +277,18 @@ test("/app AI command center exposes responsive stage guardrails", async () => {
   assert.match(html, /min-width: 0;/);
   assert.match(
     html,
-    /grid-template-columns: minmax\(min\(100%, 360px\), 0\.92fr\) minmax\(min\(100%, 420px\), 1\.08fr\);/,
+    /grid-template-columns: 76px minmax\(min\(100%, 390px\), 0\.82fr\) minmax\(min\(100%, 520px\), 1\.18fr\);/,
   );
-  assert.match(html, /@media \(max-width: 900px\)/);
+  assert.match(html, /@media \(max-width: 980px\)/);
   assert.match(
     html,
     /\.orbit-ai-command-center \.orbit-ai-command-link,[\s\S]*?white-space: normal;/,
   );
   assert.match(
     html,
-    /\.orbit-ai-command-center \.orbit-ai-stage-grid,[\s\S]*?min-width: 0;/,
+    /\.orbit-ai-stage-grid,[\s\S]*?min-width: 0;/,
   );
+  assert.match(html, /\.orbit-ai-rail[\s\S]*?overflow-x: auto;/);
   assert.doesNotMatch(
     html,
     /\.orbit-ai-command-center \.orbit-ai-command-link,[\s\S]*?white-space: nowrap/,
@@ -273,12 +302,85 @@ test("/app AI command center exposes responsive stage guardrails", async () => {
 test("/app shell composition exposes outcome navigation without empty labels", async () => {
   const html = await renderAppHome();
 
-  assert.equal(html.match(/aria-label="Bottom navigation"/g)?.length, 1);
-  for (const item of sprintBottomNavigation) {
-    assert.match(html, new RegExp(`href="${item.href}"[^>]*>${item.label}</a>`));
-  }
-  assert.doesNotMatch(html, />\s*<\/a>/);
+  assert.equal(html.match(/aria-label="Orbit AI 导航"/g)?.length, 1);
+  assert.doesNotMatch(html, /aria-label="Bottom navigation"/);
+  assert.match(html, /data-orbit-ai-nav-panel="schedule"/);
+  assert.doesNotMatch(html, /<a\b[^>]*>\s*<\/a>/);
   assert.doesNotMatch(html, />Home<\/a>|>Profile<\/a>|>Contacts<\/a>|>Chat<\/a>|>Dashboard<\/a>|>Agent<\/a>/);
+});
+
+test("app route resolver keeps nested product pages attached to their modules", () => {
+  for (const routeCase of [
+    { pathname: "/app", expected: "/app" },
+    { pathname: "/app/contacts", expected: "/app/contacts" },
+    { pathname: "/app/contacts/new", expected: "/app/contacts" },
+    { pathname: "/app/contacts/demo-contact-1", expected: "/app/contacts" },
+    { pathname: "/app/events/demo-event-1", expected: "/app/events" },
+    { pathname: "/app/profile/edit", expected: "/app/profile" },
+    { pathname: "/app/unknown", expected: "/app" },
+  ] as const) {
+    assert.equal(resolveOrbitAppRoute(routeCase.pathname), routeCase.expected);
+  }
+});
+
+test("non-home app routes use the reference product shell with module navigation", async () => {
+  const Page = (await import("../../app/(app)/app/contacts/page")).default;
+  const pageElement = await Page({});
+  const html = renderToStaticMarkup(
+    React.createElement(
+      AppShell,
+      {
+        accountSummary: sprintAccountSummary,
+        activeRoute: "/app/contacts",
+        runtimeStatus: sprintRuntimeStatus,
+        topActions: sprintTopActions,
+        bottomNavigation: sprintBottomNavigation,
+        variant: "ai-command",
+      },
+      pageElement,
+    ),
+  );
+
+  assert.match(html, /orbit-app-shell-product/);
+  assert.match(html, /data-reference-style="orbit-ui-reference"/);
+  assert.match(html, /aria-label="Orbit 产品导航"/);
+  assert.match(html, /data-workspace-identity="Orbit Demo Workspace/);
+  assert.match(html, /href="\/app\/profile"[\s\S]*?>资料<\/span>/);
+  assert.match(html, /href="\/app\/contacts"[\s\S]*?aria-current="page"/);
+  assert.match(html, /href="\/app\/events"[\s\S]*?>活动<\/span>/);
+  assert.match(html, /href="\/app\/dashboard"[\s\S]*?>健康<\/span>/);
+  assert.match(html, /English secondary/);
+  assert.doesNotMatch(html, /Know who needs your attention/);
+  assert.doesNotMatch(html, /aria-label="Bottom navigation"/);
+});
+
+test("reference product shell remaps shared UI tokens for module pages", async () => {
+  const Page = (await import("../../app/(app)/app/dashboard/page")).default;
+  const pageElement = await Page({});
+  const html = renderToStaticMarkup(
+    React.createElement(
+      AppShell,
+      {
+        accountSummary: sprintAccountSummary,
+        activeRoute: "/app/dashboard",
+        runtimeStatus: sprintRuntimeStatus,
+        topActions: sprintTopActions,
+        bottomNavigation: sprintBottomNavigation,
+        variant: "ai-command",
+      },
+      pageElement,
+    ),
+  );
+
+  assert.match(html, /--orbit-canvas: #f3f4f6;/);
+  assert.match(html, /--orbit-primary-action: #16181d;/);
+  assert.match(html, /--orbit-primary-action-hover: #0e8b6b;/);
+  assert.match(html, /--orbit-evidence: #0e8b6b;/);
+  assert.match(html, /--orbit-warning: #c0863a;/);
+  assert.match(html, /--orbit-color-primary: #16181d;/);
+  assert.match(html, /--orbit-color-primary-strong: #0e8b6b;/);
+  assert.match(html, /--orbit-color-evidence: #0e8b6b;/);
+  assert.match(html, /--orbit-color-warning: #c0863a;/);
 });
 
 test("/app scenario states keep the clean AI shell while showing recovery content", async () => {
@@ -346,7 +448,7 @@ test("/app contacts intake shell supplies visible source recovery labels", async
   for (const link of contactIntakeRecoveryLinks) {
     assert.match(html, new RegExp(`href="${link.href.replace("?", "\\?")}"[^>]*>${link.label}</a>`));
   }
-  assert.doesNotMatch(html, />\s*<\/a>/);
+  assert.doesNotMatch(html, /<a\b[^>]*>\s*<\/a>/);
 });
 
 test("all primary app routes can share the same shell identity string", async () => {
