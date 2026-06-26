@@ -1,0 +1,2 @@
+## Sprint Definitions
+- **Sprint 69 — Product App Shell And Route Hierarchy (Wave 12):** Re-author the shared `/app` shell, layout, and home composition so the `/app/**` routes feel like one coherent Orbit product workspace with a single active demo workspace identity, outcome-oriented nav labels, a primary CTA that leads to `/app/contacts/new`, a compact runtime/demo badge, and clean desktop/mobile evidence.

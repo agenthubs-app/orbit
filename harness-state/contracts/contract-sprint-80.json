@@ -1,0 +1,106 @@
+{
+  "sprint_number": 80,
+  "goal": "Make /app/dashboard read like a relationship network health workspace that tells the user what relationship risk or opportunity to act on next, while preserving all local, side-effect-free behavior.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app/dashboard first viewport leads with one current network-health priority: which relationship or coverage gap needs attention, why it matters now, the source confidence, the recommended next move, and the no-side-effect boundary before broad metrics or provenance details.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Summary metrics, distribution, network gaps, opportunities, provenance, and recent activity are grouped into a readable health-to-action workflow with relationship labels, coverage context, source confidence, and review status rather than technical inventory.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "GET /app/dashboard?action=run-dashboard-review shows a usable local dashboard review preview that confirms refreshed prompts, audit findings, source confidence, and exactly what remains local; reloading the same action route remains stable.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "The page and action preview explicitly show that no saved record, audit report, compliance report, message, notification, automated writing call, or outside network request occurs; raw evidence IDs are not dominant primary copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "GET /app/dashboard?scenario=empty, pending, failure keep meaningful recovery controls; page tests assert the health-to-action workflow, action safety ledger, route recovery, and copy guardrails; npm test and npm run build pass with no feature, service, API, fixture, shared UI, shell, contact, event, follow-up, chat, agent, profile, or home route edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing feature contracts, services, service factories, API envelopes, route handlers, or sample data fixtures",
+    "Changing global app shell, global CSS, shared UI primitives, contacts, events, follow-ups, chat, profile, agent, or home routes",
+    "Adding live CRM, analytics, notification, messaging, storage, search, AI, compliance, audit, or network integrations",
+    "Changing dashboard aggregate, network distribution, opportunity, or provenance audit feature behavior outside the route composition layer",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/dashboard",
+      "/app/dashboard?action=run-dashboard-review",
+      "/app/dashboard?scenario=empty",
+      "/app/dashboard?scenario=pending",
+      "/app/dashboard?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/dashboard/page.tsx",
+      "tests/pages/app-dashboard-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app/dashboard",
+    "owned_paths": [
+      "app/(app)/app/dashboard/page.tsx",
+      "app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-command-center.tsx",
+      "tests/pages/app-dashboard-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/profile/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/layout.tsx",
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/**",
+      "app/globals.css",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "shared/ui/**",
+      "tests/capabilities/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

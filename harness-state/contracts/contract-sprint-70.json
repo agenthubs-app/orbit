@@ -1,0 +1,107 @@
+{
+  "sprint_number": 70,
+  "goal": "Raise the shared Orbit visual system from a functional workbench to a compact participant-facing product surface by tightening color, type, spacing, focus, button, chip, panel, and specimen treatments while preserving existing route behavior.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "shared/ui/theme.ts exports named semantic tokens for canvas, surface, text, muted text, border, primary action, evidence, confirmation, privacy, warning, and success; app/globals.css mirrors those tokens as --orbit-* variables, uses letter-spacing: 0, and avoids viewport-width font scaling.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "app/globals.css defines one visual system for panels, chips, buttons, fields, focus-visible, details disclosures, and dense grids using 8px-or-less card radius, stable min/max dimensions for controls, and no decorative orb, bokeh, or dominant purple-gradient background.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "shared/ui/primitives.tsx exposes reusable product primitives for frame, surface, chip, field, primary action, secondary action, token swatch, and inline metric or status display; rendered primitives contain no inline style attributes and keep unknown chip tones on the neutral tone.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "GET /dev/foundation/style returns a representative product specimen using the shared primitives for relationship context, source evidence, confirmation guard, tokens, controls, chips, and action states; desktop, tablet, and 375px mobile evidence shows no overlapping text or horizontal overflow.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "tests/ui/theme.test.ts asserts the visual tokens, CSS guardrails, primitive rendering, specimen route content, non-nested card pattern, and representative contrast ratios; npm test and npm run build pass.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Adding or changing backend capability behavior",
+    "Changing API envelopes or service contracts",
+    "Rewriting route-specific product copy for /app/profile, /app/contacts, /app/events, /app/followups, /app/chat, /app/dashboard, or /app/agent",
+    "Adding new public product routes",
+    "Introducing auth, session, persistence, provider, or live data integration",
+    "Editing feature folders or tests outside the declared visual-system boundary",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app",
+      "/dev/foundation/style"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/globals.css",
+      "shared/ui/theme.ts",
+      "shared/ui/primitives.tsx",
+      "app/dev/foundation/style/page.tsx",
+      "tests/ui/theme.test.ts"
+    ],
+    "public_routes": [
+      "/__harness/sprint-70/app",
+      "/__harness/sprint-70/foundation-style"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "shared/ui",
+    "owned_paths": [
+      "app/globals.css",
+      "shared/ui/theme.ts",
+      "shared/ui/primitives.tsx",
+      "app/dev/foundation/style/page.tsx",
+      "tests/ui/theme.test.ts"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/profile/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "allowed_for_foundation"
+  },
+  "confirmed": true
+}

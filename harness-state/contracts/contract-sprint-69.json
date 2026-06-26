@@ -1,0 +1,128 @@
+{
+  "sprint_number": 69,
+  "goal": "Make /app/** read as one coherent Orbit product workspace with a single active demo workspace identity, outcome-oriented nav labels, a primary add-source CTA leading to /app/contacts/new, compact runtime/demo status, and desktop/mobile evidence without overlap or empty labels.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app returns HTML containing one shared account summary block (displayName, initials, working context, source posture) that is also rendered by /app/profile, /app/contacts, /app/events, /app/followups, /app/chat, /app/dashboard, and /app/agent — all 8 routes match the same single account identity string; desktop (>=1024px) and mobile (375px) snapshots stored under harness-state/runs/<run-id>/screens/ confirm no overlapping nav chips and no empty nav labels.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Bottom navigation on /app exposes outcome-oriented labels (Relationship cockpit, People, Events, Follow-ups, Conversations, Relationship health, Next moves) instead of internal module names; labels are non-empty and do not truncate at 375px viewport width.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Primary CTA in the app shell is labelled to match its destination (e.g. 'Add a relationship source') and its href resolves to /app/contacts/new; clicking it from /app produces a 200 with the contacts/new composition.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Runtime/demo status is rendered as a compact badge or details disclosure that does not occupy the primary viewport on /app at desktop (>=1024px) or mobile (375px); the primary headline and primary CTA remain the first paint focus.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "tests/ui/app-shell.test.tsx and tests/pages/app-page.test.tsx assert the single workspace identity, the outcome-oriented nav labels, the primary CTA target, the compact runtime status, and the mock-to-live replacement doc at shared/ui/app-shell/LIVE_IMPLEMENTATION.md; npm test passes.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Adding any new backend capability or mock service behavior",
+    "Rewriting /app/** page content beyond shell composition and the home primary CTA",
+    "Changing the underlying mock service contracts or API envelopes",
+    "Introducing any auth, session, or live data source integration",
+    "Editing pages or components outside the declared file boundary",
+    "Adding new /app/** routes or removing existing /app/** routes",
+    "Copy rewrites for /dev/** harness routes",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app",
+      "/app/profile",
+      "/app/contacts",
+      "/app/contacts/new",
+      "/app/events",
+      "/app/followups",
+      "/app/chat",
+      "/app/dashboard",
+      "/app/agent"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "api": [
+      {
+        "name": "primary-cta-target",
+        "method": "GET",
+        "path": "/app/contacts/new",
+        "expectStatus": 200
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/layout.tsx",
+      "app/(app)/app/page.tsx",
+      "shared/ui/app-shell.tsx",
+      "shared/ui/app-shell/LIVE_IMPLEMENTATION.md",
+      "shared/ui/theme.ts",
+      "tests/ui/app-shell.test.tsx",
+      "tests/pages/app-page.test.tsx"
+    ],
+    "public_routes": [
+      "/__harness/sprint-69/app",
+      "/__harness/sprint-69/app/contacts/new"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app",
+    "owned_paths": [
+      "app/(app)/app/layout.tsx",
+      "app/(app)/app/page.tsx",
+      "shared/ui/app-shell.tsx",
+      "shared/ui/app-shell/LIVE_IMPLEMENTATION.md",
+      "shared/ui/app-shell/**",
+      "shared/ui/theme.ts",
+      "tests/ui/app-shell.test.tsx",
+      "tests/pages/app-page.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "shared/ui/primitives.tsx"
+    ],
+    "forbidden_paths": [
+      "app/(app)/app/profile/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/**",
+      "app/dev/**",
+      "tests/integration/**"
+    ],
+    "mock_to_live_doc": "shared/ui/app-shell/LIVE_IMPLEMENTATION.md",
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

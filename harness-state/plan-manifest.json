@@ -1,0 +1,21 @@
+{
+  "source": "planner",
+  "created_at": "2026-06-26T03:54:15.936377+00:00",
+  "spec_path": "harness-state/spec.md",
+  "sprints_path": "harness-state/sprints.md",
+  "contracts": [
+    "harness-state/contracts/contract-sprint-69.json",
+    "harness-state/contracts/contract-sprint-70.json",
+    "harness-state/contracts/contract-sprint-71.json",
+    "harness-state/contracts/contract-sprint-72.json",
+    "harness-state/contracts/contract-sprint-73.json",
+    "harness-state/contracts/contract-sprint-74.json",
+    "harness-state/contracts/contract-sprint-75.json",
+    "harness-state/contracts/contract-sprint-76.json",
+    "harness-state/contracts/contract-sprint-77.json",
+    "harness-state/contracts/contract-sprint-78.json",
+    "harness-state/contracts/contract-sprint-79.json",
+    "harness-state/contracts/contract-sprint-80.json"
+  ],
+  "contract_count": 12
+}

@@ -1,0 +1,46 @@
+# Local agent/runtime state
+.learnings/
+.playwright-mcp/
+.pytest_cache/
+.uv-cache/
+.venv/
+**/__pycache__/
+*.py[cod]
+.DS_Store
+
+# Secrets and local environment
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Harness runtime data and logs
+harness-logs/
+harness-state/**
+!harness-state/
+!harness-state/bootstrap-product-context.md
+!harness-state/spec.md
+!harness-state/sprints.md
+!harness-state/plan-manifest.json
+!harness-state/contracts/
+!harness-state/contracts/**
+!harness-state/productization-notes/
+!harness-state/productization-notes/**
+harness-state/productization-notes/*.patch
+
+# Reference repo; not part of Orbit implementation
+repos/tokyo-business-connect/
+
+# App build/dependency outputs
+repos/orbits/node_modules/
+repos/orbits/.next/
+repos/orbits/dist/
+repos/orbits/build/
+repos/orbits/npm-debug.log*
+
+# Local visual exports
+orbits-app-ai-command-center.png
+orbits-app-redesign-mobile.png
+
+# Local backups used while flattening nested git repos into this root repo
+.local-git-backups/

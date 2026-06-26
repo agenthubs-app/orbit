@@ -1,0 +1,90 @@
+agents:
+  planner:
+    backend: claude
+    model: claude-4.8
+    max_tokens: 32768
+    thinking:
+      enabled: true
+      budget_tokens: 32768
+
+  generator:
+    backend: codex
+    model: gpt-5.5
+    max_tokens: 16384
+    codex:
+      approval_mode: workspace-write
+      quiet: true
+      reasoning_effort: xhigh
+      provider: openai
+    self_assess_model: claude-4.8
+
+  evaluator:
+    backend: claude
+    model: claude-4.8
+    max_tokens: 16384
+    thinking:
+      enabled: true
+      budget_tokens: 16384
+
+  verifier:
+    backend: codex
+    model: gpt-5.5
+    max_tokens: 16384
+    codex:
+      approval_mode: read-only
+      quiet: true
+      reasoning_effort: high
+      provider: openai
+
+loop:
+  max_iterations: 8
+  min_iterations: 2
+  planner_max_turns: 160
+  planner_timeout_seconds: 900
+  generator_max_turns: 160
+  generator_timeout_seconds: 1500
+  contract_review_rounds: 2
+
+verdict:
+  pass_threshold: 3.5
+  conditional_pass_threshold: 3.0
+
+verification:
+  pass_threshold: 3.5
+  conditional_pass_threshold: 3.0
+  block_on_high_severity: true
+
+workspace:
+  mode: greenfield
+  app_root: repos/orbits
+  artifact_root: harness-state
+  log_root: harness-logs
+  evidence_root: harness-state/evidence
+  tmp_root: harness-state/tmp
+  keep_last_runs: 10
+  keep_last_evidence_per_sprint: 3
+  write_allowlist:
+    - repos/orbits/**
+  protected_paths:
+    - .git/**
+    - .env*
+    - node_modules/**
+    - .next/**
+    - dist/**
+    - build/**
+    - harness-state/**
+    - harness-logs/**
+    - repos/orbits/.git/**
+    - repos/orbits/.env*
+    - repos/orbits/node_modules/**
+    - repos/orbits/.next/**
+    - repos/orbits/dist/**
+    - repos/orbits/build/**
+    - repos/tokyo-business-connect/.git/**
+    - repos/tokyo-business-connect/**
+  git:
+    enabled: true
+    strategy: path-scoped
+    remote_url: ""
+    branch: main
+    push: false

@@ -1,0 +1,107 @@
+{
+  "sprint_number": 75,
+  "goal": "Make /app/contacts/new feel like a real relationship-source intake flow while keeping camera, scan, import, email, calendar, referral, and merge behavior simulated and side-effect-free.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app/contacts/new first viewport leads with one current contact review candidate, the source that created it, the next decision, and the no-side-effect boundary before alternate intake paths.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Manual note, business card, QR, event attendee import, external contacts, email/calendar signals, referral, and merge paths are presented as selectable source methods with readable labels, status, and next step copy rather than a long debug list.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Readable source chips or labels are visible in the main flow, while raw IDs such as evidence:*, source:*, queue:*, uppercase error codes, and implementation slugs stay only inside details, hidden diagnostics, or test evidence.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "GET /app/contacts/new?scenario=empty, pending, and failure preserve meaningful recovery states with visible recovery controls; desktop and 375px mobile evidence show no horizontal overflow, unlabeled controls, or text escaping its container.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "Page and route-flow tests assert the source-intake narrative, selectable source methods, primary action safety, raw-ID containment, and route-state recovery; npm test and npm run build pass with no feature, service, API, data fixture, shared UI, or unrelated route edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing feature contracts, services, service factories, API envelopes, route handlers, or sample data fixtures",
+    "Adding live camera, OCR, address book, email, calendar, CRM, notification, messaging, storage, or network integrations",
+    "Changing product routes other than /app/contacts/new",
+    "Changing the global app shell, global CSS, or shared UI primitives",
+    "Implementing contacts list, contact detail, event, follow-up, chat, dashboard, or agent route polish reserved for later sprints",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/contacts/new",
+      "/app/contacts/new?action=confirm-manual-draft",
+      "/app/contacts/new?scenario=empty",
+      "/app/contacts/new?scenario=pending",
+      "/app/contacts/new?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/contacts/new/page.tsx",
+      "tests/pages/app-contacts-acquisition-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app/contacts/new",
+    "owned_paths": [
+      "app/(app)/app/contacts/new/page.tsx",
+      "tests/pages/app-contacts-acquisition-page.test.tsx",
+      "tests/pages/product-copy.test.tsx",
+      "tests/integration/mock-capability-loop.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/profile/**",
+      "app/(app)/app/contacts/page.tsx",
+      "app/(app)/app/contacts/[id]/page.tsx",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/layout.tsx",
+      "app/globals.css",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "shared/ui/**",
+      "tests/capabilities/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

@@ -1,0 +1,104 @@
+{
+  "sprint_number": 74,
+  "goal": "Turn /app into the first real relationship cockpit for a returning Orbit user while preserving the existing approved capability behavior.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app first viewport foregrounds one top relationship priority with the person or account in focus, why it matters now, readable source context, and the next safe action; the page no longer opens as a generic capability inventory.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Secondary home sections summarize contacts, event opportunities, follow-ups, chat context, dashboard health, and agent review as user outcomes with readable labels and clear links, not as internal modules or service names.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "The home page has one obvious primary action for the current next move and clear secondary paths; all visible actions have accessible names, no empty anchors/buttons, and no horizontal overflow at 375px.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Readable source/provenance context is visible near the priority and secondary summaries; raw IDs such as evidence:*, queue:*, source:*, and provider-like labels appear only inside details or hidden technical evidence, never in primary copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "tests/pages/app-page.test.tsx and product copy tests assert the relationship-cockpit narrative, primary/secondary action hierarchy, source visibility, and internal-vocabulary guardrails; npm test and npm run build pass with no backend, service, API, feature, sample data, or other public route edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing backend capability behavior",
+    "Changing API envelopes, route handlers, feature contracts, service factories, or sample data fixtures",
+    "Changing product routes other than /app",
+    "Changing app shell global navigation, global CSS, or shared visual-system primitives unless a failing test proves the home page cannot fit",
+    "Implementing contact acquisition, contact detail, event, follow-up, chat, dashboard, or agent route polish reserved for Sprints 75-79",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app",
+      "/app?taskLimit=1",
+      "/app?scenario=empty",
+      "/app?scenario=pending",
+      "/app?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "tests/pages/app-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/compose-app-from-previously-approved-mock-first-capabilities",
+    "owned_paths": [
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/app-workbench.tsx",
+      "tests/pages/app-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/profile/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/layout.tsx",
+      "app/globals.css",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "shared/ui/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

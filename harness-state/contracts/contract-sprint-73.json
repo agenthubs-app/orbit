@@ -1,0 +1,116 @@
+{
+  "sprint_number": 73,
+  "goal": "Make shared success, empty, pending, and failure states feel like product recovery moments with visible actions, clear labels, and accessible route-state checks.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "shared/ui/state-view.tsx accepts typed recovery actions or links and renders them as visible controls with accessible names; empty, pending, and failure states no longer rely on plain text instructions for actions the user cannot take.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "shared/ui/app-shell.tsx renders scenario or recovery links as secondary demo checks with visible labels, never as empty anchors, and keeps them outside the primary action order on desktop and 375px mobile.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "GET /app?scenario=empty, /app?scenario=pending, /app?scenario=failure, /app/profile?scenario=empty, /app/profile?scenario=pending, and /app/profile?scenario=failure expose meaningful state headings and at least one visible recovery control whose label matches the recovery copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "tests/ui/state-view.test.tsx and tests/pages/product-state-recovery.test.tsx assert accessible names for state controls, no empty state links, no invisible action instructions, and no horizontal overflow assumptions for long recovery labels.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "Existing app-shell, app-page, app-profile, and product-copy tests are updated only for intentional state/recovery behavior; npm test and npm run build pass with no backend, service, API, or route-handler edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing backend capability behavior",
+    "Changing API envelopes or route handlers",
+    "Changing source/provenance component architecture from Sprint 72",
+    "Rewriting route-specific product layout reserved for Sprints 74-79",
+    "Changing sample data fixtures or service factories",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app?scenario=empty",
+      "/app?scenario=pending",
+      "/app?scenario=failure",
+      "/app/profile?scenario=empty",
+      "/app/profile?scenario=pending",
+      "/app/profile?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "shared/ui/state-view.tsx",
+      "shared/ui/app-shell.tsx",
+      "tests/ui/state-view.test.tsx",
+      "tests/pages/product-state-recovery.test.tsx",
+      "tests/ui/app-shell.test.tsx",
+      "tests/pages/app-page.test.tsx",
+      "tests/pages/app-profile-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "shared/ui",
+    "owned_paths": [
+      "shared/ui/state-view.tsx",
+      "shared/ui/app-shell.tsx",
+      "tests/ui/state-view.test.tsx",
+      "tests/pages/product-state-recovery.test.tsx",
+      "tests/ui/app-shell.test.tsx",
+      "tests/pages/app-page.test.tsx",
+      "tests/pages/app-profile-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/app-workbench.tsx",
+      "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-command-center.tsx"
+    ],
+    "forbidden_paths": [
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/profile/page.tsx",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

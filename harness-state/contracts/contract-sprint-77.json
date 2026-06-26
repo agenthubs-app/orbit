@@ -1,0 +1,116 @@
+{
+  "sprint_number": 77,
+  "goal": "Make /app/events and /app/events/demo-event-1 read like one connected event preparation workspace that guides a returning user from event choice to in-room relationship action, while preserving all local, side-effect-free behavior.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app/events first viewport leads with a current event preparation priority: which event matters now, who to meet there, why it matters, readiness status, and the next safe action before broad event inventory or diagnostics.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Visible event cards offer readable paths into the event detail view and show venue, attendee opportunity, readiness, and relationship value as user-facing event work rather than technical inventory.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "GET /app/events/demo-event-1 first viewport carries the selected event forward with source story, venue/time confidence, first person to meet, opening line context, and a local want-to-connect action; raw evidence IDs are not dominant primary copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "The event decision preview and event-detail intent preview explicitly show no calendar update, saved-record write, realtime presence, peer notification, external message, notification, or outside network request occurs; reloading the same action route remains stable.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "List and detail empty, pending, and failure states keep meaningful recovery controls; page tests assert the event-to-detail narrative, visible detail links, action safety ledger, route recovery, and copy guardrails; npm test and npm run build pass with no feature, service, API, fixture, shared UI, shell, contact, follow-up, chat, dashboard, agent, profile, or home route edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing feature contracts, services, service factories, API envelopes, route handlers, or sample data fixtures",
+    "Changing global app shell, global CSS, shared UI primitives, contacts, contact acquisition, profile, follow-ups, chat, dashboard, agent, or home routes",
+    "Adding live calendar, CRM, notification, messaging, storage, search, AI, realtime presence, or network integrations",
+    "Changing post-event review, attendee import, recommendation, or want-to-connect feature behavior outside the route composition layer",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/events",
+      "/app/events?action=accept-top-event",
+      "/app/events?scenario=empty",
+      "/app/events?scenario=pending",
+      "/app/events?scenario=failure",
+      "/app/events/demo-event-1",
+      "/app/events/demo-event-1?action=want-to-connect&targetContactId=contact:priya-shah",
+      "/app/events/demo-event-1?scenario=empty",
+      "/app/events/demo-event-1?scenario=pending",
+      "/app/events/demo-event-1?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/events/page.tsx",
+      "app/(app)/app/events/[id]/page.tsx",
+      "tests/pages/app-events-page.test.tsx",
+      "tests/pages/app-events-demo-event-1-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app/events",
+    "owned_paths": [
+      "app/(app)/app/events/page.tsx",
+      "app/(app)/app/events/[id]/page.tsx",
+      "app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-command-center.tsx",
+      "app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
+      "tests/pages/app-events-page.test.tsx",
+      "tests/pages/app-events-demo-event-1-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/profile/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/layout.tsx",
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/**",
+      "app/globals.css",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "shared/ui/**",
+      "tests/capabilities/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

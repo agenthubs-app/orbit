@@ -1,0 +1,106 @@
+{
+  "sprint_number": 78,
+  "goal": "Make /app/followups read like a relationship follow-through workspace for deciding what promise to keep next, while preserving all local, side-effect-free behavior.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app/followups first viewport leads with one current follow-through priority: who the promise is for, why it matters now, the source trigger, draft readiness, reminder timing, and the next safe action before broader task or queue inventory.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Visible follow-up task, message draft, reminder, and queue items are grouped into a readable promise-to-send workflow with relationship labels, due timing, source context, and clear review status rather than technical inventory.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "GET /app/followups?action=complete-top-followup shows a usable completion preview that confirms the selected promise, draft or reminder context, and exactly what remains staged locally; reloading the same action route remains stable.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "The page and action preview explicitly show that no saved record, calendar or scheduler change, email/message send, notification delivery, automated writing call, or outside network request occurs; raw queue/evidence IDs are not dominant primary copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "GET /app/followups?scenario=empty, pending, failure keep meaningful recovery controls; page tests assert the promise workflow, action safety ledger, route recovery, mobile wrapping guardrails, and copy guardrails; npm test and npm run build pass with no feature, service, API, fixture, shared UI, shell, contact, event, chat, dashboard, agent, profile, or home route edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing feature contracts, services, service factories, API envelopes, route handlers, or sample data fixtures",
+    "Changing global app shell, global CSS, shared UI primitives, contacts, events, profile, chat, dashboard, agent, or home routes",
+    "Adding live email, calendar, CRM, notification, messaging, scheduler, storage, search, AI, or network integrations",
+    "Changing task, notification, or draft generation feature behavior outside the route composition layer",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/followups",
+      "/app/followups?action=complete-top-followup",
+      "/app/followups?scenario=empty",
+      "/app/followups?scenario=pending",
+      "/app/followups?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/followups/page.tsx",
+      "tests/pages/app-followups-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app/followups",
+    "owned_paths": [
+      "app/(app)/app/followups/page.tsx",
+      "app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-command-center.tsx",
+      "tests/pages/app-followups-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/profile/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/layout.tsx",
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/**",
+      "app/globals.css",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "shared/ui/**",
+      "tests/capabilities/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

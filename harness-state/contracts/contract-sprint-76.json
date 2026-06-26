@@ -1,0 +1,117 @@
+{
+  "sprint_number": 76,
+  "goal": "Make /app/contacts and /app/contacts/demo-contact-1 read like one connected relationship workspace instead of separate inspection pages, while preserving all existing local, side-effect-free behavior.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app/contacts first viewport leads with a current relationship review queue: who needs attention now, why that person matters, the source context, and the next safe action before search controls or diagnostics.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Each visible contact row offers a readable path into the person detail view and shows source, status, relationship value, and next action as user-facing relationship work rather than technical inventory.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "GET /app/contacts/demo-contact-1 first viewport carries the selected person forward with source story, relationship stage, priority reason, and prepare-follow-up action; raw evidence IDs are not dominant primary copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Action previews and route recovery states show no outside account, message, notification, contact write, search index read, or database query occurs; list/detail empty, pending, and failure states keep meaningful recovery controls and reloading the same action route remains stable.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "Page tests assert the queue-to-detail narrative, visible detail links, action safety ledger, route-state recovery, and copy guardrails; npm test and npm run build pass with no feature, service, API, fixture, shared UI, shell, or unrelated route edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing feature contracts, services, service factories, API envelopes, route handlers, or sample data fixtures",
+    "Changing global app shell, global CSS, shared UI primitives, profile, events, follow-ups, chat, dashboard, agent, acquisition, or home routes",
+    "Adding live address book, email, calendar, CRM, notification, messaging, storage, search, AI, or network integrations",
+    "Changing contacts acquisition behavior under /app/contacts/new",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/contacts",
+      "/app/contacts?action=review-filtered-contact&query=storage&tag=topic:storage-pilots&value=commercial_opportunity",
+      "/app/contacts?scenario=empty",
+      "/app/contacts?scenario=pending",
+      "/app/contacts?scenario=failure",
+      "/app/contacts/demo-contact-1",
+      "/app/contacts/demo-contact-1?action=prepare-follow-up",
+      "/app/contacts/demo-contact-1?scenario=empty",
+      "/app/contacts/demo-contact-1?scenario=pending",
+      "/app/contacts/demo-contact-1?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/contacts/page.tsx",
+      "app/(app)/app/contacts/[id]/page.tsx",
+      "tests/pages/app-contacts-page.test.tsx",
+      "tests/pages/app-contacts-demo-contact-1-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app/contacts",
+    "owned_paths": [
+      "app/(app)/app/contacts/page.tsx",
+      "app/(app)/app/contacts/[id]/page.tsx",
+      "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-command-center.tsx",
+      "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts",
+      "tests/pages/app-contacts-page.test.tsx",
+      "tests/pages/app-contacts-demo-contact-1-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/contacts/new/page.tsx",
+      "app/(app)/app/profile/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/layout.tsx",
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/**",
+      "app/globals.css",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "shared/ui/**",
+      "tests/capabilities/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

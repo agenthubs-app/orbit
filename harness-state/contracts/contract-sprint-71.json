@@ -1,0 +1,122 @@
+{
+  "sprint_number": 71,
+  "goal": "Replace internal implementation vocabulary on representative public Orbit routes with participant-facing product language and make CTAs describe the user's outcome rather than the system boundary.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "shared/ui/state-view.tsx and shared/ui/app-shell.tsx render empty, pending, failure, and workspace identity moments with user-directed labels, recovery copy, and action language; primary visible text avoids internal terms such as harness, fixture, provider, operator, placeholder, route examples, sample records, Scenario URL, and raw IDs.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "GET /app returns public text from the existing AppWorkbench composition whose first viewport names the relationship work, the reason it matters now, the source context, and a next safe action; visible CTAs use outcome phrases such as review next move, add relationship source, inspect source, or confirm safe action.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "GET /app/profile returns public text from the existing AppProfileCommandCenter composition with participant-facing success, empty, pending, and failure recovery text; failure and pending copy describes what the user can do next without exposing service names, raw implementation codes, internal routing labels, DOCUMENT EXTRACTION, PROFILE UPDATE REVIEW, QUEUED FIELD, QUEUED VALUE, or Preview timestamp in primary text.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "tests/pages/product-copy.test.tsx scans /app and /app/profile rendered HTML primary text for the banned internal vocabulary, verifies representative outcome CTA phrases, and allows technical terms only inside secondary details or data attributes where existing tests need evidence.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "Existing app-page and app-profile page tests prove page wrappers still delegate to AppWorkbench and AppProfileCommandCenter, with no new direct feature/service imports in page.tsx; npm test and npm run build pass with no backend, service, or API contract edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Adding or changing backend capability behavior",
+    "Changing API envelopes or service contracts",
+    "Changing the visual token system from Sprint 70",
+    "Editing feature folders, service factories, route handlers, or shared domain contracts",
+    "Rewriting product routes outside /app and /app/profile",
+    "Rewriting /app/page.tsx or /app/profile/page.tsx to bypass the existing compose components",
+    "Adding new direct feature, service, or contract imports to /app/page.tsx or /app/profile/page.tsx",
+    "Changing source chip or provenance disclosure architecture reserved for Sprint 72",
+    "Changing recovery system architecture reserved for Sprint 73",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app",
+      "/app?scenario=empty",
+      "/app?scenario=pending",
+      "/app?scenario=failure",
+      "/app/profile",
+      "/app/profile?scenario=empty",
+      "/app/profile?scenario=pending",
+      "/app/profile?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "shared/ui/state-view.tsx",
+      "shared/ui/app-shell.tsx",
+      "tests/pages/product-copy.test.tsx",
+      "tests/pages/app-page.test.tsx",
+      "tests/pages/app-profile-page.test.tsx",
+      "tests/ui/app-shell.test.tsx"
+    ],
+    "public_routes": [
+      "/__harness/sprint-71/app",
+      "/__harness/sprint-71/app-profile"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "shared/ui",
+    "owned_paths": [
+      "shared/ui/state-view.tsx",
+      "shared/ui/app-shell.tsx",
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/app-workbench.tsx",
+      "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-command-center.tsx",
+      "tests/pages/product-copy.test.tsx",
+      "tests/pages/app-page.test.tsx",
+      "tests/pages/app-profile-page.test.tsx",
+      "tests/ui/app-shell.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/profile/page.tsx",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "shared/ui/source-chip.tsx",
+      "shared/ui/provenance-disclosure.tsx",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

@@ -1,0 +1,95 @@
+{
+  "sprint_number": 72,
+  "goal": "Create shared source and provenance presentation primitives so Orbit can show readable source context first and keep raw evidence identifiers inside optional disclosures.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "shared/ui/source-chip.tsx exports SourceChip with typed props for human-readable source label, source type, trust state, and optional supporting text; rendered visible text never includes raw evidence identifiers, queue identifiers, or source identifiers.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "shared/ui/provenance-disclosure.tsx exports ProvenanceDisclosure with typed props for summary label, source label, evidence identifiers, and optional notes; raw identifiers render only inside a details disclosure body using code/list markup, not in the summary or primary label.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "SourceChip and ProvenanceDisclosure compose with existing shared primitives and CSS class names, use no inline style attributes, provide accessible labels or summaries, and keep text wrapping stable for long labels.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "tests/ui/source-provenance.test.tsx renders success, empty, long-label, and raw-identifier cases, asserts primary text excludes raw IDs, asserts details content contains raw IDs when supplied, and asserts unknown trust states fall back to a neutral presentation.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "No feature contracts, service factories, route handlers, route pages, API envelopes, or sample data fixtures are changed; npm test and npm run build pass.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Retrofitting every product route to use the new source and provenance components",
+    "Changing backend capability behavior",
+    "Changing API envelopes or route handlers",
+    "Changing sample data fixtures or service factories",
+    "Changing visual tokens from Sprint 70",
+    "Changing public route copy from Sprint 71",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "shared/ui/source-chip.tsx",
+      "shared/ui/provenance-disclosure.tsx",
+      "shared/ui/primitives.tsx",
+      "tests/ui/source-provenance.test.tsx"
+    ],
+    "public_routes": [
+      "/__harness/sprint-72/source-provenance"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "shared/ui",
+    "owned_paths": [
+      "shared/ui/source-chip.tsx",
+      "shared/ui/provenance-disclosure.tsx",
+      "shared/ui/primitives.tsx",
+      "tests/ui/source-provenance.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/**",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "tests/pages/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "allowed_for_foundation"
+  },
+  "confirmed": true
+}

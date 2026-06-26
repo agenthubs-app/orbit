@@ -1,0 +1,106 @@
+{
+  "sprint_number": 79,
+  "goal": "Make /app/chat read like a private relationship reply workspace for reviewing one conversation and staging the next response, while preserving all local, side-effect-free behavior.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app/chat first viewport leads with one current reply priority: who the conversation is with, why it matters now, the consent/privacy posture, the suggested reply intent, and the next safe action before broader conversation inventory or signal panels.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Conversation, thread, writing assist, summary, extraction, and privacy panels are grouped into a readable reply-review workflow with participant labels, relationship context, consent status, private-note handling, and review status rather than technical inventory.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "GET /app/chat?action=record-local-reply shows a usable local reply preview that confirms the selected conversation, draft message, follow-up tracker, and exactly what remains local; reloading the same action route remains stable.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "The page and action preview explicitly show that no external message, notification, profile update, analysis of private notes, automated writing call, saved-record write, or outside network request occurs; raw evidence IDs are not dominant primary copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "GET /app/chat?scenario=empty, pending, failure keep meaningful recovery controls; page tests assert the reply workflow, privacy and consent boundary, action safety ledger, route recovery, and copy guardrails; npm test and npm run build pass with no feature, service, API, fixture, shared UI, shell, contact, event, follow-up, dashboard, agent, profile, or home route edits.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing feature contracts, services, service factories, API envelopes, route handlers, or sample data fixtures",
+    "Changing global app shell, global CSS, shared UI primitives, contacts, events, follow-ups, profile, dashboard, agent, or home routes",
+    "Adding live chat transport, email, calendar, CRM, notification, messaging, storage, search, AI, analytics, or network integrations",
+    "Changing conversation, privacy, writing assist, summary, or extraction feature behavior outside the route composition layer",
+    "Editing the reference-only repos/tokyo-business-connect repo"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/chat",
+      "/app/chat?action=record-local-reply",
+      "/app/chat?scenario=empty",
+      "/app/chat?scenario=pending",
+      "/app/chat?scenario=failure"
+    ],
+    "commands": [
+      {
+        "name": "test",
+        "cmd": [
+          "npm",
+          "test"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/chat/page.tsx",
+      "tests/pages/app-chat-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app/chat",
+    "owned_paths": [
+      "app/(app)/app/chat/page.tsx",
+      "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-command-center.tsx",
+      "tests/pages/app-chat-page.test.tsx",
+      "tests/pages/product-copy.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/followups/**",
+      "app/(app)/app/profile/**",
+      "app/(app)/app/dashboard/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/layout.tsx",
+      "app/(app)/compose-app-from-previously-approved-mock-first-capabilities/**",
+      "app/globals.css",
+      "app/api/**",
+      "features/**",
+      "shared/services/**",
+      "shared/api/**",
+      "shared/domain/**",
+      "shared/ui/**",
+      "tests/capabilities/**",
+      "tests/integration/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}
