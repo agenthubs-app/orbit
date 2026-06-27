@@ -228,6 +228,13 @@ test("/app/contacts route adapter avoids raw fixtures and documents mock to live
     ),
     "utf8",
   );
+  const routeViewModelSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts",
+    ),
+    "utf8",
+  );
   const serviceFactoryPath = path.join(
     projectRoot,
     "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-service-factory.ts",
@@ -244,12 +251,18 @@ test("/app/contacts route adapter avoids raw fixtures and documents mock to live
   );
 
   assert.doesNotMatch(adapterSource, /fixtures/i);
-  assert.doesNotMatch(
-    adapterSource,
-    /createContactsListSearchAndFilterService/,
-  );
-  assert.match(adapterSource, /createAppContactsListSearchAndFilterService/);
+  assert.doesNotMatch(adapterSource, /features\/contacts/);
+  assert.doesNotMatch(adapterSource, /createAppContactsListSearchAndFilterService/);
+  assert.doesNotMatch(adapterSource, /createContactsListSearchAndFilterService/);
+  assert.match(adapterSource, /loadAppContactsRouteViewModel/);
   assert.match(adapterSource, /StateView/);
+  assert.match(routeViewModelSource, /features\/contacts\/contract/);
+  assert.match(
+    routeViewModelSource,
+    /createAppContactsListSearchAndFilterService/,
+  );
+  assert.doesNotMatch(routeViewModelSource, /from "react"/);
+  assert.doesNotMatch(routeViewModelSource, /shared\/ui/);
   assert.notEqual(serviceFactorySource, "");
   assert.match(serviceFactorySource, /createModuleServiceFactory/);
   assert.match(serviceFactorySource, /createContactsListSearchAndFilterService/);

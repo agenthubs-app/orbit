@@ -52,3 +52,21 @@ workspace root for implementation work.
   contract, service interface, factory, provider mapper, tests, and live
   implementation notes. Cross-module edits should happen through typed service
   interfaces, not by importing another module's fixtures.
+
+## Product UI / Contract Decoupling
+
+- Product route components under `/app/**` should render page-specific view
+  models instead of feature contract DTOs directly. Keep `features/<module>/*`
+  contract/result/payload imports in route adapters, route services, API routes,
+  or feature-owned view-model mappers.
+- Prefer a local `*-route-view-model.ts` or `*-route-service.ts` beside the page
+  composition when a product route needs several feature services. That file may
+  call service factories, combine module results, map source/provenance labels,
+  and shape render-neutral data for React components.
+- React presenter components should not call feature service factories, mock
+  services, live providers, or Orbit AI orchestration services. They should
+  receive plain route view models and UI-only callbacks/links.
+- If a page renders an artifact or generated assistant result, map the feature
+  artifact payload into a page-owned view model before passing it into UI
+  components. UI components must not depend on raw provider payloads, raw feature
+  DTO shapes, or feature-specific mock implementation details.

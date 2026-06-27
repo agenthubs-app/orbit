@@ -1,15 +1,16 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
 import type { ReactNode } from "react";
-import type {
-  ContactListItem,
-  ContactsListSearchFilterInput,
-  ContactsListSearchPayload,
-  ContactsListSearchResult,
-} from "../../../../../features/contacts/contract";
 import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, Field, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { StateView } from "../../../../../shared/ui/state-view";
-import { createAppContactsListSearchAndFilterService } from "./contacts-service-factory";
+import {
+  loadAppContactsRouteViewModel,
+  type AppContactListItemViewModel,
+  type AppContactsPayloadViewModel,
+  type AppContactsRouteScenario,
+  type AppContactsRouteStateViewModel,
+  type AppContactsSearchParams,
+} from "./contacts-route-view-model";
 
 const appContactsStyles = `
 .app-contacts-route {
@@ -177,193 +178,19 @@ const routeStateChecks = [
   },
 ] as const;
 
-const routeRecoveryActions: Record<
-  RouteScenario,
-  readonly { href: string; label: string }[]
-> = {
-  empty: [
-    {
-      href: "/app/contacts",
-      label: bilingualText("显示全部有来源联系人", "Show all sourced contacts"),
-    },
-    {
-      href: "/app/contacts?query=storage",
-      label: bilingualText("尝试存储筛选", "Try storage filter"),
-    },
-  ],
-  failure: [
-    {
-      href: "/app/contacts",
-      label: bilingualText("重新加载联系人列表", "Reload contacts list"),
-    },
-    {
-      href: "/app/contacts?scenario=pending",
-      label: bilingualText("检查来源状态", "Check source status"),
-    },
-  ],
-  pending: [
-    {
-      href: "/app/contacts",
-      label: bilingualText(
-        "返回可用联系人",
-        "Return to available contacts",
-      ),
-    },
-  ],
-};
-
 const contactsActionSafetySummary =
   "OUTSIDE ACCOUNTS CONTACTED: none / CONTACT RECORD CHANGED: no / MESSAGE SENT: no / NOTIFICATION SENT: no / SEARCH INDEX READ: no / DATABASE QUERY EXECUTED: no";
 
-type AppContactsSearchParams = Record<string, string | string[] | undefined>;
-type RouteScenario = "empty" | "pending" | "failure";
-type SourceType = ContactListItem["source"]["type"];
-type StatusType = ContactListItem["status"];
-type ValueType = ContactListItem["value"]["valueTypes"][number];
-
 export interface AppContactsCommandCenterProps {
   searchParams?: AppContactsSearchParams;
-}
-
-function readSearchParam(
-  searchParams: AppContactsSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readSearchParamList(
-  searchParams: AppContactsSearchParams | undefined,
-  key: string,
-): readonly string[] {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return Array.from(
-      new Set(value.flatMap((item) => item.split(",")).map((item) => item.trim()).filter(Boolean)),
-    );
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    return value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-}
-
-function readRouteScenario(
-  searchParams: AppContactsSearchParams | undefined,
-): RouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
-}
-
-function readContactsInput(
-  searchParams: AppContactsSearchParams | undefined,
-): ContactsListSearchFilterInput {
-  return {
-    query: readSearchParam(searchParams, "query"),
-    sourceFilters: readSearchParamList(searchParams, "source"),
-    statusFilters: readSearchParamList(searchParams, "status"),
-    tagFilters: readSearchParamList(searchParams, "tag"),
-    valueFilters: readSearchParamList(searchParams, "value"),
-  };
 }
 
 function firstEvidence(evidenceIds: readonly string[] | undefined): string {
   return evidenceIds?.[0] ?? "evidence:unavailable";
 }
 
-function evidenceFromContactsResult(
-  result: ContactsListSearchResult,
-): string[] {
-  if (result.success === false) {
-    return [result.error.code];
-  }
-
-  return Array.from(result.data.provenance.evidenceIds);
-}
-
-function sourceLabel(sourceType: SourceType): string {
-  const labels: Record<SourceType, string> = {
-    business_card_ocr: "Business card OCR",
-    calendar_signal: "Calendar signal",
-    email_signal: "Email signal",
-    event_import: "Event import",
-    external_contacts: "External contacts",
-    manual: "Manual note",
-    qr_scan: "QR scan",
-    referral: "Referral",
-  };
-
-  return labels[sourceType];
-}
-
-function statusLabel(status: StatusType): string {
-  const labels: Record<StatusType, string> = {
-    active: "Active",
-    archived: "Archived",
-    needs_follow_up: "Needs follow-up",
-    nurture: "Nurture",
-  };
-
-  return labels[status];
-}
-
-function valueLabel(valueType: ValueType): string {
-  const labels: Record<ValueType, string> = {
-    commercial_opportunity: "Commercial opportunity",
-    community_context: "Community context",
-    knowledge_exchange: "Knowledge exchange",
-    referral_path: "Referral path",
-    strategic_fit: "Strategic fit",
-  };
-
-  return labels[valueType];
-}
-
-function listSummary(payload: ContactsListSearchPayload): string {
-  if (payload.contacts.length === 0) {
-    return "No source-backed contacts matched the current local search and filter rules.";
-  }
-
-  if (
-    payload.appliedFilters.query ||
-    payload.provenance.generationMethod ===
-      "rule-based-contacts-list-search-filter"
-  ) {
-    return `${formatCount(payload.contacts.length, "source-backed contact")} matched the current local search and filter rules.`;
-  }
-
-  return `${formatCount(payload.contacts.length, "source-backed contact")} are available from manual, external, email, and event evidence.`;
-}
-
 function formatCount(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
-}
-
-function externalServicesContacted(contact: ContactListItem): boolean {
-  return (
-    contact.externalNetworkRequested ||
-    contact.aiProviderRequested ||
-    contact.calendarProviderRequested ||
-    contact.emailProviderRequested ||
-    contact.notificationDelivered
-  );
 }
 
 function EvidenceChips({
@@ -384,51 +211,18 @@ function EvidenceChips({
   );
 }
 
-function ValueChips({ contact }: { contact: ContactListItem }) {
+function ValueChips({ contact }: { contact: AppContactListItemViewModel }) {
   return (
     <div
       aria-label={`${contact.displayName} relationship value tags`}
       className="chip-row"
     >
-      {contact.value.valueTypes.map((valueType) => (
-        <Chip key={`${contact.id}:${valueType}`} tone="confirmation">
-          {valueLabel(valueType)}
+      {contact.relationshipValueLabels.map((valueLabel) => (
+        <Chip key={`${contact.id}:${valueLabel}`} tone="confirmation">
+          {valueLabel}
         </Chip>
       ))}
     </div>
-  );
-}
-
-function contactDetailHref(contact: ContactListItem): string {
-  if (contact.displayName === "Kenji Watanabe") {
-    return "/app/contacts/demo-contact-1";
-  }
-
-  return `/app/contacts/${contact.id.replace(/^contact:/, "")}`;
-}
-
-function humanList(items: readonly string[]): string {
-  if (items.length <= 1) {
-    return items[0] ?? "";
-  }
-
-  if (items.length === 2) {
-    return `${items[0]} and ${items[1]}`;
-  }
-
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
-function relationshipValueSummary(contact: ContactListItem): string {
-  return `${humanList(contact.value.valueTypes.map(valueLabel))}. ${
-    contact.value.rationale
-  }`;
-}
-
-function relationshipContextCopy(contact: ContactListItem): string {
-  return contact.relationshipContext.replace(
-    "climate founders dinner",
-    "Climate founders dinner",
   );
 }
 
@@ -437,7 +231,7 @@ function RouteStateMarker({
   scenario,
 }: {
   children: ReactNode;
-  scenario: RouteScenario;
+  scenario: AppContactsRouteScenario;
 }) {
   return (
     <div data-route-state-url={`/app/contacts?scenario=${scenario}`}>
@@ -446,14 +240,18 @@ function RouteStateMarker({
   );
 }
 
-function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
+function RouteRecoveryActions({
+  actions,
+}: {
+  actions: AppContactsRouteStateViewModel["recoveryActions"];
+}) {
   return (
     <nav
       aria-label="Contacts route recovery actions"
       className="contacts-state-links contacts-recovery-actions"
       data-side-effects="none"
     >
-      {routeRecoveryActions[scenario].map((action) => (
+      {actions.map((action) => (
         <a href={action.href} key={action.href}>
           {action.label}
         </a>
@@ -462,132 +260,29 @@ function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
   );
 }
 
-function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
-  const contactsService = createAppContactsListSearchAndFilterService();
-
-  if (scenario === "empty") {
-    const emptyState = contactsService.listContacts({ scenario: "empty" });
-
-    return (
-      <RouteStateMarker scenario={scenario}>
-        <StateView
-          description={bilingualText(
-            "复核跟进前，先清除搜索和筛选，或添加带来源证据的联系人。",
-            "Clear the search and filters, or add a contact with source evidence before reviewing follow-up.",
-          )}
-          emptyState={bilingualText(
-            "还没有可复核的有来源联系人行。",
-            "No source-backed contact rows are ready for review.",
-          )}
-          evidence={evidenceFromContactsResult(emptyState)}
-          eyebrow={bilingualText("没有联系人", "No contacts")}
-          guardrail={bilingualText(
-            "Orbit 不能从空列表创建联系人、任务、消息或合并。",
-            "Orbit cannot create contacts, tasks, messages, or merges from an empty list.",
-          )}
-          nextStep={
-            emptyState.success
-              ? bilingualText(
-                  "复核跟进前，先清除搜索和筛选，或添加带来源证据的联系人。",
-                  "Clear the search and filters, or add a contact with source evidence before reviewing follow-up.",
-                )
-              : bilingualText(
-                  "复核列表前重新加载联系人。",
-                  "Reload contacts before reviewing the list.",
-                )
-          }
-          purpose={bilingualText(
-            "没有可复核关系行时，仍让联系人页保持可用。",
-            "Keep the contacts page useful when no relationship row is reviewable.",
-          )}
-          title={bilingualText(
-            "没有联系人匹配当前视图",
-            "No contacts match this view",
-          )}
-        />
-        <RouteRecoveryActions scenario={scenario} />
-      </RouteStateMarker>
-    );
-  }
-
-  if (scenario === "pending") {
-    const pendingState = contactsService.listContacts({ scenario: "pending" });
-
-    return (
-      <RouteStateMarker scenario={scenario}>
-        <StateView
-          description={bilingualText(
-            "联系人行会保持隐藏，直到来源证据准备好。",
-            "Contact rows stay hidden until their source evidence is ready.",
-          )}
-          emptyState={bilingualText(
-            "联系人行会保持隐藏，直到来源证据准备好。",
-            "Contact rows stay hidden until source evidence is ready.",
-          )}
-          evidence={evidenceFromContactsResult(pendingState)}
-          eyebrow={bilingualText("正在检查来源", "Checking sources")}
-          guardrail={bilingualText(
-            "检查联系人时不能读取搜索索引、查询数据库、发送消息或投递通知。",
-            "Checking contacts cannot read a search index, query a database, send messages, or deliver notifications.",
-          )}
-          nextStep={bilingualText(
-            "采取动作前等待有来源联系人准备好。",
-            "Wait for sourced contacts before taking action.",
-          )}
-          purpose={bilingualText(
-            "搜索和筛选状态解析期间，保持联系人页可见。",
-            "Keep the contacts page visible while search and filter state resolves.",
-          )}
-          title={bilingualText("正在检查联系人来源", "Checking contact sources")}
-        />
-        <RouteRecoveryActions scenario={scenario} />
-      </RouteStateMarker>
-    );
-  }
-
-  const failureState = contactsService.searchContacts({ scenario: "failure" });
-
+function RouteStateBoundary({
+  routeState,
+}: {
+  routeState: AppContactsRouteStateViewModel;
+}) {
   return (
-    <RouteStateMarker scenario={scenario}>
+    <RouteStateMarker scenario={routeState.scenario}>
       <StateView
-        description={bilingualText(
-          "本地来源证据检查期间，联系人列表搜索和筛选暂不可用。",
-          "Contacts list search and filter is unavailable while local source evidence is being checked.",
-        )}
-        emptyState={bilingualText(
-          "没有联系人、任务、消息、通知、数据库或外部账号发生更改。",
-          "No contact, task, message, notification, database, or outside account changed.",
-        )}
-        evidence={
-          failureState.success === false
-            ? [firstEvidence(failureState.error.evidenceIds)]
-            : ["contacts-expected-failure-not-returned"]
-        }
-        eyebrow={bilingualText("需要重试", "Needs retry")}
-        guardrail={bilingualText(
-          "重试会保持搜索、存储、邮件、日历、AI、通知和消息断开。",
-          "Retry keeps search, storage, email, calendar, AI, notification, and messaging disconnected.",
-        )}
-        nextStep={bilingualText(
-          "复核跟进动作前重新加载联系人列表。",
-          "Reload the contacts list before reviewing follow-up actions.",
-        )}
-        purpose={bilingualText(
-          "显示无副作用的联系人恢复状态。",
-          "Show a contacts recovery state without side effects.",
-        )}
-        title={bilingualText("联系人无法加载", "Contacts could not load")}
+        description={routeState.copy.description}
+        emptyState={routeState.copy.emptyState}
+        evidence={Array.from(routeState.evidenceIds)}
+        eyebrow={routeState.copy.eyebrow}
+        guardrail={routeState.copy.guardrail}
+        nextStep={routeState.copy.nextStep}
+        purpose={routeState.copy.purpose}
+        title={routeState.copy.title}
       />
-      <RouteRecoveryActions scenario={scenario} />
+      <RouteRecoveryActions actions={routeState.recoveryActions} />
     </RouteStateMarker>
   );
 }
 
-function ContactsLedger({ payload }: { payload: ContactsListSearchPayload }) {
-  const needsFollowUp = payload.contacts.filter(
-    (contact) => contact.status === "needs_follow_up",
-  ).length;
-
+function ContactsLedger({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <dl
       aria-label="App contacts composed list summary"
@@ -596,27 +291,27 @@ function ContactsLedger({ payload }: { payload: ContactsListSearchPayload }) {
       <div>
         <dt>{bilingualText("已知人物", "Known people")}</dt>
         <dd>
-          <strong>{payload.contacts.length}</strong>
+          <strong>{payload.ledger.knownPeople}</strong>
           {bilingualText("有来源联系人", "source-backed contacts")}
         </dd>
       </div>
       <div>
         <dt>{bilingualText("来源筛选", "Source filters")}</dt>
-        <dd>{formatCount(payload.availableFilters.sources.length, "source")}</dd>
+        <dd>{formatCount(payload.ledger.sourceFilters, "source")}</dd>
       </div>
       <div>
         <dt>{bilingualText("价值标签", "Value tags")}</dt>
-        <dd>{formatCount(payload.availableFilters.values.length, "value tag")}</dd>
+        <dd>{formatCount(payload.ledger.valueTags, "value tag")}</dd>
       </div>
       <div>
         <dt>{bilingualText("需要关注", "Needs attention")}</dt>
-        <dd>{formatCount(needsFollowUp, "contact")}</dd>
+        <dd>{formatCount(payload.ledger.needsAttention, "contact")}</dd>
       </div>
     </dl>
   );
 }
 
-function ContactsSearchForm({ payload }: { payload: ContactsListSearchPayload }) {
+function ContactsSearchForm({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <form
       action="/app/contacts"
@@ -685,35 +380,35 @@ function ContactsSearchForm({ payload }: { payload: ContactsListSearchPayload })
   );
 }
 
-function ContactCard({ contact }: { contact: ContactListItem }) {
+function ContactCard({ contact }: { contact: AppContactListItemViewModel }) {
   return (
     <article
       aria-label={`Contact relationship row for ${contact.displayName}`}
       className="contacts-card"
     >
       <header>
-        <p className="type-caption">{sourceLabel(contact.source.type)}</p>
+        <p className="type-caption">{contact.sourceLabel}</p>
         <h3 className="relationship-name">{contact.displayName}</h3>
         <p className="type-caption">
           {contact.role} at {contact.organization} · {contact.location}
         </p>
-        <a className="contacts-detail-link" href={contactDetailHref(contact)}>
+        <a className="contacts-detail-link" href={contact.detailHref}>
           {bilingualText("打开关系工作区", "Open relationship workspace")}
         </a>
       </header>
-      <p className="type-body">{relationshipContextCopy(contact)}</p>
+      <p className="type-body">{contact.relationshipContextCopy}</p>
       <dl className="relationship-meta">
         <div>
           <dt>{bilingualText("来源上下文", "Source context")}</dt>
-          <dd>{sourceLabel(contact.source.type)}</dd>
+          <dd>{contact.sourceLabel}</dd>
         </div>
         <div>
           <dt>{bilingualText("关系状态", "Relationship status")}</dt>
-          <dd>{statusLabel(contact.status)}</dd>
+          <dd>{contact.statusLabel}</dd>
         </div>
         <div>
           <dt>{bilingualText("关系价值", "Relationship value")}</dt>
-          <dd>{relationshipValueSummary(contact)}</dd>
+          <dd>{contact.relationshipValueSummary}</dd>
         </div>
         <div>
           <dt>{bilingualText("安全下一步", "Next safe action")}</dt>
@@ -731,7 +426,7 @@ function ContactCard({ contact }: { contact: ContactListItem }) {
           ))}
         </div>
         <EvidenceChips
-          evidenceIds={contact.evidence.map((evidence) => evidence.evidenceId)}
+          evidenceIds={contact.evidenceIds}
           label={`${contact.displayName} contact evidence`}
         />
       </details>
@@ -741,15 +436,10 @@ function ContactCard({ contact }: { contact: ContactListItem }) {
 
 function ReviewActionResult({
   payload,
-  searchParams,
 }: {
-  payload: ContactsListSearchPayload;
-  searchParams: AppContactsSearchParams | undefined;
+  payload: AppContactsPayloadViewModel;
 }) {
-  const actionRequested =
-    readSearchParam(searchParams, "action") === "review-filtered-contact";
-
-  if (!actionRequested) {
+  if (!payload.reviewActionRequested) {
     return null;
   }
 
@@ -824,7 +514,7 @@ function ReviewActionResult({
       </span>
       <span>
         {bilingualText("已联系外部服务", "Outside services contacted")}:{" "}
-        {externalServicesContacted(reviewedContact)
+        {reviewedContact.externalServicesContacted
           ? bilingualText("需要复核", "review required")
           : bilingualText("无", "none")}
       </span>
@@ -832,14 +522,18 @@ function ReviewActionResult({
         <summary>{bilingualText("动作来源详情", "Action source details")}</summary>
         <span>
           {bilingualText("来源证据", "Source evidence")}:{" "}
-          {firstEvidence(reviewedContact.evidence.map((evidence) => evidence.evidenceId))}
+          {firstEvidence(reviewedContact.evidenceIds)}
         </span>
       </details>
     </div>
   );
 }
 
-function AttentionQueueCard({ contact }: { contact: ContactListItem }) {
+function AttentionQueueCard({
+  contact,
+}: {
+  contact: AppContactListItemViewModel;
+}) {
   return (
     <article
       aria-label={`Current relationship review for ${contact.displayName}`}
@@ -850,7 +544,7 @@ function AttentionQueueCard({ contact }: { contact: ContactListItem }) {
           {bilingualText("现在该关注谁", "Who needs attention now")}
         </p>
         <h3 className="relationship-name">
-          <a className="contacts-person-link" href={contactDetailHref(contact)}>
+          <a className="contacts-person-link" href={contact.detailHref}>
             {contact.displayName}
           </a>
         </h3>
@@ -860,12 +554,11 @@ function AttentionQueueCard({ contact }: { contact: ContactListItem }) {
       </div>
       <p className="type-body">
         {bilingualText("为什么 Kenji 现在重要", "Why Kenji matters now")}:{" "}
-        {contact.value.rationale}
+        {contact.valueRationale}
       </p>
       <p className="type-body">
         {bilingualText("来源上下文", "Source context")}:{" "}
-        {sourceLabel(contact.source.type)} from{" "}
-        {relationshipContextCopy(contact)}
+        {contact.sourceLabel} from {contact.relationshipContextCopy}
       </p>
       <p className="type-body">
         {bilingualText("安全下一步", "Next safe action")}: {contact.nextAction}
@@ -876,13 +569,11 @@ function AttentionQueueCard({ contact }: { contact: ContactListItem }) {
 
 function RelationshipReviewQueue({
   payload,
-  searchParams,
 }: {
-  payload: ContactsListSearchPayload;
-  searchParams: AppContactsSearchParams | undefined;
+  payload: AppContactsPayloadViewModel;
 }) {
   const attentionContacts = payload.contacts.filter(
-    (contact) => contact.status === "needs_follow_up",
+    (contact) => contact.needsAttention,
   );
   const queueContacts =
     attentionContacts.length > 0 ? attentionContacts : payload.contacts.slice(0, 1);
@@ -906,7 +597,7 @@ function RelationshipReviewQueue({
         ))}
       </div>
       <ContactsLedger payload={payload} />
-      <ReviewActionResult payload={payload} searchParams={searchParams} />
+      <ReviewActionResult payload={payload} />
     </WorkbenchSurface>
   );
 }
@@ -946,22 +637,16 @@ function ReviewActionForm() {
   );
 }
 
-function SuccessBoundary({
-  payload,
-  searchParams,
-}: {
-  payload: ContactsListSearchPayload;
-  searchParams: AppContactsSearchParams | undefined;
-}) {
+function SuccessBoundary({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <div data-state-boundary="app-contacts-success">
       <span hidden>Contacts relationship console</span>
-      <RelationshipReviewQueue payload={payload} searchParams={searchParams} />
+      <RelationshipReviewQueue payload={payload} />
     </div>
   );
 }
 
-function SecondaryControls({ payload }: { payload: ContactsListSearchPayload }) {
+function SecondaryControls({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <WorkbenchSurface
       eyebrow={bilingualText("控制", "Controls")}
@@ -997,13 +682,13 @@ function SecondaryControls({ payload }: { payload: ContactsListSearchPayload }) 
   );
 }
 
-function ContactsListSection({ payload }: { payload: ContactsListSearchPayload }) {
+function ContactsListSection({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <WorkbenchSurface
       eyebrow={bilingualText("人物", "People")}
       title={bilingualText("本次复核中的人", "People in this review")}
     >
-      <p className="type-body">{listSummary(payload)}</p>
+      <p className="type-body">{payload.listSummary}</p>
       <div className="contacts-card-grid">
         {payload.contacts.map((contact) => (
           <ContactCard contact={contact} key={contact.id} />
@@ -1013,7 +698,7 @@ function ContactsListSection({ payload }: { payload: ContactsListSearchPayload }
   );
 }
 
-function FilterVocabulary({ payload }: { payload: ContactsListSearchPayload }) {
+function FilterVocabulary({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <WorkbenchSurface
       eyebrow={bilingualText("筛选", "Filters")}
@@ -1045,7 +730,7 @@ function FilterVocabulary({ payload }: { payload: ContactsListSearchPayload }) {
       <details>
         <summary>{bilingualText("列表证据详情", "List evidence details")}</summary>
         <EvidenceChips
-          evidenceIds={payload.provenance.evidenceIds}
+          evidenceIds={payload.listEvidenceIds}
           label="App contacts list evidence"
         />
       </details>
@@ -1056,56 +741,30 @@ function FilterVocabulary({ payload }: { payload: ContactsListSearchPayload }) {
 export function AppContactsCommandCenter({
   searchParams,
 }: AppContactsCommandCenterProps) {
-  const contactsService = createAppContactsListSearchAndFilterService();
-  const requestedScenario = readRouteScenario(searchParams);
+  const viewModel = loadAppContactsRouteViewModel(searchParams);
 
-  if (requestedScenario) {
+  if (viewModel.state === "route-state") {
     return (
       <div className="app-contacts-route">
         <style>{appContactsStyles}</style>
-        <RouteStateBoundary scenario={requestedScenario} />
+        <RouteStateBoundary routeState={viewModel.routeState} />
       </div>
     );
   }
 
-  const input = readContactsInput(searchParams);
-  const actionRequested =
-    readSearchParam(searchParams, "action") === "review-filtered-contact";
-  const result = actionRequested
-    ? contactsService.searchContacts(input)
-    : contactsService.listContacts(input);
-
-  if (result.success === false) {
+  if (viewModel.state === "failure") {
     return (
       <div className="app-contacts-route">
         <style>{appContactsStyles}</style>
         <StateView
-          description={bilingualText(
-            "联系人页无法组合本地联系人列表搜索和筛选状态。",
-            "The contacts page could not compose the local contacts list search and filter state.",
-          )}
-          emptyState={bilingualText(
-            "联系人筛选或列表边界返回了异常状态。",
-            "A contacts filter or list boundary returned an unexpected state.",
-          )}
-          evidence={[result.error.code, firstEvidence(result.error.evidenceIds)]}
-          eyebrow={bilingualText("联系人", "Contacts")}
-          guardrail={bilingualText(
-            "联系人组合失败时不能运行外部动作。",
-            "No external action can run when contacts composition fails.",
-          )}
-          nextStep={bilingualText(
-            "检查 GET /api/contacts。",
-            "Inspect GET /api/contacts.",
-          )}
-          purpose={bilingualText(
-            "来源证据无法组合时停止联系人复核。",
-            "Stop contacts review when source evidence cannot be composed.",
-          )}
-          title={bilingualText(
-            "联系人关系控制台无法加载",
-            "Contacts relationship console could not load",
-          )}
+          description={viewModel.failure.description}
+          emptyState={viewModel.failure.emptyState}
+          evidence={Array.from(viewModel.failure.evidenceIds)}
+          eyebrow={viewModel.failure.eyebrow}
+          guardrail={viewModel.failure.guardrail}
+          nextStep={viewModel.failure.nextStep}
+          purpose={viewModel.failure.purpose}
+          title={viewModel.failure.title}
         />
       </div>
     );
@@ -1114,10 +773,10 @@ export function AppContactsCommandCenter({
   return (
     <div className="app-contacts-route">
       <style>{appContactsStyles}</style>
-      <SuccessBoundary payload={result.data} searchParams={searchParams} />
-      <ContactsListSection payload={result.data} />
-      <SecondaryControls payload={result.data} />
-      <FilterVocabulary payload={result.data} />
+      <SuccessBoundary payload={viewModel.payload} />
+      <ContactsListSection payload={viewModel.payload} />
+      <SecondaryControls payload={viewModel.payload} />
+      <FilterVocabulary payload={viewModel.payload} />
     </div>
   );
 }

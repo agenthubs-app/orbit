@@ -136,6 +136,8 @@ test("/app/chat leads with one private reply priority before inventory", async (
   assert.match(primaryText, /Reply only after review; keep the draft local/i);
   assert.match(primaryText, /No external message, notification, profile update, private-note analysis, automated writing call, saved-record write, or outside network request occurs/i);
   assert.match(html, /data-state-boundary="app-chat-success"/);
+  assert.match(html, /data-agent-panel="closed"/);
+  assert.doesNotMatch(html, /data-agent-artifact-surface="side_panel"/);
   assert.doesNotMatch(html, /<h2>Chat command center<\/h2>/);
   assert.doesNotMatch(html, /data-state-boundary="shared-ui-state-view"/);
   assert.doesNotMatch(html, /Chat will help summarize/);
@@ -152,6 +154,28 @@ test("/app/chat leads with one private reply priority before inventory", async (
       primaryText.indexOf("Signal review"),
     "current reply priority should come before broader signal panels",
   );
+});
+
+test("/app/chat opens an agent artifact side panel from a natural-language prompt", async () => {
+  const html = await renderChatPage({
+    prompt: "帮我推荐下周适合见 Maya 的活动",
+  });
+  const primaryText = primaryTextFromHtml(html);
+
+  assert.match(html, /data-agent-panel="open"/);
+  assert.match(html, /data-agent-artifact-kind="event_recommendations"/);
+  assert.match(html, /data-agent-artifact-surface="side_panel"/);
+  assert.match(primaryText, /Agent reply/i);
+  assert.match(primaryText, /活动推荐|event recommendation/i);
+  assert.match(primaryText, /Recommended events/i);
+  assert.match(primaryText, /Founder relationship roundtable/i);
+  assert.match(primaryText, /Review event/i);
+  assert.match(primaryText, /\bevents\b/i);
+  assert.match(html, /data-requires-confirmation="true"/);
+  assert.match(html, /data-side-effects="none"/);
+  assert.match(html, /evidence:orbit-agent:event-recommendations:fixture/);
+  assert.match(primaryText, /Conversation inventory/i);
+  assert.doesNotMatch(primaryText, internalCopyPattern);
 });
 
 test("/app/chat groups panels into a readable reply-review workflow", async () => {
@@ -341,10 +365,24 @@ test("/app/chat route adapter avoids raw fixtures and documents mock to live rep
     ),
     "utf8",
   );
+  const viewModelSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
+    ),
+    "utf8",
+  );
   const serviceFactorySource = fs.readFileSync(
     path.join(
       projectRoot,
       "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts",
+    ),
+    "utf8",
+  );
+  const artifactPanelSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/agent-artifact-side-panel.tsx",
     ),
     "utf8",
   );
@@ -358,8 +396,22 @@ test("/app/chat route adapter avoids raw fixtures and documents mock to live rep
 
   assert.doesNotMatch(adapterSource, /from\s+["'][^"']*fixtures?/i);
   assert.doesNotMatch(adapterSource, /createMock/);
-  assert.match(adapterSource, /createAppChatRouteServices/);
+  assert.doesNotMatch(adapterSource, /features\/chat/);
+  assert.doesNotMatch(adapterSource, /features\/orbit-ai/);
+  assert.doesNotMatch(adapterSource, /createAppChatRouteServices/);
+  assert.doesNotMatch(adapterSource, /selectPrimaryOrbitAgentArtifactSurface/);
+  assert.match(adapterSource, /loadAppChatRouteViewModel/);
   assert.match(adapterSource, /RouteStateBoundary/);
+  assert.doesNotMatch(artifactPanelSource, /features\/orbit-ai/);
+  assert.match(artifactPanelSource, /AppChatAgentArtifactSurfaceViewModel/);
+  assert.doesNotMatch(artifactPanelSource, /createOrbitAgentConversationService/);
+  assert.doesNotMatch(artifactPanelSource, /createMock/);
+  assert.doesNotMatch(artifactPanelSource, /artifact-contract/);
+  assert.match(viewModelSource, /createAppChatRouteServices/);
+  assert.match(viewModelSource, /selectPrimaryOrbitAgentArtifactSurface/);
+  assert.match(viewModelSource, /createOrbitAgentConversationService/);
+  assert.doesNotMatch(viewModelSource, /from ["']react["']/);
+  assert.doesNotMatch(viewModelSource, /shared\/ui|WorkbenchSurface|Chip/);
   assert.match(serviceFactorySource, /createModuleServiceFactory/);
   assert.match(serviceFactorySource, /createChatConversationMessageService/);
   assert.match(serviceFactorySource, /createChatWritingAssistService/);

@@ -1,30 +1,27 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
 import type { ReactNode } from "react";
 import type {
-  ChatConversationListPayload,
-  ChatConversationListResult,
-  ChatConversationStatus,
-  ChatMessageThreadPayload,
-  ChatMessageThreadResult,
-  ChatSendMessagePayload,
-  ChatSendMessageResult,
-} from "../../../../../features/chat/contract";
-import type {
-  ChatWritingAssistPayload,
-  ChatWritingAssistResult,
-  ChatWritingAssistSuggestion,
-} from "../../../../../features/chat/assist-contract";
-import type {
-  ChatPrivacyControlsPayload,
-  ChatPrivacyControlsResult,
-} from "../../../../../features/chat/privacy-contract";
-import type {
-  ChatSummaryExtractionPayload,
-  ChatSummaryExtractionResult,
-} from "../../../../../features/chat/summary-contract";
+  AppChatActionResultViewModel,
+  AppChatAgentTurnViewModel,
+  AppChatAssistViewModel,
+  AppChatConversationViewModel,
+  AppChatExtractionViewModel,
+  AppChatMessageViewModel,
+  AppChatPrivacyViewModel,
+  AppChatRelationshipContextViewModel,
+  AppChatRouteScenario,
+  AppChatRouteStateViewModel,
+  AppChatSearchParams,
+  AppChatSummaryViewModel,
+  AppChatWorkspaceViewModel,
+} from "./chat-route-view-model";
+import { loadAppChatRouteViewModel } from "./chat-route-view-model";
 import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
-import { createAppChatRouteServices } from "./chat-service-factory";
+import {
+  AgentArtifactSidePanel,
+  agentArtifactSidePanelStyles,
+} from "./agent-artifact-side-panel";
 
 const appChatStyles = `
 .app-chat-route {
@@ -195,24 +192,69 @@ const appChatStyles = `
 .app-chat-route .chat-recovery-actions {
   align-items: center;
 }
-`;
 
-type AppChatSearchParams = Record<string, string | string[] | undefined>;
-type RouteScenario = "empty" | "pending" | "failure";
+.app-chat-route .chat-agent-orchestration-layout {
+  display: grid;
+  gap: var(--orbit-space-md);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-chat-route .chat-agent-orchestration-layout[data-agent-panel="open"] {
+  grid-template-columns: minmax(0, 0.95fr) minmax(min(100%, 360px), 0.8fr);
+}
+
+.app-chat-route .chat-agent-prompt-panel,
+.app-chat-route .chat-agent-prompt-form,
+.app-chat-route .chat-agent-response {
+  display: grid;
+  gap: var(--orbit-space-sm);
+}
+
+.app-chat-route .chat-agent-prompt-row {
+  display: grid;
+  gap: var(--orbit-space-xs);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.app-chat-route .chat-agent-prompt-row input {
+  background: var(--orbit-color-surface);
+  border: 1px solid var(--orbit-color-border);
+  border-radius: var(--orbit-radius-control);
+  color: var(--orbit-color-text);
+  min-width: 0;
+  padding: 9px 11px;
+}
+
+.app-chat-route .chat-agent-prompt-row button {
+  background: var(--orbit-color-primary);
+  border: 1px solid var(--orbit-color-primary-strong);
+  border-radius: var(--orbit-radius-control);
+  color: var(--orbit-color-primary-text);
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+
+.app-chat-route .chat-agent-response {
+  background: var(--orbit-color-surface);
+  border: 1px solid var(--orbit-color-border);
+  border-left: 3px solid var(--orbit-color-primary);
+  border-radius: var(--orbit-radius-control);
+  padding: var(--orbit-space-sm);
+}
+
+@media (max-width: 900px) {
+  .app-chat-route .chat-agent-orchestration-layout[data-agent-panel="open"],
+  .app-chat-route .chat-agent-prompt-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+${agentArtifactSidePanelStyles}
+`;
 
 interface AppChatCommandCenterProps {
   searchParams?: AppChatSearchParams;
 }
-
-type ChatRouteResult =
-  | ChatConversationListResult
-  | ChatMessageThreadResult
-  | ChatSendMessageResult
-  | ChatWritingAssistResult
-  | ChatSummaryExtractionResult
-  | ChatPrivacyControlsResult;
-type ChatRouteSuccess = Extract<ChatRouteResult, { success: true }>;
-type ChatRouteFailure = Extract<ChatRouteResult, { success: false }>;
 
 const routeStateChecks = [
   {
@@ -230,7 +272,7 @@ const routeStateChecks = [
 ] as const;
 
 const routeRecoveryActions: Record<
-  RouteScenario,
+  AppChatRouteScenario,
   readonly { href: string; label: string }[]
 > = {
   empty: [
@@ -264,152 +306,10 @@ const routeRecoveryActions: Record<
   ],
 };
 
-const productCopyReplacements: readonly [RegExp, string][] = [
-  [/\bfixtures?\b/gi, "source record"],
-  [/\bmock\b/gi, "review"],
-  [/\bproviders?\b/gi, "connections"],
-  [/\bboundary\b/gi, "check"],
-  [/\broute\b/gi, "page"],
-  [/\blive\b/gi, "connected"],
-  [/\bmodel calls?\b/gi, "automated calls"],
-  [/\bvector\b/gi, "search"],
-  [/\bdeterministic\b/gi, "reviewed"],
-  [/\bdatabases?\b/gi, "saved records"],
-];
-
-function productCopy(value: string): string {
-  return productCopyReplacements.reduce((copy, [pattern, replacement]) => {
-    return copy.replace(pattern, replacement);
-  }, value);
-}
-
-function readSearchParam(
-  searchParams: AppChatSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppChatSearchParams | undefined,
-): RouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
-}
-
-function isRouteStateSuccess(result: ChatRouteResult): result is ChatRouteSuccess {
-  return result.success === true;
-}
-
-function isRouteStateFailure(result: ChatRouteResult): result is ChatRouteFailure {
-  return result.success === false;
-}
-
-function evidenceIdsForResult(result: ChatRouteResult): readonly string[] {
-  if (isRouteStateSuccess(result)) {
-    return result.data.provenance.evidenceIds;
-  }
-
-  if (isRouteStateFailure(result)) {
-    return result.error.evidenceIds;
-  }
-
-  return [];
-}
-
-function uniqueEvidenceIds(results: readonly ChatRouteResult[]): string[] {
-  return publicEvidenceIds(
-    Array.from(new Set(results.flatMap((result) => evidenceIdsForResult(result)))),
-  );
-}
-
 function publicEvidenceIds(evidenceIds: readonly string[]): string[] {
   return evidenceIds.filter(
     (evidenceId) => !evidenceId.toLowerCase().includes("mock"),
   );
-}
-
-function firstFailure(results: readonly ChatRouteResult[]): ChatRouteFailure | null {
-  return results.find(isRouteStateFailure) ?? null;
-}
-
-function statusLabel(status: ChatConversationStatus): string {
-  const labels: Record<ChatConversationStatus, string> = {
-    active: "Active",
-    needs_followup: "Needs follow-up",
-    paused: "Paused",
-  };
-
-  return labels[status];
-}
-
-function participantMessageLabel(message: {
-  senderName: string;
-  senderRole: "contact" | "orbit_user";
-}): string {
-  return message.senderRole === "orbit_user"
-    ? "You wrote"
-    : `${message.senderName} wrote`;
-}
-
-function shortTimestamp(value: string): string {
-  return value.replace("T", " ").slice(0, 16);
-}
-
-function stateCopy(scenario: RouteScenario) {
-  if (scenario === "empty") {
-    return {
-      description:
-        "Add source-backed relationship context before reviewing conversations, assists, summaries, and privacy controls.",
-      emptyState:
-        "No conversation has enough source evidence for chat review.",
-      guardrail:
-        "Orbit cannot prepare replies, summaries, profile updates, or sharing previews from an empty conversation queue.",
-      nextStep: "Return when a conversation has source evidence and consent.",
-      purpose:
-        "Keep chat review useful when no sourced relationship context is available.",
-      title: "No chat context is ready",
-    };
-  }
-
-  if (scenario === "pending") {
-    return {
-      description:
-        "Conversation review stays paused while local consent and source evidence are checked.",
-      emptyState:
-        "Conversation records stay hidden while consent is still being checked.",
-      guardrail:
-        "Orbit will not prepare replies, summarize context, update profiles, or share private notes while review is pending.",
-      nextStep: "Return to chat after consent and source evidence are ready.",
-      purpose:
-        "Keep chat work visible without exposing an unfinished conversation review.",
-      title: "Chat context is still checking consent",
-    };
-  }
-
-  return {
-    description:
-      "Conversation review is unavailable while source evidence and privacy controls are checked.",
-    emptyState:
-      "The chat workspace is unavailable until source evidence recovers.",
-    guardrail:
-      "Orbit will not prepare replies, summarize context, update profiles, or share private notes while this is unavailable.",
-    nextStep: "Reload chat before taking action.",
-    purpose:
-      "Show a visible recovery path when source-backed chat context is unavailable.",
-    title: "Chat workspace could not load",
-  };
 }
 
 function RouteStateMarker({
@@ -417,7 +317,7 @@ function RouteStateMarker({
   scenario,
 }: {
   children: ReactNode;
-  scenario: RouteScenario;
+  scenario: AppChatRouteScenario;
 }) {
   return (
     <div data-route-state-url={`/app/chat?scenario=${scenario}`}>
@@ -426,7 +326,7 @@ function RouteStateMarker({
   );
 }
 
-function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
+function RouteRecoveryActions({ scenario }: { scenario: AppChatRouteScenario }) {
   return (
     <nav
       aria-label="Chat route recovery actions"
@@ -442,48 +342,17 @@ function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
   );
 }
 
-function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
-  const services = createAppChatRouteServices();
-  const conversationResult = services.conversationService.listConversations({
-    scenario,
-  });
-  const threadResult = services.conversationService.getMessageThread({
-    conversationId: "demo-conversation-1",
-    scenario,
-  });
-  const assistResult = services.writingAssistService.draftFollowup({
-    conversationId: "demo-conversation-1",
-    scenario,
-  });
-  const summaryResult =
-    services.summaryExtractionService.summarizeConversation({
-      conversationId: "demo-conversation-1",
-      scenario,
-    });
-  const extractionResult =
-    services.summaryExtractionService.extractConversationSignals({
-      conversationId: "demo-conversation-1",
-      scenario,
-    });
-  const privacyResult = services.privacyControlsService.getPrivacyControls({
-    scenario,
-  });
-  const results: ChatRouteResult[] = [
-    conversationResult,
-    threadResult,
-    assistResult,
-    summaryResult,
-    extractionResult,
-    privacyResult,
-  ];
-  const copy = stateCopy(scenario);
-  const failure = firstFailure(results);
-  const evidenceIds = uniqueEvidenceIds(results);
+function RouteStateBoundary({
+  routeState,
+}: {
+  routeState: AppChatRouteStateViewModel;
+}) {
+  const { copy, errorCode, evidenceIds, scenario } = routeState;
 
   return (
     <RouteStateMarker scenario={scenario}>
       <div
-        data-error-code={failure ? failure.error.code : undefined}
+        data-error-code={errorCode ?? undefined}
         data-state-boundary="shared-ui-state-view"
       >
         <WorkbenchSurface elevated eyebrow={bilingualText("对话", "Chat")} title={copy.title}>
@@ -540,13 +409,13 @@ function EvidenceChips({
 function ConversationList({
   conversations,
 }: {
-  conversations: ChatConversationListPayload;
+  conversations: readonly AppChatConversationViewModel[];
 }) {
   return (
     <div className="chat-conversation-list">
-      {conversations.conversations.map((conversation) => (
+      {conversations.map((conversation) => (
         <article key={conversation.conversationId}>
-          <p className="surface-eyebrow">{statusLabel(conversation.status)}</p>
+          <p className="surface-eyebrow">{conversation.statusLabel}</p>
           <h3 className="relationship-name">{conversation.title}</h3>
           <p className="type-body">
             {conversation.participantName} · {conversation.organization}
@@ -562,13 +431,19 @@ function ConversationList({
   );
 }
 
-function ThreadPanel({ thread }: { thread: ChatMessageThreadPayload }) {
+function ThreadPanel({
+  messages,
+  summary,
+}: {
+  messages: readonly AppChatMessageViewModel[];
+  summary: string;
+}) {
   return (
     <WorkbenchSurface
       eyebrow={bilingualText("对话复核", "Conversation review")}
       title={bilingualText("复核一个对话线程", "One thread to review")}
     >
-      <p className="type-body">{productCopy(thread.summary)}</p>
+      <p className="type-body">{summary}</p>
       <p className="type-caption">
         {bilingualText(
           "参与者标签会让私人回复复核始终基于谁说了什么，再暂存草稿。",
@@ -576,16 +451,13 @@ function ThreadPanel({ thread }: { thread: ChatMessageThreadPayload }) {
         )}
       </p>
       <div aria-label="Private conversation messages" className="chat-message-list">
-        {thread.messages.map((message) => (
+        {messages.map((message) => (
           <article
             className="chat-message"
             data-sender={message.senderRole}
             key={message.messageId}
           >
-            <p className="surface-eyebrow">
-              {participantMessageLabel(message)} · {message.senderName} ·{" "}
-              {shortTimestamp(message.createdAt)}
-            </p>
+            <p className="surface-eyebrow">{message.senderLabel}</p>
             <p className="type-body">{message.body}</p>
           </article>
         ))}
@@ -595,31 +467,31 @@ function ThreadPanel({ thread }: { thread: ChatMessageThreadPayload }) {
 }
 
 function RelationshipContextPanel({
-  thread,
+  context,
 }: {
-  thread: ChatMessageThreadPayload;
+  context: AppChatRelationshipContextViewModel;
 }) {
   return (
     <WorkbenchSurface
       eyebrow={bilingualText("关系上下文", "Relationship context")}
-      title={thread.oneToOneContext.participantName}
+      title={context.participantName}
     >
       <dl aria-label="Conversation relationship context" className="relationship-meta">
         <div>
           <dt>{bilingualText("组织", "Organization")}</dt>
-          <dd>{thread.oneToOneContext.organization}</dd>
+          <dd>{context.organization}</dd>
         </div>
         <div>
           <dt>{bilingualText("关系来源原因", "Why this connection exists")}</dt>
-          <dd>{thread.oneToOneContext.relationshipReason}</dd>
+          <dd>{context.relationshipReason}</dd>
         </div>
         <div>
           <dt>{bilingualText("最新上下文", "Latest context")}</dt>
-          <dd>{thread.oneToOneContext.latestContext}</dd>
+          <dd>{context.latestContext}</dd>
         </div>
         <div>
           <dt>{bilingualText("合理下一步", "Sensible next step")}</dt>
-          <dd>{thread.oneToOneContext.recommendedFollowup}</dd>
+          <dd>{context.recommendedFollowup}</dd>
         </div>
       </dl>
     </WorkbenchSurface>
@@ -629,42 +501,40 @@ function RelationshipContextPanel({
 function WritingAssistPanel({
   assist,
 }: {
-  assist: ChatWritingAssistPayload;
+  assist: AppChatAssistViewModel | null;
 }) {
-  const primaryAssist = assist.assists[0];
-
-  if (!primaryAssist) {
+  if (!assist) {
     return null;
   }
 
   return (
     <ReviewCard
-      evidenceIds={primaryAssist.evidenceIds}
+      evidenceIds={assist.evidenceIds}
       eyebrow={bilingualText("写作辅助", "Writing assist")}
-      title={primaryAssist.label}
+      title={assist.label}
     >
-      <p className="type-body">{primaryAssist.suggestedText}</p>
+      <p className="type-body">{assist.suggestedText}</p>
       <p className="type-caption">
         {bilingualText(
           "复核状态：已暂存，等待人工复核。",
           "Review status: staged for human review.",
         )}
       </p>
-      <p className="type-caption">{primaryAssist.rationale}</p>
+      <p className="type-caption">{assist.rationale}</p>
     </ReviewCard>
   );
 }
 
-function SummaryPanel({ summary }: { summary: ChatSummaryExtractionPayload }) {
+function SummaryPanel({ summary }: { summary: AppChatSummaryViewModel }) {
   return (
     <ReviewCard
-      evidenceIds={summary.provenance.evidenceIds}
+      evidenceIds={summary.evidenceIds}
       eyebrow={bilingualText("对话摘要", "Conversation summary")}
       title={bilingualText("待复核摘要", "Summary for review")}
     >
       <p className="type-body">
-        {summary.summary
-          ? summary.summary.narrative
+        {summary.narrative
+          ? summary.narrative
           : bilingualText(
               "这段对话还没有可用摘要。",
               "No summary is available for this conversation yet.",
@@ -677,25 +547,25 @@ function SummaryPanel({ summary }: { summary: ChatSummaryExtractionPayload }) {
 function ExtractionPanel({
   extraction,
 }: {
-  extraction: ChatSummaryExtractionPayload;
+  extraction: AppChatExtractionViewModel;
 }) {
-  const need = extraction.extractedNeeds[0];
-  const task = extraction.extractedTasks[0];
-  const profileSuggestion = extraction.confirmationRequiredProfileSuggestions[0];
-
   return (
     <ReviewCard
-      evidenceIds={extraction.provenance.evidenceIds}
+      evidenceIds={extraction.evidenceIds}
       eyebrow={bilingualText("对话提取", "Conversation extraction")}
       title={bilingualText("待确认的关系信号", "Relationship signals to confirm")}
     >
-      {need && <p className="type-body">{need.statement}</p>}
-      {task && <Chip tone="confirmation">{task.title}</Chip>}
-      {profileSuggestion && (
+      {extraction.needStatement && (
+        <p className="type-body">{extraction.needStatement}</p>
+      )}
+      {extraction.taskTitle && (
+        <Chip tone="confirmation">{extraction.taskTitle}</Chip>
+      )}
+      {extraction.profileSuggestionValue && (
         <p className="privacy-note">
           {bilingualText(
-            `${profileSuggestion.proposedValue} 需要先复核，才能修改资料。`,
-            `${profileSuggestion.proposedValue} needs review before profile changes.`,
+            `${extraction.profileSuggestionValue} 需要先复核，才能修改资料。`,
+            `${extraction.profileSuggestionValue} needs review before profile changes.`,
           )}
         </p>
       )}
@@ -703,16 +573,16 @@ function ExtractionPanel({
   );
 }
 
-function PrivacyPanel({ privacy }: { privacy: ChatPrivacyControlsPayload }) {
+function PrivacyPanel({ privacy }: { privacy: AppChatPrivacyViewModel }) {
   return (
     <ReviewCard
-      evidenceIds={privacy.provenance.evidenceIds}
+      evidenceIds={privacy.evidenceIds}
       eyebrow={bilingualText("隐私控制", "Privacy controls")}
       title={`${privacy.participantName} · ${privacy.organization}`}
     >
       <p className="type-body">
         {bilingualText("同意状态", "Consent status")}:{" "}
-        {privacy.analysisOptIn.enabled
+        {privacy.analysisAllowed
           ? bilingualText("允许分析", "analysis allowed")
           : bilingualText("分析关闭", "analysis off")}
         .
@@ -721,7 +591,7 @@ function PrivacyPanel({ privacy }: { privacy: ChatPrivacyControlsPayload }) {
         <div>
           <dt>{bilingualText("分析状态", "Analysis status")}</dt>
           <dd>
-            {privacy.analysisOptIn.enabled
+            {privacy.analysisAllowed
               ? bilingualText("允许", "Allowed")
               : bilingualText("关闭", "Off")}
           </dd>
@@ -773,7 +643,7 @@ function ReviewCard({
 function ChatActionForm({
   assist,
 }: {
-  assist: ChatWritingAssistSuggestion | undefined;
+  assist: AppChatAssistViewModel | null;
 }) {
   return (
     <form action="/app/chat" className="chat-action-form" method="get">
@@ -797,11 +667,9 @@ function ChatActionForm({
 }
 
 function ChatActionResult({
-  conversation,
   result,
 }: {
-  conversation: ChatConversationListPayload["conversations"][number];
-  result: ChatSendMessagePayload | null;
+  result: AppChatActionResultViewModel | null;
 }) {
   if (!result) {
     return null;
@@ -817,13 +685,13 @@ function ChatActionResult({
     >
       <strong>{bilingualText("本地回复预览已准备", "Local reply preview ready")}</strong>
       <p className="type-body">
-        {bilingualText("已选择对话", "Selected conversation")}: {conversation.participantName} at{" "}
-        {conversation.organization}
+        {bilingualText("已选择对话", "Selected conversation")}:{" "}
+        {result.selectedConversationLabel}
       </p>
       <p className="type-caption">
         {bilingualText("草稿来自写作辅助", "Draft selected from writing assist")}
       </p>
-      <p className="type-body">{result.message.body}</p>
+      <p className="type-body">{result.messageBody}</p>
       <p className="type-body">
         {bilingualText(
           "保持本地：已选择对话、回复草稿和跟进追踪都留在此页面。",
@@ -847,12 +715,10 @@ function FollowupTracker({
   actionResult,
   extraction,
 }: {
-  actionResult: ChatSendMessagePayload | null;
-  extraction: ChatSummaryExtractionPayload;
+  actionResult: AppChatActionResultViewModel | null;
+  extraction: AppChatExtractionViewModel;
 }) {
-  const task = extraction.extractedTasks[0];
-
-  if (!task) {
+  if (!extraction.taskTitle) {
     return null;
   }
 
@@ -867,7 +733,7 @@ function FollowupTracker({
       <dl className="relationship-meta">
         <div>
           <dt>{bilingualText("有来源支撑的任务", "Source-backed task")}</dt>
-          <dd>{task.title}</dd>
+          <dd>{extraction.taskTitle}</dd>
         </div>
         <div>
           <dt>{bilingualText("本地备注", "Local note")}</dt>
@@ -889,7 +755,7 @@ function FollowupTracker({
         </div>
       </dl>
       <EvidenceChips
-        evidenceIds={task.evidenceIds}
+        evidenceIds={extraction.taskEvidenceIds}
         label="Local follow-up tracker evidence"
       />
     </div>
@@ -912,19 +778,76 @@ function StateLinks() {
   );
 }
 
-function CurrentReplyPriority({
-  assist,
-  privacy,
-  thread,
+function OrbitAgentPromptPanel({
+  agentTurn,
 }: {
-  assist: ChatWritingAssistPayload;
-  privacy: ChatPrivacyControlsPayload;
-  thread: ChatMessageThreadPayload;
+  agentTurn: AppChatAgentTurnViewModel | null;
 }) {
-  const primaryAssist = assist.assists[0];
-  const conversation = thread.conversation;
-  const context = thread.oneToOneContext;
+  return (
+    <WorkbenchSurface
+      className="chat-agent-prompt-panel"
+      eyebrow={bilingualText("Orbit Agent", "Orbit Agent")}
+      title={bilingualText("自然语言请求", "Natural language request")}
+    >
+      <form action="/app/chat" className="chat-agent-prompt-form" method="get">
+        <label className="type-caption" htmlFor="orbit-agent-prompt">
+          {bilingualText(
+            "输入活动推荐、人脉推荐、跟进或回复上下文请求。",
+            "Ask for events, people, follow-ups, or reply context.",
+          )}
+        </label>
+        <div className="chat-agent-prompt-row">
+          <input
+            defaultValue={agentTurn?.prompt ?? ""}
+            id="orbit-agent-prompt"
+            name="prompt"
+            placeholder={bilingualText(
+              "帮我推荐下周适合见 Maya 的活动",
+              "Recommend events for meeting Maya next week",
+            )}
+            type="text"
+          />
+          <button type="submit">
+            {bilingualText("发送给 Agent", "Send to Agent")}
+          </button>
+        </div>
+      </form>
+      {agentTurn && (
+        <div
+          className="chat-agent-response"
+          data-agent-artifact-open={String(Boolean(agentTurn.artifactSurface))}
+          role="status"
+        >
+          <p className="surface-eyebrow">
+            {bilingualText("Agent 回复", "Agent reply")}
+          </p>
+          <p className="type-body">{agentTurn.assistantMessage}</p>
+          {agentTurn.proposedToolLabels.length > 0 && (
+            <div className="chip-row">
+              {agentTurn.proposedToolLabels.map((label) => (
+                <Chip key={label} tone="confirmation">
+                  {label}
+                </Chip>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </WorkbenchSurface>
+  );
+}
 
+function CurrentReplyPriority({
+  primaryAssist,
+  privacy,
+  relationshipContext,
+  selectedConversation,
+}: {
+  primaryAssist: AppChatAssistViewModel | null;
+  privacy: AppChatPrivacyViewModel;
+  relationshipContext: AppChatRelationshipContextViewModel;
+  selectedConversation: AppChatConversationViewModel;
+}) {
   return (
     <WorkbenchSurface
       className="chat-priority"
@@ -936,17 +859,17 @@ function CurrentReplyPriority({
       <div className="chat-priority-copy">
         <p className="type-body">
           {bilingualText(
-            `${conversation.participantName}（${conversation.organization}）是现在要先复核的一段对话，然后再准备回复。`,
-            `${conversation.participantName} at ${conversation.organization} is the one conversation to review before staging the next response.`,
+            `${selectedConversation.participantName}（${selectedConversation.organization}）是现在要先复核的一段对话，然后再准备回复。`,
+            `${selectedConversation.participantName} at ${selectedConversation.organization} is the one conversation to review before staging the next response.`,
           )}
         </p>
         <p className="type-body">
           {bilingualText("为什么现在重要", "Why it matters now")}:{" "}
-          {context.latestContext}
+          {relationshipContext.latestContext}
         </p>
         <p className="type-body">
           {bilingualText("同意和隐私状态", "Consent and privacy posture")}:{" "}
-          {privacy.analysisOptIn.enabled
+          {privacy.analysisAllowed
             ? "analysis allowed for reviewed conversation context"
             : "analysis is off"}
           ; private notes stay hidden from analysis and sharing.
@@ -955,7 +878,7 @@ function CurrentReplyPriority({
           {bilingualText("建议回复意图", "Suggested reply intent")}:{" "}
           {primaryAssist
             ? primaryAssist.label
-            : context.recommendedFollowup}
+            : relationshipContext.recommendedFollowup}
           .
         </p>
         <p className="type-body">
@@ -977,28 +900,29 @@ function CurrentReplyPriority({
 }
 
 function ChatWorkspace({
-  actionResult,
-  assist,
-  conversations,
-  extraction,
-  privacy,
-  summary,
-  thread,
+  workspace,
 }: {
-  actionResult: ChatSendMessagePayload | null;
-  assist: ChatWritingAssistPayload;
-  conversations: ChatConversationListPayload;
-  extraction: ChatSummaryExtractionPayload;
-  privacy: ChatPrivacyControlsPayload;
-  summary: ChatSummaryExtractionPayload;
-  thread: ChatMessageThreadPayload;
+  workspace: AppChatWorkspaceViewModel;
 }) {
-  const selectedConversation = thread.conversation;
-
   return (
     <div className="app-chat-route" data-state-boundary="app-chat-success">
       <style>{appChatStyles}</style>
-      <CurrentReplyPriority assist={assist} privacy={privacy} thread={thread} />
+      <CurrentReplyPriority
+        primaryAssist={workspace.primaryAssist}
+        privacy={workspace.privacy}
+        relationshipContext={workspace.relationshipContext}
+        selectedConversation={workspace.selectedConversation}
+      />
+
+      <div
+        className="chat-agent-orchestration-layout"
+        data-agent-panel={workspace.agentTurn?.artifactSurface ? "open" : "closed"}
+      >
+        <OrbitAgentPromptPanel agentTurn={workspace.agentTurn} />
+        <AgentArtifactSidePanel
+          surface={workspace.agentTurn?.artifactSurface ?? null}
+        />
+      </div>
 
       <div className="chat-command-layout">
         <WorkbenchSurface
@@ -1011,9 +935,9 @@ function ChatWorkspace({
               "Broader conversation inventory stays secondary until the current reply has been reviewed.",
             )}
           </p>
-          <ConversationList conversations={conversations} />
+          <ConversationList conversations={workspace.conversations} />
         </WorkbenchSurface>
-        <RelationshipContextPanel thread={thread} />
+        <RelationshipContextPanel context={workspace.relationshipContext} />
       </div>
 
       <section aria-labelledby="reply-review-workflow">
@@ -1021,19 +945,19 @@ function ChatWorkspace({
           {bilingualText("回复复核流程", "Reply-review workflow")}
         </h2>
         <div className="chat-command-layout">
-          <ThreadPanel thread={thread} />
+          <ThreadPanel
+            messages={workspace.threadMessages}
+            summary={workspace.threadSummary}
+          />
           <WorkbenchSurface
             eyebrow={bilingualText("本地动作", "Local action")}
             title={bilingualText("已暂存回复", "Staged reply")}
           >
-            <ChatActionForm assist={assist.assists[0]} />
-            <ChatActionResult
-              conversation={selectedConversation}
-              result={actionResult}
-            />
+            <ChatActionForm assist={workspace.primaryAssist} />
+            <ChatActionResult result={workspace.actionResult} />
             <FollowupTracker
-              actionResult={actionResult}
-              extraction={extraction}
+              actionResult={workspace.actionResult}
+              extraction={workspace.extraction}
             />
           </WorkbenchSurface>
         </div>
@@ -1047,10 +971,10 @@ function ChatWorkspace({
             "Writing help, summaries, extracted signals, and privacy controls stay in review before any outside action.",
           )}
         </p>
-        <WritingAssistPanel assist={assist} />
-        <SummaryPanel summary={summary} />
-        <ExtractionPanel extraction={extraction} />
-        <PrivacyPanel privacy={privacy} />
+        <WritingAssistPanel assist={workspace.primaryAssist} />
+        <SummaryPanel summary={workspace.summary} />
+        <ExtractionPanel extraction={workspace.extraction} />
+        <PrivacyPanel privacy={workspace.privacy} />
       </section>
     </div>
   );
@@ -1059,113 +983,16 @@ function ChatWorkspace({
 export function AppChatCommandCenter({
   searchParams,
 }: AppChatCommandCenterProps) {
-  const requestedScenario = readRouteScenario(searchParams);
+  const routeViewModel = loadAppChatRouteViewModel(searchParams);
 
-  if (requestedScenario) {
+  if (routeViewModel.state === "route-state") {
     return (
       <div className="app-chat-route">
         <style>{appChatStyles}</style>
-        <RouteStateBoundary scenario={requestedScenario} />
+        <RouteStateBoundary routeState={routeViewModel.routeState} />
       </div>
     );
   }
 
-  const services = createAppChatRouteServices();
-  const conversationsResult = services.conversationService.listConversations();
-
-  if (conversationsResult.success === false) {
-    return (
-      <div className="app-chat-route">
-        <style>{appChatStyles}</style>
-        <RouteStateBoundary scenario="failure" />
-      </div>
-    );
-  }
-
-  const conversation = conversationsResult.data.conversations[0];
-
-  if (!conversation) {
-    return (
-      <div className="app-chat-route">
-        <style>{appChatStyles}</style>
-        <RouteStateBoundary scenario="empty" />
-      </div>
-    );
-  }
-
-  const threadResult = services.conversationService.getMessageThread({
-    conversationId: conversation.conversationId,
-  });
-  const assistResult = services.writingAssistService.draftFollowup({
-    contextNote: conversation.oneToOneContext.recommendedFollowup,
-    conversationId: conversation.conversationId,
-    organization: conversation.organization,
-    participantName: conversation.participantName,
-  });
-  const summaryResult = services.summaryExtractionService.summarizeConversation({
-    conversationId: conversation.conversationId,
-  });
-  const extractionResult =
-    services.summaryExtractionService.extractConversationSignals({
-      conversationId: conversation.conversationId,
-    });
-  const privacyResult = services.privacyControlsService.getPrivacyControls();
-  const results: ChatRouteResult[] = [
-    conversationsResult,
-    threadResult,
-    assistResult,
-    summaryResult,
-    extractionResult,
-    privacyResult,
-  ];
-
-  if (firstFailure(results)) {
-    return (
-      <div className="app-chat-route">
-        <style>{appChatStyles}</style>
-        <RouteStateBoundary scenario="failure" />
-      </div>
-    );
-  }
-
-  if (
-    threadResult.success === false ||
-    assistResult.success === false ||
-    summaryResult.success === false ||
-    extractionResult.success === false ||
-    privacyResult.success === false
-  ) {
-    return (
-      <div className="app-chat-route">
-        <style>{appChatStyles}</style>
-        <RouteStateBoundary scenario="failure" />
-      </div>
-    );
-  }
-
-  const action = readSearchParam(searchParams, "action");
-  const selectedAssist = assistResult.data.assists[0];
-  const sendResult =
-    action === "record-local-reply"
-      ? services.conversationService.sendMessage({
-          body:
-            selectedAssist?.suggestedText ??
-            conversation.oneToOneContext.recommendedFollowup,
-          conversationId: conversation.conversationId,
-        })
-      : null;
-  const actionResult =
-    sendResult?.success === true ? sendResult.data : null;
-
-  return (
-    <ChatWorkspace
-      actionResult={actionResult}
-      assist={assistResult.data}
-      conversations={conversationsResult.data}
-      extraction={extractionResult.data}
-      privacy={privacyResult.data}
-      summary={summaryResult.data}
-      thread={threadResult.data}
-    />
-  );
+  return <ChatWorkspace workspace={routeViewModel.workspace} />;
 }

@@ -155,3 +155,33 @@ test("module architecture docs describe position, expected behavior, mock behavi
   assert.deepEqual(missingDocs, []);
   assert.deepEqual(incompleteDocs, []);
 });
+
+test("product presenters consume route view models instead of Orbit AI service payloads", () => {
+  const presenterFiles = [
+    "app/(app)/app/orbit-ai-command-center.tsx",
+    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/agent-artifact-side-panel.tsx",
+    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-command-center.tsx",
+  ];
+  const routeViewModelFiles = [
+    "app/(app)/app/orbit-ai-route-view-model.ts",
+    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
+  ];
+
+  for (const path of presenterFiles) {
+    const contents = source(path);
+
+    assert.doesNotMatch(contents, /features\/orbit-ai/);
+    assert.doesNotMatch(contents, /features\/chat/);
+    assert.doesNotMatch(contents, /createOrbit[A-Za-z]*Service/);
+    assert.doesNotMatch(contents, /createAppChatRouteServices/);
+    assert.doesNotMatch(contents, /createMock/);
+  }
+
+  for (const path of routeViewModelFiles) {
+    const contents = source(path);
+
+    assert.match(contents, /service-factory/);
+    assert.doesNotMatch(contents, /from ["']react["']/);
+    assert.doesNotMatch(contents, /WorkbenchSurface|<section|<article|<div/);
+  }
+});

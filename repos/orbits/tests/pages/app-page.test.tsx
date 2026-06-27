@@ -319,6 +319,27 @@ test("/app shell composition exposes outcome navigation without empty labels", a
   assert.doesNotMatch(html, />Home<\/a>|>Profile<\/a>|>Contacts<\/a>|>Chat<\/a>|>Dashboard<\/a>|>Agent<\/a>/);
 });
 
+test("/app Orbit AI presenter consumes a route view model instead of feature contracts", () => {
+  const commandCenterSource = fs.readFileSync(
+    path.join(projectRoot, "app/(app)/app/orbit-ai-command-center.tsx"),
+    "utf8",
+  );
+  const viewModelSource = fs.readFileSync(
+    path.join(projectRoot, "app/(app)/app/orbit-ai-route-view-model.ts"),
+    "utf8",
+  );
+
+  assert.doesNotMatch(commandCenterSource, /features\/orbit-ai/);
+  assert.doesNotMatch(commandCenterSource, /createOrbitAiCommandService/);
+  assert.doesNotMatch(commandCenterSource, /getCommandCenter/);
+  assert.match(commandCenterSource, /loadOrbitAiCommandViewModel/);
+  assert.match(commandCenterSource, /AppOrbitAiPanel/);
+  assert.match(viewModelSource, /features\/orbit-ai\/contract/);
+  assert.match(viewModelSource, /createOrbitAiCommandService/);
+  assert.doesNotMatch(viewModelSource, /from ["']react["']/);
+  assert.doesNotMatch(viewModelSource, /shared\/ui|className|WorkbenchSurface|Chip/);
+});
+
 test("app route resolver keeps nested product pages attached to their modules", () => {
   for (const routeCase of [
     { pathname: "/app", expected: "/app" },

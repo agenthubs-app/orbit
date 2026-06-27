@@ -13,6 +13,18 @@ App Page / API Route
   -> mock | hybrid | live implementation
 ```
 
+面向用户的 `/app/**` 页面应再加一层 route view model，让 React 组件不直接依赖业务 contract DTO：
+
+```text
+Product Route Component
+  -> app/(app)/.../*-route-view-model.ts
+  -> features/<module>/service-factory.ts
+  -> Service Interface / Contract
+  -> mock | hybrid | live implementation
+```
+
+`*-route-view-model.ts` 负责调用一个或多个模块 service、合并 success/failure state、过滤公开证据、把 provenance 和 action safety 映射成页面可渲染的数据。React presenter 只接收页面专用 view model，不直接读取 `features/<module>/contract.ts` 的 payload 字段，也不调用 mock/live/provider factory。
+
 共享 AI provider 使用同样结构：
 
 ```text
@@ -101,6 +113,13 @@ orbits
 ## 团队协作规则
 
 每个模块的真实业务开发应优先新增 live/hybrid implementation，并在对应 `service-factory.ts` 注册。开发者不应让页面或 API route 直接 import mock 或 live provider。需要调试的能力继续保留 mock 和 dev debug view，但调试面板不能成为生产调用路径的依赖。
+
+产品 UI 与业务 contract 的边界规则：
+
+- `features/<module>/contract.ts` 是模块/API/service 的稳定契约，不是 React 组件 props 的默认形状。
+- `/app/**` 页面如果需要组合多个 capability，应新增本路由的 view-model 或 route-service 文件，把业务 DTO 转为 render-neutral 数据。
+- UI 组件可以依赖 `shared/ui` primitives 和本路由 view model 类型；不应依赖 mock service、live provider、Orbit AI provider payload、外部 provider payload 或 raw fixture shape。
+- AI/artifact/generated-view 场景必须先经过 feature-owned 或 route-owned mapper，再进入 side panel、card、list 等 UI presenter。
 
 ## 文档规则
 

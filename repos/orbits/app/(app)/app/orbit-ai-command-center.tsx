@@ -1,25 +1,13 @@
-import { createOrbitAiCommandService } from "../../../features/orbit-ai/service-factory";
-import type { OrbitAiPanel } from "../../../features/orbit-ai/contract";
+import type {
+  AppOrbitAiPanel,
+  OrbitAiCommandSearchParams,
+} from "./orbit-ai-route-view-model";
+import { loadOrbitAiCommandViewModel } from "./orbit-ai-route-view-model";
 import { bilingualText } from "../../../shared/ui/bilingual";
 import { Chip } from "../../../shared/ui/primitives";
 
-type OrbitAiCommandSearchParams = Record<string, string | string[] | undefined>;
-
 export interface OrbitAiCommandCenterProps {
   searchParams?: OrbitAiCommandSearchParams;
-}
-
-function readSearchParam(
-  searchParams: OrbitAiCommandSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
 }
 
 const orbitAiCommandStyles = `
@@ -675,7 +663,7 @@ const orbitAiNavPanels = [
   "followups",
   "dashboard",
   "agent",
-] as const satisfies readonly OrbitAiPanel[];
+] as const satisfies readonly AppOrbitAiPanel[];
 
 const orbitAiNavLabels: Record<
   "zh" | "en",
@@ -701,7 +689,7 @@ const orbitAiNavLabels: Record<
   },
 };
 
-function orbitPanelHref(language: "zh" | "en", panel: OrbitAiPanel): string {
+function orbitPanelHref(language: "zh" | "en", panel: AppOrbitAiPanel): string {
   const params = new URLSearchParams();
 
   if (panel !== "home") {
@@ -717,7 +705,7 @@ function orbitPanelHref(language: "zh" | "en", panel: OrbitAiPanel): string {
   return queryString ? `/app?${queryString}` : "/app";
 }
 
-function OrbitAiNavIcon({ panel }: { panel: OrbitAiPanel }) {
+function OrbitAiNavIcon({ panel }: { panel: AppOrbitAiPanel }) {
   if (panel === "events") {
     return (
       <svg aria-hidden="true" fill="none" height="21" viewBox="0 0 24 24" width="21">
@@ -852,7 +840,7 @@ const orbitAiUiCopy = {
 
 type OrbitAiUiCopy = Record<keyof typeof orbitAiUiCopy.en, string>;
 
-const orbitAiEnglishStageTitles: Record<OrbitAiPanel, string> = {
+const orbitAiEnglishStageTitles: Record<AppOrbitAiPanel, string> = {
   agent: "Review-before-action queue",
   dashboard: "Network signal",
   events: "Recommended events",
@@ -863,7 +851,7 @@ const orbitAiEnglishStageTitles: Record<OrbitAiPanel, string> = {
 };
 
 const orbitAiEnglishCommandLabels: Record<
-  Exclude<OrbitAiPanel, "home" | "dashboard">,
+  Exclude<AppOrbitAiPanel, "home" | "dashboard">,
   string
 > = {
   agent: "Review next moves",
@@ -924,19 +912,12 @@ function bilingualIfDifferent(chinese: string, english: string): string {
 export function OrbitAiCommandCenter({
   searchParams,
 }: OrbitAiCommandCenterProps = {}) {
-  const service = createOrbitAiCommandService();
-  const result = service.getCommandCenter({
-    language: readSearchParam(searchParams, "lang"),
-    panel: readSearchParam(searchParams, "panel"),
-    prompt: readSearchParam(searchParams, "prompt"),
-  });
-  const data = result.data;
+  const data = loadOrbitAiCommandViewModel(searchParams);
   const copy =
     data.language === "zh"
       ? bilingualOrbitAiCopy(orbitAiUiCopy.zh)
       : orbitAiUiCopy.en;
-  const primaryStageItem = data.stageItems[0];
-  const isChinesePrimary = data.language === "zh";
+  const isChinesePrimary = data.isChinesePrimary;
 
   return (
     <div
@@ -1037,7 +1018,7 @@ export function OrbitAiCommandCenter({
                   ? bilingualText(
                       link.label,
                       orbitAiEnglishCommandLabels[
-                        link.panel as Exclude<OrbitAiPanel, "home" | "dashboard">
+                        link.panel as Exclude<AppOrbitAiPanel, "home" | "dashboard">
                       ],
                     )
                   : link.label}
@@ -1150,9 +1131,9 @@ export function OrbitAiCommandCenter({
             </p>
             <a
               className="orbit-ai-action-primary"
-              href={primaryStageItem?.href ?? data.stageCtaHref}
+              href={data.primaryStageHref}
             >
-              {primaryStageItem?.actionLabel ?? data.stageCtaLabel}
+              {data.primaryStageLabel}
             </a>
           </footer>
         </section>
