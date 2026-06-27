@@ -1,4 +1,5 @@
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createLiveOrbitAgentConversationService } from "./live-conversation-service";
 import { createMockOrbitAgentArtifactTaskService } from "./mock-artifact-task-service";
 import { createMockOrbitAgentConversationService } from "./mock-conversation-service";
 import { createMockOrbitAiCommandService } from "./mock-service";
@@ -20,6 +21,7 @@ export const orbitAgentConversationServiceFactory =
   createModuleServiceFactory<OrbitAgentConversationService>({
     capabilityId: "orbit-agent-conversation",
     implementations: {
+      live: () => createLiveOrbitAgentConversationService(),
       mock: () => createMockOrbitAgentConversationService(),
     },
   });
@@ -39,7 +41,9 @@ export function resolveOrbitAiCommandService(mode?: ModuleMode | string) {
 export function resolveOrbitAgentConversationService(
   mode?: ModuleMode | string,
 ) {
-  return orbitAgentConversationServiceFactory.create(mode);
+  return orbitAgentConversationServiceFactory.create(
+    mode ?? process.env.ORBIT_AGENT_CONVERSATION_MODE,
+  );
 }
 
 export function resolveOrbitAgentArtifactTaskService(

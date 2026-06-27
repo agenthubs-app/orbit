@@ -1,30 +1,20 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
 import type { ReactNode } from "react";
-import type {
-  AgentActionDecisionResult,
-  AgentActionQueueItem,
-  AgentActionQueueResult,
-} from "../../../../../features/agent/contract";
-import type {
-  AgentAutonomyLevelBoundary,
-  AgentAutonomySettingsResult,
-} from "../../../../../features/agent/settings-contract";
-import type {
-  ExternalActionAuditResult,
-  ExternalActionNoOpResult,
-  ExternalActionSandboxAction,
-} from "../../../../../features/agent/external-action-contract";
-import type {
-  ReminderScheduleNotificationResult,
-  NotificationQueueEntry,
-} from "../../../../../features/notifications/contract";
-import type {
-  ConfirmationRequirement,
-  ConfirmationRequirementResult,
-} from "../../../../../features/permissions/confirmation-contract";
 import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { WorkbenchSurface } from "../../../../../shared/ui/primitives";
-import { createAppAgentRouteServices } from "./agent-service-factory";
+import {
+  loadAppAgentRouteViewModel,
+  type AppAgentActionResultViewModel,
+  type AppAgentActionViewModel,
+  type AppAgentConfirmationViewModel,
+  type AppAgentEvidenceViewModel,
+  type AppAgentNotificationViewModel,
+  type AppAgentRouteScenario,
+  type AppAgentRouteStateViewModel,
+  type AppAgentSandboxViewModel,
+  type AppAgentSearchParams,
+  type AppAgentSettingsViewModel,
+} from "./agent-route-view-model";
 
 const appAgentStyles = `
 .app-agent-route {
@@ -159,164 +149,12 @@ const routeStateChecks = [
   },
 ] as const;
 
-type AppAgentSearchParams = Record<string, string | string[] | undefined>;
-type RouteScenario = "empty" | "pending" | "failure";
-
 interface AppAgentCommandCenterProps {
   searchParams?: AppAgentSearchParams;
 }
 
-type RouteStateResult =
-  | AgentActionQueueResult
-  | AgentAutonomySettingsResult
-  | ConfirmationRequirementResult
-  | ExternalActionAuditResult
-  | ReminderScheduleNotificationResult;
-type RouteStateFailure = Extract<RouteStateResult, { success: false }>;
-
-const routeRecoveryActions: Record<
-  RouteScenario,
-  readonly { href: string; label: string }[]
-> = {
-  empty: [
-    {
-      href: "/app/agent",
-      label: bilingualText("显示可用 Agent 工作区", "Show ready agent workspace"),
-    },
-    {
-      href: "/app/agent?action=review-top-agent-action",
-      label: bilingualText("预览 Agent 复核", "Preview agent review"),
-    },
-  ],
-  failure: [
-    {
-      href: "/app/agent",
-      label: bilingualText("重新加载 Agent 工作区", "Reload agent workspace"),
-    },
-    {
-      href: "/app/agent?scenario=pending",
-      label: bilingualText("检查复核状态", "Check review status"),
-    },
-  ],
-  pending: [
-    {
-      href: "/app/agent",
-      label: bilingualText(
-        "返回可用 Agent 工作区",
-        "Return to ready agent workspace",
-      ),
-    },
-  ],
-};
-
-function readSearchParam(
-  searchParams: AppAgentSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppAgentSearchParams | undefined,
-): RouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
-}
-
-function isRouteStateFailure(result: RouteStateResult): result is RouteStateFailure {
-  return result.success === false;
-}
-
-function evidenceIdsForResult(result: RouteStateResult): readonly string[] {
-  if (result.success === true) {
-    return result.data.provenance.evidenceIds;
-  }
-
-  return result.error.evidenceIds;
-}
-
-function uniqueEvidenceIds(results: readonly RouteStateResult[]): string[] {
-  return Array.from(
-    new Set(results.flatMap((result) => evidenceIdsForResult(result))),
-  );
-}
-
-function firstFailure(results: readonly RouteStateResult[]): RouteStateFailure | null {
-  return results.find(isRouteStateFailure) ?? null;
-}
-
 function formatCount(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
-}
-
-function priorityLabel(priority: AgentActionQueueItem["priority"]): string {
-  const labels: Record<AgentActionQueueItem["priority"], string> = {
-    high: "High",
-    low: "Low",
-    medium: "Medium",
-  };
-
-  return labels[priority];
-}
-
-function channelLabel(channel: NotificationQueueEntry["channel"]): string {
-  const labels: Record<NotificationQueueEntry["channel"], string> = {
-    email: "Email",
-    in_app: "In-app",
-    push: "Push",
-    sms: "SMS",
-  };
-
-  return labels[channel];
-}
-
-function titleCase(value: string): string {
-  return value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
-}
-
-function labelFromIdentifier(identifier: string): string {
-  return titleCase(
-    identifier
-      .split(":")
-      .slice(1)
-      .join(" ")
-      .replace(/-/g, " ")
-      .replace(/\s+/g, " ")
-      .trim(),
-  );
-}
-
-function evidenceLabel(evidenceId: string): string {
-  const label = labelFromIdentifier(evidenceId);
-
-  return label ? `${label} evidence` : "Relationship evidence";
-}
-
-function notificationQueueLabel(queueEntry: NotificationQueueEntry): string {
-  const reminderLabel = queueEntry.reminderIds[0]
-    ? labelFromIdentifier(queueEntry.reminderIds[0])
-    : labelFromIdentifier(queueEntry.queueEntryId);
-
-  return reminderLabel ? `${reminderLabel} reminder` : "Queued reminder";
-}
-
-function userReviewControlCopy(operatorControl: string): string {
-  return operatorControl
-    .replace(/^The operator reviews\b/i, "You review")
-    .replace(/\bconfirms\b/g, "confirm")
-    .replace(/\bthe operator\b/gi, "you")
-    .replace(/\boperator\b/gi, "user");
 }
 
 function RouteStateMarker({
@@ -324,7 +162,7 @@ function RouteStateMarker({
   scenario,
 }: {
   children: ReactNode;
-  scenario: RouteScenario;
+  scenario: AppAgentRouteScenario;
 }) {
   return (
     <div data-route-state-url={`/app/agent?scenario=${scenario}`}>
@@ -333,14 +171,18 @@ function RouteStateMarker({
   );
 }
 
-function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
+function RouteRecoveryActions({
+  actions,
+}: {
+  actions: AppAgentRouteStateViewModel["recoveryActions"];
+}) {
   return (
     <nav
       aria-label="Agent route recovery actions"
       className="agent-state-links agent-recovery-actions"
       data-side-effects="none"
     >
-      {routeRecoveryActions[scenario].map((action) => (
+      {actions.map((action) => (
         <a href={action.href} key={action.href}>
           {action.label}
         </a>
@@ -349,160 +191,63 @@ function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
   );
 }
 
-function stateCopy(scenario: RouteScenario) {
-  if (scenario === "empty") {
-    return {
-      description: bilingualText(
-        "先添加有来源的关系线索，再复核 Agent 动作、自主设置、确认、沙盒检查和通知队列。",
-        "Add a sourced relationship cue before reviewing agent actions, autonomy settings, confirmations, sandbox checks, and notification queues.",
-      ),
-      emptyState: bilingualText(
-        "还没有 Agent 动作具备足够关系上下文可供复核。",
-        "No agent action has enough relationship context for review.",
-      ),
-      guardrail: bilingualText(
-        "空关系集合不能准备发送检查、审批步骤或提醒队列。",
-        "Orbit cannot prepare a send check, approval step, or reminder queue from an empty relationship set.",
-      ),
-      nextStep: bilingualText(
-        "联系人、活动、跟进或提醒存在后再返回。",
-        "Return after a contact, event, follow-up, or reminder exists.",
-      ),
-      purpose: bilingualText(
-        "没有有来源的关系动作时，仍保持 Agent 复核可理解。",
-        "Keep agent review useful when no sourced relationship action is available.",
-      ),
-      title: bilingualText("没有可复核的 Agent 动作", "No agent actions are ready"),
-    };
-  }
-
-  if (scenario === "pending") {
-    return {
-      description: bilingualText(
-        "确认、来源证据和发送限制仍在检查时，Agent 工作会保持暂停。",
-        "Agent work stays paused while confirmations, source evidence, and delivery limits are checked.",
-      ),
-      emptyState: bilingualText(
-        "确认复核准备好之前，Agent 动作保持隐藏。",
-        "Agent actions stay hidden until the confirmation review is ready.",
-      ),
-      guardrail: bilingualText(
-        "复核等待期间，Orbit 不会发送消息、修改日历、发送提醒或保存关系更新。",
-        "Orbit will not send messages, change calendars, deliver reminders, or save relationship updates while review is pending.",
-      ),
-      nextStep: bilingualText(
-        "复核可用后返回可用 Agent 工作区。",
-        "Return to the ready agent workspace after review is available.",
-      ),
-      purpose: bilingualText(
-        "保持待处理 Agent 工作可见，但不暴露未完成的关系建议。",
-        "Keep pending agent work visible without exposing unfinished relationship guidance.",
-      ),
-      title: bilingualText(
-        "Agent 复核正在等待确认",
-        "Agent review is waiting for confirmation",
-      ),
-    };
-  }
-
-  return {
-    description: bilingualText(
-      "来源证据检查期间，Agent 动作、设置、确认、沙盒检查和通知队列暂不可用。",
-      "Agent actions, settings, confirmations, sandbox checks, and notification queue entries are unavailable while source evidence is checked.",
-    ),
-    emptyState: bilingualText(
-      "来源证据恢复前，Agent 工作区不可用。",
-      "The agent workspace is unavailable until source evidence recovers.",
-    ),
-    guardrail: bilingualText(
-      "不可用期间，Orbit 不会发送消息、修改日历、发送提醒或保存关系更新。",
-      "Orbit will not send messages, change calendars, deliver reminders, or save relationship updates while this is unavailable.",
-    ),
-    nextStep: bilingualText(
-      "采取动作前重新加载 Agent 工作区。",
-      "Reload the agent workspace before taking action.",
-    ),
-    purpose: bilingualText(
-      "Agent 复核上下文不可用时，显示可见恢复路径。",
-      "Show a visible recovery path when agent review context is unavailable.",
-    ),
-    title: bilingualText("Agent 工作区无法加载", "Agent workspace could not load"),
-  };
-}
-
 function EvidenceChips({
-  evidenceIds,
+  evidence,
   label,
 }: {
-  evidenceIds: readonly string[];
+  evidence: readonly AppAgentEvidenceViewModel[];
   label: string;
 }) {
   return (
     <div aria-label={label} className="chip-row">
-      {evidenceIds.slice(0, 5).map((evidenceId) => (
+      {evidence.slice(0, 5).map((item) => (
         <span
           className="orbit-chip orbit-chip-evidence"
-          data-evidence-id={evidenceId}
-          key={evidenceId}
+          data-evidence-id={item.id}
+          key={item.id}
         >
-          {evidenceLabel(evidenceId)}
+          {item.label}
         </span>
       ))}
     </div>
   );
 }
 
-function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
-  const services = createAppAgentRouteServices();
-  const actionResult = services.agentActionService.listActions({ scenario });
-  const settingsResult = services.settingsService.getSettings({ scenario });
-  const confirmationResult =
-    services.confirmationService.listConfirmationRequirements({ scenario });
-  const sandboxResult = services.sandboxService.listAuditRecords({ scenario });
-  const notificationResult = services.notificationService.listNotifications({
-    scenario,
-  });
-  const results = [
-    actionResult,
-    settingsResult,
-    confirmationResult,
-    sandboxResult,
-    notificationResult,
-  ] as const;
-  const copy = stateCopy(scenario);
-  const failure = firstFailure(results);
-  const evidenceIds = uniqueEvidenceIds(results);
-
+function RouteStateBoundary({
+  routeState,
+}: {
+  routeState: AppAgentRouteStateViewModel;
+}) {
   return (
-    <RouteStateMarker scenario={scenario}>
+    <RouteStateMarker scenario={routeState.scenario}>
       <div
-        data-error-code={failure?.success === false ? failure.error.code : undefined}
+        data-error-code={routeState.errorCode ?? undefined}
         data-state-boundary="shared-ui-state-view"
       >
-        <WorkbenchSurface elevated eyebrow={bilingualText("下一步", "Agent")} title={copy.title}>
-          <p className="type-body">{copy.description}</p>
+        <WorkbenchSurface elevated eyebrow={bilingualText("下一步", "Agent")} title={routeState.copy.title}>
+          <p className="type-body">{routeState.copy.description}</p>
           <dl aria-label="Agent status details" className="relationship-meta">
             <div>
               <dt>{bilingualText("Orbit 已知", "What Orbit knows")}</dt>
-              <dd>{copy.purpose}</dd>
+              <dd>{routeState.copy.purpose}</dd>
             </div>
             <div>
               <dt>{bilingualText("当前状态", "Current status")}</dt>
-              <dd>{copy.emptyState}</dd>
+              <dd>{routeState.copy.emptyState}</dd>
             </div>
             <div>
               <dt>{bilingualText("安全检查", "Safety check")}</dt>
-              <dd>{copy.guardrail}</dd>
+              <dd>{routeState.copy.guardrail}</dd>
             </div>
             <div>
               <dt>{bilingualText("下一步", "Next step")}</dt>
-              <dd>{copy.nextStep}</dd>
+              <dd>{routeState.copy.nextStep}</dd>
             </div>
           </dl>
-          <EvidenceChips evidenceIds={evidenceIds} label="Agent state evidence" />
+          <EvidenceChips evidence={routeState.evidence} label="Agent state evidence" />
         </WorkbenchSurface>
       </div>
-      <RouteRecoveryActions scenario={scenario} />
+      <RouteRecoveryActions actions={routeState.recoveryActions} />
     </RouteStateMarker>
   );
 }
@@ -598,18 +343,11 @@ function AgentReviewForm() {
 }
 
 function AgentActionResult({
-  agentDecision,
-  sandboxResult,
-  selectedAction,
+  result,
 }: {
-  agentDecision: AgentActionDecisionResult;
-  sandboxResult: ExternalActionNoOpResult;
-  selectedAction: AgentActionQueueItem;
+  result: AppAgentActionResultViewModel;
 }) {
-  const reviewStopped =
-    agentDecision.success === false || sandboxResult.success === false;
-
-  if (reviewStopped) {
+  if (result.stopped) {
     return (
       <div
         aria-label="App agent local action result"
@@ -648,7 +386,7 @@ function AgentActionResult({
         )}
       </strong>
       <span>
-        {bilingualText("已复核动作", "Reviewed action")}: {selectedAction.title}
+        {bilingualText("已复核动作", "Reviewed action")}: {result.reviewedActionTitle}
       </span>
       <span>{bilingualText("已记录确认：否", "Confirmation recorded: no")}</span>
       <span>
@@ -665,7 +403,7 @@ function AgentActionResult({
   );
 }
 
-function ActionCard({ action }: { action: AgentActionQueueItem }) {
+function ActionCard({ action }: { action: AppAgentActionViewModel }) {
   return (
     <article className="agent-card">
       <div>
@@ -689,7 +427,7 @@ function ActionCard({ action }: { action: AgentActionQueueItem }) {
         </div>
         <div>
           <dt>{bilingualText("优先级", "Priority")}</dt>
-          <dd>{priorityLabel(action.priority)}</dd>
+          <dd>{action.priorityLabel}</dd>
         </div>
         <div>
           <dt>{bilingualText("为什么现在", "Why now")}</dt>
@@ -700,19 +438,19 @@ function ActionCard({ action }: { action: AgentActionQueueItem }) {
           <dd>{action.dueLabel}</dd>
         </div>
       </dl>
-      <EvidenceChips evidenceIds={action.evidenceIds} label="Agent action evidence" />
+      <EvidenceChips evidence={action.evidence} label="Agent action evidence" />
     </article>
   );
 }
 
-function SettingsCard({ level }: { level: AgentAutonomyLevelBoundary }) {
+function SettingsCard({ settings }: { settings: AppAgentSettingsViewModel }) {
   return (
     <article className="agent-card">
       <div>
         <p className="type-caption">
           {bilingualText("自主设置", "Autonomy setting")}
         </p>
-        <h3 className="relationship-name">{level.label}</h3>
+        <h3 className="relationship-name">{settings.label}</h3>
         <p className="type-body">
           {bilingualText(
             "Orbit 可以在这里排列有来源的下一步，但每次发送、日程修改、提醒发送和关系更新都需要用户复核。",
@@ -723,7 +461,7 @@ function SettingsCard({ level }: { level: AgentAutonomyLevelBoundary }) {
       <dl className="relationship-meta">
         <div>
           <dt>{bilingualText("复核控制", "Review control")}</dt>
-          <dd>{userReviewControlCopy(level.operatorControl)}</dd>
+          <dd>{settings.reviewControl}</dd>
         </div>
         <div>
           <dt>{bilingualText("外部动作复核", "External action review")}</dt>
@@ -742,7 +480,7 @@ function SettingsCard({ level }: { level: AgentAutonomyLevelBoundary }) {
 function ConfirmationCard({
   confirmation,
 }: {
-  confirmation: ConfirmationRequirement;
+  confirmation: AppAgentConfirmationViewModel;
 }) {
   return (
     <article className="agent-card">
@@ -750,17 +488,17 @@ function ConfirmationCard({
         <p className="type-caption">
           {bilingualText("确认保护", "Confirmation guard")}
         </p>
-        <h3 className="relationship-name">{confirmation.action.label}</h3>
-        <p className="type-body">{confirmation.action.summary}</p>
+        <h3 className="relationship-name">{confirmation.label}</h3>
+        <p className="type-body">{confirmation.summary}</p>
       </div>
       <dl className="relationship-meta">
         <div>
           <dt>{bilingualText("确认问题", "Question")}</dt>
-          <dd>{confirmation.confirmationQuestion}</dd>
+          <dd>{confirmation.question}</dd>
         </div>
         <div>
           <dt>{bilingualText("目标", "Target")}</dt>
-          <dd>{confirmation.action.targetLabel}</dd>
+          <dd>{confirmation.targetLabel}</dd>
         </div>
         <div>
           <dt>{bilingualText("安全说明", "Safety note")}</dt>
@@ -768,7 +506,7 @@ function ConfirmationCard({
         </div>
       </dl>
       <EvidenceChips
-        evidenceIds={confirmation.evidence.map((item) => item.evidenceId)}
+        evidence={confirmation.evidence}
         label="Confirmation evidence"
       />
     </article>
@@ -778,7 +516,7 @@ function ConfirmationCard({
 function SandboxCard({
   action,
 }: {
-  action: ExternalActionSandboxAction;
+  action: AppAgentSandboxViewModel;
 }) {
   return (
     <article className="agent-card">
@@ -792,7 +530,7 @@ function SandboxCard({
       <dl className="relationship-meta">
         <div>
           <dt>{bilingualText("上下文", "Context")}</dt>
-          <dd>{action.relationshipContext.followupRationale}</dd>
+          <dd>{action.followupRationale}</dd>
         </div>
         <div>
           <dt>{bilingualText("结果", "Outcome")}</dt>
@@ -804,7 +542,7 @@ function SandboxCard({
           </dd>
         </div>
       </dl>
-      <EvidenceChips evidenceIds={action.evidenceIds} label="Send check evidence" />
+      <EvidenceChips evidence={action.evidence} label="Send check evidence" />
     </article>
   );
 }
@@ -812,7 +550,7 @@ function SandboxCard({
 function NotificationCard({
   queueEntry,
 }: {
-  queueEntry: NotificationQueueEntry;
+  queueEntry: AppAgentNotificationViewModel;
 }) {
   return (
     <article
@@ -823,11 +561,11 @@ function NotificationCard({
         <p className="type-caption">
           {bilingualText("通知队列", "Notification queue")}
         </p>
-        <h3 className="relationship-name">{notificationQueueLabel(queueEntry)}</h3>
+        <h3 className="relationship-name">{queueEntry.title}</h3>
         <p className="type-body">
           {bilingualText(
-            `${channelLabel(queueEntry.channel)} 提醒会在发送前等待复核。`,
-            `${channelLabel(queueEntry.channel)} reminder is held for review before delivery.`,
+            `${queueEntry.channelLabel} 提醒会在发送前等待复核。`,
+            `${queueEntry.channelLabel} reminder is held for review before delivery.`,
           )}
         </p>
       </div>
@@ -842,7 +580,7 @@ function NotificationCard({
         </div>
       </dl>
       <EvidenceChips
-        evidenceIds={queueEntry.evidenceIds}
+        evidence={queueEntry.evidence}
         label="Notification queue evidence"
       />
     </article>
@@ -868,94 +606,20 @@ function RouteStateLinks() {
 export function AppAgentCommandCenter({
   searchParams,
 }: AppAgentCommandCenterProps) {
-  const scenario = readRouteScenario(searchParams);
+  const viewModel = loadAppAgentRouteViewModel(searchParams);
 
-  if (scenario) {
+  if (viewModel.state === "route-state") {
     return (
       <>
         <style>{appAgentStyles}</style>
         <div className="app-agent-route">
-          <RouteStateBoundary scenario={scenario} />
+          <RouteStateBoundary routeState={viewModel.routeState} />
         </div>
       </>
     );
   }
 
-  const services = createAppAgentRouteServices();
-  const actionsResult = services.agentActionService.listActions();
-  const settingsResult = services.settingsService.getSettings();
-  const confirmationResult =
-    services.confirmationService.listConfirmationRequirements();
-  const sandboxAuditResult = services.sandboxService.listAuditRecords();
-  const notificationResult = services.notificationService.listNotifications();
-
-  if (
-    actionsResult.success === false ||
-    settingsResult.success === false ||
-    confirmationResult.success === false ||
-    sandboxAuditResult.success === false ||
-    notificationResult.success === false
-  ) {
-    return (
-      <>
-        <style>{appAgentStyles}</style>
-        <div className="app-agent-route">
-          <RouteStateBoundary scenario="failure" />
-        </div>
-      </>
-    );
-  }
-
-  const selectedAction =
-    actionsResult.data.actions.find(
-      (action) => action.contactName === "Maya Chen",
-    ) ?? actionsResult.data.actions[0];
-  const selectedSetting =
-    settingsResult.data.levels.find(
-      (level) => level.level === settingsResult.data.currentLevel,
-    ) ?? settingsResult.data.levels[0];
-  const selectedConfirmation =
-    confirmationResult.data.requirements.find(
-      (requirement) => requirement.action.kind === "send-message",
-    ) ?? confirmationResult.data.requirements[0];
-  const selectedSandboxAction =
-    sandboxAuditResult.data.actions.find(
-      (action) => action.actionType === "send_message",
-    ) ?? sandboxAuditResult.data.actions[0];
-  const selectedQueueEntry = notificationResult.data.notificationQueue[0];
-
-  if (
-    !selectedAction ||
-    !selectedSetting ||
-    !selectedConfirmation ||
-    !selectedSandboxAction ||
-    !selectedQueueEntry
-  ) {
-    return (
-      <>
-        <style>{appAgentStyles}</style>
-        <div className="app-agent-route">
-          <RouteStateBoundary scenario="empty" />
-        </div>
-      </>
-    );
-  }
-
-  const action = readSearchParam(searchParams, "action");
-  const shouldPreviewAction = action === "review-top-agent-action";
-  const agentDecision = shouldPreviewAction
-    ? services.agentActionService.acceptAction({
-        actionId: selectedAction.actionId,
-        actorLabel: "Orbit user",
-      })
-    : null;
-  const sandboxResult = shouldPreviewAction
-    ? services.sandboxService.sendMessage({
-        actionId: selectedSandboxAction.actionId,
-        actorLabel: "Orbit user",
-        targetLabel: selectedAction.contactName,
-      })
-    : null;
+  const workspace = viewModel.workspace;
 
   return (
     <>
@@ -974,27 +638,23 @@ export function AppAgentCommandCenter({
             )}
           </p>
           <AgentLedger
-            actionCount={actionsResult.data.actions.length}
-            confirmationCount={confirmationResult.data.requirements.length}
-            notificationCount={notificationResult.data.notificationQueue.length}
-            settingsLevel={selectedSetting.label}
+            actionCount={workspace.ledger.actionCount}
+            confirmationCount={workspace.ledger.confirmationCount}
+            notificationCount={workspace.ledger.notificationCount}
+            settingsLevel={workspace.ledger.settingsLevel}
           />
           <AgentReviewForm />
-          {agentDecision && sandboxResult && (
-            <AgentActionResult
-              agentDecision={agentDecision}
-              sandboxResult={sandboxResult}
-              selectedAction={selectedAction}
-            />
+          {workspace.actionResult && (
+            <AgentActionResult result={workspace.actionResult} />
           )}
         </WorkbenchSurface>
 
         <div className="agent-grid">
-          <ActionCard action={selectedAction} />
-          <SettingsCard level={selectedSetting} />
-          <ConfirmationCard confirmation={selectedConfirmation} />
-          <SandboxCard action={selectedSandboxAction} />
-          <NotificationCard queueEntry={selectedQueueEntry} />
+          <ActionCard action={workspace.action} />
+          <SettingsCard settings={workspace.settings} />
+          <ConfirmationCard confirmation={workspace.confirmation} />
+          <SandboxCard action={workspace.sandbox} />
+          <NotificationCard queueEntry={workspace.notification} />
         </div>
 
         <RouteStateLinks />

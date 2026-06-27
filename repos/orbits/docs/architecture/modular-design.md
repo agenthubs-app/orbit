@@ -25,6 +25,8 @@ Product Route Component
 
 `*-route-view-model.ts` 负责调用一个或多个模块 service、合并 success/failure state、过滤公开证据、把 provenance 和 action safety 映射成页面可渲染的数据。React presenter 只接收页面专用 view model，不直接读取 `features/<module>/contract.ts` 的 payload 字段，也不调用 mock/live/provider factory。
 
+这次解耦发生在产品 UI presenter 与业务 capability contract/service 之间。`features/**` 仍拥有业务 contract、service interface、mock/live implementation 和 provider mapper；`app/(app)/**` 的 route view-model/service 负责把这些业务结果转成页面私有 view model；React 组件只渲染 UI-ready 的 labels、links、counts、state variants 和安全提示。这样 UI 改版不会要求修改业务 contract，mock/live 替换也不会扩散到 JSX 组件树。
+
 共享 AI provider 使用同样结构：
 
 ```text
@@ -118,6 +120,7 @@ orbits
 
 - `features/<module>/contract.ts` 是模块/API/service 的稳定契约，不是 React 组件 props 的默认形状。
 - `/app/**` 页面如果需要组合多个 capability，应新增本路由的 view-model 或 route-service 文件，把业务 DTO 转为 render-neutral 数据。
+- route view-model/service 是产品 UI 与业务 capability 的防腐层。它可以依赖 service factory 和 contract DTO，但页面 presenter 不应反向依赖这些业务 contract 字段。
 - UI 组件可以依赖 `shared/ui` primitives 和本路由 view model 类型；不应依赖 mock service、live provider、Orbit AI provider payload、外部 provider payload 或 raw fixture shape。
 - AI/artifact/generated-view 场景必须先经过 feature-owned 或 route-owned mapper，再进入 side panel、card、list 等 UI presenter。
 

@@ -99,8 +99,15 @@ export function createModuleServiceFactory<TService>({
     capabilityId,
     defaultMode,
     availableModes,
-    create(mode = defaultMode) {
-      const requestedMode = resolveModuleMode(mode);
+    create(mode) {
+      const requestedMode =
+        mode === undefined
+          ? resolveModuleMode(
+              process.env.ORBIT_MODULE_MODE ??
+                process.env.ORBIT_FEATURE_MODE ??
+                defaultMode,
+            )
+          : resolveModuleMode(mode);
       const constructor = implementations[requestedMode];
 
       if (!constructor) {

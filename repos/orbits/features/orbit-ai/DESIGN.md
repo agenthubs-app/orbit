@@ -29,6 +29,17 @@ Mock 使用规则匹配用户 prompt，返回稳定 intent 和 panel。它不调
 
 Live 可以接 LLM intent parser 或 tool planner。模型输出必须经过 schema validation、allowed intent mapping 和 safety guard。LLM 不能直接返回任意 route 或任意 API call；只能选择注册过的能力。
 
+Gemini live agent 使用 server-side Gemini Interactions API。必需环境变量：
+
+- `ORBIT_AGENT_CONVERSATION_MODE=live`
+- `GEMINI_API_KEY=<server-side key>`
+
+可选环境变量：
+
+- `ORBIT_GEMINI_MODEL=gemini-3.5-flash`
+
+`ORBIT_AGENT_CONVERSATION_MODE` 只切换 Chat Agent conversation provider，不切换 `/app` 首页 command center 或其他模块。缺少 `GEMINI_API_KEY` 时，live conversation service 必须 fail closed，返回可恢复错误，不回退到 mock、不执行工具、不请求外部网络。Gemini planner 输出必须通过白名单 schema，只有 `events.recommend`、`contacts.recommend`、`followups.reviewQueue` 和 `chat.context` 可以进入内部工具适配层。
+
 ## API 与页面使用
 
 主要产品入口是 `/app`。Orbit AI 负责干净的中文优先聊天入口和功能侧页联动。它可以打开联系人、活动、跟进、聊天、关系健康或下一步面板，但页面内容仍来自对应模块。

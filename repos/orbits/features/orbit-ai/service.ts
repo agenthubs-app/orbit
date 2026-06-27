@@ -11,6 +11,8 @@ import type {
   OrbitAgentSendMessageInput,
 } from "./conversation-contract";
 
+export type MaybePromise<TValue> = TValue | Promise<TValue>;
+
 export interface OrbitAiCommandService {
   getCommandCenter: (input?: OrbitAiCommandInput) => OrbitAiCommandResult;
 }
@@ -18,13 +20,13 @@ export interface OrbitAiCommandService {
 export interface OrbitAgentConversationService {
   listConversations: (
     input?: OrbitAgentConversationInput,
-  ) => OrbitAgentConversationResult;
+  ) => MaybePromise<OrbitAgentConversationResult>;
   getConversation: (
     input: OrbitAgentConversationLookupInput,
-  ) => OrbitAgentConversationResult;
+  ) => MaybePromise<OrbitAgentConversationResult>;
   sendMessage: (
     input: OrbitAgentSendMessageInput,
-  ) => OrbitAgentConversationResult;
+  ) => MaybePromise<OrbitAgentConversationResult>;
 }
 
 export interface OrbitAgentArtifactTaskService {

@@ -1,41 +1,32 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
 import type { ReactNode } from "react";
-import type {
-  SourceConsistencyAuditedCollection,
-  SourceConsistencyAuditFinding,
-  SourceConsistencyProvenanceAuditPayload,
-  SourceConsistencyProvenanceAuditResult,
-  SourceConsistencyProvenanceAuditRunResult,
-} from "../../../../../features/audit/provenance-contract";
-import type {
-  DashboardAggregatePayload,
-  DashboardAggregateResult,
-  DashboardAggregateSummaryPayload,
-  DashboardAggregateSummaryResult,
-  DashboardHighValueRelationship,
-  DashboardNewContact,
-  DashboardRecentActivity,
-  DashboardSummaryMetric,
-} from "../../../../../features/dashboard/contract";
-import type {
-  IndustryDistributionBucket,
-  NetworkDistributionAnalyticsPayload,
-  NetworkDistributionAnalyticsResult,
-  NetworkGapAnalysisItem,
-  NetworkGapAnalysisPayload,
-  NetworkGapAnalysisResult,
-  RelationshipStrengthDistributionBucket,
-  ValueTypeDistributionBucket,
-} from "../../../../../features/dashboard/distribution-contract";
-import type {
-  HighPriorityOpportunity,
-  OpportunityReminderAnalyticsPayload,
-  OpportunityReminderAnalyticsResult,
-  OpportunityReminderRecomputeResult,
-} from "../../../../../features/dashboard/opportunity-contract";
 import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
-import { createAppDashboardRouteServices } from "./dashboard-service-factory";
+import {
+  loadAppDashboardRouteViewModel,
+  type AppDashboardActionResultViewModel,
+  type AppDashboardAggregateViewModel,
+  type AppDashboardAuditCollectionViewModel,
+  type AppDashboardAuditFindingViewModel,
+  type AppDashboardAuditViewModel,
+  type AppDashboardDistributionViewModel,
+  type AppDashboardGapViewModel,
+  type AppDashboardGapsViewModel,
+  type AppDashboardHighValueRelationshipViewModel,
+  type AppDashboardIndustryBucketViewModel,
+  type AppDashboardMetricViewModel,
+  type AppDashboardNewContactViewModel,
+  type AppDashboardOpportunitiesViewModel,
+  type AppDashboardOpportunityViewModel,
+  type AppDashboardRecentActivityViewModel,
+  type AppDashboardRouteScenario,
+  type AppDashboardRouteStateViewModel,
+  type AppDashboardSearchParams,
+  type AppDashboardStrengthBucketViewModel,
+  type AppDashboardSuccessViewModel,
+  type AppDashboardSummaryViewModel,
+  type AppDashboardValueTypeBucketViewModel,
+} from "./dashboard-route-view-model";
 
 const appDashboardStyles = `
 .app-dashboard-route {
@@ -254,12 +245,6 @@ const localDashboardSafetyCopy =
     "No side effects: no saved record, audit report, compliance report, message, notification, automated writing call, or outside network request occurs from this page.",
   );
 
-const localRouteStateSafetyCopy =
-  bilingualText(
-    "显示此状态时，不会产生保存记录、审计报告、合规报告、消息、通知、自动写作调用或外部网络请求。",
-    "No saved record, audit report, compliance report, message, notification, automated writing call, or outside network request occurs while this state is shown.",
-  );
-
 const localReviewBoundaries = [
   bilingualText("无保存记录", "No saved record"),
   bilingualText("无审计报告", "No audit report"),
@@ -270,99 +255,10 @@ const localReviewBoundaries = [
   bilingualText("无外部网络请求", "No outside network request"),
 ] as const;
 
-type AppDashboardSearchParams = Record<string, string | string[] | undefined>;
-type RouteScenario = "empty" | "pending" | "failure";
+type RouteScenario = AppDashboardRouteScenario;
 
 interface AppDashboardCommandCenterProps {
   searchParams?: AppDashboardSearchParams;
-}
-
-type RouteStateResult =
-  | DashboardAggregateResult
-  | DashboardAggregateSummaryResult
-  | NetworkDistributionAnalyticsResult
-  | NetworkGapAnalysisResult
-  | OpportunityReminderAnalyticsResult
-  | SourceConsistencyProvenanceAuditResult;
-type RouteStateFailure = Extract<RouteStateResult, { success: false }>;
-
-const routeRecoveryActions: Record<
-  RouteScenario,
-  readonly { href: string; label: string }[]
-> = {
-  empty: [
-    {
-      href: "/app/dashboard",
-      label: bilingualText("显示活跃仪表盘", "Show active dashboard"),
-    },
-    {
-      href: "/app/dashboard?action=run-dashboard-review",
-      label: bilingualText("预览仪表盘复核", "Preview dashboard review"),
-    },
-  ],
-  failure: [
-    {
-      href: "/app/dashboard",
-      label: bilingualText("重新加载仪表盘", "Reload dashboard"),
-    },
-    {
-      href: "/app/dashboard?scenario=pending",
-      label: bilingualText("检查来源状态", "Check source status"),
-    },
-  ],
-  pending: [
-    {
-      href: "/app/dashboard",
-      label: bilingualText("返回活跃仪表盘", "Return to active dashboard"),
-    },
-  ],
-};
-
-function readSearchParam(
-  searchParams: AppDashboardSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppDashboardSearchParams | undefined,
-): RouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
-}
-
-function isRouteStateFailure(result: RouteStateResult): result is RouteStateFailure {
-  return result.success === false;
-}
-
-function evidenceIdsForResult(result: RouteStateResult): readonly string[] {
-  if (result.success === true) {
-    return result.data.provenance.evidenceIds;
-  }
-
-  return result.error.evidenceIds;
-}
-
-function uniqueEvidenceIds(results: readonly RouteStateResult[]): string[] {
-  return Array.from(
-    new Set(results.flatMap((result) => evidenceIdsForResult(result))),
-  );
-}
-
-function firstFailure(results: readonly RouteStateResult[]): RouteStateFailure | null {
-  return results.find(isRouteStateFailure) ?? null;
 }
 
 function formatCount(count: number, singular: string, plural = `${singular}s`) {
@@ -373,12 +269,12 @@ function sourceConfidenceLabel(evidenceIds: readonly string[]): string {
   return evidenceIds.length >= 2 ? "High" : "Reviewed";
 }
 
-function priorityLabel(priority: HighPriorityOpportunity["priority"]): string {
+function priorityLabel(priority: AppDashboardOpportunityViewModel["priority"]): string {
   return priority === "high" ? "High" : "Medium";
 }
 
-function severityLabel(severity: SourceConsistencyAuditFinding["severity"]): string {
-  const labels: Record<SourceConsistencyAuditFinding["severity"], string> = {
+function severityLabel(severity: AppDashboardAuditFindingViewModel["severity"]): string {
+  const labels: Record<AppDashboardAuditFindingViewModel["severity"], string> = {
     high: "High",
     low: "Low",
     medium: "Medium",
@@ -387,8 +283,8 @@ function severityLabel(severity: SourceConsistencyAuditFinding["severity"]): str
   return labels[severity];
 }
 
-function valueTypeLabel(valueType: ValueTypeDistributionBucket["valueType"]): string {
-  const labels: Record<ValueTypeDistributionBucket["valueType"], string> = {
+function valueTypeLabel(valueType: AppDashboardValueTypeBucketViewModel["valueType"]): string {
+  const labels: Record<AppDashboardValueTypeBucketViewModel["valueType"], string> = {
     commercial_opportunity: "Commercial opportunity",
     investor_access: "Investor access",
     referral_path: "Referral path",
@@ -517,95 +413,24 @@ function RouteStateMarker({
   );
 }
 
-function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
+function RouteRecoveryActions({
+  actions,
+}: {
+  actions: AppDashboardRouteStateViewModel["recoveryActions"];
+}) {
   return (
     <nav
       aria-label="Dashboard route recovery actions"
       className="dashboard-state-links dashboard-recovery-actions"
       data-side-effects="none"
     >
-      {routeRecoveryActions[scenario].map((action) => (
+      {actions.map((action) => (
         <a href={action.href} key={action.href}>
           {action.label}
         </a>
       ))}
     </nav>
   );
-}
-
-function stateCopy(scenario: RouteScenario) {
-  if (scenario === "empty") {
-    return {
-      description: bilingualText(
-        "复核仪表盘趋势前，先添加有来源的联系人或活动上下文。",
-        "Add source-backed contacts or event context before reviewing dashboard trends.",
-      ),
-      emptyState: bilingualText(
-        "还没有关系活动具备足够来源证据可供仪表盘复核。",
-        "No relationship activity has enough source evidence for dashboard review.",
-      ),
-      guardrail: localRouteStateSafetyCopy,
-      nextStep: bilingualText(
-        "联系人、活动、跟进或审计记录存在后再返回。",
-        "Return after contacts, events, follow-ups, or audit records exist.",
-      ),
-      purpose: bilingualText(
-        "没有有来源关系活动时，仍让仪表盘复核保持可用。",
-        "Keep dashboard review useful when no sourced relationship activity is available.",
-      ),
-      title: bilingualText(
-        "仪表盘没有关系信号",
-        "Dashboard has no relationship signals",
-      ),
-    };
-  }
-
-  if (scenario === "pending") {
-    return {
-      description: bilingualText(
-        "有来源活动和来源链检查期间，仪表盘复核保持暂停。",
-        "Dashboard review stays paused while sourced activity and provenance are checked.",
-      ),
-      emptyState: bilingualText(
-        "关系证据准备好之前，仪表盘记录保持隐藏。",
-        "Dashboard records stay hidden until relationship evidence is ready.",
-      ),
-      guardrail: localRouteStateSafetyCopy,
-      nextStep: bilingualText(
-        "来源证据可用后返回活跃仪表盘。",
-        "Return to the active dashboard after source evidence is available.",
-      ),
-      purpose: bilingualText(
-        "保持仪表盘工作可见，但不暴露未完成的关系建议。",
-        "Keep dashboard work visible without exposing unfinished relationship guidance.",
-      ),
-      title: bilingualText(
-        "仪表盘仍在检查关系信号",
-        "Dashboard is still checking relationship signals",
-      ),
-    };
-  }
-
-  return {
-    description: bilingualText(
-      "关系证据检查期间，仪表盘摘要、网络缺口、机会和来源警告暂不可用。",
-      "Dashboard summary, network gaps, opportunities, and provenance warnings are unavailable while relationship evidence is checked.",
-    ),
-    emptyState: bilingualText(
-      "来源证据恢复前，仪表盘复核不可用。",
-      "The dashboard review is unavailable until source evidence recovers.",
-    ),
-    guardrail: localRouteStateSafetyCopy,
-    nextStep: bilingualText(
-      "采取动作前重新加载仪表盘。",
-      "Reload the dashboard before taking action.",
-    ),
-    purpose: bilingualText(
-      "有来源仪表盘上下文不可用时，显示可见恢复路径。",
-      "Show a visible recovery path when source-backed dashboard context is unavailable.",
-    ),
-    title: bilingualText("仪表盘无法加载", "Dashboard could not load"),
-  };
 }
 
 function EvidenceChips({
@@ -642,66 +467,44 @@ function ReviewStatusLine({ evidenceIds }: { evidenceIds: readonly string[] }) {
   );
 }
 
-function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
-  const services = createAppDashboardRouteServices();
-  const aggregateResult = services.dashboardService.getDashboardAggregate({
-    scenario,
-  });
-  const summaryResult = services.dashboardService.getDashboardSummary({
-    scenario,
-  });
-  const distributionResult = services.distributionService.getDistributions({
-    scenario,
-  });
-  const gapsResult = services.distributionService.getNetworkGaps({ scenario });
-  const opportunityResult =
-    services.opportunityService.getOpportunityReminderAnalytics({ scenario });
-  const auditResult = services.auditService.getAuditSnapshot({ scenario });
-  const results = [
-    aggregateResult,
-    summaryResult,
-    distributionResult,
-    gapsResult,
-    opportunityResult,
-    auditResult,
-  ] as const;
-  const copy = stateCopy(scenario);
-  const failure = firstFailure(results);
-  const evidenceIds = uniqueEvidenceIds(results);
-
+function RouteStateBoundary({
+  routeState,
+}: {
+  routeState: AppDashboardRouteStateViewModel;
+}) {
   return (
-    <RouteStateMarker scenario={scenario}>
+    <RouteStateMarker scenario={routeState.scenario}>
       <div
-        data-error-code={failure?.success === false ? failure.error.code : undefined}
+        data-error-code={routeState.errorCode ?? undefined}
         data-state-boundary="shared-ui-state-view"
       >
-        <WorkbenchSurface elevated eyebrow={bilingualText("仪表盘", "Dashboard")} title={copy.title}>
-          <p className="type-body">{copy.description}</p>
+        <WorkbenchSurface elevated eyebrow={bilingualText("仪表盘", "Dashboard")} title={routeState.copy.title}>
+          <p className="type-body">{routeState.copy.description}</p>
           <dl aria-label="Dashboard status details" className="relationship-meta">
             <div>
               <dt>{bilingualText("Orbit 已知", "What Orbit knows")}</dt>
-              <dd>{copy.purpose}</dd>
+              <dd>{routeState.copy.purpose}</dd>
             </div>
             <div>
               <dt>{bilingualText("当前状态", "Current status")}</dt>
-              <dd>{copy.emptyState}</dd>
+              <dd>{routeState.copy.emptyState}</dd>
             </div>
             <div>
               <dt>{bilingualText("安全检查", "Safety check")}</dt>
-              <dd>{copy.guardrail}</dd>
+              <dd>{routeState.copy.guardrail}</dd>
             </div>
             <div>
               <dt>{bilingualText("下一步", "Next step")}</dt>
-              <dd>{copy.nextStep}</dd>
+              <dd>{routeState.copy.nextStep}</dd>
             </div>
           </dl>
           <EvidenceChips
-            evidenceIds={evidenceIds}
+            evidenceIds={routeState.evidenceIds}
             label="Dashboard state evidence"
           />
         </WorkbenchSurface>
       </div>
-      <RouteRecoveryActions scenario={scenario} />
+      <RouteRecoveryActions actions={routeState.recoveryActions} />
     </RouteStateMarker>
   );
 }
@@ -712,10 +515,10 @@ function DashboardLedger({
   opportunities,
   summary,
 }: {
-  aggregate: DashboardAggregatePayload;
-  gaps: NetworkGapAnalysisPayload;
-  opportunities: OpportunityReminderAnalyticsPayload;
-  summary: DashboardAggregateSummaryPayload;
+  aggregate: AppDashboardAggregateViewModel;
+  gaps: AppDashboardGapsViewModel;
+  opportunities: AppDashboardOpportunitiesViewModel;
+  summary: AppDashboardSummaryViewModel;
 }) {
   const highSeverityGaps = gaps.gaps.filter((gap) => gap.severity === "high").length;
   const warningCount =
@@ -793,21 +596,11 @@ function DashboardReviewForm() {
 }
 
 function DashboardActionResult({
-  auditRun,
-  recompute,
+  result,
 }: {
-  auditRun: SourceConsistencyProvenanceAuditRunResult;
-  recompute: OpportunityReminderRecomputeResult;
+  result: AppDashboardActionResultViewModel;
 }) {
-  if (auditRun.success === false || recompute.success === false) {
-    let errorCode = "unavailable";
-
-    if (auditRun.success === false) {
-      errorCode = auditRun.error.code;
-    } else if (recompute.success === false) {
-      errorCode = recompute.error.code;
-    }
-
+  if (result.state === "failure") {
     return (
       <div
         aria-label="App dashboard local action result"
@@ -822,7 +615,7 @@ function DashboardActionResult({
             "Dashboard review could not refresh",
           )}
         </strong>
-        <span>{bilingualText("错误", "Error")}: {errorCode}</span>
+        <span>{bilingualText("错误", "Error")}: {result.errorCode}</span>
         <span>
           {bilingualText(
             "复核预览保持本地。",
@@ -839,15 +632,6 @@ function DashboardActionResult({
     );
   }
 
-  const deliveryChanged = Boolean(
-    recompute.data.provenance.externalNetworkRequested ||
-      recompute.data.provenance.emailProviderRequested ||
-      recompute.data.provenance.notificationProviderRequested ||
-      auditRun.data.provenance.externalNetworkRequested ||
-      auditRun.data.provenance.emailProviderRequested ||
-      auditRun.data.provenance.notificationProviderRequested,
-  );
-
   return (
     <div
       aria-label="App dashboard local action result"
@@ -858,8 +642,8 @@ function DashboardActionResult({
     >
       <strong>
         {bilingualText(
-          `仪表盘复核已准备：刷新 ${recompute.data.generatedOpportunityCount} 个机会提示`,
-          `Dashboard review ready: ${recompute.data.generatedOpportunityCount} opportunity prompts refreshed`,
+          `仪表盘复核已准备：刷新 ${result.generatedOpportunityCount} 个机会提示`,
+          `Dashboard review ready: ${result.generatedOpportunityCount} opportunity prompts refreshed`,
         )}
       </strong>
       <span>
@@ -870,16 +654,16 @@ function DashboardActionResult({
       </span>
       <span>
         {bilingualText("已刷新提示", "Refreshed prompts")}:{" "}
-        {recompute.data.generatedOpportunityCount}
+        {result.generatedOpportunityCount}
       </span>
       <span>
         {bilingualText("排队待复核的审计发现", "Audit findings queued for review")}:{" "}
-        {auditRun.data.generatedFindingIds.length}
+        {result.generatedFindingCount}
       </span>
       <span>{bilingualText("来源可信度：高", "Source confidence: High")}</span>
       <span>
         {bilingualText("已请求外部发送", "Outside delivery requested")}:{" "}
-        {deliveryChanged
+        {result.deliveryChanged
           ? bilingualText("需要复核", "review required")
           : bilingualText("无", "none")}
       </span>
@@ -915,8 +699,8 @@ function DashboardNextMove({
   gaps,
   opportunities,
 }: {
-  gaps: NetworkGapAnalysisPayload;
-  opportunities: OpportunityReminderAnalyticsPayload;
+  gaps: AppDashboardGapsViewModel;
+  opportunities: AppDashboardOpportunitiesViewModel;
 }) {
   const primaryOpportunity = opportunities.highPriorityOpportunities[0] ?? null;
   const primaryGap =
@@ -1012,26 +796,10 @@ function DashboardNextMove({
 }
 
 function SuccessBoundary({
-  aggregate,
-  audit,
-  gaps,
-  opportunities,
-  searchParams,
-  summary,
+  workspace,
 }: {
-  aggregate: DashboardAggregatePayload;
-  audit: SourceConsistencyProvenanceAuditPayload;
-  gaps: NetworkGapAnalysisPayload;
-  opportunities: OpportunityReminderAnalyticsPayload;
-  searchParams: AppDashboardSearchParams | undefined;
-  summary: DashboardAggregateSummaryPayload;
+  workspace: AppDashboardSuccessViewModel;
 }) {
-  const actionRequested =
-    readSearchParam(searchParams, "action") === "run-dashboard-review";
-  const services = actionRequested ? createAppDashboardRouteServices() : null;
-  const recomputeResult = services?.opportunityService.recomputeOpportunityReminderAnalytics();
-  const auditRunResult = services?.auditService.runAudit();
-
   return (
     <div data-state-boundary="app-dashboard-success">
       <WorkbenchSurface
@@ -1046,20 +814,20 @@ function SuccessBoundary({
             "Health-to-action workflow: act on the current relationship risk or opportunity first, then use the supporting metrics, coverage context, source confidence, and review status to decide what deserves attention next.",
           )}
         </p>
-        <DashboardNextMove gaps={gaps} opportunities={opportunities} />
+        <DashboardNextMove
+          gaps={workspace.gaps}
+          opportunities={workspace.opportunities}
+        />
         <p className="dashboard-safety-ledger">{localDashboardSafetyCopy}</p>
         <DashboardLedger
-          aggregate={aggregate}
-          gaps={gaps}
-          opportunities={opportunities}
-          summary={summary}
+          aggregate={workspace.aggregate}
+          gaps={workspace.gaps}
+          opportunities={workspace.opportunities}
+          summary={workspace.summary}
         />
         <DashboardReviewForm />
-        {actionRequested && recomputeResult && auditRunResult && (
-          <DashboardActionResult
-            auditRun={auditRunResult}
-            recompute={recomputeResult}
-          />
+        {workspace.actionResult && (
+          <DashboardActionResult result={workspace.actionResult} />
         )}
         <div aria-label="App dashboard source states">
           <h3 className="relationship-name">
@@ -1080,11 +848,11 @@ function SuccessBoundary({
           </nav>
         </div>
         <EvidenceChips
-          evidenceIds={audit.provenance.evidenceIds}
+          evidenceIds={workspace.audit.provenance.evidenceIds}
           label="App dashboard provenance evidence"
         />
         <HiddenLegacyTechnicalProvenanceDetails
-          evidenceIds={audit.provenance.evidenceIds.slice(0, 5)}
+          evidenceIds={workspace.audit.provenance.evidenceIds.slice(0, 5)}
         />
       </WorkbenchSurface>
     </div>
@@ -1094,7 +862,7 @@ function SuccessBoundary({
 function SummaryMetricCards({
   metrics,
 }: {
-  metrics: readonly DashboardSummaryMetric[];
+  metrics: readonly AppDashboardMetricViewModel[];
 }) {
   return (
     <div aria-label="Dashboard summary metrics" className="dashboard-card-grid">
@@ -1113,7 +881,7 @@ function SummaryMetricCards({
   );
 }
 
-function NewContactCard({ contact }: { contact: DashboardNewContact }) {
+function NewContactCard({ contact }: { contact: AppDashboardNewContactViewModel }) {
   return (
     <article
       aria-label={`Dashboard new contact ${contact.name}`}
@@ -1134,7 +902,7 @@ function NewContactCard({ contact }: { contact: DashboardNewContact }) {
 function HighValueRelationshipCard({
   relationship,
 }: {
-  relationship: DashboardHighValueRelationship;
+  relationship: AppDashboardHighValueRelationshipViewModel;
 }) {
   return (
     <article
@@ -1160,8 +928,8 @@ function DashboardSummarySection({
   aggregate,
   summary,
 }: {
-  aggregate: DashboardAggregatePayload;
-  summary: DashboardAggregateSummaryPayload;
+  aggregate: AppDashboardAggregateViewModel;
+  summary: AppDashboardSummaryViewModel;
 }) {
   return (
     <WorkbenchSurface
@@ -1190,7 +958,7 @@ function DashboardSummarySection({
   );
 }
 
-function IndustryCard({ bucket }: { bucket: IndustryDistributionBucket }) {
+function IndustryCard({ bucket }: { bucket: AppDashboardIndustryBucketViewModel }) {
   return (
     <article
       aria-label={`Industry distribution ${bucket.label}`}
@@ -1220,7 +988,7 @@ function IndustryCard({ bucket }: { bucket: IndustryDistributionBucket }) {
 function ValueTypeRow({
   bucket,
 }: {
-  bucket: ValueTypeDistributionBucket;
+  bucket: AppDashboardValueTypeBucketViewModel;
 }) {
   return (
     <div>
@@ -1236,7 +1004,7 @@ function ValueTypeRow({
 function StrengthRow({
   bucket,
 }: {
-  bucket: RelationshipStrengthDistributionBucket;
+  bucket: AppDashboardStrengthBucketViewModel;
 }) {
   return (
     <div>
@@ -1252,7 +1020,7 @@ function StrengthRow({
 function DistributionSection({
   distributions,
 }: {
-  distributions: NetworkDistributionAnalyticsPayload;
+  distributions: AppDashboardDistributionViewModel;
 }) {
   return (
     <WorkbenchSurface
@@ -1287,7 +1055,7 @@ function DistributionSection({
   );
 }
 
-function NetworkGapCard({ gap }: { gap: NetworkGapAnalysisItem }) {
+function NetworkGapCard({ gap }: { gap: AppDashboardGapViewModel }) {
   return (
     <article
       aria-label={`Network gap ${gap.label}`}
@@ -1313,7 +1081,7 @@ function NetworkGapCard({ gap }: { gap: NetworkGapAnalysisItem }) {
 function OpportunityCard({
   opportunity,
 }: {
-  opportunity: HighPriorityOpportunity;
+  opportunity: AppDashboardOpportunityViewModel;
 }) {
   return (
     <article
@@ -1345,8 +1113,8 @@ function GapAndOpportunitySection({
   gaps,
   opportunities,
 }: {
-  gaps: NetworkGapAnalysisPayload;
-  opportunities: OpportunityReminderAnalyticsPayload;
+  gaps: AppDashboardGapsViewModel;
+  opportunities: AppDashboardOpportunitiesViewModel;
 }) {
   return (
     <WorkbenchSurface
@@ -1380,7 +1148,7 @@ function GapAndOpportunitySection({
 function CollectionRow({
   collection,
 }: {
-  collection: SourceConsistencyAuditedCollection;
+  collection: AppDashboardAuditCollectionViewModel;
 }) {
   return (
     <div>
@@ -1396,7 +1164,7 @@ function CollectionRow({
 function AuditFindingCard({
   finding,
 }: {
-  finding: SourceConsistencyAuditFinding;
+  finding: AppDashboardAuditFindingViewModel;
 }) {
   return (
     <article
@@ -1420,7 +1188,7 @@ function AuditFindingCard({
 function ProvenanceSection({
   audit,
 }: {
-  audit: SourceConsistencyProvenanceAuditPayload;
+  audit: AppDashboardAuditViewModel;
 }) {
   const hasActiveFindings = audit.findings.length > 0;
 
@@ -1485,7 +1253,7 @@ function ProvenanceSection({
 function RecentActivitySection({
   activity,
 }: {
-  activity: readonly DashboardRecentActivity[];
+  activity: readonly AppDashboardRecentActivityViewModel[];
 }) {
   return (
     <WorkbenchSurface
@@ -1516,105 +1284,16 @@ function RecentActivitySection({
   );
 }
 
-function CompositionFailure({
-  results,
-}: {
-  results: readonly RouteStateResult[];
-}) {
-  const failure = firstFailure(results);
-  const evidenceIds = uniqueEvidenceIds(results);
-
-  return (
-    <div data-state-boundary="shared-ui-state-view">
-      <WorkbenchSurface
-        elevated
-        eyebrow={bilingualText("仪表盘", "Dashboard")}
-        title={bilingualText("仪表盘无法加载", "Dashboard could not load")}
-      >
-        <p className="type-body">
-          {bilingualText(
-            "关系证据检查期间，仪表盘摘要、网络缺口、机会和来源警告暂不可用。",
-            "Dashboard summary, network gaps, opportunities, and provenance warnings are unavailable while relationship evidence is checked.",
-          )}
-        </p>
-        <dl aria-label="Dashboard status details" className="relationship-meta">
-          <div>
-            <dt>{bilingualText("当前状态", "Current status")}</dt>
-            <dd>
-              {bilingualText(
-                "有来源的仪表盘数据返回前，复核会保持暂停。",
-                "Review is paused until source-backed dashboard data returns.",
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>{bilingualText("安全检查", "Safety check")}</dt>
-            <dd>
-              {bilingualText(
-                "没有保存记录、审计报告、消息或通知发生更改。",
-                "No saved record, audit report, message, or notification changed.",
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>{bilingualText("错误", "Error")}</dt>
-            <dd>{failure?.success === false ? failure.error.code : "unavailable"}</dd>
-          </div>
-        </dl>
-        <EvidenceChips
-          evidenceIds={evidenceIds}
-          label="Dashboard failure evidence"
-        />
-      </WorkbenchSurface>
-    </div>
-  );
-}
-
 export function AppDashboardCommandCenter({
   searchParams,
 }: AppDashboardCommandCenterProps) {
-  const services = createAppDashboardRouteServices();
-  const requestedScenario = readRouteScenario(searchParams);
+  const viewModel = loadAppDashboardRouteViewModel(searchParams);
 
-  if (requestedScenario) {
+  if (viewModel.state === "route-state") {
     return (
       <div className="app-dashboard-route">
         <style>{appDashboardStyles}</style>
-        <RouteStateBoundary scenario={requestedScenario} />
-      </div>
-    );
-  }
-
-  const aggregateResult = services.dashboardService.getDashboardAggregate({
-    activityLimit: 4,
-  });
-  const summaryResult = services.dashboardService.getDashboardSummary();
-  const distributionResult = services.distributionService.getDistributions();
-  const gapsResult = services.distributionService.getNetworkGaps();
-  const opportunityResult =
-    services.opportunityService.getOpportunityReminderAnalytics();
-  const auditResult = services.auditService.getAuditSnapshot();
-  const results = [
-    aggregateResult,
-    summaryResult,
-    distributionResult,
-    gapsResult,
-    opportunityResult,
-    auditResult,
-  ] as const;
-
-  if (
-    aggregateResult.success === false ||
-    summaryResult.success === false ||
-    distributionResult.success === false ||
-    gapsResult.success === false ||
-    opportunityResult.success === false ||
-    auditResult.success === false
-  ) {
-    return (
-      <div className="app-dashboard-route">
-        <style>{appDashboardStyles}</style>
-        <CompositionFailure results={results} />
+        <RouteStateBoundary routeState={viewModel.routeState} />
       </div>
     );
   }
@@ -1622,25 +1301,18 @@ export function AppDashboardCommandCenter({
   return (
     <div className="app-dashboard-route">
       <style>{appDashboardStyles}</style>
-      <SuccessBoundary
-        aggregate={aggregateResult.data}
-        audit={auditResult.data}
-        gaps={gapsResult.data}
-        opportunities={opportunityResult.data}
-        searchParams={searchParams}
-        summary={summaryResult.data}
-      />
+      <SuccessBoundary workspace={viewModel.workspace} />
       <DashboardSummarySection
-        aggregate={aggregateResult.data}
-        summary={summaryResult.data}
+        aggregate={viewModel.workspace.aggregate}
+        summary={viewModel.workspace.summary}
       />
-      <DistributionSection distributions={distributionResult.data} />
+      <DistributionSection distributions={viewModel.workspace.distributions} />
       <GapAndOpportunitySection
-        gaps={gapsResult.data}
-        opportunities={opportunityResult.data}
+        gaps={viewModel.workspace.gaps}
+        opportunities={viewModel.workspace.opportunities}
       />
-      <ProvenanceSection audit={auditResult.data} />
-      <RecentActivitySection activity={aggregateResult.data.recentActivity} />
+      <ProvenanceSection audit={viewModel.workspace.audit} />
+      <RecentActivitySection activity={viewModel.workspace.aggregate.recentActivity} />
     </div>
   );
 }

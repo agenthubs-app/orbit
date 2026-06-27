@@ -1,0 +1,381 @@
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import test from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+async function importProjectModule<TModule>(
+  pathFromRoot: string,
+): Promise<TModule> {
+  const absolutePath = join(projectRoot, pathFromRoot);
+
+  assert.equal(
+    existsSync(absolutePath),
+    true,
+    `${pathFromRoot} must exist for the Gemini live Orbit Agent provider`,
+  );
+
+  return (await import(pathToFileURL(absolutePath).href)) as TModule;
+}
+
+function jsonResponse(body: unknown, init?: ResponseInit): Response {
+  return new Response(JSON.stringify(body), {
+    headers: { "content-type": "application/json" },
+    status: 200,
+    ...init,
+  });
+}
+
+test("Gemini Orbit Agent provider validates the planner schema", async () => {
+  const provider = await importProjectModule<{
+    parseGeminiOrbitAgentPlannerOutput: (value: string) => {
+      assistantMessage: string;
+      intent: string;
+      toolRequests: readonly {
+        requiresUserConfirmation: true;
+        toolName: string;
+      }[];
+    } | null;
+  }>("features/orbit-ai/gemini-provider.ts");
+
+  const valid = provider.parseGeminiOrbitAgentPlannerOutput(
+    JSON.stringify({
+      assistantMessage: "我会先整理活动推荐，任何外部动作仍需确认。",
+      intent: "event_recommendations",
+      toolRequests: [
+        {
+          arguments: { contactName: "Maya" },
+          requiresUserConfirmation: true,
+          toolName: "events.recommend",
+        },
+      ],
+    }),
+  );
+  const invalidTool = provider.parseGeminiOrbitAgentPlannerOutput(
+    JSON.stringify({
+      assistantMessage: "I sent the email.",
+      intent: "event_recommendations",
+      toolRequests: [
+        {
+          arguments: {},
+          requiresUserConfirmation: false,
+          toolName: "gmail.send",
+        },
+      ],
+    }),
+  );
+  const invalidGeneralChat = provider.parseGeminiOrbitAgentPlannerOutput(
+    JSON.stringify({
+      assistantMessage: "自然语言回复。",
+      intent: "general_chat",
+      toolRequests: [
+        {
+          arguments: {},
+          requiresUserConfirmation: true,
+          toolName: "events.recommend",
+        },
+      ],
+    }),
+  );
+
+  assert.equal(valid?.intent, "event_recommendations");
+  assert.equal(valid?.toolRequests[0]?.toolName, "events.recommend");
+  assert.equal(invalidTool, null);
+  assert.equal(invalidGeneralChat, null);
+});
+
+test("live Gemini Orbit Agent fails closed without an API key", async () => {
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config?: {
+      apiKey?: string | null;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        error?: {
+          code: string;
+          provenance: {
+            safety: {
+              aiProviderRequested: boolean;
+              externalNetworkRequested: boolean;
+              externalSideEffectsExecuted: false;
+            };
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: null,
+  });
+  const result = await service.sendMessage({
+    message: "帮我推荐下周适合见 Maya 的活动",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error?.code, "ORBIT_AGENT_GEMINI_API_KEY_MISSING");
+  assert.equal(result.error?.provenance.safety.aiProviderRequested, false);
+  assert.equal(result.error?.provenance.safety.externalNetworkRequested, false);
+  assert.equal(
+    result.error?.provenance.safety.externalSideEffectsExecuted,
+    false,
+  );
+});
+
+test("Orbit Agent conversation live mode can be enabled without switching command center live", async () => {
+  const previousAgentMode = process.env.ORBIT_AGENT_CONVERSATION_MODE;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+  const factoryModule = await importProjectModule<{
+    resolveOrbitAiCommandService: () => {
+      mode?: string;
+      success: boolean;
+    };
+    resolveOrbitAgentConversationService: () => {
+      mode?: string;
+      success: boolean;
+    };
+  }>("features/orbit-ai/service-factory.ts");
+
+  try {
+    process.env.ORBIT_AGENT_CONVERSATION_MODE = "live";
+    delete process.env.ORBIT_MODULE_MODE;
+
+    const conversation = factoryModule.resolveOrbitAgentConversationService();
+    const commandCenter = factoryModule.resolveOrbitAiCommandService();
+
+    assert.equal(conversation.success, true);
+    assert.equal(conversation.mode, "live");
+    assert.equal(commandCenter.success, true);
+    assert.equal(commandCenter.mode, "mock");
+  } finally {
+    if (previousAgentMode === undefined) {
+      delete process.env.ORBIT_AGENT_CONVERSATION_MODE;
+    } else {
+      process.env.ORBIT_AGENT_CONVERSATION_MODE = previousAgentMode;
+    }
+
+    if (previousModuleMode === undefined) {
+      delete process.env.ORBIT_MODULE_MODE;
+    } else {
+      process.env.ORBIT_MODULE_MODE = previousModuleMode;
+    }
+  }
+});
+
+test("live Gemini Orbit Agent maps allowed planner output into an artifact", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      model: string;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly {
+            result: {
+              presentation: { preferredSurface: string };
+              safety: { externalSideEffectsExecuted: false };
+            };
+            task: { kind: string };
+          }[];
+          assistantMessage: string;
+          proposedToolIntents: readonly {
+            requiresUserConfirmation: boolean;
+            toolFamily: string;
+          }[];
+          provenance: {
+            generationMethod: string;
+            safety: {
+              aiProviderRequested: boolean;
+              domainToolCallsExecuted: boolean;
+              externalNetworkRequested: boolean;
+              externalSideEffectsExecuted: false;
+            };
+            source: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  assistantMessage:
+                    "我会先整理活动推荐；报名、日历或外部联系动作仍需要你确认。",
+                  intent: "event_recommendations",
+                  toolRequests: [
+                    {
+                      arguments: { contactName: "Maya" },
+                      requiresUserConfirmation: true,
+                      toolName: "events.recommend",
+                    },
+                  ],
+                }),
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      });
+    }) as typeof fetch,
+    model: "gemini-3.5-flash",
+  });
+
+  const result = await service.sendMessage({
+    message: "帮我推荐下周适合见 Maya 的活动",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 1);
+  assert.equal(result.data?.artifacts[0]?.task.kind, "event_recommendations");
+  assert.equal(
+    result.data?.artifacts[0]?.result.presentation.preferredSurface,
+    "side_panel",
+  );
+  assert.equal(result.data?.proposedToolIntents[0]?.toolFamily, "events");
+  assert.equal(
+    result.data?.proposedToolIntents[0]?.requiresUserConfirmation,
+    true,
+  );
+  assert.equal(result.data?.provenance.source, "provider:gemini-interactions-api");
+  assert.equal(result.data?.provenance.generationMethod, "gemini-live-agent-reply");
+  assert.equal(result.data?.provenance.safety.aiProviderRequested, true);
+  assert.equal(result.data?.provenance.safety.externalNetworkRequested, true);
+  assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, true);
+  assert.equal(
+    result.data?.provenance.safety.externalSideEffectsExecuted,
+    false,
+  );
+  assert.equal(
+    result.data?.artifacts[0]?.result.safety.externalSideEffectsExecuted,
+    false,
+  );
+});
+
+test("live Gemini Orbit Agent rejects invalid planner output before tools run", async () => {
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        error?: {
+          code: string;
+          provenance: {
+            safety: {
+              aiProviderRequested: boolean;
+              domainToolCallsExecuted: boolean;
+              externalNetworkRequested: boolean;
+              externalSideEffectsExecuted: false;
+            };
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async () =>
+      jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  assistantMessage: "I created a calendar invite.",
+                  intent: "event_recommendations",
+                  toolRequests: [
+                    {
+                      arguments: {},
+                      requiresUserConfirmation: false,
+                      toolName: "calendar.create",
+                    },
+                  ],
+                }),
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      })) as typeof fetch,
+  });
+  const result = await service.sendMessage({
+    message: "帮我安排活动",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error?.code, "ORBIT_AGENT_GEMINI_SCHEMA_INVALID");
+  assert.equal(result.error?.provenance.safety.aiProviderRequested, true);
+  assert.equal(result.error?.provenance.safety.externalNetworkRequested, true);
+  assert.equal(result.error?.provenance.safety.domainToolCallsExecuted, false);
+  assert.equal(
+    result.error?.provenance.safety.externalSideEffectsExecuted,
+    false,
+  );
+});
+
+test("live Gemini Orbit Agent surfaces provider request failures", async () => {
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        error?: {
+          code: string;
+          message: string;
+          provenance: {
+            safety: {
+              aiProviderRequested: boolean;
+              externalNetworkRequested: boolean;
+            };
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async () =>
+      jsonResponse(
+        [
+          {
+            error: {
+              code: 403,
+              message: "Gemini API is disabled for this project.",
+              status: "PERMISSION_DENIED",
+            },
+          },
+        ],
+        { status: 403 },
+      )) as typeof fetch,
+  });
+  const result = await service.sendMessage({
+    message: "帮我推荐活动",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error?.code, "ORBIT_AGENT_GEMINI_REQUEST_FAILED");
+  assert.match(result.error?.message ?? "", /disabled for this project/);
+  assert.equal(result.error?.provenance.safety.aiProviderRequested, true);
+  assert.equal(result.error?.provenance.safety.externalNetworkRequested, true);
+});

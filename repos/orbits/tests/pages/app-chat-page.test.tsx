@@ -163,6 +163,7 @@ test("/app/chat opens an agent artifact side panel from a natural-language promp
   const primaryText = primaryTextFromHtml(html);
 
   assert.match(html, /data-agent-panel="open"/);
+  assert.match(html, /data-agent-mode="active"/);
   assert.match(html, /data-agent-artifact-kind="event_recommendations"/);
   assert.match(html, /data-agent-artifact-surface="side_panel"/);
   assert.match(primaryText, /Agent reply/i);
@@ -174,7 +175,12 @@ test("/app/chat opens an agent artifact side panel from a natural-language promp
   assert.match(html, /data-requires-confirmation="true"/);
   assert.match(html, /data-side-effects="none"/);
   assert.match(html, /evidence:orbit-agent:event-recommendations:fixture/);
-  assert.match(primaryText, /Conversation inventory/i);
+  assert.ok(
+    html.indexOf("Agent reply") <
+      html.indexOf("<details class=\"chat-agent-supporting-workspace\""),
+    "agent output should be visible before the supporting review workspace",
+  );
+  assert.match(html, /Conversation inventory/i);
   assert.doesNotMatch(primaryText, internalCopyPattern);
 });
 

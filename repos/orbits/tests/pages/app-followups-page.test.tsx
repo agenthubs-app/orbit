@@ -317,6 +317,13 @@ test("/app/followups route adapter avoids raw fixtures and documents mock to liv
     ),
     "utf8",
   );
+  const routeViewModelSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model.ts",
+    ),
+    "utf8",
+  );
   const liveDoc = fs.readFileSync(
     path.join(
       projectRoot,
@@ -327,8 +334,16 @@ test("/app/followups route adapter avoids raw fixtures and documents mock to liv
 
   assert.doesNotMatch(adapterSource, /from\s+["'][^"']*fixtures?/i);
   assert.doesNotMatch(adapterSource, /createMock/);
-  assert.match(adapterSource, /createAppFollowupsRouteServices/);
+  assert.doesNotMatch(adapterSource, /features\/(?:followups|notifications)/);
+  assert.doesNotMatch(adapterSource, /createAppFollowupsRouteServices/);
+  assert.match(adapterSource, /loadAppFollowupsRouteViewModel/);
   assert.match(adapterSource, /RouteStateBoundary/);
+  assert.match(routeViewModelSource, /features\/followups\/contract/);
+  assert.match(routeViewModelSource, /features\/followups\/message-draft-contract/);
+  assert.match(routeViewModelSource, /features\/notifications\/contract/);
+  assert.match(routeViewModelSource, /createAppFollowupsRouteServices/);
+  assert.doesNotMatch(routeViewModelSource, /from\s+["']react["']/);
+  assert.doesNotMatch(routeViewModelSource, /shared\/ui/);
   assert.match(serviceFactorySource, /createModuleServiceFactory/);
   assert.match(serviceFactorySource, /createFollowupTaskGenerationService/);
   assert.match(serviceFactorySource, /createMessageDraftGeneratorService/);

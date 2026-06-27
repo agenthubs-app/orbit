@@ -483,18 +483,23 @@ function readAgentPrompt(
   return prompt && prompt.trim() ? prompt.trim() : null;
 }
 
-function agentTurnViewModel(
+async function agentTurnViewModel(
   prompt: string | null,
-): AppChatAgentTurnViewModel | null {
+): Promise<AppChatAgentTurnViewModel | null> {
   if (!prompt) {
     return null;
   }
 
   const orbitAgentService = createOrbitAgentConversationService();
-  const result = orbitAgentService.sendMessage({ message: prompt });
+  const result = await orbitAgentService.sendMessage({ message: prompt });
 
   if (result.success === false) {
-    return null;
+    return {
+      artifactSurface: null,
+      assistantMessage: `Agent 暂时无法完成这次回复：${result.error.message}`,
+      prompt,
+      proposedToolLabels: [],
+    };
   }
 
   return {
@@ -587,9 +592,9 @@ export function loadAppChatRouteStateViewModel(
   };
 }
 
-export function loadAppChatRouteViewModel(
+export async function loadAppChatRouteViewModel(
   searchParams?: AppChatSearchParams,
-): AppChatRouteViewModel {
+): Promise<AppChatRouteViewModel> {
   const requestedScenario = readAppChatRouteScenario(searchParams);
 
   if (requestedScenario) {
@@ -665,7 +670,7 @@ export function loadAppChatRouteViewModel(
   }
 
   const action = readAppChatSearchParam(searchParams, "action");
-  const agentTurn = agentTurnViewModel(readAgentPrompt(searchParams));
+  const agentTurn = await agentTurnViewModel(readAgentPrompt(searchParams));
   const selectedAssist = assistResult.data.assists[0];
   const sendResult =
     action === "record-local-reply"

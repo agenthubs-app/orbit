@@ -397,6 +397,13 @@ test("/app/contacts/new route adapter avoids raw fixtures and documents mock to 
     path.join(projectRoot, "app/(app)/app/contacts/new/page.tsx"),
     "utf8",
   );
+  const routeServicesSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities/contacts-new-route-services.ts",
+    ),
+    "utf8",
+  );
   const liveDoc = fs.readFileSync(
     path.join(
       projectRoot,
@@ -406,14 +413,28 @@ test("/app/contacts/new route adapter avoids raw fixtures and documents mock to 
   );
 
   assert.doesNotMatch(pageSource, /fixtures/i);
-  assert.match(pageSource, /createManualContactCreationService/);
-  assert.match(pageSource, /createBusinessCardScanOcrService/);
-  assert.match(pageSource, /createQrScanConnectService/);
-  assert.match(pageSource, /createEventAttendeeImportService/);
-  assert.match(pageSource, /createExternalContactsImportService/);
-  assert.match(pageSource, /createEmailCalendarSignalService/);
-  assert.match(pageSource, /createReferralRecommendationService/);
-  assert.match(pageSource, /createDuplicateMergeService/);
+  assert.doesNotMatch(pageSource, /features\/(?:acquisition|permissions)/);
+  assert.doesNotMatch(pageSource, /createManualContactCreationService/);
+  assert.doesNotMatch(pageSource, /createBusinessCardScanOcrService/);
+  assert.doesNotMatch(pageSource, /createQrScanConnectService/);
+  assert.doesNotMatch(pageSource, /createEventAttendeeImportService/);
+  assert.doesNotMatch(pageSource, /createExternalContactsImportService/);
+  assert.doesNotMatch(pageSource, /createEmailCalendarSignalService/);
+  assert.doesNotMatch(pageSource, /createReferralRecommendationService/);
+  assert.doesNotMatch(pageSource, /createDuplicateMergeService/);
+  assert.doesNotMatch(pageSource, /createAppContactsNewRouteServices/);
+  assert.match(pageSource, /loadAppContactsNewRouteViewModel/);
+  assert.match(routeServicesSource, /features\/acquisition\/service-factory/);
+  assert.match(routeServicesSource, /features\/permissions\/service-factory/);
+  assert.match(routeServicesSource, /createAppContactsNewRouteServices/);
+  assert.match(routeServicesSource, /createManualContactCreationService/);
+  assert.match(routeServicesSource, /createBusinessCardScanOcrService/);
+  assert.match(routeServicesSource, /createQrScanConnectService/);
+  assert.match(routeServicesSource, /createEventAttendeeImportService/);
+  assert.match(routeServicesSource, /createExternalContactsImportService/);
+  assert.match(routeServicesSource, /createEmailCalendarSignalService/);
+  assert.match(routeServicesSource, /createReferralRecommendationService/);
+  assert.match(routeServicesSource, /createDuplicateMergeService/);
   assert.match(pageSource, /StateView/);
 
   for (const required of [

@@ -1,12 +1,14 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
 import type { ReactNode } from "react";
-import { createProfileDocumentExtractionService } from "../../../../../features/profile/service-factory";
-import { createProfileService } from "../../../../../features/profile/service-factory";
-import { createProfileSignalReviewQueueService } from "../../../../../features/profile/service-factory";
-import type { ProfileCompletenessField } from "../../../../../features/profile/contract";
 import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { StateView } from "../../../../../shared/ui/state-view";
+import {
+  loadAppProfileRouteViewModel,
+  type AppProfileRouteScenario,
+  type AppProfileRouteStateViewModel,
+  type AppProfileSearchParams,
+} from "./profile-route-view-model";
 
 const appProfileStyles = `
 .app-profile-route {
@@ -155,159 +157,8 @@ const routeStateChecks = [
   },
 ] as const;
 
-const suggestedIntroChannels = ["warm intro", "event follow-up"] as const;
-
-type AppProfileSearchParams = Record<string, string | string[] | undefined>;
-type RouteScenario = "empty" | "pending" | "failure";
-type EvidenceResult =
-  | {
-      success: true;
-      data: {
-        provenance: {
-          evidenceIds: readonly string[];
-        };
-      };
-    }
-  | {
-      success: false;
-      error: {
-        code: string;
-      };
-    };
-
 export interface AppProfileCommandCenterProps {
   searchParams?: AppProfileSearchParams;
-}
-
-function readSearchParam(
-  searchParams: AppProfileSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readSearchParamList(
-  searchParams: AppProfileSearchParams | undefined,
-  key: string,
-): readonly string[] | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    const values = value.map((item) => item.trim()).filter(Boolean);
-
-    return values.length ? Array.from(new Set(values)) : null;
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    return [value.trim()];
-  }
-
-  return null;
-}
-
-function readRouteScenario(
-  searchParams: AppProfileSearchParams | undefined,
-): RouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
-}
-
-function firstEvidence(evidenceIds: readonly string[] | undefined): string {
-  return evidenceIds?.[0] ?? "evidence:unavailable";
-}
-
-function evidenceFromResult(result: EvidenceResult): string {
-  if ("error" in result) {
-    return result.error.code;
-  }
-
-  return firstEvidence(result.data.provenance.evidenceIds);
-}
-
-function formatList(items: readonly string[] | undefined): string {
-  return items?.length ? items.join(", ") : "not selected";
-}
-
-function formatNaturalList(items: readonly string[] | undefined): string {
-  if (!items?.length) {
-    return "not selected";
-  }
-
-  if (items.length === 1) {
-    return items[0] ?? "not selected";
-  }
-
-  if (items.length === 2) {
-    return `${items[0]} and ${items[1]}`;
-  }
-
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
-function personalizeReviewSummary(summary: string, displayName: string): string {
-  return summary.replace("operator review", `${displayName} review`);
-}
-
-function formatIntroChannelLabel(channel: string): string {
-  const labels: Record<string, string> = {
-    "event follow-up": bilingualText("活动后跟进", "event follow-up"),
-    "warm intro": bilingualText("暖介绍", "warm intro"),
-  };
-
-  return labels[channel] ?? channel;
-}
-
-function formatIntroChannelList(items: readonly string[] | undefined): string {
-  return items?.length
-    ? items.map(formatIntroChannelLabel).join(", ")
-    : bilingualText("未选择", "not selected");
-}
-
-function formatNaturalChineseList(items: readonly string[] | undefined): string {
-  const labels =
-    items?.map((item) => formatIntroChannelLabel(item).split(" / ")[0] ?? item) ??
-    [];
-
-  if (!labels.length) {
-    return "未选择";
-  }
-
-  if (labels.length === 1) {
-    return labels[0] ?? "未选择";
-  }
-
-  return labels.join("和");
-}
-
-function formatProfileFieldLabel(
-  field: ProfileCompletenessField | string | null,
-): string {
-  const labels: Record<ProfileCompletenessField, string> = {
-    displayName: bilingualText("显示名称", "display name"),
-    headline: bilingualText("标题", "headline"),
-    homeMarket: bilingualText("所在市场", "home market"),
-    preferredIntroChannels: bilingualText("介绍偏好", "preferred intro channels"),
-    relationshipGoal: bilingualText("关系目标", "relationship goal"),
-    targetRelationshipTypes: bilingualText(
-      "目标关系类型",
-      "target relationship types",
-    ),
-  };
-
-  return field && field in labels
-    ? labels[field as ProfileCompletenessField]
-    : bilingualText("个人资料细节", "profile details");
 }
 
 function EvidenceChips({
@@ -336,7 +187,7 @@ function RouteStateMarker({
   scenario,
 }: {
   children: ReactNode;
-  scenario: RouteScenario;
+  scenario: AppProfileRouteScenario;
 }) {
   const routeStateUrl = `/app/profile?scenario=${scenario}`;
 
@@ -348,174 +199,24 @@ function RouteStateMarker({
 }
 
 function RouteStateBoundary({
-  scenario,
+  routeState,
 }: {
-  scenario: RouteScenario;
+  routeState: AppProfileRouteStateViewModel;
 }) {
-  const profileService = createProfileService();
-  const extractionService = createProfileDocumentExtractionService();
-  const signalService = createProfileSignalReviewQueueService();
-
-  if (scenario === "empty") {
-    const emptyProfile = profileService.getProfile({ scenario: "empty" });
-
-    return (
-      <RouteStateMarker scenario={scenario}>
-        <StateView
-          description={bilingualText(
-            "还没有足够的来源上下文，无法用个人资料来指导关系工作。",
-            "No relationship profile has enough sourced context for profile-informed relationship work.",
-          )}
-          emptyState={bilingualText(
-            "手动资料、文档草稿和复核建议都还没有准备好。",
-            "No manual profile, document draft, or review suggestion is ready.",
-          )}
-          evidence={[evidenceFromResult(emptyProfile)]}
-          eyebrow={bilingualText("还没有资料来源", "No profile source yet")}
-          guardrail={bilingualText(
-            "Orbit 可以提示设置资料，但没有资料上下文时不能创建关系动作。",
-            "Orbit can invite profile setup, but it cannot create relationship actions without profile context.",
-          )}
-          nextStep={bilingualText(
-            "来源详情会说明为什么在可复核上下文准备好之前，资料设置保持不变。",
-            "Source details explain why profile setup stays unchanged until reviewed context is ready.",
-          )}
-          purpose={bilingualText(
-            "从已复核的来源检查开始设置个人资料。",
-            "Start profile setup from reviewed source checks.",
-          )}
-          recoveryActions={[
-            {
-              id: "profile-empty-open-setup",
-              href: "/app/profile",
-              label: bilingualText("打开资料设置", "Open profile setup"),
-              recoveryCopy:
-                bilingualText(
-                  "打开资料设置，添加已复核的个人资料上下文。",
-                  "Open profile setup to add reviewed profile context.",
-                ),
-            },
-          ]}
-          title={bilingualText("资料准备度为空", "Profile readiness is empty")}
-        />
-      </RouteStateMarker>
-    );
-  }
-
-  if (scenario === "pending") {
-    const pendingProfile = profileService.getProfile({ scenario: "pending" });
-    const pendingExtraction = extractionService.extractBusinessCardDraft({
-      scenario: "pending",
-    });
-    const pendingSuggestions = signalService.listUpdateSuggestions({
-      scenario: "pending",
-    });
-    const evidence = [
-      evidenceFromResult(pendingProfile),
-      evidenceFromResult(pendingExtraction),
-      evidenceFromResult(pendingSuggestions),
-    ];
-
-    return (
-      <RouteStateMarker scenario={scenario}>
-        <StateView
-          description={bilingualText(
-            "资料编辑、导入的名片草稿和资料修改建议正在等待人工复核。",
-            "Manual review is pending for profile edits, an imported business-card draft, and suggested profile changes.",
-          )}
-          emptyState={bilingualText(
-            "手动编辑、名片草稿和建议修改会暂缓，直到资料所有者复核证据。",
-            "Manual edits, the business-card draft, and suggested changes are held until the profile owner reviews their evidence.",
-          )}
-          evidence={evidence}
-          eyebrow={bilingualText("正在检查资料来源", "Checking profile sources")}
-          guardrail={bilingualText(
-            "被暂缓的资料不能更新关系评分、接受建议或触发外部工作。",
-            "Held profile material cannot update relationship scoring, accept suggestions, or trigger outside work.",
-          )}
-          nextStep={bilingualText(
-            "来源详情会显示哪些资料来源仍在等待复核。",
-            "Source details show which profile sources are still held for review.",
-          )}
-          purpose={bilingualText(
-            "本地资料来源复核状态未完成时，保持资料设置可见。",
-            "Keep profile setup visible while local profile-source review states resolve.",
-          )}
-          recoveryActions={[
-            {
-              id: "profile-pending-review-sources",
-              href: "/app/profile",
-              label: bilingualText(
-                "检查暂缓的资料来源",
-                "Review held profile sources",
-              ),
-              recoveryCopy:
-                bilingualText(
-                  "检查暂缓的资料来源，同时手动编辑、名片草稿和建议修改继续保持暂缓。",
-                  "Review held profile sources while manual edits, business-card draft, and suggested changes stay held.",
-                ),
-            },
-          ]}
-          title={bilingualText("资料准备度正在加载", "Profile readiness is loading")}
-        />
-      </RouteStateMarker>
-    );
-  }
-
-  const failureState = signalService.listUpdateSuggestions({
-    scenario: "failure",
-  });
-
   return (
-    <RouteStateMarker scenario={scenario}>
+    <RouteStateMarker scenario={routeState.scenario}>
       <StateView
-        description={bilingualText(
-          "资料来源复核无法加载，因此建议修改暂不可用。",
-          "Suggested profile changes are unavailable because profile-source review could not load.",
-        )}
-        emptyState={bilingualText(
-          "没有接受任何建议修改，没有保存资料记录，也没有联系外部工具。",
-          "No suggested profile change was accepted, no profile record was saved, and no outside tool was contacted.",
-        )}
-        evidence={
-          failureState.success === false
-            ? [failureState.error.code, firstEvidence(failureState.error.evidenceIds)]
-            : ["profile-route-expected-failure-not-returned"]
-        }
-      eyebrow={bilingualText("需要处理", "Needs attention")}
-      guardrail={bilingualText(
-        "返回只会读取资料来源复核；不会接受建议，也不会联系外部工具。",
-        "Returning only reads the profile source review; it does not accept suggestions or contact any outside tool.",
-      )}
-      nextStep={bilingualText(
-        "来源详情会说明为什么在来源复核可用前，Ari 当前资料保持不变。",
-        "Source details explain why Ari's current profile stays unchanged until source review is available.",
-      )}
-      purpose={bilingualText(
-        "展示无副作用的资料来源恢复路径。",
-        "Show a profile-source recovery path without side effects.",
-      )}
-      recoveryActions={[
-        {
-          id: "profile-failure-return",
-          href: "/app/profile",
-          label: bilingualText(
-            "返回资料来源复核",
-            "Return to profile source review",
-          ),
-          recoveryCopy:
-            bilingualText(
-              "返回资料来源复核，不接受建议，也不更改 Ari 的个人资料。",
-              "Return to profile source review without accepting suggestions or changing Ari's profile.",
-            ),
-        },
-      ]}
-      title={bilingualText(
-        "资料准备度无法加载",
-        "Profile readiness could not load",
-      )}
-    />
-  </RouteStateMarker>
+        description={routeState.copy.description}
+        emptyState={routeState.copy.emptyState}
+        evidence={Array.from(routeState.evidenceIds)}
+        eyebrow={routeState.copy.eyebrow}
+        guardrail={routeState.copy.guardrail}
+        nextStep={routeState.copy.nextStep}
+        purpose={routeState.copy.purpose}
+        recoveryActions={Array.from(routeState.recoveryActions)}
+        title={routeState.copy.title}
+      />
+    </RouteStateMarker>
   );
 }
 
@@ -609,113 +310,36 @@ function ProfileReadinessSplit({
 export function AppProfileCommandCenter({
   searchParams,
 }: AppProfileCommandCenterProps = {}) {
-  const profileService = createProfileService();
-  const extractionService = createProfileDocumentExtractionService();
-  const signalService = createProfileSignalReviewQueueService();
-  const requestedScenario = readRouteScenario(searchParams);
-  const actionRequested =
-    readSearchParam(searchParams, "action") === "complete-profile-field";
-  const requestedIntroChannels = readSearchParamList(
-    searchParams,
-    "preferredIntroChannels",
-  );
+  const viewModel = loadAppProfileRouteViewModel(searchParams);
 
-  if (requestedScenario) {
+  if (viewModel.state === "route-state") {
     return (
       <div className="app-profile-route">
         <style>{appProfileStyles}</style>
-        <RouteStateBoundary scenario={requestedScenario} />
+        <RouteStateBoundary routeState={viewModel.routeState} />
       </div>
     );
   }
 
-  const profileState = profileService.getProfile();
-  const resumeState = extractionService.extractResumeDraft();
-  const suggestionState = signalService.listUpdateSuggestions();
-
-  if (
-    profileState.success === false ||
-    resumeState.success === false ||
-    suggestionState.success === false ||
-    !profileState.data.profile
-  ) {
-    const evidence = [
-      evidenceFromResult(profileState),
-      evidenceFromResult(resumeState),
-      evidenceFromResult(suggestionState),
-    ];
-
+  if (viewModel.state === "failure") {
     return (
       <StateView
-        description={bilingualText(
-          "Orbit 无法准备个人资料复核。",
-          "Orbit could not prepare the profile review.",
-        )}
-        emptyState={bilingualText(
-          "个人资料、文档草稿或更新建议返回了异常状态。",
-          "A profile, document draft, or update suggestion returned an unexpected state.",
-        )}
-        evidence={evidence}
-        eyebrow={bilingualText("个人资料", "Profile")}
-        guardrail={bilingualText(
-          "资料复核无法准备时，不能运行外部动作。",
-          "No outside action can run when profile review cannot be prepared.",
-        )}
-        nextStep={bilingualText(
-          "来源详情会说明为什么这个资料页面保持不变。",
-          "Source details explain why this profile screen stays unchanged.",
-        )}
-        purpose={bilingualText(
-          "来源检查不一致时停止资料决策。",
-          "Stop profile decisions when source checks are inconsistent.",
-        )}
-        title={bilingualText(
-          "资料准备度无法加载",
-          "Profile readiness could not load",
-        )}
+        description={viewModel.failure.description}
+        emptyState={viewModel.failure.emptyState}
+        evidence={Array.from(viewModel.failure.evidenceIds)}
+        eyebrow={viewModel.failure.eyebrow}
+        guardrail={viewModel.failure.guardrail}
+        nextStep={viewModel.failure.nextStep}
+        purpose={viewModel.failure.purpose}
+        title={viewModel.failure.title}
       />
     );
   }
 
-  const profile = profileState.data.profile;
-  const resumeDraft = resumeState.data.draft;
-  const firstSuggestion = suggestionState.data.suggestions[0] ?? null;
-  const nextProfileField = profileState.data.completeness.nextBestField;
-  const nextProfileFieldLabel = formatProfileFieldLabel(nextProfileField);
-  const selectedIntroChannels =
-    actionRequested && requestedIntroChannels
-      ? requestedIntroChannels
-      : suggestedIntroChannels;
-  const editorPreview = profileService.updateProfile({
-    displayName: profile.displayName,
-    headline: profile.headline,
-    organization: profile.organization,
-    role: profile.role,
-    homeMarket: profile.homeMarket,
-    relationshipGoal: profile.relationshipGoal,
-    targetRelationshipTypes: profile.targetRelationshipTypes,
-    preferredFollowUpWindow: profile.preferredFollowUpWindow,
-    preferredIntroChannels: selectedIntroChannels,
-  });
-  const editorProfile =
-    editorPreview.success && editorPreview.data.profile
-      ? editorPreview.data.profile
-      : profile;
-  const preferredChannels = formatIntroChannelList(editorProfile.preferredIntroChannels);
-  const preferredChannelsSentence = formatNaturalList(
-    editorProfile.preferredIntroChannels,
-  );
-  const preferredChannelsChineseSentence = formatNaturalChineseList(
-    editorProfile.preferredIntroChannels,
-  );
-  const reviewSummary = personalizeReviewSummary(
-    suggestionState.data.summary,
-    profile.displayName,
-  );
-  const actionSourceEvidence =
-    editorPreview.success && editorPreview.data.provenance.evidenceIds[0]
-      ? editorPreview.data.provenance.evidenceIds[0]
-      : "evidence:profile-editor-put-request";
+  const data = viewModel.profile;
+  const profile = data.profile;
+  const resumeDraft = data.resumeDraft.ready ? data.resumeDraft : null;
+  const firstSuggestion = data.firstSuggestion;
 
   return (
     <div className="app-profile-route">
@@ -741,14 +365,10 @@ export function AppProfileCommandCenter({
             homeMarket={profile.homeMarket}
           />
           <ProfileLedger
-            completenessScore={profileState.data.completeness.score}
+            completenessScore={data.completenessScore}
             displayName={profile.displayName}
-            documentSummary={
-              resumeDraft
-                ? bilingualText("简历草稿已准备", "Resume draft ready")
-                : resumeState.data.nextAction
-            }
-            suggestionCount={suggestionState.data.suggestions.length}
+            documentSummary={data.documentSummary}
+            suggestionCount={data.suggestionCount}
           />
           <div className="app-profile-columns">
             <article className="relationship-record">
@@ -762,7 +382,7 @@ export function AppProfileCommandCenter({
               <p className="type-body">{profile.relationshipGoal}</p>
               <p className="type-body">
                 {bilingualText("下一字段", "Next field")}:{" "}
-                {nextProfileFieldLabel}
+                {data.nextProfileFieldLabel}
               </p>
             </article>
             <article className="relationship-record">
@@ -776,7 +396,7 @@ export function AppProfileCommandCenter({
               </header>
               <p className="type-body">
                 {bilingualText("建议渠道", "Suggested channels")}:{" "}
-                {preferredChannels}
+                {data.action.preferredChannels}
               </p>
               <p className="type-body">
                 {bilingualText(
@@ -810,23 +430,21 @@ export function AppProfileCommandCenter({
             >
               <label>
                 <input
-                  defaultChecked={selectedIntroChannels.includes("warm intro")}
+                  defaultChecked={data.introChoices[0]?.checked}
                   name="preferredIntroChannels"
                   type="checkbox"
-                  value="warm intro"
+                  value={data.introChoices[0]?.value}
                 />
-                {formatIntroChannelLabel("warm intro")}
+                {data.introChoices[0]?.label}
               </label>
               <label>
                 <input
-                  defaultChecked={selectedIntroChannels.includes(
-                    "event follow-up",
-                  )}
+                  defaultChecked={data.introChoices[1]?.checked}
                   name="preferredIntroChannels"
                   type="checkbox"
-                  value="event follow-up"
+                  value={data.introChoices[1]?.value}
                 />
-                {formatIntroChannelLabel("event follow-up")}
+                {data.introChoices[1]?.label}
               </label>
             </div>
             <input name="action" type="hidden" value="complete-profile-field" />
@@ -834,7 +452,7 @@ export function AppProfileCommandCenter({
               {bilingualText("确认介绍偏好", "Confirm intro preference")}
             </button>
           </form>
-          {actionRequested && (
+          {data.action.requested && (
             <div
               aria-label="App profile local action result"
               className="app-profile-action-result"
@@ -844,8 +462,8 @@ export function AppProfileCommandCenter({
             >
               <strong>
                 {bilingualText(
-                  `准备确认：${profile.displayName} 偏好${preferredChannelsChineseSentence}`,
-                  `Ready for confirmation: ${profile.displayName} prefers ${preferredChannelsSentence}`,
+                  `准备确认：${profile.displayName} 偏好${data.action.preferredChannelsChineseSentence}`,
+                  `Ready for confirmation: ${profile.displayName} prefers ${data.action.preferredChannelsSentence}`,
                 )}
               </strong>
               <span>
@@ -860,12 +478,12 @@ export function AppProfileCommandCenter({
                   "Profile save still requires explicit confirmation.",
                 )}
               </span>
-              <span>{preferredChannels}</span>
+              <span>{data.action.preferredChannels}</span>
               <details aria-label="App profile action source details">
                 <summary>{bilingualText("来源详情", "Source details")}</summary>
                 <span>
                   {bilingualText("来源证据", "Source evidence")}:{" "}
-                  {actionSourceEvidence}
+                  {data.action.actionSourceEvidence}
                 </span>
               </details>
               <span>
@@ -899,7 +517,7 @@ export function AppProfileCommandCenter({
             </p>
           </div>
           <EvidenceChips
-            evidenceIds={profileState.data.provenance.evidenceIds}
+            evidenceIds={data.profileEvidenceIds}
             label="App profile evidence"
           />
         </WorkbenchSurface>
@@ -928,19 +546,16 @@ export function AppProfileCommandCenter({
               </div>
               <div>
                 <dt>{bilingualText("证据摘录", "Evidence excerpt")}</dt>
-                <dd>
-                  {resumeDraft.evidence[0]?.excerpt ??
-                    bilingualText("没有加载摘录。", "No excerpt loaded.")}
-                </dd>
+                <dd>{resumeDraft.evidenceExcerpt}</dd>
               </div>
             </dl>
             <EvidenceChips
-              evidenceIds={resumeState.data.provenance.evidenceIds}
+              evidenceIds={data.resumeDraft.evidenceIds}
               label="App profile document evidence"
             />
           </>
         ) : (
-          <p className="type-body">{resumeState.data.nextAction}</p>
+          <p className="type-body">{data.resumeDraft.nextAction}</p>
         )}
       </WorkbenchSurface>
 
@@ -951,12 +566,12 @@ export function AppProfileCommandCenter({
           "Review sourced profile change",
         )}
       >
-        <p className="type-body">{reviewSummary}</p>
+        <p className="type-body">{data.reviewSummary}</p>
         {firstSuggestion && (
           <dl className="relationship-meta">
             <div>
               <dt>{bilingualText("待确认字段", "Field to confirm")}</dt>
-              <dd>{formatProfileFieldLabel(firstSuggestion.targetProfileField)}</dd>
+              <dd>{firstSuggestion.fieldLabel}</dd>
             </div>
             <div>
               <dt>{bilingualText("待确认值", "Value to confirm")}</dt>
@@ -964,7 +579,7 @@ export function AppProfileCommandCenter({
             </div>
             <div>
               <dt>{bilingualText("来源摘录", "Source excerpt")}</dt>
-              <dd>{firstSuggestion.evidence[0]?.excerpt}</dd>
+              <dd>{firstSuggestion.evidenceExcerpt}</dd>
             </div>
           </dl>
         )}

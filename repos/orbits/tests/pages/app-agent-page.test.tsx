@@ -195,6 +195,13 @@ test("/app/agent route adapter avoids raw fixtures and documents mock to live re
     ),
     "utf8",
   );
+  const routeViewModelSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/agent/compose-app-agent-from-previously-approved-mock-first-capabilities/agent-route-view-model.ts",
+    ),
+    "utf8",
+  );
   const serviceFactorySource = fs.readFileSync(
     path.join(
       projectRoot,
@@ -211,9 +218,19 @@ test("/app/agent route adapter avoids raw fixtures and documents mock to live re
   );
 
   assert.doesNotMatch(adapterSource, /from\s+["'][^"']*fixtures?/i);
+  assert.doesNotMatch(adapterSource, /features\/(?:agent|notifications|permissions)/);
   assert.doesNotMatch(adapterSource, /createMock/);
-  assert.match(adapterSource, /createAppAgentRouteServices/);
+  assert.doesNotMatch(adapterSource, /createAppAgentRouteServices/);
+  assert.match(adapterSource, /loadAppAgentRouteViewModel/);
   assert.match(adapterSource, /RouteStateBoundary/);
+  assert.match(routeViewModelSource, /features\/agent\/contract/);
+  assert.match(routeViewModelSource, /features\/agent\/settings-contract/);
+  assert.match(routeViewModelSource, /features\/agent\/external-action-contract/);
+  assert.match(routeViewModelSource, /features\/notifications\/contract/);
+  assert.match(routeViewModelSource, /features\/permissions\/confirmation-contract/);
+  assert.match(routeViewModelSource, /createAppAgentRouteServices/);
+  assert.doesNotMatch(routeViewModelSource, /from "react"/);
+  assert.doesNotMatch(routeViewModelSource, /shared\/ui/);
   assert.match(serviceFactorySource, /createModuleServiceFactory/);
   assert.match(serviceFactorySource, /createAgentActionQueueService/);
   assert.match(serviceFactorySource, /createAgentAutonomySettingsService/);

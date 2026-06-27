@@ -99,7 +99,7 @@ export async function GET(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createOrbitAgentConversationService();
-  const result = service.getConversation(readLookupInput(request, id));
+  const result = await service.getConversation(readLookupInput(request, id));
 
   return responseForResult(result, mode);
 }
@@ -111,7 +111,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createOrbitAgentConversationService();
-  const result = service.sendMessage(await readSendInput(request, id));
+  const result = await service.sendMessage(await readSendInput(request, id));
 
   return responseForResult(result, mode);
 }

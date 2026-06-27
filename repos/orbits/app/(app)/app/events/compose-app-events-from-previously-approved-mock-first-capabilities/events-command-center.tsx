@@ -1,32 +1,21 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
-import type {
-  EventListPayload,
-  EventListResult,
-  EventRecord,
-  ImportedEventRecord,
-} from "../../../../../features/events/contract";
-import type {
-  EventGoalReadinessPayload,
-  EventGoalReadinessResult,
-  EventReadinessChecklistItem,
-} from "../../../../../features/events/goal-contract";
-import type {
-  EventAttendeeRecommendation,
-  EventRecommendationsPayload,
-  EventRecommendationsResult,
-} from "../../../../../features/recommendations/contract";
-import type {
-  EventValueRecommendation,
-  EventValueRecommendationAcceptanceResult,
-  EventValueRecommendationsPayload,
-  EventValueRecommendationsResult,
-} from "../../../../../features/recommendations/event-value-contract";
 import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import {
-  createAppEventsRouteServices,
-  type AppEventsRouteServices,
-} from "./events-service-factory";
+  loadAppEventsRouteViewModel,
+  type AppEventsActionResultViewModel,
+  type AppEventsAttendeeRecommendationViewModel,
+  type AppEventsCurrentPriorityViewModel,
+  type AppEventsEventChoiceViewModel,
+  type AppEventsEvidenceViewModel,
+  type AppEventsLedgerViewModel,
+  type AppEventsReadinessChecklistItemViewModel,
+  type AppEventsReadinessViewModel,
+  type AppEventsRouteStateViewModel,
+  type AppEventsSearchParams,
+  type AppEventsSuccessViewModel,
+  type AppEventsValueRecommendationViewModel,
+} from "./events-route-view-model";
 
 const appEventsStyles = `
 .app-events-route,
@@ -151,235 +140,53 @@ const appEventsStyles = `
 }
 `;
 
-const routeRecoveryActions: Record<
-  RouteScenario,
-  readonly { href: string; label: string }[]
-> = {
-  empty: [
-    {
-      href: "/app/events",
-      label: bilingualText("显示有来源活动", "Show sourced events"),
-    },
-    {
-      href: "/app/events?action=accept-top-event",
-      label: bilingualText("预览首选活动动作", "Preview top event action"),
-    },
-  ],
-  failure: [
-    {
-      href: "/app/events",
-      label: bilingualText("重新加载活动", "Reload events"),
-    },
-    {
-      href: "/app/events?scenario=pending",
-      label: bilingualText("检查准备状态", "Check readiness status"),
-    },
-  ],
-  pending: [
-    {
-      href: "/app/events",
-      label: bilingualText("返回已准备活动", "Return to ready events"),
-    },
-  ],
-};
-
-type AppEventsSearchParams = Record<string, string | string[] | undefined>;
-type RouteScenario = "empty" | "pending" | "failure";
-type RouteResult =
-  | EventListResult
-  | EventRecommendationsResult
-  | EventValueRecommendationsResult
-  | EventGoalReadinessResult;
-
-interface RouteFailure {
-  code: string;
-  message: string;
-  recovery: string;
-  evidenceIds?: readonly string[];
-}
-
 export interface AppEventsCommandCenterProps {
   searchParams?: AppEventsSearchParams;
 }
 
-function readSearchParam(
-  searchParams: AppEventsSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppEventsSearchParams | undefined,
-): RouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
-}
-
-function firstFailure(results: readonly RouteResult[]): RouteFailure | null {
-  for (const result of results) {
-    if (result.success === false) {
-      return result.error;
-    }
-  }
-
-  return null;
-}
-
-function anyResultState(
-  results: readonly RouteResult[],
-  state: "empty" | "pending",
-): boolean {
-  return results.some(
-    (result) => result.success === true && result.data.state === state,
-  );
-}
-
-function stateCopy(
-  scenario: RouteScenario,
-): {
-  title: string;
-  description: string;
-  purpose: string;
-  emptyState: string;
-  guardrail: string;
-  nextStep: string;
-} {
-  if (scenario === "empty") {
-    return {
-      description: bilingualText(
-        "先创建或导入有来源的活动，再复核推荐和准备度。",
-        "Create or import a sourced event before reviewing recommendations and readiness.",
-      ),
-      emptyState: bilingualText(
-        "还没有活动、价值推荐、参会人推荐或准备记录可用。",
-        "No event, value recommendation, attendee recommendation, or readiness record is ready.",
-      ),
-      guardrail: bilingualText(
-        "此屏幕不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
-        "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone from this screen.",
-      ),
-      nextStep: bilingualText(
-        "返回有来源活动，或通过已批准的活动流程添加活动。",
-        "Return to sourced events or add an event through the approved event workflow.",
-      ),
-      purpose: bilingualText(
-        "仅在来源证据存在后展示活动准备。",
-        "Show event preparation only after source evidence exists.",
-      ),
-      title: bilingualText("没有可用活动背景", "No event context is ready"),
-    };
-  }
-
-  if (scenario === "pending") {
-    return {
-      description: bilingualText(
-        "活动来源、推荐规则和准备检查仍在准备中。",
-        "Event sources, recommendation rules, and readiness checks are still being prepared.",
-      ),
-      emptyState: bilingualText(
-        "当前来源复核完成前，活动准备会保持隐藏。",
-        "Event preparation stays hidden until the current source review finishes.",
-      ),
-      guardrail: bilingualText(
-        "复核待处理期间，不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
-        "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone while review is pending.",
-      ),
-      nextStep: bilingualText(
-        "来源复核完成后返回已准备活动。",
-        "Return to ready events after the source review completes.",
-      ),
-      purpose: bilingualText(
-        "活动准备数据仍在加载时，保持工作区稳定。",
-        "Keep the workspace stable while event preparation data is still loading.",
-      ),
-      title: bilingualText("活动背景加载中", "Event context is loading"),
-    };
-  }
-
-  return {
-    description: bilingualText(
-      "活动来源无法加载，因此推荐和准备状态已暂停。",
-      "Event sources could not be loaded, so recommendations and readiness are paused.",
-    ),
-    emptyState: bilingualText(
-      "活动简报会在活动来源恢复前保持不可用。",
-      "The event briefing is unavailable until event sources recover.",
-    ),
-    guardrail: bilingualText(
-      "不可用期间，不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
-      "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone while this is unavailable.",
-    ),
-    nextStep: bilingualText(
-      "采取动作前，重新加载活动或检查准备状态。",
-      "Reload events or check readiness status before taking action.",
-    ),
-    purpose: bilingualText(
-      "当有来源支撑的活动背景不可用时，展示可见恢复路径。",
-      "Show a visible recovery path when source-backed event context is unavailable.",
-    ),
-    title: bilingualText("活动无法加载", "Events could not load"),
-  };
-}
-
 function RouteStateBoundary({
-  failure,
-  scenario,
+  routeState,
 }: {
-  failure?: RouteFailure | null;
-  scenario: RouteScenario;
+  routeState: AppEventsRouteStateViewModel;
 }) {
-  const copy = stateCopy(scenario);
-
   return (
     <div
       className="app-events-route-state"
-      data-error-code={failure?.code}
-      data-route-state-url={`/app/events?scenario=${scenario}`}
+      data-error-code={routeState.errorCode ?? undefined}
+      data-route-state-url={`/app/events?scenario=${routeState.scenario}`}
     >
       <style>{appEventsStyles}</style>
       <div data-state-boundary="app-events-route-state-view">
         <WorkbenchSurface
           elevated
           eyebrow={bilingualText("活动", "Events")}
-          title={copy.title}
+          title={routeState.copy.title}
         >
-          <p className="type-body">{copy.description}</p>
+          <p className="type-body">{routeState.copy.description}</p>
           <dl
             aria-label={bilingualText("活动状态详情", "Event status details")}
             className="relationship-meta"
           >
             <div>
               <dt>{bilingualText("Orbit 已知道", "What Orbit knows")}</dt>
-              <dd>{copy.purpose}</dd>
+              <dd>{routeState.copy.purpose}</dd>
             </div>
             <div>
               <dt>{bilingualText("当前状态", "Current status")}</dt>
-              <dd>{copy.emptyState}</dd>
+              <dd>{routeState.copy.emptyState}</dd>
             </div>
             <div>
               <dt>{bilingualText("安全检查", "Safety check")}</dt>
-              <dd>{copy.guardrail}</dd>
+              <dd>{routeState.copy.guardrail}</dd>
             </div>
             <div>
               <dt>{bilingualText("下一步", "Next step")}</dt>
-              <dd>{copy.nextStep}</dd>
+              <dd>{routeState.copy.nextStep}</dd>
             </div>
           </dl>
-          {failure?.evidenceIds && (
+          {routeState.evidence.length > 0 && (
             <EvidenceChips
-              evidenceIds={failure.evidenceIds}
+              evidence={routeState.evidence}
               label={bilingualText("活动恢复证据", "Event recovery evidence")}
             />
           )}
@@ -389,7 +196,7 @@ function RouteStateBoundary({
         aria-label={bilingualText("活动恢复操作", "Events recovery actions")}
         className="events-recovery-actions"
       >
-        {routeRecoveryActions[scenario].map((action) => (
+        {routeState.recoveryActions.map((action) => (
           <a key={action.href} href={action.href}>
             {action.label}
           </a>
@@ -411,94 +218,18 @@ function formatCount(
   );
 }
 
-function eventDetailHref(event: EventRecord): string {
-  return `/app/events/${encodeURIComponent(event.id)}`;
-}
-
-function relationshipValueCopy(event: EventRecord): string {
-  const context = productCopy(event.relationshipContext);
-
-  if (/storage pilot/i.test(context)) {
-    return "storage pilot relationship goals.";
-  }
-
-  return context;
-}
-
-const productCopyReplacements: readonly [RegExp, string][] = [
-  [/\blocal mock decision\b/gi, "private preview"],
-  [
-    /\bwithout live ranking, vector, or model calls\b/gi,
-    "from the approved attendee evidence",
-  ],
-  [/\bwithout live feeds\b/gi, "from the approved event evidence"],
-  [/\bwithout live writes\b/gi, "without changing any connected account"],
-  [/\blocal event records\b/gi, "event sources"],
-  [/\blocal ranking rules\b/gi, "Relationship signals"],
-  [/\blocal rules\b/gi, "Relationship signals"],
-  [/\blocal evidence\b/gi, "Source evidence"],
-  [/\bdeterministic local suggestions\b/gi, "relationship suggestions"],
-  [/\bdeterministic local rule\b/gi, "readiness check"],
-  [/\blocal route\b/gi, "workspace"],
-  [/\bfixtures?\b/gi, "source record"],
-  [/\bmanual event source records?\b/gi, "manual notes"],
-  [/\bsource records has\b/gi, "source record has"],
-  [/\bwriting calendars\b/gi, "changing calendars"],
-  [/\bdatabases\b/gi, "saved records"],
-  [/\bdatabase\b/gi, "saved record"],
-  [/\bproviders?\b/gi, "connections"],
-  [/\bboundary\b/gi, "check"],
-  [/\broute\b/gi, "workspace"],
-  [/\bmock\b/gi, "preview"],
-  [/\blive\b/gi, "connected"],
-  [/\bmodel calls?\b/gi, "automated calls"],
-  [/\bvector\b/gi, "search"],
-  [/\bdeterministic\b/gi, "reviewed"],
-  [/\blocally\b/gi, "for this event"],
-];
-
-function productCopy(value: string): string {
-  return productCopyReplacements.reduce((copy, [pattern, replacement]) => {
-    return copy.replace(pattern, replacement);
-  }, value);
-}
-
-function evidenceLabel(evidenceId: string): string {
-  const words = evidenceId
-    .replace(/^evidence:/, "")
-    .split(/[-_:]+/)
-    .filter((word) => !["fixture", "mock", "local"].includes(word))
-    .map((word) => {
-      if (word === "rec") {
-        return "recommendation";
-      }
-
-      if (word === "evt") {
-        return "event";
-      }
-
-      return word;
-    });
-
-  const label = words.join(" ");
-
-  const englishLabel = label.charAt(0).toUpperCase() + label.slice(1);
-
-  return bilingualText(`证据 ${englishLabel}`, englishLabel);
-}
-
 function EvidenceChips({
-  evidenceIds,
+  evidence,
   label,
 }: {
-  evidenceIds: readonly string[];
+  evidence: readonly AppEventsEvidenceViewModel[];
   label: string;
 }) {
   return (
     <div aria-label={label} className="chip-row">
-      {evidenceIds.slice(0, 6).map((evidenceId) => (
-        <span key={evidenceId} data-evidence-id={evidenceId}>
-          <Chip tone="evidence">{evidenceLabel(evidenceId)}</Chip>
+      {evidence.slice(0, 6).map((item) => (
+        <span key={item.id} data-evidence-id={item.id}>
+          <Chip tone="evidence">{item.label}</Chip>
         </span>
       ))}
     </div>
@@ -506,19 +237,17 @@ function EvidenceChips({
 }
 
 function EventLedger({
-  events,
-  importedRecords,
+  ledger,
 }: {
-  events: readonly EventRecord[];
-  importedRecords: readonly ImportedEventRecord[];
+  ledger: AppEventsLedgerViewModel;
 }) {
   return (
     <dl className="events-ledger">
       <div>
         <dt>{bilingualText("有来源活动", "Sourced events")}</dt>
         <dd>
-          <strong>{events.length}</strong>
-          {formatCount(events.length, "event", "events", "活动")}{" "}
+          <strong>{ledger.eventCount}</strong>
+          {formatCount(ledger.eventCount, "event", "events", "活动")}{" "}
           {bilingualText(
             "已可用于关系准备。",
             "ready for relationship prep.",
@@ -528,7 +257,7 @@ function EventLedger({
       <div>
         <dt>{bilingualText("已导入记录", "Imported records")}</dt>
         <dd>
-          <strong>{importedRecords.length}</strong>
+          <strong>{ledger.importedRecordCount}</strong>
           {bilingualText(
             "日历和主办方记录已映射到活动背景。",
             "Calendar and organizer records mapped into event context.",
@@ -538,8 +267,7 @@ function EventLedger({
       <div>
         <dt>{bilingualText("主要活动", "Primary event")}</dt>
         <dd>
-          {events[0]?.title ?? bilingualText("没有有来源活动", "No sourced event")}{" "}
-          <code>{events[0]?.status ?? bilingualText("不可用", "unavailable")}</code>
+          {ledger.primaryTitle} <code>{ledger.primaryStatus}</code>
         </dd>
       </div>
     </dl>
@@ -547,25 +275,13 @@ function EventLedger({
 }
 
 function CurrentEventPriority({
-  attendeePayload,
-  eventPayload,
-  readinessPayload,
+  priority,
 }: {
-  attendeePayload: EventRecommendationsPayload;
-  eventPayload: EventListPayload;
-  readinessPayload: EventGoalReadinessPayload;
+  priority: AppEventsCurrentPriorityViewModel | null;
 }) {
-  const currentEvent = eventPayload.events[0];
-  const topAttendee = attendeePayload.recommendations[0];
-
-  if (!currentEvent || !topAttendee) {
+  if (!priority) {
     return null;
   }
-
-  const detailActionLabel = bilingualText(
-    `打开 ${currentEvent.title} 工作区`,
-    `Open ${currentEvent.title} workspace`,
-  );
 
   return (
     <div data-route-priority="app-events-current-event">
@@ -574,25 +290,23 @@ function CurrentEventPriority({
         elevated
         eyebrow={bilingualText("当前活动优先级", "Current event priority")}
         title={bilingualText(
-          `准备 ${currentEvent.title}`,
-          `Prepare for ${currentEvent.title}`,
+          `准备 ${priority.eventTitle}`,
+          `Prepare for ${priority.eventTitle}`,
         )}
       >
         <div className="events-priority-grid">
           <div className="events-card">
-            <h3>{currentEvent.venue}</h3>
-            <p className="type-body">
-              {productCopy(currentEvent.relationshipContext)}
-            </p>
+            <h3>{priority.venue}</h3>
+            <p className="type-body">{priority.relationshipContext}</p>
             <p className="type-body">
               {bilingualText(
-                `优先见 ${topAttendee.attendee.displayName}。`,
-                `Meet ${topAttendee.attendee.displayName} there.`,
+                `优先见 ${priority.attendeeName}。`,
+                `Meet ${priority.attendeeName} there.`,
               )}{" "}
-              {productCopy(topAttendee.recommendedAction)}
+              {priority.recommendedAction}
             </p>
-            <a className="events-detail-link" href={eventDetailHref(currentEvent)}>
-              {detailActionLabel}
+            <a className="events-detail-link" href={priority.detailHref}>
+              {priority.detailActionLabel}
             </a>
           </div>
           <dl
@@ -604,18 +318,18 @@ function CurrentEventPriority({
           >
             <div>
               <dt>{bilingualText("要见谁", "Who to meet")}</dt>
-              <dd>{topAttendee.attendee.displayName}</dd>
+              <dd>{priority.attendeeName}</dd>
             </div>
             <div>
               <dt>{bilingualText("为什么重要", "Why it matters")}</dt>
-              <dd>{relationshipValueCopy(currentEvent)}</dd>
+              <dd>{priority.relationshipValue}</dd>
             </div>
             <div>
               <dt>{bilingualText("准备度", "Readiness")}</dt>
               <dd>
                 {bilingualText(
-                  `准备度 ${readinessPayload.preparationState.readinessScore}`,
-                  `Readiness ${readinessPayload.preparationState.readinessScore}`,
+                  `准备度 ${priority.readinessScore}`,
+                  `Readiness ${priority.readinessScore}`,
                 )}
               </dd>
             </div>
@@ -623,8 +337,8 @@ function CurrentEventPriority({
               <dt>{bilingualText("下一步安全动作", "Next safe action")}</dt>
               <dd>
                 {bilingualText(
-                  `${detailActionLabel}，然后再考虑任何日历、消息或保存记录动作。`,
-                  `${detailActionLabel} before any calendar, message, or saved-record action.`,
+                  `${priority.detailActionLabel}，然后再考虑任何日历、消息或保存记录动作。`,
+                  `${priority.detailActionLabel} before any calendar, message, or saved-record action.`,
                 )}
               </dd>
             </div>
@@ -637,12 +351,8 @@ function CurrentEventPriority({
 
 function EventCards({
   events,
-  readinessPayload,
-  topRecommendation,
 }: {
-  events: readonly EventRecord[];
-  readinessPayload: EventGoalReadinessPayload;
-  topRecommendation: EventAttendeeRecommendation | undefined;
+  events: readonly AppEventsEventChoiceViewModel[];
 }) {
   return (
     <div
@@ -659,24 +369,20 @@ function EventCards({
           <p className="type-body">
             {bilingualText("地点", "Venue")}: {event.venue}.{" "}
             {bilingualText("参会机会", "Attendee opportunity")}:{" "}
-            {topRecommendation?.attendee.displayName ??
-              bilingualText("复核参会人名单", "review attendee roster")}
-            .
+            {event.attendeeName}.
           </p>
           <p className="type-body">
             {bilingualText("准备度", "Readiness")}:{" "}
-            {readinessPayload.preparationState.readinessScore}.{" "}
+            {event.readinessScore}.{" "}
             {bilingualText("关系价值", "Relationship value")}:{" "}
-            {relationshipValueCopy(event)}
+            {event.relationshipValue}
           </p>
-          <p className="type-body">
-            {productCopy(event.nextAction)} {productCopy(event.recommendedPreparation)}
-          </p>
-          <a className="events-detail-link" href={eventDetailHref(event)}>
+          <p className="type-body">{event.nextAction}</p>
+          <a className="events-detail-link" href={event.detailHref}>
             {bilingualText(`复核 ${event.title}`, `Review ${event.title}`)}
           </a>
           <EvidenceChips
-            evidenceIds={event.evidence.map((item) => item.evidenceId)}
+            evidence={event.evidence}
             label={bilingualText(`${event.title} 证据`, `${event.title} evidence`)}
           />
         </article>
@@ -686,30 +392,29 @@ function EventCards({
 }
 
 function AttendeeRecommendationPanel({
-  payload,
+  recommendation,
+  summary,
 }: {
-  payload: EventRecommendationsPayload;
+  recommendation: AppEventsAttendeeRecommendationViewModel | null;
+  summary: string;
 }) {
-  const topRecommendation = payload.recommendations[0];
-
   return (
     <WorkbenchSurface
       eyebrow={bilingualText("推荐连接", "Recommended connection")}
       title={bilingualText("要见谁", "Who to meet")}
     >
-      <p className="type-body">{productCopy(payload.summary)}</p>
-      {topRecommendation && (
+      <p className="type-body">{summary}</p>
+      {recommendation && (
         <article className="events-card">
-          <h3>{topRecommendation.attendee.displayName}</h3>
+          <h3>{recommendation.attendeeName}</h3>
           <p className="type-body">
-            {topRecommendation.attendee.role} at{" "}
-            {topRecommendation.attendee.organization}.{" "}
-            {bilingualText("评分", "Score")} {topRecommendation.score}.{" "}
-            {topRecommendation.recommendedAction}
+            {recommendation.role} at {recommendation.organization}.{" "}
+            {bilingualText("评分", "Score")} {recommendation.score}.{" "}
+            {recommendation.recommendedAction}
           </p>
-          <p className="type-body">{topRecommendation.openingLine.text}</p>
+          <p className="type-body">{recommendation.openingLine}</p>
           <EvidenceChips
-            evidenceIds={topRecommendation.evidenceIds}
+            evidence={recommendation.evidence}
             label={bilingualText(
               "首选参会人推荐证据",
               "Top attendee recommendation evidence",
@@ -722,29 +427,29 @@ function AttendeeRecommendationPanel({
 }
 
 function EventValuePanel({
-  payload,
+  recommendation,
+  summary,
 }: {
-  payload: EventValueRecommendationsPayload;
+  recommendation: AppEventsValueRecommendationViewModel | null;
+  summary: string;
 }) {
-  const topRecommendation = payload.recommendations[0];
-
   return (
     <WorkbenchSurface
       eyebrow={bilingualText("活动价值", "Event value")}
       title={bilingualText("时间应该花在哪里", "Where to spend time")}
     >
-      <p className="type-body">{productCopy(payload.summary)}</p>
-      {topRecommendation && (
+      <p className="type-body">{summary}</p>
+      {recommendation && (
         <article className="events-card">
-          <h3>{topRecommendation.title}</h3>
+          <h3>{recommendation.title}</h3>
           <p className="type-body">
-            {bilingualText("评分", "Score")} {topRecommendation.valueScore}.{" "}
-            {topRecommendation.attendeeDensity}{" "}
+            {bilingualText("评分", "Score")} {recommendation.valueScore}.{" "}
+            {recommendation.attendeeDensity}{" "}
             {bilingualText("位相关参会人在", "relevant attendees in")}{" "}
-            {topRecommendation.location}. {topRecommendation.recommendedAction}
+            {recommendation.location}. {recommendation.recommendedAction}
           </p>
           <EvidenceChips
-            evidenceIds={topRecommendation.evidenceIds}
+            evidence={recommendation.evidence}
             label={bilingualText("首选活动价值证据", "Top event value evidence")}
           />
         </article>
@@ -756,17 +461,17 @@ function EventValuePanel({
 function ReadinessChecklist({
   items,
 }: {
-  items: readonly EventReadinessChecklistItem[];
+  items: readonly AppEventsReadinessChecklistItemViewModel[];
 }) {
   return (
     <dl className="relationship-meta">
       {items.map((item) => (
-        <div key={item.itemId}>
-          <dt>{productCopy(item.label)}</dt>
+        <div key={item.id}>
+          <dt>{item.label}</dt>
           <dd>
             <code>{item.status}</code>{" "}
             {bilingualText("负责人", "by")} {item.owner}.{" "}
-            {productCopy(item.rationale)}
+            {item.rationale}
           </dd>
         </div>
       ))}
@@ -775,9 +480,9 @@ function ReadinessChecklist({
 }
 
 function ReadinessPanel({
-  payload,
+  readiness,
 }: {
-  payload: EventGoalReadinessPayload;
+  readiness: AppEventsReadinessViewModel;
 }) {
   return (
     <WorkbenchSurface
@@ -786,42 +491,26 @@ function ReadinessPanel({
     >
       <p className="type-body">
         {bilingualText(
-          `准备度 ${payload.preparationState.readinessScore}。`,
-          `Readiness ${payload.preparationState.readinessScore}.`,
+          `准备度 ${readiness.readinessScore}。`,
+          `Readiness ${readiness.readinessScore}.`,
         )}{" "}
-        {productCopy(payload.preparationState.nextPreparationStep)}
+        {readiness.nextPreparationStep}
       </p>
-      <ReadinessChecklist items={payload.readinessChecklist} />
+      <ReadinessChecklist items={readiness.checklist} />
       <EvidenceChips
-        evidenceIds={payload.provenance.evidenceIds}
+        evidence={readiness.evidence}
         label={bilingualText("活动准备证据", "Event readiness evidence")}
       />
     </WorkbenchSurface>
   );
 }
 
-function outsideServicesContacted(
-  result: EventValueRecommendationAcceptanceResult,
-): boolean {
-  if (result.success === false) {
-    return false;
-  }
-
-  return (
-    result.data.action.externalNetworkRequested ||
-    result.data.action.calendarProviderRequested ||
-    result.data.action.notificationDelivered ||
-    result.data.action.databaseWriteExecuted ||
-    result.data.action.productionAuditLogWriteExecuted
-  );
-}
-
 function EventActionResult({
   result,
 }: {
-  result: EventValueRecommendationAcceptanceResult;
+  result: AppEventsActionResultViewModel;
 }) {
-  if (result.success === false) {
+  if (result.state === "failure") {
     return (
       <section
         className="events-action-result"
@@ -844,22 +533,20 @@ function EventActionResult({
     );
   }
 
-  const outsideContacted = outsideServicesContacted(result);
-
   return (
     <section
       className="events-action-result"
       data-action-evidence="events-accept-top-event-local-preview"
-      data-side-effects={outsideContacted ? "unexpected" : "none"}
+      data-side-effects={result.outsideContacted ? "unexpected" : "none"}
       data-task-result="events-accept-top-event-preview"
     >
       <h3>
         {bilingualText(
-          `活动推荐已接受：${result.data.acceptedEvent.title}`,
-          `Event recommendation accepted: ${result.data.acceptedEvent.title}`,
+          `活动推荐已接受：${result.acceptedTitle}`,
+          `Event recommendation accepted: ${result.acceptedTitle}`,
         )}
       </h3>
-      <p className="type-body">{productCopy(result.data.summary)}</p>
+      <p className="type-body">{result.summary}</p>
       <p className="type-body">
         {bilingualText(
           "没有更改日历、保存记录、发送消息或通知，也没有联系外部服务。",
@@ -869,13 +556,13 @@ function EventActionResult({
       <dl className="relationship-meta">
         <div>
           <dt>{bilingualText("决策", "Decision")}</dt>
-          <dd>{result.data.action.label}</dd>
+          <dd>{result.decisionLabel}</dd>
         </div>
         <div>
           <dt>{bilingualText("日历", "Calendar")}</dt>
           <dd>
             {bilingualText("日历变更", "Calendar changes")}:{" "}
-            {result.data.action.calendarProviderRequested
+            {result.calendarNeedsReview
               ? bilingualText("需复核", "review")
               : bilingualText("无", "none")}
           </dd>
@@ -884,7 +571,7 @@ function EventActionResult({
           <dt>{bilingualText("已保存记录", "Saved records")}</dt>
           <dd>
             {bilingualText("已保存记录", "Saved records")}:{" "}
-            {result.data.action.databaseWriteExecuted
+            {result.databaseWriteNeedsReview
               ? bilingualText("需复核", "review")
               : bilingualText("无", "none")}
           </dd>
@@ -907,7 +594,7 @@ function EventActionResult({
           <dt>{bilingualText("消息", "Messages")}</dt>
           <dd>
             {bilingualText("消息和通知", "Messages and notifications")}:{" "}
-            {outsideContacted
+            {result.outsideContacted
               ? bilingualText("需复核", "review")
               : bilingualText("无", "none")}
           </dd>
@@ -916,7 +603,7 @@ function EventActionResult({
           <dt>{bilingualText("通知", "Notifications")}</dt>
           <dd>
             {bilingualText("通知", "Notifications")}:{" "}
-            {result.data.action.notificationDelivered
+            {result.notificationNeedsReview
               ? bilingualText("需复核", "review")
               : bilingualText("无", "none")}
           </dd>
@@ -925,57 +612,31 @@ function EventActionResult({
           <dt>{bilingualText("外部网络", "Outside network")}</dt>
           <dd>
             {bilingualText("外部网络请求", "Outside network requests")}:{" "}
-            {result.data.action.externalNetworkRequested
+            {result.externalNetworkNeedsReview
               ? bilingualText("需复核", "review")
               : bilingualText("无", "none")}
           </dd>
         </div>
       </dl>
       <EvidenceChips
-        evidenceIds={result.data.action.evidenceIds}
+        evidence={result.evidence}
         label={bilingualText("活动动作证据", "Event action evidence")}
       />
     </section>
   );
 }
 
-function actionResultFor(
-  action: string | null,
-  services: AppEventsRouteServices,
-  topRecommendation: EventValueRecommendation | undefined,
-): EventValueRecommendationAcceptanceResult | null {
-  if (action !== "accept-top-event" || !topRecommendation) {
-    return null;
-  }
-
-  return services.eventValues.acceptRecommendedEvent({
-    eventId: topRecommendation.eventId,
-  });
-}
-
 function SuccessView({
-  actionResult,
-  attendeePayload,
-  eventPayload,
-  readinessPayload,
-  valuePayload,
+  workspace,
 }: {
-  actionResult: EventValueRecommendationAcceptanceResult | null;
-  attendeePayload: EventRecommendationsPayload;
-  eventPayload: EventListPayload;
-  readinessPayload: EventGoalReadinessPayload;
-  valuePayload: EventValueRecommendationsPayload;
+  workspace: AppEventsSuccessViewModel;
 }) {
-  const topValueEvent = valuePayload.recommendations[0];
+  const topCandidate = workspace.topCandidate;
 
   return (
     <div className="app-events-route" data-state-boundary="app-events-success">
       <style>{appEventsStyles}</style>
-      <CurrentEventPriority
-        attendeePayload={attendeePayload}
-        eventPayload={eventPayload}
-        readinessPayload={readinessPayload}
-      />
+      <CurrentEventPriority priority={workspace.currentPriority} />
 
       <WorkbenchSurface
         className="events-command"
@@ -989,22 +650,15 @@ function SuccessView({
             "Choose a source-backed event, see who matters there, and decide what to prepare next.",
           )}
         </p>
-        <EventLedger
-          events={eventPayload.events}
-          importedRecords={eventPayload.importedRecords}
-        />
+        <EventLedger ledger={workspace.ledger} />
       </WorkbenchSurface>
 
       <WorkbenchSurface
         eyebrow={bilingualText("活动选择", "Event choices")}
         title={bilingualText("活动选择", "Event choices")}
       >
-        <p className="type-body">{productCopy(eventPayload.summary)}</p>
-        <EventCards
-          events={eventPayload.events}
-          readinessPayload={readinessPayload}
-          topRecommendation={attendeePayload.recommendations[0]}
-        />
+        <p className="type-body">{workspace.eventSummary}</p>
+        <EventCards events={workspace.eventChoices} />
       </WorkbenchSurface>
 
       <section
@@ -1013,9 +667,15 @@ function SuccessView({
       >
         <h2>{bilingualText("准备信号", "Preparation signals")}</h2>
         <div className="events-card-grid">
-          <AttendeeRecommendationPanel payload={attendeePayload} />
-          <EventValuePanel payload={valuePayload} />
-          <ReadinessPanel payload={readinessPayload} />
+          <AttendeeRecommendationPanel
+            recommendation={workspace.attendeePanel.recommendation}
+            summary={workspace.attendeePanel.summary}
+          />
+          <EventValuePanel
+            recommendation={workspace.valuePanel.recommendation}
+            summary={workspace.valuePanel.summary}
+          />
+          <ReadinessPanel readiness={workspace.readiness} />
         </div>
       </section>
 
@@ -1032,12 +692,14 @@ function SuccessView({
         <a className="events-action-link" href="/app/events?action=accept-top-event">
           {bilingualText("预览首选活动动作", "Preview top event action")}
         </a>
-        {actionResult && <EventActionResult result={actionResult} />}
-        {!actionResult && topValueEvent && (
+        {workspace.actionResult && (
+          <EventActionResult result={workspace.actionResult} />
+        )}
+        {!workspace.actionResult && topCandidate && (
           <p className="type-body">
             {bilingualText(
-              `首选候选：${topValueEvent.title}，价值评分 ${topValueEvent.valueScore}。`,
-              `Top candidate: ${topValueEvent.title} with value score ${topValueEvent.valueScore}.`,
+              `首选候选：${topCandidate.title}，价值评分 ${topCandidate.valueScore}。`,
+              `Top candidate: ${topCandidate.title} with value score ${topCandidate.valueScore}.`,
             )}
           </p>
         )}
@@ -1049,60 +711,11 @@ function SuccessView({
 export function AppEventsCommandCenter({
   searchParams,
 }: AppEventsCommandCenterProps) {
-  const scenario = readRouteScenario(searchParams);
-  const services = createAppEventsRouteServices();
-  const eventResult = services.events.listEvents({ scenario });
-  const attendeeResult = services.attendeeRecommendations.listEventRecommendations({
-    limit: 3,
-    scenario,
-  });
-  const valueResult = services.eventValues.listRecommendedEvents({
-    limit: 3,
-    scenario,
-  });
-  const readinessResult = services.readiness.getReadiness({ scenario });
-  const results = [
-    eventResult,
-    attendeeResult,
-    valueResult,
-    readinessResult,
-  ] as const;
-  const failure = firstFailure(results);
+  const viewModel = loadAppEventsRouteViewModel(searchParams);
 
-  if (failure || scenario === "failure") {
-    return <RouteStateBoundary failure={failure} scenario="failure" />;
+  if (viewModel.state === "route-state") {
+    return <RouteStateBoundary routeState={viewModel.routeState} />;
   }
 
-  if (scenario === "empty" || anyResultState(results, "empty")) {
-    return <RouteStateBoundary scenario="empty" />;
-  }
-
-  if (scenario === "pending" || anyResultState(results, "pending")) {
-    return <RouteStateBoundary scenario="pending" />;
-  }
-
-  if (
-    eventResult.success === false ||
-    attendeeResult.success === false ||
-    valueResult.success === false ||
-    readinessResult.success === false
-  ) {
-    return <RouteStateBoundary scenario="failure" />;
-  }
-
-  const actionResult = actionResultFor(
-    readSearchParam(searchParams, "action"),
-    services,
-    valueResult.data.recommendations[0],
-  );
-
-  return (
-    <SuccessView
-      actionResult={actionResult}
-      attendeePayload={attendeeResult.data}
-      eventPayload={eventResult.data}
-      readinessPayload={readinessResult.data}
-      valuePayload={valueResult.data}
-    />
-  );
+  return <SuccessView workspace={viewModel.workspace} />;
 }

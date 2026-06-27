@@ -63,6 +63,9 @@ workspace root for implementation work.
   composition when a product route needs several feature services. That file may
   call service factories, combine module results, map source/provenance labels,
   and shape render-neutral data for React components.
+- Treat the route view-model/service file as the anti-corruption layer between
+  UI and business modules: feature contracts remain owned by `features/**`, while
+  product presenters own only UI-ready shapes, links, labels, and state variants.
 - React presenter components should not call feature service factories, mock
   services, live providers, or Orbit AI orchestration services. They should
   receive plain route view models and UI-only callbacks/links.

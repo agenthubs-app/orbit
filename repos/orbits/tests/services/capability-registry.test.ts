@@ -72,6 +72,43 @@ test("module mode service factories default to mock and expose controlled live f
   });
 });
 
+test("module mode service factories honor ORBIT_MODULE_MODE when mode is omitted", () => {
+  const previousMode = process.env.ORBIT_MODULE_MODE;
+  const serviceFactory = createModuleServiceFactory({
+    capabilityId: "orbit-agent-conversation",
+    defaultMode: "mock",
+    implementations: {
+      live: ({ requestedMode }) => ({
+        requestedMode,
+        serviceName: "live-orbit-agent-conversation",
+      }),
+      mock: ({ requestedMode }) => ({
+        requestedMode,
+        serviceName: "mock-orbit-agent-conversation",
+      }),
+    },
+  });
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "live";
+
+    assert.deepEqual(serviceFactory.create(), {
+      mode: "live",
+      service: {
+        requestedMode: "live",
+        serviceName: "live-orbit-agent-conversation",
+      },
+      success: true,
+    });
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.ORBIT_MODULE_MODE;
+    } else {
+      process.env.ORBIT_MODULE_MODE = previousMode;
+    }
+  }
+});
+
 test("capability registry defaults every registered capability to mock mode with API and debug metadata", () => {
   const summaries = listCapabilitySummaries();
 

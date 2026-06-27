@@ -242,6 +242,25 @@ const appChatStyles = `
   padding: var(--orbit-space-sm);
 }
 
+.app-chat-route .chat-agent-supporting-workspace {
+  border: 1px solid var(--orbit-color-border);
+  border-radius: var(--orbit-radius-panel);
+  overflow: hidden;
+}
+
+.app-chat-route .chat-agent-supporting-workspace > summary {
+  background: var(--orbit-color-surface);
+  cursor: pointer;
+  font-weight: 700;
+  padding: var(--orbit-space-sm) var(--orbit-space-md);
+}
+
+.app-chat-route .chat-agent-supporting-content {
+  display: grid;
+  gap: var(--orbit-space-md);
+  padding: var(--orbit-space-md) 0 0;
+}
+
 @media (max-width: 900px) {
   .app-chat-route .chat-agent-orchestration-layout[data-agent-panel="open"],
   .app-chat-route .chat-agent-prompt-row {
@@ -904,25 +923,25 @@ function ChatWorkspace({
 }: {
   workspace: AppChatWorkspaceViewModel;
 }) {
-  return (
-    <div className="app-chat-route" data-state-boundary="app-chat-success">
-      <style>{appChatStyles}</style>
+  const agentLayout = (
+    <div
+      className="chat-agent-orchestration-layout"
+      data-agent-panel={workspace.agentTurn?.artifactSurface ? "open" : "closed"}
+    >
+      <OrbitAgentPromptPanel agentTurn={workspace.agentTurn} />
+      <AgentArtifactSidePanel
+        surface={workspace.agentTurn?.artifactSurface ?? null}
+      />
+    </div>
+  );
+  const reviewWorkspace = (
+    <>
       <CurrentReplyPriority
         primaryAssist={workspace.primaryAssist}
         privacy={workspace.privacy}
         relationshipContext={workspace.relationshipContext}
         selectedConversation={workspace.selectedConversation}
       />
-
-      <div
-        className="chat-agent-orchestration-layout"
-        data-agent-panel={workspace.agentTurn?.artifactSurface ? "open" : "closed"}
-      >
-        <OrbitAgentPromptPanel agentTurn={workspace.agentTurn} />
-        <AgentArtifactSidePanel
-          surface={workspace.agentTurn?.artifactSurface ?? null}
-        />
-      </div>
 
       <div className="chat-command-layout">
         <WorkbenchSurface
@@ -976,14 +995,49 @@ function ChatWorkspace({
         <ExtractionPanel extraction={workspace.extraction} />
         <PrivacyPanel privacy={workspace.privacy} />
       </section>
+    </>
+  );
+
+  if (workspace.agentTurn) {
+    return (
+      <div
+        className="app-chat-route"
+        data-agent-mode="active"
+        data-state-boundary="app-chat-success"
+      >
+        <style>{appChatStyles}</style>
+        {agentLayout}
+        <details className="chat-agent-supporting-workspace">
+          <summary>
+            {bilingualText(
+              "查看关系回复复核工作台",
+              "Show relationship reply review workspace",
+            )}
+          </summary>
+          <div className="chat-agent-supporting-content">
+            {reviewWorkspace}
+          </div>
+        </details>
+      </div>
+    );
+  }
+
+  return (
+      <div
+        className="app-chat-route"
+        data-agent-panel="closed"
+        data-state-boundary="app-chat-success"
+      >
+      <style>{appChatStyles}</style>
+      {reviewWorkspace}
     </div>
   );
 }
 
-export function AppChatCommandCenter({
+export async function AppChatCommandCenter({
   searchParams,
 }: AppChatCommandCenterProps) {
-  const routeViewModel = loadAppChatRouteViewModel(searchParams);
+  const routeViewModel = await loadAppChatRouteViewModel(searchParams);
 
   if (routeViewModel.state === "route-state") {
     return (

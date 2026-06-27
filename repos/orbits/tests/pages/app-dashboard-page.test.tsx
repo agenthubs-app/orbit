@@ -260,6 +260,13 @@ test("/app/dashboard route adapter avoids raw fixtures and documents mock to liv
     ),
     "utf8",
   );
+  const routeViewModelSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model.ts",
+    ),
+    "utf8",
+  );
   const liveDoc = fs.readFileSync(
     path.join(
       projectRoot,
@@ -270,11 +277,20 @@ test("/app/dashboard route adapter avoids raw fixtures and documents mock to liv
 
   assert.doesNotMatch(adapterSource, /from\s+["'][^"']*fixtures?/i);
   assert.doesNotMatch(adapterSource, /createMock/);
-  assert.match(adapterSource, /createAppDashboardRouteServices/);
+  assert.doesNotMatch(adapterSource, /features\/(?:dashboard|audit)/);
+  assert.doesNotMatch(adapterSource, /createAppDashboardRouteServices/);
+  assert.match(adapterSource, /loadAppDashboardRouteViewModel/);
   assert.match(adapterSource, /\.orbit-runtime-row/);
   assert.match(adapterSource, /\.orbit-account-summary/);
   assert.match(adapterSource, /display: none;/);
   assert.match(adapterSource, /RouteStateBoundary/);
+  assert.match(routeViewModelSource, /features\/dashboard\/contract/);
+  assert.match(routeViewModelSource, /features\/dashboard\/distribution-contract/);
+  assert.match(routeViewModelSource, /features\/dashboard\/opportunity-contract/);
+  assert.match(routeViewModelSource, /features\/audit\/provenance-contract/);
+  assert.match(routeViewModelSource, /createAppDashboardRouteServices/);
+  assert.doesNotMatch(routeViewModelSource, /from\s+["']react["']/);
+  assert.doesNotMatch(routeViewModelSource, /shared\/ui/);
   assert.match(serviceFactorySource, /createModuleServiceFactory/);
   assert.match(serviceFactorySource, /createDashboardAggregateService/);
   assert.match(serviceFactorySource, /createNetworkDistributionAnalyticsService/);

@@ -246,6 +246,13 @@ test("/app/events route adapter avoids raw fixtures and documents mock to live r
     ),
     "utf8",
   );
+  const routeViewModelSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
+    ),
+    "utf8",
+  );
   const liveDoc = fs.readFileSync(
     path.join(
       projectRoot,
@@ -256,9 +263,18 @@ test("/app/events route adapter avoids raw fixtures and documents mock to live r
 
   assert.doesNotMatch(adapterSource, /from\s+["'][^"']*fixtures?/i);
   assert.doesNotMatch(adapterSource, /createMock/);
-  assert.match(adapterSource, /createAppEventsRouteServices/);
+  assert.doesNotMatch(adapterSource, /features\/(?:events|recommendations)/);
+  assert.doesNotMatch(adapterSource, /createAppEventsRouteServices/);
+  assert.match(adapterSource, /loadAppEventsRouteViewModel/);
   assert.match(adapterSource, /RouteStateBoundary/);
   assert.match(adapterSource, /app-events-route-state-view/);
+  assert.match(routeViewModelSource, /features\/events\/contract/);
+  assert.match(routeViewModelSource, /features\/events\/goal-contract/);
+  assert.match(routeViewModelSource, /features\/recommendations\/contract/);
+  assert.match(routeViewModelSource, /features\/recommendations\/event-value-contract/);
+  assert.match(routeViewModelSource, /createAppEventsRouteServices/);
+  assert.doesNotMatch(routeViewModelSource, /from\s+["']react["']/);
+  assert.doesNotMatch(routeViewModelSource, /shared\/ui/);
   assert.match(serviceFactorySource, /createModuleServiceFactory/);
   assert.match(serviceFactorySource, /createEventCrudAndImportService/);
   assert.match(serviceFactorySource, /createEventRecommendationService/);

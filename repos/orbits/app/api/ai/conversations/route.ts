@@ -84,7 +84,7 @@ function responseForResult(
 export async function GET(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
   const service = createOrbitAgentConversationService();
-  const result = service.listConversations(readListInput(request));
+  const result = await service.listConversations(readListInput(request));
 
   return responseForResult(result, mode);
 }
@@ -92,7 +92,7 @@ export async function GET(request: Request): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
   const service = createOrbitAgentConversationService();
-  const result = service.sendMessage(await readSendInput(request));
+  const result = await service.sendMessage(await readSendInput(request));
 
   return responseForResult(result, mode);
 }

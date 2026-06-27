@@ -22,7 +22,7 @@ function isPromiseLike<TValue>(
 }
 
 function renderChatPage(searchParams: AppChatSearchParams | undefined) {
-  return <AppChatCommandCenter searchParams={searchParams} />;
+  return AppChatCommandCenter({ searchParams });
 }
 
 function LegacyChatStateBoundary() {

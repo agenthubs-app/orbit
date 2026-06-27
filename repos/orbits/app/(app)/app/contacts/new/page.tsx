@@ -1,18 +1,13 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
 import type { ReactNode } from "react";
-import { createBusinessCardScanOcrService } from "../../../../../features/acquisition/service-factory";
-import { createEmailCalendarSignalService } from "../../../../../features/acquisition/service-factory";
-import { createEventAttendeeImportService } from "../../../../../features/acquisition/service-factory";
-import { createExternalContactsImportService } from "../../../../../features/acquisition/service-factory";
-import { createManualContactCreationService } from "../../../../../features/acquisition/service-factory";
-import { createDuplicateMergeService } from "../../../../../features/acquisition/service-factory";
-import { createQrScanConnectService } from "../../../../../features/acquisition/service-factory";
-import { createReferralRecommendationService } from "../../../../../features/acquisition/service-factory";
-import { createContactAcquisitionDraftService } from "../../../../../features/acquisition/service-factory";
-import { createPermissionStateService } from "../../../../../features/permissions/service-factory";
 import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { StateView } from "../../../../../shared/ui/state-view";
+import {
+  loadAppContactsNewRouteViewModel,
+  type AppContactsNewRouteScenario,
+  type AppContactsNewSearchParams,
+} from "./compose-app-contacts-new-from-previously-approved-mock-first-capabilities/contacts-new-route-services";
 
 export const metadata = {
   title: bilingualText("联系人获取 | Orbit", "Contact acquisition | Orbit"),
@@ -297,8 +292,15 @@ const routeStateChecks = [
   },
 ] as const;
 
-type AppContactsNewSearchParams = Record<string, string | string[] | undefined>;
-type RouteScenario = "empty" | "pending" | "failure";
+type RouteScenario = AppContactsNewRouteScenario;
+type AppContactsNewRouteState = Extract<
+  ReturnType<typeof loadAppContactsNewRouteViewModel>,
+  { state: "route-state" }
+>["routeState"];
+type AppContactsNewSuccessWorkspace = Extract<
+  ReturnType<typeof loadAppContactsNewRouteViewModel>,
+  { state: "success" }
+>["workspace"];
 type EvidenceResult =
   | {
       success: true;
@@ -323,31 +325,6 @@ function isPromiseLike<TValue>(
   value: TValue | Promise<TValue> | undefined,
 ): value is Promise<TValue> {
   return Boolean(value && typeof (value as Promise<TValue>).then === "function");
-}
-
-function readSearchParam(
-  searchParams: AppContactsNewSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppContactsNewSearchParams | undefined,
-): RouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
 }
 
 function firstEvidence(evidenceIds: readonly string[] | undefined): string {
@@ -599,41 +576,25 @@ function RouteStateMarker({
   return <div data-route-state-url={routeStateUrl}>{children}</div>;
 }
 
-function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
-  const draftService = createContactAcquisitionDraftService();
-  const manualService = createManualContactCreationService();
-  const cardService = createBusinessCardScanOcrService();
-  const qrService = createQrScanConnectService();
-  const eventService = createEventAttendeeImportService();
-  const externalService = createExternalContactsImportService();
-  const signalService = createEmailCalendarSignalService();
-  const referralService = createReferralRecommendationService();
-  const mergeService = createDuplicateMergeService();
+function RouteStateBoundary({
+  routeState,
+}: {
+  routeState: AppContactsNewRouteState;
+}) {
+  const {
+    cardState,
+    draftState,
+    eventState,
+    externalState,
+    manualState,
+    mergeState,
+    qrState,
+    referralState,
+    scenario,
+    signalState,
+  } = routeState;
 
   if (scenario === "empty") {
-    const draftState = draftService.listContactDrafts({ scenario: "empty" });
-    const manualState = manualService.createManualContactDraft({
-      scenario: "empty",
-    });
-    const cardState = cardService.scanBusinessCard({ scenario: "empty" });
-    const qrState = qrService.scanQrCode({ scenario: "empty" });
-    const eventState = eventService.importEventAttendees({
-      eventId: "demo-event-1",
-      scenario: "empty",
-    });
-    const externalState = externalService.importExternalContacts({
-      scenario: "empty",
-    });
-    const signalState = signalService.listEmailCalendarSignals({
-      scenario: "empty",
-    });
-    const referralState = referralService.createReferralContactDrafts({
-      scenario: "empty",
-    });
-    const mergeState = mergeService.listMergeSuggestions({
-      scenario: "empty",
-    });
-
     return (
       <RouteStateMarker scenario={scenario}>
         <StateView
@@ -689,17 +650,6 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
   }
 
   if (scenario === "pending") {
-    const draftState = draftService.listContactDrafts({ scenario: "pending" });
-    const manualState = manualService.createManualContactDraft({
-      scenario: "pending",
-    });
-    const cardState = cardService.scanBusinessCard({ scenario: "pending" });
-    const qrState = qrService.scanQrCode({ scenario: "pending" });
-    const eventState = eventService.importEventAttendees({
-      eventId: "demo-event-1",
-      scenario: "pending",
-    });
-
     return (
       <RouteStateMarker scenario={scenario}>
         <StateView
@@ -747,8 +697,6 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
     );
   }
 
-  const failureState = draftService.listContactDrafts({ scenario: "failure" });
-
   return (
     <RouteStateMarker scenario={scenario}>
       <StateView
@@ -761,10 +709,10 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
           "No contact, connection, merge, message, task, or outside account was changed.",
         )}
         evidence={
-          failureState.success === false
+          draftState.success === false
             ? [
-                failureState.error.code,
-                firstEvidence(failureState.error.evidenceIds),
+                draftState.error.code,
+                firstEvidence(draftState.error.evidenceIds),
               ]
             : ["contact-acquisition-expected-failure-not-returned"]
         }
@@ -911,41 +859,30 @@ function SourceMethodCard({
 function renderContactsNewPage(
   searchParams: AppContactsNewSearchParams | undefined,
 ) {
-  const draftService = createContactAcquisitionDraftService();
-  const manualService = createManualContactCreationService();
-  const cardService = createBusinessCardScanOcrService();
-  const qrService = createQrScanConnectService();
-  const eventService = createEventAttendeeImportService();
-  const externalService = createExternalContactsImportService();
-  const signalService = createEmailCalendarSignalService();
-  const referralService = createReferralRecommendationService();
-  const mergeService = createDuplicateMergeService();
-  const permissionService = createPermissionStateService();
-  const requestedScenario = readRouteScenario(searchParams);
-  const actionRequested =
-    readSearchParam(searchParams, "action") === "confirm-manual-draft";
+  const viewModel = loadAppContactsNewRouteViewModel(searchParams);
 
-  if (requestedScenario) {
+  if (viewModel.state === "route-state") {
     return (
       <div className="app-contacts-new-route">
         <style>{appContactsNewStyles}</style>
-        <RouteStateBoundary scenario={requestedScenario} />
+        <RouteStateBoundary routeState={viewModel.routeState} />
       </div>
     );
   }
 
-  const draftQueue = draftService.listContactDrafts();
-  const manualState = manualService.createManualContactDraft();
-  const cardState = cardService.scanBusinessCard();
-  const qrState = qrService.scanQrCode();
-  const eventState = eventService.importEventAttendees({
-    eventId: "demo-event-1",
-  });
-  const externalState = externalService.importExternalContacts();
-  const signalState = signalService.listEmailCalendarSignals();
-  const referralState = referralService.createReferralContactDrafts();
-  const mergeState = mergeService.listMergeSuggestions();
-  const permissionState = permissionService.listPermissionStates();
+  const {
+    cardState,
+    draftQueue,
+    eventState,
+    externalState,
+    manualConfirmation,
+    manualState,
+    mergeState,
+    permissionState,
+    qrState,
+    referralState,
+    signalState,
+  }: AppContactsNewSuccessWorkspace = viewModel.workspace;
 
   if (
     draftQueue.success === false ||
@@ -1013,13 +950,6 @@ function renderContactsNewPage(
   const pendingPermissionCount = permissionState.data.permissions.filter(
     (permission) => permission.authorizationStage !== "ready",
   ).length;
-  const manualConfirmation =
-    actionRequested && manualDraft
-      ? manualService.confirmManualContactDraft({
-          actorLabel: "Orbit operator",
-          draftId: manualDraft.id,
-        })
-      : null;
   const currentSourceLabel = readableSourceLabel(
     manualDraft?.source.label,
     "manual note from climate founders dinner",

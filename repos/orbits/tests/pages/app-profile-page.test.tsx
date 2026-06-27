@@ -203,6 +203,13 @@ test("/app/profile route adapter avoids raw fixtures and documents mock to live 
     ),
     "utf8",
   );
+  const routeViewModelSource = fs.readFileSync(
+    path.join(
+      projectRoot,
+      "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
+    ),
+    "utf8",
+  );
   const liveDoc = fs.readFileSync(
     path.join(
       projectRoot,
@@ -212,10 +219,20 @@ test("/app/profile route adapter avoids raw fixtures and documents mock to live 
   );
 
   assert.doesNotMatch(adapterSource, /fixtures/i);
-  assert.match(adapterSource, /createProfileService/);
-  assert.match(adapterSource, /createProfileDocumentExtractionService/);
-  assert.match(adapterSource, /createProfileSignalReviewQueueService/);
+  assert.doesNotMatch(adapterSource, /features\/profile/);
+  assert.doesNotMatch(adapterSource, /createProfileService/);
+  assert.doesNotMatch(adapterSource, /createProfileDocumentExtractionService/);
+  assert.doesNotMatch(adapterSource, /createProfileSignalReviewQueueService/);
+  assert.match(adapterSource, /loadAppProfileRouteViewModel/);
   assert.match(adapterSource, /StateView/);
+  assert.match(routeViewModelSource, /features\/profile\/contract/);
+  assert.match(routeViewModelSource, /features\/profile\/extraction-contract/);
+  assert.match(routeViewModelSource, /features\/profile\/signal-contract/);
+  assert.match(routeViewModelSource, /createProfileService/);
+  assert.match(routeViewModelSource, /createProfileDocumentExtractionService/);
+  assert.match(routeViewModelSource, /createProfileSignalReviewQueueService/);
+  assert.doesNotMatch(routeViewModelSource, /from "react"/);
+  assert.doesNotMatch(routeViewModelSource, /shared\/ui/);
 
   for (const required of [
     "live service/provider files",

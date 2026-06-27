@@ -13,6 +13,9 @@ export const ORBIT_AGENT_CONVERSATION_ERROR_CODES = [
   "ORBIT_AGENT_CONVERSATION_EMPTY",
   "ORBIT_AGENT_CONVERSATION_PENDING",
   "ORBIT_AGENT_CONVERSATION_MOCK_FAILED",
+  "ORBIT_AGENT_GEMINI_API_KEY_MISSING",
+  "ORBIT_AGENT_GEMINI_REQUEST_FAILED",
+  "ORBIT_AGENT_GEMINI_SCHEMA_INVALID",
 ] as const;
 
 export type OrbitAgentConversationErrorCode =
@@ -62,9 +65,9 @@ export interface OrbitAgentProposedToolIntent {
 
 export interface OrbitAgentSafetyLedger {
   externalSideEffectsExecuted: false;
-  domainToolCallsExecuted: false;
-  aiProviderRequested: false;
-  externalNetworkRequested: false;
+  domainToolCallsExecuted: boolean;
+  aiProviderRequested: boolean;
+  externalNetworkRequested: boolean;
   liveDatabaseReadExecuted: false;
   liveDatabaseWriteExecuted: false;
   emailProviderRequested: false;
@@ -73,14 +76,18 @@ export interface OrbitAgentSafetyLedger {
 }
 
 export interface OrbitAgentConversationProvenance {
-  source: typeof ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE;
+  source:
+    | typeof ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE
+    | "provider:gemini-interactions-api";
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
   generationMethod:
     | "fixture"
     | "rule-based-agent-reply"
-    | "rule-based-agent-state";
+    | "rule-based-agent-state"
+    | "gemini-live-agent-reply"
+    | "gemini-live-agent-state";
   privacy: "demo-orbit-agent-conversation-only";
   safety: OrbitAgentSafetyLedger;
 }
@@ -123,16 +130,20 @@ export type OrbitAgentConversationResult =
   | OrbitAgentConversationSuccess
   | OrbitAgentConversationFailure;
 
+export type OrbitAgentConversationMaybePromise<TValue> =
+  | TValue
+  | Promise<TValue>;
+
 export interface OrbitAgentConversationService {
   listConversations: (
     input?: OrbitAgentConversationInput,
-  ) => OrbitAgentConversationResult;
+  ) => OrbitAgentConversationMaybePromise<OrbitAgentConversationResult>;
   getConversation: (
     input: OrbitAgentConversationLookupInput,
-  ) => OrbitAgentConversationResult;
+  ) => OrbitAgentConversationMaybePromise<OrbitAgentConversationResult>;
   sendMessage: (
     input: OrbitAgentSendMessageInput,
-  ) => OrbitAgentConversationResult;
+  ) => OrbitAgentConversationMaybePromise<OrbitAgentConversationResult>;
 }
 
 export interface OrbitAgentConversationErrorDefinition {
@@ -177,6 +188,27 @@ export const ORBIT_AGENT_CONVERSATION_ERROR_DEFINITIONS = {
     message: "The Orbit Agent conversation mock is pinned to a controlled failure.",
     recovery:
       "Render the controlled failure state and avoid retrying live AI, network, or database services.",
+  },
+  ORBIT_AGENT_GEMINI_API_KEY_MISSING: {
+    code: "ORBIT_AGENT_GEMINI_API_KEY_MISSING",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "Gemini API key is required before the live Orbit Agent can reply.",
+    recovery:
+      "Set GEMINI_API_KEY on the server or switch ORBIT_MODULE_MODE back to mock.",
+  },
+  ORBIT_AGENT_GEMINI_REQUEST_FAILED: {
+    code: "ORBIT_AGENT_GEMINI_REQUEST_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "Gemini did not return a usable Orbit Agent planner response.",
+    recovery:
+      "Keep the conversation local, do not execute tools, and retry after checking the Gemini provider status.",
+  },
+  ORBIT_AGENT_GEMINI_SCHEMA_INVALID: {
+    code: "ORBIT_AGENT_GEMINI_SCHEMA_INVALID",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "Gemini returned an Orbit Agent planner response outside the allowed schema.",
+    recovery:
+      "Reject the planner output, do not execute tools, and fall back to a safe local explanation.",
   },
 } as const satisfies Record<
   OrbitAgentConversationErrorCode,
