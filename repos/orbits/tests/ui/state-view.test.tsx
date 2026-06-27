@@ -36,7 +36,7 @@ test("state view renders typed recovery links and actions as named controls", ()
   );
 
   assert.match(html, /aria-label="Recovery actions"/);
-  assert.match(html, /<summary>Source details<\/summary>/);
+  assert.match(html, /<summary>来源详情 \/ Source details<\/summary>/);
   assert.doesNotMatch(html, /<summary>Inspect source details<\/summary>/);
   assert.match(
     html,

@@ -89,7 +89,7 @@ test("shared state view includes default recovery action copy", () => {
   assert.match(html, /Why this matters/);
   assert.match(html, /What you can use now/);
   assert.match(html, /Safe next step/);
-  assert.match(html, /What to do next:/);
+  assert.match(html, /接下来做什么 \/ What to do next:/);
   assert.match(html, /Source details appear after review/);
   assert.doesNotMatch(html, /Inspect source details/);
   assert.doesNotMatch(
@@ -163,19 +163,19 @@ test("app shell makes the contact intake route the primary action and keeps runt
         },
         activeRoute: "/app",
         runtimeStatus: {
-          label: "Demo workspace status",
+          label: "演示工作区状态 / Demo workspace status",
           details: [
             "Mock services stay behind existing capability contracts.",
             "No live login, sync, or outbound action is connected.",
           ],
           compactBoundary:
-            "Privacy boundary: staged review only; no live sync or outbound action.",
+            "隐私边界：只做待确认复核；不实时同步，不对外执行。 / Privacy boundary: staged review only; no live sync or outbound action.",
         },
         topActions: [
           {
             id: "add-source",
             href: "/app/contacts/new",
-            label: "Add a relationship source",
+            label: "添加关系来源 / Add a relationship source",
             provenance: "Opens contact intake without live sync.",
             tone: "primary",
           },
@@ -191,15 +191,15 @@ test("app shell makes the contact intake route the primary action and keeps runt
         routeSupportLinks: [
           {
             href: "/app/contacts/new?scenario=empty",
-            label: "No source ready",
+            label: "暂无可用来源 / No source ready",
           },
           {
             href: "/app/contacts/new?scenario=pending",
-            label: "Source still reviewing",
+            label: "来源仍在复核 / Source still reviewing",
           },
           {
             href: "/app/contacts/new?scenario=failure",
-            label: "Source unavailable",
+            label: "来源不可用 / Source unavailable",
           },
         ],
       },
@@ -213,31 +213,31 @@ test("app shell makes the contact intake route the primary action and keeps runt
 
   assert.match(
     html,
-    /data-app-shell-primary-action="true"[^>]*href="\/app\/contacts\/new"[^>]*>Add a relationship source<\/a>/,
+    /data-app-shell-primary-action="true"[^>]*href="\/app\/contacts\/new"[^>]*>添加关系来源 \/ Add a relationship source<\/a>/,
   );
   assert.match(html, /<details[^>]*aria-label="Workspace status details"[^>]*data-runtime-status="compact"/);
-  assert.match(html, /<summary>Demo workspace status<\/summary>/);
+  assert.match(html, /<summary>演示工作区状态 \/ Demo workspace status<\/summary>/);
   assert.match(html, /data-runtime-boundary-row="compact"/);
   assert.match(
     html,
-    /Privacy boundary: staged review only; no live sync or outbound action\./,
+    /隐私边界：只做待确认复核；不实时同步，不对外执行。 \/ Privacy boundary: staged review only; no live sync or outbound action\./,
   );
   assert.ok(
-    html.indexOf("Add a relationship source") < html.indexOf("Demo workspace status"),
+    html.indexOf("添加关系来源") < html.indexOf("Demo workspace status"),
     "primary source CTA should render before the compact runtime disclosure",
   );
   assert.ok(
-    html.indexOf("Add a relationship source") < html.indexOf("Privacy boundary:"),
+    html.indexOf("添加关系来源") < html.indexOf("Privacy boundary:"),
     "primary source CTA should stay ahead of the compact privacy boundary row",
   );
   assert.match(
     html,
-    /data-workspace-record-scope="sample-records"[^>]*>Reviewed relationship context stays grouped inside Orbit Demo Workspace\./,
+    /data-workspace-record-scope="sample-records"[^>]*>已复核的关系上下文会留在当前工作区。 \/ Reviewed relationship context stays grouped inside this workspace\. Orbit Demo Workspace/,
   );
   for (const label of [
-    "No source ready",
-    "Source still reviewing",
-    "Source unavailable",
+    "暂无可用来源 / No source ready",
+    "来源仍在复核 / Source still reviewing",
+    "来源不可用 / Source unavailable",
   ]) {
     assert.match(html, new RegExp(`href="\\/app\\/contacts\\/new\\?scenario=[^"]+"[^>]*>${label}<\\/a>`));
   }
@@ -538,21 +538,32 @@ test("app layout owns shell state as typed props without auth access", () => {
   assert.match(layoutSource, /appShellTopActions: AppShellTopAction\[\]/);
   assert.match(layoutSource, /appShellRuntimeStatus: AppShellRuntimeStatus/);
   assert.match(layoutSource, /appShellBottomNavigation: AppShellNavigationItem\[\]/);
-  assert.match(layoutSource, /sourcePosture: "Sources staged for review before outreach"/);
+  assert.match(
+    layoutSource,
+    /sourcePosture: bilingualText\(\s*"对外联系前先复核来源",\s*"Sources staged for review before outreach"/,
+  );
   assert.match(layoutSource, /href: "\/app\/contacts\/new"/);
-  assert.match(layoutSource, /label: "Add a relationship source"/);
-  for (const label of [
-    "Orbit AI",
-    "资料",
-    "人脉",
-    "活动",
-    "跟进",
-    "对话",
-    "关系健康",
-    "下一步",
-  ]) {
-    assert.match(layoutSource, new RegExp(`label: "${label}"`));
+  assert.match(
+    layoutSource,
+    /label: bilingualText\("添加关系来源", "Add a relationship source"\)/,
+  );
+  for (const [chineseLabel, englishLabel] of [
+    ["Orbit AI", "Orbit AI"],
+    ["资料", "Profile"],
+    ["人脉", "Contacts"],
+    ["活动", "Events"],
+    ["跟进", "Follow-ups"],
+    ["对话", "Chat"],
+  ] as const) {
+    assert.match(
+      layoutSource,
+      new RegExp(
+        `label: bilingualText\\("${chineseLabel}", "${englishLabel}"\\)`,
+      ),
+    );
   }
+  assert.match(layoutSource, /label: bilingualText\("关系健康", "Health"\)/);
+  assert.match(layoutSource, /label: bilingualText\("下一步", "Next"\)/);
   assert.doesNotMatch(layoutSource, /label: "Home"|label: "Profile"|label: "Contacts"|label: "Chat"|label: "Dashboard"|label: "Agent"/);
   assert.match(layoutSource, /const pathname = usePathname\(\)/);
   assert.match(layoutSource, /resolveOrbitAppRoute\(pathname\)/);
@@ -615,14 +626,14 @@ test("main app routes render shared state guidance", async () => {
     const html = renderToStaticMarkup(React.createElement(Page));
 
     assert.match(html, /workbench-surface/);
-    assert.match(html, new RegExp(`<h2>${routeModule.title}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${routeModule.title}</h2>`));
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
     assert.match(html, /Why this matters/);
     assert.match(html, new RegExp(routeModule.purpose));
     assert.match(html, /What you can use now/);
     assert.match(html, /Safe next step/);
     assert.match(html, /No outside accounts are connected here yet/);
-    assert.match(html, /Next step:/);
+    assert.match(html, /接下来做什么 \/ What to do next:/);
     assert.doesNotMatch(html, /shared placeholder state/);
     assert.doesNotMatch(html, /capability service/i);
     assert.doesNotMatch(html, /Mika Tanaka|Tokyo Founder Demo Night|Kenji Sato/);

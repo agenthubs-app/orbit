@@ -39,7 +39,7 @@ test("/app/events composes approved event capabilities into the app route", asyn
   const html = await renderEventsPage();
   const text = visibleText(html);
 
-  assert.match(html, /<h2>Event briefing<\/h2>/);
+  assert.match(html, /<h2>[^<]*Event briefing<\/h2>/);
   assert.match(html, /Climate founders dinner/);
   assert.match(html, /Mina Park/);
   assert.match(html, /Climate operators breakfast/);
@@ -68,7 +68,7 @@ test("/app/events starts with the current event preparation priority", async () 
   assert.match(text, /Open Climate founders dinner workspace/);
   assert.match(
     html,
-    /href="\/app\/events\/demo-event-1">Open Climate founders dinner workspace<\/a>/,
+    /href="\/app\/events\/demo-event-1">[^<]*Open Climate founders dinner workspace<\/a>/,
   );
   assert.ok(priorityIndex > -1, "current event priority should be visible");
   assert.ok(inventoryIndex > -1, "event choices should remain visible");
@@ -88,10 +88,10 @@ test("/app/events event cards link into detail and describe event work", async (
   const html = await renderEventsPage();
   const text = visibleText(html);
 
-  assert.match(html, /aria-label="Event choices"/);
+  assert.match(html, /aria-label="[^"]*Event choices"/);
   assert.match(
     html,
-    /href="\/app\/events\/demo-event-1"[^>]*>Review Climate founders dinner<\/a>/,
+    /href="\/app\/events\/demo-event-1"[^>]*>[^<]*Review Climate founders dinner<\/a>/,
   );
   assert.match(text, /Venue: Kanda Founders Table/);
   assert.match(text, /Attendee opportunity: Mina Park/);
@@ -117,14 +117,14 @@ test("/app/events previews the core event recommendation action without external
     text,
     /No calendar changes, saved records, messages, or notifications were made/,
   );
-  assert.match(text, /Calendar changes: none/);
-  assert.match(text, /Saved records: none/);
+  assert.match(text, /Calendar changes: .*none/);
+  assert.match(text, /Saved records: .*none/);
   assert.match(text, /Realtime presence: none/);
   assert.match(text, /Peer notifications: none/);
   assert.match(text, /External messages: none/);
-  assert.match(text, /Messages and notifications: none/);
-  assert.match(text, /Notifications: none/);
-  assert.match(text, /Outside network requests: none/);
+  assert.match(text, /Messages and notifications: .*none/);
+  assert.match(text, /Notifications: .*none/);
+  assert.match(text, /Outside network requests: .*none/);
   assert.match(html, /data-task-result="events-accept-top-event-preview"/);
   assert.match(html, /data-action-evidence="events-accept-top-event-local-preview"/);
   assert.match(html, /data-side-effects="none"/);
@@ -180,18 +180,18 @@ test("/app/events renders empty loading and failure states through a route state
     const html = await renderEventsPage({ scenario: state.scenario });
     const text = visibleText(html);
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(state.expectedCopy));
     assert.match(html, /data-state-boundary="app-events-route-state-view"/);
     assert.match(
       html,
       new RegExp(`data-route-state-url="/app/events\\?scenario=${state.scenario}"`),
     );
-    assert.match(html, /aria-label="Events recovery actions"/);
+    assert.match(html, /aria-label="[^"]*Events recovery actions"/);
     assert.match(
       html,
       new RegExp(
-        `href="${state.expectedRecoveryHref}">${state.expectedRecoveryLabel}</a>`,
+        `href="${state.expectedRecoveryHref}">[^<]*${state.expectedRecoveryLabel}</a>`,
       ),
     );
     assert.doesNotMatch(html, />[^<]*(Scenario URL|mock|harness|providers?)[^<]*</i);

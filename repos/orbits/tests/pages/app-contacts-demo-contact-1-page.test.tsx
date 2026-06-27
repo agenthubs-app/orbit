@@ -79,13 +79,13 @@ test("/app/contacts/demo-contact-1 carries the selected person into a relationsh
   const html = await renderContactDetailPage();
   const primaryText = primaryTextFromHtml(html);
   const primaryPrepareLinks =
-    html.match(/<a\b[^>]*>\s*Prepare follow-up\s*<\/a>/g) ?? [];
+    html.match(/<a\b[^>]*>\s*[^<]*Prepare follow-up\s*<\/a>/g) ?? [];
 
-  assert.match(html, /<h1>Relationship workspace: Kenji Watanabe<\/h1>/);
+  assert.match(html, /<h1>[^<]*Relationship workspace: Kenji Watanabe<\/h1>/);
   assert.match(primaryText, /Aster Grid/);
   assert.match(primaryText, /Source story/);
   assert.match(primaryText, /climate founders dinner/);
-  assert.match(primaryText, /Relationship stage: Needs follow-up/);
+  assert.match(primaryText, /Relationship stage[^.]*Needs follow-up/);
   assert.match(primaryText, /Priority reason/);
   assert.match(primaryText, /storage pilot operator intro is explicit, timely/);
   assert.match(primaryText, /Prepare follow-up/);
@@ -100,7 +100,7 @@ test("/app/contacts/demo-contact-1 carries the selected person into a relationsh
   );
   assert.match(html, /Review prepared draft/);
   assert.doesNotMatch(primaryText, /\bevidence:[a-z0-9:_-]+\b/i);
-  assert.match(html, /<summary>Evidence IDs and source records<\/summary>/);
+  assert.match(html, /<summary>[^<]*Evidence IDs and source records<\/summary>/);
   assert.match(html, /evidence:connection-storage-pilot/);
   assert.match(html, /data-state-boundary="app-contact-detail-success"/);
   assert.doesNotMatch(html, /data-state-boundary="shared-ui-state-view"/);
@@ -132,12 +132,12 @@ test("/app/contacts/demo-contact-1 prepares the next follow-up without external 
   assert.match(html, /Stage draft locally/);
   assert.match(html, /This draft stays local until you confirm where it should go/);
   assert.match(html, new RegExp(escapeRegex(expectedSafetySummary)));
-  assert.match(html, /Outside accounts contacted<\/dt><dd>none/);
-  assert.match(html, /Contact record changed<\/dt><dd>no/);
-  assert.match(html, /Message sent<\/dt><dd>no/);
-  assert.match(html, /Notification sent<\/dt><dd>no/);
-  assert.match(html, /Search index read<\/dt><dd>no/);
-  assert.match(html, /Database query executed<\/dt><dd>no/);
+  assert.match(html, /Outside accounts contacted<\/dt><dd>[^<]*none/);
+  assert.match(html, /Contact record changed<\/dt><dd>[^<]*no/);
+  assert.match(html, /Message sent<\/dt><dd>[^<]*no/);
+  assert.match(html, /Notification sent<\/dt><dd>[^<]*no/);
+  assert.match(html, /Search index read<\/dt><dd>[^<]*no/);
+  assert.match(html, /Database query executed<\/dt><dd>[^<]*no/);
   assert.doesNotMatch(html, /Send follow-up|Message Kenji|Notify Kenji/);
   assert.match(html, /data-action-result="contact-detail-follow-up-prepared"/);
   assert.match(html, /data-action-evidence="evidence:connection-added-manual-note"/);
@@ -146,7 +146,7 @@ test("/app/contacts/demo-contact-1 prepares the next follow-up without external 
     reloadedHtml,
     /data-action-evidence="evidence:connection-added-manual-note"/,
   );
-  assert.match(reloadedHtml, /Outside accounts contacted<\/dt><dd>none/);
+  assert.match(reloadedHtml, /Outside accounts contacted<\/dt><dd>[^<]*none/);
 
   t.diagnostic(
     [
@@ -189,7 +189,7 @@ test("/app/contacts/demo-contact-1 renders empty loading and failure states thro
   for (const state of scenarios) {
     const html = await renderContactDetailPage({ scenario: state.scenario });
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(escapeRegex(state.expectedCopy)));
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
     assert.match(
@@ -198,11 +198,11 @@ test("/app/contacts/demo-contact-1 renders empty loading and failure states thro
         `data-route-state-url="/app/contacts/demo-contact-1\\?scenario=${state.scenario}"`,
       ),
     );
-    assert.match(html, /aria-label="Contact detail route recovery actions"/);
+    assert.match(html, /aria-label="[^"]*Contact detail route recovery actions"/);
     assert.match(
       html,
       new RegExp(
-        `href="${escapeRegex(state.expectedRecoveryHref)}">${escapeRegex(
+        `href="${escapeRegex(state.expectedRecoveryHref)}">[^<]*${escapeRegex(
           state.expectedRecoveryLabel,
         )}</a>`,
       ),

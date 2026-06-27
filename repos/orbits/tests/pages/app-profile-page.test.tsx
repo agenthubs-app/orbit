@@ -26,7 +26,7 @@ async function renderProfilePage(
 test("/app/profile renders profile composition from approved mock services", async () => {
   const html = await renderProfilePage();
 
-  assert.match(html, /<h2>Ari Lane profile<\/h2>/);
+  assert.match(html, /<h2>Ari Lane 个人资料 \/ Ari Lane Profile<\/h2>/);
   assert.match(
     html,
     /Every field below belongs to Ari Lane\. Source-backed identity, market, and relationship goals are usable now; preferred intro channels and suggested changes stay blocked until Ari Lane confirms the save\./,
@@ -51,7 +51,7 @@ test("/app/profile renders profile composition from approved mock services", asy
   assert.match(html, /Founder building a relationship operating system/);
   assert.match(html, /Resume draft ready/);
   assert.match(html, /Three sourced profile suggestions are waiting for Ari Lane review./);
-  assert.match(html, /Next field: preferred intro channels/);
+  assert.match(html, /Next field: [^<]*preferred intro channels/);
   assert.match(html, /Profile owner/);
   assert.match(html, /Review status: ready for confirmation/);
   assert.match(html, /Profile outcome/);
@@ -88,7 +88,7 @@ test("/app/profile previews a profile update action without external side effect
   assert.match(html, /Ready for confirmation: Ari Lane prefers warm intro and event follow-up/);
   assert.match(html, /The review panel is prepared for a confirmation step./);
   assert.match(html, /Profile save still requires explicit confirmation./);
-  assert.match(html, /warm intro, event follow-up/);
+  assert.match(html, /warm intro[\s\S]*event follow-up/);
   assert.match(html, /Outside tools contacted: none/);
   assert.doesNotMatch(html, />[^<]*\b[Mm]ock\b[^<]*</);
   assert.doesNotMatch(html, />[^<]*\b[Pp]roviders?\b[^<]*</);
@@ -155,11 +155,11 @@ test("/app/profile renders empty loading and failure states through the shared s
   for (const state of scenarios) {
     const html = await renderProfilePage({ scenario: state.scenario });
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(state.expectedCopy));
     assert.match(
       html,
-      new RegExp(`aria-label="${state.expectedLabel}"[^>]*>${state.expectedLabel}</(?:a|button)>`),
+      new RegExp(`aria-label="[^"]*${state.expectedLabel}"[^>]*>[^<]*${state.expectedLabel}</(?:a|button)>`),
     );
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
     assert.match(

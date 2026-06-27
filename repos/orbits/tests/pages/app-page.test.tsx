@@ -116,7 +116,10 @@ test("/app AI shell suppresses legacy workspace chrome", async () => {
   assert.doesNotMatch(html, /aria-label="Bottom navigation"/);
   assert.match(html, /data-reference-style="orbit-ui-reference"/);
   assert.match(html, /aria-label="Orbit AI 导航"/);
-  assert.match(html, /data-orbit-ai-nav-panel="home"[\s\S]*?>Orbit AI<\/span>/);
+  assert.match(
+    html,
+    /data-orbit-ai-nav-panel="home"[\s\S]*?>Orbit AI(?: \/ AI home)?<\/span>/,
+  );
   assert.match(html, /aria-current="page"/);
 });
 
@@ -143,7 +146,9 @@ test("/app opens as an AI chat command center with a functional side stage", asy
   ]) {
     assert.match(
       html,
-      new RegExp(`data-orbit-ai-nav-panel="${expected.panel}"[\\s\\S]*?>${expected.label}</span>`),
+      new RegExp(
+        `data-orbit-ai-nav-panel="${expected.panel}"[\\s\\S]*?>${expected.label}(?: / [^<]+)?</span>`,
+      ),
     );
   }
   for (const expected of [
@@ -155,7 +160,9 @@ test("/app opens as an AI chat command center with a functional side stage", asy
   ]) {
     assert.match(
       html,
-      new RegExp(`href="${expected.href.replace("?", "\\?")}"[^>]*>${expected.label}</a>`),
+      new RegExp(
+        `href="${expected.href.replace("?", "\\?")}"[^>]*>${expected.label}(?: / [^<]+)?</a>`,
+      ),
     );
   }
   assert.ok(
@@ -166,7 +173,10 @@ test("/app opens as an AI chat command center with a functional side stage", asy
     html.indexOf("中文") < html.indexOf("English"),
     "Chinese should be the active primary language before the English option",
   );
-  assert.doesNotMatch(html, /Ask Orbit AI/);
+  assert.ok(
+    html.indexOf("问 Orbit AI") < html.indexOf("Ask Orbit AI"),
+    "Chinese heading should lead before the secondary English heading",
+  );
   assert.doesNotMatch(html, /One relationship priority/);
   assert.doesNotMatch(html, /App workbench composed capabilities/);
   assert.doesNotMatch(html, /App workbench capability labels/);
@@ -514,13 +524,12 @@ test("app layout wires contact intake recovery links without editing the route p
   assert.match(layoutSource, /const pathname = usePathname\(\)/);
   assert.match(layoutSource, /pathname === "\/app\/contacts\/new"/);
   assert.match(layoutSource, /routeSupportLinks=/);
-  for (const label of [
-    "No source ready",
-    "Source still reviewing",
-    "Source unavailable",
-  ]) {
-    assert.match(layoutSource, new RegExp(`label: "${label}"`));
-  }
+  assert.match(layoutSource, /label: bilingualText\("暂无可用来源", "No source ready"\)/);
+  assert.match(
+    layoutSource,
+    /label: bilingualText\("来源仍在复核", "Source still reviewing"\)/,
+  );
+  assert.match(layoutSource, /label: bilingualText\("来源不可用", "Source unavailable"\)/);
 });
 
 test("/app page wrapper delegates to AppWorkbench without direct service imports", () => {

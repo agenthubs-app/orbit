@@ -7,12 +7,18 @@ import {
   type AppEventDetailBoundaryModel,
   type AppEventDetailSuccessModel,
 } from "../compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 
 export const metadata = {
-  title: "Climate founders dinner | Orbit",
-  description:
+  title: bilingualText(
+    "气候创始人晚餐 | Orbit",
+    "Climate founders dinner | Orbit",
+  ),
+  description: bilingualText(
+    "复核有来源支撑的活动工作区，包括参会人名单、准备度、推荐、现场意图、笔记和会后复盘。",
     "Review a source-backed event workspace with attendee roster, readiness, recommendations, in-room intent, notes, and post-event review.",
+  ),
 };
 
 export function generateStaticParams() {
@@ -250,17 +256,26 @@ function readSearchParam(
 }
 
 function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("en", {
+  const chineseDateTime = new Intl.DateTimeFormat("zh-CN", {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
     month: "short",
     timeZone: "UTC",
   }).format(new Date(value));
+  const englishDateTime = new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(value));
+
+  return bilingualText(chineseDateTime, englishDateTime);
 }
 
 function yesNo(value: boolean): string {
-  return value ? "yes" : "none";
+  return value ? bilingualText("是", "yes") : bilingualText("无", "none");
 }
 
 function firstName(value: string): string {
@@ -302,7 +317,9 @@ function evidenceLabel(evidenceId: string): string {
     });
   const label = words.join(" ");
 
-  return label.charAt(0).toUpperCase() + label.slice(1);
+  const englishLabel = label.charAt(0).toUpperCase() + label.slice(1);
+
+  return bilingualText(`证据 ${englishLabel}`, englishLabel);
 }
 
 function EvidenceChips({
@@ -340,18 +357,30 @@ function Metric({
 
 function relationshipRecordSummary(model: AppEventDetailSuccessModel): string {
   if (model.sourceConsistency.reconciledSourceCount === 0) {
-    return "All attendee context already matches the trusted event details.";
+    return bilingualText(
+      "所有参会人背景已经与可信活动详情一致。",
+      "All attendee context already matches the trusted event details.",
+    );
   }
 
-  return "Orbit already resolved older attendee logistics; visible venue and time stay anchored to trusted event details.";
+  return bilingualText(
+    "Orbit 已经处理较早的参会人行程信息；可见地点和时间仍锚定到可信活动详情。",
+    "Orbit already resolved older attendee logistics; visible venue and time stay anchored to trusted event details.",
+  );
 }
 
 function checkedRecordSummary(model: AppEventDetailSuccessModel): string {
   if (model.sourceConsistency.apiEvidenceContradictionCount === 0) {
-    return "Checked event context already matches trusted event details.";
+    return bilingualText(
+      "已检查的活动背景已经与可信活动详情一致。",
+      "Checked event context already matches trusted event details.",
+    );
   }
 
-  return "One source was reconciled before recommendations were shown; venue and time stay anchored to trusted event details.";
+  return bilingualText(
+    "展示推荐前已调和一个来源；地点和时间仍锚定到可信活动详情。",
+    "One source was reconciled before recommendations were shown; venue and time stay anchored to trusted event details.",
+  );
 }
 
 function renderSourceConsistency(model: AppEventDetailSuccessModel) {
@@ -360,39 +389,51 @@ function renderSourceConsistency(model: AppEventDetailSuccessModel) {
   return (
     <WorkbenchSurface
       className="app-event-detail-consistency"
-      eyebrow="Record check"
-      title="Venue and time stay anchored"
+      eyebrow={bilingualText("记录检查", "Record check")}
+      title={bilingualText("地点和时间保持锚定", "Venue and time stay anchored")}
     >
       <p className="type-body">{relationshipRecordSummary(model)}</p>
       <p className="type-body">{checkedRecordSummary(model)}</p>
-      <dl aria-label="Canonical event logistics" className="app-event-detail-ledger">
+      <dl
+        aria-label={bilingualText(
+          "标准活动行程信息",
+          "Canonical event logistics",
+        )}
+        className="app-event-detail-ledger"
+      >
         <div>
-          <dt>Visible venue</dt>
+          <dt>{bilingualText("可见地点", "Visible venue")}</dt>
           <dd>{canonicalEvent.venue}</dd>
         </div>
         <div>
-          <dt>Visible time</dt>
+          <dt>{bilingualText("可见时间", "Visible time")}</dt>
           <dd>{formatDateTime(canonicalEvent.startsAt)}</dd>
         </div>
         <div>
-          <dt>Sources checked</dt>
+          <dt>{bilingualText("已检查来源", "Sources checked")}</dt>
           <dd>
-            {model.sourceConsistency.checkedSourceCount} event sources checked
-            before relationship recommendations are shown.
+            {bilingualText(
+              `${model.sourceConsistency.checkedSourceCount} 个活动来源已在展示关系推荐前完成检查。`,
+              `${model.sourceConsistency.checkedSourceCount} event sources checked before relationship recommendations are shown.`,
+            )}
           </dd>
         </div>
         <div>
-          <dt>Reconciled</dt>
+          <dt>{bilingualText("已调和", "Reconciled")}</dt>
           <dd>
-            {model.sourceConsistency.apiEvidenceContradictionCount} of{" "}
-            {model.sourceConsistency.apiEvidenceSurfaceCount} sources needed
-            logistics review before this page opened.
+            {bilingualText(
+              `${model.sourceConsistency.apiEvidenceContradictionCount} / ${model.sourceConsistency.apiEvidenceSurfaceCount} 个来源在本页打开前需要行程复核。`,
+              `${model.sourceConsistency.apiEvidenceContradictionCount} of ${model.sourceConsistency.apiEvidenceSurfaceCount} sources needed logistics review before this page opened.`,
+            )}
           </dd>
         </div>
       </dl>
       <EvidenceChips
         evidenceIds={model.sourceConsistency.evidenceIds}
-        label="Canonical event source evidence"
+        label={bilingualText(
+          "标准活动来源证据",
+          "Canonical event source evidence",
+        )}
       />
     </WorkbenchSurface>
   );
@@ -408,30 +449,48 @@ function renderBoundaryState(model: AppEventDetailBoundaryModel) {
     >
       <style>{routeStyles}</style>
       <div data-state-boundary="app-event-detail-route-state-view">
-        <WorkbenchSurface elevated eyebrow="Event workspace" title={model.title}>
+        <WorkbenchSurface
+          elevated
+          eyebrow={bilingualText("活动工作区", "Event workspace")}
+          title={model.title}
+        >
           <p className="type-body">{model.description}</p>
-          <dl aria-label="Event workspace state details" className="app-event-detail-ledger">
+          <dl
+            aria-label={bilingualText(
+              "活动工作区状态详情",
+              "Event workspace state details",
+            )}
+            className="app-event-detail-ledger"
+          >
             <div>
-              <dt>Current status</dt>
+              <dt>{bilingualText("当前状态", "Current status")}</dt>
               <dd>{model.description}</dd>
             </div>
             <div>
-              <dt>Safety check</dt>
-              <dd>No external action can run until this event context is ready.</dd>
+              <dt>{bilingualText("安全检查", "Safety check")}</dt>
+              <dd>
+                {bilingualText(
+                  "活动背景准备好之前，不能运行任何外部动作。",
+                  "No external action can run until this event context is ready.",
+                )}
+              </dd>
             </div>
             <div>
-              <dt>Next step</dt>
+              <dt>{bilingualText("下一步", "Next step")}</dt>
               <dd>{model.nextStep}</dd>
             </div>
           </dl>
           <EvidenceChips
             evidenceIds={model.evidence}
-            label="Event detail state evidence"
+            label={bilingualText("活动详情状态证据", "Event detail state evidence")}
           />
         </WorkbenchSurface>
       </div>
       <nav
-        aria-label="Event detail route recovery actions"
+        aria-label={bilingualText(
+          "活动详情恢复操作",
+          "Event detail route recovery actions",
+        )}
         className="app-event-detail-recovery-actions"
       >
         {model.recoveryActions.map((action) => (
@@ -458,49 +517,85 @@ function renderActionResult(actionResult: AppEventDetailActionResult | null) {
       data-side-effects={actionResult.sideEffectsLabel}
     >
       <strong>
-        {actionResult.targetDisplayName} is marked for this page preview
+        {bilingualText(
+          `${actionResult.targetDisplayName} 已标记为本页预览`,
+          `${actionResult.targetDisplayName} is marked for this page preview`,
+        )}
       </strong>
       <p>
-        Intent held for this review: {actionResult.targetDisplayName}. Use this
-        as your in-room prompt. {actionResult.matchTitle}
+        {bilingualText(
+          `本次复核保留的意图：${actionResult.targetDisplayName}。把它作为现场提示使用。`,
+          `Intent held for this review: ${actionResult.targetDisplayName}. Use this as your in-room prompt.`,
+        )}{" "}
+        {actionResult.matchTitle}
       </p>
       <p>
-        This preview only changes what you see here; it does not update a
-        saved contact, calendar, message thread, notification, or outside
-        network.
+        {bilingualText(
+          "这个预览只改变你在这里看到的内容；不会更新已保存联系人、日历、消息线程、通知或外部网络。",
+          "This preview only changes what you see here; it does not update a saved contact, calendar, message thread, notification, or outside network.",
+        )}
       </p>
       <p>
-        No realtime presence, peer notification, external message,
-        saved-record write, or outside network request ran.
+        {bilingualText(
+          "没有运行实时在线状态、同伴通知、外部消息、保存记录写入或外部网络请求。",
+          "No realtime presence, peer notification, external message, saved-record write, or outside network request ran.",
+        )}
       </p>
-      <dl aria-label="Want-to-connect safety ledger" className="app-event-detail-ledger">
+      <dl
+        aria-label={bilingualText(
+          "想要连接安全账本",
+          "Want-to-connect safety ledger",
+        )}
+        className="app-event-detail-ledger"
+      >
         <div>
-          <dt>Calendar updates</dt>
-          <dd>Calendar updates: {yesNo(actionResult.calendarUpdateExecuted)}</dd>
+          <dt>{bilingualText("日历更新", "Calendar updates")}</dt>
+          <dd>
+            {bilingualText("日历更新", "Calendar updates")}:{" "}
+            {yesNo(actionResult.calendarUpdateExecuted)}
+          </dd>
         </div>
         <div>
-          <dt>Realtime presence</dt>
-          <dd>Realtime presence: {yesNo(actionResult.realtimePresenceRequested)}</dd>
+          <dt>{bilingualText("实时在线状态", "Realtime presence")}</dt>
+          <dd>
+            {bilingualText("实时在线状态", "Realtime presence")}:{" "}
+            {yesNo(actionResult.realtimePresenceRequested)}
+          </dd>
         </div>
         <div>
-          <dt>Peer notifications</dt>
-          <dd>Peer notifications: {yesNo(actionResult.peerNotificationDelivered)}</dd>
+          <dt>{bilingualText("同伴通知", "Peer notifications")}</dt>
+          <dd>
+            {bilingualText("同伴通知", "Peer notifications")}:{" "}
+            {yesNo(actionResult.peerNotificationDelivered)}
+          </dd>
         </div>
         <div>
-          <dt>External messages</dt>
-          <dd>External messages: {yesNo(actionResult.externalMessageSent)}</dd>
+          <dt>{bilingualText("外部消息", "External messages")}</dt>
+          <dd>
+            {bilingualText("外部消息", "External messages")}:{" "}
+            {yesNo(actionResult.externalMessageSent)}
+          </dd>
         </div>
         <div>
-          <dt>Saved-record writes</dt>
-          <dd>Saved-record writes: {yesNo(actionResult.databaseWriteExecuted)}</dd>
+          <dt>{bilingualText("保存记录写入", "Saved-record writes")}</dt>
+          <dd>
+            {bilingualText("保存记录写入", "Saved-record writes")}:{" "}
+            {yesNo(actionResult.databaseWriteExecuted)}
+          </dd>
         </div>
         <div>
-          <dt>Notifications</dt>
-          <dd>Notifications: {yesNo(actionResult.notificationDelivered)}</dd>
+          <dt>{bilingualText("通知", "Notifications")}</dt>
+          <dd>
+            {bilingualText("通知", "Notifications")}:{" "}
+            {yesNo(actionResult.notificationDelivered)}
+          </dd>
         </div>
         <div>
-          <dt>Outside network</dt>
-          <dd>Outside network requests: {yesNo(actionResult.externalNetworkRequested)}</dd>
+          <dt>{bilingualText("外部网络", "Outside network")}</dt>
+          <dd>
+            {bilingualText("外部网络请求", "Outside network requests")}:{" "}
+            {yesNo(actionResult.externalNetworkRequested)}
+          </dd>
         </div>
       </dl>
     </div>
@@ -530,7 +625,10 @@ function renderRoutePriority(model: AppEventDetailSuccessModel) {
   const targetName = wantConnectTargetName(model);
   const targetAttendee = wantConnectTargetAttendee(model, targetName);
   const match = model.wantConnectMatches.matches[0];
-  const actionLabel = `Mark ${targetName} to meet`;
+  const actionLabel = bilingualText(
+    `标记要见 ${targetName}`,
+    `Mark ${targetName} to meet`,
+  );
   const targetContext = productCopy(
     targetAttendee?.relationshipContext ?? match?.successNotice.message,
   );
@@ -543,21 +641,29 @@ function renderRoutePriority(model: AppEventDetailSuccessModel) {
       <WorkbenchSurface
         elevated
         className="app-event-detail-priority-surface"
-        eyebrow="Next action"
-        title={`Meet ${targetName} first`}
+        eyebrow={bilingualText("下一步动作", "Next action")}
+        title={bilingualText(`先见 ${targetName}`, `Meet ${targetName} first`)}
       >
         <div className="app-event-detail-priority-grid">
           <div className="app-event-detail-priority-copy">
             <p>
-              Mark {targetName} as the first person to meet. {targetContext}
+              {bilingualText(
+                `把 ${targetName} 标记为第一位要见的人。`,
+                `Mark ${targetName} as the first person to meet.`,
+              )}{" "}
+              {targetContext}
             </p>
             <p>{productCopy(match?.successNotice.message)}</p>
             <p>
-              Opening line context: {productCopy(match?.successNotice.message)}
+              {bilingualText("开场白背景", "Opening line context")}:{" "}
+              {productCopy(match?.successNotice.message)}
             </p>
             <p>
-              Orbit has already checked venue and time against trusted event
-              sources: {canonicalEvent.venue}, {formatDateTime(canonicalEvent.startsAt)}.
+              {bilingualText(
+                "Orbit 已经用可信活动来源检查地点和时间",
+                "Orbit has already checked venue and time against trusted event sources",
+              )}
+              : {canonicalEvent.venue}, {formatDateTime(canonicalEvent.startsAt)}.
             </p>
             <a
               className="app-event-detail-action-link"
@@ -571,20 +677,22 @@ function renderRoutePriority(model: AppEventDetailSuccessModel) {
             className="app-event-detail-ledger"
           >
             <div>
-              <dt>Canonical place</dt>
+              <dt>{bilingualText("标准地点", "Canonical place")}</dt>
               <dd>
                 {canonicalEvent.venue}, {formatDateTime(canonicalEvent.startsAt)}
               </dd>
             </div>
             <div>
-              <dt>Why first</dt>
+              <dt>{bilingualText("为什么先见", "Why first")}</dt>
               <dd>{targetContext}</dd>
             </div>
             <div>
-              <dt>Guardrail</dt>
+              <dt>{bilingualText("护栏", "Guardrail")}</dt>
               <dd>
-                This page does not send messages, alerts, saved-record writes,
-                or outside network requests.
+                {bilingualText(
+                  "本页不会发送消息、提醒、保存记录写入或外部网络请求。",
+                  "This page does not send messages, alerts, saved-record writes, or outside network requests.",
+                )}
               </dd>
             </div>
           </dl>
@@ -601,7 +709,10 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
   const note = model.encounterNote.note;
   const participant = model.encounterNote.participant;
   const targetName = wantConnectTargetName(model);
-  const actionLabel = `Mark ${targetName} to meet`;
+  const actionLabel = bilingualText(
+    `标记要见 ${targetName}`,
+    `Mark ${targetName} to meet`,
+  );
 
   return (
     <div
@@ -610,26 +721,43 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
       data-state-boundary="app-event-detail-success"
     >
       <style>{routeStyles}</style>
-      <section className="app-event-detail-hero" aria-label="Event detail header">
+      <section
+        className="app-event-detail-hero"
+        aria-label={bilingualText("活动详情页头", "Event detail header")}
+      >
         <div className="app-event-detail-title">
-          <p className="surface-eyebrow">Event workspace</p>
+          <p className="surface-eyebrow">
+            {bilingualText("活动工作区", "Event workspace")}
+          </p>
           <h1>{event.title}</h1>
           <p>
-            Current event: {event.title}. Source story: Calendar source confirmed
-            the dinner and the relationship context is ready for in-room review.
+            {bilingualText(
+              `当前活动：${event.title}。来源说明：日历来源确认了这场晚餐，关系上下文已可用于现场复核。`,
+              `Current event: ${event.title}. Source story: Calendar source confirmed the dinner and the relationship context is ready for in-room review.`,
+            )}
           </p>
           <p>
-            Venue/time confidence: {canonicalEvent.venue},{" "}
-            {formatDateTime(canonicalEvent.startsAt)}.
+            {bilingualText("地点和时间可信", "Venue/time confidence")}:{" "}
+            {canonicalEvent.venue}, {formatDateTime(canonicalEvent.startsAt)}.
           </p>
-          <p>First person to meet: {targetName}.</p>
-          <p>In-room action: {actionLabel} on this page.</p>
+          <p>{bilingualText("优先见的人", "First person to meet")}: {targetName}.</p>
+          <p>
+            {bilingualText(
+              `现场动作：在本页${actionLabel}。`,
+              `In-room action: ${actionLabel} on this page.`,
+            )}
+          </p>
           <p>
             {event.description} {event.relationshipContext}
           </p>
         </div>
-        <div className="app-event-detail-meta" aria-label="Event status and sources">
-          <Chip tone="primary">Status: {event.status}</Chip>
+        <div
+          className="app-event-detail-meta"
+          aria-label={bilingualText("活动状态和来源", "Event status and sources")}
+        >
+          <Chip tone="primary">
+            {bilingualText("状态", "Status")}: {event.status}
+          </Chip>
           <Chip tone="evidence">{canonicalEvent.venue}</Chip>
           <Chip tone="confirmation">{formatDateTime(canonicalEvent.startsAt)}</Chip>
         </div>
@@ -638,7 +766,7 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
             ...canonicalEvent.evidenceIds,
             ...model.attendeeRoster.provenance.evidenceIds,
           ]}
-          label="Event source evidence"
+          label={bilingualText("活动来源证据", "Event source evidence")}
         />
       </section>
 
@@ -646,44 +774,67 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
 
       {renderSourceConsistency(model)}
 
-      <section className="app-event-detail-metrics" aria-label="Event route metrics">
-        <Metric label="Roster" value={model.attendeeRoster.attendees.length} />
+      <section
+        className="app-event-detail-metrics"
+        aria-label={bilingualText("活动路由指标", "Event route metrics")}
+      >
         <Metric
-          label="Recommendations"
+          label={bilingualText("名单", "Roster")}
+          value={model.attendeeRoster.attendees.length}
+        />
+        <Metric
+          label={bilingualText("推荐", "Recommendations")}
           value={model.recommendations.recommendations.length}
         />
         <Metric
-          label="Readiness"
+          label={bilingualText("准备度", "Readiness")}
           value={model.readiness.preparationState.readinessScore}
         />
-        <Metric label="Review" value={model.postEventReview.contacts.length} />
+        <Metric
+          label={bilingualText("复盘", "Review")}
+          value={model.postEventReview.contacts.length}
+        />
       </section>
 
-      <WorkbenchSurface eyebrow="Run sheet" title="What this event is for">
+      <WorkbenchSurface
+        eyebrow={bilingualText("执行单", "Run sheet")}
+        title={bilingualText("这场活动的目的", "What this event is for")}
+      >
         <div className="app-event-detail-run-sheet">
           <div className="app-event-detail-run-step">
-            <span>Goal</span>
+            <span>{bilingualText("目标", "Goal")}</span>
             <strong>{model.readiness.goal?.intent}</strong>
           </div>
           <div className="app-event-detail-run-step">
-            <span>Meet first</span>
+            <span>{bilingualText("先见", "Meet first")}</span>
             <strong>{targetName}</strong>
           </div>
           <div className="app-event-detail-run-step">
-            <span>After {firstName(targetName)}</span>
+            <span>
+              {bilingualText(
+                `${firstName(targetName)} 之后`,
+                `After ${firstName(targetName)}`,
+              )}
+            </span>
             <strong>{topRecommendation.attendee.displayName}</strong>
           </div>
           <div className="app-event-detail-run-step">
-            <span>Afterward</span>
+            <span>{bilingualText("会后", "Afterward")}</span>
             <strong>{model.postEventReview.contacts[0]?.summary.headline}</strong>
           </div>
         </div>
       </WorkbenchSurface>
 
       <div className="app-event-detail-grid">
-        <WorkbenchSurface eyebrow="Goal and readiness" title="Before arrival">
+        <WorkbenchSurface
+          eyebrow={bilingualText("目标和准备度", "Goal and readiness")}
+          title={bilingualText("到达前", "Before arrival")}
+        >
           <p className="type-body">
-            Readiness {model.readiness.preparationState.readinessScore}.{" "}
+            {bilingualText(
+              `准备度 ${model.readiness.preparationState.readinessScore}。`,
+              `Readiness ${model.readiness.preparationState.readinessScore}.`,
+            )}{" "}
             {productCopy(model.readiness.preparationState.nextPreparationStep)}
           </p>
           <dl className="app-event-detail-list">
@@ -691,14 +842,18 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
               <div key={item.itemId}>
                 <dt>{item.label}</dt>
                 <dd>
-                  {item.status} by {item.owner}. {productCopy(item.rationale)}
+                  {item.status} {bilingualText("负责人", "by")} {item.owner}.{" "}
+                  {productCopy(item.rationale)}
                 </dd>
               </div>
             ))}
           </dl>
         </WorkbenchSurface>
 
-        <WorkbenchSurface eyebrow="Attendee roster" title="Who is in the room">
+        <WorkbenchSurface
+          eyebrow={bilingualText("参会人名单", "Attendee roster")}
+          title={bilingualText("谁在现场", "Who is in the room")}
+        >
           <dl className="app-event-detail-list">
             {model.attendeeRoster.attendees.map((attendee) => (
               <div key={attendee.attendeeId}>
@@ -715,32 +870,45 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
 
       <div className="app-event-detail-grid">
         <WorkbenchSurface
-          eyebrow="Secondary lead"
-          title={`After ${firstName(targetName)}, review ${topRecommendation.attendee.displayName}`}
+          eyebrow={bilingualText("第二线索", "Secondary lead")}
+          title={bilingualText(
+            `${firstName(targetName)} 之后，复核 ${topRecommendation.attendee.displayName}`,
+            `After ${firstName(targetName)}, review ${topRecommendation.attendee.displayName}`,
+          )}
         >
           <p className="type-body">
-            Treat {topRecommendation.attendee.displayName} as the next evidence-backed
-            lead after {targetName}.{" "}
-            {topRecommendation.attendee.displayName}, {topRecommendation.attendee.role} at{" "}
-            {topRecommendation.attendee.organization}. Score {topRecommendation.score}.
+            {bilingualText(
+              `把 ${topRecommendation.attendee.displayName} 作为 ${targetName} 之后下一个有证据支撑的线索。`,
+              `Treat ${topRecommendation.attendee.displayName} as the next evidence-backed lead after ${targetName}.`,
+            )}{" "}
+            {topRecommendation.attendee.displayName},{" "}
+            {topRecommendation.attendee.role} at{" "}
+            {topRecommendation.attendee.organization}.{" "}
+            {bilingualText("评分", "Score")} {topRecommendation.score}.
           </p>
           <dl className="app-event-detail-ledger">
             <div>
-              <dt>Why now</dt>
+              <dt>{bilingualText("为什么现在", "Why now")}</dt>
               <dd>{productCopy(topRecommendation.recommendedAction)}</dd>
             </div>
             <div>
-              <dt>Opening line</dt>
+              <dt>{bilingualText("开场白", "Opening line")}</dt>
               <dd>{model.openingLine.openingLine.text}</dd>
             </div>
           </dl>
           <EvidenceChips
             evidenceIds={model.openingLine.openingLine.evidenceIds}
-            label="Opening line evidence"
+            label={bilingualText("开场白证据", "Opening line evidence")}
           />
         </WorkbenchSurface>
 
-        <WorkbenchSurface eyebrow="On-site intent" title={`Meet ${firstName(targetName)} first`}>
+        <WorkbenchSurface
+          eyebrow={bilingualText("现场意图", "On-site intent")}
+          title={bilingualText(
+            `先见 ${firstName(targetName)}`,
+            `Meet ${firstName(targetName)} first`,
+          )}
+        >
           <p className="type-body">
             {productCopy(model.wantConnectMatches.matches[0]?.successNotice.message)}
           </p>
@@ -755,20 +923,23 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
       </div>
 
       <div className="app-event-detail-grid">
-        <WorkbenchSurface eyebrow="Encounter notes" title="What happened">
+        <WorkbenchSurface
+          eyebrow={bilingualText("见面笔记", "Encounter notes")}
+          title={bilingualText("发生了什么", "What happened")}
+        >
           <dl className="app-event-detail-ledger">
             <div>
-              <dt>Participant</dt>
+              <dt>{bilingualText("参与者", "Participant")}</dt>
               <dd>
                 {participant?.displayName} at {participant?.organization}
               </dd>
             </div>
             <div>
-              <dt>Note</dt>
+              <dt>{bilingualText("笔记", "Note")}</dt>
               <dd>{note?.text}</dd>
             </div>
             <div>
-              <dt>Summary seed</dt>
+              <dt>{bilingualText("摘要种子", "Summary seed")}</dt>
               <dd>
                 {productCopy(
                   model.encounterNote.conversationSummarySeed?.suggestedSummary,
@@ -778,11 +949,14 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
           </dl>
           <EvidenceChips
             evidenceIds={model.encounterNote.provenance.evidenceIds}
-            label="Encounter note evidence"
+            label={bilingualText("见面笔记证据", "Encounter note evidence")}
           />
         </WorkbenchSurface>
 
-        <WorkbenchSurface eyebrow="Post-event review" title="Who to keep">
+        <WorkbenchSurface
+          eyebrow={bilingualText("会后复盘", "Post-event review")}
+          title={bilingualText("保留谁", "Who to keep")}
+        >
           <dl className="app-event-detail-list">
             {model.postEventReview.contacts.map((contact) => (
               <div key={contact.contactDraftId}>
@@ -796,7 +970,7 @@ function renderSuccessState(model: AppEventDetailSuccessModel) {
           </dl>
           <EvidenceChips
             evidenceIds={model.postEventReview.provenance.evidenceIds}
-            label="Post-event review evidence"
+            label={bilingualText("会后复盘证据", "Post-event review evidence")}
           />
         </WorkbenchSurface>
       </div>

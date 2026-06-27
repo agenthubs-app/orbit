@@ -112,7 +112,7 @@ test("/app/events/demo-event-1 reconciles composed event logistics to one canoni
     );
   }
 
-  assert.match(html, /<h2>Venue and time stay anchored<\/h2>/);
+  assert.match(html, /<h2>[^<]*Venue and time stay anchored<\/h2>/);
   assert.match(text, /Kanda Founders Table/);
   assert.match(text, /Orbit already resolved older attendee logistics/);
   assert.match(
@@ -139,8 +139,8 @@ test("/app/events/demo-event-1 shows the relationship priority before secondary 
   assert.match(text, /Source story: Calendar source confirmed the dinner/);
   assert.match(text, /Venue\/time confidence: Kanda Founders Table/);
   assert.match(text, /First person to meet: Priya Shah/);
-  assert.match(text, /In-room action: Mark Priya Shah to meet on this page/);
-  assert.match(html, /<h2>Meet Priya Shah first<\/h2>/);
+  assert.match(text, /In-room action: .*Mark Priya Shah to meet on this page/);
+  assert.match(html, /<h2>[^<]*Meet Priya Shah first<\/h2>/);
   assert.match(text, /Mark Priya Shah as the first person to meet/);
   assert.match(text, /Priya spoke about storage reliability/);
   assert.match(text, /Opening line context/);
@@ -222,13 +222,13 @@ test("/app/events/demo-event-1 records want-to-connect intent without external s
   assert.match(html, /data-action-storage="route-only"/);
   assert.match(html, /data-side-effects="none"/);
   assert.doesNotMatch(text, /route-only/i);
-  assert.match(text, /Realtime presence: none/);
-  assert.match(text, /Peer notifications: none/);
-  assert.match(text, /External messages: none/);
-  assert.match(text, /Saved-record writes: none/);
-  assert.match(text, /Calendar updates: none/);
-  assert.match(text, /Notifications: none/);
-  assert.match(text, /Outside network requests: none/);
+  assert.match(text, /Realtime presence: .*none/);
+  assert.match(text, /Peer notifications: .*none/);
+  assert.match(text, /External messages: .*none/);
+  assert.match(text, /Saved-record writes: .*none/);
+  assert.match(text, /Calendar updates: .*none/);
+  assert.match(text, /Notifications: .*none/);
+  assert.match(text, /Outside network requests: .*none/);
   assert.match(
     reloadedHtml,
     /data-action-evidence="evidence:want-connect-local-intent"/,
@@ -286,7 +286,7 @@ test("/app/events/demo-event-1 renders empty loading and failure states through 
   for (const state of scenarios) {
     const html = await renderEventDetailPage({ scenario: state.scenario });
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(escapeRegex(state.expectedCopy)));
     assert.match(html, /data-state-boundary="app-event-detail-route-state-view"/);
     assert.match(
@@ -295,11 +295,11 @@ test("/app/events/demo-event-1 renders empty loading and failure states through 
         `data-route-state-url="/app/events/demo-event-1\\?scenario=${state.scenario}"`,
       ),
     );
-    assert.match(html, /aria-label="Event detail route recovery actions"/);
+    assert.match(html, /aria-label="[^"]*Event detail route recovery actions"/);
     assert.match(
       html,
       new RegExp(
-        `href="${escapeRegex(state.expectedRecoveryHref)}">${escapeRegex(
+        `href="${escapeRegex(state.expectedRecoveryHref)}">[^<]*${escapeRegex(
           state.expectedRecoveryLabel,
         )}</a>`,
       ),

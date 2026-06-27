@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { bilingualText } from "./bilingual";
 import { WorkbenchFrame } from "./primitives";
 
 export type OrbitAppRoute =
@@ -828,11 +829,12 @@ export function AppShell({
         {!isAiCommandVariant && (
           <header className="workbench-header">
             <p className="workbench-kicker">Orbit</p>
-            <h1>Know who needs your attention</h1>
+            <h1>{bilingualText("知道现在该关注谁", "Know who needs your attention")}</h1>
             <p className="workbench-intro">
-              Start from where a relationship came from, what was said, and the
-              next step you can stand behind. Every screen keeps the same workspace
-              identity while source-backed records move through review.
+              {bilingualText(
+                "从关系来源、对话内容和你能确认的下一步开始。每个页面都保留同一个工作区身份，让有来源的记录先进入复核。",
+                "Start from where a relationship came from, what was said, and the next step you can stand behind. Every screen keeps the same workspace identity while source-backed records move through review.",
+              )}
             </p>
             {headerPrimaryAction && (
               <a
@@ -887,17 +889,22 @@ export function AppShell({
             <div className="orbit-account-copy">
               <p className="orbit-account-name">{accountSummary.displayName}</p>
               <p className="orbit-account-meta">
-                Working context: {accountSummary.primaryContext}
+                {bilingualText("工作上下文", "Working context")}:{" "}
+                {accountSummary.primaryContext}
               </p>
               <p className="orbit-account-meta">
-                Source posture: {accountSummary.sourcePosture}
+                {bilingualText("来源状态", "Source posture")}:{" "}
+                {accountSummary.sourcePosture}
               </p>
               <p
                 className="orbit-account-meta"
                 data-workspace-record-scope="sample-records"
               >
-                Reviewed relationship context stays grouped inside{" "}
-                {accountSummary.displayName}.
+                {bilingualText(
+                  "已复核的关系上下文会留在当前工作区。",
+                  "Reviewed relationship context stays grouped inside this workspace.",
+                )}{" "}
+                {accountSummary.displayName}
               </p>
             </div>
           </section>
@@ -949,10 +956,12 @@ export function AppShell({
             className="orbit-route-support-panel"
             data-route-support-links="secondary-demo-checks"
           >
-            <h2>Demo recovery checks</h2>
+            <h2>{bilingualText("恢复状态检查", "Demo recovery checks")}</h2>
             <p>
-              Check the same route with empty, pending, and recovery states
-              without moving the primary relationship action.
+              {bilingualText(
+                "在同一路由查看空状态、等待状态和恢复状态，不触发主要关系动作。",
+                "Check the same route with empty, pending, and recovery states without moving the primary relationship action.",
+              )}
             </p>
             <nav
               aria-label="Recovery route checks"

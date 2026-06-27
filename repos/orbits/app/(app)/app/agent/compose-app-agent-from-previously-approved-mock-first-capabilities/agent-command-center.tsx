@@ -22,6 +22,7 @@ import type {
   ConfirmationRequirement,
   ConfirmationRequirementResult,
 } from "../../../../../features/permissions/confirmation-contract";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { createAppAgentRouteServices } from "./agent-service-factory";
 
@@ -146,15 +147,15 @@ const appAgentStyles = `
 const routeStateChecks = [
   {
     href: "/app/agent?scenario=empty",
-    label: "No agent actions",
+    label: bilingualText("没有可用动作", "No agent actions"),
   },
   {
     href: "/app/agent?scenario=pending",
-    label: "Waiting for review",
+    label: bilingualText("等待复核", "Waiting for review"),
   },
   {
     href: "/app/agent?scenario=failure",
-    label: "Agent unavailable",
+    label: bilingualText("Agent 不可用", "Agent unavailable"),
   },
 ] as const;
 
@@ -180,27 +181,30 @@ const routeRecoveryActions: Record<
   empty: [
     {
       href: "/app/agent",
-      label: "Show ready agent workspace",
+      label: bilingualText("显示可用 Agent 工作区", "Show ready agent workspace"),
     },
     {
       href: "/app/agent?action=review-top-agent-action",
-      label: "Preview agent review",
+      label: bilingualText("预览 Agent 复核", "Preview agent review"),
     },
   ],
   failure: [
     {
       href: "/app/agent",
-      label: "Reload agent workspace",
+      label: bilingualText("重新加载 Agent 工作区", "Reload agent workspace"),
     },
     {
       href: "/app/agent?scenario=pending",
-      label: "Check review status",
+      label: bilingualText("检查复核状态", "Check review status"),
     },
   ],
   pending: [
     {
       href: "/app/agent",
-      label: "Return to ready agent workspace",
+      label: bilingualText(
+        "返回可用 Agent 工作区",
+        "Return to ready agent workspace",
+      ),
     },
   ],
 };
@@ -348,45 +352,81 @@ function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
 function stateCopy(scenario: RouteScenario) {
   if (scenario === "empty") {
     return {
-      description:
+      description: bilingualText(
+        "先添加有来源的关系线索，再复核 Agent 动作、自主设置、确认、沙盒检查和通知队列。",
         "Add a sourced relationship cue before reviewing agent actions, autonomy settings, confirmations, sandbox checks, and notification queues.",
-      emptyState:
+      ),
+      emptyState: bilingualText(
+        "还没有 Agent 动作具备足够关系上下文可供复核。",
         "No agent action has enough relationship context for review.",
-      guardrail:
+      ),
+      guardrail: bilingualText(
+        "空关系集合不能准备发送检查、审批步骤或提醒队列。",
         "Orbit cannot prepare a send check, approval step, or reminder queue from an empty relationship set.",
-      nextStep: "Return after a contact, event, follow-up, or reminder exists.",
-      purpose:
+      ),
+      nextStep: bilingualText(
+        "联系人、活动、跟进或提醒存在后再返回。",
+        "Return after a contact, event, follow-up, or reminder exists.",
+      ),
+      purpose: bilingualText(
+        "没有有来源的关系动作时，仍保持 Agent 复核可理解。",
         "Keep agent review useful when no sourced relationship action is available.",
-      title: "No agent actions are ready",
+      ),
+      title: bilingualText("没有可复核的 Agent 动作", "No agent actions are ready"),
     };
   }
 
   if (scenario === "pending") {
     return {
-      description:
+      description: bilingualText(
+        "确认、来源证据和发送限制仍在检查时，Agent 工作会保持暂停。",
         "Agent work stays paused while confirmations, source evidence, and delivery limits are checked.",
-      emptyState:
+      ),
+      emptyState: bilingualText(
+        "确认复核准备好之前，Agent 动作保持隐藏。",
         "Agent actions stay hidden until the confirmation review is ready.",
-      guardrail:
+      ),
+      guardrail: bilingualText(
+        "复核等待期间，Orbit 不会发送消息、修改日历、发送提醒或保存关系更新。",
         "Orbit will not send messages, change calendars, deliver reminders, or save relationship updates while review is pending.",
-      nextStep: "Return to the ready agent workspace after review is available.",
-      purpose:
+      ),
+      nextStep: bilingualText(
+        "复核可用后返回可用 Agent 工作区。",
+        "Return to the ready agent workspace after review is available.",
+      ),
+      purpose: bilingualText(
+        "保持待处理 Agent 工作可见，但不暴露未完成的关系建议。",
         "Keep pending agent work visible without exposing unfinished relationship guidance.",
-      title: "Agent review is waiting for confirmation",
+      ),
+      title: bilingualText(
+        "Agent 复核正在等待确认",
+        "Agent review is waiting for confirmation",
+      ),
     };
   }
 
   return {
-    description:
+    description: bilingualText(
+      "来源证据检查期间，Agent 动作、设置、确认、沙盒检查和通知队列暂不可用。",
       "Agent actions, settings, confirmations, sandbox checks, and notification queue entries are unavailable while source evidence is checked.",
-    emptyState:
+    ),
+    emptyState: bilingualText(
+      "来源证据恢复前，Agent 工作区不可用。",
       "The agent workspace is unavailable until source evidence recovers.",
-    guardrail:
+    ),
+    guardrail: bilingualText(
+      "不可用期间，Orbit 不会发送消息、修改日历、发送提醒或保存关系更新。",
       "Orbit will not send messages, change calendars, deliver reminders, or save relationship updates while this is unavailable.",
-    nextStep: "Reload the agent workspace before taking action.",
-    purpose:
+    ),
+    nextStep: bilingualText(
+      "采取动作前重新加载 Agent 工作区。",
+      "Reload the agent workspace before taking action.",
+    ),
+    purpose: bilingualText(
+      "Agent 复核上下文不可用时，显示可见恢复路径。",
       "Show a visible recovery path when agent review context is unavailable.",
-    title: "Agent workspace could not load",
+    ),
+    title: bilingualText("Agent 工作区无法加载", "Agent workspace could not load"),
   };
 }
 
@@ -439,23 +479,23 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
         data-error-code={failure?.success === false ? failure.error.code : undefined}
         data-state-boundary="shared-ui-state-view"
       >
-        <WorkbenchSurface elevated eyebrow="Agent" title={copy.title}>
+        <WorkbenchSurface elevated eyebrow={bilingualText("下一步", "Agent")} title={copy.title}>
           <p className="type-body">{copy.description}</p>
           <dl aria-label="Agent status details" className="relationship-meta">
             <div>
-              <dt>What Orbit knows</dt>
+              <dt>{bilingualText("Orbit 已知", "What Orbit knows")}</dt>
               <dd>{copy.purpose}</dd>
             </div>
             <div>
-              <dt>Current status</dt>
+              <dt>{bilingualText("当前状态", "Current status")}</dt>
               <dd>{copy.emptyState}</dd>
             </div>
             <div>
-              <dt>Safety check</dt>
+              <dt>{bilingualText("安全检查", "Safety check")}</dt>
               <dd>{copy.guardrail}</dd>
             </div>
             <div>
-              <dt>Next step</dt>
+              <dt>{bilingualText("下一步", "Next step")}</dt>
               <dd>{copy.nextStep}</dd>
             </div>
           </dl>
@@ -484,31 +524,43 @@ function AgentLedger({
       className="relationship-meta agent-ledger"
     >
       <div>
-        <dt>Action queue</dt>
+        <dt>{bilingualText("动作队列", "Action queue")}</dt>
         <dd>
           <strong>{actionCount}</strong>
-          {formatCount(actionCount, "relationship action")} ready
+          {bilingualText(
+            `${actionCount} 个关系动作已准备`,
+            `${formatCount(actionCount, "relationship action")} ready`,
+          )}
         </dd>
       </div>
       <div>
-        <dt>Autonomy setting</dt>
+        <dt>{bilingualText("自主设置", "Autonomy setting")}</dt>
         <dd>
           <strong>{settingsLevel}</strong>
-          all outside effects require review
+          {bilingualText(
+            "所有外部影响都需要复核",
+            "all outside effects require review",
+          )}
         </dd>
       </div>
       <div>
-        <dt>Confirmation guard</dt>
+        <dt>{bilingualText("确认保护", "Confirmation guard")}</dt>
         <dd>
           <strong>{confirmationCount}</strong>
-          {formatCount(confirmationCount, "approval item")} staged
+          {bilingualText(
+            `${confirmationCount} 个审批项已暂存`,
+            `${formatCount(confirmationCount, "approval item")} staged`,
+          )}
         </dd>
       </div>
       <div>
-        <dt>Notification queue</dt>
+        <dt>{bilingualText("通知队列", "Notification queue")}</dt>
         <dd>
           <strong>{notificationCount}</strong>
-          {formatCount(notificationCount, "delivery check")} held
+          {bilingualText(
+            `${notificationCount} 个发送检查已暂缓`,
+            `${formatCount(notificationCount, "delivery check")} held`,
+          )}
         </dd>
       </div>
     </dl>
@@ -524,15 +576,23 @@ function AgentReviewForm() {
       method="get"
     >
       <div>
-        <p className="type-caption">Core agent action</p>
-        <h3 className="relationship-name">Review top agent action</h3>
+        <p className="type-caption">
+          {bilingualText("核心 Agent 动作", "Core agent action")}
+        </p>
+        <h3 className="relationship-name">
+          {bilingualText("复核最高优先级动作", "Review top agent action")}
+        </h3>
         <p className="type-body">
-          Check the Maya follow-up, confirmation need, send guard, and reminder
-          queue before anything reaches an outside account.
+          {bilingualText(
+            "任何内容到达外部账号前，先检查 Maya 跟进、确认需求、发送保护和提醒队列。",
+            "Check the Maya follow-up, confirmation need, send guard, and reminder queue before anything reaches an outside account.",
+          )}
         </p>
       </div>
       <input name="action" type="hidden" value="review-top-agent-action" />
-      <button type="submit">Review top agent action</button>
+      <button type="submit">
+        {bilingualText("复核最高优先级动作", "Review top agent action")}
+      </button>
     </form>
   );
 }
@@ -558,10 +618,17 @@ function AgentActionResult({
         data-agent-result="agent-review-top-action-preview"
         data-side-effects="none"
       >
-        <strong>Agent review could not prepare the local preview</strong>
-        <span>Confirmation recorded: no</span>
-        <span>Message sent: no</span>
-        <span>Notifications delivered: none</span>
+        <strong>
+          {bilingualText(
+            "Agent 复核无法准备本地预览",
+            "Agent review could not prepare the local preview",
+          )}
+        </strong>
+        <span>{bilingualText("已记录确认：否", "Confirmation recorded: no")}</span>
+        <span>{bilingualText("消息已发送：否", "Message sent: no")}</span>
+        <span>
+          {bilingualText("通知已送达：无", "Notifications delivered: none")}
+        </span>
       </div>
     );
   }
@@ -574,12 +641,26 @@ function AgentActionResult({
       data-agent-result="agent-review-top-action-preview"
       data-side-effects="none"
     >
-      <strong>Agent review ready: Send reliability memo to Maya Chen</strong>
-      <span>Reviewed action: {selectedAction.title}</span>
-      <span>Confirmation recorded: no</span>
-      <span>External sandbox result: no-op preview</span>
-      <span>Message sent: no</span>
-      <span>Notifications delivered: none</span>
+      <strong>
+        {bilingualText(
+          "Agent 复核已准备：给 Maya Chen 发送可靠性备忘",
+          "Agent review ready: Send reliability memo to Maya Chen",
+        )}
+      </strong>
+      <span>
+        {bilingualText("已复核动作", "Reviewed action")}: {selectedAction.title}
+      </span>
+      <span>{bilingualText("已记录确认：否", "Confirmation recorded: no")}</span>
+      <span>
+        {bilingualText(
+          "外部沙盒结果：无操作预览",
+          "External sandbox result: no-op preview",
+        )}
+      </span>
+      <span>{bilingualText("消息已发送：否", "Message sent: no")}</span>
+      <span>
+        {bilingualText("通知已送达：无", "Notifications delivered: none")}
+      </span>
     </div>
   );
 }
@@ -588,27 +669,34 @@ function ActionCard({ action }: { action: AgentActionQueueItem }) {
   return (
     <article className="agent-card">
       <div>
-        <p className="type-caption">Recommended relationship move</p>
-        <h3 className="relationship-name">Send reliability memo to Maya Chen</h3>
+        <p className="type-caption">
+          {bilingualText("建议的关系动作", "Recommended relationship move")}
+        </p>
+        <h3 className="relationship-name">
+          {bilingualText(
+            "给 Maya Chen 发送可靠性备忘",
+            "Send reliability memo to Maya Chen",
+          )}
+        </h3>
         <p className="type-body">{action.recommendedAction}</p>
       </div>
       <dl className="relationship-meta">
         <div>
-          <dt>Contact</dt>
+          <dt>{bilingualText("联系人", "Contact")}</dt>
           <dd>
             {action.contactName}, {action.organization}
           </dd>
         </div>
         <div>
-          <dt>Priority</dt>
+          <dt>{bilingualText("优先级", "Priority")}</dt>
           <dd>{priorityLabel(action.priority)}</dd>
         </div>
         <div>
-          <dt>Why now</dt>
+          <dt>{bilingualText("为什么现在", "Why now")}</dt>
           <dd>{action.reason}</dd>
         </div>
         <div>
-          <dt>Review window</dt>
+          <dt>{bilingualText("复核窗口", "Review window")}</dt>
           <dd>{action.dueLabel}</dd>
         </div>
       </dl>
@@ -621,22 +709,30 @@ function SettingsCard({ level }: { level: AgentAutonomyLevelBoundary }) {
   return (
     <article className="agent-card">
       <div>
-        <p className="type-caption">Autonomy setting</p>
+        <p className="type-caption">
+          {bilingualText("自主设置", "Autonomy setting")}
+        </p>
         <h3 className="relationship-name">{level.label}</h3>
         <p className="type-body">
-          Orbit can rank sourced next steps here, but every send, schedule
-          change, reminder delivery, and relationship update stays behind user
-          review.
+          {bilingualText(
+            "Orbit 可以在这里排列有来源的下一步，但每次发送、日程修改、提醒发送和关系更新都需要用户复核。",
+            "Orbit can rank sourced next steps here, but every send, schedule change, reminder delivery, and relationship update stays behind user review.",
+          )}
         </p>
       </div>
       <dl className="relationship-meta">
         <div>
-          <dt>Review control</dt>
+          <dt>{bilingualText("复核控制", "Review control")}</dt>
           <dd>{userReviewControlCopy(level.operatorControl)}</dd>
         </div>
         <div>
-          <dt>External action review</dt>
-          <dd>Required before anything leaves Orbit.</dd>
+          <dt>{bilingualText("外部动作复核", "External action review")}</dt>
+          <dd>
+            {bilingualText(
+              "任何内容离开 Orbit 前都必须复核。",
+              "Required before anything leaves Orbit.",
+            )}
+          </dd>
         </div>
       </dl>
     </article>
@@ -651,21 +747,23 @@ function ConfirmationCard({
   return (
     <article className="agent-card">
       <div>
-        <p className="type-caption">Confirmation guard</p>
+        <p className="type-caption">
+          {bilingualText("确认保护", "Confirmation guard")}
+        </p>
         <h3 className="relationship-name">{confirmation.action.label}</h3>
         <p className="type-body">{confirmation.action.summary}</p>
       </div>
       <dl className="relationship-meta">
         <div>
-          <dt>Question</dt>
+          <dt>{bilingualText("确认问题", "Question")}</dt>
           <dd>{confirmation.confirmationQuestion}</dd>
         </div>
         <div>
-          <dt>Target</dt>
+          <dt>{bilingualText("目标", "Target")}</dt>
           <dd>{confirmation.action.targetLabel}</dd>
         </div>
         <div>
-          <dt>Safety note</dt>
+          <dt>{bilingualText("安全说明", "Safety note")}</dt>
           <dd>{confirmation.guardReason}</dd>
         </div>
       </dl>
@@ -685,18 +783,25 @@ function SandboxCard({
   return (
     <article className="agent-card">
       <div>
-        <p className="type-caption">Send check</p>
+        <p className="type-caption">
+          {bilingualText("发送检查", "Send check")}
+        </p>
         <h3 className="relationship-name">{action.targetLabel}</h3>
         <p className="type-body">{action.requestedEffect}</p>
       </div>
       <dl className="relationship-meta">
         <div>
-          <dt>Context</dt>
+          <dt>{bilingualText("上下文", "Context")}</dt>
           <dd>{action.relationshipContext.followupRationale}</dd>
         </div>
         <div>
-          <dt>Outcome</dt>
-          <dd>No outside send will happen from this review.</dd>
+          <dt>{bilingualText("结果", "Outcome")}</dt>
+          <dd>
+            {bilingualText(
+              "这次复核不会产生外部发送。",
+              "No outside send will happen from this review.",
+            )}
+          </dd>
         </div>
       </dl>
       <EvidenceChips evidenceIds={action.evidenceIds} label="Send check evidence" />
@@ -715,21 +820,25 @@ function NotificationCard({
       data-notification-queue-entry-id={queueEntry.queueEntryId}
     >
       <div>
-        <p className="type-caption">Notification queue</p>
+        <p className="type-caption">
+          {bilingualText("通知队列", "Notification queue")}
+        </p>
         <h3 className="relationship-name">{notificationQueueLabel(queueEntry)}</h3>
         <p className="type-body">
-          {channelLabel(queueEntry.channel)} reminder is held for review before
-          delivery.
+          {bilingualText(
+            `${channelLabel(queueEntry.channel)} 提醒会在发送前等待复核。`,
+            `${channelLabel(queueEntry.channel)} reminder is held for review before delivery.`,
+          )}
         </p>
       </div>
       <dl className="relationship-meta">
         <div>
-          <dt>Scheduled for</dt>
+          <dt>{bilingualText("计划时间", "Scheduled for")}</dt>
           <dd>{queueEntry.scheduledFor}</dd>
         </div>
         <div>
-          <dt>Delivery status</dt>
-          <dd>Not delivered</dd>
+          <dt>{bilingualText("送达状态", "Delivery status")}</dt>
+          <dd>{bilingualText("未送达", "Not delivered")}</dd>
         </div>
       </dl>
       <EvidenceChips
@@ -855,13 +964,14 @@ export function AppAgentCommandCenter({
         <WorkbenchSurface
           className="agent-command"
           elevated
-          eyebrow="Agent"
-          title="Agent command center"
+          eyebrow={bilingualText("下一步", "Agent")}
+          title={bilingualText("下一步审核", "Agent review")}
         >
           <p className="type-body">
-            Review relationship actions with their evidence, approval state,
-            send check, autonomy setting, and reminder queue before anything
-            reaches an outside account.
+            {bilingualText(
+              "任何动作到达外部账号前，先看关系动作、证据、审批状态、发送检查、自主设置和提醒队列。",
+              "Review relationship actions with their evidence, approval state, send check, autonomy setting, and reminder queue before anything reaches an outside account.",
+            )}
           </p>
           <AgentLedger
             actionCount={actionsResult.data.actions.length}

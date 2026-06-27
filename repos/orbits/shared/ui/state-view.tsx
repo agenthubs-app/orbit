@@ -1,3 +1,4 @@
+import { bilingualText } from "./bilingual";
 import { Chip, WorkbenchSurface } from "./primitives";
 
 export type StateViewRecoveryAction =
@@ -98,11 +99,23 @@ export function StateView({
   eyebrow,
   title,
   description,
-  purpose = "Use source context to decide what relationship work comes next.",
-  emptyState = "No relationship source is ready yet.",
-  guardrail = "Orbit waits for source review before suggesting an action.",
+  purpose = bilingualText(
+    "用来源上下文判断下一段关系工作该怎么走。",
+    "Use source context to decide what relationship work comes next.",
+  ),
+  emptyState = bilingualText(
+    "还没有可用的关系来源。",
+    "No relationship source is ready yet.",
+  ),
+  guardrail = bilingualText(
+    "Orbit 会等来源复核后再建议动作。",
+    "Orbit waits for source review before suggesting an action.",
+  ),
   evidence = [],
-  nextStep = "Source details appear after review so the next safe action can stay tied to visible evidence.",
+  nextStep = bilingualText(
+    "来源复核后会显示细节，下一步动作要能回到可见证据。",
+    "Source details appear after review so the next safe action can stay tied to visible evidence.",
+  ),
   recoveryActions = [],
 }: StateViewProps) {
   const visibleRecoveryActions = normalizeRecoveryActions(recoveryActions);
@@ -115,22 +128,22 @@ export function StateView({
         <div aria-label="Relationship state guidance" className="action-guard">
           <dl className="guard-list">
             <div aria-label="Screen purpose">
-              <dt>Why this matters</dt>
+              <dt>{bilingualText("为什么重要", "Why this matters")}</dt>
               <dd>{purpose}</dd>
             </div>
             <div aria-label="Available relationship context">
-              <dt>What you can use now</dt>
+              <dt>{bilingualText("现在可用的上下文", "What you can use now")}</dt>
               <dd>{emptyState}</dd>
             </div>
             <div aria-label="Safe next step">
-              <dt>Safe next step</dt>
+              <dt>{bilingualText("安全下一步", "Safe next step")}</dt>
               <dd>{guardrail}</dd>
             </div>
           </dl>
         </div>
         {evidence.length > 0 && (
           <details aria-label="State source details">
-            <summary>Source details</summary>
+            <summary>{bilingualText("来源详情", "Source details")}</summary>
             <div aria-label="State source evidence" className="chip-row">
               {evidence.map((item) => (
                 <Chip key={item} tone="evidence">
@@ -141,8 +154,10 @@ export function StateView({
           </details>
         )}
         <p className="privacy-note">
-          No outside accounts are connected here yet. Each future record must
-          show its source before Orbit suggests an action.
+          {bilingualText(
+            "这里还没有连接任何外部账号。之后的每条记录都要先显示来源，Orbit 才会建议动作。",
+            "No outside accounts are connected here yet. Each future record must show its source before Orbit suggests an action.",
+          )}
         </p>
         {visibleRecoveryActions.length > 0 ? (
           <div aria-label="Recovery actions" className="state-recovery-actions">
@@ -186,7 +201,8 @@ export function StateView({
           </div>
         ) : nextStep ? (
           <p aria-label="Next step:" className="type-body">
-            <strong>What to do next:</strong> {nextStep}
+            <strong>{bilingualText("接下来做什么", "What to do next")}:</strong>{" "}
+            {nextStep}
           </p>
         ) : null}
       </WorkbenchSurface>

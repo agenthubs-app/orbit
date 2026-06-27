@@ -5,13 +5,16 @@ import {
   type AppContactDetailBoundaryModel,
   type AppContactDetailSuccessModel,
 } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { StateView } from "../../../../../shared/ui/state-view";
 
 export const metadata = {
   title: "Kenji Watanabe | Orbit",
-  description:
+  description: bilingualText(
+    "复核有来源支撑的联系人详情、关系证据、价值评分和本地下一步预览。",
     "Review a source-backed contact detail route with connection evidence, value scoring, and a local next-action preview.",
+  ),
 };
 
 type AppContactDetailSearchParams = Record<string, string | string[] | undefined>;
@@ -304,7 +307,10 @@ const routeStyles = `
 `;
 
 const contactDetailActionSafetySummary =
-  "OUTSIDE ACCOUNTS CONTACTED: none / CONTACT RECORD CHANGED: no / MESSAGE SENT: no / NOTIFICATION SENT: no / SEARCH INDEX READ: no / DATABASE QUERY EXECUTED: no";
+  bilingualText(
+    "已联系外部账号：无 / 联系人记录已更改：否 / 消息已发送：否 / 通知已发送：否 / 搜索索引已读取：否 / 数据库查询已执行：否",
+    "OUTSIDE ACCOUNTS CONTACTED: none / CONTACT RECORD CHANGED: no / MESSAGE SENT: no / NOTIFICATION SENT: no / SEARCH INDEX READ: no / DATABASE QUERY EXECUTED: no",
+  );
 
 function isPromiseLike<TValue>(
   value: TValue | Promise<TValue> | undefined,
@@ -326,16 +332,24 @@ function readSearchParam(
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("en", {
+  const chineseDate = new Intl.DateTimeFormat("zh-CN", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
     year: "numeric",
   }).format(new Date(value));
+  const englishDate = new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(value));
+
+  return bilingualText(chineseDate, englishDate);
 }
 
 function yesNo(value: boolean): string {
-  return value ? "yes" : "no";
+  return value ? bilingualText("是", "yes") : bilingualText("否", "no");
 }
 
 function titleizeToken(value: string): string {
@@ -349,7 +363,7 @@ function titleizeToken(value: string): string {
 
 function relationshipStageLabel(value: string): string {
   if (value === "needs_follow_up") {
-    return "Needs follow-up";
+    return bilingualText("需要跟进", "Needs follow-up");
   }
 
   return titleizeToken(value);
@@ -383,14 +397,23 @@ function renderBoundaryState(model: AppContactDetailBoundaryModel) {
         description={model.description}
         emptyState={model.description}
         evidence={[...model.evidence]}
-        eyebrow="Contact detail"
-        guardrail="This route keeps relationship review local until a person confirms a follow-up action."
+        eyebrow={bilingualText("联系人详情", "Contact detail")}
+        guardrail={bilingualText(
+          "此页面会把关系复核保留在本地，直到有人确认跟进动作。",
+          "This route keeps relationship review local until a person confirms a follow-up action.",
+        )}
         nextStep={model.nextStep}
-        purpose="Review a sourced relationship profile before taking the next action."
+        purpose={bilingualText(
+          "采取下一步前，复核有来源的关系资料。",
+          "Review a sourced relationship profile before taking the next action.",
+        )}
         title={model.title}
       />
       <nav
-        aria-label="Contact detail route recovery actions"
+        aria-label={bilingualText(
+          "联系人详情恢复操作",
+          "Contact detail route recovery actions",
+        )}
         className="app-contact-detail-recovery-actions"
       >
         {model.recoveryActions.map((action) => (
@@ -417,35 +440,56 @@ function renderActionResult(model: AppContactDetailSuccessModel) {
       data-action-result="contact-detail-follow-up-prepared"
       data-side-effects={actionResult.sideEffectsLabel}
     >
-      <strong>Follow-up prepared: {actionResult.title}</strong>
+      <strong>
+        {bilingualText(
+          `跟进已准备：${actionResult.title}`,
+          `Follow-up prepared: ${actionResult.title}`,
+        )}
+      </strong>
       <p>{actionResult.excerpt}</p>
-      <p>This draft stays local until you confirm where it should go.</p>
+      <p>
+        {bilingualText(
+          "这份草稿会留在本地，直到你确认它应该进入哪里。",
+          "This draft stays local until you confirm where it should go.",
+        )}
+      </p>
       <dl
-        aria-label="Prepared follow-up draft preview"
+        aria-label={bilingualText(
+          "已准备跟进草稿预览",
+          "Prepared follow-up draft preview",
+        )}
         className="app-contact-detail-ledger"
       >
         <div>
-          <dt>Subject</dt>
+          <dt>{bilingualText("主题", "Subject")}</dt>
           <dd>{actionResult.draftSubject}</dd>
         </div>
         <div>
-          <dt>Draft note</dt>
+          <dt>{bilingualText("草稿内容", "Draft note")}</dt>
           <dd>{actionResult.draftBody}</dd>
         </div>
         <div>
-          <dt>Local next step</dt>
+          <dt>{bilingualText("本地下一步", "Local next step")}</dt>
           <dd>{actionResult.localNextStep}</dd>
         </div>
       </dl>
       <form
         action="/app/contacts/demo-contact-1"
-        aria-label="Choose where to stage this draft"
+        aria-label={bilingualText(
+          "选择这份草稿的本地暂存位置",
+          "Choose where to stage this draft",
+        )}
         className="app-contact-detail-draft-form"
         method="get"
       >
         <input name="action" type="hidden" value="prepare-follow-up" />
         <fieldset>
-          <legend>Choose where to stage this draft</legend>
+          <legend>
+            {bilingualText(
+              "选择这份草稿的本地暂存位置",
+              "Choose where to stage this draft",
+            )}
+          </legend>
           <label>
             <input
               defaultChecked
@@ -453,7 +497,10 @@ function renderActionResult(model: AppContactDetailSuccessModel) {
               type="radio"
               value="local-follow-up-notes"
             />
-            Save to local follow-up notes
+            {bilingualText(
+              "保存到本地跟进笔记",
+              "Save to local follow-up notes",
+            )}
           </label>
           <label>
             <input
@@ -461,39 +508,51 @@ function renderActionResult(model: AppContactDetailSuccessModel) {
               type="radio"
               value="conversation-prep"
             />
-            Copy into conversation prep
+            {bilingualText(
+              "复制到对话准备区",
+              "Copy into conversation prep",
+            )}
           </label>
-          <button type="submit">Stage draft locally</button>
+          <button type="submit">
+            {bilingualText("在本地暂存草稿", "Stage draft locally")}
+          </button>
         </fieldset>
       </form>
       <p>{contactDetailActionSafetySummary}</p>
-      <dl aria-label="Follow-up safety ledger" className="app-contact-detail-ledger">
+      <dl
+        aria-label={bilingualText("跟进安全账本", "Follow-up safety ledger")}
+        className="app-contact-detail-ledger"
+      >
         <div>
-          <dt>Outside accounts contacted</dt>
-          <dd>{actionResult.externalNetworkRequested ? "yes" : "none"}</dd>
+          <dt>{bilingualText("已联系外部账号", "Outside accounts contacted")}</dt>
+          <dd>
+            {actionResult.externalNetworkRequested
+              ? bilingualText("是", "yes")
+              : bilingualText("无", "none")}
+          </dd>
         </div>
         <div>
-          <dt>Contact record changed</dt>
+          <dt>{bilingualText("联系人记录已更改", "Contact record changed")}</dt>
           <dd>{yesNo(actionResult.databaseWriteExecuted)}</dd>
         </div>
         <div>
-          <dt>Message sent</dt>
+          <dt>{bilingualText("消息已发送", "Message sent")}</dt>
           <dd>{yesNo(actionResult.messageSent)}</dd>
         </div>
         <div>
-          <dt>Notification sent</dt>
+          <dt>{bilingualText("通知已发送", "Notification sent")}</dt>
           <dd>{yesNo(actionResult.notificationDelivered)}</dd>
         </div>
         <div>
-          <dt>Search index read</dt>
+          <dt>{bilingualText("搜索索引已读取", "Search index read")}</dt>
           <dd>{yesNo(actionResult.searchIndexReadExecuted)}</dd>
         </div>
         <div>
-          <dt>Database query executed</dt>
+          <dt>{bilingualText("数据库查询已执行", "Database query executed")}</dt>
           <dd>{yesNo(actionResult.databaseQueryExecuted)}</dd>
         </div>
         <div>
-          <dt>Permanent audit entry</dt>
+          <dt>{bilingualText("永久审计条目", "Permanent audit entry")}</dt>
           <dd>{yesNo(actionResult.productionAuditLogWriteExecuted)}</dd>
         </div>
       </dl>
@@ -521,32 +580,40 @@ function renderSuccessState(model: AppContactDetailSuccessModel) {
       <style>{routeStyles}</style>
       <section className="app-contact-detail-hero" aria-label="Contact detail header">
         <div className="app-contact-detail-title">
-          <p className="surface-eyebrow">Selected relationship</p>
-          <h1>Relationship workspace: {contact.displayName}</h1>
+          <p className="surface-eyebrow">
+            {bilingualText("已选择的关系", "Selected relationship")}
+          </p>
+          <h1>
+            {bilingualText(
+              `关系工作区：${contact.displayName}`,
+              `Relationship workspace: ${contact.displayName}`,
+            )}
+          </h1>
           <p>
-            {contact.role}, {contact.organization} in {contact.location}. Carry
-            this person forward from the review queue before preparing the next
-            follow-up.
+            {bilingualText(
+              `${contact.role}，${contact.organization}，${contact.location}。先从复盘队列确认这个人，再准备下一次跟进。`,
+              `${contact.role}, ${contact.organization} in ${contact.location}. Carry this person forward from the review queue before preparing the next follow-up.`,
+            )}
           </p>
         </div>
         <div className="app-contact-detail-hero-grid">
           <div className="app-contact-detail-story">
-            <span>Source story</span>
+            <span>{bilingualText("来源故事", "Source story")}</span>
             <p>{contact.relationshipContext}</p>
           </div>
           <div className="app-contact-detail-story">
-            <span>Relationship stage</span>
+            <span>{bilingualText("关系阶段", "Relationship stage")}</span>
             <p>
-              Relationship stage:{" "}
+              {bilingualText("关系阶段", "Relationship stage")}:{" "}
               {relationshipStageLabel(connection.relationshipStage)}
             </p>
           </div>
           <div className="app-contact-detail-story">
-            <span>Priority reason</span>
+            <span>{bilingualText("优先原因", "Priority reason")}</span>
             <p>{assessment.rationale.summary}</p>
           </div>
           <div className="app-contact-detail-story">
-            <span>Prepare follow-up</span>
+            <span>{bilingualText("准备跟进", "Prepare follow-up")}</span>
             <p>{contact.nextAction}</p>
           </div>
         </div>
@@ -554,54 +621,84 @@ function renderSuccessState(model: AppContactDetailSuccessModel) {
           className="app-contact-detail-action-link"
           href="/app/contacts/demo-contact-1?action=prepare-follow-up"
         >
-          Prepare follow-up
+          {bilingualText("准备跟进", "Prepare follow-up")}
         </a>
       </section>
 
-      <section className="app-contact-detail-metrics" aria-label="Relationship summary metrics">
-        <DataMetric label="Connection score" value={connection.strengthScore} />
+      <section
+        className="app-contact-detail-metrics"
+        aria-label={bilingualText(
+          "关系摘要指标",
+          "Relationship summary metrics",
+        )}
+      >
         <DataMetric
-          label="Relationship value"
-          value={`Priority score ${assessment.priorityScore.value}`}
+          label={bilingualText("连接评分", "Connection score")}
+          value={connection.strengthScore}
         />
-        <DataMetric label="Priority band" value={assessment.priorityScore.band} />
-        <DataMetric label="Source links" value={connection.sourceLinks.length} />
+        <DataMetric
+          label={bilingualText("关系价值", "Relationship value")}
+          value={bilingualText(
+            `优先级评分 ${assessment.priorityScore.value}`,
+            `Priority score ${assessment.priorityScore.value}`,
+          )}
+        />
+        <DataMetric
+          label={bilingualText("优先级分层", "Priority band")}
+          value={assessment.priorityScore.band}
+        />
+        <DataMetric
+          label={bilingualText("来源链接", "Source links")}
+          value={connection.sourceLinks.length}
+        />
       </section>
 
       <div className="app-contact-detail-grid">
-        <WorkbenchSurface eyebrow="Connection" title="Why this relationship exists">
+        <WorkbenchSurface
+          eyebrow={bilingualText("连接", "Connection")}
+          title={bilingualText(
+            "这段关系为什么存在",
+            "Why this relationship exists",
+          )}
+        >
           <dl className="app-contact-detail-ledger">
             <div>
-              <dt>Connection reason</dt>
+              <dt>{bilingualText("连接原因", "Connection reason")}</dt>
               <dd>{connection.connectionReason}</dd>
             </div>
             <div>
-              <dt>Stage</dt>
+              <dt>{bilingualText("阶段", "Stage")}</dt>
               <dd>{relationshipStageLabel(connection.relationshipStage)}</dd>
             </div>
             <div>
-              <dt>Last touched</dt>
+              <dt>{bilingualText("最近接触", "Last touched")}</dt>
               <dd>{formatDate(connection.lastTouchedAt)}</dd>
             </div>
           </dl>
           <p className="privacy-note">{model.connectionPayload.summary}</p>
         </WorkbenchSurface>
 
-        <WorkbenchSurface eyebrow="Next action" title="Recommended follow-up">
+        <WorkbenchSurface
+          eyebrow={bilingualText("下一步", "Next action")}
+          title={bilingualText("推荐跟进", "Recommended follow-up")}
+        >
           <p className="type-body">{contact.nextAction}</p>
           <p className="type-body">{assessment.suggestedNextAction.reason}</p>
           <a
             className="app-contact-detail-action-link"
             href="/app/contacts/demo-contact-1?action=prepare-follow-up"
           >
-            Review prepared draft
+            {bilingualText("复核已准备草稿", "Review prepared draft")}
           </a>
           {renderActionResult(model)}
         </WorkbenchSurface>
       </div>
 
       <div className="app-contact-detail-action-grid">
-        <WorkbenchSurface eyebrow="Evidence" title="Timeline">
+        <WorkbenchSurface
+          eyebrow={bilingualText("证据", "Evidence")}
+          title={bilingualText("时间线", "Timeline")}
+        >
           <ol className="app-contact-detail-timeline">
             {model.evidenceTimeline.map((item) => (
               <li key={item.evidenceId}>
@@ -613,20 +710,31 @@ function renderSuccessState(model: AppContactDetailSuccessModel) {
           </ol>
         </WorkbenchSurface>
 
-        <WorkbenchSurface eyebrow="Value" title="Why it ranks high">
+        <WorkbenchSurface
+          eyebrow={bilingualText("价值", "Value")}
+          title={bilingualText("为什么排序靠前", "Why it ranks high")}
+        >
           <p className="type-body">{assessment.rationale.summary}</p>
           <dl className="app-contact-detail-ledger">
             {assessment.priorityScore.factors.map((factor) => (
               <div key={factor.label}>
                 <dt>{factor.label}</dt>
-                <dd>Reviewed relationship evidence supports this priority.</dd>
+                <dd>
+                  {bilingualText(
+                    "已复核的关系证据支持这个优先级。",
+                    "Reviewed relationship evidence supports this priority.",
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
         </WorkbenchSurface>
       </div>
 
-      <WorkbenchSurface eyebrow="Sources" title="Provenance">
+      <WorkbenchSurface
+        eyebrow={bilingualText("来源", "Sources")}
+        title={bilingualText("来源依据", "Provenance")}
+      >
         <div className="app-contact-detail-source-grid">
           {connection.sourceLinks.map((source) => (
             <div className="app-contact-detail-source-card" key={source.id}>
@@ -636,15 +744,29 @@ function renderSuccessState(model: AppContactDetailSuccessModel) {
           ))}
         </div>
         <details className="app-contact-detail-technical-details">
-          <summary>Evidence IDs and source records</summary>
-          <div aria-label="Selected contact tags" className="app-contact-detail-tags">
+          <summary>
+            {bilingualText(
+              "证据 ID 和来源记录",
+              "Evidence IDs and source records",
+            )}
+          </summary>
+          <div
+            aria-label={bilingualText("已选择联系人标签", "Selected contact tags")}
+            className="app-contact-detail-tags"
+          >
             {contact.tags.map((tag) => (
               <Chip key={tag} tone="evidence">
                 {tag}
               </Chip>
             ))}
           </div>
-          <div aria-label="Selected contact evidence records" className="chip-row">
+          <div
+            aria-label={bilingualText(
+              "已选择联系人证据记录",
+              "Selected contact evidence records",
+            )}
+            className="chip-row"
+          >
             {allEvidenceIds.map((evidenceId) => (
               <Chip key={evidenceId} tone="evidence">
                 {evidenceId}

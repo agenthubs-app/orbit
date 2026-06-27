@@ -127,7 +127,7 @@ test("/app/chat leads with one private reply priority before inventory", async (
   const html = await renderChatPage();
   const primaryText = primaryTextFromHtml(html);
 
-  assert.match(html, /<h2>Current reply priority<\/h2>/);
+  assert.match(html, /<h2>[^<]*Current reply priority<\/h2>/);
   assert.match(primaryText, /Maya Chen at Kumo Grid/);
   assert.match(primaryText, /Why it matters now/i);
   assert.match(primaryText, /Consent and privacy posture/i);
@@ -168,9 +168,9 @@ test("/app/chat groups panels into a readable reply-review workflow", async () =
   assert.match(primaryText, /Review status: staged for human review/i);
   assert.match(primaryText, /Summary for review/i);
   assert.match(primaryText, /Relationship signals to confirm/i);
-  assert.match(primaryText, /Consent status: analysis allowed/i);
+  assert.match(primaryText, /Consent status: .*analysis allowed/i);
   assert.match(html, /Private note hidden from analysis and sharing/);
-  assert.match(html, /<summary>Source and safety evidence<\/summary>/);
+  assert.match(html, /<summary>[^<]*Source and safety evidence<\/summary>/);
   assert.match(html, /evidence:chat:maya:pilot-timing/);
   assert.doesNotMatch(html, />[^<]*\b[Mm]ock\b[^<]*</);
   assert.doesNotMatch(html, />[^<]*\b[Pp]roviders?\b[^<]*</);
@@ -273,18 +273,18 @@ test("/app/chat renders empty loading and failure states through the shared stat
     const html = await renderChatPage({ scenario: state.scenario });
     const text = visibleText(html);
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(state.expectedCopy));
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
     assert.match(
       html,
       new RegExp(`data-route-state-url="/app/chat\\?scenario=${state.scenario}"`),
     );
-    assert.match(html, /aria-label="Chat route recovery actions"/);
+    assert.match(html, /aria-label="[^"]*Chat route recovery actions"/);
     assert.match(
       html,
       new RegExp(
-        `href="${state.expectedRecoveryHref}">${state.expectedRecoveryLabel}</a>`,
+        `href="${state.expectedRecoveryHref}">[^<]*${state.expectedRecoveryLabel}</a>`,
       ),
     );
     assert.doesNotMatch(html, />[^<]*(Scenario URL|mock|harness|providers?)[^<]*</i);

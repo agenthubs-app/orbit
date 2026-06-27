@@ -33,6 +33,7 @@ import type {
   OpportunityReminderAnalyticsResult,
   OpportunityReminderRecomputeResult,
 } from "../../../../../features/dashboard/opportunity-contract";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { createAppDashboardRouteServices } from "./dashboard-service-factory";
 
@@ -235,32 +236,38 @@ const appDashboardStyles = `
 const routeStateChecks = [
   {
     href: "/app/dashboard?scenario=empty",
-    label: "No signals ready",
+    label: bilingualText("没有可用信号", "No signals ready"),
   },
   {
     href: "/app/dashboard?scenario=pending",
-    label: "Still checking signals",
+    label: bilingualText("仍在检查信号", "Still checking signals"),
   },
   {
     href: "/app/dashboard?scenario=failure",
-    label: "Dashboard unavailable",
+    label: bilingualText("仪表盘不可用", "Dashboard unavailable"),
   },
 ] as const;
 
 const localDashboardSafetyCopy =
-  "No side effects: no saved record, audit report, compliance report, message, notification, automated writing call, or outside network request occurs from this page.";
+  bilingualText(
+    "无副作用：此页面不会产生保存记录、审计报告、合规报告、消息、通知、自动写作调用或外部网络请求。",
+    "No side effects: no saved record, audit report, compliance report, message, notification, automated writing call, or outside network request occurs from this page.",
+  );
 
 const localRouteStateSafetyCopy =
-  "No saved record, audit report, compliance report, message, notification, automated writing call, or outside network request occurs while this state is shown.";
+  bilingualText(
+    "显示此状态时，不会产生保存记录、审计报告、合规报告、消息、通知、自动写作调用或外部网络请求。",
+    "No saved record, audit report, compliance report, message, notification, automated writing call, or outside network request occurs while this state is shown.",
+  );
 
 const localReviewBoundaries = [
-  "No saved record",
-  "No audit report",
-  "No compliance report",
-  "No message",
-  "No notification",
-  "No automated writing call",
-  "No outside network request",
+  bilingualText("无保存记录", "No saved record"),
+  bilingualText("无审计报告", "No audit report"),
+  bilingualText("无合规报告", "No compliance report"),
+  bilingualText("无消息", "No message"),
+  bilingualText("无通知", "No notification"),
+  bilingualText("无自动写作调用", "No automated writing call"),
+  bilingualText("无外部网络请求", "No outside network request"),
 ] as const;
 
 type AppDashboardSearchParams = Record<string, string | string[] | undefined>;
@@ -286,27 +293,27 @@ const routeRecoveryActions: Record<
   empty: [
     {
       href: "/app/dashboard",
-      label: "Show active dashboard",
+      label: bilingualText("显示活跃仪表盘", "Show active dashboard"),
     },
     {
       href: "/app/dashboard?action=run-dashboard-review",
-      label: "Preview dashboard review",
+      label: bilingualText("预览仪表盘复核", "Preview dashboard review"),
     },
   ],
   failure: [
     {
       href: "/app/dashboard",
-      label: "Reload dashboard",
+      label: bilingualText("重新加载仪表盘", "Reload dashboard"),
     },
     {
       href: "/app/dashboard?scenario=pending",
-      label: "Check source status",
+      label: bilingualText("检查来源状态", "Check source status"),
     },
   ],
   pending: [
     {
       href: "/app/dashboard",
-      label: "Return to active dashboard",
+      label: bilingualText("返回活跃仪表盘", "Return to active dashboard"),
     },
   ],
 };
@@ -465,7 +472,7 @@ function TechnicalProvenanceDetails({
 }) {
   return (
     <details className="technical-provenance">
-      <summary>Evidence source trail</summary>
+      <summary>{bilingualText("证据来源路径", "Evidence source trail")}</summary>
       <ul>
         {evidenceIds.map((evidenceId) => (
           <li key={evidenceId}>
@@ -484,7 +491,7 @@ function HiddenLegacyTechnicalProvenanceDetails({
 }) {
   return (
     <details className="technical-provenance" hidden>
-      <summary>Technical provenance IDs</summary>
+      <summary>{bilingualText("技术来源 ID", "Technical provenance IDs")}</summary>
       <ul>
         {evidenceIds.map((evidenceId) => (
           <li key={evidenceId}>
@@ -529,42 +536,75 @@ function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
 function stateCopy(scenario: RouteScenario) {
   if (scenario === "empty") {
     return {
-      description:
+      description: bilingualText(
+        "复核仪表盘趋势前，先添加有来源的联系人或活动上下文。",
         "Add source-backed contacts or event context before reviewing dashboard trends.",
-      emptyState:
+      ),
+      emptyState: bilingualText(
+        "还没有关系活动具备足够来源证据可供仪表盘复核。",
         "No relationship activity has enough source evidence for dashboard review.",
+      ),
       guardrail: localRouteStateSafetyCopy,
-      nextStep: "Return after contacts, events, follow-ups, or audit records exist.",
-      purpose:
+      nextStep: bilingualText(
+        "联系人、活动、跟进或审计记录存在后再返回。",
+        "Return after contacts, events, follow-ups, or audit records exist.",
+      ),
+      purpose: bilingualText(
+        "没有有来源关系活动时，仍让仪表盘复核保持可用。",
         "Keep dashboard review useful when no sourced relationship activity is available.",
-      title: "Dashboard has no relationship signals",
+      ),
+      title: bilingualText(
+        "仪表盘没有关系信号",
+        "Dashboard has no relationship signals",
+      ),
     };
   }
 
   if (scenario === "pending") {
     return {
-      description:
+      description: bilingualText(
+        "有来源活动和来源链检查期间，仪表盘复核保持暂停。",
         "Dashboard review stays paused while sourced activity and provenance are checked.",
-      emptyState:
+      ),
+      emptyState: bilingualText(
+        "关系证据准备好之前，仪表盘记录保持隐藏。",
         "Dashboard records stay hidden until relationship evidence is ready.",
+      ),
       guardrail: localRouteStateSafetyCopy,
-      nextStep: "Return to the active dashboard after source evidence is available.",
-      purpose:
+      nextStep: bilingualText(
+        "来源证据可用后返回活跃仪表盘。",
+        "Return to the active dashboard after source evidence is available.",
+      ),
+      purpose: bilingualText(
+        "保持仪表盘工作可见，但不暴露未完成的关系建议。",
         "Keep dashboard work visible without exposing unfinished relationship guidance.",
-      title: "Dashboard is still checking relationship signals",
+      ),
+      title: bilingualText(
+        "仪表盘仍在检查关系信号",
+        "Dashboard is still checking relationship signals",
+      ),
     };
   }
 
   return {
-    description:
+    description: bilingualText(
+      "关系证据检查期间，仪表盘摘要、网络缺口、机会和来源警告暂不可用。",
       "Dashboard summary, network gaps, opportunities, and provenance warnings are unavailable while relationship evidence is checked.",
-    emptyState:
+    ),
+    emptyState: bilingualText(
+      "来源证据恢复前，仪表盘复核不可用。",
       "The dashboard review is unavailable until source evidence recovers.",
+    ),
     guardrail: localRouteStateSafetyCopy,
-    nextStep: "Reload the dashboard before taking action.",
-    purpose:
+    nextStep: bilingualText(
+      "采取动作前重新加载仪表盘。",
+      "Reload the dashboard before taking action.",
+    ),
+    purpose: bilingualText(
+      "有来源仪表盘上下文不可用时，显示可见恢复路径。",
       "Show a visible recovery path when source-backed dashboard context is unavailable.",
-    title: "Dashboard could not load",
+    ),
+    title: bilingualText("仪表盘无法加载", "Dashboard could not load"),
   };
 }
 
@@ -594,8 +634,10 @@ function EvidenceChips({
 function ReviewStatusLine({ evidenceIds }: { evidenceIds: readonly string[] }) {
   return (
     <p className="type-caption">
-      Source confidence: {sourceConfidenceLabel(evidenceIds)}; Review status:
-      Ready for human review
+      {bilingualText("来源可信度", "Source confidence")}:{" "}
+      {sourceConfidenceLabel(evidenceIds)};{" "}
+      {bilingualText("复核状态", "Review status")}:{" "}
+      {bilingualText("可人工复核", "Ready for human review")}
     </p>
   );
 }
@@ -633,23 +675,23 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
         data-error-code={failure?.success === false ? failure.error.code : undefined}
         data-state-boundary="shared-ui-state-view"
       >
-        <WorkbenchSurface elevated eyebrow="Dashboard" title={copy.title}>
+        <WorkbenchSurface elevated eyebrow={bilingualText("仪表盘", "Dashboard")} title={copy.title}>
           <p className="type-body">{copy.description}</p>
           <dl aria-label="Dashboard status details" className="relationship-meta">
             <div>
-              <dt>What Orbit knows</dt>
+              <dt>{bilingualText("Orbit 已知", "What Orbit knows")}</dt>
               <dd>{copy.purpose}</dd>
             </div>
             <div>
-              <dt>Current status</dt>
+              <dt>{bilingualText("当前状态", "Current status")}</dt>
               <dd>{copy.emptyState}</dd>
             </div>
             <div>
-              <dt>Safety check</dt>
+              <dt>{bilingualText("安全检查", "Safety check")}</dt>
               <dd>{copy.guardrail}</dd>
             </div>
             <div>
-              <dt>Next step</dt>
+              <dt>{bilingualText("下一步", "Next step")}</dt>
               <dd>{copy.nextStep}</dd>
             </div>
           </dl>
@@ -686,7 +728,7 @@ function DashboardLedger({
       className="relationship-meta dashboard-ledger"
     >
       <div>
-        <dt>Relationship assets</dt>
+        <dt>{bilingualText("关系资产", "Relationship assets")}</dt>
         <dd>
           <strong>{aggregate.relationshipAssetTotals.contacts}</strong>
           {formatCount(
@@ -696,24 +738,24 @@ function DashboardLedger({
         </dd>
       </div>
       <div>
-        <dt>Network coverage score</dt>
+        <dt>{bilingualText("网络覆盖评分", "Network coverage score")}</dt>
         <dd>
           <strong>{gaps.coverageScore}</strong>
           {formatCount(highSeverityGaps, "high-priority gap")}
         </dd>
       </div>
       <div>
-        <dt>Opportunity review</dt>
+        <dt>{bilingualText("机会复核", "Opportunity review")}</dt>
         <dd>
           <strong>{opportunities.highPriorityOpportunities.length}</strong>
           {formatCount(warningCount, "review cue")}
         </dd>
       </div>
       <div>
-        <dt>Dashboard metrics</dt>
+        <dt>{bilingualText("仪表盘指标", "Dashboard metrics")}</dt>
         <dd>
           <strong>{summary.metrics.length}</strong>
-          summary signals ready
+          {bilingualText("摘要信号已准备", "summary signals ready")}
         </dd>
       </div>
     </dl>
@@ -729,16 +771,23 @@ function DashboardReviewForm() {
       method="get"
     >
       <div>
-        <p className="type-caption">Core dashboard action</p>
-        <h3 className="relationship-name">Run dashboard review</h3>
+        <p className="type-caption">
+          {bilingualText("核心仪表盘动作", "Core dashboard action")}
+        </p>
+        <h3 className="relationship-name">
+          {bilingualText("运行仪表盘复核", "Run dashboard review")}
+        </h3>
         <p className="type-body">
-          Refresh the local opportunity prompts and source warnings from current
-          relationship evidence, then stop before any saved record or outside
-          account changes.
+          {bilingualText(
+            "根据当前关系证据刷新本地机会提示和来源警告，然后在任何保存记录或外部账号更改前停止。",
+            "Refresh the local opportunity prompts and source warnings from current relationship evidence, then stop before any saved record or outside account changes.",
+          )}
         </p>
       </div>
       <input name="action" type="hidden" value="run-dashboard-review" />
-      <button type="submit">Run dashboard review</button>
+      <button type="submit">
+        {bilingualText("运行仪表盘复核", "Run dashboard review")}
+      </button>
     </form>
   );
 }
@@ -767,10 +816,20 @@ function DashboardActionResult({
         data-dashboard-result="dashboard-run-review-preview"
         data-side-effects="none"
       >
-        <strong>Dashboard review could not refresh</strong>
-        <span>Error: {errorCode}</span>
-        <span>Review preview stayed local.</span>
-        <span>What remains local</span>
+        <strong>
+          {bilingualText(
+            "仪表盘复核无法刷新",
+            "Dashboard review could not refresh",
+          )}
+        </strong>
+        <span>{bilingualText("错误", "Error")}: {errorCode}</span>
+        <span>
+          {bilingualText(
+            "复核预览保持本地。",
+            "Review preview stayed local.",
+          )}
+        </span>
+        <span>{bilingualText("仍保持本地", "What remains local")}</span>
         <ul className="dashboard-review-checks">
           {localReviewBoundaries.map((boundary) => (
             <li key={boundary}>{boundary}</li>
@@ -798,30 +857,54 @@ function DashboardActionResult({
       data-side-effects="none"
     >
       <strong>
-        Dashboard review ready: {recompute.data.generatedOpportunityCount}{" "}
-        opportunity prompts refreshed
+        {bilingualText(
+          `仪表盘复核已准备：刷新 ${recompute.data.generatedOpportunityCount} 个机会提示`,
+          `Dashboard review ready: ${recompute.data.generatedOpportunityCount} opportunity prompts refreshed`,
+        )}
       </strong>
-      <span>Review preview refreshed local guidance.</span>
-      <span>Refreshed prompts: {recompute.data.generatedOpportunityCount}</span>
       <span>
-        Audit findings queued for review: {auditRun.data.generatedFindingIds.length}
+        {bilingualText(
+          "复核预览已刷新本地建议。",
+          "Review preview refreshed local guidance.",
+        )}
       </span>
-      <span>Source confidence: High</span>
       <span>
-        Outside delivery requested: {deliveryChanged ? "review required" : "none"}
+        {bilingualText("已刷新提示", "Refreshed prompts")}:{" "}
+        {recompute.data.generatedOpportunityCount}
       </span>
-      <span>What remains local</span>
+      <span>
+        {bilingualText("排队待复核的审计发现", "Audit findings queued for review")}:{" "}
+        {auditRun.data.generatedFindingIds.length}
+      </span>
+      <span>{bilingualText("来源可信度：高", "Source confidence: High")}</span>
+      <span>
+        {bilingualText("已请求外部发送", "Outside delivery requested")}:{" "}
+        {deliveryChanged
+          ? bilingualText("需要复核", "review required")
+          : bilingualText("无", "none")}
+      </span>
+      <span>{bilingualText("仍保持本地", "What remains local")}</span>
       <ul className="dashboard-review-checks">
         {localReviewBoundaries.map((boundary) => (
           <li key={boundary}>{boundary}</li>
         ))}
       </ul>
       <details className="technical-provenance">
-        <summary>Local action audit details</summary>
+        <summary>{bilingualText("本地动作审计详情", "Local action audit details")}</summary>
         <ul>
-          <li>Dashboard command center</li>
-          <li>Compliance report saved: no</li>
-          <li>Production audit storage changed: no</li>
+          <li>{bilingualText("仪表盘命令中心", "Dashboard command center")}</li>
+          <li>
+            {bilingualText(
+              "合规报告已保存：否",
+              "Compliance report saved: no",
+            )}
+          </li>
+          <li>
+            {bilingualText(
+              "生产审计存储已更改：否",
+              "Production audit storage changed: no",
+            )}
+          </li>
         </ul>
       </details>
     </div>
@@ -865,7 +948,9 @@ function DashboardNextMove({
     >
       <div className="dashboard-priority-context">
         {relationshipLabel && (
-          <p className="type-caption">Current priority: {relationshipLabel}</p>
+          <p className="type-caption">
+            {bilingualText("当前优先级", "Current priority")}: {relationshipLabel}
+          </p>
         )}
         {primaryOpportunity && (
           <h3 className="relationship-name">{primaryOpportunity.title}</h3>
@@ -874,13 +959,15 @@ function DashboardNextMove({
           <h3 className="relationship-name">{primaryGap.label}</h3>
         )}
         <p className="type-body">
-          <strong>Why it matters now</strong>
+          <strong>{bilingualText("为什么现在重要", "Why it matters now")}</strong>
         </p>
         <p className="type-body">{whyNow}</p>
         {nextMove && (
           <>
             <p className="type-body">
-              <strong>Recommended next move</strong>
+              <strong>
+                {bilingualText("建议下一步", "Recommended next move")}
+              </strong>
             </p>
             <p className="type-body">{nextMove}</p>
           </>
@@ -889,7 +976,7 @@ function DashboardNextMove({
       <dl aria-label="Recommended next move context" className="relationship-meta">
         {primaryOpportunity && (
           <div>
-            <dt>Relationship</dt>
+            <dt>{bilingualText("关系", "Relationship")}</dt>
             <dd>
               {primaryOpportunity.contactName}, {primaryOpportunity.organization}
             </dd>
@@ -897,23 +984,23 @@ function DashboardNextMove({
         )}
         {primaryOpportunity && (
           <div>
-            <dt>Timing</dt>
+            <dt>{bilingualText("时间", "Timing")}</dt>
             <dd>{primaryOpportunity.dueLabel}</dd>
           </div>
         )}
         {primaryGap && (
           <div>
-            <dt>Coverage gap</dt>
+            <dt>{bilingualText("覆盖缺口", "Coverage gap")}</dt>
             <dd>{primaryGap.label}</dd>
           </div>
         )}
         <div>
-          <dt>Source confidence:</dt>
+          <dt>{bilingualText("来源可信度", "Source confidence")}:</dt>
           <dd>{sourceConfidenceLabel(evidenceIds)}</dd>
         </div>
         <div>
-          <dt>Review status:</dt>
-          <dd>Ready for human review</dd>
+          <dt>{bilingualText("复核状态", "Review status")}:</dt>
+          <dd>{bilingualText("可人工复核", "Ready for human review")}</dd>
         </div>
       </dl>
       <EvidenceChips
@@ -950,14 +1037,14 @@ function SuccessBoundary({
       <WorkbenchSurface
         className="dashboard-command"
         elevated
-        eyebrow="Relationship health"
-        title="Network health priority"
+        eyebrow={bilingualText("关系健康", "Relationship health")}
+        title={bilingualText("关系健康优先级", "Network health priority")}
       >
         <p className="type-body">
-          Health-to-action workflow: act on the current relationship risk or
-          opportunity first, then use the supporting metrics, coverage context,
-          source confidence, and review status to decide what deserves attention
-          next.
+          {bilingualText(
+            "先处理当前最明确的关系风险或机会，再用指标、覆盖范围、来源可信度和复核状态判断下一步。",
+            "Health-to-action workflow: act on the current relationship risk or opportunity first, then use the supporting metrics, coverage context, source confidence, and review status to decide what deserves attention next.",
+          )}
         </p>
         <DashboardNextMove gaps={gaps} opportunities={opportunities} />
         <p className="dashboard-safety-ledger">{localDashboardSafetyCopy}</p>
@@ -975,10 +1062,14 @@ function SuccessBoundary({
           />
         )}
         <div aria-label="App dashboard source states">
-          <h3 className="relationship-name">Recovery paths</h3>
+          <h3 className="relationship-name">
+            {bilingualText("恢复路径", "Recovery paths")}
+          </h3>
           <p className="type-body">
-            Open the same dashboard when relationship signals are empty, still
-            resolving, or unavailable.
+            {bilingualText(
+              "关系信号为空、仍在解析或不可用时，打开同一个仪表盘。",
+              "Open the same dashboard when relationship signals are empty, still resolving, or unavailable.",
+            )}
           </p>
           <nav className="dashboard-state-links">
             {routeStateChecks.map((stateCheck) => (
@@ -1073,11 +1164,15 @@ function DashboardSummarySection({
   summary: DashboardAggregateSummaryPayload;
 }) {
   return (
-    <WorkbenchSurface eyebrow="Summary" title="Relationship health signals">
+    <WorkbenchSurface
+      eyebrow={bilingualText("摘要", "Summary")}
+      title={bilingualText("关系健康信号", "Relationship health signals")}
+    >
       <p className="type-body">
-        {formatCount(summary.metrics.length, "dashboard signal")} summarize new
-        contacts, high-value relationships, pending follow-ups, and dormant
-        relationships from source evidence.
+        {bilingualText(
+          `${summary.metrics.length} 个仪表盘信号会从来源证据总结新联系人、高价值关系、待跟进事项和沉睡关系。`,
+          `${formatCount(summary.metrics.length, "dashboard signal")} summarize new contacts, high-value relationships, pending follow-ups, and dormant relationships from source evidence.`,
+        )}
       </p>
       <SummaryMetricCards metrics={summary.metrics} />
       <div className="dashboard-card-grid">
@@ -1104,10 +1199,15 @@ function IndustryCard({ bucket }: { bucket: IndustryDistributionBucket }) {
       <span className="type-caption">{bucket.label}</span>
       <strong>{bucket.contactCount}</strong>
       <p className="type-body">
-        {bucket.percentage}% of sourced contacts. Top organizations:{" "}
+        {bilingualText(
+          `${bucket.percentage}% 的有来源联系人。头部组织`,
+          `${bucket.percentage}% of sourced contacts. Top organizations`,
+        )}:{" "}
         {bucket.topOrganizations.join(", ")}.
       </p>
-      <p className="type-caption">Coverage context: {bucket.label}</p>
+      <p className="type-caption">
+        {bilingualText("覆盖上下文", "Coverage context")}: {bucket.label}
+      </p>
       <ReviewStatusLine evidenceIds={bucket.evidenceIds} />
       <EvidenceChips
         evidenceIds={bucket.evidenceIds}
@@ -1155,10 +1255,15 @@ function DistributionSection({
   distributions: NetworkDistributionAnalyticsPayload;
 }) {
   return (
-    <WorkbenchSurface eyebrow="Network map" title="Distribution and coverage">
+    <WorkbenchSurface
+      eyebrow={bilingualText("网络地图", "Network map")}
+      title={bilingualText("分布和覆盖", "Distribution and coverage")}
+    >
       <p className="type-body">
-        Distribution buckets keep relationship concentration visible before
-        Orbit recommends where to build coverage next.
+        {bilingualText(
+          "在 Orbit 推荐下一步覆盖建设前，分布桶会让关系集中度保持可见。",
+          "Distribution buckets keep relationship concentration visible before Orbit recommends where to build coverage next.",
+        )}
       </p>
       <div className="dashboard-card-grid">
         {distributions.industryDistribution.slice(0, 3).map((bucket) => (
@@ -1188,13 +1293,17 @@ function NetworkGapCard({ gap }: { gap: NetworkGapAnalysisItem }) {
       aria-label={`Network gap ${gap.label}`}
       className="dashboard-card"
     >
-      <span className="type-caption">{gap.severity} severity</span>
+      <span className="type-caption">
+        {gap.severity} {bilingualText("严重度", "severity")}
+      </span>
       <h3 className="relationship-name">{gap.label}</h3>
       <strong>
         {gap.currentCount}/{gap.targetCount}
       </strong>
       <p className="type-body">{gap.recommendedAction}</p>
-      <p className="type-caption">Coverage context: {gap.label}</p>
+      <p className="type-caption">
+        {bilingualText("覆盖上下文", "Coverage context")}: {gap.label}
+      </p>
       <ReviewStatusLine evidenceIds={gap.evidenceIds} />
       <EvidenceChips evidenceIds={gap.evidenceIds} label={`${gap.label} evidence`} />
     </article>
@@ -1211,14 +1320,18 @@ function OpportunityCard({
       aria-label={`Dashboard opportunity ${opportunity.contactName}`}
       className="dashboard-card"
     >
-      <span className="type-caption">{priorityLabel(opportunity.priority)} priority</span>
+      <span className="type-caption">
+        {priorityLabel(opportunity.priority)} {bilingualText("优先级", "priority")}
+      </span>
       <h3 className="relationship-name">{opportunity.title}</h3>
       <strong>{opportunity.priorityScore}</strong>
       <p className="type-body">
         {opportunity.contactName} · {opportunity.organization}
       </p>
       <p className="type-body">{opportunity.suggestedAction}</p>
-      <p className="type-caption">Coverage context: {opportunity.dueLabel}</p>
+      <p className="type-caption">
+        {bilingualText("覆盖上下文", "Coverage context")}: {opportunity.dueLabel}
+      </p>
       <ReviewStatusLine evidenceIds={opportunity.evidenceIds} />
       <EvidenceChips
         evidenceIds={opportunity.evidenceIds}
@@ -1236,10 +1349,18 @@ function GapAndOpportunitySection({
   opportunities: OpportunityReminderAnalyticsPayload;
 }) {
   return (
-    <WorkbenchSurface eyebrow="Next work" title="Network gaps and opportunities">
+    <WorkbenchSurface
+      eyebrow={bilingualText("下一步工作", "Next work")}
+      title={bilingualText(
+        "网络缺口和机会",
+        "Network gaps and opportunities",
+      )}
+    >
       <p className="type-body">
-        Network gaps and opportunity prompts stay side by side so the next
-        relationship action has both coverage context and source evidence.
+        {bilingualText(
+          "网络缺口和机会提示并排显示，让下一步关系动作同时具备覆盖上下文和来源证据。",
+          "Network gaps and opportunity prompts stay side by side so the next relationship action has both coverage context and source evidence.",
+        )}
       </p>
       <div className="dashboard-card-grid">
         {gaps.gaps.slice(0, 2).map((gap) => (
@@ -1282,7 +1403,9 @@ function AuditFindingCard({
       aria-label={`Provenance warning ${finding.findingId}`}
       className="dashboard-card"
     >
-      <span className="type-caption">{severityLabel(finding.severity)} warning</span>
+      <span className="type-caption">
+        {severityLabel(finding.severity)} {bilingualText("警告", "warning")}
+      </span>
       <h3 className="relationship-name">{finding.title}</h3>
       <p className="type-body">{productCopy(finding.remediation)}</p>
       <ReviewStatusLine evidenceIds={finding.evidenceIds} />
@@ -1302,11 +1425,20 @@ function ProvenanceSection({
   const hasActiveFindings = audit.findings.length > 0;
 
   return (
-    <WorkbenchSurface eyebrow="Provenance" title="Provenance warnings">
+    <WorkbenchSurface
+      eyebrow={bilingualText("来源链", "Provenance")}
+      title={bilingualText("来源链警告", "Provenance warnings")}
+    >
       <p className="type-body">
         {hasActiveFindings
-          ? "Source checks show which dashboard cues are ready and which records need evidence cleanup before action."
-          : "Source checks show reviewed relationship records retain source context with no active provenance warnings."}
+          ? bilingualText(
+              "来源检查会显示哪些仪表盘提示已准备好，哪些记录在动作前需要清理证据。",
+              "Source checks show which dashboard cues are ready and which records need evidence cleanup before action.",
+            )
+          : bilingualText(
+              "来源检查显示已复核的关系记录保留来源上下文，且没有活跃来源链警告。",
+              "Source checks show reviewed relationship records retain source context with no active provenance warnings.",
+            )}
       </p>
       <dl aria-label="Dashboard provenance collections" className="relationship-meta">
         {audit.auditedCollections.slice(0, 4).map((collection) => (
@@ -1323,11 +1455,20 @@ function ProvenanceSection({
             aria-label="Provenance warning zero active findings"
             className="dashboard-card"
           >
-            <span className="type-caption">Clean audit</span>
-            <h3 className="relationship-name">No active provenance warnings</h3>
+            <span className="type-caption">
+              {bilingualText("审计干净", "Clean audit")}
+            </span>
+            <h3 className="relationship-name">
+              {bilingualText(
+                "没有活跃来源链警告",
+                "No active provenance warnings",
+              )}
+            </h3>
             <p className="type-body">
-              Contacts, connections, recommendations, tasks, conversation
-              summaries, health cues, and next moves keep reviewed source context.
+              {bilingualText(
+                "联系人、连接、推荐、任务、对话摘要、健康提示和下一步动作都会保留已复核来源上下文。",
+                "Contacts, connections, recommendations, tasks, conversation summaries, health cues, and next moves keep reviewed source context.",
+              )}
             </p>
             <ReviewStatusLine evidenceIds={audit.provenance.evidenceIds} />
             <EvidenceChips
@@ -1347,10 +1488,15 @@ function RecentActivitySection({
   activity: readonly DashboardRecentActivity[];
 }) {
   return (
-    <WorkbenchSurface eyebrow="Recent context" title="Latest sourced movement">
+    <WorkbenchSurface
+      eyebrow={bilingualText("最近上下文", "Recent context")}
+      title={bilingualText("最新有来源动态", "Latest sourced movement")}
+    >
       <p className="type-body">
-        Recent activity explains why the dashboard is highlighting these contacts
-        and opportunities now.
+        {bilingualText(
+          "最近活动会说明仪表盘为什么现在突出这些联系人和机会。",
+          "Recent activity explains why the dashboard is highlighting these contacts and opportunities now.",
+        )}
       </p>
       <div aria-label="Dashboard recent activity" className="dashboard-activity-list">
         {activity.slice(0, 4).map((item) => (
@@ -1380,22 +1526,38 @@ function CompositionFailure({
 
   return (
     <div data-state-boundary="shared-ui-state-view">
-      <WorkbenchSurface elevated eyebrow="Dashboard" title="Dashboard could not load">
+      <WorkbenchSurface
+        elevated
+        eyebrow={bilingualText("仪表盘", "Dashboard")}
+        title={bilingualText("仪表盘无法加载", "Dashboard could not load")}
+      >
         <p className="type-body">
-          Dashboard summary, network gaps, opportunities, and provenance warnings
-          are unavailable while relationship evidence is checked.
+          {bilingualText(
+            "关系证据检查期间，仪表盘摘要、网络缺口、机会和来源警告暂不可用。",
+            "Dashboard summary, network gaps, opportunities, and provenance warnings are unavailable while relationship evidence is checked.",
+          )}
         </p>
         <dl aria-label="Dashboard status details" className="relationship-meta">
           <div>
-            <dt>Current status</dt>
-            <dd>Review is paused until source-backed dashboard data returns.</dd>
+            <dt>{bilingualText("当前状态", "Current status")}</dt>
+            <dd>
+              {bilingualText(
+                "有来源的仪表盘数据返回前，复核会保持暂停。",
+                "Review is paused until source-backed dashboard data returns.",
+              )}
+            </dd>
           </div>
           <div>
-            <dt>Safety check</dt>
-            <dd>No saved record, audit report, message, or notification changed.</dd>
+            <dt>{bilingualText("安全检查", "Safety check")}</dt>
+            <dd>
+              {bilingualText(
+                "没有保存记录、审计报告、消息或通知发生更改。",
+                "No saved record, audit report, message, or notification changed.",
+              )}
+            </dd>
           </div>
           <div>
-            <dt>Error</dt>
+            <dt>{bilingualText("错误", "Error")}</dt>
             <dd>{failure?.success === false ? failure.error.code : "unavailable"}</dd>
           </div>
         </dl>

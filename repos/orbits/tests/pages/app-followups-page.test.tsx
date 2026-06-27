@@ -51,7 +51,7 @@ test("/app/followups composes approved followup task draft and reminder capabili
   const html = await renderFollowupsPage();
   const text = visibleText(html);
 
-  assert.match(html, /<h2>Promise to keep next<\/h2>/);
+  assert.match(html, /<h2>[^<]*Promise to keep next<\/h2>/);
   assert.match(html, /Maya Chen/);
   assert.match(html, /Kumo Grid/);
   assert.match(html, /Send Maya the event recap and ask about pilot timing/);
@@ -70,7 +70,7 @@ test("/app/followups leads with one promise priority before broader inventory", 
   const html = await renderFollowupsPage();
   const text = visibleText(html);
 
-  assert.match(html, /<h2>Promise to keep next<\/h2>/);
+  assert.match(html, /<h2>[^<]*Promise to keep next<\/h2>/);
   assert.match(text, /For Maya Chen at Kumo Grid/);
   assert.match(
     text,
@@ -88,7 +88,7 @@ test("/app/followups leads with one promise priority before broader inventory", 
   assert.match(text, /Reminder timing Due tomorrow/);
   assert.match(
     text,
-    /Next safe action Review the drafted follow-through before marking anything complete\./,
+    /Next safe action .*Review the drafted follow-through before marking anything complete\./,
   );
   assertTextAppearsBefore(text, "Promise to keep next", "Ready for review");
   assertTextAppearsBefore(text, "Promise to keep next", "Reminder queue");
@@ -98,7 +98,7 @@ test("/app/followups groups task draft reminder and queue as a promise workflow"
   const html = await renderFollowupsPage();
   const text = visibleText(html);
 
-  assert.match(html, /<h2>Promise workflow<\/h2>/);
+  assert.match(html, /<h2>[^<]*Promise workflow<\/h2>/);
   assert.match(text, /Task to decide Send Maya the event recap and ask about pilot timing/);
   assert.match(text, /Message draft to review Following up on pilot timing/);
   assert.match(text, /Reminder to keep visible Deliver the grid storage intro deck promised to Maya/);
@@ -128,16 +128,20 @@ test("/app/followups previews the core completion action without external side e
   assert.match(text, /Draft context: Following up on pilot timing · within 24 hours/);
   assert.match(
     text,
-    /Reminder context: Deliver the grid storage intro deck promised to Maya · due today/,
+    /Reminder context: .*Deliver the grid storage intro deck promised to Maya .*due today/,
   );
   assert.match(
     text,
     /Still staged locally: promise review, draft review, reminder review, queue hold/,
   );
-  assert.match(
-    text,
-    /Calendar changes: none Scheduler changes: none Messages sent: none Notifications delivered: none Saved records changed: none Automated writing calls: none Outside network requests: none Completion recorded: no/,
-  );
+  assert.match(text, /Calendar changes: .*none/);
+  assert.match(text, /Scheduler changes: .*none/);
+  assert.match(text, /Messages sent: .*none/);
+  assert.match(text, /Notifications delivered: .*none/);
+  assert.match(text, /Saved records changed: .*none/);
+  assert.match(text, /Automated writing calls: .*none/);
+  assert.match(text, /Outside network requests: .*none/);
+  assert.match(text, /Completion recorded: .*no/);
   assert.match(html, /data-task-result="followups-complete-top-task-preview"/);
   assert.match(
     html,
@@ -224,7 +228,7 @@ test("/app/followups renders empty loading and failure states through the shared
     const html = await renderFollowupsPage({ scenario: state.scenario });
     const text = visibleText(html);
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(state.expectedCopy));
     assert.match(html, new RegExp(state.expectedNextStep));
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
@@ -234,11 +238,11 @@ test("/app/followups renders empty loading and failure states through the shared
         `data-route-state-url="/app/followups\\?scenario=${state.scenario}"`,
       ),
     );
-    assert.match(html, /aria-label="Follow-ups route recovery actions"/);
+    assert.match(html, /aria-label="[^"]*Follow-ups route recovery actions"/);
     assert.match(
       html,
       new RegExp(
-        `href="${state.expectedRecoveryHref}">${state.expectedRecoveryLabel}</a>`,
+        `href="${state.expectedRecoveryHref}">[^<]*${state.expectedRecoveryLabel}</a>`,
       ),
     );
     assert.doesNotMatch(html, />[^<]*(Scenario URL|mock|harness|providers?)[^<]*</i);

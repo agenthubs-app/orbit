@@ -122,12 +122,14 @@ function assertStateHasVisibleRecoveryControl({
 }) {
   assert.match(
     html,
-    new RegExp(`<h2>${expectedHeading}</h2>`),
+    new RegExp(`<h2>[^<]*${expectedHeading}</h2>`),
     `${routeLabel} should expose a meaningful state heading`,
   );
   assert.match(
     html,
-    new RegExp(`aria-label="${expectedLabel}"[^>]*>${expectedLabel}</(?:a|button)>`),
+    new RegExp(
+      `aria-label="[^"]*${expectedLabel}"[^>]*>[^<]*${expectedLabel}</(?:a|button)>`,
+    ),
     `${routeLabel} should expose a visible recovery control named "${expectedLabel}"`,
   );
   assert.match(
@@ -138,7 +140,7 @@ function assertStateHasVisibleRecoveryControl({
   assert.match(html, /aria-label="Recovery actions"/);
   assert.match(
     html,
-    /<summary>Source details<\/summary>/,
+    /<summary>来源详情 \/ Source details<\/summary>/,
     `${routeLabel} should label source evidence as information, not an extra action`,
   );
   assert.doesNotMatch(
@@ -195,7 +197,7 @@ test("/app/profile shell prioritizes profile recovery before global shortcuts", 
   );
   assert.match(
     html,
-    /aria-label="Return to profile source review"[^>]*href="\/app\/profile"[^>]*>Return to profile source review<\/a>/,
+    /aria-label="[^"]*Return to profile source review"[^>]*href="\/app\/profile"[^>]*>[^<]*Return to profile source review<\/a>/,
   );
 });
 

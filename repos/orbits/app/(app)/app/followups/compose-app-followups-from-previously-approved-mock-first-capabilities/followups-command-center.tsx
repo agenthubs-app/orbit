@@ -23,6 +23,7 @@ import type {
   ReminderScheduleNotificationResult,
   ScheduledReminder,
 } from "../../../../../features/notifications/contract";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { createAppFollowupsRouteServices } from "./followups-service-factory";
 
@@ -196,15 +197,15 @@ const appFollowupsStyles = `
 const routeStateChecks = [
   {
     href: "/app/followups?scenario=empty",
-    label: "No follow-ups ready",
+    label: bilingualText("没有可用跟进", "No follow-ups ready"),
   },
   {
     href: "/app/followups?scenario=pending",
-    label: "Still checking evidence",
+    label: bilingualText("仍在检查证据", "Still checking evidence"),
   },
   {
     href: "/app/followups?scenario=failure",
-    label: "Follow-ups unavailable",
+    label: bilingualText("跟进不可用", "Follow-ups unavailable"),
   },
 ] as const;
 
@@ -229,27 +230,27 @@ const routeRecoveryActions: Record<
   empty: [
     {
       href: "/app/contacts/new",
-      label: "Add a relationship source",
+      label: bilingualText("添加关系来源", "Add a relationship source"),
     },
     {
       href: "/app/followups",
-      label: "Show ready follow-ups",
+      label: bilingualText("显示可用跟进", "Show ready follow-ups"),
     },
   ],
   failure: [
     {
       href: "/app/followups",
-      label: "Reload follow-ups",
+      label: bilingualText("重新加载跟进", "Reload follow-ups"),
     },
     {
       href: "/app/followups?scenario=pending",
-      label: "Check source status",
+      label: bilingualText("检查来源状态", "Check source status"),
     },
   ],
   pending: [
     {
       href: "/app/followups",
-      label: "Return to ready follow-ups",
+      label: bilingualText("返回可用跟进", "Return to ready follow-ups"),
     },
   ],
 };
@@ -490,46 +491,81 @@ function RouteRecoveryActions({ scenario }: { scenario: RouteScenario }) {
 function stateCopy(scenario: RouteScenario) {
   if (scenario === "empty") {
     return {
-      description:
+      description: bilingualText(
+        "复核任务、草稿和提醒前，先添加有来源的关系触发点。",
         "Add a sourced relationship trigger before reviewing tasks, drafts, and reminders.",
-      emptyState:
+      ),
+      emptyState: bilingualText(
+        "还没有关系触发点具备足够来源证据可供跟进复核。",
         "No relationship trigger has enough source evidence for follow-up review.",
-      guardrail:
+      ),
+      guardrail: bilingualText(
+        "Orbit 不能从空关系队列创建任务、消息、提醒或保存记录。",
         "Orbit cannot create tasks, messages, reminders, or saved records from an empty relationship queue.",
-      nextStep:
+      ),
+      nextStep: bilingualText(
+        "添加关系来源；有来源触发点存在后会显示可用跟进。",
         "Add a relationship source; ready follow-ups appear after a sourced trigger exists.",
-      purpose:
+      ),
+      purpose: bilingualText(
+        "没有有来源的关系动作时，仍让跟进复核保持可用。",
         "Keep follow-up review useful when no sourced relationship action is available.",
-      title: "No follow-ups are ready",
+      ),
+      title: bilingualText("没有可用跟进", "No follow-ups are ready"),
     };
   }
 
   if (scenario === "pending") {
     return {
-      description:
+      description: bilingualText(
+        "来源证据准备好之前，任务、草稿和提醒复核会保持暂停。",
         "Task, draft, and reminder review stays paused until source evidence is ready.",
-      emptyState:
+      ),
+      emptyState: bilingualText(
+        "来源证据仍在检查时，跟进记录保持隐藏。",
         "Follow-up records stay hidden while source evidence is still being checked.",
-      guardrail:
+      ),
+      guardrail: bilingualText(
+        "复核等待期间，Orbit 不会保存记录、安排提醒、发送消息或投递通知。",
         "Orbit will not save records, schedule reminders, send messages, or deliver notifications while review is pending.",
-      nextStep: "Return to ready follow-ups after source evidence is available.",
-      purpose:
+      ),
+      nextStep: bilingualText(
+        "来源证据可用后返回可用跟进。",
+        "Return to ready follow-ups after source evidence is available.",
+      ),
+      purpose: bilingualText(
+        "保持跟进工作可见，但不暴露未完成建议。",
         "Keep follow-up work visible without exposing an unfinished recommendation.",
-      title: "Follow-ups are still checking source evidence",
+      ),
+      title: bilingualText(
+        "跟进仍在检查来源证据",
+        "Follow-ups are still checking source evidence",
+      ),
     };
   }
 
   return {
-    description:
+    description: bilingualText(
+      "来源证据检查期间，跟进任务、草稿和提醒暂不可用。",
       "Follow-up tasks, drafts, and reminders are unavailable while source evidence is checked.",
-    emptyState:
+    ),
+    emptyState: bilingualText(
+      "来源证据恢复前，跟进复核不可用。",
       "The follow-up review is unavailable until source evidence recovers.",
-    guardrail:
+    ),
+    guardrail: bilingualText(
+      "不可用期间，Orbit 不会保存记录、安排提醒、发送消息或投递通知。",
       "Orbit will not save records, schedule reminders, send messages, or deliver notifications while this is unavailable.",
-    nextStep: "Reload follow-ups before taking action.",
-    purpose:
+    ),
+    nextStep: bilingualText(
+      "采取动作前重新加载跟进。",
+      "Reload follow-ups before taking action.",
+    ),
+    purpose: bilingualText(
+      "有来源的跟进上下文不可用时，显示可见恢复路径。",
       "Show a visible recovery path when source-backed follow-up context is unavailable.",
-    title: "Follow-ups could not load",
+    ),
+    title: bilingualText("跟进无法加载", "Follow-ups could not load"),
   };
 }
 
@@ -551,23 +587,23 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
         data-error-code={failure?.success === false ? failure.error.code : undefined}
         data-state-boundary="shared-ui-state-view"
       >
-        <WorkbenchSurface elevated eyebrow="Follow-ups" title={copy.title}>
+        <WorkbenchSurface elevated eyebrow={bilingualText("跟进", "Follow-ups")} title={copy.title}>
           <p className="type-body">{copy.description}</p>
           <dl aria-label="Follow-up status details" className="relationship-meta">
             <div>
-              <dt>What Orbit knows</dt>
+              <dt>{bilingualText("Orbit 已知", "What Orbit knows")}</dt>
               <dd>{copy.purpose}</dd>
             </div>
             <div>
-              <dt>Current status</dt>
+              <dt>{bilingualText("当前状态", "Current status")}</dt>
               <dd>{copy.emptyState}</dd>
             </div>
             <div>
-              <dt>Safety check</dt>
+              <dt>{bilingualText("安全检查", "Safety check")}</dt>
               <dd>{copy.guardrail}</dd>
             </div>
             <div>
-              <dt>Next step</dt>
+              <dt>{bilingualText("下一步", "Next step")}</dt>
               <dd>{copy.nextStep}</dd>
             </div>
           </dl>
@@ -592,7 +628,7 @@ function EvidenceChips({
 
   return (
     <details className="followups-evidence-details">
-      <summary>Evidence details</summary>
+      <summary>{bilingualText("证据详情", "Evidence details")}</summary>
       <div aria-label={label} className="chip-row">
         {displayedIds.map((evidenceId) => (
           <Chip key={evidenceId} tone="evidence">
@@ -623,31 +659,31 @@ function FollowupsLedger({
       className="relationship-meta followups-ledger"
     >
       <div>
-        <dt>Tasks</dt>
+        <dt>{bilingualText("任务", "Tasks")}</dt>
         <dd>
           <strong>{tasks.tasks.length}</strong>
-          source-backed follow-ups
+          {bilingualText("有来源跟进", "source-backed follow-ups")}
         </dd>
       </div>
       <div>
-        <dt>Drafts</dt>
+        <dt>{bilingualText("草稿", "Drafts")}</dt>
         <dd>
           <strong>{drafts.drafts.length}</strong>
-          reviewable message
+          {bilingualText("可复核消息", "reviewable message")}
         </dd>
       </div>
       <div>
-        <dt>Reminders</dt>
+        <dt>{bilingualText("提醒", "Reminders")}</dt>
         <dd>
           <strong>{notifications.reminders.length}</strong>
-          scheduled review items
+          {bilingualText("已安排复核项", "scheduled review items")}
         </dd>
       </div>
       <div>
-        <dt>Due today</dt>
+        <dt>{bilingualText("今天到期", "Due today")}</dt>
         <dd>
           <strong>{dueToday}</strong>
-          high-attention item
+          {bilingualText("高关注项", "high-attention item")}
         </dd>
       </div>
     </dl>
@@ -665,11 +701,20 @@ function PromisePrioritySurface({
     return (
       <div className="followups-priority-grid">
         <div>
-          <p className="type-caption">No promise selected</p>
-          <h3 className="relationship-name">Select a sourced follow-up first</h3>
+          <p className="type-caption">
+            {bilingualText("未选择承诺", "No promise selected")}
+          </p>
+          <h3 className="relationship-name">
+            {bilingualText(
+              "先选择有来源的跟进",
+              "Select a sourced follow-up first",
+            )}
+          </h3>
           <p className="type-body">
-            A promise needs a relationship, source context, draft, and reminder
-            timing before it can be reviewed.
+            {bilingualText(
+              "承诺需要关系、来源上下文、草稿和提醒时间，之后才能复核。",
+              "A promise needs a relationship, source context, draft, and reminder timing before it can be reviewed.",
+            )}
           </p>
         </div>
       </div>
@@ -682,31 +727,38 @@ function PromisePrioritySurface({
         <p className="type-caption">
           For {task.contactName} at {task.organization}
         </p>
-        <h3 className="relationship-name">Selected promise {task.title}</h3>
+        <h3 className="relationship-name">
+          {bilingualText(`已选择承诺 ${task.title}`, `Selected promise ${task.title}`)}
+        </h3>
         <p className="type-body">{task.recommendedAction}</p>
       </div>
       <dl aria-label="Current promise priority details" className="relationship-meta">
         <div>
-          <dt>Why it matters now</dt>
+          <dt>{bilingualText("为什么现在重要", "Why it matters now")}</dt>
           <dd>{task.rationale}</dd>
         </div>
         <div>
-          <dt>Source trigger</dt>
+          <dt>{bilingualText("来源触发", "Source trigger")}</dt>
           <dd>
             {triggerKindLabel(task.triggerKind)} from {task.source.label}
           </dd>
         </div>
         <div>
-          <dt>Draft readiness</dt>
+          <dt>{bilingualText("草稿准备度", "Draft readiness")}</dt>
           <dd>{draftReadinessLabel(draft)}</dd>
         </div>
         <div>
-          <dt>Reminder timing</dt>
+          <dt>{bilingualText("提醒时间", "Reminder timing")}</dt>
           <dd>{dueSentenceLabel(task.dueInDays)}</dd>
         </div>
         <div>
-          <dt>Next safe action</dt>
-          <dd>Review the drafted follow-through before marking anything complete.</dd>
+          <dt>{bilingualText("安全下一步", "Next safe action")}</dt>
+          <dd>
+            {bilingualText(
+              "标记完成前，先复核草稿跟进。",
+              "Review the drafted follow-through before marking anything complete.",
+            )}
+          </dd>
         </div>
       </dl>
     </div>
@@ -729,15 +781,15 @@ function FollowupTaskCard({ task }: { task: FollowupTask }) {
       <p className="type-body">{task.recommendedAction}</p>
       <dl className="relationship-meta">
         <div>
-          <dt>Priority</dt>
+          <dt>{bilingualText("优先级", "Priority")}</dt>
           <dd>{priorityLabel(task.priority)}</dd>
         </div>
         <div>
-          <dt>Why this matters</dt>
+          <dt>{bilingualText("为什么重要", "Why this matters")}</dt>
           <dd>{task.rationale}</dd>
         </div>
         <div>
-          <dt>Source</dt>
+          <dt>{bilingualText("来源", "Source")}</dt>
           <dd>{task.source.label}</dd>
         </div>
       </dl>
@@ -767,12 +819,16 @@ function MessageDraftCard({ draft }: { draft: MessageDraft }) {
       <p className="type-body">{draft.body}</p>
       <dl className="relationship-meta">
         <div>
-          <dt>Relationship context</dt>
+          <dt>{bilingualText("关系上下文", "Relationship context")}</dt>
           <dd>{draft.relationshipContext}</dd>
         </div>
         <div>
-          <dt>Confirmation</dt>
-          <dd>{draft.sendActionRequiresConfirmation ? "Required before send" : "Not required"}</dd>
+          <dt>{bilingualText("确认", "Confirmation")}</dt>
+          <dd>
+            {draft.sendActionRequiresConfirmation
+              ? bilingualText("发送前需要", "Required before send")
+              : bilingualText("不需要", "Not required")}
+          </dd>
         </div>
       </dl>
       <EvidenceChips
@@ -798,15 +854,15 @@ function ReminderCard({ reminder }: { reminder: ScheduledReminder }) {
       </header>
       <dl className="relationship-meta">
         <div>
-          <dt>Due</dt>
+          <dt>{bilingualText("到期", "Due")}</dt>
           <dd>{dueLabel(reminder.dueInDays)}</dd>
         </div>
         <div>
-          <dt>Frequency</dt>
+          <dt>{bilingualText("频率", "Frequency")}</dt>
           <dd>{reminder.frequency}</dd>
         </div>
         <div>
-          <dt>Source</dt>
+          <dt>{bilingualText("来源", "Source")}</dt>
           <dd>{reminder.source.label}</dd>
         </div>
       </dl>
@@ -836,17 +892,19 @@ function QueueEntryCard({
         <p className="type-caption">{queueStatusLabel(entry.status)}</p>
       </header>
       <p className="type-body">
-        {queueSourceContext(entry, reminder)} stays with the promise workflow
-        for review.
+        {bilingualText(
+          `${queueSourceContext(entry, reminder)} 会留在承诺流程中等待复核。`,
+          `${queueSourceContext(entry, reminder)} stays with the promise workflow for review.`,
+        )}
       </p>
       <dl className="relationship-meta">
         <div>
-          <dt>Review status</dt>
+          <dt>{bilingualText("复核状态", "Review status")}</dt>
           <dd>{queueReviewStatusLabel(entry.status)}</dd>
         </div>
         <div>
-          <dt>Delivery state</dt>
-          <dd>Held until review</dd>
+          <dt>{bilingualText("发送状态", "Delivery state")}</dt>
+          <dd>{bilingualText("复核前暂缓", "Held until review")}</dd>
         </div>
       </dl>
       <EvidenceChips
@@ -855,7 +913,7 @@ function QueueEntryCard({
         recordIds={[entry.queueEntryId]}
       />
       <details className="followups-evidence-details">
-        <summary>Queue source details</summary>
+        <summary>{bilingualText("队列来源详情", "Queue source details")}</summary>
         <p className="type-caption">{productCopy(entry.reason)}</p>
       </details>
     </article>
@@ -871,15 +929,23 @@ function CompletionActionForm() {
       method="get"
     >
       <div>
-        <p className="type-caption">Next safe action</p>
-        <h3 className="relationship-name">Review promise completion</h3>
+        <p className="type-caption">
+          {bilingualText("安全下一步", "Next safe action")}
+        </p>
+        <h3 className="relationship-name">
+          {bilingualText("复核承诺完成", "Review promise completion")}
+        </h3>
         <p className="type-body">
-          Preview what would be marked complete and what remains staged for
-          review.
+          {bilingualText(
+            "预览哪些内容会被标记完成，以及哪些内容仍会暂存等待复核。",
+            "Preview what would be marked complete and what remains staged for review.",
+          )}
         </p>
       </div>
       <input name="action" type="hidden" value="complete-top-followup" />
-      <button type="submit">Review promise completion</button>
+      <button type="submit">
+        {bilingualText("复核承诺完成", "Review promise completion")}
+      </button>
     </form>
   );
 }
@@ -902,17 +968,33 @@ function ActionResult({
         data-side-effects="none"
         data-task-result="followups-complete-top-task-preview"
       >
-        <strong>Completion preview ready: no follow-up selected</strong>
-        <span>Selected promise: none</span>
-        <span>Still staged locally: promise review, draft review, reminder review, queue hold</span>
-        <span>Calendar changes: none</span>
-        <span>Scheduler changes: none</span>
-        <span>Messages sent: none</span>
-        <span>Notifications delivered: none</span>
-        <span>Saved records changed: none</span>
-        <span>Automated writing calls: none</span>
-        <span>Outside network requests: none</span>
-        <span>Completion recorded: no</span>
+        <strong>
+          {bilingualText(
+            "完成预览已准备：未选择跟进",
+            "Completion preview ready: no follow-up selected",
+          )}
+        </strong>
+        <span>{bilingualText("已选择承诺：无", "Selected promise: none")}</span>
+        <span>
+          {bilingualText(
+            "仍在本地暂存：承诺复核、草稿复核、提醒复核、队列暂缓",
+            "Still staged locally: promise review, draft review, reminder review, queue hold",
+          )}
+        </span>
+        <span>{bilingualText("日历更改：无", "Calendar changes: none")}</span>
+        <span>{bilingualText("调度器更改：无", "Scheduler changes: none")}</span>
+        <span>{bilingualText("已发送消息：无", "Messages sent: none")}</span>
+        <span>
+          {bilingualText("已送达通知：无", "Notifications delivered: none")}
+        </span>
+        <span>{bilingualText("已保存记录更改：无", "Saved records changed: none")}</span>
+        <span>
+          {bilingualText("自动写作调用：无", "Automated writing calls: none")}
+        </span>
+        <span>
+          {bilingualText("外部网络请求：无", "Outside network requests: none")}
+        </span>
+        <span>{bilingualText("已记录完成：否", "Completion recorded: no")}</span>
       </div>
     );
   }
@@ -944,29 +1026,60 @@ function ActionResult({
       data-side-effects="none"
       data-task-result="followups-complete-top-task-preview"
     >
-      <strong>Completion preview ready: {task.title}</strong>
-      <span>Selected promise: {task.title}</span>
+      <strong>
+        {bilingualText(
+          `完成预览已准备：${task.title}`,
+          `Completion preview ready: ${task.title}`,
+        )}
+      </strong>
       <span>
-        Draft context: {draft?.subject ?? "No draft selected"} ·{" "}
-        {draft?.recommendedSendWindow ?? "no send window"}
+        {bilingualText("已选择承诺", "Selected promise")}: {task.title}
       </span>
       <span>
-        Reminder context: {topReminder?.title ?? "No reminder selected"} ·{" "}
-        {topReminder ? `due ${dueLabel(topReminder.dueInDays)}` : "not timed"}
+        {bilingualText("草稿上下文", "Draft context")}:{" "}
+        {draft?.subject ?? bilingualText("未选择草稿", "No draft selected")} ·{" "}
+        {draft?.recommendedSendWindow ?? bilingualText("无发送窗口", "no send window")}
       </span>
       <span>
-        Still staged locally: promise review, draft review, reminder review, queue hold
+        {bilingualText("提醒上下文", "Reminder context")}:{" "}
+        {topReminder?.title ?? bilingualText("未选择提醒", "No reminder selected")} ·{" "}
+        {topReminder
+          ? bilingualText(`到期 ${dueLabel(topReminder.dueInDays)}`, `due ${dueLabel(topReminder.dueInDays)}`)
+          : bilingualText("未定时", "not timed")}
       </span>
-      <span>Calendar changes: none</span>
-      <span>Scheduler changes: {schedulerChanged ? "review required" : "none"}</span>
-      <span>Messages sent: {messageSent ? "review required" : "none"}</span>
       <span>
-        Notifications delivered: {notificationDelivered ? "review required" : "none"}
+        {bilingualText(
+          "仍在本地暂存：承诺复核、草稿复核、提醒复核、队列暂缓",
+          "Still staged locally: promise review, draft review, reminder review, queue hold",
+        )}
       </span>
-      <span>Saved records changed: none</span>
-      <span>Automated writing calls: none</span>
-      <span>Outside network requests: none</span>
-      <span>Completion recorded: no</span>
+      <span>{bilingualText("日历更改：无", "Calendar changes: none")}</span>
+      <span>
+        {bilingualText("调度器更改", "Scheduler changes")}:{" "}
+        {schedulerChanged
+          ? bilingualText("需要复核", "review required")
+          : bilingualText("无", "none")}
+      </span>
+      <span>
+        {bilingualText("已发送消息", "Messages sent")}:{" "}
+        {messageSent
+          ? bilingualText("需要复核", "review required")
+          : bilingualText("无", "none")}
+      </span>
+      <span>
+        {bilingualText("已送达通知", "Notifications delivered")}:{" "}
+        {notificationDelivered
+          ? bilingualText("需要复核", "review required")
+          : bilingualText("无", "none")}
+      </span>
+      <span>{bilingualText("已保存记录更改：无", "Saved records changed: none")}</span>
+      <span>
+        {bilingualText("自动写作调用：无", "Automated writing calls: none")}
+      </span>
+      <span>
+        {bilingualText("外部网络请求：无", "Outside network requests: none")}
+      </span>
+      <span>{bilingualText("已记录完成：否", "Completion recorded: no")}</span>
       <EvidenceChips
         evidenceIds={task.evidenceIds}
         label={`${task.contactName} completion preview evidence`}
@@ -998,12 +1111,14 @@ function SuccessBoundary({
       <WorkbenchSurface
         className="followups-command"
         elevated
-        eyebrow="Follow-ups"
-        title="Promise to keep next"
+        eyebrow={bilingualText("跟进", "Follow-ups")}
+        title={bilingualText("要守住的承诺", "Promise to keep next")}
       >
         <p className="type-body">
-          Decide whether this is the promise to keep before opening the broader
-          task queue.
+          {bilingualText(
+            "先判断这是不是现在该兑现的承诺，再打开更大的任务队列。",
+            "Decide whether this is the promise to keep before opening the broader task queue.",
+          )}
         </p>
         <p className="type-caption followups-privacy-boundary">
           {followupsPrivacyCopy}
@@ -1023,10 +1138,14 @@ function SuccessBoundary({
           />
         )}
         <div aria-label="App follow-ups source states">
-          <h3 className="relationship-name">Source status paths</h3>
+          <h3 className="relationship-name">
+            {bilingualText("来源状态路径", "Source status paths")}
+          </h3>
           <p className="type-body">
-            Open the same review when source evidence is empty, still resolving,
-            or unavailable.
+            {bilingualText(
+              "来源证据为空、仍在解析或不可用时，打开同一复核。",
+              "Open the same review when source evidence is empty, still resolving, or unavailable.",
+            )}
           </p>
           <nav className="followups-state-links">
             {routeStateChecks.map((stateCheck) => (
@@ -1037,8 +1156,10 @@ function SuccessBoundary({
           </nav>
         </div>
         <details className="followups-evidence-details">
-          <summary>Label details</summary>
-          <p className="type-caption">Follow-up command center</p>
+          <summary>{bilingualText("标签详情", "Label details")}</summary>
+          <p className="type-caption">
+            {bilingualText("跟进命令中心", "Follow-up command center")}
+          </p>
         </details>
       </WorkbenchSurface>
     </div>
@@ -1073,19 +1194,19 @@ function PromiseWorkflowCard({
       {children}
       <dl className="relationship-meta">
         <div>
-          <dt>Relationship</dt>
+          <dt>{bilingualText("关系", "Relationship")}</dt>
           <dd>{relationship}</dd>
         </div>
         <div>
-          <dt>Timing</dt>
+          <dt>{bilingualText("时间", "Timing")}</dt>
           <dd>{due}</dd>
         </div>
         <div>
-          <dt>Source context</dt>
+          <dt>{bilingualText("来源上下文", "Source context")}</dt>
           <dd>{sourceContext}</dd>
         </div>
         <div>
-          <dt>Review status</dt>
+          <dt>{bilingualText("复核状态", "Review status")}</dt>
           <dd>{reviewStatus}</dd>
         </div>
       </dl>
@@ -1109,10 +1230,15 @@ function FollowupReviewSection({
   const queueEntry = notifications.notificationQueue[0] ?? null;
 
   return (
-    <WorkbenchSurface eyebrow="Ready for review" title="Promise workflow">
+    <WorkbenchSurface
+      eyebrow={bilingualText("可复核", "Ready for review")}
+      title={bilingualText("承诺流程", "Promise workflow")}
+    >
       <p className="type-body">
-        Read the task, draft, reminder, and delivery hold as one promise-to-send
-        path before checking the rest of the queue.
+        {bilingualText(
+          "先把任务、草稿、提醒和发送暂缓看成同一条承诺到发送路径，再检查队列其余部分。",
+          "Read the task, draft, reminder, and delivery hold as one promise-to-send path before checking the rest of the queue.",
+        )}
       </p>
       <div className="followups-workflow-list">
         {task && (
@@ -1120,9 +1246,9 @@ function FollowupReviewSection({
             due={dueSentenceLabel(task.dueInDays)}
             evidenceIds={task.evidenceIds}
             relationship={`${task.contactName} · ${task.organization}`}
-            reviewStatus="Held for local review"
+            reviewStatus={bilingualText("本地复核暂缓", "Held for local review")}
             sourceContext={task.source.label}
-            stepLabel="Task to decide"
+            stepLabel={bilingualText("待判断任务", "Task to decide")}
             title={task.title}
           >
             <p className="type-body">{task.recommendedAction}</p>
@@ -1135,7 +1261,7 @@ function FollowupReviewSection({
             relationship={`${draft.recipientName} · ${draft.organization}`}
             reviewStatus={draftReadinessLabel(draft)}
             sourceContext={draft.relationshipContext}
-            stepLabel="Message draft to review"
+            stepLabel={bilingualText("待复核消息草稿", "Message draft to review")}
             title={draft.subject}
           >
             <p className="type-body">{draft.body}</p>
@@ -1146,9 +1272,9 @@ function FollowupReviewSection({
             due={dueSentenceLabel(reminder.dueInDays)}
             evidenceIds={reminder.evidenceIds}
             relationship={`${reminder.contactName} · ${reminder.organization}`}
-            reviewStatus="Held for local review"
+            reviewStatus={bilingualText("本地复核暂缓", "Held for local review")}
             sourceContext={reminder.source.label}
-            stepLabel="Reminder to keep visible"
+            stepLabel={bilingualText("保持可见的提醒", "Reminder to keep visible")}
             title={reminder.title}
           >
             <p className="type-body">{reminder.recommendedWindow}</p>
@@ -1156,20 +1282,30 @@ function FollowupReviewSection({
         )}
         {queueEntry && (
           <PromiseWorkflowCard
-            due={reminder ? dueSentenceLabel(reminder.dueInDays) : "Not timed"}
+            due={
+              reminder
+                ? dueSentenceLabel(reminder.dueInDays)
+                : bilingualText("未定时", "Not timed")
+            }
             evidenceIds={queueEntry.evidenceIds}
             relationship={
               reminder
                 ? `${reminder.contactName} · ${reminder.organization}`
-                : "Selected relationship"
+                : bilingualText("已选择关系", "Selected relationship")
             }
             reviewStatus={queueReviewStatusLabel(queueEntry.status)}
             sourceContext={queueSourceContext(queueEntry, reminder)}
-            stepLabel="Queue hold before delivery"
+            stepLabel={bilingualText(
+              "发送前队列暂缓",
+              "Queue hold before delivery",
+            )}
             title={queueEntryLabel(queueEntry, reminder)}
           >
             <p className="type-body">
-              Delivery stays staged until the promise and message are reviewed.
+              {bilingualText(
+                "承诺和消息复核完成前，发送会保持暂存。",
+                "Delivery stays staged until the promise and message are reviewed.",
+              )}
             </p>
             <EvidenceChips
               evidenceIds={[]}
@@ -1189,10 +1325,15 @@ function ReminderQueueSection({
   notifications: ReminderScheduleNotificationPayload;
 }) {
   return (
-    <WorkbenchSurface eyebrow="Reminder queue" title="Review before delivery">
+    <WorkbenchSurface
+      eyebrow={bilingualText("提醒队列", "Reminder queue")}
+      title={bilingualText("发送前复核", "Review before delivery")}
+    >
       <p className="type-body">
-        Check reminder timing and relationship context before choosing any
-        future delivery step.
+        {bilingualText(
+          "选择任何未来发送步骤前，先检查提醒时间和关系上下文。",
+          "Check reminder timing and relationship context before choosing any future delivery step.",
+        )}
       </p>
       <div className="followups-card-grid">
         {notifications.notificationQueue.slice(0, 4).map((entry) => {
@@ -1228,22 +1369,38 @@ function CompositionFailure({
 
   return (
     <div data-state-boundary="shared-ui-state-view">
-      <WorkbenchSurface elevated eyebrow="Follow-ups" title="Follow-ups could not load">
+      <WorkbenchSurface
+        elevated
+        eyebrow={bilingualText("跟进", "Follow-ups")}
+        title={bilingualText("跟进无法加载", "Follow-ups could not load")}
+      >
         <p className="type-body">
-          Follow-up tasks, drafts, and reminders are unavailable while source
-          evidence is checked.
+          {bilingualText(
+            "来源证据检查期间，跟进任务、草稿和提醒暂不可用。",
+            "Follow-up tasks, drafts, and reminders are unavailable while source evidence is checked.",
+          )}
         </p>
         <dl aria-label="Follow-up status details" className="relationship-meta">
           <div>
-            <dt>Current status</dt>
-            <dd>Review is paused until the source-backed follow-up data returns.</dd>
+            <dt>{bilingualText("当前状态", "Current status")}</dt>
+            <dd>
+              {bilingualText(
+                "有来源的跟进数据返回前，复核会保持暂停。",
+                "Review is paused until the source-backed follow-up data returns.",
+              )}
+            </dd>
           </div>
           <div>
-            <dt>Safety check</dt>
-            <dd>No saved record, message, reminder, or notification changed.</dd>
+            <dt>{bilingualText("安全检查", "Safety check")}</dt>
+            <dd>
+              {bilingualText(
+                "没有保存记录、消息、提醒或通知发生更改。",
+                "No saved record, message, reminder, or notification changed.",
+              )}
+            </dd>
           </div>
           <div>
-            <dt>Error</dt>
+            <dt>{bilingualText("错误", "Error")}</dt>
             <dd>{failure?.success === false ? failure.error.code : "unavailable"}</dd>
           </div>
         </dl>

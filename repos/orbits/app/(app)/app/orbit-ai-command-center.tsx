@@ -1,5 +1,6 @@
 import { createOrbitAiCommandService } from "../../../features/orbit-ai/service-factory";
 import type { OrbitAiPanel } from "../../../features/orbit-ai/contract";
+import { bilingualText } from "../../../shared/ui/bilingual";
 import { Chip } from "../../../shared/ui/primitives";
 
 type OrbitAiCommandSearchParams = Record<string, string | string[] | undefined>;
@@ -849,6 +850,77 @@ const orbitAiUiCopy = {
   },
 } as const;
 
+type OrbitAiUiCopy = Record<keyof typeof orbitAiUiCopy.en, string>;
+
+const orbitAiEnglishStageTitles: Record<OrbitAiPanel, string> = {
+  agent: "Review-before-action queue",
+  dashboard: "Network signal",
+  events: "Recommended events",
+  followups: "Follow-up queue",
+  home: "Open a function panel from chat",
+  people: "People to prioritize",
+  schedule: "Schedule timeline",
+};
+
+const orbitAiEnglishCommandLabels: Record<
+  Exclude<OrbitAiPanel, "home" | "dashboard">,
+  string
+> = {
+  agent: "Review next moves",
+  events: "Recommend events",
+  followups: "Prepare follow-up",
+  people: "Recommend people",
+  schedule: "Check schedule",
+};
+
+function bilingualOrbitAiCopy(copy: typeof orbitAiUiCopy.zh): OrbitAiUiCopy {
+  return {
+    actionBarBody: bilingualText(
+      copy.actionBarBody,
+      orbitAiUiCopy.en.actionBarBody,
+    ),
+    actionBarTitle: bilingualText(
+      copy.actionBarTitle,
+      orbitAiUiCopy.en.actionBarTitle,
+    ),
+    assistantTimestamp: bilingualText(
+      copy.assistantTimestamp,
+      orbitAiUiCopy.en.assistantTimestamp,
+    ),
+    chatAriaLabel: copy.chatAriaLabel,
+    commandLabel: bilingualText(copy.commandLabel, orbitAiUiCopy.en.commandLabel),
+    conversationAriaLabel: copy.conversationAriaLabel,
+    functionNote: bilingualText(copy.functionNote, orbitAiUiCopy.en.functionNote),
+    headerBody: bilingualText(copy.headerBody, orbitAiUiCopy.en.headerBody),
+    heading: bilingualText(copy.heading, orbitAiUiCopy.en.heading),
+    inputLabel: copy.inputLabel,
+    inputPlaceholder: bilingualText(
+      copy.inputPlaceholder,
+      orbitAiUiCopy.en.inputPlaceholder,
+    ),
+    languageAriaLabel: copy.languageAriaLabel,
+    navigationAriaLabel: copy.navigationAriaLabel,
+    orbitAriaLabel: copy.orbitAriaLabel,
+    orbitBody: bilingualText(copy.orbitBody, orbitAiUiCopy.en.orbitBody),
+    orbitLabel: bilingualText(copy.orbitLabel, orbitAiUiCopy.en.orbitLabel),
+    orbitMetric: bilingualText(copy.orbitMetric, orbitAiUiCopy.en.orbitMetric),
+    railSafety: bilingualText(copy.railSafety, orbitAiUiCopy.en.railSafety),
+    sendLabel: bilingualText(copy.sendLabel, orbitAiUiCopy.en.sendLabel),
+    sideStageAriaLabel: copy.sideStageAriaLabel,
+    sourceDetailsLabel: copy.sourceDetailsLabel,
+    sourceSummary: bilingualText(copy.sourceSummary, orbitAiUiCopy.en.sourceSummary),
+    stageEyebrow: bilingualText(copy.stageEyebrow, orbitAiUiCopy.en.stageEyebrow),
+    statusEvidence: bilingualText(copy.statusEvidence, orbitAiUiCopy.en.statusEvidence),
+    statusHeld: bilingualText(copy.statusHeld, orbitAiUiCopy.en.statusHeld),
+    statusPreview: bilingualText(copy.statusPreview, orbitAiUiCopy.en.statusPreview),
+    taskPanelAriaLabel: copy.taskPanelAriaLabel,
+  };
+}
+
+function bilingualIfDifferent(chinese: string, english: string): string {
+  return chinese === english ? chinese : bilingualText(chinese, english);
+}
+
 export function OrbitAiCommandCenter({
   searchParams,
 }: OrbitAiCommandCenterProps = {}) {
@@ -859,8 +931,12 @@ export function OrbitAiCommandCenter({
     prompt: readSearchParam(searchParams, "prompt"),
   });
   const data = result.data;
-  const copy = orbitAiUiCopy[data.language];
+  const copy =
+    data.language === "zh"
+      ? bilingualOrbitAiCopy(orbitAiUiCopy.zh)
+      : orbitAiUiCopy.en;
   const primaryStageItem = data.stageItems[0];
+  const isChinesePrimary = data.language === "zh";
 
   return (
     <div
@@ -892,7 +968,14 @@ export function OrbitAiCommandCenter({
                 key={panel}
               >
                 <OrbitAiNavIcon panel={panel} />
-                <span>{orbitAiNavLabels[data.language][panel]}</span>
+                <span>
+                  {isChinesePrimary
+                    ? bilingualIfDifferent(
+                        orbitAiNavLabels.zh[panel],
+                        orbitAiNavLabels.en[panel],
+                      )
+                    : orbitAiNavLabels.en[panel]}
+                </span>
               </a>
             );
           })}
@@ -950,7 +1033,14 @@ export function OrbitAiCommandCenter({
                 href={link.href}
                 key={link.panel}
               >
-                {link.label}
+                {isChinesePrimary && link.panel !== "dashboard"
+                  ? bilingualText(
+                      link.label,
+                      orbitAiEnglishCommandLabels[
+                        link.panel as Exclude<OrbitAiPanel, "home" | "dashboard">
+                      ],
+                    )
+                  : link.label}
               </a>
             ))}
           </nav>
@@ -1013,7 +1103,11 @@ export function OrbitAiCommandCenter({
         >
           <header className="orbit-ai-stage-heading">
             <p className="surface-eyebrow">{copy.stageEyebrow}</p>
-            <h2>{data.stageTitle}</h2>
+            <h2>
+              {isChinesePrimary
+                ? bilingualText(data.stageTitle, orbitAiEnglishStageTitles[data.panel])
+                : data.stageTitle}
+            </h2>
             <p>{data.stageSubtitle}</p>
           </header>
           <div className="orbit-ai-status-strip">

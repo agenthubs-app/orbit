@@ -51,7 +51,7 @@ test("/app/dashboard composes approved dashboard capabilities into the relations
   const html = await renderDashboardPage();
   const text = visibleText(html);
 
-  assert.match(html, /<h2>Network health priority<\/h2>/);
+  assert.match(html, /<h2>[^<]*Network health priority<\/h2>/);
   assert.match(text, /Current priority: Maya Chen at Kumo Grid/);
   assert.match(text, /Why it matters now/);
   assert.match(
@@ -59,11 +59,11 @@ test("/app/dashboard composes approved dashboard capabilities into the relations
     /Climate infrastructure pilot expansion is ready while enterprise buyer coverage remains below target\./,
   );
   assert.match(text, /Source confidence: High/);
-  assert.match(text, /Review status: Ready for human review/);
+  assert.match(text, /Review status: .*Ready for human review/);
   assert.match(html, /Maya Chen/);
   assert.match(html, /Kumo Grid/);
   assert.match(html, /Climate infrastructure/);
-  assert.match(html, /<summary>Evidence source trail<\/summary>/);
+  assert.match(html, /<summary>[^<]*Evidence source trail<\/summary>/);
   assert.doesNotMatch(
     html,
     /<details(?![^>]*hidden)[^>]*><summary>Technical provenance IDs<\/summary>/,
@@ -171,7 +171,7 @@ test("/app/dashboard renders empty loading and failure states through the shared
     const html = await renderDashboardPage({ scenario: state.scenario });
     const text = visibleText(html);
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(state.expectedCopy));
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
     assert.match(
@@ -180,11 +180,11 @@ test("/app/dashboard renders empty loading and failure states through the shared
         `data-route-state-url="/app/dashboard\\?scenario=${state.scenario}"`,
       ),
     );
-    assert.match(html, /aria-label="Dashboard route recovery actions"/);
+    assert.match(html, /aria-label="[^"]*Dashboard route recovery actions"/);
     assert.match(
       html,
       new RegExp(
-        `href="${state.expectedRecoveryHref}">${state.expectedRecoveryLabel}</a>`,
+        `href="${state.expectedRecoveryHref}">[^<]*${state.expectedRecoveryLabel}</a>`,
       ),
     );
     assert.match(

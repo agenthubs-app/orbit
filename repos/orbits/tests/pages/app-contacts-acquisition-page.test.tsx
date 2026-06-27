@@ -67,7 +67,7 @@ function mainFlowText(html: string): string {
 test("/app/contacts/new composes approved contact acquisition mock services", async () => {
   const html = await renderContactsNewPage();
 
-  assert.match(html, /<h2>Relationship source intake<\/h2>/);
+  assert.match(html, /<h2>[^<]*Relationship source intake<\/h2>/);
   assert.match(html, /Kenji Watanabe/);
   assert.match(html, /Hana Sato/);
   assert.match(html, /Mika Tan/);
@@ -94,7 +94,7 @@ test("/app/contacts/new leads with one sourced candidate and a safe decision", a
   assert.match(primaryText, /Outside accounts contacted: none/);
   assert.match(
     html,
-    /<h3 class="relationship-name">Current review candidate<\/h3>[\s\S]*Manual note from climate founders dinner[\s\S]*Next decision[\s\S]*<button type="submit">Preview contact review<\/button>[\s\S]*<h2>Choose another relationship source<\/h2>/,
+    /<h3 class="relationship-name">[^<]*Current review candidate<\/h3>[\s\S]*Manual note from climate founders dinner[\s\S]*Next decision[\s\S]*<button type="submit">[^<]*Preview contact review<\/button>[\s\S]*<h2>[^<]*Choose another relationship source<\/h2>/,
   );
 });
 
@@ -152,10 +152,10 @@ test("/app/contacts/new presents selectable intake methods with status and next 
   );
 
   for (const method of expectedMethods) {
-    assert.match(html, new RegExp(`<h3 class="relationship-name">${method.label}</h3>`));
-    assert.match(html, new RegExp(`Status</dt>\\s*<dd>${method.status}</dd>`));
-    assert.match(html, new RegExp(`<button type="button">${method.control}</button>`));
-    assert.match(html, /<dt>Next step<\/dt>\s*<dd>[^<]+<\/dd>/);
+    assert.match(html, new RegExp(`<h3 class="relationship-name">[^<]*${method.label}</h3>`));
+    assert.match(html, new RegExp(`Status</dt>\\s*<dd>[^<]*${method.status}</dd>`));
+    assert.match(html, new RegExp(`<button type="button">[^<]*${method.control}</button>`));
+    assert.match(html, /<dt>[^<]*Next step<\/dt>\s*<dd>[^<]+<\/dd>/);
   }
 
   assert.match(
@@ -195,7 +195,9 @@ test("/app/contacts/new presents selectable intake methods with status and next 
 
   for (const group of expectedGroups) {
     const sourceSection = groupedSourceSections.find((section) =>
-      section.includes(`<h3 class="relationship-name">${group.heading}</h3>`),
+      new RegExp(`<h3 class="relationship-name">[^<]*${group.heading}</h3>`).test(
+        section,
+      ),
     );
 
     assert.ok(sourceSection, `renders ${group.heading} source group`);
@@ -203,7 +205,7 @@ test("/app/contacts/new presents selectable intake methods with status and next 
     for (const method of group.methods) {
       assert.match(
         sourceSection,
-        new RegExp(`<h3 class="relationship-name">${method}</h3>`),
+        new RegExp(`<h3 class="relationship-name">[^<]*${method}</h3>`),
         `${method} should render inside ${group.heading}`,
       );
     }
@@ -214,9 +216,9 @@ test("/app/contacts/new names route-state checks as customer-facing intake statu
   const html = await renderContactsNewPage();
   const renderedHtml = html.replace(/<style[\s\S]*?<\/style>/g, " ");
 
-  assert.match(html, /<summary>Workspace status<\/summary>/);
-  assert.match(html, /<summary>Recovery options<\/summary>/);
-  assert.match(html, /<h3 class="relationship-name">Intake status<\/h3>/);
+  assert.match(html, /<summary>[^<]*Workspace status<\/summary>/);
+  assert.match(html, /<summary>[^<]*Recovery options<\/summary>/);
+  assert.match(html, /<h3 class="relationship-name">[^<]*Intake status<\/h3>/);
   assert.match(html, /Open source choices/);
   assert.match(html, /Review waiting intake/);
   assert.match(html, /Open safe intake/);
@@ -260,7 +262,7 @@ test("/app/contacts/new keeps raw ids and implementation codes out of the main f
   assert.match(primaryText, /QR badge from Climate founders dinner/);
   assert.match(
     html,
-    /<summary>Source record details<\/summary>[\s\S]*<code>evidence:manual-note-kenji<\/code>/,
+    /<summary>[^<]*Source record details<\/summary>[\s\S]*<code>evidence:manual-note-kenji<\/code>/,
     "raw evidence ids remain available inside diagnostics",
   );
 });
@@ -268,7 +270,7 @@ test("/app/contacts/new keeps raw ids and implementation codes out of the main f
 test("/app/contacts/new exports metadata for the browser document title", async (t) => {
   const routeModule = await import("../../app/(app)/app/contacts/new/page");
 
-  assert.equal(routeModule.metadata.title, "Contact acquisition | Orbit");
+  assert.match(routeModule.metadata.title, /Contact acquisition \| Orbit/);
   assert.match(
     routeModule.metadata.description,
     /source-backed contact acquisition/i,
@@ -299,7 +301,7 @@ test("/app/contacts/new previews a contact acquisition action without external s
   assert.doesNotMatch(mainFlowText(html), /Duplicate lookup executed:/);
   assert.match(
     html,
-    /<summary>Contact review diagnostics<\/summary>[\s\S]*Source evidence:[\s\S]*Contact write executed:[\s\S]*Duplicate lookup executed:/,
+    /<summary>[^<]*Contact review diagnostics<\/summary>[\s\S]*Source evidence:[\s\S]*Contact write executed:[\s\S]*Duplicate lookup executed:/,
   );
   assert.match(html, /data-task-result="manual-contact-confirmation-preview"/);
   assert.match(
@@ -352,7 +354,7 @@ test("/app/contacts/new renders empty loading and failure states through the sha
     const html = await renderContactsNewPage({ scenario: state.scenario });
     const primaryText = mainFlowText(html);
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(state.expectedCopy));
     assert.match(primaryText, new RegExp(state.expectedRecoveryLabel));
     assert.match(html, /aria-label="Recovery actions"/);

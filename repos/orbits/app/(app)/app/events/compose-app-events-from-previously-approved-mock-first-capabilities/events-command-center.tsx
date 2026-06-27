@@ -21,6 +21,7 @@ import type {
   EventValueRecommendationsPayload,
   EventValueRecommendationsResult,
 } from "../../../../../features/recommendations/event-value-contract";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import {
   createAppEventsRouteServices,
@@ -157,27 +158,27 @@ const routeRecoveryActions: Record<
   empty: [
     {
       href: "/app/events",
-      label: "Show sourced events",
+      label: bilingualText("显示有来源活动", "Show sourced events"),
     },
     {
       href: "/app/events?action=accept-top-event",
-      label: "Preview top event action",
+      label: bilingualText("预览首选活动动作", "Preview top event action"),
     },
   ],
   failure: [
     {
       href: "/app/events",
-      label: "Reload events",
+      label: bilingualText("重新加载活动", "Reload events"),
     },
     {
       href: "/app/events?scenario=pending",
-      label: "Check readiness status",
+      label: bilingualText("检查准备状态", "Check readiness status"),
     },
   ],
   pending: [
     {
       href: "/app/events",
-      label: "Return to ready events",
+      label: bilingualText("返回已准备活动", "Return to ready events"),
     },
   ],
 };
@@ -257,46 +258,78 @@ function stateCopy(
 } {
   if (scenario === "empty") {
     return {
-      description:
+      description: bilingualText(
+        "先创建或导入有来源的活动，再复核推荐和准备度。",
         "Create or import a sourced event before reviewing recommendations and readiness.",
-      emptyState:
+      ),
+      emptyState: bilingualText(
+        "还没有活动、价值推荐、参会人推荐或准备记录可用。",
         "No event, value recommendation, attendee recommendation, or readiness record is ready.",
-      guardrail:
+      ),
+      guardrail: bilingualText(
+        "此屏幕不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
         "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone from this screen.",
-      nextStep:
+      ),
+      nextStep: bilingualText(
+        "返回有来源活动，或通过已批准的活动流程添加活动。",
         "Return to sourced events or add an event through the approved event workflow.",
-      purpose:
+      ),
+      purpose: bilingualText(
+        "仅在来源证据存在后展示活动准备。",
         "Show event preparation only after source evidence exists.",
-      title: "No event context is ready",
+      ),
+      title: bilingualText("没有可用活动背景", "No event context is ready"),
     };
   }
 
   if (scenario === "pending") {
     return {
-      description:
+      description: bilingualText(
+        "活动来源、推荐规则和准备检查仍在准备中。",
         "Event sources, recommendation rules, and readiness checks are still being prepared.",
-      emptyState:
+      ),
+      emptyState: bilingualText(
+        "当前来源复核完成前，活动准备会保持隐藏。",
         "Event preparation stays hidden until the current source review finishes.",
-      guardrail:
+      ),
+      guardrail: bilingualText(
+        "复核待处理期间，不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
         "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone while review is pending.",
-      nextStep: "Return to ready events after the source review completes.",
-      purpose:
+      ),
+      nextStep: bilingualText(
+        "来源复核完成后返回已准备活动。",
+        "Return to ready events after the source review completes.",
+      ),
+      purpose: bilingualText(
+        "活动准备数据仍在加载时，保持工作区稳定。",
         "Keep the workspace stable while event preparation data is still loading.",
-      title: "Event context is loading",
+      ),
+      title: bilingualText("活动背景加载中", "Event context is loading"),
     };
   }
 
   return {
-    description:
+    description: bilingualText(
+      "活动来源无法加载，因此推荐和准备状态已暂停。",
       "Event sources could not be loaded, so recommendations and readiness are paused.",
-    emptyState:
+    ),
+    emptyState: bilingualText(
+      "活动简报会在活动来源恢复前保持不可用。",
       "The event briefing is unavailable until event sources recover.",
-    guardrail:
+    ),
+    guardrail: bilingualText(
+      "不可用期间，不会更新日历、保存记录、联系活动来源、发送消息或通知任何人。",
       "Nothing will update calendars, save records, contact event sources, send messages, or notify anyone while this is unavailable.",
-    nextStep: "Reload events or check readiness status before taking action.",
-    purpose:
+    ),
+    nextStep: bilingualText(
+      "采取动作前，重新加载活动或检查准备状态。",
+      "Reload events or check readiness status before taking action.",
+    ),
+    purpose: bilingualText(
+      "当有来源支撑的活动背景不可用时，展示可见恢复路径。",
       "Show a visible recovery path when source-backed event context is unavailable.",
-    title: "Events could not load",
+    ),
+    title: bilingualText("活动无法加载", "Events could not load"),
   };
 }
 
@@ -317,36 +350,43 @@ function RouteStateBoundary({
     >
       <style>{appEventsStyles}</style>
       <div data-state-boundary="app-events-route-state-view">
-        <WorkbenchSurface elevated eyebrow="Events" title={copy.title}>
+        <WorkbenchSurface
+          elevated
+          eyebrow={bilingualText("活动", "Events")}
+          title={copy.title}
+        >
           <p className="type-body">{copy.description}</p>
-          <dl aria-label="Event status details" className="relationship-meta">
+          <dl
+            aria-label={bilingualText("活动状态详情", "Event status details")}
+            className="relationship-meta"
+          >
             <div>
-              <dt>What Orbit knows</dt>
+              <dt>{bilingualText("Orbit 已知道", "What Orbit knows")}</dt>
               <dd>{copy.purpose}</dd>
             </div>
             <div>
-              <dt>Current status</dt>
+              <dt>{bilingualText("当前状态", "Current status")}</dt>
               <dd>{copy.emptyState}</dd>
             </div>
             <div>
-              <dt>Safety check</dt>
+              <dt>{bilingualText("安全检查", "Safety check")}</dt>
               <dd>{copy.guardrail}</dd>
             </div>
             <div>
-              <dt>Next step</dt>
+              <dt>{bilingualText("下一步", "Next step")}</dt>
               <dd>{copy.nextStep}</dd>
             </div>
           </dl>
           {failure?.evidenceIds && (
             <EvidenceChips
               evidenceIds={failure.evidenceIds}
-              label="Event recovery evidence"
+              label={bilingualText("活动恢复证据", "Event recovery evidence")}
             />
           )}
         </WorkbenchSurface>
       </div>
       <nav
-        aria-label="Events recovery actions"
+        aria-label={bilingualText("活动恢复操作", "Events recovery actions")}
         className="events-recovery-actions"
       >
         {routeRecoveryActions[scenario].map((action) => (
@@ -359,8 +399,16 @@ function RouteStateBoundary({
   );
 }
 
-function formatCount(count: number, singular: string, plural = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : plural}`;
+function formatCount(
+  count: number,
+  singular: string,
+  plural = `${singular}s`,
+  chineseUnit = singular,
+) {
+  return bilingualText(
+    `${count} 个${chineseUnit}`,
+    `${count} ${count === 1 ? singular : plural}`,
+  );
 }
 
 function eventDetailHref(event: EventRecord): string {
@@ -434,7 +482,9 @@ function evidenceLabel(evidenceId: string): string {
 
   const label = words.join(" ");
 
-  return label.charAt(0).toUpperCase() + label.slice(1);
+  const englishLabel = label.charAt(0).toUpperCase() + label.slice(1);
+
+  return bilingualText(`证据 ${englishLabel}`, englishLabel);
 }
 
 function EvidenceChips({
@@ -465,24 +515,31 @@ function EventLedger({
   return (
     <dl className="events-ledger">
       <div>
-        <dt>Sourced events</dt>
+        <dt>{bilingualText("有来源活动", "Sourced events")}</dt>
         <dd>
           <strong>{events.length}</strong>
-          {formatCount(events.length, "event")} ready for relationship prep.
+          {formatCount(events.length, "event", "events", "活动")}{" "}
+          {bilingualText(
+            "已可用于关系准备。",
+            "ready for relationship prep.",
+          )}
         </dd>
       </div>
       <div>
-        <dt>Imported records</dt>
+        <dt>{bilingualText("已导入记录", "Imported records")}</dt>
         <dd>
           <strong>{importedRecords.length}</strong>
-          Calendar and organizer records mapped into event context.
+          {bilingualText(
+            "日历和主办方记录已映射到活动背景。",
+            "Calendar and organizer records mapped into event context.",
+          )}
         </dd>
       </div>
       <div>
-        <dt>Primary event</dt>
+        <dt>{bilingualText("主要活动", "Primary event")}</dt>
         <dd>
-          {events[0]?.title ?? "No sourced event"}{" "}
-          <code>{events[0]?.status ?? "unavailable"}</code>
+          {events[0]?.title ?? bilingualText("没有有来源活动", "No sourced event")}{" "}
+          <code>{events[0]?.status ?? bilingualText("不可用", "unavailable")}</code>
         </dd>
       </div>
     </dl>
@@ -505,15 +562,21 @@ function CurrentEventPriority({
     return null;
   }
 
-  const detailActionLabel = `Open ${currentEvent.title} workspace`;
+  const detailActionLabel = bilingualText(
+    `打开 ${currentEvent.title} 工作区`,
+    `Open ${currentEvent.title} workspace`,
+  );
 
   return (
     <div data-route-priority="app-events-current-event">
       <WorkbenchSurface
         className="events-current-priority"
         elevated
-        eyebrow="Current event priority"
-        title={`Prepare for ${currentEvent.title}`}
+        eyebrow={bilingualText("当前活动优先级", "Current event priority")}
+        title={bilingualText(
+          `准备 ${currentEvent.title}`,
+          `Prepare for ${currentEvent.title}`,
+        )}
       >
         <div className="events-priority-grid">
           <div className="events-card">
@@ -522,31 +585,47 @@ function CurrentEventPriority({
               {productCopy(currentEvent.relationshipContext)}
             </p>
             <p className="type-body">
-              Meet {topAttendee.attendee.displayName} there.{" "}
+              {bilingualText(
+                `优先见 ${topAttendee.attendee.displayName}。`,
+                `Meet ${topAttendee.attendee.displayName} there.`,
+              )}{" "}
               {productCopy(topAttendee.recommendedAction)}
             </p>
             <a className="events-detail-link" href={eventDetailHref(currentEvent)}>
               {detailActionLabel}
             </a>
           </div>
-          <dl aria-label="Current event preparation status" className="relationship-meta">
+          <dl
+            aria-label={bilingualText(
+              "当前活动准备状态",
+              "Current event preparation status",
+            )}
+            className="relationship-meta"
+          >
             <div>
-              <dt>Who to meet</dt>
+              <dt>{bilingualText("要见谁", "Who to meet")}</dt>
               <dd>{topAttendee.attendee.displayName}</dd>
             </div>
             <div>
-              <dt>Why it matters</dt>
+              <dt>{bilingualText("为什么重要", "Why it matters")}</dt>
               <dd>{relationshipValueCopy(currentEvent)}</dd>
             </div>
             <div>
-              <dt>Readiness</dt>
-              <dd>Readiness {readinessPayload.preparationState.readinessScore}</dd>
+              <dt>{bilingualText("准备度", "Readiness")}</dt>
+              <dd>
+                {bilingualText(
+                  `准备度 ${readinessPayload.preparationState.readinessScore}`,
+                  `Readiness ${readinessPayload.preparationState.readinessScore}`,
+                )}
+              </dd>
             </div>
             <div>
-              <dt>Next safe action</dt>
+              <dt>{bilingualText("下一步安全动作", "Next safe action")}</dt>
               <dd>
-                {detailActionLabel} before any calendar, message, or
-                saved-record action.
+                {bilingualText(
+                  `${detailActionLabel}，然后再考虑任何日历、消息或保存记录动作。`,
+                  `${detailActionLabel} before any calendar, message, or saved-record action.`,
+                )}
               </dd>
             </div>
           </dl>
@@ -566,7 +645,10 @@ function EventCards({
   topRecommendation: EventAttendeeRecommendation | undefined;
 }) {
   return (
-    <div className="events-card-grid" aria-label="Event choices">
+    <div
+      className="events-card-grid"
+      aria-label={bilingualText("活动选择", "Event choices")}
+    >
       {events.map((event) => (
         <article
           aria-label={`Event work for ${event.title}`}
@@ -575,22 +657,27 @@ function EventCards({
         >
           <h3>{event.title}</h3>
           <p className="type-body">
-            Venue: {event.venue}. Attendee opportunity:{" "}
-            {topRecommendation?.attendee.displayName ?? "review attendee roster"}.
+            {bilingualText("地点", "Venue")}: {event.venue}.{" "}
+            {bilingualText("参会机会", "Attendee opportunity")}:{" "}
+            {topRecommendation?.attendee.displayName ??
+              bilingualText("复核参会人名单", "review attendee roster")}
+            .
           </p>
           <p className="type-body">
-            Readiness: {readinessPayload.preparationState.readinessScore}.
-            Relationship value: {relationshipValueCopy(event)}
+            {bilingualText("准备度", "Readiness")}:{" "}
+            {readinessPayload.preparationState.readinessScore}.{" "}
+            {bilingualText("关系价值", "Relationship value")}:{" "}
+            {relationshipValueCopy(event)}
           </p>
           <p className="type-body">
             {productCopy(event.nextAction)} {productCopy(event.recommendedPreparation)}
           </p>
           <a className="events-detail-link" href={eventDetailHref(event)}>
-            Review {event.title}
+            {bilingualText(`复核 ${event.title}`, `Review ${event.title}`)}
           </a>
           <EvidenceChips
             evidenceIds={event.evidence.map((item) => item.evidenceId)}
-            label={`${event.title} evidence`}
+            label={bilingualText(`${event.title} 证据`, `${event.title} evidence`)}
           />
         </article>
       ))}
@@ -606,20 +693,27 @@ function AttendeeRecommendationPanel({
   const topRecommendation = payload.recommendations[0];
 
   return (
-    <WorkbenchSurface eyebrow="Recommended connection" title="Who to meet">
+    <WorkbenchSurface
+      eyebrow={bilingualText("推荐连接", "Recommended connection")}
+      title={bilingualText("要见谁", "Who to meet")}
+    >
       <p className="type-body">{productCopy(payload.summary)}</p>
       {topRecommendation && (
         <article className="events-card">
           <h3>{topRecommendation.attendee.displayName}</h3>
           <p className="type-body">
             {topRecommendation.attendee.role} at{" "}
-            {topRecommendation.attendee.organization}. Score{" "}
-            {topRecommendation.score}. {topRecommendation.recommendedAction}
+            {topRecommendation.attendee.organization}.{" "}
+            {bilingualText("评分", "Score")} {topRecommendation.score}.{" "}
+            {topRecommendation.recommendedAction}
           </p>
           <p className="type-body">{topRecommendation.openingLine.text}</p>
           <EvidenceChips
             evidenceIds={topRecommendation.evidenceIds}
-            label="Top attendee recommendation evidence"
+            label={bilingualText(
+              "首选参会人推荐证据",
+              "Top attendee recommendation evidence",
+            )}
           />
         </article>
       )}
@@ -635,19 +729,23 @@ function EventValuePanel({
   const topRecommendation = payload.recommendations[0];
 
   return (
-    <WorkbenchSurface eyebrow="Event value" title="Where to spend time">
+    <WorkbenchSurface
+      eyebrow={bilingualText("活动价值", "Event value")}
+      title={bilingualText("时间应该花在哪里", "Where to spend time")}
+    >
       <p className="type-body">{productCopy(payload.summary)}</p>
       {topRecommendation && (
         <article className="events-card">
           <h3>{topRecommendation.title}</h3>
           <p className="type-body">
-            Score {topRecommendation.valueScore}.{" "}
-            {topRecommendation.attendeeDensity} relevant attendees in{" "}
+            {bilingualText("评分", "Score")} {topRecommendation.valueScore}.{" "}
+            {topRecommendation.attendeeDensity}{" "}
+            {bilingualText("位相关参会人在", "relevant attendees in")}{" "}
             {topRecommendation.location}. {topRecommendation.recommendedAction}
           </p>
           <EvidenceChips
             evidenceIds={topRecommendation.evidenceIds}
-            label="Top event value evidence"
+            label={bilingualText("首选活动价值证据", "Top event value evidence")}
           />
         </article>
       )}
@@ -666,7 +764,8 @@ function ReadinessChecklist({
         <div key={item.itemId}>
           <dt>{productCopy(item.label)}</dt>
           <dd>
-            <code>{item.status}</code> by {item.owner}.{" "}
+            <code>{item.status}</code>{" "}
+            {bilingualText("负责人", "by")} {item.owner}.{" "}
             {productCopy(item.rationale)}
           </dd>
         </div>
@@ -681,15 +780,21 @@ function ReadinessPanel({
   payload: EventGoalReadinessPayload;
 }) {
   return (
-    <WorkbenchSurface eyebrow="Readiness" title="Before arrival">
+    <WorkbenchSurface
+      eyebrow={bilingualText("准备度", "Readiness")}
+      title={bilingualText("到达前", "Before arrival")}
+    >
       <p className="type-body">
-        Readiness {payload.preparationState.readinessScore}.{" "}
+        {bilingualText(
+          `准备度 ${payload.preparationState.readinessScore}。`,
+          `Readiness ${payload.preparationState.readinessScore}.`,
+        )}{" "}
         {productCopy(payload.preparationState.nextPreparationStep)}
       </p>
       <ReadinessChecklist items={payload.readinessChecklist} />
       <EvidenceChips
         evidenceIds={payload.provenance.evidenceIds}
-        label="Event readiness evidence"
+        label={bilingualText("活动准备证据", "Event readiness evidence")}
       />
     </WorkbenchSurface>
   );
@@ -723,9 +828,17 @@ function EventActionResult({
         data-side-effects="none"
         data-task-result="events-accept-top-event-preview-failed"
       >
-        <h3>Event recommendation action is unavailable</h3>
+        <h3>
+          {bilingualText(
+            "活动推荐动作不可用",
+            "Event recommendation action is unavailable",
+          )}
+        </h3>
         <p className="type-body">
-          The workspace kept the action private and did not contact outside services.
+          {bilingualText(
+            "工作区已把该动作保留为私有预览，没有联系外部服务。",
+            "The workspace kept the action private and did not contact outside services.",
+          )}
         </p>
       </section>
     );
@@ -740,67 +853,87 @@ function EventActionResult({
       data-side-effects={outsideContacted ? "unexpected" : "none"}
       data-task-result="events-accept-top-event-preview"
     >
-      <h3>Event recommendation accepted: {result.data.acceptedEvent.title}</h3>
+      <h3>
+        {bilingualText(
+          `活动推荐已接受：${result.data.acceptedEvent.title}`,
+          `Event recommendation accepted: ${result.data.acceptedEvent.title}`,
+        )}
+      </h3>
       <p className="type-body">{productCopy(result.data.summary)}</p>
       <p className="type-body">
-        No calendar changes, saved records, messages, or notifications were made.
-        No outside services were contacted.
+        {bilingualText(
+          "没有更改日历、保存记录、发送消息或通知，也没有联系外部服务。",
+          "No calendar changes, saved records, messages, or notifications were made. No outside services were contacted.",
+        )}
       </p>
       <dl className="relationship-meta">
         <div>
-          <dt>Decision</dt>
+          <dt>{bilingualText("决策", "Decision")}</dt>
           <dd>{result.data.action.label}</dd>
         </div>
         <div>
-          <dt>Calendar</dt>
+          <dt>{bilingualText("日历", "Calendar")}</dt>
           <dd>
-            Calendar changes:{" "}
-            {result.data.action.calendarProviderRequested ? "review" : "none"}
+            {bilingualText("日历变更", "Calendar changes")}:{" "}
+            {result.data.action.calendarProviderRequested
+              ? bilingualText("需复核", "review")
+              : bilingualText("无", "none")}
           </dd>
         </div>
         <div>
-          <dt>Saved records</dt>
+          <dt>{bilingualText("已保存记录", "Saved records")}</dt>
           <dd>
-            Saved records:{" "}
-            {result.data.action.databaseWriteExecuted ? "review" : "none"}
+            {bilingualText("已保存记录", "Saved records")}:{" "}
+            {result.data.action.databaseWriteExecuted
+              ? bilingualText("需复核", "review")
+              : bilingualText("无", "none")}
           </dd>
         </div>
         <div>
-          <dt>Realtime presence</dt>
-          <dd>Realtime presence: none</dd>
-        </div>
-        <div>
-          <dt>Peer notifications</dt>
-          <dd>Peer notifications: none</dd>
-        </div>
-        <div>
-          <dt>External messages</dt>
-          <dd>External messages: none</dd>
-        </div>
-        <div>
-          <dt>Messages</dt>
+          <dt>{bilingualText("实时在线状态", "Realtime presence")}</dt>
           <dd>
-            Messages and notifications: {outsideContacted ? "review" : "none"}
+            {bilingualText("实时在线状态：无", "Realtime presence: none")}
           </dd>
         </div>
         <div>
-          <dt>Notifications</dt>
+          <dt>{bilingualText("同伴通知", "Peer notifications")}</dt>
+          <dd>{bilingualText("同伴通知：无", "Peer notifications: none")}</dd>
+        </div>
+        <div>
+          <dt>{bilingualText("外部消息", "External messages")}</dt>
+          <dd>{bilingualText("外部消息：无", "External messages: none")}</dd>
+        </div>
+        <div>
+          <dt>{bilingualText("消息", "Messages")}</dt>
           <dd>
-            Notifications:{" "}
-            {result.data.action.notificationDelivered ? "review" : "none"}
+            {bilingualText("消息和通知", "Messages and notifications")}:{" "}
+            {outsideContacted
+              ? bilingualText("需复核", "review")
+              : bilingualText("无", "none")}
           </dd>
         </div>
         <div>
-          <dt>Outside network</dt>
+          <dt>{bilingualText("通知", "Notifications")}</dt>
           <dd>
-            Outside network requests:{" "}
-            {result.data.action.externalNetworkRequested ? "review" : "none"}
+            {bilingualText("通知", "Notifications")}:{" "}
+            {result.data.action.notificationDelivered
+              ? bilingualText("需复核", "review")
+              : bilingualText("无", "none")}
+          </dd>
+        </div>
+        <div>
+          <dt>{bilingualText("外部网络", "Outside network")}</dt>
+          <dd>
+            {bilingualText("外部网络请求", "Outside network requests")}:{" "}
+            {result.data.action.externalNetworkRequested
+              ? bilingualText("需复核", "review")
+              : bilingualText("无", "none")}
           </dd>
         </div>
       </dl>
       <EvidenceChips
         evidenceIds={result.data.action.evidenceIds}
-        label="Event action evidence"
+        label={bilingualText("活动动作证据", "Event action evidence")}
       />
     </section>
   );
@@ -847,12 +980,14 @@ function SuccessView({
       <WorkbenchSurface
         className="events-command"
         elevated
-        eyebrow="Events"
-        title="Event briefing"
+        eyebrow={bilingualText("活动", "Events")}
+        title={bilingualText("活动简报", "Event briefing")}
       >
         <p className="type-body">
-          Choose a source-backed event, see who matters there, and decide what
-          to prepare next.
+          {bilingualText(
+            "选择一个有来源支撑的活动，查看那里最重要的人，并决定下一步准备什么。",
+            "Choose a source-backed event, see who matters there, and decide what to prepare next.",
+          )}
         </p>
         <EventLedger
           events={eventPayload.events}
@@ -860,7 +995,10 @@ function SuccessView({
         />
       </WorkbenchSurface>
 
-      <WorkbenchSurface eyebrow="Event choices" title="Event choices">
+      <WorkbenchSurface
+        eyebrow={bilingualText("活动选择", "Event choices")}
+        title={bilingualText("活动选择", "Event choices")}
+      >
         <p className="type-body">{productCopy(eventPayload.summary)}</p>
         <EventCards
           events={eventPayload.events}
@@ -869,8 +1007,11 @@ function SuccessView({
         />
       </WorkbenchSurface>
 
-      <section aria-label="Preparation signals" className="events-preparation-signals">
-        <h2>Preparation signals</h2>
+      <section
+        aria-label={bilingualText("准备信号", "Preparation signals")}
+        className="events-preparation-signals"
+      >
+        <h2>{bilingualText("准备信号", "Preparation signals")}</h2>
         <div className="events-card-grid">
           <AttendeeRecommendationPanel payload={attendeePayload} />
           <EventValuePanel payload={valuePayload} />
@@ -878,19 +1019,26 @@ function SuccessView({
         </div>
       </section>
 
-      <WorkbenchSurface eyebrow="Core action" title="Preview event decision">
+      <WorkbenchSurface
+        eyebrow={bilingualText("核心动作", "Core action")}
+        title={bilingualText("预览活动决策", "Preview event decision")}
+      >
         <p className="type-body">
-          Preview the top event decision before anything changes calendars,
-          saved records, messages, or notifications.
+          {bilingualText(
+            "在任何日历、保存记录、消息或通知发生变化前，先预览首选活动决策。",
+            "Preview the top event decision before anything changes calendars, saved records, messages, or notifications.",
+          )}
         </p>
         <a className="events-action-link" href="/app/events?action=accept-top-event">
-          Preview top event action
+          {bilingualText("预览首选活动动作", "Preview top event action")}
         </a>
         {actionResult && <EventActionResult result={actionResult} />}
         {!actionResult && topValueEvent && (
           <p className="type-body">
-            Top candidate: {topValueEvent.title} with value score{" "}
-            {topValueEvent.valueScore}.
+            {bilingualText(
+              `首选候选：${topValueEvent.title}，价值评分 ${topValueEvent.valueScore}。`,
+              `Top candidate: ${topValueEvent.title} with value score ${topValueEvent.valueScore}.`,
+            )}
           </p>
         )}
       </WorkbenchSurface>

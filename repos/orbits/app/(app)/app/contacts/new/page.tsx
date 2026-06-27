@@ -10,13 +10,16 @@ import { createQrScanConnectService } from "../../../../../features/acquisition/
 import { createReferralRecommendationService } from "../../../../../features/acquisition/service-factory";
 import { createContactAcquisitionDraftService } from "../../../../../features/acquisition/service-factory";
 import { createPermissionStateService } from "../../../../../features/permissions/service-factory";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { StateView } from "../../../../../shared/ui/state-view";
 
 export const metadata = {
-  title: "Contact acquisition | Orbit",
-  description:
+  title: bilingualText("联系人获取 | Orbit", "Contact acquisition | Orbit"),
+  description: bilingualText(
+    "在 Orbit 中组合有来源支撑的联系人获取、暂存权限和本地复核动作。",
     "Compose source-backed contact acquisition, staged permissions, and local review actions in Orbit.",
+  ),
 };
 
 const appContactsNewStyles = `
@@ -269,28 +272,28 @@ const appContactsNewStyles = `
 `;
 
 const capabilityLabels = [
-  "Manual contact",
-  "Business card scan",
-  "QR scan",
-  "Event attendee import",
-  "External contacts",
-  "Email and calendar signals",
-  "Referral recommendations",
-  "Merge suggestions",
+  bilingualText("手动联系人", "Manual contact"),
+  bilingualText("名片扫描", "Business card scan"),
+  bilingualText("QR 扫描", "QR scan"),
+  bilingualText("活动参会人导入", "Event attendee import"),
+  bilingualText("外部联系人", "External contacts"),
+  bilingualText("邮箱和日历信号", "Email and calendar signals"),
+  bilingualText("推荐关系", "Referral recommendations"),
+  bilingualText("合并建议", "Merge suggestions"),
 ] as const;
 
 const routeStateChecks = [
   {
     href: "/app/contacts/new?scenario=empty",
-    label: "Open source choices",
+    label: bilingualText("打开来源选择", "Open source choices"),
   },
   {
     href: "/app/contacts/new?scenario=pending",
-    label: "Review waiting intake",
+    label: bilingualText("复核等待中的录入", "Review waiting intake"),
   },
   {
     href: "/app/contacts/new?scenario=failure",
-    label: "Open safe intake",
+    label: bilingualText("打开安全录入", "Open safe intake"),
   },
 ] as const;
 
@@ -363,17 +366,25 @@ function formatCount(
   count: number | undefined,
   singular: string,
   plural = `${singular}s`,
+  chineseUnit = singular,
 ): string {
   const safeCount = count ?? 0;
 
-  return `${safeCount} ${safeCount === 1 ? singular : plural}`;
+  return bilingualText(
+    `${safeCount} 个${chineseUnit}`,
+    `${safeCount} ${safeCount === 1 ? singular : plural}`,
+  );
 }
 
 function sourceName(
   displayName: string | undefined,
-  fallback = "Source waiting for review",
+  fallback = bilingualText("等待复核的来源", "Source waiting for review"),
 ): string {
   return displayName?.trim() || fallback;
+}
+
+function yesNoLabel(value: boolean): string {
+  return value ? bilingualText("是", "yes") : bilingualText("否", "no");
 }
 
 function capitalizeWord(word: string): string {
@@ -386,31 +397,31 @@ function capitalizeWord(word: string): string {
 
 function evidenceLabel(evidenceId: string): string {
   const friendlyLabels: Array<[RegExp, string]> = [
-    [/manual-note/, "Manual note"],
-    [/manual-contact-confirmed/, "Contact review held"],
-    [/business-card-capture/, "Card captured"],
-    [/business-card-ocr/, "Card details read"],
-    [/business-card-draft/, "Card draft ready"],
-    [/qr-scan-frame/, "QR scan captured"],
-    [/qr-mutual-context/, "Mutual context matched"],
-    [/qr-draft/, "QR draft ready"],
-    [/event-import-roster/, "Event roster"],
-    [/event-import-conversation-thread/, "Conversation noted"],
-    [/event-import-goal-fit/, "Goal fit noted"],
-    [/external-import-phone/, "Phone contact held"],
-    [/external-import-google/, "Google contact held"],
-    [/external-import-csv/, "CSV contact held"],
-    [/external-import-customer-list/, "Customer list held"],
-    [/email-calendar:gmail-intro/, "Intro email signal"],
-    [/email-calendar:calendar-meeting/, "Calendar signal held"],
-    [/email-calendar:graph-overlap/, "Shared-network signal"],
-    [/referral:founder/, "Founder referral"],
-    [/referral:investor/, "Investor referral"],
-    [/referral:community/, "Community referral"],
-    [/duplicate-merge-email/, "Email match found"],
-    [/duplicate-merge-event-context/, "Event context match"],
-    [/duplicate-merge-referral-context/, "Referral context match"],
-    [/duplicate-merge-confirmation/, "Merge review held"],
+    [/manual-note/, bilingualText("手动记录", "Manual note")],
+    [/manual-contact-confirmed/, bilingualText("联系人复核已保留", "Contact review held")],
+    [/business-card-capture/, bilingualText("名片已捕获", "Card captured")],
+    [/business-card-ocr/, bilingualText("名片详情已读取", "Card details read")],
+    [/business-card-draft/, bilingualText("名片草稿已准备", "Card draft ready")],
+    [/qr-scan-frame/, bilingualText("QR 扫描已捕获", "QR scan captured")],
+    [/qr-mutual-context/, bilingualText("共同背景已匹配", "Mutual context matched")],
+    [/qr-draft/, bilingualText("QR 草稿已准备", "QR draft ready")],
+    [/event-import-roster/, bilingualText("活动名单", "Event roster")],
+    [/event-import-conversation-thread/, bilingualText("对话已记录", "Conversation noted")],
+    [/event-import-goal-fit/, bilingualText("目标匹配已记录", "Goal fit noted")],
+    [/external-import-phone/, bilingualText("手机联系人已保留", "Phone contact held")],
+    [/external-import-google/, bilingualText("Google 联系人已保留", "Google contact held")],
+    [/external-import-csv/, bilingualText("CSV 联系人已保留", "CSV contact held")],
+    [/external-import-customer-list/, bilingualText("客户名单已保留", "Customer list held")],
+    [/email-calendar:gmail-intro/, bilingualText("介绍邮件信号", "Intro email signal")],
+    [/email-calendar:calendar-meeting/, bilingualText("日历信号已保留", "Calendar signal held")],
+    [/email-calendar:graph-overlap/, bilingualText("共同网络信号", "Shared-network signal")],
+    [/referral:founder/, bilingualText("创始人推荐", "Founder referral")],
+    [/referral:investor/, bilingualText("投资人推荐", "Investor referral")],
+    [/referral:community/, bilingualText("社群推荐", "Community referral")],
+    [/duplicate-merge-email/, bilingualText("发现邮箱匹配", "Email match found")],
+    [/duplicate-merge-event-context/, bilingualText("发现活动背景匹配", "Event context match")],
+    [/duplicate-merge-referral-context/, bilingualText("发现推荐背景匹配", "Referral context match")],
+    [/duplicate-merge-confirmation/, bilingualText("合并复核已保留", "Merge review held")],
   ];
   const normalizedEvidenceId = evidenceId.toLowerCase();
   const friendlyLabel = friendlyLabels.find(([pattern]) =>
@@ -449,7 +460,7 @@ function evidenceLabel(evidenceId: string): string {
     .trim();
 
   if (!readable) {
-    return "Source evidence";
+    return bilingualText("来源证据", "Source evidence");
   }
 
   return productCopy(
@@ -504,7 +515,7 @@ function TechnicalProvenanceDetails({
 }) {
   return (
     <details className="technical-provenance">
-      <summary>Source record details</summary>
+      <summary>{bilingualText("来源记录详情", "Source record details")}</summary>
       <ul>
         {evidenceIds.map((evidenceId) => (
           <li key={evidenceId}>
@@ -550,14 +561,21 @@ function ContactReviewDiagnostics({
 }) {
   return (
     <details className="technical-provenance">
-      <summary>Contact review diagnostics</summary>
+      <summary>
+        {bilingualText("联系人复核诊断", "Contact review diagnostics")}
+      </summary>
       <ul>
         <li>
-          Source evidence: {evidenceLabel(firstEvidence(evidenceIds))}
+          {bilingualText("来源证据", "Source evidence")}:{" "}
+          {evidenceLabel(firstEvidence(evidenceIds))}
         </li>
-        <li>Contact write executed: {contactWriteExecuted ? "yes" : "no"}</li>
         <li>
-          Duplicate lookup executed: {duplicateLookupExecuted ? "yes" : "no"}
+          {bilingualText("已执行联系人写入", "Contact write executed")}:{" "}
+          {yesNoLabel(contactWriteExecuted)}
+        </li>
+        <li>
+          {bilingualText("已执行重复查找", "Duplicate lookup executed")}:{" "}
+          {yesNoLabel(duplicateLookupExecuted)}
         </li>
         {evidenceIds.map((evidenceId) => (
           <li key={evidenceId}>
@@ -619,8 +637,14 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
     return (
       <RouteStateMarker scenario={scenario}>
         <StateView
-          description="Start from a manual note, card scan, relationship QR, attendee import, external contact list, email or calendar signal, referral, or merge review."
-          emptyState="No source has produced a contact candidate ready for review."
+          description={bilingualText(
+            "可以从手动记录、名片扫描、关系 QR、参会人导入、外部联系人名单、邮箱或日历信号、推荐关系或合并复核开始。",
+            "Start from a manual note, card scan, relationship QR, attendee import, external contact list, email or calendar signal, referral, or merge review.",
+          )}
+          emptyState={bilingualText(
+            "还没有来源产出可复核的联系人候选人。",
+            "No source has produced a contact candidate ready for review.",
+          )}
           evidence={[
             evidenceFromResult(draftState),
             evidenceFromResult(manualState),
@@ -632,19 +656,33 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
             evidenceFromResult(referralState),
             evidenceFromResult(mergeState),
           ]}
-          eyebrow="Empty state"
-          guardrail="Orbit can invite source capture, but it cannot create contacts without source evidence and confirmation."
+          eyebrow={bilingualText("空状态", "Empty state")}
+          guardrail={bilingualText(
+            "Orbit 可以引导采集来源，但没有来源证据和确认时不能创建联系人。",
+            "Orbit can invite source capture, but it cannot create contacts without source evidence and confirmation.",
+          )}
           recoveryActions={[
             {
               id: "return-to-source-choices",
               href: "/app/contacts/new",
-              label: "Return to source choices",
-              recoveryCopy:
+              label: bilingualText(
+                "返回来源选择",
+                "Return to source choices",
+              ),
+              recoveryCopy: bilingualText(
+                "先选择来源方式，再暂存关系候选人。",
                 "Choose a source method before staging a relationship candidate.",
+              ),
             },
           ]}
-          purpose="Start contact acquisition from source-backed intake boundaries."
-          title="No source is ready for review"
+          purpose={bilingualText(
+            "从有来源支撑的录入边界开始联系人获取。",
+            "Start contact acquisition from source-backed intake boundaries.",
+          )}
+          title={bilingualText(
+            "没有可复核的来源",
+            "No source is ready for review",
+          )}
         />
       </RouteStateMarker>
     );
@@ -665,8 +703,14 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
     return (
       <RouteStateMarker scenario={scenario}>
         <StateView
-          description="Relationship sources are waiting for review before any contact record can be staged."
-          emptyState="Drafts, scans, imports, signals, referrals, and merge decisions stay pending until reviewed."
+          description={bilingualText(
+            "关系来源正在等待复核，之后才可以暂存联系人记录。",
+            "Relationship sources are waiting for review before any contact record can be staged.",
+          )}
+          emptyState={bilingualText(
+            "草稿、扫描、导入、信号、推荐和合并判断都会保持待处理，直到完成复核。",
+            "Drafts, scans, imports, signals, referrals, and merge decisions stay pending until reviewed.",
+          )}
           evidence={[
             evidenceFromResult(draftState),
             evidenceFromResult(manualState),
@@ -674,19 +718,30 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
             evidenceFromResult(qrState),
             evidenceFromResult(eventState),
           ]}
-          eyebrow="Loading state"
-          guardrail="Pending source material cannot write contacts, merge records, send messages, or read outside accounts."
+          eyebrow={bilingualText("加载状态", "Loading state")}
+          guardrail={bilingualText(
+            "待处理来源材料不能写入联系人、合并记录、发送消息或读取外部账号。",
+            "Pending source material cannot write contacts, merge records, send messages, or read outside accounts.",
+          )}
           recoveryActions={[
             {
               id: "review-waiting-source",
               href: "/app/contacts/new",
-              label: "Review waiting source",
-              recoveryCopy:
+              label: bilingualText(
+                "复核等待中的来源",
+                "Review waiting source",
+              ),
+              recoveryCopy: bilingualText(
+                "来源证据仍在等待复核时，返回录入台。",
                 "Return to the intake desk while source evidence remains held for review.",
+              ),
             },
           ]}
-          purpose="Keep acquisition visible while local review states resolve."
-          title="Source review is waiting"
+          purpose={bilingualText(
+            "本地复核状态处理期间，保持获取流程可见。",
+            "Keep acquisition visible while local review states resolve.",
+          )}
+          title={bilingualText("来源复核等待中", "Source review is waiting")}
         />
       </RouteStateMarker>
     );
@@ -697,8 +752,14 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
   return (
     <RouteStateMarker scenario={scenario}>
       <StateView
-        description="The intake desk could not assemble the current source queue, so Orbit keeps every source side-effect-free."
-        emptyState="No contact, connection, merge, message, task, or outside account was changed."
+        description={bilingualText(
+          "录入台无法组合当前来源队列，因此 Orbit 会让所有来源保持无副作用。",
+          "The intake desk could not assemble the current source queue, so Orbit keeps every source side-effect-free.",
+        )}
+        emptyState={bilingualText(
+          "没有联系人、连接、合并、消息、任务或外部账号被更改。",
+          "No contact, connection, merge, message, task, or outside account was changed.",
+        )}
         evidence={
           failureState.success === false
             ? [
@@ -707,19 +768,27 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
               ]
             : ["contact-acquisition-expected-failure-not-returned"]
         }
-        eyebrow="Failure state"
-        guardrail="The recovery control keeps camera, email, calendar, contacts, storage, AI, notifications, and messaging disconnected."
+        eyebrow={bilingualText("失败状态", "Failure state")}
+        guardrail={bilingualText(
+          "恢复控件会保持相机、邮箱、日历、通讯录、存储、AI、通知和消息工具断开。",
+          "The recovery control keeps camera, email, calendar, contacts, storage, AI, notifications, and messaging disconnected.",
+        )}
         recoveryActions={[
           {
             id: "return-to-safe-intake",
             href: "/app/contacts/new",
-            label: "Return to safe intake",
-            recoveryCopy:
+            label: bilingualText("返回安全录入", "Return to safe intake"),
+            recoveryCopy: bilingualText(
+              "重新打开录入台，但不调用相机、导入、收件箱、日历、合并或外发工具。",
               "Reopen the intake desk without calling camera, imports, inbox, calendar, merge, or outbound tools.",
+            ),
           },
         ]}
-        purpose="Render a controlled acquisition failure without side effects."
-        title="Source intake needs attention"
+        purpose={bilingualText(
+          "以无副作用方式呈现可控的联系人获取失败。",
+          "Render a controlled acquisition failure without side effects.",
+        )}
+        title={bilingualText("来源录入需要处理", "Source intake needs attention")}
       />
     </RouteStateMarker>
   );
@@ -744,27 +813,41 @@ function ContactsNewLedger({
       className="relationship-meta contacts-new-ledger"
     >
       <div>
-        <dt>Manual note</dt>
+        <dt>{bilingualText("手动记录", "Manual note")}</dt>
         <dd>{manualName}</dd>
       </div>
       <div>
-        <dt>Draft queue</dt>
+        <dt>{bilingualText("草稿队列", "Draft queue")}</dt>
         <dd>
           <strong>{acquisitionCount}</strong>
-          source-backed drafts
+          {bilingualText(" 个有来源草稿", " source-backed drafts")}
         </dd>
       </div>
       <div>
-        <dt>Card scans</dt>
-        <dd>{formatCount(cardCount, "card draft")}</dd>
+        <dt>{bilingualText("名片扫描", "Card scans")}</dt>
+        <dd>{formatCount(cardCount, "card draft", "card drafts", "名片草稿")}</dd>
       </div>
       <div>
-        <dt>Event import</dt>
-        <dd>{formatCount(eventDraftCount, "attendee draft")}</dd>
+        <dt>{bilingualText("活动导入", "Event import")}</dt>
+        <dd>
+          {formatCount(
+            eventDraftCount,
+            "attendee draft",
+            "attendee drafts",
+            "参会人草稿",
+          )}
+        </dd>
       </div>
       <div>
-        <dt>Permissions</dt>
-        <dd>{formatCount(pendingPermissionCount, "staged permission")}</dd>
+        <dt>{bilingualText("权限", "Permissions")}</dt>
+        <dd>
+          {formatCount(
+            pendingPermissionCount,
+            "staged permission",
+            "staged permissions",
+            "暂存权限",
+          )}
+        </dd>
       </div>
     </dl>
   );
@@ -792,24 +875,26 @@ function SourceMethodCard({
   return (
     <article className="contacts-new-source-method">
       <header>
-        <p className="type-caption">Source method</p>
+        <p className="type-caption">
+          {bilingualText("来源方式", "Source method")}
+        </p>
         <h3 className="relationship-name">{title}</h3>
       </header>
       <dl className="relationship-meta">
         <div>
-          <dt>Status</dt>
+          <dt>{bilingualText("状态", "Status")}</dt>
           <dd>{status}</dd>
         </div>
         <div>
-          <dt>Source</dt>
+          <dt>{bilingualText("来源", "Source")}</dt>
           <dd>{sourceLabel}</dd>
         </div>
         <div>
-          <dt>Candidate</dt>
+          <dt>{bilingualText("候选人", "Candidate")}</dt>
           <dd>{name}</dd>
         </div>
         <div>
-          <dt>Next step</dt>
+          <dt>{bilingualText("下一步", "Next step")}</dt>
           <dd>{nextStep}</dd>
         </div>
       </dl>
@@ -817,7 +902,7 @@ function SourceMethodCard({
       <button type="button">{controlLabel}</button>
       <EvidenceChips
         evidenceIds={evidenceIds}
-        label={`${title} evidence`}
+        label={bilingualText(`${title} 证据`, `${title} evidence`)}
       />
     </article>
   );
@@ -876,8 +961,14 @@ function renderContactsNewPage(
   ) {
     return (
       <StateView
-        description="The contact acquisition page could not compose every required local service state."
-        emptyState="A contact source, permission, referral, or merge boundary returned an unexpected state."
+        description={bilingualText(
+          "联系人获取页无法组合所有必需的本地服务状态。",
+          "The contact acquisition page could not compose every required local service state.",
+        )}
+        emptyState={bilingualText(
+          "联系人来源、权限、推荐或合并边界返回了异常状态。",
+          "A contact source, permission, referral, or merge boundary returned an unexpected state.",
+        )}
         evidence={[
           evidenceFromResult(draftQueue),
           evidenceFromResult(manualState),
@@ -890,11 +981,23 @@ function renderContactsNewPage(
           evidenceFromResult(mergeState),
           evidenceFromResult(permissionState),
         ]}
-        eyebrow="Contacts"
-        guardrail="No external action can run when contact acquisition composition fails."
-        nextStep="Inspect GET /api/contact-drafts and GET /api/permissions."
-        purpose="Stop contact acquisition when local source evidence cannot be composed."
-        title="Contact acquisition could not load"
+        eyebrow={bilingualText("联系人", "Contacts")}
+        guardrail={bilingualText(
+          "联系人获取组合失败时，不能运行任何外部动作。",
+          "No external action can run when contact acquisition composition fails.",
+        )}
+        nextStep={bilingualText(
+          "检查 GET /api/contact-drafts 和 GET /api/permissions。",
+          "Inspect GET /api/contact-drafts and GET /api/permissions.",
+        )}
+        purpose={bilingualText(
+          "当本地来源证据无法组合时，停止联系人获取。",
+          "Stop contact acquisition when local source evidence cannot be composed.",
+        )}
+        title={bilingualText(
+          "联系人获取无法加载",
+          "Contact acquisition could not load",
+        )}
       />
     );
   }
@@ -923,114 +1026,157 @@ function renderContactsNewPage(
   );
   const sourceMethods = [
     {
-      controlLabel: "Choose manual note",
+      controlLabel: bilingualText("选择手动记录", "Choose manual note"),
       detail: manualDraft?.followUpHint ?? manualState.data.nextAction,
       evidenceIds: manualState.data.provenance.evidenceIds,
       name: sourceName(manualDraft?.displayName),
-      nextStep: "Preview the contact review before saving a person.",
+      nextStep: bilingualText(
+        "保存联系人之前先预览联系人复核。",
+        "Preview the contact review before saving a person.",
+      ),
       sourceLabel: currentSourceLabel,
-      status: "Ready to review",
-      title: "Manual note",
+      status: bilingualText("可复核", "Ready to review"),
+      title: bilingualText("手动记录", "Manual note"),
     },
     {
-      controlLabel: "Choose card scan",
+      controlLabel: bilingualText("选择名片扫描", "Choose card scan"),
       detail: cardDraft?.relationshipContext ?? cardState.data.nextAction,
       evidenceIds: cardState.data.provenance.evidenceIds,
       name: sourceName(cardDraft?.displayName),
-      nextStep: "Review extracted fields before creating a contact.",
-      sourceLabel: "Card from robotics investor salon",
-      status: "Draft extracted",
-      title: "Business card",
+      nextStep: bilingualText(
+        "创建联系人之前先复核已提取字段。",
+        "Review extracted fields before creating a contact.",
+      ),
+      sourceLabel: bilingualText(
+        "机器人投资人沙龙名片",
+        "Card from robotics investor salon",
+      ),
+      status: bilingualText("草稿已提取", "Draft extracted"),
+      title: bilingualText("名片", "Business card"),
     },
     {
-      controlLabel: "Choose QR scan",
+      controlLabel: bilingualText("选择 QR 扫描", "Choose QR scan"),
       detail: qrState.data.mutualContext
         ? `${qrState.data.mutualContext.eventName}: ${qrState.data.mutualContext.introductionPath}`
         : qrState.data.nextAction,
       evidenceIds: qrState.data.provenance.evidenceIds,
       name: sourceName(qrDraft?.displayName),
-      nextStep: "Review mutual context before confirming.",
-      sourceLabel: "QR badge from Climate founders dinner",
-      status: "Context matched",
-      title: "Relationship QR",
+      nextStep: bilingualText(
+        "确认之前先复核共同背景。",
+        "Review mutual context before confirming.",
+      ),
+      sourceLabel: bilingualText(
+        "气候创始人晚餐 QR 徽章",
+        "QR badge from Climate founders dinner",
+      ),
+      status: bilingualText("背景已匹配", "Context matched"),
+      title: bilingualText("关系 QR", "Relationship QR"),
     },
     {
-      controlLabel: "Choose attendee import",
+      controlLabel: bilingualText("选择参会人导入", "Choose attendee import"),
       detail: eventDraft
         ? `${eventState.data.event.name}: ${eventDraft.relationshipStatus.label}`
         : eventState.data.nextAction,
       evidenceIds: eventState.data.provenance.evidenceIds,
       name: sourceName(eventDraft?.displayName),
-      nextStep: "Pick attendees whose event context explains the follow-up.",
+      nextStep: bilingualText(
+        "选择活动背景能解释后续跟进的人。",
+        "Pick attendees whose event context explains the follow-up.",
+      ),
       sourceLabel: readableSourceLabel(
         eventDraft?.source.label ?? eventState.data.event.source.label,
         "event roster from climate founders dinner",
       ),
-      status: "Roster staged",
-      title: "Event attendees",
+      status: bilingualText("名单已暂存", "Roster staged"),
+      title: bilingualText("活动参会人", "Event attendees"),
     },
     {
-      controlLabel: "Choose external contacts",
+      controlLabel: bilingualText("选择外部联系人", "Choose external contacts"),
       detail: externalDraft
         ? externalDraft.relationshipContext
         : externalState.data.nextAction,
       evidenceIds: externalState.data.provenance.evidenceIds,
       name: sourceName(externalDraft?.displayName),
-      nextStep: "Review why each outside-list contact exists before staging.",
-      sourceLabel: "Phone, Google, CSV, and customer-list sources",
-      status: "Candidates held",
-      title: "External contacts",
+      nextStep: bilingualText(
+        "暂存前先复核每个外部名单联系人为什么存在。",
+        "Review why each outside-list contact exists before staging.",
+      ),
+      sourceLabel: bilingualText(
+        "手机、Google、CSV 和客户名单来源",
+        "Phone, Google, CSV, and customer-list sources",
+      ),
+      status: bilingualText("候选人已保留", "Candidates held"),
+      title: bilingualText("外部联系人", "External contacts"),
     },
     {
-      controlLabel: "Choose inbox signals",
+      controlLabel: bilingualText("选择收件箱信号", "Choose inbox signals"),
       detail: emailCalendarSignal
         ? emailCalendarSignal.relationshipContext
         : signalState.data.nextAction,
       evidenceIds: signalState.data.provenance.evidenceIds,
       name: sourceName(emailCalendarSignal?.displayName),
-      nextStep: "Confirm the signal before turning it into relationship work.",
-      sourceLabel: "Metadata-only inbox and calendar signals",
-      status: "Signals held",
-      title: "Email and calendar",
+      nextStep: bilingualText(
+        "把信号转成关系任务前先确认它。",
+        "Confirm the signal before turning it into relationship work.",
+      ),
+      sourceLabel: bilingualText(
+        "仅元数据的收件箱和日历信号",
+        "Metadata-only inbox and calendar signals",
+      ),
+      status: bilingualText("信号已保留", "Signals held"),
+      title: bilingualText("邮箱和日历", "Email and calendar"),
     },
     {
-      controlLabel: "Choose referral",
+      controlLabel: bilingualText("选择推荐", "Choose referral"),
       detail: referralDraft
         ? referralDraft.relationshipContext
         : referralState.data.nextAction,
       evidenceIds: referralState.data.provenance.evidenceIds,
       name: sourceName(referralDraft?.displayName),
-      nextStep: "Confirm the recommender context before any outreach.",
-      sourceLabel: "Founder, investor, and community referrals",
-      status: "Warm path ready",
-      title: "Referral",
+      nextStep: bilingualText(
+        "任何外联前先确认推荐人的背景。",
+        "Confirm the recommender context before any outreach.",
+      ),
+      sourceLabel: bilingualText(
+        "创始人、投资人和社群推荐",
+        "Founder, investor, and community referrals",
+      ),
+      status: bilingualText("暖启动路径已准备", "Warm path ready"),
+      title: bilingualText("推荐", "Referral"),
     },
     {
-      controlLabel: "Choose merge review",
+      controlLabel: bilingualText("选择合并复核", "Choose merge review"),
       detail: mergeSuggestion
         ? mergeSuggestion.reviewQuestion
         : mergeState.data.nextAction,
       evidenceIds: mergeState.data.provenance.evidenceIds,
       name: mergeSuggestion
         ? productCopy(mergeSuggestion.decision.replaceAll("_", " "))
-        : "No merge decision queued",
-      nextStep: "Approve or keep records separate before any merge can happen.",
-      sourceLabel: "Duplicate review queue",
-      status: "Needs approval",
-      title: "Merge review",
+        : bilingualText("没有排队中的合并判断", "No merge decision queued"),
+      nextStep: bilingualText(
+        "任何合并发生前，先批准或保持记录分开。",
+        "Approve or keep records separate before any merge can happen.",
+      ),
+      sourceLabel: bilingualText("重复记录复核队列", "Duplicate review queue"),
+      status: bilingualText("需要批准", "Needs approval"),
+      title: bilingualText("合并复核", "Merge review"),
     },
   ] as const;
   const sourceMethodGroups = [
     {
-      description:
+      description: bilingualText(
+        "适用于关系从线下房间、餐桌或徽章交换开始的情况。",
         "Use when the relationship started in a room, at a table, or through a badge exchange.",
-      heading: "Captured in person",
+      ),
+      heading: bilingualText("线下捕获", "Captured in person"),
       methods: [sourceMethods[0], sourceMethods[1], sourceMethods[2]],
     },
     {
-      description:
+      description: bilingualText(
+        "适用于来源来自名单、通讯录、信号或重复记录复核的情况。",
         "Use when the source starts as a roster, address book, signal, or duplicate review.",
-      heading: "Imported records",
+      ),
+      heading: bilingualText("导入记录", "Imported records"),
       methods: [
         sourceMethods[3],
         sourceMethods[4],
@@ -1039,9 +1185,11 @@ function renderContactsNewPage(
       ],
     },
     {
-      description:
+      description: bilingualText(
+        "适用于另一个人解释暖启动路径和跟进理由的情况。",
         "Use when another person explains the warm path and the reason to follow up.",
-      heading: "Warm introductions",
+      ),
+      heading: bilingualText("暖介绍", "Warm introductions"),
       methods: [sourceMethods[6]],
     },
   ] as const;
@@ -1053,12 +1201,14 @@ function renderContactsNewPage(
         <WorkbenchSurface
           className="contacts-new-command"
           elevated
-          eyebrow="Contacts"
-          title="Relationship source intake"
+          eyebrow={bilingualText("联系人", "Contacts")}
+          title={bilingualText("添加关系来源", "Relationship source intake")}
         >
           <p className="type-body">
-            Review one relationship candidate at a time. The first decision is
-            whether the source explains why this person belongs in Orbit.
+            {bilingualText(
+              "一次只复核一个关系候选人。先判断来源是否说清楚：为什么这个人应该进入 Orbit。",
+              "Review one relationship candidate at a time. The first decision is whether the source explains why this person belongs in Orbit.",
+            )}
           </p>
 
           <form
@@ -1067,37 +1217,45 @@ function renderContactsNewPage(
             method="get"
           >
             <div>
-              <p className="type-caption">First review</p>
-              <h3 className="relationship-name">Current review candidate</h3>
+              <p className="type-caption">
+                {bilingualText("第一步复核", "First review")}
+              </p>
+              <h3 className="relationship-name">
+                {bilingualText("当前候选人", "Current review candidate")}
+              </h3>
               <div className="source-label-row" aria-label="Current source">
                 <Chip tone="evidence">{currentSourceLabel}</Chip>
               </div>
               <p className="type-body">
-                {sourceName(manualDraft?.displayName)} is ready for contact
-                review because the dinner note gives a clear relationship
-                context and a sensible follow-up.
+                {bilingualText(
+                  `${sourceName(manualDraft?.displayName)} 已可进入联系人复核，因为晚餐记录说明了关系背景和合理跟进动作。`,
+                  `${sourceName(manualDraft?.displayName)} is ready for contact review because the dinner note gives a clear relationship context and a sensible follow-up.`,
+                )}
               </p>
             </div>
             <dl className="relationship-meta">
               <div>
-                <dt>Source</dt>
+                <dt>{bilingualText("来源", "Source")}</dt>
                 <dd>{currentSourceLabel}</dd>
               </div>
               <div>
-                <dt>Next decision</dt>
-                <dd>Preview contact review</dd>
+                <dt>{bilingualText("下一步判断", "Next decision")}</dt>
+                <dd>{bilingualText("预览联系人复核", "Preview contact review")}</dd>
               </div>
               <div>
-                <dt>No-side-effect boundary</dt>
+                <dt>{bilingualText("无外部影响边界", "No-side-effect boundary")}</dt>
                 <dd>
-                  No contact record is created, no duplicate merge runs, and no
-                  message, task, camera, inbox, calendar, or outside account is
-                  touched.
+                  {bilingualText(
+                    "不会创建联系人记录，不会执行重复合并，也不会触碰消息、任务、相机、收件箱、日历或外部账号。",
+                    "No contact record is created, no duplicate merge runs, and no message, task, camera, inbox, calendar, or outside account is touched.",
+                  )}
                 </dd>
               </div>
             </dl>
             <input name="action" type="hidden" value="confirm-manual-draft" />
-            <button type="submit">Preview contact review</button>
+            <button type="submit">
+              {bilingualText("预览联系人复核", "Preview contact review")}
+            </button>
           </form>
 
           {manualConfirmation?.success && (
@@ -1109,16 +1267,20 @@ function renderContactsNewPage(
               data-task-result="manual-contact-confirmation-preview"
             >
               <strong>
-                Ready for contact review:{" "}
-                {manualConfirmation.data.contactCandidate.displayName}
+                {bilingualText(
+                  `已可进入联系人复核：${manualConfirmation.data.contactCandidate.displayName}`,
+                  `Ready for contact review: ${manualConfirmation.data.contactCandidate.displayName}`,
+                )}
               </strong>
               <span>
-                Keep this source-backed candidate ready for later contact
-                review.
+                {bilingualText(
+                  "保留这个有来源支撑的候选人，供后续联系人复核使用。",
+                  "Keep this source-backed candidate ready for later contact review.",
+                )}
               </span>
               <dl className="relationship-meta contacts-new-action-summary">
                 <div>
-                  <dt>Source moment</dt>
+                  <dt>{bilingualText("来源时刻", "Source moment")}</dt>
                   <dd>
                     {readableSourceLabel(
                       manualConfirmation.data.contactCandidate.source.label,
@@ -1127,7 +1289,7 @@ function renderContactsNewPage(
                   </dd>
                 </div>
                 <div>
-                  <dt>Relationship reason</dt>
+                  <dt>{bilingualText("关系理由", "Relationship reason")}</dt>
                   <dd>
                     {productCopy(
                       manualConfirmation.data.contactCandidate
@@ -1136,7 +1298,7 @@ function renderContactsNewPage(
                   </dd>
                 </div>
                 <div>
-                  <dt>Promised follow-up</dt>
+                  <dt>{bilingualText("已承诺跟进", "Promised follow-up")}</dt>
                   <dd>
                     {productCopy(
                       manualConfirmation.data.contactCandidate.followUpHint,
@@ -1144,14 +1306,21 @@ function renderContactsNewPage(
                   </dd>
                 </div>
                 <div>
-                  <dt>Will remain unsaved</dt>
+                  <dt>{bilingualText("保持未保存", "Will remain unsaved")}</dt>
                   <dd>
-                    Contact record, duplicate review, message, task, camera,
-                    inbox, calendar, and outside-account changes.
+                    {bilingualText(
+                      "联系人记录、重复复核、消息、任务、相机、收件箱、日历和外部账号变更。",
+                      "Contact record, duplicate review, message, task, camera, inbox, calendar, and outside-account changes.",
+                    )}
                   </dd>
                 </div>
               </dl>
-              <span>Outside accounts contacted: none</span>
+              <span>
+                {bilingualText(
+                  "已联系外部账号：无",
+                  "Outside accounts contacted: none",
+                )}
+              </span>
               <ContactReviewDiagnostics
                 contactWriteExecuted={
                   manualConfirmation.data.contactCandidate.contactWriteExecuted
@@ -1166,18 +1335,23 @@ function renderContactsNewPage(
           )}
 
           <p className="privacy-note">
-            Outside accounts contacted: none. Camera, address book, email,
-            calendar, storage, AI, notification, messaging, and saved contact
-            records stay untouched from this route.
+            {bilingualText(
+              "已联系外部账号：无。相机、通讯录、邮箱、日历、存储、AI、通知、消息和已保存联系人记录都不会被此页面触碰。",
+              "Outside accounts contacted: none. Camera, address book, email, calendar, storage, AI, notification, messaging, and saved contact records stay untouched from this route.",
+            )}
           </p>
         </WorkbenchSurface>
       </div>
 
-      <WorkbenchSurface eyebrow="Source choices" title="Choose another relationship source">
+      <WorkbenchSurface
+        eyebrow={bilingualText("来源选择", "Source choices")}
+        title={bilingualText("选择另一种关系来源", "Choose another relationship source")}
+      >
         <p className="type-body">
-          Select a source method when the current candidate is not the right
-          next review. Each method stays staged until a person confirms what the
-          source proves.
+          {bilingualText(
+            "当前候选人不是下一步复核对象时，可以选择另一种来源方式。每种方式都会保持暂存，直到有人确认该来源证明了什么。",
+            "Select a source method when the current candidate is not the right next review. Each method stays staged until a person confirms what the source proves.",
+          )}
         </p>
         <div
           aria-label="Selectable relationship source methods"
@@ -1186,7 +1360,9 @@ function renderContactsNewPage(
           {sourceMethodGroups.map((group) => (
             <section className="contacts-new-source-group" key={group.heading}>
               <header className="contacts-new-source-group-header">
-                <p className="type-caption">Source type</p>
+                <p className="type-caption">
+                  {bilingualText("来源类型", "Source type")}
+                </p>
                 <h3 className="relationship-name">{group.heading}</h3>
                 <p className="type-body">{group.description}</p>
               </header>
@@ -1209,7 +1385,7 @@ function renderContactsNewPage(
           ))}
         </div>
         <details className="contacts-new-secondary">
-          <summary>Source counts</summary>
+          <summary>{bilingualText("来源数量", "Source counts")}</summary>
           <ContactsNewLedger
             acquisitionCount={draftQueue.data.drafts.length}
             cardCount={cardDraft ? 1 : 0}
@@ -1226,22 +1402,28 @@ function renderContactsNewPage(
           </div>
         </details>
         <details className="contacts-new-secondary">
-          <summary>Workspace status</summary>
+          <summary>{bilingualText("工作区状态", "Workspace status")}</summary>
           <p className="type-body">
-            This intake desk stages review candidates locally. No live login,
-            sync, import, merge, message, task, camera, inbox, calendar, or
-            outside-account action is connected here.
+            {bilingualText(
+              "这个录入台只在本地暂存复核候选人。这里没有连接实时登录、同步、导入、合并、消息、任务、相机、收件箱、日历或外部账号动作。",
+              "This intake desk stages review candidates locally. No live login, sync, import, merge, message, task, camera, inbox, calendar, or outside-account action is connected here.",
+            )}
           </p>
         </details>
         <details className="contacts-new-secondary">
-          <summary>Recovery options</summary>
+          <summary>{bilingualText("恢复选项", "Recovery options")}</summary>
           <div aria-label="App contacts new intake status">
-            <p className="type-caption">Intake status</p>
-            <h3 className="relationship-name">Intake status</h3>
+            <p className="type-caption">
+              {bilingualText("录入状态", "Intake status")}
+            </p>
+            <h3 className="relationship-name">
+              {bilingualText("录入状态", "Intake status")}
+            </h3>
             <p className="type-body">
-              Open the intake desk when source context is missing, waiting for
-              review, or unavailable. Each status keeps the current candidate
-              and all outside accounts untouched.
+              {bilingualText(
+                "当来源背景缺失、等待复核或不可用时，可以打开录入台。每个状态都会保持当前候选人和所有外部账号不被触碰。",
+                "Open the intake desk when source context is missing, waiting for review, or unavailable. Each status keeps the current candidate and all outside accounts untouched.",
+              )}
             </p>
             <nav className="contacts-new-state-links">
               {routeStateChecks.map((stateCheck) => (
@@ -1254,16 +1436,17 @@ function renderContactsNewPage(
         </details>
       </WorkbenchSurface>
 
-      <WorkbenchSurface eyebrow="Evidence" title="Review queues">
+      <WorkbenchSurface
+        eyebrow={bilingualText("证据", "Evidence")}
+        title={bilingualText("复核队列", "Review queues")}
+      >
         <details className="contacts-new-secondary">
-          <summary>Sample queue</summary>
+          <summary>{bilingualText("样例队列", "Sample queue")}</summary>
           <p className="type-body">
-            Separate sample queue: {draftQueue.data.drafts.length} draft
-            candidates are staged from source-backed intake. The highlighted
-            review candidate remains {sourceName(manualDraft?.displayName)}; this
-            separate sample set starts with{" "}
-            {sourceName(draftQueue.data.drafts[0]?.displayName)} from{" "}
-            {draftQueue.data.drafts[0]?.source.label ?? "a source record"}.
+            {bilingualText(
+              `独立样例队列：${draftQueue.data.drafts.length} 个草稿候选人从有来源录入中暂存。当前高亮复核候选人仍是 ${sourceName(manualDraft?.displayName)}；这个独立样例集从 ${sourceName(draftQueue.data.drafts[0]?.displayName)} 开始，来源是 ${draftQueue.data.drafts[0]?.source.label ?? "来源记录"}。`,
+              `Separate sample queue: ${draftQueue.data.drafts.length} draft candidates are staged from source-backed intake. The highlighted review candidate remains ${sourceName(manualDraft?.displayName)}; this separate sample set starts with ${sourceName(draftQueue.data.drafts[0]?.displayName)} from ${draftQueue.data.drafts[0]?.source.label ?? "a source record"}.`,
+            )}
           </p>
           <EvidenceChips
             evidenceIds={draftQueue.data.provenance.evidenceIds}

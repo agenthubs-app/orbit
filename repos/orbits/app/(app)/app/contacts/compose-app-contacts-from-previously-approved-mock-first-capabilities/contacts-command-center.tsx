@@ -6,6 +6,7 @@ import type {
   ContactsListSearchPayload,
   ContactsListSearchResult,
 } from "../../../../../features/contacts/contract";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, Field, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { StateView } from "../../../../../shared/ui/state-view";
 import { createAppContactsListSearchAndFilterService } from "./contacts-service-factory";
@@ -164,15 +165,15 @@ const appContactsStyles = `
 const routeStateChecks = [
   {
     href: "/app/contacts?scenario=empty",
-    label: "No contacts found",
+    label: bilingualText("没有找到联系人", "No contacts found"),
   },
   {
     href: "/app/contacts?scenario=pending",
-    label: "Still checking sources",
+    label: bilingualText("仍在检查来源", "Still checking sources"),
   },
   {
     href: "/app/contacts?scenario=failure",
-    label: "List unavailable",
+    label: bilingualText("列表不可用", "List unavailable"),
   },
 ] as const;
 
@@ -183,27 +184,30 @@ const routeRecoveryActions: Record<
   empty: [
     {
       href: "/app/contacts",
-      label: "Show all sourced contacts",
+      label: bilingualText("显示全部有来源联系人", "Show all sourced contacts"),
     },
     {
       href: "/app/contacts?query=storage",
-      label: "Try storage filter",
+      label: bilingualText("尝试存储筛选", "Try storage filter"),
     },
   ],
   failure: [
     {
       href: "/app/contacts",
-      label: "Reload contacts list",
+      label: bilingualText("重新加载联系人列表", "Reload contacts list"),
     },
     {
       href: "/app/contacts?scenario=pending",
-      label: "Check source status",
+      label: bilingualText("检查来源状态", "Check source status"),
     },
   ],
   pending: [
     {
       href: "/app/contacts",
-      label: "Return to available contacts",
+      label: bilingualText(
+        "返回可用联系人",
+        "Return to available contacts",
+      ),
     },
   ],
 };
@@ -467,18 +471,39 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
     return (
       <RouteStateMarker scenario={scenario}>
         <StateView
-          description="Clear the search and filters, or add a contact with source evidence before reviewing follow-up."
-          emptyState="No source-backed contact rows are ready for review."
+          description={bilingualText(
+            "复核跟进前，先清除搜索和筛选，或添加带来源证据的联系人。",
+            "Clear the search and filters, or add a contact with source evidence before reviewing follow-up.",
+          )}
+          emptyState={bilingualText(
+            "还没有可复核的有来源联系人行。",
+            "No source-backed contact rows are ready for review.",
+          )}
           evidence={evidenceFromContactsResult(emptyState)}
-          eyebrow="No contacts"
-          guardrail="Orbit cannot create contacts, tasks, messages, or merges from an empty list."
+          eyebrow={bilingualText("没有联系人", "No contacts")}
+          guardrail={bilingualText(
+            "Orbit 不能从空列表创建联系人、任务、消息或合并。",
+            "Orbit cannot create contacts, tasks, messages, or merges from an empty list.",
+          )}
           nextStep={
             emptyState.success
-              ? "Clear the search and filters, or add a contact with source evidence before reviewing follow-up."
-              : "Reload contacts before reviewing the list."
+              ? bilingualText(
+                  "复核跟进前，先清除搜索和筛选，或添加带来源证据的联系人。",
+                  "Clear the search and filters, or add a contact with source evidence before reviewing follow-up.",
+                )
+              : bilingualText(
+                  "复核列表前重新加载联系人。",
+                  "Reload contacts before reviewing the list.",
+                )
           }
-          purpose="Keep the contacts page useful when no relationship row is reviewable."
-          title="No contacts match this view"
+          purpose={bilingualText(
+            "没有可复核关系行时，仍让联系人页保持可用。",
+            "Keep the contacts page useful when no relationship row is reviewable.",
+          )}
+          title={bilingualText(
+            "没有联系人匹配当前视图",
+            "No contacts match this view",
+          )}
         />
         <RouteRecoveryActions scenario={scenario} />
       </RouteStateMarker>
@@ -491,14 +516,29 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
     return (
       <RouteStateMarker scenario={scenario}>
         <StateView
-          description="Contact rows stay hidden until their source evidence is ready."
-          emptyState="Contact rows stay hidden until source evidence is ready."
+          description={bilingualText(
+            "联系人行会保持隐藏，直到来源证据准备好。",
+            "Contact rows stay hidden until their source evidence is ready.",
+          )}
+          emptyState={bilingualText(
+            "联系人行会保持隐藏，直到来源证据准备好。",
+            "Contact rows stay hidden until source evidence is ready.",
+          )}
           evidence={evidenceFromContactsResult(pendingState)}
-          eyebrow="Checking sources"
-          guardrail="Checking contacts cannot read a search index, query a database, send messages, or deliver notifications."
-          nextStep="Wait for sourced contacts before taking action."
-          purpose="Keep the contacts page visible while search and filter state resolves."
-          title="Checking contact sources"
+          eyebrow={bilingualText("正在检查来源", "Checking sources")}
+          guardrail={bilingualText(
+            "检查联系人时不能读取搜索索引、查询数据库、发送消息或投递通知。",
+            "Checking contacts cannot read a search index, query a database, send messages, or deliver notifications.",
+          )}
+          nextStep={bilingualText(
+            "采取动作前等待有来源联系人准备好。",
+            "Wait for sourced contacts before taking action.",
+          )}
+          purpose={bilingualText(
+            "搜索和筛选状态解析期间，保持联系人页可见。",
+            "Keep the contacts page visible while search and filter state resolves.",
+          )}
+          title={bilingualText("正在检查联系人来源", "Checking contact sources")}
         />
         <RouteRecoveryActions scenario={scenario} />
       </RouteStateMarker>
@@ -510,18 +550,33 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
   return (
     <RouteStateMarker scenario={scenario}>
       <StateView
-        description="Contacts list search and filter is unavailable while local source evidence is being checked."
-        emptyState="No contact, task, message, notification, database, or outside account changed."
+        description={bilingualText(
+          "本地来源证据检查期间，联系人列表搜索和筛选暂不可用。",
+          "Contacts list search and filter is unavailable while local source evidence is being checked.",
+        )}
+        emptyState={bilingualText(
+          "没有联系人、任务、消息、通知、数据库或外部账号发生更改。",
+          "No contact, task, message, notification, database, or outside account changed.",
+        )}
         evidence={
           failureState.success === false
             ? [firstEvidence(failureState.error.evidenceIds)]
             : ["contacts-expected-failure-not-returned"]
         }
-        eyebrow="Needs retry"
-        guardrail="Retry keeps search, storage, email, calendar, AI, notification, and messaging disconnected."
-        nextStep="Reload the contacts list before reviewing follow-up actions."
-        purpose="Show a contacts recovery state without side effects."
-        title="Contacts could not load"
+        eyebrow={bilingualText("需要重试", "Needs retry")}
+        guardrail={bilingualText(
+          "重试会保持搜索、存储、邮件、日历、AI、通知和消息断开。",
+          "Retry keeps search, storage, email, calendar, AI, notification, and messaging disconnected.",
+        )}
+        nextStep={bilingualText(
+          "复核跟进动作前重新加载联系人列表。",
+          "Reload the contacts list before reviewing follow-up actions.",
+        )}
+        purpose={bilingualText(
+          "显示无副作用的联系人恢复状态。",
+          "Show a contacts recovery state without side effects.",
+        )}
+        title={bilingualText("联系人无法加载", "Contacts could not load")}
       />
       <RouteRecoveryActions scenario={scenario} />
     </RouteStateMarker>
@@ -539,22 +594,22 @@ function ContactsLedger({ payload }: { payload: ContactsListSearchPayload }) {
       className="relationship-meta contacts-ledger"
     >
       <div>
-        <dt>Known people</dt>
+        <dt>{bilingualText("已知人物", "Known people")}</dt>
         <dd>
           <strong>{payload.contacts.length}</strong>
-          source-backed contacts
+          {bilingualText("有来源联系人", "source-backed contacts")}
         </dd>
       </div>
       <div>
-        <dt>Source filters</dt>
+        <dt>{bilingualText("来源筛选", "Source filters")}</dt>
         <dd>{formatCount(payload.availableFilters.sources.length, "source")}</dd>
       </div>
       <div>
-        <dt>Value tags</dt>
+        <dt>{bilingualText("价值标签", "Value tags")}</dt>
         <dd>{formatCount(payload.availableFilters.values.length, "value tag")}</dd>
       </div>
       <div>
-        <dt>Needs attention</dt>
+        <dt>{bilingualText("需要关注", "Needs attention")}</dt>
         <dd>{formatCount(needsFollowUp, "contact")}</dd>
       </div>
     </dl>
@@ -570,7 +625,13 @@ function ContactsSearchForm({ payload }: { payload: ContactsListSearchPayload })
       method="get"
     >
       <div className="contacts-filter-grid">
-        <Field label="Search" helper="Name, company, context, next action, or tag.">
+        <Field
+          label={bilingualText("搜索", "Search")}
+          helper={bilingualText(
+            "姓名、公司、上下文、下一步动作或标签。",
+            "Name, company, context, next action, or tag.",
+          )}
+        >
           <input
             defaultValue={payload.appliedFilters.query}
             name="query"
@@ -578,12 +639,18 @@ function ContactsSearchForm({ payload }: { payload: ContactsListSearchPayload })
             type="search"
           />
         </Field>
-        <Field label="Source" helper="Keep source context beside each person.">
+        <Field
+          label={bilingualText("来源", "Source")}
+          helper={bilingualText(
+            "让每个人旁边保留来源上下文。",
+            "Keep source context beside each person.",
+          )}
+        >
           <select
             defaultValue={payload.appliedFilters.sourceFilters[0] ?? ""}
             name="source"
           >
-            <option value="">All sources</option>
+            <option value="">{bilingualText("全部来源", "All sources")}</option>
             {payload.availableFilters.sources.map((source) => (
               <option key={source.value} value={source.value}>
                 {source.label}
@@ -591,12 +658,18 @@ function ContactsSearchForm({ payload }: { payload: ContactsListSearchPayload })
             ))}
           </select>
         </Field>
-        <Field label="Status" helper="Relationship operating state.">
+        <Field
+          label={bilingualText("状态", "Status")}
+          helper={bilingualText(
+            "关系运营状态。",
+            "Relationship operating state.",
+          )}
+        >
           <select
             defaultValue={payload.appliedFilters.statusFilters[0] ?? ""}
             name="status"
           >
-            <option value="">All statuses</option>
+            <option value="">{bilingualText("全部状态", "All statuses")}</option>
             {payload.availableFilters.statuses.map((status) => (
               <option key={status.value} value={status.value}>
                 {status.label}
@@ -605,7 +678,9 @@ function ContactsSearchForm({ payload }: { payload: ContactsListSearchPayload })
           </select>
         </Field>
       </div>
-      <button type="submit">Search contact list</button>
+      <button type="submit">
+        {bilingualText("搜索联系人列表", "Search contact list")}
+      </button>
     </form>
   );
 }
@@ -623,31 +698,31 @@ function ContactCard({ contact }: { contact: ContactListItem }) {
           {contact.role} at {contact.organization} · {contact.location}
         </p>
         <a className="contacts-detail-link" href={contactDetailHref(contact)}>
-          Open relationship workspace
+          {bilingualText("打开关系工作区", "Open relationship workspace")}
         </a>
       </header>
       <p className="type-body">{relationshipContextCopy(contact)}</p>
       <dl className="relationship-meta">
         <div>
-          <dt>Source context</dt>
+          <dt>{bilingualText("来源上下文", "Source context")}</dt>
           <dd>{sourceLabel(contact.source.type)}</dd>
         </div>
         <div>
-          <dt>Relationship status</dt>
+          <dt>{bilingualText("关系状态", "Relationship status")}</dt>
           <dd>{statusLabel(contact.status)}</dd>
         </div>
         <div>
-          <dt>Relationship value</dt>
+          <dt>{bilingualText("关系价值", "Relationship value")}</dt>
           <dd>{relationshipValueSummary(contact)}</dd>
         </div>
         <div>
-          <dt>Next safe action</dt>
+          <dt>{bilingualText("安全下一步", "Next safe action")}</dt>
           <dd>{contact.nextAction}</dd>
         </div>
       </dl>
       <ValueChips contact={contact} />
       <details>
-        <summary>Contact evidence details</summary>
+        <summary>{bilingualText("联系人证据详情", "Contact evidence details")}</summary>
         <div aria-label={`${contact.displayName} source tags`} className="chip-row">
           {contact.tags.map((tag) => (
             <Chip key={`${contact.id}:${tag}`} tone="primary">
@@ -689,15 +764,29 @@ function ReviewActionResult({
         data-side-effects="none"
         data-task-result="contacts-filtered-review-preview"
       >
-        <strong>Filtered review ready: no matching contact</strong>
-        <span>Clear the filters before reviewing a relationship action.</span>
+        <strong>
+          {bilingualText(
+            "筛选复核已准备：没有匹配联系人",
+            "Filtered review ready: no matching contact",
+          )}
+        </strong>
+        <span>
+          {bilingualText(
+            "复核关系动作前先清除筛选。",
+            "Clear the filters before reviewing a relationship action.",
+          )}
+        </span>
         <span>{contactsActionSafetySummary}</span>
-        <span>Contact record changed: no</span>
-        <span>Message sent: no</span>
-        <span>Notification sent: no</span>
-        <span>Search index read: no</span>
-        <span>Database query executed: no</span>
-        <span>Outside services contacted: none</span>
+        <span>{bilingualText("联系人记录已更改：否", "Contact record changed: no")}</span>
+        <span>{bilingualText("消息已发送：否", "Message sent: no")}</span>
+        <span>{bilingualText("通知已发送：否", "Notification sent: no")}</span>
+        <span>{bilingualText("搜索索引已读取：否", "Search index read: no")}</span>
+        <span>
+          {bilingualText("数据库查询已执行：否", "Database query executed: no")}
+        </span>
+        <span>
+          {bilingualText("已联系外部服务：无", "Outside services contacted: none")}
+        </span>
       </div>
     );
   }
@@ -710,27 +799,39 @@ function ReviewActionResult({
       data-side-effects="none"
       data-task-result="contacts-filtered-review-preview"
     >
-      <strong>Filtered review ready: {reviewedContact.displayName}</strong>
+      <strong>
+        {bilingualText(
+          `筛选复核已准备：${reviewedContact.displayName}`,
+          `Filtered review ready: ${reviewedContact.displayName}`,
+        )}
+      </strong>
       <span>{reviewedContact.nextAction}</span>
       <span>{contactsActionSafetySummary}</span>
-      <span>Contact record changed: no</span>
-      <span>Message sent: no</span>
-      <span>Notification sent: no</span>
+      <span>{bilingualText("联系人记录已更改：否", "Contact record changed: no")}</span>
+      <span>{bilingualText("消息已发送：否", "Message sent: no")}</span>
+      <span>{bilingualText("通知已发送：否", "Notification sent: no")}</span>
       <span>
-        Search index read: {reviewedContact.searchIndexReadExecuted ? "yes" : "no"}
+        {bilingualText("搜索索引已读取", "Search index read")}:{" "}
+        {reviewedContact.searchIndexReadExecuted
+          ? bilingualText("是", "yes")
+          : bilingualText("否", "no")}
       </span>
       <span>
-        Database query executed:{" "}
-        {reviewedContact.databaseQueryExecuted ? "yes" : "no"}
+        {bilingualText("数据库查询已执行", "Database query executed")}:{" "}
+        {reviewedContact.databaseQueryExecuted
+          ? bilingualText("是", "yes")
+          : bilingualText("否", "no")}
       </span>
       <span>
-        Outside services contacted:{" "}
-        {externalServicesContacted(reviewedContact) ? "review required" : "none"}
+        {bilingualText("已联系外部服务", "Outside services contacted")}:{" "}
+        {externalServicesContacted(reviewedContact)
+          ? bilingualText("需要复核", "review required")
+          : bilingualText("无", "none")}
       </span>
       <details>
-        <summary>Action source details</summary>
+        <summary>{bilingualText("动作来源详情", "Action source details")}</summary>
         <span>
-          Source evidence:{" "}
+          {bilingualText("来源证据", "Source evidence")}:{" "}
           {firstEvidence(reviewedContact.evidence.map((evidence) => evidence.evidenceId))}
         </span>
       </details>
@@ -745,7 +846,9 @@ function AttentionQueueCard({ contact }: { contact: ContactListItem }) {
       className="contacts-queue-card"
     >
       <div>
-        <p className="type-caption">Who needs attention now</p>
+        <p className="type-caption">
+          {bilingualText("现在该关注谁", "Who needs attention now")}
+        </p>
         <h3 className="relationship-name">
           <a className="contacts-person-link" href={contactDetailHref(contact)}>
             {contact.displayName}
@@ -755,12 +858,18 @@ function AttentionQueueCard({ contact }: { contact: ContactListItem }) {
           {contact.role} at {contact.organization} · {contact.location}
         </p>
       </div>
-      <p className="type-body">Why Kenji matters now: {contact.value.rationale}</p>
       <p className="type-body">
-        Source context: {sourceLabel(contact.source.type)} from{" "}
+        {bilingualText("为什么 Kenji 现在重要", "Why Kenji matters now")}:{" "}
+        {contact.value.rationale}
+      </p>
+      <p className="type-body">
+        {bilingualText("来源上下文", "Source context")}:{" "}
+        {sourceLabel(contact.source.type)} from{" "}
         {relationshipContextCopy(contact)}
       </p>
-      <p className="type-body">Next safe action: {contact.nextAction}</p>
+      <p className="type-body">
+        {bilingualText("安全下一步", "Next safe action")}: {contact.nextAction}
+      </p>
     </article>
   );
 }
@@ -782,13 +891,14 @@ function RelationshipReviewQueue({
     <WorkbenchSurface
       className="contacts-queue"
       elevated
-      eyebrow="People"
-      title="Relationship review queue"
+      eyebrow={bilingualText("人脉", "People")}
+      title={bilingualText("关系复盘队列", "Relationship review queue")}
     >
       <p className="type-body">
-        Start with the person who needs attention now, the reason this
-        relationship matters, the source context that created it, and the next
-        safe action to prepare.
+        {bilingualText(
+          "先看当前最需要处理的人、这段关系为什么重要、它来自哪里，以及可以准备的安全下一步。",
+          "Start with the person who needs attention now, the reason this relationship matters, the source context that created it, and the next safe action to prepare.",
+        )}
       </p>
       <div className="contacts-queue-grid">
         {queueContacts.map((contact) => (
@@ -809,19 +919,29 @@ function ReviewActionForm() {
       method="get"
     >
       <div>
-        <p className="type-caption">Core contacts action</p>
-        <h3 className="relationship-name">Preview a filtered relationship review</h3>
+        <p className="type-caption">
+          {bilingualText("核心联系人动作", "Core contacts action")}
+        </p>
+        <h3 className="relationship-name">
+          {bilingualText(
+            "预览筛选后的关系复核",
+            "Preview a filtered relationship review",
+          )}
+        </h3>
         <p className="type-body">
-          This prepares one sourced contact for follow-up review, then stops
-          before any contact write, search index read, message, task, or outside
-          account change.
+          {bilingualText(
+            "这会准备一个有来源联系人用于跟进复核，然后在任何联系人写入、搜索索引读取、消息、任务或外部账号更改前停止。",
+            "This prepares one sourced contact for follow-up review, then stops before any contact write, search index read, message, task, or outside account change.",
+          )}
         </p>
       </div>
       <input name="action" type="hidden" value="review-filtered-contact" />
       <input name="query" type="hidden" value="storage" />
       <input name="tag" type="hidden" value="topic:storage-pilots" />
       <input name="value" type="hidden" value="commercial_opportunity" />
-      <button type="submit">Preview filtered review</button>
+      <button type="submit">
+        {bilingualText("预览筛选复核", "Preview filtered review")}
+      </button>
     </form>
   );
 }
@@ -843,14 +963,21 @@ function SuccessBoundary({
 
 function SecondaryControls({ payload }: { payload: ContactsListSearchPayload }) {
   return (
-    <WorkbenchSurface eyebrow="Controls" title="Find another relationship">
+    <WorkbenchSurface
+      eyebrow={bilingualText("控制", "Controls")}
+      title={bilingualText("查找另一段关系", "Find another relationship")}
+    >
       <ContactsSearchForm payload={payload} />
       <ReviewActionForm />
       <div aria-label="App contacts list health states">
-        <h3 className="relationship-name">List health</h3>
+        <h3 className="relationship-name">
+          {bilingualText("列表健康", "List health")}
+        </h3>
         <p className="type-body">
-          Check how contacts behaves when the list is empty, still resolving,
-          or unavailable.
+          {bilingualText(
+            "检查列表为空、仍在解析或不可用时联系人页如何表现。",
+            "Check how contacts behaves when the list is empty, still resolving, or unavailable.",
+          )}
         </p>
         <nav className="contacts-state-links">
           {routeStateChecks.map((stateCheck) => (
@@ -861,8 +988,10 @@ function SecondaryControls({ payload }: { payload: ContactsListSearchPayload }) 
         </nav>
       </div>
       <p className="privacy-note">
-        No search index, database, email, calendar, AI, notification,
-        messaging, or external network is contacted from this route.
+        {bilingualText(
+          "这个页面不会联系搜索索引、数据库、邮件、日历、AI、通知、消息或外部网络。",
+          "No search index, database, email, calendar, AI, notification, messaging, or external network is contacted from this route.",
+        )}
       </p>
     </WorkbenchSurface>
   );
@@ -870,7 +999,10 @@ function SecondaryControls({ payload }: { payload: ContactsListSearchPayload }) 
 
 function ContactsListSection({ payload }: { payload: ContactsListSearchPayload }) {
   return (
-    <WorkbenchSurface eyebrow="People" title="People in this review">
+    <WorkbenchSurface
+      eyebrow={bilingualText("人物", "People")}
+      title={bilingualText("本次复核中的人", "People in this review")}
+    >
       <p className="type-body">{listSummary(payload)}</p>
       <div className="contacts-card-grid">
         {payload.contacts.map((contact) => (
@@ -883,10 +1015,18 @@ function ContactsListSection({ payload }: { payload: ContactsListSearchPayload }
 
 function FilterVocabulary({ payload }: { payload: ContactsListSearchPayload }) {
   return (
-    <WorkbenchSurface eyebrow="Filters" title="Search, source, and value vocabulary">
+    <WorkbenchSurface
+      eyebrow={bilingualText("筛选", "Filters")}
+      title={bilingualText(
+        "搜索、来源和价值词汇",
+        "Search, source, and value vocabulary",
+      )}
+    >
       <p className="type-body">
-        Use these labels to narrow the review without changing contacts or
-        contacting outside accounts.
+        {bilingualText(
+          "使用这些标签缩小复核范围，不更改联系人，也不联系外部账号。",
+          "Use these labels to narrow the review without changing contacts or contacting outside accounts.",
+        )}
       </p>
       <div aria-label="App contacts value filter labels" className="chip-row">
         {payload.availableFilters.values.map((value) => (
@@ -903,7 +1043,7 @@ function FilterVocabulary({ payload }: { payload: ContactsListSearchPayload }) {
         ))}
       </div>
       <details>
-        <summary>List evidence details</summary>
+        <summary>{bilingualText("列表证据详情", "List evidence details")}</summary>
         <EvidenceChips
           evidenceIds={payload.provenance.evidenceIds}
           label="App contacts list evidence"
@@ -940,14 +1080,32 @@ export function AppContactsCommandCenter({
       <div className="app-contacts-route">
         <style>{appContactsStyles}</style>
         <StateView
-          description="The contacts page could not compose the local contacts list search and filter state."
-          emptyState="A contacts filter or list boundary returned an unexpected state."
+          description={bilingualText(
+            "联系人页无法组合本地联系人列表搜索和筛选状态。",
+            "The contacts page could not compose the local contacts list search and filter state.",
+          )}
+          emptyState={bilingualText(
+            "联系人筛选或列表边界返回了异常状态。",
+            "A contacts filter or list boundary returned an unexpected state.",
+          )}
           evidence={[result.error.code, firstEvidence(result.error.evidenceIds)]}
-          eyebrow="Contacts"
-          guardrail="No external action can run when contacts composition fails."
-          nextStep="Inspect GET /api/contacts."
-          purpose="Stop contacts review when source evidence cannot be composed."
-          title="Contacts relationship console could not load"
+          eyebrow={bilingualText("联系人", "Contacts")}
+          guardrail={bilingualText(
+            "联系人组合失败时不能运行外部动作。",
+            "No external action can run when contacts composition fails.",
+          )}
+          nextStep={bilingualText(
+            "检查 GET /api/contacts。",
+            "Inspect GET /api/contacts.",
+          )}
+          purpose={bilingualText(
+            "来源证据无法组合时停止联系人复核。",
+            "Stop contacts review when source evidence cannot be composed.",
+          )}
+          title={bilingualText(
+            "联系人关系控制台无法加载",
+            "Contacts relationship console could not load",
+          )}
         />
       </div>
     );

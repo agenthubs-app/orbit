@@ -39,7 +39,7 @@ test("/app/agent composes approved agent capabilities into the relationship work
   const html = await renderAgentPage();
   const text = visibleText(html);
 
-  assert.match(html, /<h2>Agent command center<\/h2>/);
+  assert.match(html, /<h2>[^<]*Agent review<\/h2>/);
   assert.match(html, /Maya Chen/);
   assert.match(html, /Kumo Grid/);
   assert.match(html, /Send reliability memo to Maya Chen/);
@@ -129,18 +129,18 @@ test("/app/agent renders empty loading and failure states through the shared sta
     const html = await renderAgentPage({ scenario: state.scenario });
     const text = visibleText(html);
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(state.expectedCopy));
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
     assert.match(
       html,
       new RegExp(`data-route-state-url="/app/agent\\?scenario=${state.scenario}"`),
     );
-    assert.match(html, /aria-label="Agent route recovery actions"/);
+    assert.match(html, /aria-label="[^"]*Agent route recovery actions"/);
     assert.match(
       html,
       new RegExp(
-        `href="${state.expectedRecoveryHref}">${state.expectedRecoveryLabel}</a>`,
+        `href="${state.expectedRecoveryHref}">[^<]*${state.expectedRecoveryLabel}</a>`,
       ),
     );
     assert.doesNotMatch(html, />[^<]*(Scenario URL|mock|harness|providers?)[^<]*</i);

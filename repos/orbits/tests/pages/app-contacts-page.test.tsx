@@ -47,7 +47,7 @@ test("/app/contacts leads with a current relationship review queue", async () =>
   const searchIndex = html.indexOf("Search contact list");
   const healthIndex = html.indexOf("List health");
 
-  assert.match(html, /<h2>Relationship review queue<\/h2>/);
+  assert.match(html, /<h2>[^<]*Relationship review queue<\/h2>/);
   assert.ok(queueIndex >= 0, "review queue should render");
   assert.ok(
     queueIndex < searchIndex,
@@ -82,7 +82,7 @@ test("/app/contacts leads with a current relationship review queue", async () =>
   assert.match(kenjiRow, /Next safe action<\/dt><dd>Send Kenji/);
   assert.match(kenjiRow, /Commercial opportunity/);
   assert.match(kenjiRow, /Referral path/);
-  assert.match(kenjiRow, /<summary>Contact evidence details<\/summary>/);
+  assert.match(kenjiRow, /<summary>[^<]*Contact evidence details<\/summary>/);
   assert.match(kenjiRow, /evidence:contacts-list-kenji/);
   assert.doesNotMatch(kenjiRow, /Score 91/);
 });
@@ -94,15 +94,15 @@ test("/app/contacts keeps search controls and diagnostics secondary", async () =
   assert.match(html, /List health/);
   assert.match(
     html,
-    /href="\/app\/contacts\?scenario=empty">No contacts found<\/a>/,
+    /href="\/app\/contacts\?scenario=empty">[^<]*No contacts found<\/a>/,
   );
   assert.match(
     html,
-    /href="\/app\/contacts\?scenario=pending">Still checking sources<\/a>/,
+    /href="\/app\/contacts\?scenario=pending">[^<]*Still checking sources<\/a>/,
   );
   assert.match(
     html,
-    /href="\/app\/contacts\?scenario=failure">List unavailable<\/a>/,
+    /href="\/app\/contacts\?scenario=failure">[^<]*List unavailable<\/a>/,
   );
 });
 
@@ -125,12 +125,12 @@ test("/app/contacts previews a contacts review action without external side effe
   assert.match(html, /Filtered review ready: Kenji Watanabe/);
   assert.match(html, /Send Kenji the storage pilot operator intro by Friday/);
   assert.match(html, new RegExp(escapeRegex(expectedSafetySummary)));
-  assert.match(html, /Contact record changed: no/);
-  assert.match(html, /Message sent: no/);
-  assert.match(html, /Notification sent: no/);
-  assert.match(html, /Search index read: no/);
-  assert.match(html, /Database query executed: no/);
-  assert.match(html, /Outside services contacted: none/);
+  assert.match(html, /Contact record changed: .*no/);
+  assert.match(html, /Message sent: .*no/);
+  assert.match(html, /Notification sent: .*no/);
+  assert.match(html, /Search index read: .*no/);
+  assert.match(html, /Database query executed: .*no/);
+  assert.match(html, /Outside services contacted: .*none/);
   assert.match(html, /data-task-result="contacts-filtered-review-preview"/);
   assert.match(
     html,
@@ -141,7 +141,7 @@ test("/app/contacts previews a contacts review action without external side effe
     reloadedHtml,
     /data-action-evidence="contacts-filtered-review-local-preview"/,
   );
-  assert.match(reloadedHtml, /Outside services contacted: none/);
+  assert.match(reloadedHtml, /Outside services contacted: .*none/);
 
   t.diagnostic(
     [
@@ -183,18 +183,18 @@ test("/app/contacts renders empty loading and failure states through the shared 
   for (const state of scenarios) {
     const html = await renderContactsPage({ scenario: state.scenario });
 
-    assert.match(html, new RegExp(`<h2>${state.expectedTitle}</h2>`));
+    assert.match(html, new RegExp(`<h2>[^<]*${state.expectedTitle}</h2>`));
     assert.match(html, new RegExp(state.expectedCopy));
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
     assert.match(
       html,
       new RegExp(`data-route-state-url="/app/contacts\\?scenario=${state.scenario}"`),
     );
-    assert.match(html, /aria-label="Contacts route recovery actions"/);
+    assert.match(html, /aria-label="[^"]*Contacts route recovery actions"/);
     assert.match(
       html,
       new RegExp(
-        `href="${state.expectedRecoveryHref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}">${state.expectedRecoveryLabel}</a>`,
+        `href="${state.expectedRecoveryHref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}">[^<]*${state.expectedRecoveryLabel}</a>`,
       ),
     );
     assert.doesNotMatch(html, />[^<]*(Scenario URL|mock|harness|providers?)[^<]*</i);

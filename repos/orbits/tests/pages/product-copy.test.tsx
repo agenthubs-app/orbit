@@ -285,6 +285,15 @@ async function renderEventDetailPage(
   return renderToStaticMarkup(pageElement);
 }
 
+async function renderAgentPage(searchParams?: PageSearchParams): Promise<string> {
+  const Page = (await import("../../app/(app)/app/agent/page")).default;
+  const pageElement = await Page({
+    searchParams: Promise.resolve(searchParams ?? {}),
+  });
+
+  return renderToStaticMarkup(pageElement);
+}
+
 function assertPrimaryTextAvoidsInternalVocabulary(
   routeLabel: string,
   html: string,
@@ -299,6 +308,111 @@ function assertPrimaryTextAvoidsInternalVocabulary(
     );
   }
 }
+
+function assertChineseLeadsEnglish(
+  routeLabel: string,
+  text: string,
+  chineseCopy: string,
+  englishCopy: string,
+) {
+  const chineseIndex = text.indexOf(chineseCopy);
+  const englishIndex = text.indexOf(englishCopy);
+
+  assert.notEqual(
+    chineseIndex,
+    -1,
+    `${routeLabel} should show Chinese copy: ${chineseCopy}`,
+  );
+  assert.notEqual(
+    englishIndex,
+    -1,
+    `${routeLabel} should show secondary English copy: ${englishCopy}`,
+  );
+  assert.ok(
+    chineseIndex < englishIndex,
+    `${routeLabel} should place Chinese before English for ${chineseCopy} / ${englishCopy}`,
+  );
+}
+
+test("all product pages present Chinese-first bilingual interface copy", async () => {
+  const cases = [
+    {
+      chinese: "问 Orbit AI",
+      english: "Ask Orbit AI",
+      html: await renderAppHome(),
+      label: "/app",
+    },
+    {
+      chinese: "个人资料",
+      english: "Profile",
+      html: await renderProfilePage(),
+      label: "/app/profile",
+    },
+    {
+      chinese: "添加关系来源",
+      english: "Relationship source intake",
+      html: await renderContactsNewPage(),
+      label: "/app/contacts/new",
+    },
+    {
+      chinese: "关系复盘队列",
+      english: "Relationship review queue",
+      html: await renderContactsPage(),
+      label: "/app/contacts",
+    },
+    {
+      chinese: "关系工作区",
+      english: "Relationship workspace",
+      html: await renderContactDetailPage(),
+      label: "/app/contacts/demo-contact-1",
+    },
+    {
+      chinese: "当前活动优先级",
+      english: "Current event priority",
+      html: await renderEventsPage(),
+      label: "/app/events",
+    },
+    {
+      chinese: "当前活动",
+      english: "Current event",
+      html: await renderEventDetailPage(),
+      label: "/app/events/demo-event-1",
+    },
+    {
+      chinese: "要守住的承诺",
+      english: "Promise to keep next",
+      html: await renderFollowupsPage(),
+      label: "/app/followups",
+    },
+    {
+      chinese: "当前回复优先级",
+      english: "Current reply priority",
+      html: await renderChatPage(),
+      label: "/app/chat",
+    },
+    {
+      chinese: "关系健康优先级",
+      english: "Network health priority",
+      html: await renderDashboardPage(),
+      label: "/app/dashboard",
+    },
+    {
+      chinese: "下一步审核",
+      english: "Agent review",
+      html: await renderAgentPage(),
+      label: "/app/agent",
+    },
+  ];
+
+  for (const pageCase of cases) {
+    assertChineseLeadsEnglish(
+      pageCase.label,
+      primaryTextFromHtml(pageCase.html),
+      pageCase.chinese,
+      pageCase.english,
+    );
+  }
+});
 
 test("/app and /app/profile primary text avoids internal implementation vocabulary", async () => {
   const cases = [
@@ -351,7 +465,7 @@ test("/app/contacts primary copy reads as connected relationship work", async ()
   assert.match(contactsText, /Open relationship workspace/i);
   assert.match(detailText, /Relationship workspace: Kenji Watanabe/i);
   assert.match(detailText, /Source story/i);
-  assert.match(detailText, /Relationship stage: Needs follow-up/i);
+  assert.match(detailText, /Relationship stage: .*Needs follow-up/i);
   assert.match(detailText, /Priority reason/i);
   assert.match(detailText, /Prepare follow-up/i);
 
@@ -371,8 +485,8 @@ test("/app/contacts primary copy reads as connected relationship work", async ()
     );
   }
 
-  assert.match(contactsHtml, /<summary>Contact evidence details<\/summary>/);
-  assert.match(contactDetailHtml, /<summary>Evidence IDs and source records<\/summary>/);
+  assert.match(contactsHtml, /<summary>[^<]*Contact evidence details<\/summary>/);
+  assert.match(contactDetailHtml, /<summary>[^<]*Evidence IDs and source records<\/summary>/);
   assert.match(contactsHtml, /evidence:contacts-list-kenji/);
   assert.match(contactDetailHtml, /evidence:connection-storage-pilot/);
 });
@@ -390,7 +504,7 @@ test("/app/events primary copy reads as event preparation work", async () => {
   assert.match(detailText, /Current event: Climate founders dinner/);
   assert.match(detailText, /Source story/);
   assert.match(detailText, /First person to meet: Priya Shah/);
-  assert.match(detailText, /In-room action: Mark Priya Shah to meet on this page/);
+  assert.match(detailText, /In-room action: .*Mark Priya Shah to meet on this page/);
   assert.match(detailText, /Meet Priya Shah first/);
   assert.match(detailText, /Opening line context/);
   assert.match(detailText, /trusted event details/i);
@@ -445,7 +559,7 @@ test("/app/followups primary copy reads as promise follow-through work", async (
     );
   }
 
-  assert.match(html, /<summary>Evidence details<\/summary>/);
+  assert.match(html, /<summary>[^<]*Evidence details<\/summary>/);
   assert.match(html, /queue:notification:maya-deck/);
   assert.match(actionHtml, /data-side-effects="none"/);
 });
@@ -464,7 +578,7 @@ test("/app/chat primary copy reads as private reply review", async () => {
   assert.match(chatText, /Next safe action/i);
   assert.match(chatText, /Reply-review workflow/i);
   assert.match(chatText, /Participant labels/i);
-  assert.match(chatText, /Review status: staged for human review/i);
+  assert.match(chatText, /Review status: .*staged for human review/i);
   assert.match(actionText, /Local reply preview ready/i);
   assert.match(actionText, /Selected conversation: Maya Chen at Kumo Grid/i);
   assert.match(actionText, /What remains local/i);
@@ -492,7 +606,7 @@ test("/app/chat primary copy reads as private reply review", async () => {
     );
   }
 
-  assert.match(html, /<summary>Source and safety evidence<\/summary>/);
+  assert.match(html, /<summary>[^<]*Source and safety evidence<\/summary>/);
   assert.match(actionHtml, /data-side-effects="none"/);
   assert.match(actionHtml, /evidence:chat:maya:pilot-timing/);
 });
@@ -509,7 +623,7 @@ test("/app/dashboard primary copy reads as relationship health-to-action work", 
   assert.match(dashboardText, /Current priority: Maya Chen at Kumo Grid/i);
   assert.match(dashboardText, /Why it matters now/i);
   assert.match(dashboardText, /Source confidence: High/i);
-  assert.match(dashboardText, /Review status: Ready for human review/i);
+  assert.match(dashboardText, /Review status: .*Ready for human review/i);
   assert.match(dashboardText, /Recommended next move/i);
   assert.match(dashboardText, /Health-to-action workflow/i);
   assert.match(dashboardText, /Coverage context/i);
@@ -538,7 +652,7 @@ test("/app/dashboard primary copy reads as relationship health-to-action work", 
     );
   }
 
-  assert.match(html, /<summary>Evidence source trail<\/summary>/);
+  assert.match(html, /<summary>[^<]*Evidence source trail<\/summary>/);
   assert.doesNotMatch(
     html,
     /<details(?![^>]*hidden)[^>]*><summary>Technical provenance IDs<\/summary>/,
@@ -604,7 +718,7 @@ test("/app keeps raw provenance identifiers out of primary copy", async () => {
     appText,
     /\b(?:bootstrap|dashboard|fixture|summary|agent-action|event-fixture|profile-fixture)-[a-z0-9:_-]+\b/i,
   );
-  assert.match(html, /<summary>来源详情<\/summary>/);
+  assert.match(html, /<summary>来源详情 \/ Source details<\/summary>/);
   assert.match(html, /bootstrap-fixture-1/);
   assert.doesNotMatch(
     contactsNewText,
@@ -615,7 +729,7 @@ test("/app keeps raw provenance identifiers out of primary copy", async () => {
     /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b/,
   );
   assert.match(contactsNewText, /Manual note from climate founders dinner/);
-  assert.match(contactsNewHtml, /<summary>Source record details<\/summary>/);
+  assert.match(contactsNewHtml, /<summary>[^<]*Source record details<\/summary>/);
   assert.match(contactsNewHtml, /evidence:manual-note-kenji/);
 });
 
@@ -688,7 +802,7 @@ test("/app and /app/profile state recovery points to visible recovery controls",
     );
     assert.match(
       pageCase.html,
-      /<summary>Source details<\/summary>/,
+      /<summary>来源详情 \/ Source details<\/summary>/,
       `${pageCase.label} should render the matching source-details disclosure`,
     );
     assert.doesNotMatch(

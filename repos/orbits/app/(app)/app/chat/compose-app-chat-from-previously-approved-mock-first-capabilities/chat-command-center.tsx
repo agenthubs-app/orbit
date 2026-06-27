@@ -22,6 +22,7 @@ import type {
   ChatSummaryExtractionPayload,
   ChatSummaryExtractionResult,
 } from "../../../../../features/chat/summary-contract";
+import { bilingualText } from "../../../../../shared/ui/bilingual";
 import { Chip, WorkbenchSurface } from "../../../../../shared/ui/primitives";
 import { createAppChatRouteServices } from "./chat-service-factory";
 
@@ -216,15 +217,15 @@ type ChatRouteFailure = Extract<ChatRouteResult, { success: false }>;
 const routeStateChecks = [
   {
     href: "/app/chat?scenario=empty",
-    label: "No chat context",
+    label: bilingualText("没有对话上下文", "No chat context"),
   },
   {
     href: "/app/chat?scenario=pending",
-    label: "Consent check",
+    label: bilingualText("同意状态检查", "Consent check"),
   },
   {
     href: "/app/chat?scenario=failure",
-    label: "Recovery path",
+    label: bilingualText("恢复路径", "Recovery path"),
   },
 ] as const;
 
@@ -235,27 +236,30 @@ const routeRecoveryActions: Record<
   empty: [
     {
       href: "/app/chat",
-      label: "Show ready chat workspace",
+      label: bilingualText("显示可用对话工作区", "Show ready chat workspace"),
     },
     {
       href: "/app/chat?action=record-local-reply",
-      label: "Preview local reply",
+      label: bilingualText("预览本地回复", "Preview local reply"),
     },
   ],
   failure: [
     {
       href: "/app/chat",
-      label: "Reload chat workspace",
+      label: bilingualText("重新加载对话工作区", "Reload chat workspace"),
     },
     {
       href: "/app/chat?scenario=pending",
-      label: "Check consent status",
+      label: bilingualText("检查同意状态", "Check consent status"),
     },
   ],
   pending: [
     {
       href: "/app/chat",
-      label: "Return to ready chat workspace",
+      label: bilingualText(
+        "返回可用对话工作区",
+        "Return to ready chat workspace",
+      ),
     },
   ],
 };
@@ -482,23 +486,23 @@ function RouteStateBoundary({ scenario }: { scenario: RouteScenario }) {
         data-error-code={failure ? failure.error.code : undefined}
         data-state-boundary="shared-ui-state-view"
       >
-        <WorkbenchSurface elevated eyebrow="Chat" title={copy.title}>
+        <WorkbenchSurface elevated eyebrow={bilingualText("对话", "Chat")} title={copy.title}>
           <p className="type-body">{copy.description}</p>
           <dl aria-label="Chat status details" className="relationship-meta">
             <div>
-              <dt>What Orbit knows</dt>
+              <dt>{bilingualText("Orbit 已知", "What Orbit knows")}</dt>
               <dd>{copy.purpose}</dd>
             </div>
             <div>
-              <dt>Current status</dt>
+              <dt>{bilingualText("当前状态", "Current status")}</dt>
               <dd>{copy.emptyState}</dd>
             </div>
             <div>
-              <dt>Safety check</dt>
+              <dt>{bilingualText("安全检查", "Safety check")}</dt>
               <dd>{copy.guardrail}</dd>
             </div>
             <div>
-              <dt>Next step</dt>
+              <dt>{bilingualText("下一步", "Next step")}</dt>
               <dd>{copy.nextStep}</dd>
             </div>
           </dl>
@@ -521,7 +525,7 @@ function EvidenceChips({
 
   return (
     <details className="chat-evidence-details">
-      <summary>Source and safety evidence</summary>
+      <summary>{bilingualText("来源和安全证据", "Source and safety evidence")}</summary>
       <div aria-label={label} className="chip-row">
         {publicIds.map((evidenceId) => (
           <Chip key={evidenceId} tone="evidence">
@@ -560,11 +564,16 @@ function ConversationList({
 
 function ThreadPanel({ thread }: { thread: ChatMessageThreadPayload }) {
   return (
-    <WorkbenchSurface eyebrow="Conversation review" title="One thread to review">
+    <WorkbenchSurface
+      eyebrow={bilingualText("对话复核", "Conversation review")}
+      title={bilingualText("复核一个对话线程", "One thread to review")}
+    >
       <p className="type-body">{productCopy(thread.summary)}</p>
       <p className="type-caption">
-        Participant labels keep the private reply review grounded in who said
-        what before a draft is staged.
+        {bilingualText(
+          "参与者标签会让私人回复复核始终基于谁说了什么，再暂存草稿。",
+          "Participant labels keep the private reply review grounded in who said what before a draft is staged.",
+        )}
       </p>
       <div aria-label="Private conversation messages" className="chat-message-list">
         {thread.messages.map((message) => (
@@ -592,24 +601,24 @@ function RelationshipContextPanel({
 }) {
   return (
     <WorkbenchSurface
-      eyebrow="Relationship context"
+      eyebrow={bilingualText("关系上下文", "Relationship context")}
       title={thread.oneToOneContext.participantName}
     >
       <dl aria-label="Conversation relationship context" className="relationship-meta">
         <div>
-          <dt>Organization</dt>
+          <dt>{bilingualText("组织", "Organization")}</dt>
           <dd>{thread.oneToOneContext.organization}</dd>
         </div>
         <div>
-          <dt>Why this connection exists</dt>
+          <dt>{bilingualText("关系来源原因", "Why this connection exists")}</dt>
           <dd>{thread.oneToOneContext.relationshipReason}</dd>
         </div>
         <div>
-          <dt>Latest context</dt>
+          <dt>{bilingualText("最新上下文", "Latest context")}</dt>
           <dd>{thread.oneToOneContext.latestContext}</dd>
         </div>
         <div>
-          <dt>Sensible next step</dt>
+          <dt>{bilingualText("合理下一步", "Sensible next step")}</dt>
           <dd>{thread.oneToOneContext.recommendedFollowup}</dd>
         </div>
       </dl>
@@ -631,11 +640,16 @@ function WritingAssistPanel({
   return (
     <ReviewCard
       evidenceIds={primaryAssist.evidenceIds}
-      eyebrow="Writing assist"
+      eyebrow={bilingualText("写作辅助", "Writing assist")}
       title={primaryAssist.label}
     >
       <p className="type-body">{primaryAssist.suggestedText}</p>
-      <p className="type-caption">Review status: staged for human review.</p>
+      <p className="type-caption">
+        {bilingualText(
+          "复核状态：已暂存，等待人工复核。",
+          "Review status: staged for human review.",
+        )}
+      </p>
       <p className="type-caption">{primaryAssist.rationale}</p>
     </ReviewCard>
   );
@@ -645,13 +659,16 @@ function SummaryPanel({ summary }: { summary: ChatSummaryExtractionPayload }) {
   return (
     <ReviewCard
       evidenceIds={summary.provenance.evidenceIds}
-      eyebrow="Conversation summary"
-      title="Summary for review"
+      eyebrow={bilingualText("对话摘要", "Conversation summary")}
+      title={bilingualText("待复核摘要", "Summary for review")}
     >
       <p className="type-body">
         {summary.summary
           ? summary.summary.narrative
-          : "No summary is available for this conversation yet."}
+          : bilingualText(
+              "这段对话还没有可用摘要。",
+              "No summary is available for this conversation yet.",
+            )}
       </p>
     </ReviewCard>
   );
@@ -669,14 +686,17 @@ function ExtractionPanel({
   return (
     <ReviewCard
       evidenceIds={extraction.provenance.evidenceIds}
-      eyebrow="Conversation extraction"
-      title="Relationship signals to confirm"
+      eyebrow={bilingualText("对话提取", "Conversation extraction")}
+      title={bilingualText("待确认的关系信号", "Relationship signals to confirm")}
     >
       {need && <p className="type-body">{need.statement}</p>}
       {task && <Chip tone="confirmation">{task.title}</Chip>}
       {profileSuggestion && (
         <p className="privacy-note">
-          {profileSuggestion.proposedValue} needs review before profile changes.
+          {bilingualText(
+            `${profileSuggestion.proposedValue} 需要先复核，才能修改资料。`,
+            `${profileSuggestion.proposedValue} needs review before profile changes.`,
+          )}
         </p>
       )}
     </ReviewCard>
@@ -687,24 +707,42 @@ function PrivacyPanel({ privacy }: { privacy: ChatPrivacyControlsPayload }) {
   return (
     <ReviewCard
       evidenceIds={privacy.provenance.evidenceIds}
-      eyebrow="Privacy controls"
+      eyebrow={bilingualText("隐私控制", "Privacy controls")}
       title={`${privacy.participantName} · ${privacy.organization}`}
     >
       <p className="type-body">
-        Consent status: {privacy.analysisOptIn.enabled ? "analysis allowed" : "analysis off"}.
+        {bilingualText("同意状态", "Consent status")}:{" "}
+        {privacy.analysisOptIn.enabled
+          ? bilingualText("允许分析", "analysis allowed")
+          : bilingualText("分析关闭", "analysis off")}
+        .
       </p>
       <dl aria-label="Chat privacy controls" className="relationship-meta">
         <div>
-          <dt>Analysis status</dt>
-          <dd>{privacy.analysisOptIn.enabled ? "Allowed" : "Off"}</dd>
+          <dt>{bilingualText("分析状态", "Analysis status")}</dt>
+          <dd>
+            {privacy.analysisOptIn.enabled
+              ? bilingualText("允许", "Allowed")
+              : bilingualText("关闭", "Off")}
+          </dd>
         </div>
         <div>
-          <dt>Private notes</dt>
-          <dd>Private note hidden from analysis and sharing</dd>
+          <dt>{bilingualText("私人备注", "Private notes")}</dt>
+          <dd>
+            {bilingualText(
+              "私人备注不会进入分析或分享。",
+              "Private note hidden from analysis and sharing",
+            )}
+          </dd>
         </div>
         <div>
-          <dt>Sharing</dt>
-          <dd>Sensitive context needs confirmation first.</dd>
+          <dt>{bilingualText("分享", "Sharing")}</dt>
+          <dd>
+            {bilingualText(
+              "敏感上下文需要先确认。",
+              "Sensitive context needs confirmation first.",
+            )}
+          </dd>
         </div>
       </dl>
     </ReviewCard>
@@ -741,12 +779,19 @@ function ChatActionForm({
     <form action="/app/chat" className="chat-action-form" method="get">
       <input name="action" type="hidden" value="record-local-reply" />
       <p className="type-body">
-        Review the suggested reply before previewing it as a local follow-up.
+        {bilingualText(
+          "在把建议回复预览为本地跟进前，先复核内容。",
+          "Review the suggested reply before previewing it as a local follow-up.",
+        )}
       </p>
       {assist && (
-        <p className="type-caption">Draft message: {assist.suggestedText}</p>
+        <p className="type-caption">
+          {bilingualText("草稿消息", "Draft message")}: {assist.suggestedText}
+        </p>
       )}
-      <button type="submit">Preview local reply</button>
+      <button type="submit">
+        {bilingualText("预览本地回复", "Preview local reply")}
+      </button>
     </form>
   );
 }
@@ -770,25 +815,29 @@ function ChatActionResult({
       data-side-effects="none"
       role="status"
     >
-      <strong>Local reply preview ready</strong>
+      <strong>{bilingualText("本地回复预览已准备", "Local reply preview ready")}</strong>
       <p className="type-body">
-        Selected conversation: {conversation.participantName} at{" "}
+        {bilingualText("已选择对话", "Selected conversation")}: {conversation.participantName} at{" "}
         {conversation.organization}
       </p>
-      <p className="type-caption">Draft selected from writing assist</p>
+      <p className="type-caption">
+        {bilingualText("草稿来自写作辅助", "Draft selected from writing assist")}
+      </p>
       <p className="type-body">{result.message.body}</p>
       <p className="type-body">
-        What remains local: Selected conversation, draft reply, and follow-up
-        tracker stay on this page.
+        {bilingualText(
+          "保持本地：已选择对话、回复草稿和跟进追踪都留在此页面。",
+          "What remains local: Selected conversation, draft reply, and follow-up tracker stay on this page.",
+        )}
       </p>
       <ul aria-label="Local reply safety ledger" className="chat-priority-ledger">
-        <li>No external message</li>
-        <li>No notification</li>
-        <li>No profile update</li>
-        <li>No private-note analysis</li>
-        <li>No automated writing call</li>
-        <li>No saved-record write</li>
-        <li>No outside network request</li>
+        <li>{bilingualText("无外部消息", "No external message")}</li>
+        <li>{bilingualText("无通知", "No notification")}</li>
+        <li>{bilingualText("无资料更新", "No profile update")}</li>
+        <li>{bilingualText("无私人备注分析", "No private-note analysis")}</li>
+        <li>{bilingualText("无自动写作调用", "No automated writing call")}</li>
+        <li>{bilingualText("无保存记录写入", "No saved-record write")}</li>
+        <li>{bilingualText("无外部网络请求", "No outside network request")}</li>
       </ul>
     </div>
   );
@@ -814,23 +863,29 @@ function FollowupTracker({
       data-followup-tracker="local-chat-followup"
       data-side-effects="none"
     >
-      <strong>Follow-up tracker</strong>
+      <strong>{bilingualText("跟进追踪", "Follow-up tracker")}</strong>
       <dl className="relationship-meta">
         <div>
-          <dt>Source-backed task</dt>
+          <dt>{bilingualText("有来源支撑的任务", "Source-backed task")}</dt>
           <dd>{task.title}</dd>
         </div>
         <div>
-          <dt>Local note</dt>
+          <dt>{bilingualText("本地备注", "Local note")}</dt>
           <dd>
             {actionResult
-              ? "Local reply preview ready for follow-up tracking"
-              : "Record a local reply preview before tracking progress"}
+              ? bilingualText(
+                  "本地回复预览已准备，可用于跟进追踪。",
+                  "Local reply preview ready for follow-up tracking",
+                )
+              : bilingualText(
+                  "追踪进展前，先记录本地回复预览。",
+                  "Record a local reply preview before tracking progress",
+                )}
           </dd>
         </div>
         <div>
-          <dt>External send</dt>
-          <dd>External send remains off</dd>
+          <dt>{bilingualText("外部发送", "External send")}</dt>
+          <dd>{bilingualText("外部发送保持关闭", "External send remains off")}</dd>
         </div>
       </dl>
       <EvidenceChips
@@ -874,39 +929,46 @@ function CurrentReplyPriority({
     <WorkbenchSurface
       className="chat-priority"
       elevated
-      eyebrow="Private relationship reply"
-      title="Current reply priority"
+      eyebrow={bilingualText("私密关系回复", "Private relationship reply")}
+      title={bilingualText("当前回复优先级", "Current reply priority")}
     >
       <span hidden>Chat command center</span>
       <div className="chat-priority-copy">
         <p className="type-body">
-          {conversation.participantName} at {conversation.organization} is the
-          one conversation to review before staging the next response.
+          {bilingualText(
+            `${conversation.participantName}（${conversation.organization}）是现在要先复核的一段对话，然后再准备回复。`,
+            `${conversation.participantName} at ${conversation.organization} is the one conversation to review before staging the next response.`,
+          )}
         </p>
         <p className="type-body">
-          Why it matters now: {context.latestContext}
+          {bilingualText("为什么现在重要", "Why it matters now")}:{" "}
+          {context.latestContext}
         </p>
         <p className="type-body">
-          Consent and privacy posture:{" "}
+          {bilingualText("同意和隐私状态", "Consent and privacy posture")}:{" "}
           {privacy.analysisOptIn.enabled
             ? "analysis allowed for reviewed conversation context"
             : "analysis is off"}
           ; private notes stay hidden from analysis and sharing.
         </p>
         <p className="type-body">
-          Suggested reply intent:{" "}
+          {bilingualText("建议回复意图", "Suggested reply intent")}:{" "}
           {primaryAssist
             ? primaryAssist.label
             : context.recommendedFollowup}
           .
         </p>
         <p className="type-body">
-          Next safe action: Reply only after review; keep the draft local.
+          {bilingualText(
+            "安全下一步：复核后再回复，草稿先留在本地。",
+            "Next safe action: Reply only after review; keep the draft local.",
+          )}
         </p>
         <p className="type-caption">
-          No external message, notification, profile update, private-note
-          analysis, automated writing call, saved-record write, or outside
-          network request occurs.
+          {bilingualText(
+            "不会发生外部消息、通知、资料更新、私人备注分析、自动写作调用、保存记录写入或外部网络请求。",
+            "No external message, notification, profile update, private-note analysis, automated writing call, saved-record write, or outside network request occurs.",
+          )}
         </p>
       </div>
       <StateLinks />
@@ -939,10 +1001,15 @@ function ChatWorkspace({
       <CurrentReplyPriority assist={assist} privacy={privacy} thread={thread} />
 
       <div className="chat-command-layout">
-        <WorkbenchSurface eyebrow="Conversation queue" title="Conversation inventory">
+        <WorkbenchSurface
+          eyebrow={bilingualText("对话队列", "Conversation queue")}
+          title={bilingualText("对话清单", "Conversation inventory")}
+        >
           <p className="type-body">
-            Broader conversation inventory stays secondary until the current
-            reply has been reviewed.
+            {bilingualText(
+              "当前回复完成复核前，更大的对话清单保持为次要内容。",
+              "Broader conversation inventory stays secondary until the current reply has been reviewed.",
+            )}
           </p>
           <ConversationList conversations={conversations} />
         </WorkbenchSurface>
@@ -950,10 +1017,15 @@ function ChatWorkspace({
       </div>
 
       <section aria-labelledby="reply-review-workflow">
-        <h2 id="reply-review-workflow">Reply-review workflow</h2>
+        <h2 id="reply-review-workflow">
+          {bilingualText("回复复核流程", "Reply-review workflow")}
+        </h2>
         <div className="chat-command-layout">
           <ThreadPanel thread={thread} />
-          <WorkbenchSurface eyebrow="Local action" title="Staged reply">
+          <WorkbenchSurface
+            eyebrow={bilingualText("本地动作", "Local action")}
+            title={bilingualText("已暂存回复", "Staged reply")}
+          >
             <ChatActionForm assist={assist.assists[0]} />
             <ChatActionResult
               conversation={selectedConversation}
@@ -968,10 +1040,12 @@ function ChatWorkspace({
       </section>
 
       <section aria-label="Chat source review" className="chat-review-grid">
-        <h2>Signal review</h2>
+        <h2>{bilingualText("信号复核", "Signal review")}</h2>
         <p className="type-body">
-          Writing help, summaries, extracted signals, and privacy controls stay
-          in review before any outside action.
+          {bilingualText(
+            "写作辅助、摘要、提取信号和隐私控制都会先保持复核，再进入任何外部动作。",
+            "Writing help, summaries, extracted signals, and privacy controls stay in review before any outside action.",
+          )}
         </p>
         <WritingAssistPanel assist={assist} />
         <SummaryPanel summary={summary} />

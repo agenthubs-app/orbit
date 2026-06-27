@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Orbit 积木式模块化开发方法</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #18231d;
+        --muted: #5a6a62;
+        --paper: #fbfaf6;
+        --panel: #ffffff;
+        --line: #d9ded7;
+        --field: #eef3ef;
+        --green: #285f50;
+        --blue: #315f83;
+        --rust: #a4573e;
+        --yellow: #f0d889;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background:
+          linear-gradient(180deg, rgba(40, 95, 80, 0.08), transparent 280px),
+          var(--paper);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        line-height: 1.62;
+        margin: 0;
+      }
+
+      main {
+        margin: 0 auto;
+        max-width: 1180px;
+        padding: 44px 22px 72px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+        margin-bottom: 32px;
+      }
+
+      .hero-copy {
+        align-content: end;
+        display: grid;
+        gap: 18px;
+        min-height: 360px;
+      }
+
+      .eyebrow {
+        color: var(--green);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          monospace;
+        font-size: 0.78rem;
+        font-weight: 760;
+        letter-spacing: 0;
+        margin: 0;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        letter-spacing: 0;
+        line-height: 1.08;
+        margin: 0;
+      }
+
+      h1 {
+        font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+        font-size: clamp(2.7rem, 7vw, 5.4rem);
+        font-weight: 400;
+        max-width: 760px;
+      }
+
+      h2 {
+        font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+        font-size: clamp(1.6rem, 3vw, 2.35rem);
+        font-weight: 400;
+      }
+
+      h3 {
+        font-size: 1rem;
+        font-weight: 780;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 1.08rem;
+        max-width: 760px;
+      }
+
+      .summary-panel {
+        align-self: end;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--rust);
+        display: grid;
+        gap: 16px;
+        padding: 22px;
+      }
+
+      .summary-panel dl {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+      }
+
+      .summary-panel div {
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 4px;
+        padding-top: 12px;
+      }
+
+      .summary-panel div:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      dt {
+        color: var(--green);
+        font-size: 0.82rem;
+        font-weight: 780;
+      }
+
+      dd {
+        margin: 0;
+      }
+
+      .section {
+        background: rgba(255, 255, 255, 0.72);
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 22px;
+        grid-template-columns: minmax(190px, 0.32fr) minmax(0, 1fr);
+        padding: 34px 0;
+      }
+
+      .section > header {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+
+      .content {
+        display: grid;
+        gap: 18px;
+        min-width: 0;
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .block {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        display: grid;
+        gap: 10px;
+        min-width: 0;
+        padding: 16px;
+      }
+
+      .block.accent {
+        border-left: 4px solid var(--blue);
+      }
+
+      .block.warning {
+        border-left: 4px solid var(--rust);
+      }
+
+      .flow {
+        background: #17231d;
+        color: #f7fbf7;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          monospace;
+        font-size: 0.92rem;
+        overflow-x: auto;
+        padding: 18px;
+        white-space: pre;
+      }
+
+      code {
+        background: rgba(49, 95, 131, 0.1);
+        border: 1px solid rgba(49, 95, 131, 0.2);
+        color: #1f4868;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          monospace;
+        font-size: 0.92em;
+        padding: 1px 5px;
+      }
+
+      .checklist {
+        display: grid;
+        gap: 10px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .checklist li {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        display: grid;
+        gap: 4px;
+        padding: 14px 16px;
+      }
+
+      .checklist strong {
+        color: var(--green);
+      }
+
+      table {
+        background: var(--panel);
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: var(--field);
+        color: var(--green);
+        font-size: 0.84rem;
+      }
+
+      .note {
+        background: linear-gradient(90deg, rgba(240, 216, 137, 0.45), #fff);
+        border: 1px solid rgba(164, 87, 62, 0.24);
+        padding: 16px;
+      }
+
+      .footer {
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 20px;
+        justify-content: space-between;
+        padding-top: 24px;
+      }
+
+      @media (max-width: 820px) {
+        main {
+          padding: 30px 16px 56px;
+        }
+
+        .hero,
+        .section {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-copy {
+          min-height: auto;
+        }
+
+        .grid,
+        .grid.three {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Orbit Development Method</p>
+          <h1 id="page-title">积木式模块化开发方法</h1>
+          <p class="lead">
+            Orbit 的开发边界不是按页面切，而是按能力切。每个能力像一块积木：先定契约，再用 mock 跑通产品路径，最后把 mock 换成真实业务组件。调用方不改，替换才算成功。
+          </p>
+        </div>
+
+        <aside class="summary-panel" aria-label="方法摘要">
+          <p class="eyebrow">One Rule</p>
+          <h2>页面不认识 mock，也不认识 provider</h2>
+          <dl>
+            <div>
+              <dt>页面和 API route 依赖什么</dt>
+              <dd><code>service-factory.ts</code> 与稳定的 <code>contract.ts</code>。</dd>
+            </div>
+            <div>
+              <dt>团队如何并行</dt>
+              <dd>一个模块一个边界。各团队在自己的 <code>features/&lt;module&gt;/</code> 内完成 contract、service、mock、live 和测试。</dd>
+            </div>
+            <div>
+              <dt>什么时候可以替换 live</dt>
+              <dd>live 实现满足同一个 service interface，返回同一个 DTO，测试能在 mock、hybrid、live 模式下说明差异。</dd>
+            </div>
+          </dl>
+        </aside>
+      </section>
+
+      <section class="section" aria-labelledby="why">
+        <header>
+          <p class="eyebrow">Why</p>
+          <h2 id="why">它解决的问题</h2>
+        </header>
+        <div class="content">
+          <p>
+            这个项目会有很多小能力：名片扫描、联系人导入、聊天摘要、活动推荐、跟进提醒、外部动作沙盒。它们成熟速度不同，也可能由不同人开发。如果页面直接 import 某个 mock，或者直接读某个 provider 的返回值，后面替换真实组件时就会牵动整条链路。
+          </p>
+          <p>
+            积木式方法的目标很朴素：让每个能力可以单独开发、单独测试、单独换掉。页面只看稳定输出，不关心背后是本地 fixture、OCR provider、邮箱 API，还是数据库。
+          </p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="layers">
+        <header>
+          <p class="eyebrow">Four Layers</p>
+          <h2 id="layers">一块积木的四层</h2>
+        </header>
+        <div class="content">
+          <div class="grid">
+            <article class="block accent">
+              <h3>1. Contract</h3>
+              <p>
+                定义 DTO、状态、错误码和输入输出。它是团队之间的协议，不写 provider 细节。
+              </p>
+              <p><code>features/acquisition/.../contract.ts</code></p>
+            </article>
+            <article class="block accent">
+              <h3>2. Service Interface</h3>
+              <p>
+                定义调用方式。页面和 API route 只通过这个接口拿数据，不能绕过去读 fixture。
+              </p>
+              <p><code>service.ts</code></p>
+            </article>
+            <article class="block accent">
+              <h3>3. Implementation</h3>
+              <p>
+                当前先放 deterministic mock。之后增加 <code>live-service.ts</code>、<code>provider.ts</code>、<code>mappers.ts</code>。
+              </p>
+              <p><code>mock-service.ts</code> / <code>live-service.ts</code></p>
+            </article>
+            <article class="block accent">
+              <h3>4. Factory</h3>
+              <p>
+                根据 <code>ORBIT_MODULE_MODE</code> 或测试设置选择 mock、hybrid、live。缺 live 时必须显式失败。
+              </p>
+              <p><code>service-factory.ts</code></p>
+            </article>
+          </div>
+
+          <pre class="flow">App Page / API Route
+  -> features/&lt;module&gt;/service-factory.ts
+  -> service.ts interface
+  -> contract.ts DTO
+  -> mock-service.ts | live-service.ts</pre>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="repo-shape">
+        <header>
+          <p class="eyebrow">File Shape</p>
+          <h2 id="repo-shape">推荐文件结构</h2>
+        </header>
+        <div class="content">
+          <pre class="flow">features/acquisition/business-card-scan-ocr-mock/
+  contract.ts          # DTO、状态、错误码
+  service.ts           # service interface
+  mock-service.ts      # 本地确定性实现
+  live-service.ts      # 未来真实实现
+  provider.ts          # OCR provider 适配，不被页面直接 import
+  mappers.ts           # provider payload -> contract DTO
+  validators.ts        # 输入、权限、字段校验
+  LIVE_IMPLEMENTATION.md
+
+features/acquisition/service-factory.ts
+app/api/contact-drafts/business-card/scan/route.ts
+app/(app)/app/contacts/new/page.tsx
+tests/features/acquisition/...test.ts</pre>
+          <p class="note">
+            命名可以随模块调整，但边界不能变：页面和 API route 通过 factory 拿 service；provider payload 必须先被 mapper 转成 contract DTO。
+          </p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="workflow">
+        <header>
+          <p class="eyebrow">Workflow</p>
+          <h2 id="workflow">一个模块的开发顺序</h2>
+        </header>
+        <div class="content">
+          <ol class="checklist">
+            <li>
+              <strong>先写 contract。</strong>
+              写清楚输入、输出、状态、错误码、来源证据字段。字段不要贴 provider 原始结构。
+            </li>
+            <li>
+              <strong>再写 mock service。</strong>
+              mock 必须确定性、可重复、无外部副作用。名片扫描可以模拟 OCR，但不能真的调用 OCR。
+            </li>
+            <li>
+              <strong>注册 service factory。</strong>
+              默认 mock；live 未接入时返回 <code>NOT_IMPLEMENTED</code>，不要偷偷回退。
+            </li>
+            <li>
+              <strong>接 API route。</strong>
+              API 返回统一 envelope，错误走共享错误形状，不把异常对象直接丢给前端。
+            </li>
+            <li>
+              <strong>接产品页。</strong>
+              页面只使用 contract 字段。页面文案描述用户任务，不暴露 fixture、provider、内部 ID。
+            </li>
+            <li>
+              <strong>补测试。</strong>
+              测 contract、mock 确定性、API envelope、页面状态、无副作用证据。
+            </li>
+            <li>
+              <strong>再接 live。</strong>
+              live 只能替换 implementation，不应该要求页面和 API route 改调用方式。
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="team">
+        <header>
+          <p class="eyebrow">Team Split</p>
+          <h2 id="team">团队怎么分工</h2>
+        </header>
+        <div class="content">
+          <table>
+            <thead>
+              <tr>
+                <th>角色</th>
+                <th>主要改哪些文件</th>
+                <th>不要碰什么</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>模块开发者</td>
+                <td><code>features/&lt;module&gt;/</code>、模块测试、对应 <code>LIVE_IMPLEMENTATION.md</code></td>
+                <td>其他模块的 fixture、页面内部状态、harness 配置</td>
+              </tr>
+              <tr>
+                <td>页面开发者</td>
+                <td><code>app/(app)/app/**</code>、页面组合测试、用户流程文案</td>
+                <td>mock-service 内部细节、provider 原始 payload</td>
+              </tr>
+              <tr>
+                <td>API 开发者</td>
+                <td><code>app/api/**/route.ts</code>、API envelope 测试、错误映射</td>
+                <td>直接 import mock 或 live provider</td>
+              </tr>
+              <tr>
+                <td>live 接入者</td>
+                <td><code>live-service.ts</code>、<code>provider.ts</code>、<code>mappers.ts</code>、<code>validators.ts</code></td>
+                <td>改页面来适配 provider；这是边界失败的信号</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="mock-live">
+        <header>
+          <p class="eyebrow">Mock To Live</p>
+          <h2 id="mock-live">抽换真实组件的规则</h2>
+        </header>
+        <div class="content">
+          <div class="grid">
+            <article class="block">
+              <h3>可以变</h3>
+              <p>provider、认证方式、外部 API、缓存、重试、限流、数据库、OCR 引擎。</p>
+            </article>
+            <article class="block">
+              <h3>不能变</h3>
+              <p>service interface、contract DTO、页面读取字段、API envelope、无副作用默认行为。</p>
+            </article>
+          </div>
+          <pre class="flow">mock-service.ts
+  -> returns BusinessCardScanResult
+
+live-service.ts
+  -> calls OCR provider
+  -> validates permission
+  -> maps provider payload
+  -> returns the same BusinessCardScanResult</pre>
+          <p>
+            如果接 live 时发现页面需要判断 <code>providerName === "x"</code>，说明 mapper 没有把 provider 差异收干净。修 mapper，不修页面。
+          </p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="sprint">
+        <header>
+          <p class="eyebrow">Sprint Size</p>
+          <h2 id="sprint">Sprint 粒度</h2>
+        </header>
+        <div class="content">
+          <p>
+            一个 sprint 尽量只交付一个能力积木。比如“名片扫描 OCR mock”是一个 sprint，“名片字段人工复核”是另一个 sprint。不要把名片扫描、重复合并、外部联系人导入和联系人详情页塞在同一个 sprint 里。
+          </p>
+          <div class="grid three">
+            <article class="block">
+              <h3>合适</h3>
+              <p>一个 contract、一个 service、一个 mock、一个 API route、一个页面入口或 dev 验证面。</p>
+            </article>
+            <article class="block">
+              <h3>偏大</h3>
+              <p>一个 sprint 同时做多个 provider、多个页面和跨模块状态联动。</p>
+            </article>
+            <article class="block">
+              <h3>偏小</h3>
+              <p>只改文案或只加 fixture，却没有可验证的接口边界。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="done">
+        <header>
+          <p class="eyebrow">Done</p>
+          <h2 id="done">完成标准</h2>
+        </header>
+        <div class="content">
+          <ul class="checklist">
+            <li>
+              <strong>contract 稳定。</strong>
+              字段命名能表达产品含义，不泄露 provider 原始字段。
+            </li>
+            <li>
+              <strong>mock 可重复。</strong>
+              同样输入得到同样结果，不访问网络、不写外部系统。
+            </li>
+            <li>
+              <strong>factory 是唯一入口。</strong>
+              页面、API route、聚合服务都不直接 import mock。
+            </li>
+            <li>
+              <strong>失败显式。</strong>
+              live 未实现时返回 <code>NOT_IMPLEMENTED</code>，不假装成功。
+            </li>
+            <li>
+              <strong>页面能说明用户任务。</strong>
+              用户看到的是“准备跟进 Kenji”，不是“fixture id 通过 harness 验证”。
+            </li>
+            <li>
+              <strong>测试覆盖边界。</strong>
+              至少覆盖 service、API envelope、页面状态和 mock-to-live 替换约束。
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="avoid">
+        <header>
+          <p class="eyebrow">Avoid</p>
+          <h2 id="avoid">不要这样做</h2>
+        </header>
+        <div class="content">
+          <div class="grid">
+            <article class="block warning">
+              <h3>页面直接 import mock</h3>
+              <p>这会让 mock 变成产品依赖，后面接 live 必然改页面。</p>
+            </article>
+            <article class="block warning">
+              <h3>contract 跟着 provider 摇摆</h3>
+              <p>provider 返回什么就暴露什么，调用方会被外部系统绑住。</p>
+            </article>
+            <article class="block warning">
+              <h3>一个 sprint 做太多能力</h3>
+              <p>冲突会增加，review 也会失真。最后没人知道到底是哪块积木坏了。</p>
+            </article>
+            <article class="block warning">
+              <h3>测试为了配置改代码</h3>
+              <p>配置是用户意图。测试应该验证配置，而不是把配置改成测试喜欢的样子。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="example">
+        <header>
+          <p class="eyebrow">Example</p>
+          <h2 id="example">名片扫描怎么落地</h2>
+        </header>
+        <div class="content">
+          <pre class="flow">Business Card Scan OCR
+  Contract:
+    imageRef, extractedFields, confidence, sourceEvidence, reviewRequired
+
+  Mock:
+    local fixture -> deterministic extractedFields
+    ocrProviderCalled: false
+    externalNetworkRequested: false
+
+  API:
+    POST /api/contact-drafts/business-card/scan
+    returns shared success/failure envelope
+
+  Product:
+    /app/contacts/new shows captured fields
+    user confirms before contact draft enters review
+
+  Live later:
+    provider.ts calls OCR
+    mappers.ts converts OCR payload
+    service returns the same contract DTO</pre>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>Orbit building-block development method</span>
+        <span>Source repo: <code>repos/orbits</code></span>
+        <span>Primary reference: <code>docs/architecture/modular-design.md</code></span>
+      </footer>
+    </main>
+  </body>
+</html>

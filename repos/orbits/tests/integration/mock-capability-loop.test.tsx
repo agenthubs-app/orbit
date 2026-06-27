@@ -127,9 +127,9 @@ test("Sprint 68 scripted acceptance run covers the mock MVP loop app routes", as
         searchParams: Promise.resolve({ action: "complete-profile-field" }),
       }),
       expected: [
-        "Ari Lane profile",
+        "Ari Lane.*Profile",
         "Ready for confirmation",
-        "Outside services contacted: none",
+        "Outside services contacted.*none",
       ],
     },
     {
@@ -144,7 +144,7 @@ test("Sprint 68 scripted acceptance run covers the mock MVP loop app routes", as
         "Preview contact review",
         "External contacts",
         "Email and calendar signals",
-        "Outside accounts contacted: none",
+        "Outside accounts contacted.*none",
       ],
     },
     {
@@ -160,7 +160,7 @@ test("Sprint 68 scripted acceptance run covers the mock MVP loop app routes", as
       expected: [
         "Contacts relationship console",
         "Filtered review ready: Kenji Watanabe",
-        "Outside services contacted: none",
+        "Outside services contacted.*none",
       ],
     },
     {
@@ -209,7 +209,7 @@ test("Sprint 68 scripted acceptance run covers the mock MVP loop app routes", as
       expected: [
         "Follow-up command center",
         "Completion preview ready",
-        "Messages sent: none",
+        "Messages sent.*none",
       ],
     },
     {
@@ -231,7 +231,7 @@ test("Sprint 68 scripted acceptance run covers the mock MVP loop app routes", as
       expected: [
         "Dashboard command center",
         "Dashboard review ready",
-        "Production audit storage changed: no",
+        "Production audit storage changed.*no",
       ],
     },
     {
@@ -242,7 +242,7 @@ test("Sprint 68 scripted acceptance run covers the mock MVP loop app routes", as
         }),
       }),
       expected: [
-        "Agent command center",
+        "Agent review",
         "Agent review ready",
         "External sandbox result: no-op preview",
       ],
@@ -315,17 +315,17 @@ test("Sprint 68 scripted acceptance run covers the mock MVP loop app routes", as
   );
   assert.match(
     contactsNewRoute.html,
-    /<summary>Source record details<\/summary>[\s\S]*<code>evidence:manual-note-kenji<\/code>/,
+    /<summary>[\s\S]*Contact review diagnostics[\s\S]*<\/summary>[\s\S]*<code>evidence:manual-note-kenji<\/code>/,
     "/app/contacts/new keeps raw evidence IDs in expandable technical provenance details",
   );
   assert.match(
     contactsNewRoute.html,
-    /<h3 class="relationship-name">Current review candidate<\/h3>[\s\S]*Kenji Watanabe[\s\S]*Manual note from climate founders dinner[\s\S]*<button type="submit">Preview contact review<\/button>[\s\S]*<h2>Choose another relationship source<\/h2>/,
+    /<h3 class="relationship-name">[\s\S]*Current review candidate[\s\S]*<\/h3>[\s\S]*Kenji Watanabe[\s\S]*Manual note from climate founders dinner[\s\S]*<button type="submit">[\s\S]*Preview contact review[\s\S]*<\/button>[\s\S]*<h2>[\s\S]*Choose another relationship source[\s\S]*<\/h2>/,
     "/app/contacts/new leads with the current candidate decision before alternate paths",
   );
   assert.match(
     contactsNewRoute.html,
-    /aria-label="Selectable relationship source methods"[\s\S]*<button type="button">Choose manual note<\/button>[\s\S]*<button type="button">Choose merge review<\/button>/,
+    /aria-label="Selectable relationship source methods"[\s\S]*<button type="button">[\s\S]*Choose manual note[\s\S]*<\/button>[\s\S]*<button type="button">[\s\S]*Choose merge review[\s\S]*<\/button>/,
     "/app/contacts/new renders selectable source methods with named controls",
   );
 
@@ -345,7 +345,7 @@ test("Sprint 68 scripted acceptance run covers the mock MVP loop app routes", as
   );
   assert.match(
     dashboardRoute.html,
-    /<summary>Technical provenance IDs<\/summary>[\s\S]*<code>evidence:audit:contact:event-badge<\/code>/,
+    /<summary>[\s\S]*Technical provenance IDs[\s\S]*<\/summary>[\s\S]*<code>evidence:audit:contact:event-badge<\/code>/,
     "/app/dashboard keeps raw evidence IDs in expandable technical provenance details",
   );
 });
