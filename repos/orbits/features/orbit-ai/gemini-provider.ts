@@ -211,6 +211,40 @@ function readObject(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
 }
 
+function hasUnsafeExternalExecutionClaim(value: string): boolean {
+  const normalized = value.toLowerCase();
+  const unsafePhrases = [
+    "我已发送",
+    "我已经发送",
+    "已发送邮件",
+    "已发送消息",
+    "已经发送邮件",
+    "已经发送消息",
+    "我已创建日程",
+    "我已经创建日程",
+    "已创建日程",
+    "已经创建日程",
+    "我已通知",
+    "我已经通知",
+    "已通知",
+    "已经通知",
+    "i sent",
+    "i have sent",
+    "i've sent",
+    "i created the calendar",
+    "i have created the calendar",
+    "i've created the calendar",
+    "i notified",
+    "i have notified",
+    "i've notified",
+    "i updated the database",
+    "i have updated the database",
+    "i've updated the database",
+  ];
+
+  return unsafePhrases.some((phrase) => normalized.includes(phrase));
+}
+
 function parseJsonFromText(value: string): unknown {
   const trimmed = value.trim();
 
@@ -244,6 +278,10 @@ export function validateGeminiOrbitAgentPlannerOutput(
   const intent = readString(value.intent);
 
   if (!assistantMessage || !intent || !allowedIntents.has(intent)) {
+    return null;
+  }
+
+  if (hasUnsafeExternalExecutionClaim(assistantMessage)) {
     return null;
   }
 

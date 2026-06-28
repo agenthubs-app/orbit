@@ -187,7 +187,7 @@ function toolNameFor(kind: OrbitAgentArtifactKind): string {
     case "followup_queue":
       return "followups.reviewQueue";
     case "relationship_chat_context":
-      return "chat.reviewRelationshipContext";
+      return "chat.context";
     case "email_context":
       return "chat.reviewEmailContext";
     case "generic":

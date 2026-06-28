@@ -79,11 +79,25 @@ test("Gemini Orbit Agent provider validates the planner schema", async () => {
       ],
     }),
   );
+  const invalidUnsafeExecutionClaim = provider.parseGeminiOrbitAgentPlannerOutput(
+    JSON.stringify({
+      assistantMessage: "我已发送邮件，并创建了日程。",
+      intent: "relationship_chat_context",
+      toolRequests: [
+        {
+          arguments: {},
+          requiresUserConfirmation: true,
+          toolName: "chat.context",
+        },
+      ],
+    }),
+  );
 
   assert.equal(valid?.intent, "event_recommendations");
   assert.equal(valid?.toolRequests[0]?.toolName, "events.recommend");
   assert.equal(invalidTool, null);
   assert.equal(invalidGeneralChat, null);
+  assert.equal(invalidUnsafeExecutionClaim, null);
 });
 
 test("Orbit Agent provider instructions cover product-grade relationship work routing", async () => {
@@ -543,6 +557,77 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
   assert.equal(
     result.data?.artifacts[0]?.result.safety.externalSideEffectsExecuted,
     false,
+  );
+});
+
+test("live Gemini Orbit Agent keeps relationship context tool traces on the planner allowlist", async () => {
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      maxLoopSteps?: number;
+      model: string;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly {
+            result: {
+              provenance: {
+                toolCalls: readonly { toolName: string }[];
+              };
+            };
+            task: { kind: string };
+          }[];
+          proposedToolIntents: readonly {
+            toolFamily: string;
+          }[];
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async () =>
+      jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  assistantMessage:
+                    "我会先整理关系聊天上下文，任何发送动作仍需要你确认。",
+                  intent: "relationship_chat_context",
+                  toolRequests: [
+                    {
+                      arguments: { contactName: "Maya" },
+                      requiresUserConfirmation: true,
+                      toolName: "chat.context",
+                    },
+                  ],
+                }),
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      })) as typeof fetch,
+    maxLoopSteps: 2,
+    model: "gemini-3.5-flash",
+  });
+
+  const result = await service.sendMessage({
+    message: "帮我写一条给 Maya 的跟进消息",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.artifacts[0]?.task.kind, "relationship_chat_context");
+  assert.equal(result.data?.proposedToolIntents[0]?.toolFamily, "relationship_chat");
+  assert.equal(
+    result.data?.artifacts[0]?.result.provenance.toolCalls[0]?.toolName,
+    "chat.context",
   );
 });
 

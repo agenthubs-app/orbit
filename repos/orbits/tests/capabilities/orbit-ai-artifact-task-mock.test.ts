@@ -180,7 +180,7 @@ test("mock artifact task supports contact chat and follow-up generated views", a
   assert.equal(chatResult.success, true);
   assert.equal(chatResult.data?.task.subAgent, "relationship_chat_review_agent");
   assert.equal(chatResult.data?.result.provenance.sourceModules.includes("chat"), true);
-  assert.equal(chatResult.data?.result.provenance.toolCalls[0]?.toolName, "chat.reviewRelationshipContext");
+  assert.equal(chatResult.data?.result.provenance.toolCalls[0]?.toolName, "chat.context");
 
   assert.equal(followupResult.success, true);
   assert.equal(followupResult.data?.task.subAgent, "followup_review_agent");
