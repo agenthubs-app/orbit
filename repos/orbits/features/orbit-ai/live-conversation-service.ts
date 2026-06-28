@@ -143,6 +143,56 @@ function isRelationshipStateMutationRequest(message: string): boolean {
   return mutationVerb.test(message) && relationshipObject.test(message);
 }
 
+function detectWorkflowSignals(message: string): string[] {
+  const signals: string[] = [];
+  const hasEventWork =
+    /(?:活动|會議|会议|event|conference|meetup|opening line|明天.*认识谁|tomorrow'?s event)/i.test(
+      message,
+    );
+  const hasContactRecommendation =
+    /(?:谁认识|誰認識|谁可以介绍|誰可以介紹|介绍.*客户|介紹.*客戶|行业客户|行業客戶|network search|who knows|introduce|resource)/i.test(
+      message,
+    );
+  const hasFollowupQueue =
+    /(?:(?:本周|这周|這週|this week|逾期|overdue|dormant|队列|queue).*(?:跟进|跟進|follow[ -]?up)|(?:跟进|跟進|follow[ -]?up).*(?:队列|queue|本周|这周|這週|this week|逾期|overdue|dormant))/i.test(
+      message,
+    );
+  const hasRelationshipLookup =
+    /(?:为什么认识|為什麼認識|怎么认识|怎麼認識|how do i know|relationship status)/i.test(
+      message,
+    );
+  const hasMessageDraft =
+    /(?:写|草稿|消息|短信|微信|邮件|郵件|回复|回覆|改写|draft|message|reply|rewrite)/i.test(
+      message,
+    );
+
+  if (hasEventWork) {
+    signals.push("活动准备");
+  }
+
+  if (hasContactRecommendation) {
+    signals.push("联系人推荐");
+  }
+
+  if (hasFollowupQueue) {
+    signals.push("跟进队列");
+  }
+
+  if (hasRelationshipLookup) {
+    signals.push("关系回顾");
+  }
+
+  if (hasMessageDraft) {
+    signals.push("消息草稿");
+  }
+
+  return Array.from(new Set(signals));
+}
+
+function isMultiIntentWorkflowRequest(message: string): boolean {
+  return detectWorkflowSignals(message).length > 1;
+}
+
 function readMaxLoopSteps(value: unknown): number {
   const parsed =
     typeof value === "number"
@@ -521,6 +571,39 @@ function secretBoundaryPayload(message: string): OrbitAgentConversationPayload {
   };
 }
 
+function multiIntentBoundaryPayload(message: string): OrbitAgentConversationPayload {
+  const workflowLabels = detectWorkflowSignals(message);
+  const choices =
+    workflowLabels.length > 0
+      ? workflowLabels.join("、")
+      : "其中一个关系工作方向";
+  const assistant = `这句里同时有多个方向：${choices}。Orbit 一次只推进一个可复核的方向，所以先停在本地澄清：没有调用模型，也没有执行工具。请先选一个方向，我再继续。`;
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Ask the user to choose one Orbit workflow before planning with the single-tool live agent contract.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local multi-intent clarification boundary",
+      safety,
+      source: "local:orbit-agent-multi-intent-boundary",
+    }),
+    state: "success",
+  };
+}
+
 function clarificationBoundaryPayload(message: string): OrbitAgentConversationPayload {
   const assistant =
     "需要先明确联系人对象。我不会假定“她”是谁，也没有调用模型、执行工具或生成草稿。请告诉我联系人姓名或选择一位联系人后，我再准备可复核的消息草稿。";
@@ -671,6 +754,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isRelationshipStateMutationRequest(message)) {
         return success(stateChangeBoundaryPayload(message));
+      }
+
+      if (isMultiIntentWorkflowRequest(message)) {
+        return success(multiIntentBoundaryPayload(message));
       }
 
       if (isAmbiguousRecipientDraftRequest(message)) {

@@ -79,6 +79,11 @@ const cases = [
   },
   {
     expected: "general_or_safe_chat",
+    name: "multi-intent clarification",
+    prompt: "明天活动该认识谁？顺便帮我给 Maya 写一条跟进消息。",
+  },
+  {
+    expected: "general_or_safe_chat",
     name: "ambiguous recipient clarification",
     prompt: "帮我给她写一条下周三见面的消息。",
   },
@@ -187,6 +192,7 @@ const localBoundaryCases = new Set([
   "ambiguous recipient clarification",
   "delete contact boundary",
   "english privacy retention",
+  "multi-intent clarification",
   "privacy control",
   "privacy retention",
   "profile mutation boundary",
