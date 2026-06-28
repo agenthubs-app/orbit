@@ -1,25 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+
+import { useOrbitLanguage } from "./orbit-language-context";
 import { Icon } from "./orbit-reference-primitives";
 
-const suggests = [
-  {
-    icon: "users",
-    label: "找金融 AI 方向的人脉",
-    q: "我想做金融领域的 AI 产品开发，找哪位朋友比较合适？",
-  },
-  {
-    icon: "handshake",
-    label: "想认识女装设计师",
-    q: "帮我介绍几位做女装设计的朋友。",
-  },
-  {
-    icon: "calendar",
-    label: "推荐 AI / 出海活动",
-    q: "我最近想多参加一些 AI 和出海主题的活动。",
-  },
-];
+type T = (copy: { en: string; zh: string }) => string;
+
+function buildSuggests(t: T) {
+  return [
+    {
+      icon: "users",
+      label: t({ en: "Find AI finance contacts", zh: "找金融 AI 方向的人脉" }),
+      q: t({ en: "I want to build AI products in finance — who should I talk to?", zh: "我想做金融领域的 AI 产品开发，找哪位朋友比较合适？" }),
+    },
+    {
+      icon: "handshake",
+      label: t({ en: "Meet womenswear designers", zh: "想认识女装设计师" }),
+      q: t({ en: "Introduce me to a few womenswear designers.", zh: "帮我介绍几位做女装设计的朋友。" }),
+    },
+    {
+      icon: "calendar",
+      label: t({ en: "Recommend AI / global events", zh: "推荐 AI / 出海活动" }),
+      q: t({ en: "I'd like to attend more AI and global-expansion events lately.", zh: "我最近想多参加一些 AI 和出海主题的活动。" }),
+    },
+  ];
+}
 
 function sendToAgent(value: string) {
   const q = value.trim();
@@ -197,7 +203,9 @@ function PrototypeThreeBg({ opacity = 1 }: { opacity?: number }) {
 }
 
 export function OrbitAgentHero() {
+  const { t } = useOrbitLanguage();
   const [text, setText] = useState("");
+  const suggests = buildSuggests(t);
 
   return (
     <section
@@ -232,15 +240,13 @@ export function OrbitAgentHero() {
           }}
         >
           <span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--accent)" }} />
-          ORBIT AGENT · 你的人脉与商业副驾
+          {t({ en: "ORBIT AGENT · Your network & business copilot", zh: "ORBIT AGENT · 你的人脉与商业副驾" })}
         </div>
         <h1
           className="h-display"
-          style={{ color: "#15151B", fontSize: "clamp(28px, 5vw, 46px)", letterSpacing: "-0.02em", lineHeight: 1.1, margin: 0 }}
+          style={{ color: "var(--ink)", fontSize: "clamp(28px, 5vw, 46px)", letterSpacing: "-0.02em", lineHeight: 1.1, margin: 0 }}
         >
-          让对的人，
-          <br />
-          进入你的
+          {t({ en: "Bring the right people into your ", zh: "让对的人，进入你的" })}
           <span
             style={{
               background: "linear-gradient(96deg, #7C5CF6 0%, #5B4FE0 48%, #A66BF2 100%)",
@@ -250,12 +256,12 @@ export function OrbitAgentHero() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            商业轨道
+            {t({ en: "business orbit", zh: "商业轨道" })}
           </span>
-          。
+          {t({ en: ".", zh: "。" })}
         </h1>
-        <p style={{ color: "#6C6C76", fontSize: "clamp(14px, 1.5vw, 17px)", lineHeight: 1.65, margin: "16px auto 24px", maxWidth: 500 }}>
-          说出你想做的事，Orbit 帮你从人脉里找对的人、从活动里找对的局，并告诉你该怎么开口。
+        <p style={{ color: "var(--text-2)", fontSize: "clamp(14px, 1.5vw, 17px)", lineHeight: 1.65, margin: "16px auto 24px", maxWidth: 500 }}>
+          {t({ en: "Tell Orbit what you want to do, and it finds the right people in your network, the right events to join, and how to start the conversation.", zh: "说出你想做的事，Orbit 帮你从人脉里找对的人、从活动里找对的局，并告诉你该怎么开口。" })}
         </p>
         <div
           style={{
@@ -275,7 +281,7 @@ export function OrbitAgentHero() {
                 sendToAgent(text);
               }
             }}
-            placeholder="问问 Orbit：想做什么、想认识谁、想去什么活动…"
+            placeholder={t({ en: "Ask Orbit: what you want to do, who to meet, which event to attend…", zh: "问问 Orbit：想做什么、想认识谁、想去什么活动…" })}
             rows={2}
             style={{
               background: "transparent",
@@ -310,19 +316,20 @@ export function OrbitAgentHero() {
                 <Icon name="sparkle" size={14} />
                 iOrbit
               </span>
-              <span style={{ color: "var(--text-4)", fontSize: 12 }}>人脉 · 活动 · 商业价值</span>
+              <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
             </div>
             <button
-              aria-label="发送"
+              aria-label={t({ en: "Send", zh: "发送" })}
+              className="hit-44"
               disabled={!text.trim()}
               onClick={() => sendToAgent(text)}
               style={{
                 alignItems: "center",
-                background: text.trim() ? "linear-gradient(180deg,#8170F1,#614CE2)" : "var(--surface-3)",
+                background: text.trim() ? "var(--accent-grad)" : "var(--surface-3)",
                 border: "none",
                 borderRadius: 12,
                 boxShadow: text.trim() ? "0 8px 18px rgba(99,76,226,0.28)" : "none",
-                color: text.trim() ? "#fff" : "var(--text-4)",
+                color: text.trim() ? "var(--on-dark)" : "var(--text-4)",
                 cursor: text.trim() ? "pointer" : "default",
                 display: "flex",
                 height: 40,
@@ -338,6 +345,7 @@ export function OrbitAgentHero() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 9, justifyContent: "center", marginTop: 16 }}>
           {suggests.map((suggest) => (
             <button
+              className="hit-44"
               key={suggest.label}
               onClick={() => sendToAgent(suggest.q)}
               style={{

@@ -1,5 +1,5 @@
 import { getOrbitRegisterViewModel } from "../orbit-register-route-view-model";
-import { OrbitLangRuntime } from "../orbit-lang-runtime";
+import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitRealRegister } from "./orbit-real-register";
 
@@ -9,12 +9,12 @@ export default async function AppRegisterPage({
   searchParams: Promise<{ code?: string }>;
 }) {
   const { code } = await searchParams;
+  const language = await getOrbitServerLanguage();
 
   return (
     <>
       <OrbitReferenceStyles />
-      <OrbitLangRuntime />
-      <OrbitRealRegister viewModel={getOrbitRegisterViewModel(code)} />
+      <OrbitRealRegister viewModel={localizeOrbitTree(getOrbitRegisterViewModel(code), language)} />
     </>
   );
 }

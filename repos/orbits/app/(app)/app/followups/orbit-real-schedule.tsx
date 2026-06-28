@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AccountTopNav, ModalShell } from "../orbit-account-shell";
+import { useOrbitLanguage } from "../orbit-language-context";
 import type {
   OrbitScheduleConnectionView,
   OrbitScheduleItemView,
   OrbitScheduleViewModel,
 } from "../orbit-schedule-route-view-model";
 import { Avatar, Icon } from "../orbit-reference-primitives";
+
+type Translate = (copy: { en: string; zh: string }) => string;
 
 interface OrbitRealScheduleProps {
   viewModel: OrbitScheduleViewModel;
@@ -23,25 +26,6 @@ interface CalendarView {
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function currentPrototypeLanguage() {
-  if (typeof window === "undefined") return "zh";
-  const orbitWindow = window as typeof window & { OrbitI18n?: { getLang?: () => string } };
-  return orbitWindow.OrbitI18n?.getLang?.() === "en" ? "en" : "zh";
-}
-
-function usePrototypeLanguage() {
-  const [language, setLanguage] = useState<"en" | "zh">("zh");
-
-  useEffect(() => {
-    const update = () => setLanguage(currentPrototypeLanguage());
-    update();
-    const timer = window.setInterval(update, 250);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  return language;
-}
 
 function scheduleStatusColor(status: string) {
   return status === "已确认" ? { c: "var(--live)", soft: "var(--live-soft)" } : { c: "var(--amber)", soft: "var(--amber-soft)" };
@@ -116,6 +100,7 @@ function MonthCalendar({
   selected,
   setSelected,
   setView,
+  t,
   today,
   view,
 }: {
@@ -126,6 +111,7 @@ function MonthCalendar({
   selected: CalendarView;
   setSelected: (view: CalendarView) => void;
   setView: (view: CalendarView) => void;
+  t: Translate;
   today: CalendarView;
   view: CalendarView;
 }) {
@@ -156,15 +142,15 @@ function MonthCalendar({
   return (
     <div className="card" style={{ padding: compact ? 14 : 20 }}>
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <div className="h-title" style={{ color: "var(--ink)", fontSize: compact ? 19 : 22 }}>{language === "en" ? `${MON_EN[m]} ${y}` : `${y} 年 ${m + 1} 月`}</div>
+        <h2 className="h-title" style={{ color: "var(--ink)" }}>{language === "en" ? `${MON_EN[m]} ${y}` : `${y} 年 ${m + 1} 月`}</h2>
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={() => shift(-1)} aria-label="上个月" style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 34, justifyContent: "center", width: 34 }}>
+          <button type="button" className="hit-44" onClick={() => shift(-1)} aria-label={t({ en: "Previous month", zh: "上个月" })} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 34, justifyContent: "center", width: 34 }}>
             <Icon name="chevL" size={18} />
           </button>
           <button type="button" onClick={() => setView({ y: today.y, m: today.m })} style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10, color: "var(--text-2)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 550, height: 34, padding: "0 12px" }}>
-            今天
+            {t({ en: "Today", zh: "今天" })}
           </button>
-          <button type="button" onClick={() => shift(1)} aria-label="下个月" style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 34, justifyContent: "center", width: 34 }}>
+          <button type="button" className="hit-44" onClick={() => shift(1)} aria-label={t({ en: "Next month", zh: "下个月" })} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 34, justifyContent: "center", width: 34 }}>
             <Icon name="chevR" size={18} />
           </button>
         </div>
@@ -185,11 +171,12 @@ function MonthCalendar({
             <button
               key={index}
               type="button"
+              className="hit-44"
               onClick={() => setSelected({ y, m, d: day })}
               style={{ background: selectedCell ? "var(--accent-softer)" : todayCell ? "var(--surface-2)" : "transparent", border: `1px solid ${selectedCell ? "var(--accent)" : "transparent"}`, borderRadius: 12, cursor: "pointer", display: "flex", flexDirection: "column", fontFamily: "var(--ff)", gap: 3, minHeight: compact ? 46 : 76, overflow: "hidden", padding: compact ? "5px 3px" : "7px 7px", textAlign: "left" }}
             >
               <span style={{ alignItems: "center", display: "flex", justifyContent: compact ? "center" : "flex-start" }}>
-                <span style={{ alignItems: "center", background: todayCell ? "var(--accent)" : "transparent", borderRadius: 999, color: todayCell ? "#fff" : selectedCell ? "var(--accent)" : "var(--ink)", display: "flex", fontFamily: "var(--ff-tight)", fontSize: 14, fontWeight: todayCell ? 800 : 600, height: 24, justifyContent: "center", width: 24 }}>{day}</span>
+                <span style={{ alignItems: "center", background: todayCell ? "var(--accent)" : "transparent", borderRadius: 999, color: todayCell ? "var(--on-dark)" : selectedCell ? "var(--accent)" : "var(--ink)", display: "flex", fontFamily: "var(--ff-tight)", fontSize: 14, fontWeight: todayCell ? 800 : 600, height: 24, justifyContent: "center", width: 24 }}>{day}</span>
               </span>
               {compact ? (
                 events.length ? (
@@ -224,6 +211,7 @@ function ScheduleListPanel({
   language,
   schedules,
   selected,
+  t,
   view,
 }: {
   compact?: boolean;
@@ -231,6 +219,7 @@ function ScheduleListPanel({
   language: "en" | "zh";
   schedules: OrbitScheduleItemView[];
   selected: CalendarView;
+  t: Translate;
   view: CalendarView;
 }) {
   const list = eventsInMonth(schedules, view.y, view.m);
@@ -241,10 +230,10 @@ function ScheduleListPanel({
   return (
     <div>
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-        <h2 className="h-section" style={{ fontSize: compact ? 16 : 18, margin: 0 }}>{language === "en" ? `${MON_EN[view.m]} schedule` : `${view.m + 1} 月安排`}</h2>
-        <span className="mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{list.length} 场</span>
+        <h3 className="h-section" style={{ margin: 0 }}>{language === "en" ? `${MON_EN[view.m]} schedule` : `${view.m + 1} 月安排`}</h3>
+        <span className="mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{t({ en: `${list.length} meetings`, zh: `${list.length} 场` })}</span>
       </div>
-      {list.length === 0 ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 13.5, padding: 20, textAlign: "center" }}>本月暂无约见。点左侧日历安排一场。</div> : null}
+      {list.length === 0 ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 13.5, padding: 20, textAlign: "center" }}>{t({ en: "No meetings this month. Pick a date on the calendar to schedule one.", zh: "本月暂无约见。点左侧日历安排一场。" })}</div> : null}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         {groups.map((dateStr) => {
           const date = new Date(dateStr);
@@ -258,7 +247,7 @@ function ScheduleListPanel({
                   {language === "en" ? `${MON_EN[view.m]} ${day}` : `${view.m + 1}月${day}日`}
                   <span style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 500 }}>{language === "en" ? weekday(dateStr) : `周${weekday(dateStr)}`}</span>
                 </span>
-                {selectedDay ? <span className="badge badge-soon" style={{ height: 20 }}>已选</span> : null}
+                {selectedDay ? <span className="badge badge-soon" style={{ height: 20 }}>{t({ en: "Selected", zh: "已选" })}</span> : null}
                 <div style={{ background: "var(--border)", flex: 1, height: 1 }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -277,17 +266,19 @@ function ScheduleListPanel({
 function AddScheduleModal({
   connections,
   onClose,
+  t,
 }: {
   connections: OrbitScheduleConnectionView[];
   onClose: () => void;
+  t: Translate;
 }) {
   const [cid, setCid] = useState("");
 
   return (
-    <ModalShell onClose={onClose} maxW={520} step="安排约见">
-      <h2 className="h-title" style={{ fontSize: 22, margin: "4px 0 6px" }}>安排约见</h2>
-      <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: "0 0 18px" }}>从名片夹选择一个人，约一次见面，自动同步到你们的交往记录。</p>
-      <label className="field-label">选择联系人</label>
+    <ModalShell onClose={onClose} maxW={520} step={t({ en: "Schedule a meeting", zh: "安排约见" })}>
+      <h2 className="h-title" style={{ margin: "4px 0 6px" }}>{t({ en: "Schedule a meeting", zh: "安排约见" })}</h2>
+      <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: "0 0 18px" }}>{t({ en: "Pick someone from your contacts, set up a meeting, and it syncs to your relationship history automatically.", zh: "从名片夹选择一个人，约一次见面，自动同步到你们的交往记录。" })}</p>
+      <label className="field-label">{t({ en: "Select a contact", zh: "选择联系人" })}</label>
       <div className="scroll" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 220, overflowY: "auto" }}>
         {connections.map((connection) => (
           <button
@@ -307,23 +298,23 @@ function AddScheduleModal({
       </div>
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
         <div>
-          <label className="field-label">日期</label>
+          <label className="field-label">{t({ en: "Date", zh: "日期" })}</label>
           <input className="field" defaultValue="2026-06-28" />
         </div>
         <div>
-          <label className="field-label">时间</label>
+          <label className="field-label">{t({ en: "Time", zh: "时间" })}</label>
           <input className="field" defaultValue="15:00" />
         </div>
       </div>
       <div style={{ marginTop: 12 }}>
-        <label className="field-label">议题</label>
-        <input className="field" placeholder="想聊的事情" />
+        <label className="field-label">{t({ en: "Topic", zh: "议题" })}</label>
+        <input className="field" placeholder={t({ en: "What you'd like to talk about", zh: "想聊的事情" })} />
       </div>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
-        <button className="btn btn-ghost" onClick={onClose}>取消</button>
+        <button className="btn btn-ghost" onClick={onClose}>{t({ en: "Cancel", zh: "取消" })}</button>
         <button className="btn btn-primary" onClick={onClose} disabled={!cid}>
-          <Icon name="check" size={16} color="#fff" />
-          发送约见
+          <Icon name="check" size={16} color="var(--on-dark)" />
+          {t({ en: "Send invite", zh: "发送约见" })}
         </button>
       </div>
     </ModalShell>
@@ -334,7 +325,7 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
   const [view, setView] = useState<CalendarView>({ y: viewModel.today.y, m: viewModel.today.m });
   const [selected, setSelected] = useState<CalendarView>({ ...viewModel.today });
   const [addOpen, setAddOpen] = useState(false);
-  const language = usePrototypeLanguage();
+  const { t, language } = useOrbitLanguage();
 
   const monthCalendarProps = useMemo(
     () => ({
@@ -344,10 +335,11 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
       selected,
       setSelected,
       setView,
+      t,
       today: viewModel.today,
       view,
     }),
-    [language, selected, view, viewModel.connections, viewModel.schedules, viewModel.today],
+    [language, selected, t, view, viewModel.connections, viewModel.schedules, viewModel.today],
   );
 
   return (
@@ -358,17 +350,17 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
           <div style={{ alignItems: "flex-end", display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
             <div>
               <div className="eyebrow">SCHEDULE</div>
-              <h1 className="h-display" style={{ fontSize: 32, margin: "2px 0 0" }}>日程安排</h1>
-              <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>从名片夹选人约见，自动同步交往记录</div>
+              <h1 className="h-display" style={{ margin: "2px 0 0" }}>{t({ en: "Schedule", zh: "日程安排" })}</h1>
+              <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>{t({ en: "Pick someone from your contacts to meet, with relationship history synced automatically", zh: "从名片夹选人约见，自动同步交往记录" })}</div>
             </div>
             <button className="btn btn-primary" onClick={() => setAddOpen(true)}>
-              <Icon name="plus" size={16} color="#fff" />
-              安排约见
+              <Icon name="plus" size={16} color="var(--on-dark)" />
+              {t({ en: "Schedule a meeting", zh: "安排约见" })}
             </button>
           </div>
           <div style={{ alignItems: "start", display: "grid", gap: 26, gridTemplateColumns: "minmax(0,1fr) 380px" }}>
             <MonthCalendar {...monthCalendarProps} />
-            <ScheduleListPanel connections={viewModel.connections} language={language} schedules={viewModel.schedules} selected={selected} view={view} />
+            <ScheduleListPanel connections={viewModel.connections} language={language} schedules={viewModel.schedules} selected={selected} t={t} view={view} />
           </div>
         </div>
       </div>
@@ -377,19 +369,19 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
         <div style={{ alignItems: "flex-end", display: "flex", flexShrink: 0, justifyContent: "space-between", padding: "8px 18px 6px" }}>
           <div>
             <div className="eyebrow">SCHEDULE</div>
-            <h1 className="h-display" style={{ fontSize: 26, margin: "2px 0 0" }}>日程</h1>
+            <h1 className="h-display" style={{ margin: "2px 0 0" }}>{t({ en: "Schedule", zh: "日程" })}</h1>
           </div>
           <button className="btn btn-primary btn-sm" onClick={() => setAddOpen(true)}>
-            <Icon name="plus" size={15} color="#fff" />
-            约见
+            <Icon name="plus" size={15} color="var(--on-dark)" />
+            {t({ en: "Meet", zh: "约见" })}
           </button>
         </div>
         <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", gap: 20, minHeight: 0, overflowY: "auto", padding: "14px 18px 36px" }}>
           <MonthCalendar {...monthCalendarProps} compact />
-          <ScheduleListPanel compact connections={viewModel.connections} language={language} schedules={viewModel.schedules} selected={selected} view={view} />
+          <ScheduleListPanel compact connections={viewModel.connections} language={language} schedules={viewModel.schedules} selected={selected} t={t} view={view} />
         </div>
       </div>
-      {addOpen ? <AddScheduleModal connections={viewModel.connections} onClose={() => setAddOpen(false)} /> : null}
+      {addOpen ? <AddScheduleModal connections={viewModel.connections} onClose={() => setAddOpen(false)} t={t} /> : null}
     </main>
   );
 }

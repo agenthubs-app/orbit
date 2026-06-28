@@ -1,16 +1,17 @@
 import { getOrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
-import { OrbitLangRuntime } from "../../orbit-lang-runtime";
+import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { OrbitRealCardsIntros } from "../orbit-real-contacts";
 
-export default function AppContactsIntrosPage() {
+export default async function AppContactsIntrosPage() {
+  const language = await getOrbitServerLanguage();
+
   return (
     <>
       <OrbitReferenceStyles />
-      <OrbitLangRuntime />
       <OrbitVisualFreezeRuntime />
-      <OrbitRealCardsIntros viewModel={getOrbitContactsViewModel()} />
+      <OrbitRealCardsIntros viewModel={localizeOrbitTree(getOrbitContactsViewModel(), language)} />
     </>
   );
 }

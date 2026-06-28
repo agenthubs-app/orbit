@@ -110,6 +110,47 @@ export function Icon({
   );
 }
 
+export function IconButton({
+  ariaLabel,
+  className = "",
+  iconColor,
+  name,
+  onClick,
+  size = 20,
+  stroke,
+  style,
+  title,
+  type = "button",
+  variant = "default",
+}: {
+  ariaLabel: string;
+  className?: string;
+  iconColor?: string;
+  name: string;
+  onClick?: () => void;
+  size?: number;
+  stroke?: number;
+  style?: CSSProperties;
+  title?: string;
+  type?: "button" | "submit";
+  variant?: "default" | "plain";
+}) {
+  const base = variant === "plain" ? "icon-btn icon-btn-plain" : "icon-btn";
+
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={`${base}${className ? ` ${className}` : ""}`}
+      onClick={onClick}
+      style={style}
+      title={title ?? ariaLabel}
+      type={type}
+    >
+      <Icon color={iconColor} name={name} size={size} stroke={stroke} />
+    </button>
+  );
+}
+
 export function Logo({
   color = "var(--accent)",
   size = 25,

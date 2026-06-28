@@ -1,9 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "./orbit-language-context";
-import { productHref } from "./orbit-public-shell";
+import { OrbitTopNav, productHref } from "./orbit-public-shell";
 import { Icon, Logo } from "./orbit-reference-primitives";
 
 function accountHref(prototypeHref: string) {
@@ -26,56 +26,13 @@ export function AccountTopNav({
   agentTone?: "default" | "selected";
   rightExtra?: ReactNode;
 }) {
-  const { language, preserveHref, setLanguage, t } = useOrbitLanguage();
-  const isAgent = agentTone ? agentTone === "selected" : active === "agent";
-  const links = [
-    { href: "/explore", k: "events", label: t({ en: "Events", zh: "活动" }) },
-    { href: "/home/schedule", k: "schedule", label: t({ en: "Calendar", zh: "日程" }) },
-    { href: "/home/cards", k: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
-  ];
-
   return (
-    <header className="orbit-top-nav">
-      <a className="orbit-brand-link" href={preserveHref("/app")} onClick={(event) => { event.preventDefault(); window.location.href = preserveHref(accountHref("/")); }} aria-label="Orbit" style={{ textDecoration: "none" }}>
-        <Logo size={25} withText={false} />
-      </a>
-      <button type="button" onClick={() => { window.location.href = preserveHref(accountHref("/agent")); }} className={`orbit-agent-btn${isAgent ? " is-active" : ""}`} style={{ marginRight: 4 }}>
-        <Icon name="sparkle" size={15} />
-        iOrbit
-      </button>
-      <nav className="orbit-nav-links">
-        {links.map((link) => (
-          <a
-            key={link.k}
-            href={preserveHref(productHref(link.href))}
-            onClick={(event) => {
-              event.preventDefault();
-              window.location.href = preserveHref(accountHref(link.href));
-            }}
-            className={`orbit-nav-link${active === link.k ? " is-active" : ""}`}
-          >
-            {link.label}
-          </a>
-        ))}
-      </nav>
-      <div style={{ flex: 1 }} />
-      <div className="orbit-top-actions" style={{ alignItems: "center", display: "flex", gap: 14 }}>
-        <button
-          className="mono orbit-lang-button"
-          onClick={() => setLanguage(language === "en" ? "zh" : "en")}
-          style={{ background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", fontSize: 12.5, padding: 0 }}
-          type="button"
-        >
-          <span style={{ color: language === "zh" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "zh" ? 700 : 500 }}>中</span>
-          <span style={{ color: "var(--text-4)", padding: "0 1px" }}>/</span>
-          <span style={{ color: language === "en" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "en" ? 700 : 500 }}>EN</span>
-        </button>
-        {rightExtra}
-        <a className="orbit-me-link" href={preserveHref("/app/home")} onClick={(event) => { event.preventDefault(); window.location.href = preserveHref(accountHref("/home")); }}>
-          {t({ en: "Me", zh: "我的" })}
-        </a>
-      </div>
-    </header>
+    <OrbitTopNav
+      active={active}
+      agentActive={agentTone ? agentTone === "selected" : active === "agent"}
+      meHref="/app/home"
+      rightExtra={rightExtra}
+    />
   );
 }
 
@@ -95,18 +52,22 @@ export function StatusBar({ dark = false }: { dark?: boolean }) {
 }
 
 export function MobileBar({
+  backLabel,
   dark = false,
   onBack,
   right,
   title,
   transparent = false,
 }: {
+  backLabel?: string;
   dark?: boolean;
   onBack?: () => void;
   right?: ReactNode;
   title?: string;
   transparent?: boolean;
 }) {
+  const { t } = useOrbitLanguage();
+
   return (
     <div
       style={{
@@ -126,6 +87,8 @@ export function MobileBar({
     >
       {onBack ? (
         <button
+          aria-label={backLabel ?? t({ en: "Back", zh: "返回" })}
+          className="hit-44"
           onClick={onBack}
           style={{
             alignItems: "center",
@@ -153,24 +116,83 @@ export function MobileBar({
 
 export function ModalShell({
   children,
+  label,
   maxW = 440,
   onClose,
   step,
 }: {
   children: ReactNode;
+  label?: string;
   maxW?: number;
   onClose: () => void;
   step?: string;
 }) {
+  const { t } = useOrbitLanguage();
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
+  const focusable = useCallback(() => {
+    const root = cardRef.current;
+    if (!root) return [] as HTMLElement[];
+    return Array.from(
+      root.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((node) => node.offsetParent !== null || node === document.activeElement);
+  }, []);
+
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    const items = focusable();
+    (items[0] ?? cardRef.current)?.focus();
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const nodes = focusable();
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const activeEl = document.activeElement;
+
+      if (event.shiftKey && activeEl === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && activeEl === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused.current?.focus?.();
+    };
+  }, [focusable, onClose]);
+
   return (
     <div className="orbit-modal-overlay" style={{ alignItems: "center", display: "flex", inset: 0, justifyContent: "center", position: "absolute", zIndex: 200 }}>
-      <div className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "rgba(20,20,28,0.42)", inset: 0, position: "absolute" }} />
-      <div className="orbit-modal-card card" style={{ animation: "pop .2s cubic-bezier(.22,1,.36,1)", borderRadius: 20, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", margin: 16, maxHeight: "92%", overflow: "hidden", position: "relative", width: `min(100%, ${maxW}px)`, zIndex: 1 }}>
+      <div className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
+      <div
+        aria-label={label ?? t({ en: "Dialog", zh: "对话框" })}
+        aria-modal="true"
+        className="orbit-modal-card card"
+        ref={cardRef}
+        role="dialog"
+        style={{ animation: "pop .2s cubic-bezier(.22,1,.36,1)", borderRadius: 20, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", margin: 16, maxHeight: "92%", outline: "none", overflow: "hidden", position: "relative", width: `min(100%, ${maxW}px)`, zIndex: 1 }}
+        tabIndex={-1}
+      >
         <div style={{ alignItems: "center", display: "flex", gap: 12, padding: "20px 22px 6px" }}>
           <Logo size={22} />
           <div style={{ flex: 1 }} />
           {step ? <span className="mono" style={{ color: "var(--text-3)", fontSize: 12, whiteSpace: "nowrap" }}>{step}</span> : null}
-          <button type="button" onClick={onClose} aria-label="关闭" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
+          <button type="button" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
             <Icon name="x" size={17} />
           </button>
         </div>

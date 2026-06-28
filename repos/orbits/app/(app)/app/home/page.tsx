@@ -1,16 +1,16 @@
-import { OrbitLangRuntime } from "../orbit-lang-runtime";
+import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { getOrbitHomeViewModel } from "../orbit-home-route-view-model";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { OrbitRealHome } from "./orbit-real-home";
 
-export default function AppPersonalHomePage() {
+export default async function AppPersonalHomePage() {
+  const language = await getOrbitServerLanguage();
   return (
     <>
       <OrbitReferenceStyles />
-      <OrbitLangRuntime />
       <OrbitVisualFreezeRuntime />
-      <OrbitRealHome mode="hub" viewModel={getOrbitHomeViewModel()} />
+      <OrbitRealHome mode="hub" viewModel={localizeOrbitTree(getOrbitHomeViewModel(), language)} />
     </>
   );
 }

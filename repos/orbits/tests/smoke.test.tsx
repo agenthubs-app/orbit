@@ -82,7 +82,9 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
   assert.match(html, /data-orbit-real-page="landing"/);
   assert.match(html, /orbit-landing-page/);
   assert.match(html, /让对的人/);
-  assert.match(html, /中 \/ 日/);
+  // Language toggle renders the zh/en switcher ("中" and "EN" in separate spans).
+  assert.match(html, /中/);
+  assert.match(html, /EN/);
   assert.doesNotMatch(html, /orbit-prototype-frame/);
   assert.doesNotMatch(html, /Event-grounded relationship workspace/);
   assert.doesNotMatch(html, /href="#relationship-starter"/);

@@ -1,16 +1,16 @@
+import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { getOrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
-import { OrbitLangRuntime } from "../../orbit-lang-runtime";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { OrbitRealAccountAuth } from "../orbit-real-account-auth";
 
-export default function AppAccountForgotPasswordPage() {
+export default async function AppAccountForgotPasswordPage() {
+  const language = await getOrbitServerLanguage();
   return (
     <>
       <OrbitReferenceStyles />
-      <OrbitLangRuntime />
       <OrbitVisualFreezeRuntime />
-      <OrbitRealAccountAuth viewModel={getOrbitAccountAuthViewModel("forgot")} />
+      <OrbitRealAccountAuth viewModel={localizeOrbitTree(getOrbitAccountAuthViewModel("forgot"), language)} />
     </>
   );
 }

@@ -31,20 +31,25 @@ type AgentMessage =
       text: string;
     };
 
-const depth = {
-  to_contact: { label: "待破冰 · 一面之缘", color: "var(--amber)", soft: "var(--amber-soft)" },
-  in_progress: { label: "在推进 · 已有交流", color: "var(--sky)", soft: "var(--sky-soft)" },
-  partnered: { label: "已合作 · 关系稳固", color: "var(--live)", soft: "var(--live-soft)" },
-};
+type Copy = { en: string; zh: string };
+type Translate = (copy: Copy) => string;
+
+function depthFor(t: Translate) {
+  return {
+    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--amber)", soft: "var(--amber-soft)" },
+    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--sky)", soft: "var(--sky-soft)" },
+    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--live)", soft: "var(--live-soft)" },
+  };
+}
 
 const TZ = { timeZone: "Asia/Tokyo" };
 
-function fmtMonth(date: Date) {
-  return new Intl.DateTimeFormat("zh-CN", { month: "short", ...TZ }).format(date);
+function fmtMonth(date: Date, language: "en" | "zh") {
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "short", ...TZ }).format(date);
 }
 
-function fmtDay(date: Date) {
-  return new Intl.DateTimeFormat("zh-CN", { day: "2-digit", ...TZ }).format(date);
+function fmtDay(date: Date, language: "en" | "zh") {
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { day: "2-digit", ...TZ }).format(date);
 }
 
 function parseDate(value: string) {
@@ -146,9 +151,9 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
   return (
     <div style={{ alignItems: "center", display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "50vh", padding: "24px 8px", textAlign: "center" }}>
       <span className="avatar g-indigo" style={{ alignItems: "center", borderRadius: 16, display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
-        <Icon name="sparkle" size={26} color="#fff" />
+        <Icon name="sparkle" size={26} color="var(--on-dark)" />
       </span>
-      <h2 className="h-title" style={{ fontSize: 22, margin: "16px 0 6px" }}>
+      <h2 className="h-title" style={{ margin: "16px 0 6px" }}>
         {t({ en: "I am iOrbit", zh: "我是 iOrbit" })}
       </h2>
       <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.65, margin: "0 0 22px", maxWidth: 380 }}>
@@ -176,8 +181,9 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
   );
 }
 
-function AgentPeopleCard({ item, navigate }: { item: OrbitAgentPeopleResultView; navigate: (href: string) => void }) {
+function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultView; navigate: (href: string) => void; t: Translate }) {
   const connection = item.connection;
+  const depth = depthFor(t);
   const status = depth[connection.pipelineStatus] ?? depth.to_contact;
 
   return (
@@ -192,11 +198,11 @@ function AgentPeopleCard({ item, navigate }: { item: OrbitAgentPeopleResultView;
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
           <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 750, lineHeight: 1 }}>{item.match}%</div>
-          <div className="mono" style={{ color: "var(--text-4)", fontSize: 9.5 }}>匹配度</div>
+          <div className="mono" style={{ color: "var(--text-4)", fontSize: 9.5 }}>{t({ en: "Match", zh: "匹配度" })}</div>
         </div>
       </div>
       <div style={{ background: "var(--surface-3)", borderRadius: 99, height: 6, marginTop: 12, overflow: "hidden" }}>
-        <span style={{ background: "linear-gradient(90deg,#8B7BF0,#6359E9)", display: "block", height: "100%", width: `${item.match}%` }} />
+        <span style={{ background: "var(--accent-grad-bar)", display: "block", height: "100%", width: `${item.match}%` }} />
       </div>
       <div style={{ alignItems: "center", display: "flex", gap: 6, marginTop: 11 }}>
         <span style={{ alignItems: "center", background: status.soft, borderRadius: 999, color: status.color, display: "inline-flex", fontSize: 11.5, fontWeight: 600, gap: 6, height: 24, padding: "0 10px" }}>
@@ -209,22 +215,25 @@ function AgentPeopleCard({ item, navigate }: { item: OrbitAgentPeopleResultView;
       <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 9, marginTop: 11, padding: 11 }}>
         <Icon name="message" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
-          <div style={{ color: "var(--accent)", fontSize: 11.5, fontWeight: 650 }}>怎么开口</div>
+          <div style={{ color: "var(--accent)", fontSize: 11.5, fontWeight: 650 }}>{t({ en: "How to start", zh: "怎么开口" })}</div>
           <div style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>{item.opener}</div>
         </div>
       </div>
       <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 12.5, fontWeight: 650, gap: 3, justifyContent: "flex-end", marginTop: 12 }}>
-        查看名片
+        {t({ en: "View contact", zh: "查看名片" })}
         <Icon name="chevR" size={14} />
       </div>
     </button>
   );
 }
 
-function AgentEventCard({ item, navigate }: { item: OrbitAgentEventResultView; navigate: (href: string) => void }) {
+function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEventResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
   const event = item.event;
   const date = parseDate(event.startsAt);
-  const dateLabel = date ? `${fmtMonth(date)}${fmtDay(date)}日 · ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo", weekday: "short" }).format(date)}` : "时间待定";
+  const weekday = date ? new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo", weekday: "short" }).format(date) : "";
+  const dateLabel = date
+    ? (language === "en" ? `${fmtMonth(date, language)} ${fmtDay(date, language)} · ${weekday}` : `${fmtMonth(date, language)}${fmtDay(date, language)}日 · ${weekday}`)
+    : t({ en: "Time TBD", zh: "时间待定" });
 
   return (
     <button type="button" className="card card-hover" style={{ cursor: "pointer", display: "block", fontFamily: "var(--ff)", overflow: "hidden", padding: 0, textAlign: "left", width: "100%" }} onClick={() => navigate(`/events/${event.code}`)}>
@@ -238,7 +247,7 @@ function AgentEventCard({ item, navigate }: { item: OrbitAgentEventResultView; n
             </div>
             <div style={{ flexShrink: 0, textAlign: "right" }}>
               <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 750, lineHeight: 1 }}>{item.score}</div>
-              <div className="mono" style={{ color: "var(--text-4)", fontSize: 9.5 }}>匹配分</div>
+              <div className="mono" style={{ color: "var(--text-4)", fontSize: 9.5 }}>{t({ en: "Score", zh: "匹配分" })}</div>
             </div>
           </div>
           <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 12, gap: 8, marginTop: 8 }}>
@@ -252,12 +261,12 @@ function AgentEventCard({ item, navigate }: { item: OrbitAgentEventResultView; n
         <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 9, marginTop: 11, padding: 11 }}>
           <Icon name="sparkle" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
           <div>
-            <div style={{ color: "var(--accent)", fontSize: 11.5, fontWeight: 650 }}>怎么在现场社交</div>
+            <div style={{ color: "var(--accent)", fontSize: 11.5, fontWeight: 650 }}>{t({ en: "How to network on site", zh: "怎么在现场社交" })}</div>
             <div style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>{item.howto}</div>
           </div>
         </div>
         <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 12.5, fontWeight: 650, gap: 3, justifyContent: "flex-end", marginTop: 12 }}>
-          查看活动
+          {t({ en: "View event", zh: "查看活动" })}
           <Icon name="chevR" size={14} />
         </div>
       </div>
@@ -265,14 +274,14 @@ function AgentEventCard({ item, navigate }: { item: OrbitAgentEventResultView; n
   );
 }
 
-function PanelCards({ navigate, panel }: { navigate: (href: string) => void; panel: AgentPanel }) {
+function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {panel.items.map((item, index) =>
         isPeopleResult(item) ? (
-          <AgentPeopleCard key={`${item.connection.id}-${index}`} item={item} navigate={navigate} />
+          <AgentPeopleCard key={`${item.connection.id}-${index}`} item={item} navigate={navigate} t={t} />
         ) : (
-          <AgentEventCard key={`${item.event.code}-${index}`} item={item} navigate={navigate} />
+          <AgentEventCard key={`${item.event.code}-${index}`} item={item} language={language} navigate={navigate} t={t} />
         ),
       )}
     </div>
@@ -309,8 +318,8 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
           type="button"
           onClick={onSend}
           disabled={!value.trim()}
-          aria-label="发送"
-          style={{ alignItems: "center", background: value.trim() ? "linear-gradient(180deg,#8170F1,#614CE2)" : "var(--surface-3)", border: "none", borderRadius: 12, boxShadow: value.trim() ? "0 8px 18px rgba(99,76,226,0.28)" : "none", color: value.trim() ? "#fff" : "var(--text-4)", cursor: value.trim() ? "pointer" : "default", display: "flex", height: 40, justifyContent: "center", width: 40 }}
+          aria-label={t({ en: "Send", zh: "发送" })}
+          style={{ alignItems: "center", background: value.trim() ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: 12, boxShadow: value.trim() ? "0 8px 18px rgba(99,76,226,0.28)" : "none", color: value.trim() ? "var(--on-dark)" : "var(--text-4)", cursor: value.trim() ? "pointer" : "default", display: "flex", height: 40, justifyContent: "center", width: 40 }}
         >
           <Icon name="arrow" size={19} style={{ transform: "rotate(-90deg)" }} />
         </button>
@@ -330,7 +339,7 @@ function TypingDots() {
 }
 
 export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
-  const { preserveHref, t } = useOrbitLanguage();
+  const { language, preserveHref, t } = useOrbitLanguage();
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [panel, setPanel] = useState<AgentPanel | null>(null);
@@ -397,6 +406,15 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     if (scroll) scroll.scrollTop = scroll.scrollHeight;
   }, [messages, thinking]);
 
+  useEffect(() => {
+    if (!histOpen) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setHistOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [histOpen]);
+
   const send = () => {
     const value = text.trim();
     if (!value) return;
@@ -429,12 +447,12 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       {messages.map((message, index) =>
         message.role === "user" ? (
           <div key={`user-${index}`} style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-            <div style={{ background: "var(--accent)", borderRadius: "16px 16px 4px 16px", color: "#fff", fontSize: 14.5, lineHeight: 1.55, maxWidth: "82%", padding: "11px 15px" }}>{message.text}</div>
+            <div style={{ background: "var(--accent)", borderRadius: "16px 16px 4px 16px", color: "var(--on-dark)", fontSize: 14.5, lineHeight: 1.55, maxWidth: "82%", padding: "11px 15px" }}>{message.text}</div>
           </div>
         ) : (
           <div key={`assistant-${index}`} style={{ display: "flex", gap: 11, marginBottom: 18 }}>
             <span className="avatar g-indigo" style={{ borderRadius: 10, flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
-              <Icon name="sparkle" size={16} color="#fff" />
+              <Icon name="sparkle" size={16} color="var(--on-dark)" />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               {message.note ? (
@@ -447,7 +465,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               {inlinePanel ? (
                 <div style={{ marginTop: 12 }}>
                   <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panelTitle}</div>
-                  <PanelCards panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} navigate={navigate} />
+                  <PanelCards language={language} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} navigate={navigate} t={t} />
                 </div>
               ) : null}
             </div>
@@ -457,7 +475,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       {thinking ? (
         <div style={{ display: "flex", gap: 11, marginBottom: 18 }}>
           <span className="avatar g-indigo" style={{ borderRadius: 10, flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
-            <Icon name="sparkle" size={16} color="#fff" />
+            <Icon name="sparkle" size={16} color="var(--on-dark)" />
           </span>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", padding: "14px 16px" }}>
             <TypingDots />
@@ -524,7 +542,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                 <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 9, color: "var(--accent)", display: "flex", height: 30, justifyContent: "center", width: 30 }}>
                   <Icon name={panel.kind === "people" ? "users" : "calendar"} size={17} />
                 </span>
-                <div className="h-section" style={{ fontSize: 16 }}>{panel.panelTitle}</div>
+                <h3 className="h-section">{panel.panelTitle}</h3>
               </div>
               <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 6 }}>
                 {panel.kind === "people"
@@ -533,7 +551,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               </div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 24px" }}>
-              <PanelCards panel={panel} navigate={navigate} />
+              <PanelCards language={language} panel={panel} navigate={navigate} t={t} />
             </div>
           </aside>
         ) : null}
@@ -550,12 +568,12 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
       {histOpen ? (
         <div className="orbit-mobile-only" style={{ inset: 0, position: "fixed", zIndex: 90 }}>
-          <div onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "rgba(20,20,28,0.42)", inset: 0, position: "absolute" }} />
+          <div onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
           <div style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}>
             <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
               <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 700 }}>{t({ en: "Chat history", zh: "对话历史" })}</span>
               <div style={{ flex: 1 }} />
-              <button type="button" onClick={() => setHistOpen(false)} aria-label={t({ en: "Close", zh: "关闭" })} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 15, height: 30, justifyContent: "center", width: 30 }}>✕</button>
+              <button type="button" className="hit-44" onClick={() => setHistOpen(false)} aria-label={t({ en: "Close", zh: "关闭" })} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 15, height: 30, justifyContent: "center", width: 30 }}><Icon name="x" size={16} /></button>
             </div>
             <div style={{ padding: 12 }}>
               <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 7, height: 40, justifyContent: "center", width: "100%" }}>

@@ -13,25 +13,32 @@ import type {
   OrbitIntroView,
 } from "../orbit-contacts-route-view-model";
 import { AccountTopNav, MobileBar, ModalShell, orbitNavigate, StatusBar } from "../orbit-account-shell";
+import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
 
+type Translate = (copy: { en: string; zh: string }) => string;
+
 type CrmMode = "list" | "pipeline" | "graph" | "intros" | "scan";
 
-const crmNav: { href: string; icon: string; key: CrmMode; label: string }[] = [
-  { key: "list", href: "/home/cards", icon: "wallet", label: "全部人脉" },
-  { key: "pipeline", href: "/home/cards/pipeline", icon: "list", label: "跟进管线" },
-  { key: "graph", href: "/home/cards/graph", icon: "users", label: "人脉图谱" },
-  { key: "intros", href: "/home/cards/intros", icon: "share", label: "引荐记录" },
-  { key: "scan", href: "/home/cards/scan", icon: "ticket", label: "扫名片" },
-];
+function crmNavItems(t: Translate): { href: string; icon: string; key: CrmMode; label: string }[] {
+  return [
+    { key: "list", href: "/home/cards", icon: "wallet", label: t({ en: "All contacts", zh: "全部人脉" }) },
+    { key: "pipeline", href: "/home/cards/pipeline", icon: "list", label: t({ en: "Pipeline", zh: "跟进管线" }) },
+    { key: "graph", href: "/home/cards/graph", icon: "users", label: t({ en: "Network graph", zh: "人脉图谱" }) },
+    { key: "intros", href: "/home/cards/intros", icon: "share", label: t({ en: "Introductions", zh: "引荐记录" }) },
+    { key: "scan", href: "/home/cards/scan", icon: "ticket", label: t({ en: "Scan card", zh: "扫名片" }) },
+  ];
+}
 
-const mobileCrmTabs: { href: string; key: CrmMode; label: string }[] = [
-  { key: "list", href: "/home/cards", label: "全部" },
-  { key: "pipeline", href: "/home/cards/pipeline", label: "管线" },
-  { key: "graph", href: "/home/cards/graph", label: "图谱" },
-  { key: "intros", href: "/home/cards/intros", label: "引荐" },
-];
+function mobileCrmTabItems(t: Translate): { href: string; key: CrmMode; label: string }[] {
+  return [
+    { key: "list", href: "/home/cards", label: t({ en: "All", zh: "全部" }) },
+    { key: "pipeline", href: "/home/cards/pipeline", label: t({ en: "Pipeline", zh: "管线" }) },
+    { key: "graph", href: "/home/cards/graph", label: t({ en: "Graph", zh: "图谱" }) },
+    { key: "intros", href: "/home/cards/intros", label: t({ en: "Intros", zh: "引荐" }) },
+  ];
+}
 
 const stageColors = ["var(--amber)", "var(--sky)", "var(--live)"];
 const stageSoft = ["var(--amber-soft)", "var(--sky-soft)", "var(--live-soft)"];
@@ -52,8 +59,8 @@ function crmInitial(value: string) {
   return String(value || "?").trim().slice(0, 1).toUpperCase() || "?";
 }
 
-function crmRole(contact: Pick<OrbitContactView, "company" | "title">) {
-  return [contact.company, contact.title].filter(Boolean).join(" · ") || "暂无公司职位";
+function crmRole(contact: Pick<OrbitContactView, "company" | "title">, t: Translate) {
+  return [contact.company, contact.title].filter(Boolean).join(" · ") || t({ en: "No company or title yet", zh: "暂无公司职位" });
 }
 
 function crmHref(prototypeHref: string) {
@@ -76,14 +83,16 @@ function groupConnectionsByStatus(viewModel: OrbitContactsViewModel, list: Orbit
 function CrmNav({
   active,
   counts,
+  t,
 }: {
   active: CrmMode;
   counts?: { all: number };
+  t: Translate;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <div className="eyebrow" style={{ padding: "0 12px 10px" }}>名片夹</div>
-      {crmNav.map((item) => {
+      <div className="eyebrow" style={{ padding: "0 12px 10px" }}>{t({ en: "Contacts", zh: "名片夹" })}</div>
+      {crmNavItems(t).map((item) => {
         const on = active === item.key;
         const count = item.key === "list" && counts ? counts.all : null;
 
@@ -121,22 +130,26 @@ function MobileCrmHeader({
   active = "list",
   action,
   onQueryChange,
-  placeholder = "搜索姓名 / 公司 / 行业",
+  placeholder,
   query = "",
+  t,
 }: {
   active?: CrmMode;
   action?: ReactNode;
   onQueryChange?: (value: string) => void;
   placeholder?: string;
   query?: string;
+  t: Translate;
 }) {
+  const resolvedPlaceholder = placeholder ?? t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" });
   return (
     <div style={{ flexShrink: 0, padding: "16px 18px 0" }}>
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-        <h1 className="h-display" style={{ fontSize: 26, margin: "6px 0" }}>名片夹</h1>
+        <h1 className="h-display" style={{ margin: "6px 0" }}>{t({ en: "Contacts", zh: "名片夹" })}</h1>
         {action || (
           <a
-            aria-label="扫名片"
+            aria-label={t({ en: "Scan card", zh: "扫名片" })}
+            className="hit-44"
             href="/app/contacts/new"
             style={{
               alignItems: "center",
@@ -159,13 +172,13 @@ function MobileCrmHeader({
         <input
           className="field"
           onChange={(event) => onQueryChange?.(event.target.value)}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           style={{ background: "var(--surface-2)", height: 44, paddingLeft: 40 }}
           value={query}
         />
       </div>
       <div className="scroll noscroll" style={{ display: "flex", gap: 7, margin: "0 -18px", overflowX: "auto", padding: "0 18px 12px" }}>
-        {mobileCrmTabs.map((item) => (
+        {mobileCrmTabItems(t).map((item) => (
           <a
             className={`chip${active === item.key ? " is-active" : ""}`}
             href={crmHref(item.href)}
@@ -208,9 +221,11 @@ function StageDot({
 
 function PersonCard({
   item,
+  t,
   viewModel,
 }: {
   item: OrbitContactView;
+  t: Translate;
   viewModel: OrbitContactsViewModel;
 }) {
   return (
@@ -222,9 +237,9 @@ function PersonCard({
       <Avatar letter={crmInitial(item.displayName)} g="g-violet" size={44} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          <span className="h-section" style={{ color: "var(--ink)", fontSize: 15.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.displayName || "未命名联系人"}</span>
+          <h3 className="h-section" style={{ color: "var(--ink)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h3>
         </div>
-        <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(item)}</div>
+        <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(item, t)}</div>
       </div>
       <div style={{ alignItems: "flex-end", display: "flex", flexDirection: "column", flexShrink: 0, gap: 7 }}>
         <StageDot status={item.pipelineStatus} viewModel={viewModel} withLabel />
@@ -244,6 +259,7 @@ function filterConnections(connections: OrbitContactView[], query: string, stage
 }
 
 export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsViewModel }) {
+  const { t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState<"all" | OrbitContactPipelineStatus>("all");
   const items = viewModel.connections;
@@ -253,8 +269,8 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
   }
   const eventCount = new Set(items.map((item) => item.lastEventId).filter(Boolean)).size;
   const filtered = filterConnections(items, query, stage);
-  const filters: ["all" | OrbitContactPipelineStatus, string][] = [["all", "全部"], ...viewModel.pipelineStatuses.map((status) => [status.value, status.label] as ["all" | OrbitContactPipelineStatus, string])];
-  const subtitle = `${items.length} 位联系人${eventCount ? ` · 来自 ${eventCount} 场活动` : ""}`;
+  const filters: ["all" | OrbitContactPipelineStatus, string][] = [["all", t({ en: "All", zh: "全部" })], ...viewModel.pipelineStatuses.map((status) => [status.value, status.label] as ["all" | OrbitContactPipelineStatus, string])];
+  const subtitle = `${items.length} ${t({ en: "contacts", zh: "位联系人" })}${eventCount ? ` · ${t({ en: `from ${eventCount} events`, zh: `来自 ${eventCount} 场活动` })}` : ""}`;
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
@@ -262,20 +278,20 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}>
-            <CrmNav active="list" counts={counts} />
+            <CrmNav active="list" counts={counts} t={t} />
           </div>
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", justifyContent: "space-between", marginBottom: 22 }}>
               <div>
-                <h1 className="h-display" style={{ fontSize: 30, margin: 0 }}>全部人脉</h1>
+                <h1 className="h-display" style={{ margin: 0 }}>{t({ en: "All contacts", zh: "全部人脉" })}</h1>
                 <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>{subtitle}</div>
               </div>
-              <a className="btn btn-ghost btn-sm" href="/app/contacts/new"><Icon name="ticket" size={16} />扫名片</a>
+              <a className="btn btn-ghost btn-sm" href="/app/contacts/new"><Icon name="ticket" size={16} />{t({ en: "Scan card", zh: "扫名片" })}</a>
             </div>
             <div style={{ alignItems: "center", display: "flex", gap: 16, marginBottom: 18 }}>
               <div style={{ flex: 1, maxWidth: 320, position: "relative" }}>
                 <Icon name="search" size={17} color="var(--text-3)" style={{ left: 13, position: "absolute", top: 14 }} />
-                <input className="field" onChange={(event) => setQuery(event.target.value)} placeholder="按姓名、公司、职位搜索" style={{ height: 44, paddingLeft: 40 }} value={query} />
+                <input className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search by name, company, title", zh: "按姓名、公司、职位搜索" })} style={{ height: 44, paddingLeft: 40 }} value={query} />
               </div>
               <div style={{ display: "flex", gap: 7 }}>
                 {filters.map(([key, label]) => (
@@ -285,24 +301,24 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
                 ))}
               </div>
             </div>
-            {!filtered.length ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 13.5, padding: 18 }}>当前还没有匹配的联系人。</div> : null}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} viewModel={viewModel} />)}</div>
+            {!filtered.length ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 13.5, padding: 18 }}>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</div> : null}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
           </div>
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
         <AccountTopNav active="cards" />
-        <MobileCrmHeader active="list" onQueryChange={setQuery} query={query} />
+        <MobileCrmHeader active="list" onQueryChange={setQuery} query={query} t={t} />
         <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0, overflowY: "auto", padding: "2px 18px 36px" }}>
           <div style={{ color: "var(--text-3)", fontSize: 12.5, marginBottom: 10 }}>{subtitle}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} viewModel={viewModel} />)}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
         </div>
       </div>
     </main>
   );
 }
 
-function PipelineCard({ connection }: { connection: OrbitContactView }) {
+function PipelineCard({ connection, t }: { connection: OrbitContactView; t: Translate }) {
   return (
     <a
       className="card-hover"
@@ -312,8 +328,8 @@ function PipelineCard({ connection }: { connection: OrbitContactView }) {
       <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
         <Avatar letter={crmInitial(connection.displayName)} g="g-violet" size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{connection.displayName || "未命名联系人"}</div>
-          <div style={{ color: "var(--text-3)", fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(connection)}</div>
+          <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{connection.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(connection, t)}</div>
         </div>
         <Icon name="chevR" size={16} color="var(--text-4)" />
       </div>
@@ -323,9 +339,11 @@ function PipelineCard({ connection }: { connection: OrbitContactView }) {
 
 function PipelineBoard({
   grouped,
+  t,
   viewModel,
 }: {
   grouped: Record<OrbitContactPipelineStatus, OrbitContactView[]>;
+  t: Translate;
   viewModel: OrbitContactsViewModel;
 }) {
   return (
@@ -343,7 +361,7 @@ function PipelineBoard({
               <div style={{ flex: 1 }} />
             </div>
             <div className="scroll" style={{ display: "flex", flex: 1, flexDirection: "column", gap: 10, overflowY: "auto", padding: "0 11px 14px" }}>
-              {items.length ? items.map((contact) => <PipelineCard connection={contact} key={contact.id} />) : <div style={{ color: "var(--text-4)", fontSize: 13, padding: "4px 2px" }}>暂无联系人。</div>}
+              {items.length ? items.map((contact) => <PipelineCard connection={contact} key={contact.id} t={t} />) : <div style={{ color: "var(--text-4)", fontSize: 13, padding: "4px 2px" }}>{t({ en: "No contacts yet.", zh: "暂无联系人。" })}</div>}
             </div>
           </div>
         );
@@ -354,9 +372,11 @@ function PipelineBoard({
 
 function MobilePipeline({
   grouped,
+  t,
   viewModel,
 }: {
   grouped: Record<OrbitContactPipelineStatus, OrbitContactView[]>;
+  t: Translate;
   viewModel: OrbitContactsViewModel;
 }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -371,7 +391,7 @@ function MobilePipeline({
 
         return (
           <div key={status.value} style={{ marginBottom: 14 }}>
-            <div onClick={() => setCollapsed((current) => ({ ...current, [status.value]: !current[status.value] }))} style={{ alignItems: "center", background: "var(--bg)", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", gap: 8, padding: "10px 0", position: "sticky", top: 0, zIndex: 5 }}>
+            <div aria-expanded={!isCollapsed} aria-label={isCollapsed ? t({ en: "Expand stage", zh: "展开阶段" }) : t({ en: "Collapse stage", zh: "收起阶段" })} onClick={() => setCollapsed((current) => ({ ...current, [status.value]: !current[status.value] }))} role="button" style={{ alignItems: "center", background: "var(--bg)", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", gap: 8, padding: "10px 0", position: "sticky", top: 0, zIndex: 5 }}>
               <Icon name={isCollapsed ? "chevR" : "chevD"} size={16} color="var(--text-3)" />
               <span style={{ background: color, borderRadius: 999, height: 9, width: 9 }} />
               <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{status.label}</span>
@@ -380,8 +400,8 @@ function MobilePipeline({
             </div>
             {!isCollapsed ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-                {items.map((contact) => <PipelineCard connection={contact} key={contact.id} />)}
-                {items.length === 0 ? <div style={{ color: "var(--text-4)", fontSize: 13, padding: "4px 2px" }}>暂无</div> : null}
+                {items.map((contact) => <PipelineCard connection={contact} key={contact.id} t={t} />)}
+                {items.length === 0 ? <div style={{ color: "var(--text-4)", fontSize: 13, padding: "4px 2px" }}>{t({ en: "None", zh: "暂无" })}</div> : null}
               </div>
             ) : null}
           </div>
@@ -392,6 +412,7 @@ function MobilePipeline({
 }
 
 export function OrbitRealCardsPipeline({ viewModel }: { viewModel: OrbitContactsViewModel }) {
+  const { t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
   const visible = filterConnections(viewModel.connections, query);
   const grouped = groupConnectionsByStatus(viewModel, visible);
@@ -402,25 +423,25 @@ export function OrbitRealCardsPipeline({ viewModel }: { viewModel: OrbitContacts
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}>
-            <CrmNav active="pipeline" />
+            <CrmNav active="pipeline" t={t} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", height: "100%", minWidth: 0, padding: "28px 32px 28px" }}>
             <div style={{ marginBottom: 20 }}>
               <div className="eyebrow">PIPELINE</div>
-              <h1 className="h-display" style={{ fontSize: 30, margin: "2px 0 0" }}>跟进管线</h1>
-              <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>把每段关系往前推一格 · 按状态分组</div>
+              <h1 className="h-display" style={{ margin: "2px 0 0" }}>{t({ en: "Pipeline", zh: "跟进管线" })}</h1>
+              <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>{t({ en: "Move each relationship forward a step · grouped by status", zh: "把每段关系往前推一格 · 按状态分组" })}</div>
             </div>
             <div style={{ flex: 1, minHeight: 0 }}>
-              <PipelineBoard grouped={grouped} viewModel={viewModel} />
+              <PipelineBoard grouped={grouped} t={t} viewModel={viewModel} />
             </div>
           </div>
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", position: "relative" }}>
         <AccountTopNav active="cards" />
-        <MobileCrmHeader active="pipeline" onQueryChange={setQuery} query={query} />
+        <MobileCrmHeader active="pipeline" onQueryChange={setQuery} query={query} t={t} />
         <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 18px 36px" }}>
-          <MobilePipeline grouped={grouped} viewModel={viewModel} />
+          <MobilePipeline grouped={grouped} t={t} viewModel={viewModel} />
         </div>
       </div>
     </main>
@@ -441,13 +462,13 @@ interface ConnGraph {
   nodes: GraphNode[];
 }
 
-function buildConnGraph(viewModel: OrbitContactsViewModel): ConnGraph {
+function buildConnGraph(viewModel: OrbitContactsViewModel, t: Translate): ConnGraph {
   const eventIdsForContacts = [...new Set(viewModel.connections.map((contact) => contact.lastEventId))];
 
   return {
     edges: viewModel.connections.map((contact) => ({ source: contact.id, target: contact.lastEventId })),
     nodes: [
-      ...eventIdsForContacts.map((id) => ({ id, name: viewModel.events.find((event) => event.id === id)?.name || "活动", type: "event" as const })),
+      ...eventIdsForContacts.map((id) => ({ id, name: viewModel.events.find((event) => event.id === id)?.name || t({ en: "Event", zh: "活动" }), type: "event" as const })),
       ...viewModel.connections.map((contact) => ({
         company: contact.company,
         displayName: contact.displayName,
@@ -498,10 +519,12 @@ function graphLayout(graph: ConnGraph) {
 
 function GraphCanvas({
   scale,
+  t,
   view,
   viewModel,
 }: {
   scale: number;
+  t: Translate;
   view: ReturnType<typeof graphLayout>;
   viewModel: OrbitContactsViewModel;
 }) {
@@ -546,7 +569,7 @@ function GraphCanvas({
             return (
               <g key={event.id}>
                 <circle cx={point.x} cy={point.y} r="9" fill="var(--surface)" stroke="var(--accent)" strokeWidth="1.5" />
-                <text x={point.x} y={point.y + 22} textAnchor="middle" fontSize="9" fill="var(--text-3)">活动</text>
+                <text x={point.x} y={point.y + 22} textAnchor="middle" fontSize="9" fill="var(--text-3)">{t({ en: "Event", zh: "活动" })}</text>
               </g>
             );
           })}
@@ -561,7 +584,7 @@ function GraphCanvas({
             );
           })}
           <circle cx={view.cx} cy={view.cy} r="11" fill="var(--accent)" />
-          <text x={view.cx} y={view.cy + 4} textAnchor="middle" fontSize="10" fill="#fff" fontWeight="700">我</text>
+          <text x={view.cx} y={view.cy + 4} textAnchor="middle" fontSize="10" fill="var(--on-dark)" fontWeight="700">{t({ en: "Me", zh: "我" })}</text>
         </g>
       </svg>
       ) : null}
@@ -570,9 +593,10 @@ function GraphCanvas({
 }
 
 export function OrbitRealCardsGraph({ viewModel }: { viewModel: OrbitContactsViewModel }) {
+  const { t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
   const [scale, setScale] = useState(1);
-  const graph = useMemo(() => buildConnGraph(viewModel), [viewModel]);
+  const graph = useMemo(() => buildConnGraph(viewModel, t), [viewModel, t]);
   const visible = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) return graph;
@@ -583,12 +607,12 @@ export function OrbitRealCardsGraph({ viewModel }: { viewModel: OrbitContactsVie
     return { edges: keptEdges, nodes: graph.nodes.filter((node) => ids.has(node.id) || (node.type === "event" && eventIdsFromEdges.has(node.id))) };
   }, [graph, query]);
   const view = useMemo(() => graphLayout(visible), [visible]);
-  const summary = `${view.connections.length} 位联系人 · ${view.events.length} 场活动`;
+  const summary = `${view.connections.length} ${t({ en: "contacts", zh: "位联系人" })} · ${view.events.length} ${t({ en: "events", zh: "场活动" })}`;
   const zoom = (className: string) => (
     <div className={className}>
-      <button className="btn btn-ghost btn-sm" onClick={() => setScale((value) => Math.max(0.5, value - 0.2))} type="button">-</button>
+      <button aria-label={t({ en: "Zoom out", zh: "缩小" })} className="btn btn-ghost btn-sm hit-44" onClick={() => setScale((value) => Math.max(0.5, value - 0.2))} type="button">-</button>
       <span className="mono">{Math.round(scale * 100)}%</span>
-      <button className="btn btn-primary btn-sm" onClick={() => setScale((value) => Math.min(2.2, value + 0.2))} type="button">+</button>
+      <button aria-label={t({ en: "Zoom in", zh: "放大" })} className="btn btn-primary btn-sm hit-44" onClick={() => setScale((value) => Math.min(2.2, value + 0.2))} type="button">+</button>
     </div>
   );
 
@@ -598,54 +622,54 @@ export function OrbitRealCardsGraph({ viewModel }: { viewModel: OrbitContactsVie
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}>
-            <CrmNav active="graph" />
+            <CrmNav active="graph" t={t} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 20, justifyContent: "space-between", padding: "24px 32px 16px" }}>
               <div>
-                <h1 className="h-display" style={{ fontSize: 30, margin: 0 }}>人脉图谱</h1>
+                <h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Network graph", zh: "人脉图谱" })}</h1>
                 <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>{summary}</div>
               </div>
               {zoom("orbit-graph-zoom")}
             </div>
             <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "0 24px 24px" }}>
-              <GraphCanvas scale={scale} view={view} viewModel={viewModel} />
+              <GraphCanvas scale={scale} t={t} view={view} viewModel={viewModel} />
             </div>
           </div>
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
-        <MobileCrmHeader active="graph" onQueryChange={setQuery} query={query} />
+        <MobileCrmHeader active="graph" onQueryChange={setQuery} query={query} t={t} />
         <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "0 18px 36px" }}>
           <div style={{ color: "var(--text-3)", fontSize: 12.5, marginBottom: 10 }}>{summary}</div>
           {zoom("orbit-graph-mobile-zoom")}
-          <GraphCanvas scale={scale} view={view} viewModel={viewModel} />
+          <GraphCanvas scale={scale} t={t} view={view} viewModel={viewModel} />
         </div>
       </div>
     </main>
   );
 }
 
-function introStatusLabel(status: OrbitIntroStatus) {
-  return status === "sent" ? "已发送" : "草稿";
+function introStatusLabel(status: OrbitIntroStatus, t: Translate) {
+  return status === "sent" ? t({ en: "Sent", zh: "已发送" }) : t({ en: "Draft", zh: "草稿" });
 }
 
 function introStatusClass(status: OrbitIntroStatus) {
   return status === "sent" ? "badge-live" : "badge-soon";
 }
 
-function IntroRow({ intro }: { intro: OrbitIntroView }) {
+function IntroRow({ intro, t }: { intro: OrbitIntroView; t: Translate }) {
   return (
     <article className="card orbit-intro-row">
       <div className="orbit-intro-route">
         <Avatar letter={crmInitial(intro.labelA)} g="g-sky" size={42} />
-        <div className="orbit-intro-name"><span>联系人 A</span><strong>{intro.labelA}</strong></div>
+        <div className="orbit-intro-name"><span>{t({ en: "Contact A", zh: "联系人 A" })}</span><strong>{intro.labelA}</strong></div>
         <span className="orbit-intro-arrow"><Icon name="arrow" size={17} /></span>
         <Avatar letter={crmInitial(intro.labelB)} g="g-emerald" size={42} />
-        <div className="orbit-intro-name"><span>联系人 B</span><strong>{intro.labelB}</strong></div>
+        <div className="orbit-intro-name"><span>{t({ en: "Contact B", zh: "联系人 B" })}</span><strong>{intro.labelB}</strong></div>
       </div>
-      <span className={`badge ${introStatusClass(intro.statusBadge)}`}>{introStatusLabel(intro.statusBadge)}</span>
+      <span className={`badge ${introStatusClass(intro.statusBadge)}`}>{introStatusLabel(intro.statusBadge, t)}</span>
       {intro.blurb ? <p className="orbit-intro-blurb">{intro.blurb}</p> : null}
     </article>
   );
@@ -655,10 +679,12 @@ function PickerSlot({
   label,
   onPick,
   person,
+  t,
 }: {
   label: string;
   onPick: () => void;
   person: OrbitContactView | null;
+  t: Translate;
 }) {
   return (
     <div style={{ flex: 1 }}>
@@ -671,7 +697,7 @@ function PickerSlot({
       ) : (
         <button onClick={onPick} style={{ alignItems: "center", background: "var(--surface-2)", border: "1.5px dashed var(--border-strong)", borderRadius: 14, color: "var(--text-2)", cursor: "pointer", display: "flex", flexDirection: "column", fontFamily: "var(--ff)", gap: 8, padding: 14, width: "100%" }} type="button">
           <span style={{ alignItems: "center", background: "var(--surface)", borderRadius: 999, display: "flex", height: 48, justifyContent: "center", width: 48 }}><Icon name="plus" size={22} /></span>
-          <span style={{ fontSize: 12.5, fontWeight: 550 }}>选择联系人</span>
+          <span style={{ fontSize: 12.5, fontWeight: 550 }}>{t({ en: "Pick a contact", zh: "选择联系人" })}</span>
         </button>
       )}
     </div>
@@ -681,10 +707,12 @@ function PickerSlot({
 function IntroComposerModal({
   onClose,
   onCreated,
+  t,
   viewModel,
 }: {
   onClose: () => void;
   onCreated: () => void;
+  t: Translate;
   viewModel: OrbitContactsViewModel;
 }) {
   const [aId, setAId] = useState("");
@@ -710,11 +738,11 @@ function IntroComposerModal({
 
   if (picking) {
     return (
-      <ModalShell maxW={520} onClose={() => setPicking("")} step="选择联系人">
-        <h2 className="h-title" style={{ fontSize: 20, margin: "4px 0 14px" }}>选择{picking === "a" ? "第一位" : "第二位"}联系人</h2>
+      <ModalShell maxW={520} onClose={() => setPicking("")} step={t({ en: "Pick a contact", zh: "选择联系人" })}>
+        <h2 className="h-title" style={{ margin: "4px 0 14px" }}>{picking === "a" ? t({ en: "Pick the first contact", zh: "选择第一位联系人" }) : t({ en: "Pick the second contact", zh: "选择第二位联系人" })}</h2>
         <div style={{ marginBottom: 14, position: "relative" }}>
           <Icon name="search" size={17} color="var(--text-3)" style={{ left: 13, position: "absolute", top: 14 }} />
-          <input autoFocus className="field" onChange={(event) => setQuery(event.target.value)} placeholder="搜索名片夹" style={{ paddingLeft: 40 }} value={query} />
+          <input autoFocus className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search contacts", zh: "搜索名片夹" })} style={{ paddingLeft: 40 }} value={query} />
         </div>
         <div className="scroll" style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
           {selectable.map((item) => (
@@ -722,7 +750,7 @@ function IntroComposerModal({
               <Avatar letter={crmInitial(item.displayName)} g="g-violet" size={38} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{item.displayName}</div>
-                <div style={{ color: "var(--text-3)", fontSize: 12 }}>{crmRole(item)}</div>
+                <div style={{ color: "var(--text-3)", fontSize: 12 }}>{crmRole(item, t)}</div>
               </div>
               <Icon name="chevR" size={16} color="var(--text-4)" />
             </button>
@@ -733,20 +761,20 @@ function IntroComposerModal({
   }
 
   return (
-    <ModalShell maxW={560} onClose={onClose} step="创建引荐">
+    <ModalShell maxW={560} onClose={onClose} step={t({ en: "Create introduction", zh: "创建引荐" })}>
       <form onSubmit={(event) => { event.preventDefault(); if (aId && bId) onCreated(); }}>
-        <h2 className="h-title" style={{ fontSize: 22, margin: "4px 0 6px" }}>发起引荐</h2>
-        <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: "0 0 18px" }}>从名片夹里选择两位联系人。你填写引荐词，或者留空交给当前 AI 能力生成。</p>
+        <h2 className="h-title" style={{ margin: "4px 0 6px" }}>{t({ en: "Make an introduction", zh: "发起引荐" })}</h2>
+        <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: "0 0 18px" }}>{t({ en: "Pick two contacts from your card holder. Write the intro note yourself, or leave it blank for the current AI to generate.", zh: "从名片夹里选择两位联系人。你填写引荐词，或者留空交给当前 AI 能力生成。" })}</p>
         <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
-          <PickerSlot label="联系人 A" onPick={() => setPicking("a")} person={selectedA} />
+          <PickerSlot label={t({ en: "Contact A", zh: "联系人 A" })} onPick={() => setPicking("a")} person={selectedA} t={t} />
           <div style={{ color: "var(--accent)", marginTop: 18 }}><Icon name="share" size={20} /></div>
-          <PickerSlot label="联系人 B" onPick={() => setPicking("b")} person={selectedB} />
+          <PickerSlot label={t({ en: "Contact B", zh: "联系人 B" })} onPick={() => setPicking("b")} person={selectedB} t={t} />
         </div>
-        <label className="field-label" style={{ marginTop: 18 }}>引荐词</label>
-        <textarea className="field" onChange={(event) => setBlurb(event.target.value)} placeholder="留空则尝试用 AI 生成；如果当前没配 AI，会明确报错。" style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={blurb} />
+        <label className="field-label" style={{ marginTop: 18 }}>{t({ en: "Intro note", zh: "引荐词" })}</label>
+        <textarea className="field" onChange={(event) => setBlurb(event.target.value)} placeholder={t({ en: "Leave blank to try AI generation; if no AI is configured, it will error clearly.", zh: "留空则尝试用 AI 生成；如果当前没配 AI，会明确报错。" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={blurb} />
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
-          <button className="btn btn-ghost" onClick={onClose} type="button">取消</button>
-          <button className="btn btn-primary" disabled={!aId || !bId} type="submit"><Icon name="share" size={16} color="#fff" />保存引荐</button>
+          <button className="btn btn-ghost" onClick={onClose} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
+          <button className="btn btn-primary" disabled={!aId || !bId} type="submit"><Icon name="share" size={16} color="var(--on-dark)" />{t({ en: "Save introduction", zh: "保存引荐" })}</button>
         </div>
       </form>
     </ModalShell>
@@ -754,6 +782,7 @@ function IntroComposerModal({
 }
 
 export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsViewModel }) {
+  const { t } = useOrbitLanguage();
   const [composerOpen, setComposerOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | OrbitIntroStatus>("all");
   const [query, setQuery] = useState("");
@@ -763,9 +792,9 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
     total: viewModel.intros.length,
   };
   const filters: { count: number; key: "all" | OrbitIntroStatus; label: string }[] = [
-    { key: "all", label: "全部", count: stats.total },
-    { key: "draft", label: "草稿", count: stats.draft },
-    { key: "sent", label: "已发送", count: stats.sent },
+    { key: "all", label: t({ en: "All", zh: "全部" }), count: stats.total },
+    { key: "draft", label: t({ en: "Draft", zh: "草稿" }), count: stats.draft },
+    { key: "sent", label: t({ en: "Sent", zh: "已发送" }), count: stats.sent },
   ];
   const visible = viewModel.intros.filter((intro) => {
     const matchesFilter = filter === "all" || intro.statusBadge === filter;
@@ -774,9 +803,9 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
   });
   const statsNode = (
     <section className="orbit-intro-stats">
-      <div className="card-flat"><strong>{stats.total}</strong><span>全部</span></div>
-      <div className="card-flat"><strong>{stats.draft}</strong><span>草稿</span></div>
-      <div className="card-flat"><strong>{stats.sent}</strong><span>已发送</span></div>
+      <div className="card-flat"><strong>{stats.total}</strong><span>{t({ en: "All", zh: "全部" })}</span></div>
+      <div className="card-flat"><strong>{stats.draft}</strong><span>{t({ en: "Draft", zh: "草稿" })}</span></div>
+      <div className="card-flat"><strong>{stats.sent}</strong><span>{t({ en: "Sent", zh: "已发送" })}</span></div>
     </section>
   );
 
@@ -786,75 +815,84 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}>
-            <CrmNav active="intros" />
+            <CrmNav active="intros" t={t} />
           </div>
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 20, justifyContent: "space-between", marginBottom: 22 }}>
               <div>
-                <h1 className="h-display" style={{ fontSize: 30, margin: 0 }}>引荐记录</h1>
-                <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>你已经发出或保存过的引荐，都在这里。</div>
+                <h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Introductions", zh: "引荐记录" })}</h1>
+                <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>{t({ en: "Every introduction you've sent or saved lives here.", zh: "你已经发出或保存过的引荐，都在这里。" })}</div>
               </div>
-              <button className="btn btn-primary btn-sm" onClick={() => setComposerOpen(true)} type="button"><Icon name="share" size={16} color="#fff" />发起引荐</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setComposerOpen(true)} type="button"><Icon name="share" size={16} color="var(--on-dark)" />{t({ en: "Make introduction", zh: "发起引荐" })}</button>
             </div>
             {statsNode}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
               {filters.map((item) => (
-                <button className={`chip${filter === item.key ? " is-active" : ""}`} key={item.key} onClick={() => setFilter(item.key)} type="button">
+                <button aria-pressed={filter === item.key} className={`chip${filter === item.key ? " is-active" : ""}`} key={item.key} onClick={() => setFilter(item.key)} type="button">
                   {item.label}<span style={{ fontFamily: "var(--ff-mono)", fontSize: 11, marginLeft: 4, opacity: 0.6 }}>{item.count}</span>
                 </button>
               ))}
             </div>
-            {!visible.length ? <div className="card-flat orbit-empty">还没有符合筛选条件的引荐记录。</div> : null}
-            <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} />)}</section>
+            {!visible.length ? <div className="card-flat orbit-empty">{t({ en: "No introductions match these filters yet.", zh: "还没有符合筛选条件的引荐记录。" })}</div> : null}
+            <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} t={t} />)}</section>
           </div>
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <MobileCrmHeader
-          action={<button aria-label="发起引荐" style={{ alignItems: "center", background: "var(--accent-soft)", border: "none", borderRadius: 999, color: "var(--accent)", cursor: "pointer", display: "flex", height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="plus" size={19} /></button>}
+          action={<button aria-label={t({ en: "Make introduction", zh: "发起引荐" })} className="hit-44" style={{ alignItems: "center", background: "var(--accent-soft)", border: "none", borderRadius: 999, color: "var(--accent)", cursor: "pointer", display: "flex", height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="plus" size={19} /></button>}
           active="intros"
           onQueryChange={setQuery}
-          placeholder="搜索联系人 / 引荐词"
+          placeholder={t({ en: "Search contacts / intro notes", zh: "搜索联系人 / 引荐词" })}
           query={query}
+          t={t}
         />
         <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "2px 18px 36px" }}>
           {statsNode}
           <div className="scroll noscroll" style={{ display: "flex", gap: 7, margin: "0 -18px 14px", overflowX: "auto", padding: "0 18px" }}>
             {filters.map((item) => (
-              <button className={`chip${filter === item.key ? " is-active" : ""}`} key={item.key} onClick={() => setFilter(item.key)} style={{ flexShrink: 0 }} type="button">
+              <button aria-pressed={filter === item.key} className={`chip${filter === item.key ? " is-active" : ""}`} key={item.key} onClick={() => setFilter(item.key)} style={{ flexShrink: 0 }} type="button">
                 {item.label}<span style={{ fontFamily: "var(--ff-mono)", fontSize: 11, marginLeft: 4, opacity: 0.6 }}>{item.count}</span>
               </button>
             ))}
           </div>
-          {!visible.length ? <div className="card-flat orbit-empty">还没有符合筛选条件的引荐记录。</div> : null}
-          <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} />)}</section>
+          {!visible.length ? <div className="card-flat orbit-empty">{t({ en: "No introductions match these filters yet.", zh: "还没有符合筛选条件的引荐记录。" })}</div> : null}
+          <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} t={t} />)}</section>
         </div>
       </div>
-      {composerOpen ? <IntroComposerModal onClose={() => setComposerOpen(false)} onCreated={() => setComposerOpen(false)} viewModel={viewModel} /> : null}
+      {composerOpen ? <IntroComposerModal onClose={() => setComposerOpen(false)} onCreated={() => setComposerOpen(false)} t={t} viewModel={viewModel} /> : null}
     </main>
   );
 }
 
-const sourceLabels: Record<OrbitContactView["source"], string> = {
-  exchange: "活动交换",
-  manual: "手动添加",
-  scan: "名片扫描",
-};
+function sourceLabel(source: OrbitContactView["source"], t: Translate): string {
+  const labels: Record<OrbitContactView["source"], string> = {
+    exchange: t({ en: "Event exchange", zh: "活动交换" }),
+    manual: t({ en: "Added manually", zh: "手动添加" }),
+    scan: t({ en: "Card scan", zh: "名片扫描" }),
+  };
+  return labels[source];
+}
 
-const aiActions = [
-  { icon: "bell", kind: "reminder", label: "到点提醒" },
-  { icon: "mail", kind: "message_draft", label: "跟进文案" },
-  { icon: "share", kind: "intro_blurb", label: "引荐词" },
-] as const;
+type AiActionKind = "intro_blurb" | "message_draft" | "reminder";
 
-const aiSample: Record<(typeof aiActions)[number]["kind"], string> = {
-  intro_blurb: "想把你引荐给我的朋友——他在做你正寻找的渠道资源，背景很契合，要不要我牵个线？",
-  message_draft: "你好！很高兴在活动上认识你。想继续上次聊到的出海合作，方便这周约个 30 分钟线上电话吗？",
-  reminder: "已为你设置提醒：3 天后跟进，附上今天聊到的合作要点。",
-};
+function aiActionList(t: Translate): { icon: string; kind: AiActionKind; label: string }[] {
+  return [
+    { icon: "bell", kind: "reminder", label: t({ en: "Reminder", zh: "到点提醒" }) },
+    { icon: "mail", kind: "message_draft", label: t({ en: "Follow-up draft", zh: "跟进文案" }) },
+    { icon: "share", kind: "intro_blurb", label: t({ en: "Intro note", zh: "引荐词" }) },
+  ];
+}
 
-type AiActionKind = keyof typeof aiSample;
+function aiSampleText(kind: AiActionKind, t: Translate): string {
+  const samples: Record<AiActionKind, string> = {
+    intro_blurb: t({ en: "I'd love to introduce you to a friend of mine—he works on exactly the channel resources you're looking for, and your backgrounds fit well. Want me to make the connection?", zh: "想把你引荐给我的朋友——他在做你正寻找的渠道资源，背景很契合，要不要我牵个线？" }),
+    message_draft: t({ en: "Hi! Great meeting you at the event. I'd love to continue the cross-border partnership we talked about—could we set up a 30-minute call online this week?", zh: "你好！很高兴在活动上认识你。想继续上次聊到的出海合作，方便这周约个 30 分钟线上电话吗？" }),
+    reminder: t({ en: "Reminder set: follow up in 3 days with the partnership highlights we discussed today.", zh: "已为你设置提醒：3 天后跟进，附上今天聊到的合作要点。" }),
+  };
+  return samples[kind];
+}
 
 function CdGlyph({
   color = "currentColor",
@@ -882,11 +920,11 @@ function CdGlyph({
   );
 }
 
-function cdDate(value: string) {
+function cdDate(value: string, language: string) {
   if (!value) return "";
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "";
-  return new Intl.DateTimeFormat("zh-CN", { day: "2-digit", hour: "2-digit", minute: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { day: "2-digit", hour: "2-digit", minute: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
 function cdStageMeta(viewModel: OrbitContactsViewModel, status: OrbitContactPipelineStatus) {
@@ -938,23 +976,23 @@ function TagBlock({
   );
 }
 
-function EventPublicProfileCard({ profile }: { profile: OrbitContactPublicProfileView | null }) {
+function EventPublicProfileCard({ profile, t }: { profile: OrbitContactPublicProfileView | null; t: Translate }) {
   if (!profile) return null;
 
   return (
     <div className="card" style={{ padding: 18 }}>
-      <span className="eyebrow">活动报名资料</span>
+      <span className="eyebrow">{t({ en: "Event signup profile", zh: "活动报名资料" })}</span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 12 }}>
         {profile.industry ? <span className="chip" style={{ background: "var(--accent-softer)", color: "var(--accent)" }}>{profile.industry}</span> : null}
       </div>
       {profile.bio ? <p style={{ color: "var(--text-2)", fontSize: 13.5, lineHeight: 1.6, margin: "12px 0 0" }}>{profile.bio}</p> : null}
       {profile.intro ? <p style={{ color: "var(--text-2)", fontSize: 13.5, lineHeight: 1.6, margin: "8px 0 0" }}>{profile.intro}</p> : null}
-      {profile.offering.length ? <TagBlock items={profile.offering} label="能提供" tone="accent" /> : null}
-      {profile.seeking.length ? <TagBlock items={profile.seeking} label="想寻找" /> : null}
-      {profile.topics.length ? <TagBlock items={profile.topics} label="兴趣话题" /> : null}
+      {profile.offering.length ? <TagBlock items={profile.offering} label={t({ en: "Can offer", zh: "能提供" })} tone="accent" /> : null}
+      {profile.seeking.length ? <TagBlock items={profile.seeking} label={t({ en: "Looking for", zh: "想寻找" })} /> : null}
+      {profile.topics.length ? <TagBlock items={profile.topics} label={t({ en: "Topics of interest", zh: "兴趣话题" })} /> : null}
       {profile.conversationPrompts.length ? (
         <div style={{ marginTop: 14 }}>
-          <div style={{ color: "var(--ink)", fontSize: 12.5, fontWeight: 650, marginBottom: 8 }}>AI 破冰问题</div>
+          <div style={{ color: "var(--ink)", fontSize: 12.5, fontWeight: 650, marginBottom: 8 }}>{t({ en: "AI icebreakers", zh: "AI 破冰问题" })}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {profile.conversationPrompts.slice(0, 3).map((prompt, index) => (
               <div key={prompt} style={{ display: "flex", gap: 10 }}>
@@ -984,6 +1022,7 @@ export function OrbitRealCardDetail({
   contactId: string;
   viewModel: OrbitContactsViewModel;
 }) {
+  const { language, t } = useOrbitLanguage();
   const base = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
   const [connection, setConnection] = useState<OrbitContactView>(() => ({ ...base }));
   const [notes, setNotes] = useState(() => [...base.notes]);
@@ -993,7 +1032,7 @@ export function OrbitRealCardDetail({
   const [aiDrafts, setAiDrafts] = useState<{ content: string; id: string; kind: AiActionKind }[]>([]);
   const [copiedKey, setCopiedKey] = useState("");
   const cover = gradientFromString(connection.displayName || contactId || "orbit");
-  const roleLine = crmRole(connection);
+  const roleLine = crmRole(connection, t);
   const profile = latestPublicProfile(base.encounters);
 
   function showNotice(message: string) {
@@ -1004,7 +1043,7 @@ export function OrbitRealCardDetail({
   function setStatus(status: OrbitContactPipelineStatus) {
     if (status === connection.pipelineStatus) return;
     setConnection((current) => ({ ...current, pipelineStatus: status }));
-    showNotice("阶段已更新。");
+    showNotice(t({ en: "Stage updated.", zh: "阶段已更新。" }));
   }
 
   function addNote(event: FormEvent) {
@@ -1012,13 +1051,13 @@ export function OrbitRealCardDetail({
     if (!noteBody.trim()) return;
     setNotes((current) => [...current, { id: `n${Date.now()}`, body: noteBody, createdAt: new Date().toISOString() }]);
     setNoteBody("");
-    showNotice("备注已保存。");
+    showNotice(t({ en: "Note saved.", zh: "备注已保存。" }));
   }
 
   function generateAi(kind: AiActionKind) {
     setAiBusy(kind);
     window.setTimeout(() => {
-      setAiDrafts((current) => [{ id: `d${Date.now()}`, kind, content: aiSample[kind] }, ...current]);
+      setAiDrafts((current) => [{ id: `d${Date.now()}`, kind, content: aiSampleText(kind, t) }, ...current]);
       setAiBusy("");
     }, 700);
   }
@@ -1029,21 +1068,21 @@ export function OrbitRealCardDetail({
   }
 
   const contactRows = [
-    { glyph: true, icon: "message", key: "wechat", label: "微信", value: connection.wechat },
+    { glyph: true, icon: "message", key: "wechat", label: t({ en: "WeChat", zh: "微信" }), value: connection.wechat },
     { glyph: true, icon: "message", key: "lineId", label: "LINE ID", value: connection.lineId },
-    { glyph: true, icon: "message", key: "phone", label: "电话", value: connection.phone },
-    { glyph: false, icon: "mail", key: "email", label: "邮箱", value: connection.email },
-    { glyph: true, icon: "briefcase", key: "company", label: "公司", value: [connection.company, connection.title].filter(Boolean).join(" · ") },
+    { glyph: true, icon: "message", key: "phone", label: t({ en: "Phone", zh: "电话" }), value: connection.phone },
+    { glyph: false, icon: "mail", key: "email", label: t({ en: "Email", zh: "邮箱" }), value: connection.email },
+    { glyph: true, icon: "briefcase", key: "company", label: t({ en: "Company", zh: "公司" }), value: [connection.company, connection.title].filter(Boolean).join(" · ") },
   ].filter((row) => row.value);
   const nextStep = connection.pipelineStatus === "partnered"
-    ? "已进入合作阶段，记得同步项目进展并维护长期关系。"
+    ? t({ en: "You're in the partnership stage—keep project progress in sync and maintain the long-term relationship.", zh: "已进入合作阶段，记得同步项目进展并维护长期关系。" })
     : connection.pipelineStatus === "in_progress"
-      ? "保持节奏，约下一次沟通并把讨论要点记进笔记。"
-      : "趁热打铁，发一条跟进消息，约一次正式沟通。";
+      ? t({ en: "Keep the momentum—book the next conversation and capture the discussion points in your notes.", zh: "保持节奏，约下一次沟通并把讨论要点记进笔记。" })
+      : t({ en: "Strike while it's hot—send a follow-up message and set up a proper conversation.", zh: "趁热打铁，发一条跟进消息，约一次正式沟通。" });
   const StatusCard = ({ pad }: { pad: number }) => (
     <div className="card" style={{ padding: pad }}>
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-        <span className="eyebrow">跟进状态</span>
+        <span className="eyebrow">{t({ en: "Follow-up status", zh: "跟进状态" })}</span>
         <CdStageDot status={connection.pipelineStatus || "to_contact"} viewModel={viewModel} withLabel />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
@@ -1066,7 +1105,7 @@ export function OrbitRealCardDetail({
       <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 14, padding: 13 }}>
         <Icon name="sparkle" size={17} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
-          <div style={{ color: "var(--accent)", fontSize: 12.5, fontWeight: 600 }}>下一步建议</div>
+          <div style={{ color: "var(--accent)", fontSize: 12.5, fontWeight: 600 }}>{t({ en: "Next step", zh: "下一步建议" })}</div>
           <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 3 }}>{nextStep}</div>
         </div>
       </div>
@@ -1074,12 +1113,12 @@ export function OrbitRealCardDetail({
   );
   const AiCard = ({ pad }: { pad: number }) => (
     <div className="card" style={{ padding: pad }}>
-      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 12 }}><span className="eyebrow">AI 跟进引擎</span></div>
+      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 12 }}><span className="eyebrow">{t({ en: "AI follow-up engine", zh: "AI 跟进引擎" })}</span></div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {aiActions.map((item) => (
+        {aiActionList(t).map((item) => (
           <button className={`btn btn-sm ${item.kind === "message_draft" ? "btn-primary" : "btn-ghost"}`} disabled={Boolean(aiBusy)} key={item.kind} onClick={() => generateAi(item.kind)} type="button">
-            <Icon name={item.icon} size={16} color={item.kind === "message_draft" ? "#fff" : undefined} />
-            {aiBusy === item.kind ? "生成中…" : item.label}
+            <Icon name={item.icon} size={16} color={item.kind === "message_draft" ? "var(--on-dark)" : undefined} />
+            {aiBusy === item.kind ? t({ en: "Generating…", zh: "生成中…" }) : item.label}
           </button>
         ))}
       </div>
@@ -1087,36 +1126,36 @@ export function OrbitRealCardDetail({
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
           {aiDrafts.map((draft) => (
             <div key={draft.id} style={{ background: "var(--surface-2)", borderRadius: 11, padding: 12 }}>
-              <div style={{ color: "var(--accent)", fontSize: 11.5, fontWeight: 600, marginBottom: 4 }}>{aiActions.find((action) => action.kind === draft.kind)?.label || draft.kind}</div>
+              <div style={{ color: "var(--accent)", fontSize: 11.5, fontWeight: 600, marginBottom: 4 }}>{aiActionList(t).find((action) => action.kind === draft.kind)?.label || draft.kind}</div>
               <div style={{ color: "var(--text)", fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{draft.content}</div>
             </div>
           ))}
         </div>
-      ) : <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 12 }}>用 AI 生成提醒、跟进文案或引荐词。</div>}
+      ) : <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 12 }}>{t({ en: "Use AI to generate reminders, follow-up drafts, or intro notes.", zh: "用 AI 生成提醒、跟进文案或引荐词。" })}</div>}
     </div>
   );
   const NotesCard = ({ pad }: { pad: number }) => (
     <div className="card" style={{ padding: pad }}>
-      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 12 }}><span className="eyebrow">笔记</span><span style={{ color: "var(--text-4)", fontSize: 11.5 }}>{notes.length} 条</span></div>
+      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 12 }}><span className="eyebrow">{t({ en: "Notes", zh: "笔记" })}</span><span style={{ color: "var(--text-4)", fontSize: 11.5 }}>{notes.length} {t({ en: "notes", zh: "条" })}</span></div>
       <form onSubmit={addNote} style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: notes.length ? 12 : 0 }}>
-        <textarea className="field" onChange={(event) => setNoteBody(event.target.value)} placeholder="记录下一步、对方偏好或合作线索" rows={3} style={{ height: "auto", lineHeight: 1.5, padding: "11px 13px", resize: "vertical" }} value={noteBody} />
-        <button className="btn btn-primary btn-sm" disabled={!noteBody.trim()} style={{ alignSelf: "flex-start" }} type="submit"><Icon name="plus" size={15} color="#fff" />添加笔记</button>
+        <textarea className="field" onChange={(event) => setNoteBody(event.target.value)} placeholder={t({ en: "Jot down next steps, their preferences, or partnership leads", zh: "记录下一步、对方偏好或合作线索" })} rows={3} style={{ height: "auto", lineHeight: 1.5, padding: "11px 13px", resize: "vertical" }} value={noteBody} />
+        <button className="btn btn-primary btn-sm" disabled={!noteBody.trim()} style={{ alignSelf: "flex-start" }} type="submit"><Icon name="plus" size={15} color="var(--on-dark)" />{t({ en: "Add note", zh: "添加笔记" })}</button>
       </form>
       {notes.length ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {notes.map((note) => (
             <div key={note.id} style={{ background: "var(--surface-2)", borderRadius: 11, padding: 12 }}>
               <div style={{ color: "var(--text)", fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{note.body}</div>
-              <div style={{ color: "var(--text-4)", fontSize: 11.5, marginTop: 6 }}>{cdDate(note.createdAt)}</div>
+              <div style={{ color: "var(--text-4)", fontSize: 11.5, marginTop: 6 }}>{cdDate(note.createdAt, language)}</div>
             </div>
           ))}
         </div>
-      ) : <div style={{ color: "var(--text-3)", fontSize: 12.5 }}>暂无笔记。</div>}
+      ) : <div style={{ color: "var(--text-3)", fontSize: 12.5 }}>{t({ en: "No notes yet.", zh: "暂无笔记。" })}</div>}
     </div>
   );
   const Timeline = ({ pad }: { pad: number }) => (
     <div className="card" style={{ padding: pad }}>
-      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}><span className="eyebrow">交往记录</span><span style={{ color: "var(--text-4)", fontSize: 11.5 }}>{base.encounters.length} 次相见</span></div>
+      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}><span className="eyebrow">{t({ en: "Interaction history", zh: "交往记录" })}</span><span style={{ color: "var(--text-4)", fontSize: 11.5 }}>{base.encounters.length} {t({ en: "meetings", zh: "次相见" })}</span></div>
       <div style={{ marginTop: 14 }}>
         {base.encounters.map((encounter, index) => {
           const last = index === base.encounters.length - 1;
@@ -1130,11 +1169,11 @@ export function OrbitRealCardDetail({
               </div>
               <div style={{ flex: 1, marginTop: -3, minWidth: 0 }}>
                 <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 7 }}>
-                  <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{cdDate(context.metAt || encounter.createdAt) || "时间未记录"}</span>
-                  {context.tableNo ? <span className="chip" style={{ background: "var(--surface-2)", fontSize: 11.5, height: 22 }}>桌号 {context.tableNo}</span> : null}
+                  <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{cdDate(context.metAt || encounter.createdAt, language) || t({ en: "Time not recorded", zh: "时间未记录" })}</span>
+                  {context.tableNo ? <span className="chip" style={{ background: "var(--surface-2)", fontSize: 11.5, height: 22 }}>{t({ en: "Table", zh: "桌号" })} {context.tableNo}</span> : null}
                 </div>
                 {context.reason ? <div style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>{context.reason}</div> : null}
-                <div style={{ color: "var(--text-4)", fontSize: 11.5, marginTop: 3 }}>{context.score != null ? `匹配分数 ${context.score} · ` : ""}活动 {encounter.eventId}</div>
+                <div style={{ color: "var(--text-4)", fontSize: 11.5, marginTop: 3 }}>{context.score != null ? `${t({ en: "Match score", zh: "匹配分数" })} ${context.score} · ` : ""}{t({ en: "Event", zh: "活动" })} {encounter.eventId}</div>
               </div>
             </div>
           );
@@ -1144,7 +1183,7 @@ export function OrbitRealCardDetail({
   );
   const ContactCard = ({ pad, showSource }: { pad: number; showSource?: boolean }) => (
     <div className="card" style={{ padding: pad }}>
-      <span className="eyebrow">联系方式</span>
+      <span className="eyebrow">{t({ en: "Contact details", zh: "联系方式" })}</span>
       <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 12 }}>
         {contactRows.map((row) => (
           <div key={row.key} style={{ alignItems: "center", display: "flex", gap: 11 }}>
@@ -1153,7 +1192,7 @@ export function OrbitRealCardDetail({
               <div style={{ color: "var(--text-4)", fontSize: 11 }}>{row.label}</div>
               <div style={{ color: "var(--ink)", fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.value}</div>
             </div>
-            <button onClick={() => copyValue(row.key)} style={{ alignItems: "center", background: copiedKey === row.key ? "var(--live-soft)" : "var(--surface-2)", border: "none", borderRadius: 8, color: copiedKey === row.key ? "var(--live)" : "var(--text-3)", cursor: "pointer", display: "flex", flexShrink: 0, height: 28, justifyContent: "center", width: 28 }} title="复制" type="button">
+            <button aria-label={t({ en: "Copy", zh: "复制" })} className="hit-44" onClick={() => copyValue(row.key)} style={{ alignItems: "center", background: copiedKey === row.key ? "var(--live-soft)" : "var(--surface-2)", border: "none", borderRadius: 8, color: copiedKey === row.key ? "var(--live)" : "var(--text-3)", cursor: "pointer", display: "flex", flexShrink: 0, height: 28, justifyContent: "center", width: 28 }} title={t({ en: "Copy", zh: "复制" })} type="button">
               {copiedKey === row.key ? <Icon name="check" size={14} /> : <CdGlyph name="copy" size={14} />}
             </button>
           </div>
@@ -1161,7 +1200,7 @@ export function OrbitRealCardDetail({
         {showSource ? (
           <div style={{ alignItems: "center", borderTop: "1px solid var(--border)", display: "flex", gap: 11, paddingTop: 11 }}>
             <Icon name="wallet" size={16} color="var(--text-3)" />
-            <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--text-4)", fontSize: 11 }}>来源</div><div style={{ color: "var(--ink)", fontSize: 13.5, fontWeight: 500 }}>{sourceLabels[connection.source] || connection.source || "—"}</div></div>
+            <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Source", zh: "来源" })}</div><div style={{ color: "var(--ink)", fontSize: 13.5, fontWeight: 500 }}>{sourceLabel(connection.source, t) || connection.source || "—"}</div></div>
           </div>
         ) : null}
       </div>
@@ -1174,16 +1213,16 @@ export function OrbitRealCardDetail({
         <AccountTopNav active="cards" />
         <div style={{ height: 120, position: "relative" }}>
           <Cover g={cover} style={{ inset: 0, position: "absolute" }} />
-          <button onClick={() => orbitNavigate("/home/cards")} style={{ alignItems: "center", background: "rgba(255,255,255,0.92)", border: "none", borderRadius: 999, boxShadow: "var(--sh-sm)", color: "var(--ink)", cursor: "pointer", display: "flex", fontSize: 13.5, fontWeight: 550, gap: 6, height: 36, left: 24, padding: "0 14px", position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />名片夹</button>
+          <button onClick={() => orbitNavigate("/home/cards")} style={{ alignItems: "center", background: "rgba(255,255,255,0.92)", border: "none", borderRadius: 999, boxShadow: "var(--sh-sm)", color: "var(--ink)", cursor: "pointer", display: "flex", fontSize: 13.5, fontWeight: 550, gap: 6, height: 36, left: 24, padding: "0 14px", position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />{t({ en: "Contacts", zh: "名片夹" })}</button>
         </div>
         <div style={{ margin: "0 auto", maxWidth: 880, padding: "0 32px 60px", width: "100%" }}>
           {notice ? <div style={{ background: "var(--live-soft)", borderRadius: 10, color: "var(--live)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
           <div style={{ alignItems: "flex-end", display: "flex", gap: 18, marginTop: -26, position: "relative", zIndex: 1 }}>
             <Avatar letter={crmInitial(connection.displayName)} g={cover} ring="var(--bg)" size={92} />
-            <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ fontSize: 28, margin: 0, whiteSpace: "nowrap" }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 14.5, marginTop: 3 }}>{roleLine}</div></div>
+            <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ margin: 0, whiteSpace: "nowrap" }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 14.5, marginTop: 3 }}>{roleLine}</div></div>
           </div>
           <div style={{ alignItems: "start", display: "grid", gap: 28, gridTemplateColumns: "1fr 300px", marginTop: 28 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}><StatusCard pad={18} /><EventPublicProfileCard profile={profile} /><AiCard pad={18} /><NotesCard pad={18} /><Timeline pad={18} /></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}><StatusCard pad={18} /><EventPublicProfileCard profile={profile} t={t} /><AiCard pad={18} /><NotesCard pad={18} /><Timeline pad={18} /></div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}><ContactCard pad={16} showSource /></div>
           </div>
         </div>
@@ -1198,9 +1237,9 @@ export function OrbitRealCardDetail({
           {notice ? <div style={{ background: "var(--live-soft)", borderRadius: 10, color: "var(--live)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
           <div style={{ alignItems: "flex-end", display: "flex", gap: 14, marginTop: -26, position: "relative", zIndex: 1 }}>
             <Avatar letter={crmInitial(connection.displayName)} g={cover} ring="var(--bg)" size={80} />
-            <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ fontSize: 24, margin: 0 }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 13.5, marginTop: 3 }}>{roleLine}</div></div>
+            <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ margin: 0 }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 13.5, marginTop: 3 }}>{roleLine}</div></div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 18 }}><StatusCard pad={16} /><EventPublicProfileCard profile={profile} /><ContactCard pad={16} /><AiCard pad={16} /><NotesCard pad={16} /><Timeline pad={16} /></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 18 }}><StatusCard pad={16} /><EventPublicProfileCard profile={profile} t={t} /><ContactCard pad={16} /><AiCard pad={16} /><NotesCard pad={16} /><Timeline pad={16} /></div>
         </div>
       </div>
     </main>
@@ -1212,11 +1251,13 @@ function ScanContent({
   loading,
   mobile,
   onPick,
+  t,
 }: {
   connection: OrbitContactView | null;
   loading: boolean;
   mobile?: boolean;
   onPick: () => void;
+  t: Translate;
 }) {
   return (
     <div style={{ margin: "0 auto", maxWidth: 520 }}>
@@ -1224,25 +1265,25 @@ function ScanContent({
         <>
           <button disabled={loading} onClick={onPick} style={{ background: "var(--surface-2)", border: "1.5px dashed var(--border-strong)", borderRadius: 18, cursor: "pointer", fontFamily: "var(--ff)", padding: mobile ? "36px 20px" : "52px 30px", textAlign: "center", width: "100%" }} type="button">
             <div style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 18, color: "var(--accent)", display: "flex", height: 64, justifyContent: "center", margin: "0 auto 16px", width: 64 }}><Icon name="ticket" size={30} /></div>
-            <div className="h-section" style={{ color: "var(--ink)", fontSize: 18 }}>{loading ? "正在扫描…" : "点击上传名片"}</div>
-            <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 6 }}>支持 JPG / PNG / PDF · AI 自动提取字段</div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}><span className="btn btn-primary btn-sm"><Icon name="share" size={16} color="#fff" />上传文件</span></div>
+            <h3 className="h-section" style={{ color: "var(--ink)", margin: 0 }}>{loading ? t({ en: "Scanning…", zh: "正在扫描…" }) : t({ en: "Tap to upload a card", zh: "点击上传名片" })}</h3>
+            <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 6 }}>{t({ en: "Supports JPG / PNG / PDF · AI extracts fields automatically", zh: "支持 JPG / PNG / PDF · AI 自动提取字段" })}</div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}><span className="btn btn-primary btn-sm"><Icon name="share" size={16} color="var(--on-dark)" />{t({ en: "Upload file", zh: "上传文件" })}</span></div>
           </button>
-          <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 12.5, gap: 8, marginTop: 16 }}><Icon name="sparkle" size={15} color="var(--accent)" />提取后自动去重并并入名片夹，重复人脉会智能合并</div>
+          <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 12.5, gap: 8, marginTop: 16 }}><Icon name="sparkle" size={15} color="var(--accent)" />{t({ en: "After extraction it auto-dedupes into your card holder, smartly merging duplicate contacts", zh: "提取后自动去重并并入名片夹，重复人脉会智能合并" })}</div>
         </>
       ) : (
         <div className="card" style={{ padding: 20 }}>
-          <div style={{ alignItems: "center", display: "flex", gap: 8, marginBottom: 16 }}><Icon name="check" size={20} color="var(--live)" /><span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>AI 已提取以下信息</span></div>
+          <div style={{ alignItems: "center", display: "flex", gap: 8, marginBottom: 16 }}><Icon name="check" size={20} color="var(--live)" /><span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{t({ en: "AI extracted the following", zh: "AI 已提取以下信息" })}</span></div>
           <div style={{ display: "flex", gap: 16 }}>
             <Cover g="g-sky" monogram={{ text: crmInitial(connection.displayName), size: 22 }} style={{ borderRadius: 10, flexShrink: 0, height: 54, width: 84 }} />
             <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 12, minWidth: 0 }}>
-              <div><div style={{ color: "var(--text-2)", fontSize: 11, fontWeight: 550, marginBottom: 4 }}>姓名</div><div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{connection.displayName}</div></div>
-              <div><div style={{ color: "var(--text-2)", fontSize: 11, fontWeight: 550, marginBottom: 4 }}>公司 / 职位</div><div style={{ color: "var(--text)", fontSize: 13.5 }}>{crmRole(connection)}</div></div>
+              <div><div style={{ color: "var(--text-2)", fontSize: 11, fontWeight: 550, marginBottom: 4 }}>{t({ en: "Name", zh: "姓名" })}</div><div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{connection.displayName}</div></div>
+              <div><div style={{ color: "var(--text-2)", fontSize: 11, fontWeight: 550, marginBottom: 4 }}>{t({ en: "Company / title", zh: "公司 / 职位" })}</div><div style={{ color: "var(--text)", fontSize: 13.5 }}>{crmRole(connection, t)}</div></div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-            <button className="btn btn-ghost" onClick={onPick} style={{ flex: 1 }} type="button">重新上传</button>
-            <a className="btn btn-primary" href={`/app/contacts/${connection.id}`} style={{ flex: 1 }}><Icon name="chevR" size={16} color="#fff" />查看名片</a>
+            <button className="btn btn-ghost" onClick={onPick} style={{ flex: 1 }} type="button">{t({ en: "Upload again", zh: "重新上传" })}</button>
+            <a className="btn btn-primary" href={`/app/contacts/${connection.id}`} style={{ flex: 1 }}><Icon name="chevR" size={16} color="var(--on-dark)" />{t({ en: "View card", zh: "查看名片" })}</a>
           </div>
         </div>
       )}
@@ -1251,6 +1292,7 @@ function ScanContent({
 }
 
 export function OrbitRealCardsScan({ viewModel }: { viewModel: OrbitContactsViewModel }) {
+  const { t } = useOrbitLanguage();
   const [loading, setLoading] = useState(false);
   const [connection, setConnection] = useState<OrbitContactView | null>(null);
 
@@ -1268,20 +1310,20 @@ export function OrbitRealCardsScan({ viewModel }: { viewModel: OrbitContactsView
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}><CrmNav active="scan" /></div>
+          <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}><CrmNav active="scan" t={t} /></div>
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
-            <h1 className="h-display" style={{ fontSize: 30, margin: "0 0 4px" }}>扫名片</h1>
-            <div style={{ color: "var(--text-3)", fontSize: 13.5, marginBottom: 28 }}>上传纸质名片，AI 提取并入你的名片夹</div>
-            <ScanContent connection={connection} loading={loading} onPick={pick} />
+            <h1 className="h-display" style={{ margin: "0 0 4px" }}>{t({ en: "Scan card", zh: "扫名片" })}</h1>
+            <div style={{ color: "var(--text-3)", fontSize: 13.5, marginBottom: 28 }}>{t({ en: "Upload a paper business card; AI extracts it into your card holder", zh: "上传纸质名片，AI 提取并入你的名片夹" })}</div>
+            <ScanContent connection={connection} loading={loading} onPick={pick} t={t} />
           </div>
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
-        <MobileBar onBack={() => orbitNavigate("/home/cards")} title="扫名片" />
+        <MobileBar onBack={() => orbitNavigate("/home/cards")} title={t({ en: "Scan card", zh: "扫名片" })} />
         <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "18px 18px 36px" }}>
-          <div style={{ color: "var(--text-3)", fontSize: 13.5, marginBottom: 20 }}>上传纸质名片，AI 提取并入你的名片夹</div>
-          <ScanContent connection={connection} loading={loading} mobile onPick={pick} />
+          <div style={{ color: "var(--text-3)", fontSize: 13.5, marginBottom: 20 }}>{t({ en: "Upload a paper business card; AI extracts it into your card holder", zh: "上传纸质名片，AI 提取并入你的名片夹" })}</div>
+          <ScanContent connection={connection} loading={loading} mobile onPick={pick} t={t} />
         </div>
       </div>
     </main>

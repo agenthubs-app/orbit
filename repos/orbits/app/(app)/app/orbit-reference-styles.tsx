@@ -817,41 +817,9 @@ const reactReferenceIsolationStyles = `
     padding: 0 6px;
   }
 
-  [data-orbit-real-page="agent"] .orbit-top-nav {
-    gap: 3px;
-    padding: 0 7px;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-agent-btn {
-    font-size: 10.5px;
-    padding: 0 4px;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-nav-link {
-    font-size: 10px;
-    padding: 0 2px;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-nav-links {
-    gap: 1px;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-top-actions {
-    gap: 3px !important;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-lang-button,
-  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-me-link {
-    font-size: 10.5px !important;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-agent-history-btn {
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-    height: 32px;
-    width: 28px;
-  }
+  /* Agent (iOrbit) shares the standard mobile top-nav sizing — the bar scrolls
+     horizontally if the extra history button doesn't fit, instead of shrinking
+     the font out of alignment with every other page. */
 
   [data-orbit-real-page="landing"] {
     padding-bottom: 0 !important;
@@ -991,6 +959,146 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page] .field:focus {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 4px var(--accent-ring);
+}
+
+/* ===================================================================
+   Audit hardening: a11y + design-system tokens (root-cause layer).
+   Loaded AFTER the prototype styles so these win on shared selectors.
+   =================================================================== */
+
+/* Centralized tokens that were previously hardcoded across pages. */
+[data-orbit-real-page] {
+  --scrim: rgba(20, 20, 28, 0.42);
+  --accent-grad: linear-gradient(180deg, #8170F1, #614CE2);
+  --accent-grad-bar: linear-gradient(90deg, #8B7BF0, #6359E9);
+  --on-dark: #FFFFFF;
+  --admin-nav-ink: #AAA8C8;
+  --admin-nav-ink-strong: #FFFFFF;
+
+  /* WCAG AA: tertiary text was #8A8A93 (3.42:1 on white — fails 4.5:1).
+     Nudged to a neutral that clears AA for the meta/caption copy it carries. */
+  --text-3: #73737B;
+}
+
+/* S1 — global keyboard focus ring. The reset above strips native outlines;
+   nothing restored them, so keyboard users had no focus indicator anywhere. */
+[data-orbit-real-page] :is(a, button, input, textarea, select, summary, [tabindex], [role="button"], [role="tab"], [role="link"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+[data-orbit-real-page] .card:focus-visible,
+[data-orbit-real-page] .card-hover:focus-visible,
+[data-orbit-real-page] .orbit-card-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+[data-orbit-real-page] .field:focus-visible {
+  outline: none;
+}
+/* Dark surfaces (platform/admin dark sidebars) need a light ring. */
+.orbit-platform-page :is(a, button, [tabindex], [role="button"], [role="tab"]):focus-visible {
+  outline-color: #fff;
+}
+
+/* S? — respect reduced motion for every React-layer animation/transition. */
+@media (prefers-reduced-motion: reduce) {
+  [data-orbit-real-page] *,
+  [data-orbit-real-page] *::before,
+  [data-orbit-real-page] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* S5 — enforce a real type scale on the heading classes. The prototype
+   defines these with no font-size, forcing every call site to inline px.
+   Sizes live here now; call sites should drop inline fontSize. */
+[data-orbit-real-page] .h-display { font-size: 28px; line-height: 1.04; }
+[data-orbit-real-page] .h-title { font-size: 20px; line-height: 1.12; }
+[data-orbit-real-page] .h-section { font-size: 17px; line-height: 1.25; }
+[data-orbit-real-page] .body { font-size: 15px; line-height: 1.6; }
+[data-orbit-real-page] .text-sm { font-size: 13px; line-height: 1.5; }
+@media (max-width: 640px) {
+  [data-orbit-real-page] .h-display { font-size: 24px; }
+  [data-orbit-real-page] .h-title { font-size: 19px; }
+  [data-orbit-real-page] .h-section { font-size: 16px; }
+}
+
+/* S3 — standardized icon button. Visual chrome stays compact, but the hit
+   area is never below 44px (Apple HIG / Material minimum). */
+[data-orbit-real-page] .icon-btn {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  box-shadow: var(--sh-xs);
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+[data-orbit-real-page] .icon-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+[data-orbit-real-page] .icon-btn-plain {
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+[data-orbit-real-page] .icon-btn-plain:hover {
+  background: var(--surface-3);
+  border-color: transparent;
+}
+
+/* S3 — hit-area expander for compact controls (copy/zoom/seat/graph nodes)
+   that must keep their visual size. Extends tap target to 44px without
+   shifting layout. Apply to the control and keep it position:relative. */
+[data-orbit-real-page] .hit-44 {
+  position: relative;
+}
+[data-orbit-real-page] .hit-44::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 44px;
+  width: 44px;
+  min-height: 100%;
+  min-width: 100%;
+  transform: translate(-50%, -50%);
+}
+
+/* Bump the existing small icon button to a compliant hit area. */
+[data-orbit-real-page] .orbit-top-icon-btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* iOrbit chat-history button (mobile nav): a light ghost icon that keeps a
+   44px tap target but sheds the heavy bordered box so it sits harmoniously
+   beside the language toggle and the "Me" pill. */
+[data-orbit-real-page="agent"] .orbit-top-nav .orbit-agent-history-btn {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--text-2);
+  /* Borderless icon: tighten the footprint so it sits evenly between the
+     language toggle and the "Me" pill (the 44px box left it floating). */
+  min-width: 36px;
+  width: 36px;
+}
+[data-orbit-real-page="agent"] .orbit-top-nav .orbit-agent-history-btn:hover {
+  background: var(--surface-3);
+  border-color: transparent;
+  color: var(--ink);
 }
 `;
 
