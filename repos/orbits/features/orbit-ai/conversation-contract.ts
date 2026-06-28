@@ -83,6 +83,7 @@ export interface OrbitAgentConversationProvenance {
     | typeof ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE
     | "local:orbit-agent-clarification-boundary"
     | "local:orbit-agent-privacy-boundary"
+    | "local:orbit-agent-secret-boundary"
     | "local:orbit-agent-state-change-boundary"
     | "local:orbit-agent-untrusted-content-boundary"
     | "provider:deepseek-chat-completions-api"

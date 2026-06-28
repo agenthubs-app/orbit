@@ -116,6 +116,15 @@ function isUntrustedInstructionInjectionRequest(message: string): boolean {
   return injectionInstruction.test(message) || crossRelationshipLeak.test(message);
 }
 
+function isSecretDisclosureRequest(message: string): boolean {
+  const disclosureVerb =
+    /(?:发给我|给我看|显示|打印|输出|透露|泄露|show|print|send|reveal|leak|dump)/i;
+  const secretObject =
+    /(?:api[_ -]?key|secret|token|password|passwd|credential|凭据|密钥|金钥|令牌|密码|环境变量|\\.env|DEEPSEEK_API_KEY|OPENAI_API_KEY)/i;
+
+  return disclosureVerb.test(message) && secretObject.test(message);
+}
+
 function isAmbiguousRecipientDraftRequest(message: string): boolean {
   const relationshipAction =
     /(?:写|草稿|消息|短信|微信|邮件|邀|约|见面|联系|follow[ -]?up|message|draft|send|invite|meet)/i;
@@ -483,6 +492,35 @@ function untrustedContentBoundaryPayload(
   };
 }
 
+function secretBoundaryPayload(message: string): OrbitAgentConversationPayload {
+  const assistant =
+    "这个请求涉及密钥、凭据或环境变量。Orbit 已停在本地安全边界：没有调用模型、没有发送任何密钥，也不会泄露本地 .env 内容。需要轮换或配置密钥时，请在安全设置或部署环境里处理。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Handle secrets outside chat; do not expose API keys or environment variables in model prompts or artifacts.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local secret boundary",
+      safety,
+      source: "local:orbit-agent-secret-boundary",
+    }),
+    state: "success",
+  };
+}
+
 function clarificationBoundaryPayload(message: string): OrbitAgentConversationPayload {
   const assistant =
     "需要先明确联系人对象。我不会假定“她”是谁，也没有调用模型、执行工具或生成草稿。请告诉我联系人姓名或选择一位联系人后，我再准备可复核的消息草稿。";
@@ -625,6 +663,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isUntrustedInstructionInjectionRequest(message)) {
         return success(untrustedContentBoundaryPayload(message));
+      }
+
+      if (isSecretDisclosureRequest(message)) {
+        return success(secretBoundaryPayload(message));
       }
 
       if (isRelationshipStateMutationRequest(message)) {
