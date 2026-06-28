@@ -163,6 +163,15 @@ function isProfessionalAdviceRequest(message: string): boolean {
   return adviceVerb.test(message) && professionalDomain.test(message);
 }
 
+function isCrisisSupportRequest(message: string): boolean {
+  const firstPersonSelfHarm =
+    /(?:我|自己|myself|my life).*(?:伤害自己|傷害自己|自杀|自殺|轻生|輕生|结束生命|結束生命|不想活|活不下去|hurt myself|kill myself|end my life|suicide)/i;
+  const crisisWritingRequest =
+    /(?:帮我|幫我|给我|給我|替我|write|draft).*(?:遗书|遺書|告别信|告別信|自杀信|自殺信|suicide note)/i;
+
+  return firstPersonSelfHarm.test(message) || crisisWritingRequest.test(message);
+}
+
 function isAmbiguousRecipientDraftRequest(message: string): boolean {
   const relationshipAction =
     /(?:写|草稿|消息|短信|微信|邮件|邀|约|见面|联系|follow[ -]?up|message|draft|send|invite|meet)/i;
@@ -700,6 +709,35 @@ function professionalAdviceBoundaryPayload(
   };
 }
 
+function crisisBoundaryPayload(message: string): OrbitAgentConversationPayload {
+  const assistant =
+    "听到你这样说，我先把这条请求停在本地安全边界：没有调用模型，也不会帮你写遗书或提供伤害自己的内容。请现在联系身边可信的人，或直接拨打当地急救电话；如果你在美国，可以拨打或短信 988。先别一个人待着。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Keep crisis requests local, avoid harmful content, and direct the user to immediate human support.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local crisis boundary",
+      safety,
+      source: "local:orbit-agent-crisis-boundary",
+    }),
+    state: "success",
+  };
+}
+
 function multiIntentBoundaryPayload(message: string): OrbitAgentConversationPayload {
   const workflowLabels = detectWorkflowSignals(message);
   const choices =
@@ -887,6 +925,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isUnsupportedRealtimeLookupRequest(message)) {
         return success(unsupportedRealtimeBoundaryPayload(message));
+      }
+
+      if (isCrisisSupportRequest(message)) {
+        return success(crisisBoundaryPayload(message));
       }
 
       if (isProfessionalAdviceRequest(message)) {

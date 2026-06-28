@@ -82,6 +82,7 @@ export interface OrbitAgentConversationProvenance {
   source:
     | typeof ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE
     | "local:orbit-agent-clarification-boundary"
+    | "local:orbit-agent-crisis-boundary"
     | "local:orbit-agent-multi-intent-boundary"
     | "local:orbit-agent-permission-boundary"
     | "local:orbit-agent-professional-advice-boundary"
