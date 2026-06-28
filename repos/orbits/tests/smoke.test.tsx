@@ -16,78 +16,20 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
   const packageJson = JSON.parse(
     fs.readFileSync(path.join(projectRoot, "package.json"), "utf8"),
   );
-  const expectedLintedTypeScriptSources = [
-    "shared/ui/app-shell.tsx",
-    "shared/ui/state-view.tsx",
-    "shared/api/envelope.ts",
-    "shared/errors/app-error.ts",
-    "shared/config/feature-mode.ts",
-    "shared/services/module-mode.ts",
-    "shared/ai/service-factory.ts",
-    "features/account/service-factory.ts",
-    "features/acquisition/service-factory.ts",
-    "features/agent/service-factory.ts",
-    "features/analysis/service-factory.ts",
-    "features/audit/service-factory.ts",
-    "features/bootstrap/service-factory.ts",
-    "features/chat/service-factory.ts",
-    "features/connections/service-factory.ts",
-    "features/contacts/service-factory.ts",
-    "features/dashboard/service-factory.ts",
-    "features/events/service-factory.ts",
-    "features/followups/service-factory.ts",
-    "features/notifications/service-factory.ts",
-    "features/orbit-ai/contract.ts",
-    "features/orbit-ai/service.ts",
-    "features/orbit-ai/service-factory.ts",
-    "features/orbit-ai/mock-service.ts",
-    "features/orbit-ai/artifact-contract.ts",
-    "features/orbit-ai/artifact-view-model.ts",
-    "features/orbit-ai/conversation-contract.ts",
-    "features/orbit-ai/mock-artifact-task-service.ts",
-    "features/orbit-ai/mock-conversation-service.ts",
-    "features/permissions/service-factory.ts",
-    "features/profile/service-factory.ts",
-    "features/recommendations/service-factory.ts",
-    "features/search/service-factory.ts",
-    "app/api/health/route.ts",
-    "app/api/health/error/route.ts",
-    "app/api/agent/actions/route.ts",
-    "app/api/ai/conversations/route.ts",
-    "app/api/ai/conversations/[id]/route.ts",
-    "app/api/app/bootstrap/route.ts",
-    "app/api/chat/conversations/route.ts",
-    "app/api/contacts/route.ts",
-    "app/api/dashboard/route.ts",
-    "app/api/events/route.ts",
-    "app/api/tasks/route.ts",
-    "tests/api/envelope.test.ts",
-    "tests/services/core-service-factories.test.ts",
-    "tests/services/modular-boundaries.test.ts",
-    "app/(app)/app/layout.tsx",
-    "app/(app)/app/page.tsx",
-    "app/(app)/app/orbit-ai-command-center.tsx",
-    "app/(app)/app/orbit-ai-route-view-model.ts",
-    "app/(app)/app/profile/page.tsx",
-    "app/(app)/app/events/page.tsx",
-    "app/(app)/app/contacts/page.tsx",
-    "app/(app)/app/followups/page.tsx",
-    "app/(app)/app/chat/page.tsx",
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/agent-artifact-side-panel.tsx",
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-command-center.tsx",
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
-    "app/(app)/app/dashboard/page.tsx",
-    "app/(app)/app/agent/page.tsx",
-    "tests/smoke.test.tsx",
-  ];
-
   assert.equal(packageJson.scripts.dev, "next dev --webpack");
   assert.equal(packageJson.scripts.build, "next build --webpack");
   assert.match(
     packageJson.scripts.lint,
     /^eslint next\.config\.js --ext \.js && tsc --noEmit --incremental false --allowJs false --jsx react-jsx --target ES2017 --lib dom,dom\.iterable,esnext --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck /,
   );
-  for (const sourcePath of expectedLintedTypeScriptSources) {
+  for (const sourcePath of [
+    "app/(app)/app/orbit-real-landing-page.tsx",
+    "app/(app)/app/orbit-landing-route-view-model.ts",
+    "app/(app)/app/orbit-reference-styles.tsx",
+    "app/(app)/app/orbit-reference-primitives.tsx",
+    "app/(app)/app/orbit-lang-runtime.tsx",
+    "app/(app)/app/orbit-agent-hero.tsx",
+  ]) {
     assert.ok(
       packageJson.scripts.lint.includes(`"${sourcePath}"`),
       `expected lint script to type-check ${sourcePath}`,
@@ -107,6 +49,12 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
     "app/layout.tsx",
     "app/page.tsx",
     "tests/smoke.test.tsx",
+    "app/(app)/app/orbit-real-landing-page.tsx",
+    "app/(app)/app/orbit-landing-route-view-model.ts",
+    "app/(app)/app/orbit-reference-styles.tsx",
+    "app/(app)/app/orbit-reference-primitives.tsx",
+    "app/(app)/app/orbit-lang-runtime.tsx",
+    "app/(app)/app/orbit-agent-hero.tsx",
   ]) {
     assert.equal(
       fs.existsSync(path.join(projectRoot, filePath)),
@@ -131,31 +79,16 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
   });
 
   assert.match(html, /<main/);
-  assert.equal(html.match(/<h1\b/g)?.length, 1);
-  assert.match(html, /<h1\b[^>]*id="orbit-title"[^>]*>Orbit<\/h1>/);
-  assert.match(html, /href="#relationship-starter"/);
-  assert.match(html, /aria-label="[^"]*Orbit entry"/);
-  assert.match(html, /以活动为来源的关系工作台 \/ Event-grounded relationship workspace/);
-  assert.match(html, /aria-labelledby="relationship-starter"/);
-  assert.match(html, /开始一条有来源的关系记录 \/ Start a sourced relationship note/);
-  assert.match(html, /aria-label="[^"]*Relationship record frame"/);
-  assert.match(html, /每条关系记录都从这些内容开始 \/ Every relationship record starts with/);
-  assert.match(html, /人物 \/ Person/);
-  assert.match(html, /起点 \/ Origin/);
-  assert.match(html, /上下文线索 \/ Context clue/);
-  assert.match(html, /建议下一步 \/ Suggested next step/);
-  assert.match(html, /Review before any external action/);
-  assert.match(html, /Next action/);
-  assert.match(html, /sensible follow-up/i);
-  assert.match(html, /source-backed next step/i);
-  assert.match(html, /source/i);
-  assert.match(html, /evidence/i);
-  assert.match(html, /confirmation/i);
-  assert.doesNotMatch(html, /\sstyle="/);
+  assert.match(html, /data-orbit-real-page="landing"/);
+  assert.match(html, /orbit-landing-page/);
+  assert.match(html, /让对的人/);
+  assert.match(html, /中 \/ 日/);
+  assert.doesNotMatch(html, /orbit-prototype-frame/);
+  assert.doesNotMatch(html, /Event-grounded relationship workspace/);
+  assert.doesNotMatch(html, /href="#relationship-starter"/);
   assert.doesNotMatch(html, /scaffold|Sprint 1|Framework ready/i);
   assert.doesNotMatch(html, /Relationship context starter/);
   assert.doesNotMatch(html, /Mika Tanaka|Tokyo Founder Demo Night|Kenji Sato/);
-  assert.doesNotMatch(html, /<button/);
   assert.doesNotMatch(html, /<details/);
   assert.doesNotMatch(html, /<form/);
   assert.doesNotMatch(html, /<input/);

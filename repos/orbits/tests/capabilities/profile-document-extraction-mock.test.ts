@@ -16,14 +16,19 @@ import {
   mockResumeExtractionFixture,
 } from "../../features/profile/extraction-fixtures";
 import { createMockProfileDocumentExtractionService } from "../../features/profile/mock-extraction-service";
-import {
-  ProfileDocumentExtractionCapabilityDemo,
-  PROFILE_DOCUMENT_EXTRACTION_CAPABILITY_SLUG,
-} from "../../features/profile/profile-document-extraction-mock/debug-view";
+import * as profileDocumentDebugViewModule from "../../features/profile/profile-document-extraction-mock/debug-view";
 import * as businessCardRoute from "../../app/api/profile/extractions/business-card/route";
 import * as resumeRoute from "../../app/api/profile/extractions/resume/route";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+const profileDocumentDebugView =
+  profileDocumentDebugViewModule["module.exports"] ??
+  profileDocumentDebugViewModule.default ??
+  profileDocumentDebugViewModule;
+const {
+  ProfileDocumentExtractionCapabilityDemo,
+  PROFILE_DOCUMENT_EXTRACTION_CAPABILITY_SLUG,
+} = profileDocumentDebugView;
 
 test("profile document extraction contract exposes typed resume and business-card draft behavior", () => {
   const service = createMockProfileDocumentExtractionService();
