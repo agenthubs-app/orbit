@@ -139,6 +139,21 @@ function isExternalPermissionRequest(message: string): boolean {
   );
 }
 
+function isUnsupportedRealtimeLookupRequest(message: string): boolean {
+  const realtimeQualifier =
+    /(?:今天|现在|現在|当前|目前|刚刚|最新|实时|即時|latest|today|current|now|right now|real[ -]?time)/i;
+  const realtimeObject =
+    /(?:新闻|新聞|消息|股价|股票|行情|币价|天气|天氣|汇率|匯率|价格|价格走势|OpenAI|news|stock|share price|market price|crypto|weather|exchange rate|price)/i;
+  const lookupVerb =
+    /(?:查一下|查询|查找|搜索|搜一下|看看|告诉我|告訴我|look up|search|find|check|tell me)/i;
+
+  return (
+    realtimeQualifier.test(message) &&
+    realtimeObject.test(message) &&
+    (lookupVerb.test(message) || /(?:新闻|新聞|news|weather|天气|天氣)/i.test(message))
+  );
+}
+
 function isAmbiguousRecipientDraftRequest(message: string): boolean {
   const relationshipAction =
     /(?:写|草稿|消息|短信|微信|邮件|邀|约|见面|联系|follow[ -]?up|message|draft|send|invite|meet)/i;
@@ -614,6 +629,37 @@ function permissionBoundaryPayload(message: string): OrbitAgentConversationPaylo
   };
 }
 
+function unsupportedRealtimeBoundaryPayload(
+  message: string,
+): OrbitAgentConversationPayload {
+  const assistant =
+    "Orbit 现在没有实时新闻、行情、天气或汇率查询工具。这条请求已停在本地：没有调用模型，没有搜索网页，也不会编造最新结果。你可以贴出材料，我可以帮你整理成背景、问题或跟进草稿。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Ask the user to provide source material before summarizing or turning it into relationship work.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local unsupported realtime boundary",
+      safety,
+      source: "local:orbit-agent-unsupported-realtime-boundary",
+    }),
+    state: "success",
+  };
+}
+
 function multiIntentBoundaryPayload(message: string): OrbitAgentConversationPayload {
   const workflowLabels = detectWorkflowSignals(message);
   const choices =
@@ -797,6 +843,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isExternalPermissionRequest(message)) {
         return success(permissionBoundaryPayload(message));
+      }
+
+      if (isUnsupportedRealtimeLookupRequest(message)) {
+        return success(unsupportedRealtimeBoundaryPayload(message));
       }
 
       if (isRelationshipStateMutationRequest(message)) {

@@ -87,6 +87,7 @@ export interface OrbitAgentConversationProvenance {
     | "local:orbit-agent-privacy-boundary"
     | "local:orbit-agent-secret-boundary"
     | "local:orbit-agent-state-change-boundary"
+    | "local:orbit-agent-unsupported-realtime-boundary"
     | "local:orbit-agent-untrusted-content-boundary"
     | "provider:deepseek-chat-completions-api"
     | "provider:gemini-interactions-api"

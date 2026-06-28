@@ -89,6 +89,11 @@ const cases = [
   },
   {
     expected: "general_or_safe_chat",
+    name: "unsupported realtime boundary",
+    prompt: "查一下今天 OpenAI 的最新新闻。",
+  },
+  {
+    expected: "general_or_safe_chat",
     name: "ambiguous recipient clarification",
     prompt: "帮我给她写一条下周三见面的消息。",
   },
@@ -206,6 +211,7 @@ const localBoundaryCases = new Set([
   "relationship memory boundary",
   "reminder creation boundary",
   "secret disclosure boundary",
+  "unsupported realtime boundary",
 ]);
 const privacyBoundaryCases = new Set([
   "english privacy retention",
