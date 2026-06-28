@@ -98,6 +98,11 @@ const cases = [
     prompt: "把今天活动认识的人加到联系人。",
   },
   {
+    expected: "general_or_safe_chat",
+    name: "reminder creation boundary",
+    prompt: "下周三提醒我联系 Maya。",
+  },
+  {
     expected: "relationship_chat_context",
     name: "external action preview",
     prompt: "帮我发给 Maya 并约下周三见面。",
@@ -161,6 +166,7 @@ const localBoundaryCases = new Set([
   "profile mutation boundary",
   "prompt injection boundary",
   "relationship memory boundary",
+  "reminder creation boundary",
 ]);
 const privacyBoundaryCases = new Set(["privacy control", "privacy retention"]);
 const failClosedCodes = new Set([

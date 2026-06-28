@@ -127,7 +127,7 @@ function isAmbiguousRecipientDraftRequest(message: string): boolean {
 
 function isRelationshipStateMutationRequest(message: string): boolean {
   const mutationVerb =
-    /(?:更新|修改|改成|改为|保存|記住|记住|记录|添加|新增|新建|创建|建立|加入|加到|导入|匯入|刪除|删除|移除|忘记|update|change|save|remember|record|add|create|import|delete|remove|forget)/i;
+    /(?:更新|修改|改成|改为|保存|記住|记住|记录|添加|新增|新建|创建|建立|加入|加到|导入|匯入|提醒|通知|刪除|删除|移除|忘记|update|change|save|remember|record|add|create|import|remind|notify|delete|remove|forget)/i;
   const relationshipObject =
     /(?:联系人|关系|资料|資料|公司|职位|职务|标签|备注|画像|contact|relationship|profile|company|title|tag|note|Maya|Diego)/i;
 
@@ -514,7 +514,7 @@ function clarificationBoundaryPayload(message: string): OrbitAgentConversationPa
 
 function stateChangeBoundaryPayload(message: string): OrbitAgentConversationPayload {
   const assistant =
-    "这类联系人资料变更需要先确认。Orbit 已停在本地确认边界：没有调用模型、没有写入或添加联系人资料、没有删除记录，也没有执行外部动作。请打开联系人详情复核字段和值，确认后再保存。";
+    "联系人资料变更、任务或提醒都要先确认。Orbit 已停在本地确认边界：没有调用模型，没有写入或添加联系人资料，没有创建任务或提醒，也没有删除记录、投递通知或执行外部动作。请先打开对应详情复核。";
   const messages = [userMessage(message), assistantMessage(assistant)];
   const safety = safetyLedger({
     aiProviderRequested: false,
