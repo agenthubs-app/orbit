@@ -125,6 +125,15 @@ function isSecretDisclosureRequest(message: string): boolean {
   return disclosureVerb.test(message) && secretObject.test(message);
 }
 
+function isSensitiveContactShareRequest(message: string): boolean {
+  const sensitiveContactField =
+    /(?:联系方式|聯絡方式|联系人资料|聯絡人資料|电话号码|電話號碼|手机号|手機號|邮箱|郵箱|微信|地址|contact info|contact details|phone number|phone|email|address|wechat)/i;
+  const directedShare =
+    /(?:把|将|將).*(?:发给|發給|发送给|發送給|转发给|轉發給|分享给|分享給|提供给|提供給|send to|forward to|share with|give to)|(?:send|forward|share|give).*(?:to|with)/i;
+
+  return sensitiveContactField.test(message) && directedShare.test(message);
+}
+
 function isExternalPermissionRequest(message: string): boolean {
   const accessVerb =
     /(?:连接|接入|授权|读取|同步|导入|匯入|访问|開啟|开启|connect|authorize|read|sync|import|access)/i;
@@ -618,6 +627,37 @@ function secretBoundaryPayload(message: string): OrbitAgentConversationPayload {
   };
 }
 
+function sensitiveShareBoundaryPayload(
+  message: string,
+): OrbitAgentConversationPayload {
+  const assistant =
+    "这涉及联系人资料和隐私。Orbit 已停在本地边界：没有调用模型，没有发送联系方式，也不会转发给别人。请先确认当事人同意和共享范围；需要发送时，只能走可复核的权限和确认流程。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Require explicit consent and a reviewable permission flow before sharing contact details.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local sensitive share boundary",
+      safety,
+      source: "local:orbit-agent-sensitive-share-boundary",
+    }),
+    state: "success",
+  };
+}
+
 function permissionBoundaryPayload(message: string): OrbitAgentConversationPayload {
   const assistant =
     "这类请求需要先走权限授权。Orbit 现在没有连接 Gmail、日历或通讯录，也没有读取外部账号、调用模型或执行工具。请先在权限设置里完成授权；授权后再选择要分析的范围。";
@@ -913,6 +953,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isUntrustedInstructionInjectionRequest(message)) {
         return success(untrustedContentBoundaryPayload(message));
+      }
+
+      if (isSensitiveContactShareRequest(message)) {
+        return success(sensitiveShareBoundaryPayload(message));
       }
 
       if (isSecretDisclosureRequest(message)) {
