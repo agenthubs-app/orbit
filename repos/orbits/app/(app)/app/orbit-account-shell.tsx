@@ -1,10 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
 
+import { useOrbitLanguage } from "./orbit-language-context";
 import { productHref } from "./orbit-public-shell";
-import { Avatar, Icon, Logo } from "./orbit-reference-primitives";
+import { Icon, Logo } from "./orbit-reference-primitives";
 
 function accountHref(prototypeHref: string) {
   if (prototypeHref === "/home") return "/app/home";
@@ -17,36 +17,40 @@ export function orbitNavigate(prototypeHref: string) {
 }
 
 export function AccountTopNav({
-  accountInitial = "李",
   active = "me",
+  agentTone,
+  rightExtra,
 }: {
   accountInitial?: string;
-  active?: "events" | "schedule" | "cards" | "me";
+  active?: "agent" | "events" | "schedule" | "cards" | "me";
+  agentTone?: "default" | "selected";
+  rightExtra?: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const { language, preserveHref, setLanguage, t } = useOrbitLanguage();
+  const isAgent = agentTone ? agentTone === "selected" : active === "agent";
   const links = [
-    { href: "/explore", k: "events", label: "活动浏览" },
-    { href: "/home/schedule", k: "schedule", label: "日程" },
-    { href: "/home/cards", k: "cards", label: "名片夹" },
+    { href: "/explore", k: "events", label: t({ en: "Events", zh: "活动" }) },
+    { href: "/home/schedule", k: "schedule", label: t({ en: "Calendar", zh: "日程" }) },
+    { href: "/home/cards", k: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
   ];
 
   return (
     <header className="orbit-top-nav">
-      <a href="/app" onClick={(event) => { event.preventDefault(); orbitNavigate("/"); }} aria-label="Orbit" style={{ textDecoration: "none" }}>
-        <Logo size={25} />
+      <a className="orbit-brand-link" href={preserveHref("/app")} onClick={(event) => { event.preventDefault(); window.location.href = preserveHref(accountHref("/")); }} aria-label="Orbit" style={{ textDecoration: "none" }}>
+        <Logo size={25} withText={false} />
       </a>
-      <button type="button" onClick={() => orbitNavigate("/agent")} className="orbit-agent-btn" style={{ marginRight: 4 }}>
+      <button type="button" onClick={() => { window.location.href = preserveHref(accountHref("/agent")); }} className={`orbit-agent-btn${isAgent ? " is-active" : ""}`} style={{ marginRight: 4 }}>
         <Icon name="sparkle" size={15} />
-        Orbit Agent
+        iOrbit
       </button>
       <nav className="orbit-nav-links">
         {links.map((link) => (
           <a
             key={link.k}
-            href={productHref(link.href)}
+            href={preserveHref(productHref(link.href))}
             onClick={(event) => {
               event.preventDefault();
-              orbitNavigate(link.href);
+              window.location.href = preserveHref(accountHref(link.href));
             }}
             className={`orbit-nav-link${active === link.k ? " is-active" : ""}`}
           >
@@ -55,52 +59,23 @@ export function AccountTopNav({
         ))}
       </nav>
       <div style={{ flex: 1 }} />
-      <div style={{ alignItems: "center", display: "flex", gap: 14 }}>
-        <span className="mono orbit-lang-ctl" style={{ color: "var(--text-3)", cursor: "pointer", fontSize: 12.5 }}>中 / 日</span>
-        <div style={{ position: "relative" }}>
-          <button onClick={() => setOpen((value) => !value)} style={{ background: "none", border: "none", color: "#000", cursor: "pointer", fontSize: "13.3333px", padding: 0 }} type="button">
-            <Avatar letter={accountInitial} size={34} />
-          </button>
-          {open ? (
-            <div className="orbit-menu" onMouseLeave={() => setOpen(false)}>
-              <button className="orbit-menu-item" onClick={() => { setOpen(false); orbitNavigate("/home"); }}>我的主页</button>
-              <button className="orbit-menu-item" onClick={() => { setOpen(false); orbitNavigate("/home/cards"); }}>名片夹</button>
-              <button className="orbit-menu-item" onClick={() => { setOpen(false); orbitNavigate("/home/profile"); }}>通用画像</button>
-              <button className="orbit-menu-item" onClick={() => { setOpen(false); orbitNavigate("/"); }}>退出登录</button>
-            </div>
-          ) : null}
-        </div>
+      <div className="orbit-top-actions" style={{ alignItems: "center", display: "flex", gap: 14 }}>
+        <button
+          className="mono orbit-lang-button"
+          onClick={() => setLanguage(language === "en" ? "zh" : "en")}
+          style={{ background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", fontSize: 12.5, padding: 0 }}
+          type="button"
+        >
+          <span style={{ color: language === "zh" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "zh" ? 700 : 500 }}>中</span>
+          <span style={{ color: "var(--text-4)", padding: "0 1px" }}>/</span>
+          <span style={{ color: language === "en" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "en" ? 700 : 500 }}>EN</span>
+        </button>
+        {rightExtra}
+        <a className="orbit-me-link" href={preserveHref("/app/home")} onClick={(event) => { event.preventDefault(); window.location.href = preserveHref(accountHref("/home")); }}>
+          {t({ en: "Me", zh: "我的" })}
+        </a>
       </div>
     </header>
-  );
-}
-
-export function AccountBottomTab({ active }: { active: "home" | "agent" | "events" | "me" | "cards" }) {
-  const tabs = [
-    { href: "/", icon: "home", k: "home", label: "首页" },
-    { href: "/agent", icon: "sparkle", k: "agent", label: "Orbit Agent" },
-    { href: "/explore", icon: "calendar", k: "events", label: "活动浏览" },
-    { href: "/home", icon: "user", k: "me", label: "我的" },
-  ];
-
-  return (
-    <div style={{ backdropFilter: "blur(16px)", background: "rgba(255,255,255,0.92)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", height: 62, left: 0, position: "fixed", right: 0, zIndex: 60 }}>
-      {tabs.map((tab) => {
-        const selected = active === tab.k || (tab.k === "me" && active === "cards");
-
-        return (
-          <button
-            key={tab.k}
-            type="button"
-            onClick={() => orbitNavigate(tab.href)}
-            style={{ alignItems: "center", background: "none", border: "none", color: selected ? "var(--accent)" : "var(--text-4)", cursor: "pointer", display: "flex", flex: 1, flexDirection: "column", gap: 3, paddingTop: 9 }}
-          >
-            <Icon name={tab.icon} size={21} stroke={selected ? 2 : 1.7} />
-            <span style={{ fontSize: 9.5, fontWeight: selected ? 650 : 500, whiteSpace: "nowrap" }}>{tab.label}</span>
-          </button>
-        );
-      })}
-    </div>
   );
 }
 

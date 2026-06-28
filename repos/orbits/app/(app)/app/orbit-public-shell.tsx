@@ -1,3 +1,6 @@
+"use client";
+
+import { useOrbitLanguage } from "./orbit-language-context";
 import { Icon, Logo } from "./orbit-reference-primitives";
 
 export function productHref(prototypeHref: string) {
@@ -19,60 +22,50 @@ export function productHref(prototypeHref: string) {
   return `/app${prototypeHref}`;
 }
 
-export function PublicTopNav({ active = "events" }: { active?: "events" | "schedule" | "cards" | "agent" }) {
+export function PublicTopNav({ active = "events" }: { active?: "home" | "events" | "schedule" | "cards" | "agent" }) {
+  const { language, preserveHref, setLanguage, t } = useOrbitLanguage();
+  const links = [
+    ["/explore", t({ en: "Events", zh: "活动" }), "events"],
+    ["/home/schedule", t({ en: "Calendar", zh: "日程" }), "schedule"],
+    ["/home/cards", t({ en: "Contacts", zh: "人脉" }), "cards"],
+  ] as const;
+
   return (
-    <div className="orbit-desktop-only">
-      <header className="orbit-top-nav">
-        <a href="/app" aria-label="Orbit" style={{ textDecoration: "none" }}>
-          <Logo size={25} />
-        </a>
-        <a className="orbit-agent-btn" href="/app/agent">
-          <Icon name="sparkle" size={15} />
-          Orbit Agent
-        </a>
-        <nav aria-label="Public" className="orbit-nav-links">
-          {[
-            ["/explore", "活动浏览", "events"],
-            ["/home/schedule", "日程", "schedule"],
-            ["/home/cards", "名片夹", "cards"],
-          ].map(([href, label, key]) => (
-            <a
-              className={`orbit-nav-link${active === key ? " is-active" : ""}`}
-              key={href}
-              href={productHref(href)}
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-        <div style={{ flex: 1 }} />
-        <div style={{ alignItems: "center", display: "flex", gap: 14 }}>
-          <span className="mono" style={{ color: "var(--text-3)", fontSize: 12.5 }}>中 / 日</span>
-          <a aria-label="我的" href="/app/account/login" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>
-            <span className="avatar g-indigo" style={{ fontSize: 14.28, height: 34, width: 34 }}>李</span>
+    <header className="orbit-top-nav">
+      <a aria-label="Orbit" className={`orbit-brand-link${active === "home" ? " is-active" : ""}`} href={preserveHref("/app")} style={{ textDecoration: "none" }}>
+        <Logo size={25} withText={false} />
+      </a>
+      <a className={`orbit-agent-btn${active === "agent" ? " is-active" : ""}`} href={preserveHref("/app/agent")}>
+        <Icon name="sparkle" size={15} />
+        iOrbit
+      </a>
+      <nav aria-label="Public" className="orbit-nav-links">
+        {links.map(([href, label, key]) => (
+          <a
+            className={`orbit-nav-link${active === key ? " is-active" : ""}`}
+            key={href}
+            href={preserveHref(productHref(href))}
+          >
+            {label}
           </a>
-        </div>
-      </header>
-    </div>
-  );
-}
-
-export function PublicBottomTab({ active = "events" }: { active?: "home" | "agent" | "events" | "me" }) {
-  const tabs = [
-    ["home", "/app", "home", "首页"],
-    ["agent", "/app/agent", "sparkle", "Orbit Agent"],
-    ["events", "/app/events", "calendar", "活动浏览"],
-    ["me", "/app/account/login", "user", "我的"],
-  ];
-
-  return (
-    <div style={{ backdropFilter: "blur(16px)", background: "rgba(255,255,255,0.92)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", height: 62, left: 0, position: "fixed", right: 0, zIndex: 60 }}>
-      {tabs.map(([key, href, icon, label]) => (
-        <a key={key} href={href} style={{ alignItems: "center", background: "none", border: "none", color: key === active ? "var(--accent)" : "var(--text-4)", display: "flex", flex: 1, flexDirection: "column", gap: 3, paddingTop: 9, textDecoration: "none" }}>
-          <Icon name={icon} size={21} stroke={key === active ? 2 : 1.7} />
-          <span style={{ fontSize: 9.5, fontWeight: key === active ? 650 : 500, whiteSpace: "nowrap" }}>{label}</span>
+        ))}
+      </nav>
+      <div style={{ flex: 1 }} />
+      <div className="orbit-top-actions" style={{ alignItems: "center", display: "flex", gap: 14 }}>
+        <button
+          className="mono orbit-lang-button"
+          onClick={() => setLanguage(language === "en" ? "zh" : "en")}
+          style={{ background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", fontSize: 12.5, padding: 0 }}
+          type="button"
+        >
+          <span style={{ color: language === "zh" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "zh" ? 700 : 500 }}>中</span>
+          <span style={{ color: "var(--text-4)", padding: "0 1px" }}>/</span>
+          <span style={{ color: language === "en" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "en" ? 700 : 500 }}>EN</span>
+        </button>
+        <a className="orbit-me-link" href={preserveHref("/app/account/login")}>
+          {t({ en: "Me", zh: "我的" })}
         </a>
-      ))}
-    </div>
+      </div>
+    </header>
   );
 }

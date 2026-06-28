@@ -1,7 +1,7 @@
 import type { OrbitOrganizerPublicViewModel } from "../orbit-organizer-route-view-model";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
-import { productHref } from "../orbit-public-shell";
-import { Avatar, Cover, gradientFromString, Icon, Logo, StatusBadge } from "../orbit-reference-primitives";
+import { productHref, PublicTopNav } from "../orbit-public-shell";
+import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 
 const tz = { timeZone: "Asia/Tokyo" };
 
@@ -26,32 +26,7 @@ function eventDate(event: OrbitLandingEventView) {
 }
 
 function SiteHeader() {
-  const links = [
-    { href: "/explore", k: "events", label: "活动浏览" },
-    { href: "/home/schedule", k: "schedule", label: "日程" },
-    { href: "/home/cards", k: "cards", label: "名片夹" },
-  ];
-
-  return (
-    <div className="orbit-desktop-only">
-      <header className="orbit-top-nav">
-        <a aria-label="Orbit" href="/app" style={{ textDecoration: "none" }}><Logo size={25} /></a>
-        <a className="orbit-agent-btn" href="/app/agent"><Icon name="sparkle" size={15} />Orbit Agent</a>
-        <nav aria-label="Public" className="orbit-nav-links">
-          {links.map((link) => (
-            <a className={`orbit-nav-link${link.k === "events" ? " is-active" : ""}`} href={productHref(link.href)} key={link.k}>{link.label}</a>
-          ))}
-        </nav>
-        <div style={{ flex: 1 }} />
-        <div style={{ alignItems: "center", display: "flex", gap: 14 }}>
-          <span className="mono" style={{ color: "var(--text-3)", fontSize: 12.5 }}>中 / 日</span>
-          <a aria-label="我的" href="/app/home" style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-            <Avatar letter="李" size={34} />
-          </a>
-        </div>
-      </header>
-    </div>
-  );
+  return <PublicTopNav active="events" />;
 }
 
 function EventCard({ event }: { event: OrbitLandingEventView }) {

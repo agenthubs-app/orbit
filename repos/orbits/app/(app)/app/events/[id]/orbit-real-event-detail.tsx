@@ -36,10 +36,14 @@ function eventTime(event: OrbitLandingEventView) {
 }
 
 function BackButton({ mobile = false, style }: { mobile?: boolean; style: CSSProperties }) {
+  const goBack = () => {
+    window.location.href = productHref("/events");
+  };
+
   return (
-    <a href="/app/events" style={style}>
+    <button aria-label="返回上一页" onClick={goBack} style={style} type="button">
       {mobile ? <Icon name="chevL" size={20} /> : <><Icon name="back" size={16} />返回</>}
-    </a>
+    </button>
   );
 }
 
@@ -48,19 +52,24 @@ function ActionButton({
   className,
   disabled = false,
   href,
+  onBeforeNavigate,
   style,
 }: {
   children: ReactNode;
   className: string;
   disabled?: boolean;
   href?: string;
+  onBeforeNavigate?: () => void;
   style?: CSSProperties;
 }) {
   return (
     <button
       className={className}
       disabled={disabled}
-      onClick={href && !disabled ? () => { window.location.href = href; } : undefined}
+      onClick={href && !disabled ? () => {
+        onBeforeNavigate?.();
+        window.location.href = href;
+      } : undefined}
       style={style}
       type="button"
     >
@@ -101,7 +110,14 @@ function enterAction(event: OrbitLandingEventView, flex = 1) {
   }
 
   return (
-    <ActionButton className="btn btn-ghost" href={productHref("/party")} style={{ flex }}>
+    <ActionButton
+      className="btn btn-ghost"
+      href={productHref("/party")}
+      onBeforeNavigate={() => {
+        window.sessionStorage.setItem("orbit-party-return-url", window.location.href);
+      }}
+      style={{ flex }}
+    >
       {label}{event.status !== "ended" ? <Icon name="arrowUR" size={16} /> : null}
     </ActionButton>
   );

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { AccountBottomTab, AccountTopNav, orbitNavigate, StatusBar } from "../orbit-account-shell";
+import { AccountTopNav, orbitNavigate } from "../orbit-account-shell";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
@@ -211,7 +211,8 @@ function HubDesktop({ viewModel }: { viewModel: OrbitHomeViewModel }) {
 function HubMobile({ viewModel }: { viewModel: OrbitHomeViewModel }) {
   return (
     <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
-      <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 18px 100px" }}>
+      <AccountTopNav active="me" accountInitial={viewModel.account.initial} />
+      <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 18px 36px" }}>
         <div style={{ alignItems: "center", display: "flex", gap: 14, padding: "8px 0 4px" }}>
           <span className="avatar g-indigo" style={{ fontSize: 21.84, height: 52, width: 52 }}>{viewModel.account.initial}</span>
           <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--text-3)", fontSize: 12 }}>晚上好</div><div className="h-title" style={{ color: "var(--ink)", fontSize: 21 }}>{viewModel.account.fullName}</div></div>
@@ -238,7 +239,6 @@ function HubMobile({ viewModel }: { viewModel: OrbitHomeViewModel }) {
         </div>
         <MyEventsBlock events={viewModel.events} />
       </div>
-      <AccountBottomTab active="me" />
     </div>
   );
 }
@@ -258,12 +258,11 @@ function EventsDesktop({ viewModel }: { viewModel: OrbitHomeViewModel }) {
 function EventsMobile({ viewModel }: { viewModel: OrbitHomeViewModel }) {
   return (
     <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
-      <StatusBar />
-      <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 100px" }}>
+      <AccountTopNav active="me" accountInitial={viewModel.account.initial} />
+      <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 36px" }}>
         <h1 className="h-display" style={{ fontSize: 26, margin: "6px 0 18px" }}>我的活动</h1>
         <AccountEventsBlock events={viewModel.events} />
       </div>
-      <AccountBottomTab active="me" />
     </div>
   );
 }

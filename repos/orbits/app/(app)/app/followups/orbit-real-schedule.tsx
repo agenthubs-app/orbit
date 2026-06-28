@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { AccountBottomTab, AccountTopNav, ModalShell, StatusBar } from "../orbit-account-shell";
+import { AccountTopNav, ModalShell } from "../orbit-account-shell";
 import type {
   OrbitScheduleConnectionView,
   OrbitScheduleItemView,
@@ -373,7 +373,7 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
-        <StatusBar />
+        <AccountTopNav active="schedule" />
         <div style={{ alignItems: "flex-end", display: "flex", flexShrink: 0, justifyContent: "space-between", padding: "8px 18px 6px" }}>
           <div>
             <div className="eyebrow">SCHEDULE</div>
@@ -384,11 +384,10 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
             约见
           </button>
         </div>
-        <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", gap: 20, minHeight: 0, overflowY: "auto", padding: "14px 18px 100px" }}>
+        <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", gap: 20, minHeight: 0, overflowY: "auto", padding: "14px 18px 36px" }}>
           <MonthCalendar {...monthCalendarProps} compact />
           <ScheduleListPanel compact connections={viewModel.connections} language={language} schedules={viewModel.schedules} selected={selected} view={view} />
         </div>
-        <AccountBottomTab active="me" />
       </div>
       {addOpen ? <AddScheduleModal connections={viewModel.connections} onClose={() => setAddOpen(false)} /> : null}
     </main>

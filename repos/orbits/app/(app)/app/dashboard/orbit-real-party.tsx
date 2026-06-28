@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { getOrbitAccountAuthViewModel } from "../orbit-account-auth-route-view-model";
-import { OrbitRealAccountAuth } from "../account/orbit-real-account-auth";
 import { getOrbitPartyViewModel, type OrbitPartyPersonView, type OrbitPartyViewModel } from "../orbit-party-route-view-model";
+import { PublicTopNav } from "../orbit-public-shell";
 import { Icon, Logo } from "../orbit-reference-primitives";
 
-type PartyTab = "home" | "table" | "network" | "graph" | "me";
+type PartyTab = "home" | "recommendations" | "attendees" | "table" | "graph" | "agenda";
+const partyReturnStorageKey = "orbit-party-return-url";
 
 function navigateTo(path: string) {
   window.location.href = path;
@@ -21,6 +21,134 @@ function productHref(prototypeHref: string) {
 
 function navigatePrototype(prototypeHref: string) {
   navigateTo(productHref(prototypeHref));
+}
+
+function returnToBeforeParty() {
+  const stored = window.sessionStorage.getItem(partyReturnStorageKey);
+  window.sessionStorage.removeItem(partyReturnStorageKey);
+
+  if (stored) {
+    try {
+      const url = new URL(stored, window.location.origin);
+
+      if (url.origin === window.location.origin) {
+        window.location.replace(url.href);
+        return;
+      }
+    } catch {
+      // Ignore invalid stored return targets and fall back to the events list.
+    }
+  }
+
+  window.location.replace(productHref("/events"));
+}
+
+function PartyReturnButton({ onExit }: { onExit: () => void }) {
+  return (
+    <button aria-label="返回活动" className="orbit-party-return-icon" onClick={onExit} type="button">
+      <Icon name="chevL" size={20} />
+    </button>
+  );
+}
+
+function PartyMobileTopTabs({
+  onExit,
+  setTab,
+  tab,
+}: {
+  onExit: () => void;
+  setTab: (tab: PartyTab) => void;
+  tab: PartyTab;
+}) {
+  const tabs: Array<[PartyTab, string, string]> = [
+    ["home", "home", "现场主页"],
+    ["recommendations", "sparkle", "推荐给你"],
+    ["attendees", "users", "全部参会者"],
+    ["table", "seat", "分组"],
+    ["graph", "network", "关系图谱"],
+    ["agenda", "clock", "流程议程"],
+  ];
+
+  return (
+    <header className="orbit-party-top-tabs orbit-mobile-only">
+      <PartyReturnButton onExit={onExit} />
+      <div className="orbit-party-top-tab-list" role="tablist" aria-label="活动页面">
+        {tabs.map(([key, icon, label]) => {
+          const selected = tab === key;
+          return (
+            <button
+              aria-selected={selected}
+              className={`chip orbit-party-top-tab${selected ? " is-active" : ""}`}
+              data-party-tab={key}
+              key={key}
+              onClick={() => setTab(key)}
+              role="tab"
+              type="button"
+            >
+              <Icon name={icon} size={15} stroke={selected ? 2 : 1.7} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </header>
+  );
+}
+
+function PartyDesktopChrome({
+  onExit,
+  setTab,
+  tab,
+  viewModel,
+}: {
+  onExit: () => void;
+  setTab: (tab: PartyTab) => void;
+  tab: PartyTab;
+  viewModel: OrbitPartyViewModel;
+}) {
+  const tabs: Array<[PartyTab, string, string]> = [
+    ["home", "home", "现场主页"],
+    ["recommendations", "sparkle", "推荐给你"],
+    ["attendees", "users", "全部参会者"],
+    ["table", "grid", "分组"],
+    ["graph", "network", "关系图谱"],
+    ["agenda", "clock", "流程议程"],
+  ];
+
+  return (
+    <div className="orbit-party-desktop-chrome orbit-desktop-only">
+      <div className="orbit-party-desktop-head">
+        <button className="orbit-party-exit-button" onClick={onExit} type="button">
+          <Icon name="chevL" size={18} />
+          退出活动
+        </button>
+        <div className="orbit-party-event-mark">活</div>
+        <div className="orbit-party-event-title">
+          <strong>活动现场</strong>
+          <span>你的座位 {viewModel.me.seat}</span>
+        </div>
+        <span className="orbit-party-ended-pill">已结束</span>
+      </div>
+      <nav aria-label="活动内部页面" className="orbit-party-desktop-tabs">
+        {tabs.map(([key, icon, label]) => {
+          const selected = tab === key;
+          return (
+            <button
+              aria-selected={selected}
+              className={`orbit-party-desktop-tab${selected ? " is-active" : ""}`}
+              data-party-tab={key}
+              key={key}
+              onClick={() => setTab(key)}
+              type="button"
+            >
+              <Icon name={icon} size={18} stroke={selected ? 2 : 1.7} />
+              {label}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
 }
 
 function NetworkPerson({
@@ -65,19 +193,27 @@ function NetworkPerson({
   );
 }
 
+function partyParticipants(viewModel: OrbitPartyViewModel) {
+  const people = [...viewModel.recommendations, ...viewModel.tableMates];
+  const seen = new Set<string>();
+
+  return people.filter((person) => {
+    if (seen.has(person.id)) return false;
+    seen.add(person.id);
+    return true;
+  });
+}
+
 function PartyHome({ go, viewModel }: { go: (tab: PartyTab) => void; viewModel: OrbitPartyViewModel }) {
   const first = viewModel.recommendations[0];
 
   return (
-    <div className="orbit-party-home-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 96px" }}>
-      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", padding: "6px 0 2px" }}>
-        <Logo size={24} />
-        <span className="badge badge-live">
+    <div className="orbit-party-home-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 32px" }}>
+      <div className="card" style={{ marginTop: 12, overflow: "hidden", padding: 20, position: "relative" }}>
+        <span className="badge badge-live" style={{ position: "absolute", right: 16, top: 16 }}>
           <span className="dot dot-live" />
           进行中
         </span>
-      </div>
-      <div className="card" style={{ marginTop: 12, overflow: "hidden", padding: 20, position: "relative" }}>
         <div className="eyebrow">TONIGHT · 现场</div>
         <h1 className="h-display" style={{ fontSize: 30, margin: "8px 0 0" }}>
           晚上好，{viewModel.me.initial}
@@ -86,7 +222,7 @@ function PartyHome({ go, viewModel }: { go: (tab: PartyTab) => void; viewModel: 
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button className="btn btn-primary" onClick={() => navigateTo("/app/party/checkin")} style={{ flex: "1 1 0%" }}>
             <Icon color="#fff" name="ticket" size={16} />
-            现场签到
+            签到
           </button>
           <button className="btn btn-ghost" onClick={() => go("table")} style={{ flex: "1 1 0%" }}>
             <Icon name="seat" size={16} />
@@ -99,7 +235,7 @@ function PartyHome({ go, viewModel }: { go: (tab: PartyTab) => void; viewModel: 
           为你推荐的人脉
         </h2>
         <button
-          onClick={() => go("network")}
+          onClick={() => go("recommendations")}
           style={{ alignItems: "center", background: "none", border: "none", color: "var(--accent)", cursor: "pointer", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, padding: "1px 6px" }}
           type="button"
         >
@@ -182,7 +318,7 @@ function PartyTable({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const seatCount = 8;
 
   return (
-    <div className="orbit-party-table-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 96px" }}>
+    <div className="orbit-party-table-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
       <div className="orbit-party-table-header">
         <div>
           <div className="eyebrow">YOUR TABLE</div>
@@ -190,7 +326,9 @@ function PartyTable({ viewModel }: { viewModel: OrbitPartyViewModel }) {
             第 <span>1</span> 组 · 圆桌
           </h1>
         </div>
-        <span className="chip chip-accent">座位 {viewModel.me.seat}</span>
+        <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
+          <span className="chip chip-accent">座位 {viewModel.me.seat}</span>
+        </div>
       </div>
       <div className="orbit-party-table-seat-scene" style={{ height: 350, margin: "20px auto 30px", position: "relative", width: 350 }}>
         <div className="orbit-party-table-center">
@@ -269,7 +407,7 @@ function PartyTable({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   );
 }
 
-function PartyNetwork({ viewModel }: { viewModel: OrbitPartyViewModel }) {
+function PartyRecommendations({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const [added, setAdded] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const list = useMemo(
@@ -283,15 +421,17 @@ function PartyNetwork({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   );
 
   return (
-    <div className="orbit-party-network-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 96px" }}>
+    <div className="orbit-party-network-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
       <div className="orbit-party-network-header">
         <div>
           <div className="eyebrow">FOR YOU</div>
-          <h1 className="h-display orbit-party-network-title">推荐人脉</h1>
+          <h1 className="h-display orbit-party-network-title">推荐给你</h1>
         </div>
-        <div className="card orbit-party-network-count">
-          <div className="h-title">{viewModel.recommendations.length}</div>
-          <div className="mono">RECOMMENDED</div>
+        <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
+          <div className="card orbit-party-network-count">
+            <div className="h-title">{viewModel.recommendations.length}</div>
+            <div className="mono">RECOMMENDED</div>
+          </div>
         </div>
       </div>
       <div className="orbit-party-network-toolbar">
@@ -306,6 +446,102 @@ function PartyNetwork({ viewModel }: { viewModel: OrbitPartyViewModel }) {
       <div className="orbit-party-network-list">
         {list.map((person) => (
           <NetworkPerson added={added[person.id]} key={person.id} onAdd={() => setAdded((current) => ({ ...current, [person.id]: true }))} p={person} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PartyAttendees({ viewModel }: { viewModel: OrbitPartyViewModel }) {
+  const [query, setQuery] = useState("");
+  const attendees = useMemo(() => partyParticipants(viewModel), [viewModel]);
+  const list = useMemo(() => {
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) return attendees;
+    return attendees.filter((person) => [person.name, person.company, person.title, person.industry].join(" ").toLowerCase().includes(trimmed));
+  }, [attendees, query]);
+
+  return (
+    <div className="orbit-party-attendees-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
+      <div className="orbit-party-network-header">
+        <div>
+          <div className="eyebrow">ATTENDEES</div>
+          <h1 className="h-display orbit-party-network-title">全部参会者</h1>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>共 {attendees.length + 1} 位参会者</div>
+        </div>
+        <div className="orbit-party-network-search orbit-party-attendees-search">
+          <Icon color="var(--text-3)" name="search" size={17} />
+          <input onChange={(event) => setQuery(event.target.value)} placeholder="搜索参会者" value={query} />
+        </div>
+      </div>
+      <div className="orbit-party-attendee-grid">
+        <div className="card orbit-party-attendee-card">
+          <span className="avatar g-indigo orbit-party-attendee-avatar">{viewModel.me.initial}</span>
+          <div className="orbit-party-attendee-body">
+            <div className="orbit-party-attendee-name">{viewModel.me.name}</div>
+            <div className="orbit-party-attendee-meta">{viewModel.me.role}</div>
+            <div className="orbit-party-attendee-summary">我的席位 · {viewModel.me.seat}</div>
+            <div className="orbit-party-attendee-tags">
+              {viewModel.me.topics.slice(0, 3).map((topic) => (
+                <span className="chip" key={topic}>
+                  {topic}
+                </span>
+              ))}
+            </div>
+          </div>
+          <span className="chip chip-accent orbit-party-attendee-seat">{viewModel.me.seat}</span>
+        </div>
+        {list.map((person) => (
+          <div className="card orbit-party-attendee-card" key={person.id}>
+            <span className={`avatar ${person.g} orbit-party-attendee-avatar`}>{person.initial}</span>
+            <div className="orbit-party-attendee-body">
+              <div className="orbit-party-attendee-name">{person.name}</div>
+              <div className="orbit-party-attendee-meta">
+                {person.company} · {person.title}
+              </div>
+              <div className="orbit-party-attendee-summary">{person.summary}</div>
+              <div className="orbit-party-attendee-tags">
+                <span className="chip chip-accent">{person.industry}</span>
+                {person.topics.map((topic) => (
+                  <span className="chip" key={topic}>
+                    {topic}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <span className="chip chip-accent orbit-party-attendee-seat">{person.seat}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PartyAgenda({ viewModel }: { viewModel: OrbitPartyViewModel }) {
+  return (
+    <div className="orbit-party-agenda-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
+      <div className="orbit-party-network-header">
+        <div>
+          <div className="eyebrow">AGENDA</div>
+          <h1 className="h-display orbit-party-network-title">流程议程</h1>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>Tokyo Business Connect · 今晚流程</div>
+        </div>
+        <span className="badge badge-ended">已结束</span>
+      </div>
+      <div className="orbit-party-agenda-list">
+        {viewModel.agenda.map((item, index) => (
+          <div className="orbit-party-agenda-row" key={`${item.time}-${item.label}`}>
+            <div className="orbit-party-agenda-time">{item.time}</div>
+            <div className="orbit-party-agenda-line">
+              <span />
+              {index < viewModel.agenda.length - 1 ? <i /> : null}
+            </div>
+            <div className="orbit-party-agenda-main">
+              <strong>{item.label}</strong>
+              <p>{item.description}</p>
+            </div>
+            <span className="orbit-party-agenda-status">已结束</span>
+          </div>
         ))}
       </div>
     </div>
@@ -654,7 +890,7 @@ function PartyGraphInline({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const [selected, setSelected] = useState<OrbitPartyPersonView | null>(null);
 
   return (
-    <div className="orbit-party-graph-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 96px" }}>
+    <div className="orbit-party-graph-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
       <div className="orbit-party-graph-header">
         <div>
           <div className="eyebrow">SOCIAL GRAPH</div>
@@ -691,16 +927,13 @@ function PartyGraphInline({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   );
 }
 
-function PartyMe({ viewModel }: { viewModel: OrbitPartyViewModel }) {
+function PartyMe({ onExit, viewModel }: { onExit: () => void; viewModel: OrbitPartyViewModel }) {
   const [copied, setCopied] = useState(false);
 
   return (
-    <div className="orbit-party-me-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 96px" }}>
+    <div className="orbit-party-me-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
         <div className="eyebrow">MY PASS</div>
-        <span className="mono orbit-lang-inline" style={{ color: "var(--text-3)", fontSize: 12 }}>
-          中 / 日
-        </span>
       </div>
       <div className="orbit-party-me-hero">
         <span className="avatar g-indigo orbit-party-me-avatar">{viewModel.me.initial}</span>
@@ -783,9 +1016,9 @@ function PartyMe({ viewModel }: { viewModel: OrbitPartyViewModel }) {
         <span>编辑通用画像</span>
         <Icon color="var(--text-4)" name="chevR" size={17} />
       </button>
-      <button className="card orbit-party-me-action-row orbit-party-me-logout" onClick={() => navigateTo("/app")} type="button">
+      <button className="card orbit-party-me-action-row orbit-party-me-logout" onClick={onExit} type="button">
         <Icon color="var(--rose)" name="logout" size={18} />
-        <span>退出活动</span>
+        <span>返回活动</span>
         <Icon color="var(--rose)" name="chevR" size={17} />
       </button>
     </div>
@@ -794,52 +1027,18 @@ function PartyMe({ viewModel }: { viewModel: OrbitPartyViewModel }) {
 
 export function OrbitRealParty({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const [tab, setTab] = useState<PartyTab>("home");
-  const [showAuth, setShowAuth] = useState(false);
-  const tabs: Array<[PartyTab, string, string]> = [
-    ["home", "home", "主页"],
-    ["table", "seat", "座位"],
-    ["network", "users", "人脉"],
-    ["graph", "network", "图谱"],
-    ["me", "user", "我的"],
-  ];
 
   return (
     <div className="orbit-party-page" data-orbit-real-page style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", position: "relative" }}>
+      <PublicTopNav active="events" />
+      <PartyDesktopChrome onExit={returnToBeforeParty} setTab={setTab} tab={tab} viewModel={viewModel} />
+      <PartyMobileTopTabs onExit={returnToBeforeParty} setTab={setTab} tab={tab} />
       {tab === "home" ? <PartyHome go={setTab} viewModel={viewModel} /> : null}
       {tab === "table" ? <PartyTable viewModel={viewModel} /> : null}
-      {tab === "network" ? <PartyNetwork viewModel={viewModel} /> : null}
+      {tab === "recommendations" ? <PartyRecommendations viewModel={viewModel} /> : null}
+      {tab === "attendees" ? <PartyAttendees viewModel={viewModel} /> : null}
       {tab === "graph" ? <PartyGraphInline viewModel={viewModel} /> : null}
-      {tab === "me" ? <PartyMe viewModel={viewModel} /> : null}
-      <div style={{ backdropFilter: "blur(16px)", background: "rgba(255,255,255,0.9)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", height: 64, left: 0, position: "absolute", right: 0, zIndex: 35 }}>
-        {tabs.map(([key, icon, label]) => {
-          const selected = tab === key;
-          return (
-            <button
-              key={key}
-              onClick={() => {
-                if (key === "me") {
-                  setShowAuth(true);
-                  return;
-                }
-                setTab(key);
-              }}
-              style={{ alignItems: "center", background: "none", border: "none", color: selected ? "var(--accent)" : "var(--text-4)", cursor: "pointer", display: "flex", flex: 1, flexDirection: "column", gap: 3, padding: "9px 6px 1px" }}
-              type="button"
-            >
-              <Icon name={icon} size={21} stroke={selected ? 2 : 1.7} />
-              <span style={{ fontSize: 10, fontWeight: selected ? 600 : 500 }}>{label}</span>
-            </button>
-          );
-        })}
-      </div>
-      {showAuth ? (
-        <div className="orbit-party-auth-overlay">
-          <OrbitRealAccountAuth
-            onClose={() => setShowAuth(false)}
-            viewModel={{ ...getOrbitAccountAuthViewModel("login"), defaultNext: "/party" }}
-          />
-        </div>
-      ) : null}
+      {tab === "agenda" ? <PartyAgenda viewModel={viewModel} /> : null}
     </div>
   );
 }

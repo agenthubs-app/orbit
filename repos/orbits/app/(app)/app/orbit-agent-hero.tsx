@@ -308,7 +308,7 @@ export function OrbitAgentHero() {
                 }}
               >
                 <Icon name="sparkle" size={14} />
-                Orbit Agent
+                iOrbit
               </span>
               <span style={{ color: "var(--text-4)", fontSize: 12 }}>人脉 · 活动 · 商业价值</span>
             </div>

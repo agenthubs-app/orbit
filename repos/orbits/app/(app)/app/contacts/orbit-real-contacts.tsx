@@ -12,7 +12,7 @@ import type {
   OrbitIntroStatus,
   OrbitIntroView,
 } from "../orbit-contacts-route-view-model";
-import { AccountBottomTab, AccountTopNav, MobileBar, ModalShell, orbitNavigate, StatusBar } from "../orbit-account-shell";
+import { AccountTopNav, MobileBar, ModalShell, orbitNavigate, StatusBar } from "../orbit-account-shell";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
 
@@ -291,13 +291,12 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
-        <StatusBar />
+        <AccountTopNav active="cards" />
         <MobileCrmHeader active="list" onQueryChange={setQuery} query={query} />
-        <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0, overflowY: "auto", padding: "2px 18px 96px" }}>
+        <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0, overflowY: "auto", padding: "2px 18px 36px" }}>
           <div style={{ color: "var(--text-3)", fontSize: 12.5, marginBottom: 10 }}>{subtitle}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} viewModel={viewModel} />)}</div>
         </div>
-        <AccountBottomTab active="cards" />
       </div>
     </main>
   );
@@ -418,12 +417,11 @@ export function OrbitRealCardsPipeline({ viewModel }: { viewModel: OrbitContacts
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", position: "relative" }}>
-        <StatusBar />
+        <AccountTopNav active="cards" />
         <MobileCrmHeader active="pipeline" onQueryChange={setQuery} query={query} />
-        <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 18px 96px" }}>
+        <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 18px 36px" }}>
           <MobilePipeline grouped={grouped} viewModel={viewModel} />
         </div>
-        <AccountBottomTab active="cards" />
       </div>
     </main>
   );
@@ -617,14 +615,13 @@ export function OrbitRealCardsGraph({ viewModel }: { viewModel: OrbitContactsVie
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-        <StatusBar />
+        <AccountTopNav active="cards" />
         <MobileCrmHeader active="graph" onQueryChange={setQuery} query={query} />
-        <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "0 18px 100px" }}>
+        <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "0 18px 36px" }}>
           <div style={{ color: "var(--text-3)", fontSize: 12.5, marginBottom: 10 }}>{summary}</div>
           {zoom("orbit-graph-mobile-zoom")}
           <GraphCanvas scale={scale} view={view} viewModel={viewModel} />
         </div>
-        <AccountBottomTab active="cards" />
       </div>
     </main>
   );
@@ -813,7 +810,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-        <StatusBar />
+        <AccountTopNav active="cards" />
         <MobileCrmHeader
           action={<button aria-label="发起引荐" style={{ alignItems: "center", background: "var(--accent-soft)", border: "none", borderRadius: 999, color: "var(--accent)", cursor: "pointer", display: "flex", height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="plus" size={19} /></button>}
           active="intros"
@@ -821,7 +818,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
           placeholder="搜索联系人 / 引荐词"
           query={query}
         />
-        <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "2px 18px 100px" }}>
+        <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "2px 18px 36px" }}>
           {statsNode}
           <div className="scroll noscroll" style={{ display: "flex", gap: 7, margin: "0 -18px 14px", overflowX: "auto", padding: "0 18px" }}>
             {filters.map((item) => (
@@ -833,7 +830,6 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
           {!visible.length ? <div className="card-flat orbit-empty">还没有符合筛选条件的引荐记录。</div> : null}
           <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} />)}</section>
         </div>
-        <AccountBottomTab active="cards" />
       </div>
       {composerOpen ? <IntroComposerModal onClose={() => setComposerOpen(false)} onCreated={() => setComposerOpen(false)} viewModel={viewModel} /> : null}
     </main>
@@ -1281,13 +1277,12 @@ export function OrbitRealCardsScan({ viewModel }: { viewModel: OrbitContactsView
         </div>
       </div>
       <div className="orbit-mobile-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-        <StatusBar />
+        <AccountTopNav active="cards" />
         <MobileBar onBack={() => orbitNavigate("/home/cards")} title="扫名片" />
-        <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "18px 18px 96px" }}>
+        <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "18px 18px 36px" }}>
           <div style={{ color: "var(--text-3)", fontSize: 13.5, marginBottom: 20 }}>上传纸质名片，AI 提取并入你的名片夹</div>
           <ScanContent connection={connection} loading={loading} mobile onPick={pick} />
         </div>
-        <AccountBottomTab active="cards" />
       </div>
     </main>
   );

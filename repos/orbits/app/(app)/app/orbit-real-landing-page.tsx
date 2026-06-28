@@ -1,7 +1,8 @@
 import { OrbitAgentHero } from "./orbit-agent-hero";
 import { getOrbitLandingViewModel, type OrbitLandingEventView } from "./orbit-landing-route-view-model";
 import { OrbitLangRuntime } from "./orbit-lang-runtime";
-import { Cover, gradientFromString, Icon, Logo, StatusBadge } from "./orbit-reference-primitives";
+import { PublicTopNav } from "./orbit-public-shell";
+import { Cover, gradientFromString, Icon, StatusBadge } from "./orbit-reference-primitives";
 import { OrbitReferenceStyles, OrbitReferenceThreeRuntime } from "./orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "./orbit-visual-freeze-runtime";
 
@@ -38,78 +39,7 @@ function productHref(prototypeHref: string) {
 }
 
 function LandingNav() {
-  return (
-    <>
-      <div className="orbit-desktop-only">
-        <header
-          style={{
-            alignItems: "center",
-            backdropFilter: "blur(14px)",
-            background: "rgba(255,255,255,0.9)",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            gap: 24,
-            height: 60,
-            padding: "0 28px",
-            position: "sticky",
-            top: 0,
-            zIndex: 50,
-          }}
-        >
-          <a href="/app" style={{ display: "inline-flex", textDecoration: "none" }}>
-            <Logo size={25} />
-          </a>
-          <a className="orbit-agent-btn" href="/app/agent">
-            <Icon name="sparkle" size={15} />
-            Orbit Agent
-          </a>
-          <nav style={{ display: "flex", gap: 2 }}>
-            {[
-              ["/explore", "活动浏览"],
-              ["/home/schedule", "日程"],
-              ["/home/cards", "名片夹"],
-            ].map(([href, label]) => (
-              <a
-                key={href}
-                href={productHref(href)}
-                style={{
-                  borderRadius: 8,
-                  color: "var(--text-2)",
-                  fontSize: 14.5,
-                  fontWeight: 540,
-                  padding: "8px 13px",
-                  textDecoration: "none",
-                }}
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
-          <div style={{ flex: 1 }} />
-          <span className="mono" style={{ color: "var(--text-3)", fontSize: 12.5, marginRight: 6 }}>
-            中 / 日
-          </span>
-          <a className="orbit-landing-login" href="/app/account/login" style={{ alignItems: "center", display: "inline-flex", justifyContent: "center", textDecoration: "none" }}>
-            我的
-          </a>
-        </header>
-      </div>
-      <div className="orbit-mobile-only">
-        <div style={{ alignItems: "center", background: "var(--bg)", borderBottom: "1px solid var(--border)", display: "flex", padding: "40px 16px 8px" }}>
-          <a href="/app" style={{ display: "inline-flex", flexShrink: 0, textDecoration: "none" }}>
-            <Logo size={22} />
-          </a>
-          <div style={{ flex: 1 }} />
-          <span className="mono" style={{ color: "var(--text-3)", flexShrink: 0, fontSize: 12.5, marginRight: 8 }}>
-            中 / 日
-          </span>
-          <a className="orbit-landing-login" href="/app/account/login" style={{ alignItems: "center", display: "inline-flex", flexShrink: 0, justifyContent: "center", textDecoration: "none" }}>
-            我的
-          </a>
-        </div>
-      </div>
-    </>
-  );
+  return <PublicTopNav active="home" />;
 }
 
 function EventCard({ event }: { event: OrbitLandingEventView }) {
@@ -311,21 +241,6 @@ export function OrbitRealLandingPage() {
           </div>
         </section>
       </main>
-      <div className="orbit-mobile-only">
-        <div style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(16px)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", height: 62, left: 0, position: "fixed", right: 0, zIndex: 60 }}>
-          {[
-            ["home", "/app", "home", "首页"],
-            ["agent", "/app/agent", "sparkle", "Orbit Agent"],
-            ["events", "/app/events", "calendar", "活动浏览"],
-            ["me", "/app/account/login", "user", "我的"],
-          ].map(([key, href, icon, label]) => (
-            <a key={key} href={href} style={{ alignItems: "center", background: "none", border: "none", color: key === "home" ? "var(--accent)" : "var(--text-4)", display: "flex", flex: 1, flexDirection: "column", gap: 3, paddingTop: 9, textDecoration: "none" }}>
-              <Icon name={icon} size={21} stroke={key === "home" ? 2 : 1.7} />
-              <span style={{ fontSize: 9.5, fontWeight: key === "home" ? 650 : 500, whiteSpace: "nowrap" }}>{label}</span>
-            </a>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

@@ -34,24 +34,6 @@ const reactReferenceIsolationStyles = `
   font-weight: inherit;
 }
 
-[data-orbit-real-page] .orbit-lang-fixed {
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 999px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-  color: var(--text);
-  cursor: pointer;
-  font-family: var(--ff);
-  font-size: 12.5px;
-  line-height: normal;
-  padding: 5px 12px;
-  position: fixed;
-  right: 12px;
-  top: 9px;
-  white-space: nowrap;
-  z-index: 9999;
-}
-
 .orbit-party-page button,
 .orbit-party-graph-screen button {
   min-width: 0;
@@ -76,6 +58,386 @@ const reactReferenceIsolationStyles = `
   font-weight: 400;
   line-height: normal;
   padding: 1px 6px;
+}
+
+[data-orbit-real-page="landing"] .orbit-landing-brand-explainer {
+  background: var(--surface) !important;
+  border-top: 0 !important;
+  margin-top: 48px !important;
+  padding-bottom: 72px !important;
+  padding-top: 58px !important;
+}
+
+@media (max-width: 640px) {
+  [data-orbit-real-page="landing"] .orbit-landing-brand-explainer {
+    margin-top: 34px !important;
+    padding-bottom: 52px !important;
+    padding-top: 44px !important;
+  }
+
+  .orbit-live-checkin-page .orbit-party-checkin-hero {
+    position: relative;
+  }
+
+  .orbit-live-checkin-page .orbit-party-checkin-meta {
+    justify-content: flex-start;
+    padding-right: 92px;
+  }
+
+  .orbit-live-checkin-page .orbit-party-checkin-meta .badge-live {
+    position: absolute;
+    right: 18px;
+    top: 18px;
+  }
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-top-tabs {
+  align-items: center;
+  background: rgba(255,255,255,0.94);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  min-height: 60px;
+  overflow: hidden;
+  padding: 10px 18px;
+  position: relative;
+  z-index: 35;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-return-icon {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  box-shadow: var(--sh-xs);
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-return-icon:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-top-tab-list {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-top-tab-list::-webkit-scrollbar {
+  display: none;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-top-tab {
+  border-color: var(--border-2);
+  cursor: pointer;
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 12px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-top-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-desktop-chrome {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-desktop-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin: 0 auto;
+  max-width: 1040px;
+  padding: 22px 24px 12px;
+  width: 100%;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-exit-button {
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 650;
+  gap: 7px;
+  height: 38px;
+  padding: 0 13px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-exit-button:hover {
+  background: var(--surface-3);
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-event-mark {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 10px;
+  color: var(--on-accent);
+  display: flex;
+  flex-shrink: 0;
+  font-size: 18px;
+  font-weight: 750;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-event-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-event-title strong {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.1;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-event-title span {
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-ended-pill {
+  background: var(--surface-2);
+  border-radius: 999px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 650;
+  margin-left: auto;
+  padding: 6px 12px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-desktop-tabs {
+  align-items: center;
+  display: flex;
+  gap: 26px;
+  margin: 0 auto;
+  max-width: 1040px;
+  padding: 0 24px;
+  width: 100%;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-desktop-tab {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 15px;
+  font-weight: 650;
+  gap: 7px;
+  height: 44px;
+  padding: 0 0 12px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-desktop-tab:hover,
+[data-orbit-real-page].orbit-party-page .orbit-party-desktop-tab.is-active {
+  color: var(--accent);
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-desktop-tab.is-active {
+  border-bottom-color: var(--accent);
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-card {
+  align-items: flex-start;
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  position: relative;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-avatar {
+  flex-shrink: 0;
+  font-size: 20px;
+  height: 50px;
+  width: 50px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-body {
+  min-width: 0;
+  padding-right: 72px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-name {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-meta,
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-summary {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: 4px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-tags .chip {
+  font-size: 12px;
+  height: 26px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-attendee-seat {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-list {
+  margin-top: 26px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-row {
+  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 72px 24px minmax(0, 1fr) auto;
+  min-height: 62px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-time {
+  color: var(--accent);
+  font-family: var(--ff-mono);
+  font-size: 14px;
+  font-weight: 700;
+  padding-top: 2px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-line {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-line span {
+  background: var(--live);
+  border-radius: 999px;
+  height: 14px;
+  width: 14px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-line i {
+  background: var(--live);
+  display: block;
+  flex: 1;
+  margin: 5px 0;
+  opacity: 0.7;
+  width: 2px;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-main strong {
+  color: var(--ink);
+  display: block;
+  font-size: 16px;
+  font-weight: 750;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-main p {
+  color: var(--text-3);
+  font-size: 13px;
+  margin: 5px 0 0;
+}
+
+[data-orbit-real-page].orbit-party-page .orbit-party-agenda-status {
+  color: var(--live);
+  font-size: 12.5px;
+  font-weight: 650;
+  padding-top: 2px;
+}
+
+@media (min-width: 641px) {
+  [data-orbit-real-page].orbit-party-page {
+    background: var(--bg);
+    height: auto !important;
+    min-height: 100dvh;
+    overflow: auto !important;
+  }
+
+  [data-orbit-real-page].orbit-party-page .orbit-party-home-scroll,
+  [data-orbit-real-page].orbit-party-page .orbit-party-network-scroll,
+  [data-orbit-real-page].orbit-party-page .orbit-party-attendees-scroll,
+  [data-orbit-real-page].orbit-party-page .orbit-party-table-scroll,
+  [data-orbit-real-page].orbit-party-page .orbit-party-graph-scroll,
+  [data-orbit-real-page].orbit-party-page .orbit-party-agenda-scroll {
+    flex: 0 0 auto !important;
+    margin: 0 auto;
+    max-width: 1040px;
+    min-height: auto !important;
+    overflow: visible !important;
+    padding: 42px 24px 88px !important;
+    width: 100%;
+  }
+
+  [data-orbit-real-page].orbit-party-page .orbit-party-home-scroll > .card:first-of-type {
+    margin-top: 0 !important;
+  }
+
+  [data-orbit-real-page].orbit-party-page .orbit-party-network-list,
+  [data-orbit-real-page].orbit-party-page .orbit-party-attendee-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-orbit-real-page].orbit-party-page .orbit-party-network-person.card {
+    min-height: 186px;
+  }
+
+  [data-orbit-real-page].orbit-party-page .orbit-party-network-header {
+    align-items: flex-end;
+  }
+
+  [data-orbit-real-page].orbit-party-page .orbit-party-attendees-search {
+    width: min(100%, 280px);
+  }
+
+  [data-orbit-real-page].orbit-party-page .orbit-party-table-seat-scene {
+    margin-top: 32px !important;
+  }
+
+  [data-orbit-real-page].orbit-party-page .orbit-party-graph-scroll .card {
+    box-shadow: none;
+  }
 }
 
 .orbit-host-admin-page button,
@@ -299,8 +661,8 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page] .orbit-agent-btn {
   align-items: center;
-  background: var(--accent-soft);
-  border: 1px solid rgba(99,89,233,0.22);
+  background: var(--surface);
+  border: 1px solid var(--border-2);
   border-radius: 999px;
   color: var(--accent);
   cursor: pointer;
@@ -316,15 +678,184 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page] .orbit-agent-btn:hover {
+  background: var(--surface-2);
+  border-color: rgba(99,89,233,0.22);
+}
+
+[data-orbit-real-page] .orbit-agent-btn.is-active {
+  background: var(--accent-soft);
+  border-color: rgba(99,89,233,0.22);
+}
+
+[data-orbit-real-page] .orbit-agent-btn.is-active:hover {
   background: rgba(99,89,233,0.16);
+}
+
+[data-orbit-real-page] .orbit-me-link {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--accent);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--ff);
+  font-size: 14px;
+  font-weight: 650;
+  height: 38px;
+  justify-content: center;
+  padding: 0 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+[data-orbit-real-page] .orbit-me-link:hover {
+  background: rgba(99,89,233,0.16);
+}
+
+[data-orbit-real-page] .orbit-top-icon-btn {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  box-shadow: var(--sh-xs);
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  width: 36px;
+}
+
+[data-orbit-real-page] .orbit-top-icon-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
 }
 
 [data-orbit-real-page] .orbit-top-nav .orbit-nav-link {
   font-weight: 550;
 }
 
+[data-orbit-real-page] .orbit-brand-link {
+  align-items: center;
+  color: var(--accent);
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
 [data-orbit-real-page="agent"] .orbit-nav-link {
   font-weight: 550;
+}
+
+@media (max-width: 640px) {
+  [data-orbit-real-page] .orbit-top-nav {
+    display: flex !important;
+    flex-shrink: 0;
+    gap: 4px;
+    height: 58px;
+    min-height: 58px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 8px;
+    scrollbar-width: none;
+    width: 100%;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-brand-link {
+    margin-right: 0;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-agent-btn {
+    flex: 0 0 auto;
+    font-size: 11.5px;
+    gap: 4px;
+    height: 34px;
+    padding: 0 5px;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-agent-btn svg {
+    display: none !important;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-nav-links {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 2px;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-nav-link {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 11px;
+    height: 34px;
+    padding: 0 4px;
+    white-space: nowrap;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-top-actions {
+    flex: 0 0 auto;
+    gap: 5px !important;
+    margin-left: 0;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-lang-button {
+    flex: 0 0 auto;
+    font-size: 11.5px !important;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-me-link {
+    flex: 0 0 auto;
+    font-size: 11.5px;
+    height: 34px;
+    padding: 0 6px;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-top-nav {
+    gap: 3px;
+    padding: 0 7px;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-agent-btn {
+    font-size: 10.5px;
+    padding: 0 4px;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-nav-link {
+    font-size: 10px;
+    padding: 0 2px;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-nav-links {
+    gap: 1px;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-top-actions {
+    gap: 3px !important;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-lang-button,
+  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-me-link {
+    font-size: 10.5px !important;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-top-nav .orbit-agent-history-btn {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    height: 32px;
+    width: 28px;
+  }
+
+  [data-orbit-real-page="landing"] {
+    padding-bottom: 0 !important;
+  }
 }
 
 [data-orbit-real-page] .chip {

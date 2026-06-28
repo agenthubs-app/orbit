@@ -16,7 +16,6 @@ export function OrbitRealAdminLogin({ kind = "organizer" }: { kind?: "organizer"
 
   return (
     <main className="orbit-admin-access-page" data-orbit-real-page>
-      <span className="orbit-lang-ctl orbit-lang-fixed">中 / EN</span>
       <section aria-hidden="true" className="orbit-admin-access-art">
         <div className="orbit-admin-access-art-inner">
           <Logo color="#fff" size={28} textColor="#fff" />

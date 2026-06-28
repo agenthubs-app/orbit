@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import type { OrbitLanguage } from "./orbit-language-core";
+
 const iconPaths: Record<string, ReactNode> = {
   arrow: <><path d="M4 12h15M13 6l6 6-6 6"/></>,
   arrowUR: <><path d="M7 17 17 7M8 7h9v9"/></>,
@@ -262,11 +264,18 @@ export function Cover({
   );
 }
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ language = "zh", status }: { language?: OrbitLanguage; status: string }) {
+  const copy = {
+    active: language === "en" ? "Live" : "进行中",
+    ended: language === "en" ? "Ended" : "已结束",
+    unknown: language === "en" ? "TBD" : "时间待定",
+    upcoming: language === "en" ? "Upcoming" : "即将开始",
+  };
+
   if (status === "active" || status === "live") {
-    return <span className="badge badge-live"><span className="dot dot-live" />进行中</span>;
+    return <span className="badge badge-live"><span className="dot dot-live" />{copy.active}</span>;
   }
-  if (status === "ended") return <span className="badge badge-ended">已结束</span>;
-  if (status === "unknown") return <span className="badge badge-soon">时间待定</span>;
-  return <span className="badge badge-soon">即将开始</span>;
+  if (status === "ended") return <span className="badge badge-ended">{copy.ended}</span>;
+  if (status === "unknown") return <span className="badge badge-soon">{copy.unknown}</span>;
+  return <span className="badge badge-soon">{copy.upcoming}</span>;
 }

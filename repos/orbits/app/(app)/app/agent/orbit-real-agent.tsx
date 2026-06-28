@@ -9,8 +9,10 @@ import type {
   OrbitAgentScenarioView,
   OrbitAgentViewModel,
 } from "../orbit-agent-route-view-model";
+import { AccountTopNav } from "../orbit-account-shell";
+import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
-import { Avatar, Cover, Icon, Logo, gradientFromString } from "../orbit-reference-primitives";
+import { Avatar, Cover, Icon, gradientFromString } from "../orbit-reference-primitives";
 
 interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
@@ -126,17 +128,34 @@ function AgentHistoryList({
   );
 }
 
+function agentSuggestLabel(label: string, language: "en" | "zh") {
+  if (language === "zh") return label;
+
+  const labels: Record<string, string> = {
+    "找金融 AI 方向的人脉": "Find AI finance contacts",
+    "想认识女装设计师": "Meet womenswear designers",
+    "推荐 AI / 出海活动": "Recommend AI / global events",
+  };
+
+  return labels[label] ?? label;
+}
+
 function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; viewModel: OrbitAgentViewModel }) {
+  const { language, t } = useOrbitLanguage();
+
   return (
     <div style={{ alignItems: "center", display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "50vh", padding: "24px 8px", textAlign: "center" }}>
       <span className="avatar g-indigo" style={{ alignItems: "center", borderRadius: 16, display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
         <Icon name="sparkle" size={26} color="#fff" />
       </span>
       <h2 className="h-title" style={{ fontSize: 22, margin: "16px 0 6px" }}>
-        我是 Orbit Agent
+        {t({ en: "I am iOrbit", zh: "我是 iOrbit" })}
       </h2>
       <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.65, margin: "0 0 22px", maxWidth: 380 }}>
-        说出你想做的事，我帮你从人脉里找对的人、从活动里找对的局，并告诉你该怎么开口。
+        {t({
+          en: "Tell me what you want to do. I will find the right people in your network, the right events to join, and how to start the conversation.",
+          zh: "说出你想做的事，我帮你从人脉里找对的人、从活动里找对的局，并告诉你该怎么开口。",
+        })}
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 9, width: "min(420px, 100%)" }}>
         {viewModel.suggests.map((suggest) => (
@@ -147,7 +166,7 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
             style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 13, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 11, padding: "13px 15px", textAlign: "left" }}
           >
             <Icon name={suggest.icon} size={17} color="var(--accent)" />
-            <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 550 }}>{suggest.label}</span>
+            <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 550 }}>{agentSuggestLabel(suggest.label, language)}</span>
             <div style={{ flex: 1 }} />
             <Icon name="arrow" size={16} color="var(--text-4)" />
           </button>
@@ -261,6 +280,8 @@ function PanelCards({ navigate, panel }: { navigate: (href: string) => void; pan
 }
 
 function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (value: string) => void; onSend: () => void; value: string }) {
+  const { t } = useOrbitLanguage();
+
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, boxShadow: "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)", padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
       <textarea
@@ -272,7 +293,7 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
             onSend();
           }
         }}
-        placeholder="问问 Orbit：想做什么、想认识谁、想去什么活动…"
+        placeholder={t({ en: "Ask Orbit: what you want to do, who to meet, which event to attend…", zh: "问问 Orbit：想做什么、想认识谁、想去什么活动…" })}
         rows={big ? 2 : 1}
         style={{ background: "transparent", border: "none", color: "var(--ink)", fontFamily: "var(--ff)", fontSize: big ? 17 : 15, lineHeight: 1.5, outline: "none", padding: "2px 4px", resize: "none", width: "100%" }}
       />
@@ -280,9 +301,9 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
           <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 999, color: "var(--accent)", display: "inline-flex", fontSize: 12.5, fontWeight: 650, gap: 6, height: 32, padding: "0 12px" }}>
             <Icon name="sparkle" size={14} />
-            Orbit Agent
+            iOrbit
           </span>
-          <span style={{ color: "var(--text-4)", fontSize: 12 }}>人脉 · 活动 · 商业价值</span>
+          <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
         </div>
         <button
           type="button"
@@ -309,6 +330,7 @@ function TypingDots() {
 }
 
 export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
+  const { preserveHref, t } = useOrbitLanguage();
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [panel, setPanel] = useState<AgentPanel | null>(null);
@@ -319,7 +341,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   const timerRef = useRef<number | null>(null);
 
   const navigate = useCallback((prototypeHref: string) => {
-    const href = productHref(prototypeHref);
+    const href = preserveHref(productHref(prototypeHref));
     if (typeof window === "undefined") return;
 
     if (href.startsWith("/app/agent")) {
@@ -329,7 +351,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     }
 
     window.location.href = href;
-  }, []);
+  }, [preserveHref]);
 
   const ask = useCallback((query: string) => {
     const scenario = routeScenario(query, viewModel.scenarios);
@@ -447,34 +469,25 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
   return (
     <div data-orbit-real-page="agent" style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}>
-      <div style={{ alignItems: "center", backdropFilter: "blur(14px)", background: "rgba(255,255,255,0.86)", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, gap: 10, height: 56, padding: "0 12px" }}>
-        <button type="button" className="orbit-mobile-only" onClick={() => setHistOpen(true)} aria-label="对话历史" style={{ background: "none", border: "none", color: "var(--text-2)", cursor: "pointer", padding: 4 }}>
-          <Icon name="clock" size={20} />
-        </button>
-        <a href="/app" onClick={(event) => { event.preventDefault(); navigate("/"); }} style={{ display: "inline-flex", textDecoration: "none" }}>
-          <Logo size={22} withText={false} />
-        </a>
-        <span style={{ alignItems: "center", color: "var(--ink)", display: "inline-flex", fontSize: 13.5, fontWeight: 650, gap: 6 }}>
-          <Icon name="sparkle" size={15} color="var(--accent)" />
-          Orbit Agent
-        </span>
-        <nav className="orbit-desktop-only" style={{ display: "flex", gap: 2, marginLeft: 8 }}>
-          {[
-            ["/explore", "活动浏览"],
-            ["/home/schedule", "日程"],
-            ["/home/cards", "名片夹"],
-          ].map(([href, label]) => (
-            <a key={href} href={productHref(href)} onClick={(event) => { event.preventDefault(); navigate(href); }} className="orbit-nav-link">
-              {label}
-            </a>
-          ))}
-        </nav>
-        <div style={{ flex: 1 }} />
-        <span className="mono" style={{ color: "var(--text-3)", fontSize: 12.5, marginRight: 4 }}>中 / 日</span>
-        <button className="btn btn-ghost btn-sm" onClick={newChat}>
-          <Icon name="plus" size={14} />
-          新对话
-        </button>
+      <div className="orbit-desktop-only">
+        <AccountTopNav
+          active="agent"
+          rightExtra={(
+            <button aria-label={t({ en: "New chat", zh: "新对话" })} className="orbit-top-icon-btn" onClick={newChat} type="button">
+              <Icon name="plus" size={18} />
+            </button>
+          )}
+        />
+      </div>
+      <div className="orbit-mobile-only" style={{ flexShrink: 0 }}>
+        <AccountTopNav
+          active="agent"
+          rightExtra={(
+            <button aria-label={t({ en: "Chat history", zh: "对话历史" })} className="orbit-top-icon-btn orbit-agent-history-btn" onClick={() => setHistOpen(true)} type="button">
+              <Icon name="clock" size={16} />
+            </button>
+          )}
+        />
       </div>
 
       <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
@@ -482,11 +495,11 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           <div style={{ padding: 14 }}>
             <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 7, height: 40, justifyContent: "center", width: "100%" }}>
               <Icon name="plus" size={16} color="var(--accent)" />
-              新对话
+              {t({ en: "New chat", zh: "新对话" })}
             </button>
           </div>
           <div style={{ padding: "4px 18px 8px" }}>
-            <div className="eyebrow">对话历史</div>
+            <div className="eyebrow">{t({ en: "Chat history", zh: "对话历史" })}</div>
           </div>
           <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 10px 18px" }}>
             <AgentHistoryList activeQ={activeQ} history={viewModel.history} onPick={pickHistory} />
@@ -513,7 +526,11 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                 </span>
                 <div className="h-section" style={{ fontSize: 16 }}>{panel.panelTitle}</div>
               </div>
-              <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 6 }}>点卡片可直接跳转到对应{panel.kind === "people" ? "名片" : "活动"}页</div>
+              <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 6 }}>
+                {panel.kind === "people"
+                  ? t({ en: "Click a card to open the contact page.", zh: "点卡片可直接跳转到对应名片页" })
+                  : t({ en: "Click a card to open the event page.", zh: "点卡片可直接跳转到对应活动页" })}
+              </div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 24px" }}>
               <PanelCards panel={panel} navigate={navigate} />
@@ -536,23 +553,23 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           <div onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "rgba(20,20,28,0.42)", inset: 0, position: "absolute" }} />
           <div style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}>
             <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
-              <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 700 }}>对话历史</span>
+              <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 700 }}>{t({ en: "Chat history", zh: "对话历史" })}</span>
               <div style={{ flex: 1 }} />
-              <button type="button" onClick={() => setHistOpen(false)} aria-label="关闭" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 15, height: 30, justifyContent: "center", width: 30 }}>✕</button>
+              <button type="button" onClick={() => setHistOpen(false)} aria-label={t({ en: "Close", zh: "关闭" })} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 15, height: 30, justifyContent: "center", width: 30 }}>✕</button>
             </div>
             <div style={{ padding: 12 }}>
               <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 7, height: 40, justifyContent: "center", width: "100%" }}>
                 <Icon name="plus" size={16} color="var(--accent)" />
-                新对话
+                {t({ en: "New chat", zh: "新对话" })}
               </button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 1, padding: "0 12px 4px" }}>
-              <div className="eyebrow" style={{ padding: "2px 8px 6px" }}>前往</div>
+              <div className="eyebrow" style={{ padding: "2px 8px 6px" }}>{t({ en: "Go to", zh: "前往" })}</div>
               {[
-                ["/", "home", "首页"],
-                ["/explore", "calendar", "活动浏览"],
-                ["/home/schedule", "clock", "日程"],
-                ["/home/cards", "wallet", "名片夹"],
+                ["/", "home", t({ en: "Home", zh: "首页" })],
+                ["/explore", "calendar", t({ en: "Events", zh: "活动" })],
+                ["/home/schedule", "clock", t({ en: "Calendar", zh: "日程" })],
+                ["/home/cards", "wallet", t({ en: "Contacts", zh: "人脉" })],
               ].map(([href, icon, label]) => (
                 <button key={href} type="button" onClick={() => { setHistOpen(false); navigate(href); }} style={{ alignItems: "center", background: "none", border: "none", borderRadius: 9, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 550, gap: 11, padding: "9px 8px", textAlign: "left", width: "100%" }}>
                   <Icon name={icon} size={17} color="var(--accent)" />
@@ -560,7 +577,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                 </button>
               ))}
               <div style={{ background: "var(--border)", height: 1, margin: "7px 8px 2px" }} />
-              <div className="eyebrow" style={{ padding: "2px 8px 4px" }}>对话历史</div>
+              <div className="eyebrow" style={{ padding: "2px 8px 4px" }}>{t({ en: "Chat history", zh: "对话历史" })}</div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 8px 18px" }}>
               <AgentHistoryList activeQ={activeQ} history={viewModel.history} onPick={pickHistory} />
