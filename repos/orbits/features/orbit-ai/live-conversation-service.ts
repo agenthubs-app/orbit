@@ -71,7 +71,7 @@ function provenance(input: {
   generationMethod: OrbitAgentConversationProvenance["generationMethod"];
   label: string;
   safety: OrbitAgentSafetyLedger;
-  source?: OrbitAgentProviderSource;
+  source?: OrbitAgentConversationProvenance["source"];
 }): OrbitAgentConversationProvenance {
   return {
     collectedAt: liveCollectedAt,
@@ -99,6 +99,12 @@ function normalizeScenario(
 
 function readText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isPrivacyControlRequest(message: string): boolean {
+  return /(?:不要|别|請勿|请勿).*(?:AI|ai|人工智能)?.*分析|关闭.*(?:AI|ai)?.*分析|do not analy[sz]e|don't analy[sz]e/i.test(
+    message,
+  );
 }
 
 function readMaxLoopSteps(value: unknown): number {
@@ -390,6 +396,35 @@ function assistantMessage(content: string): OrbitAgentConversationMessage {
   };
 }
 
+function privacyControlPayload(message: string): OrbitAgentConversationPayload {
+  const assistant =
+    "这条请求已停在本地隐私控制边界：没有执行分析、存储、删除或隐私设置变更。若要持久关闭聊天分析，请在隐私控制中确认设置。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Open privacy controls to make a durable analysis preference change; no provider, tool, storage, or external action ran for this request.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local privacy boundary",
+      safety,
+      source: "local:orbit-agent-privacy-boundary",
+    }),
+    state: "success",
+  };
+}
+
 export function createLiveOrbitAgentConversationService(
   config: LiveOrbitAgentConversationServiceConfig = {},
 ): OrbitAgentConversationService {
@@ -466,6 +501,10 @@ export function createLiveOrbitAgentConversationService(
             externalNetworkRequested: false,
           }),
         );
+      }
+
+      if (isPrivacyControlRequest(message)) {
+        return success(privacyControlPayload(message));
       }
 
       const plannerResult = await planner.plan({

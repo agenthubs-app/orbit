@@ -145,6 +145,50 @@ test("Gemini Orbit Agent provider validates the planner schema", async () => {
       ],
     }),
   );
+  const invalidLaterSendPromise = provider.parseGeminiOrbitAgentPlannerOutput(
+    JSON.stringify({
+      assistantMessage: "请您审阅并确认后，我再帮您发送。",
+      intent: "relationship_chat_context",
+      toolRequests: [
+        {
+          arguments: {},
+          requiresUserConfirmation: true,
+          toolName: "chat.context",
+        },
+      ],
+    }),
+  );
+  const invalidMismatchedIntentTool = provider.parseGeminiOrbitAgentPlannerOutput(
+    JSON.stringify({
+      assistantMessage: "我会先整理活动推荐，任何外部动作仍需确认。",
+      intent: "event_recommendations",
+      toolRequests: [
+        {
+          arguments: {},
+          requiresUserConfirmation: true,
+          toolName: "chat.context",
+        },
+      ],
+    }),
+  );
+  const invalidMultipleToolRequests = provider.parseGeminiOrbitAgentPlannerOutput(
+    JSON.stringify({
+      assistantMessage: "我会同时整理活动和联系人推荐供你复核。",
+      intent: "event_recommendations",
+      toolRequests: [
+        {
+          arguments: {},
+          requiresUserConfirmation: true,
+          toolName: "events.recommend",
+        },
+        {
+          arguments: {},
+          requiresUserConfirmation: true,
+          toolName: "contacts.recommend",
+        },
+      ],
+    }),
+  );
 
   assert.equal(valid?.intent, "event_recommendations");
   assert.equal(valid?.toolRequests[0]?.toolName, "events.recommend");
@@ -156,6 +200,9 @@ test("Gemini Orbit Agent provider validates the planner schema", async () => {
   assert.equal(invalidPrivacyStateClaim, null);
   assert.equal(invalidPrivacyStorageClaim, null);
   assert.equal(invalidFutureSendPromise, null);
+  assert.equal(invalidLaterSendPromise, null);
+  assert.equal(invalidMismatchedIntentTool, null);
+  assert.equal(invalidMultipleToolRequests, null);
 });
 
 test("Orbit Agent provider instructions cover product-grade relationship work routing", async () => {
@@ -218,6 +265,7 @@ test("Orbit Agent provider instructions cover product-grade relationship work ro
 
   assert.equal(result.success, true);
   assert.match(systemPrompt ?? "", /Task routing guidance/);
+  assert.match(systemPrompt ?? "", /Each non-general intent must use exactly one matching tool/);
   assert.match(systemPrompt ?? "", /relationship lookup/);
   assert.match(systemPrompt ?? "", /message drafting/);
   assert.match(systemPrompt ?? "", /privacy control/);
@@ -470,6 +518,61 @@ test("live Gemini Orbit Agent fails closed without an API key", async () => {
   assert.equal(result.error?.provenance.safety.externalNetworkRequested, false);
   assert.equal(
     result.error?.provenance.safety.externalSideEffectsExecuted,
+    false,
+  );
+});
+
+test("live Gemini Orbit Agent handles privacy control requests locally", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      fetchImplementation: typeof fetch;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          assistantMessage: string;
+          proposedToolIntents: readonly unknown[];
+          provenance: {
+            generationMethod: string;
+            safety: {
+              aiProviderRequested: boolean;
+              domainToolCallsExecuted: boolean;
+              externalNetworkRequested: boolean;
+              externalSideEffectsExecuted: false;
+            };
+            source: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({});
+    }) as typeof fetch,
+  });
+  const result = await service.sendMessage({
+    message: "这段聊天不要给 AI 分析。",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 0);
+  assert.equal(result.data?.artifacts.length, 0);
+  assert.equal(result.data?.proposedToolIntents.length, 0);
+  assert.match(result.data?.assistantMessage ?? "", /隐私控制|隐私设置/);
+  assert.match(result.data?.assistantMessage ?? "", /没有执行/);
+  assert.equal(result.data?.provenance.source, "local:orbit-agent-privacy-boundary");
+  assert.equal(result.data?.provenance.generationMethod, "rule-based-agent-reply");
+  assert.equal(result.data?.provenance.safety.aiProviderRequested, false);
+  assert.equal(result.data?.provenance.safety.externalNetworkRequested, false);
+  assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, false);
+  assert.equal(
+    result.data?.provenance.safety.externalSideEffectsExecuted,
     false,
   );
 });

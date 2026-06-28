@@ -211,6 +211,24 @@ function readObject(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
 }
 
+function expectedToolNameForIntent(
+  intent: GeminiOrbitAgentIntent,
+): GeminiOrbitAgentToolName | null {
+  switch (intent) {
+    case "event_recommendations":
+      return "events.recommend";
+    case "contact_recommendations":
+      return "contacts.recommend";
+    case "followup_queue":
+      return "followups.reviewQueue";
+    case "relationship_chat_context":
+      return "chat.context";
+    case "general_chat":
+    default:
+      return null;
+  }
+}
+
 function hasUnsafeExternalExecutionClaim(value: string): boolean {
   const normalized = value.toLowerCase();
   const unsafePhrases = [
@@ -273,6 +291,14 @@ function hasUnsafeExternalExecutionPromise(value: string): boolean {
     "我会帮助您发给",
     "会帮助您发送",
     "会帮你发送",
+    "我再帮您发送",
+    "我再帮你发送",
+    "再帮您发送",
+    "再帮你发送",
+    "我再帮您发给",
+    "我再帮你发给",
+    "再帮您发给",
+    "再帮你发给",
     "我会安排会议",
     "我会安排日程",
     "我会创建日程",
@@ -400,17 +426,25 @@ export function validateGeminiOrbitAgentPlannerOutput(
     });
   }
 
-  if (intent === "general_chat" && toolRequests.length > 0) {
+  const typedIntent = intent as GeminiOrbitAgentIntent;
+
+  if (typedIntent === "general_chat" && toolRequests.length > 0) {
     return null;
   }
 
-  if (intent !== "general_chat" && toolRequests.length === 0) {
+  const expectedToolName = expectedToolNameForIntent(typedIntent);
+
+  if (typedIntent !== "general_chat" && toolRequests.length !== 1) {
+    return null;
+  }
+
+  if (expectedToolName && toolRequests[0]?.toolName !== expectedToolName) {
     return null;
   }
 
   return {
     assistantMessage,
-    intent: intent as GeminiOrbitAgentIntent,
+    intent: typedIntent,
     toolRequests,
   };
 }
@@ -431,6 +465,7 @@ function systemInstruction(): string {
     "Return only a JSON object with assistantMessage, intent, and toolRequests.",
     "Allowed intents: general_chat, event_recommendations, contact_recommendations, followup_queue, relationship_chat_context.",
     "Allowed tool names: events.recommend, contacts.recommend, followups.reviewQueue, chat.context.",
+    "Each non-general intent must use exactly one matching tool; general_chat must use an empty toolRequests array.",
     "Task routing guidance:",
     "- relationship lookup / why do I know someone / relationship status -> relationship_chat_context with chat.context.",
     "- message drafting / reply / rewrite / follow-up copy -> relationship_chat_context with chat.context.",
