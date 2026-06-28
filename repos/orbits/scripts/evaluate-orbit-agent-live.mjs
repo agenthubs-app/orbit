@@ -58,6 +58,11 @@ const cases = [
     prompt: "本周应该跟进谁？",
   },
   {
+    expected: "contact_recommendations",
+    name: "resource search",
+    prompt: "谁认识餐饮行业客户？",
+  },
+  {
     expected: "relationship_chat_context",
     name: "message drafting",
     prompt: "帮我写一条给 Maya 的跟进消息。",

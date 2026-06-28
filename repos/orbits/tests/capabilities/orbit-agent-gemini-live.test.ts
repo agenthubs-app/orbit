@@ -1152,6 +1152,91 @@ test("live Gemini Orbit Agent keeps relationship context tool traces on the plan
   );
 });
 
+test("live Gemini Orbit Agent maps network search into contact recommendations", async () => {
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      maxLoopSteps?: number;
+      model: string;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly {
+            result: {
+              provenance: {
+                evidenceIds: readonly string[];
+                toolCalls: readonly { toolName: string }[];
+              };
+              safety: { actionsRequireConfirmation: true };
+            };
+            task: { kind: string };
+          }[];
+          proposedToolIntents: readonly {
+            requiresUserConfirmation: boolean;
+            toolFamily: string;
+          }[];
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async () =>
+      jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  assistantMessage:
+                    "我会先查找可引荐餐饮行业客户的人选，任何外部联系仍需要你确认。",
+                  intent: "contact_recommendations",
+                  toolRequests: [
+                    {
+                      arguments: { query: "餐饮行业客户" },
+                      requiresUserConfirmation: true,
+                      toolName: "contacts.recommend",
+                    },
+                  ],
+                }),
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      })) as typeof fetch,
+    maxLoopSteps: 2,
+    model: "gemini-3.5-flash",
+  });
+
+  const result = await service.sendMessage({
+    message: "谁认识餐饮行业客户？",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.artifacts[0]?.task.kind, "contact_recommendations");
+  assert.equal(result.data?.proposedToolIntents[0]?.toolFamily, "contacts");
+  assert.equal(
+    result.data?.proposedToolIntents[0]?.requiresUserConfirmation,
+    true,
+  );
+  assert.equal(
+    result.data?.artifacts[0]?.result.provenance.toolCalls[0]?.toolName,
+    "contacts.recommend",
+  );
+  assert.equal(
+    result.data?.artifacts[0]?.result.safety.actionsRequireConfirmation,
+    true,
+  );
+  assert.ok(
+    (result.data?.artifacts[0]?.result.provenance.evidenceIds.length ?? 0) > 0,
+  );
+});
+
 test("live Gemini Orbit Agent uses loop limit 3 to synthesize after tools", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{
