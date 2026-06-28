@@ -125,6 +125,20 @@ function isSecretDisclosureRequest(message: string): boolean {
   return disclosureVerb.test(message) && secretObject.test(message);
 }
 
+function isExternalPermissionRequest(message: string): boolean {
+  const accessVerb =
+    /(?:连接|接入|授权|读取|同步|导入|匯入|访问|開啟|开启|connect|authorize|read|sync|import|access)/i;
+  const externalSource =
+    /(?:Gmail|Google Contacts|Google Calendar|Google|Outlook|Microsoft Graph|邮箱|郵箱|邮件|郵件|日历|日曆|日程|通讯录|通訊錄|address book|calendar|email)/i;
+  const analysisFromSource =
+    /(?:分析|整理|review|analy[sz]e).*(?:Gmail|Google|Outlook|邮箱|郵箱|邮件|郵件|日历|日曆|日程|通讯录|通訊錄|calendar|email)/i;
+
+  return (
+    (accessVerb.test(message) && externalSource.test(message)) ||
+    analysisFromSource.test(message)
+  );
+}
+
 function isAmbiguousRecipientDraftRequest(message: string): boolean {
   const relationshipAction =
     /(?:写|草稿|消息|短信|微信|邮件|邀|约|见面|联系|follow[ -]?up|message|draft|send|invite|meet)/i;
@@ -571,6 +585,35 @@ function secretBoundaryPayload(message: string): OrbitAgentConversationPayload {
   };
 }
 
+function permissionBoundaryPayload(message: string): OrbitAgentConversationPayload {
+  const assistant =
+    "这类请求需要先走权限授权。Orbit 现在没有连接 Gmail、日历或通讯录，也没有读取外部账号、调用模型或执行工具。请先在权限设置里完成授权；授权后再选择要分析的范围。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Open staged permission review before connecting external accounts or reading email, calendar, or contacts data.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local permission boundary",
+      safety,
+      source: "local:orbit-agent-permission-boundary",
+    }),
+    state: "success",
+  };
+}
+
 function multiIntentBoundaryPayload(message: string): OrbitAgentConversationPayload {
   const workflowLabels = detectWorkflowSignals(message);
   const choices =
@@ -750,6 +793,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isSecretDisclosureRequest(message)) {
         return success(secretBoundaryPayload(message));
+      }
+
+      if (isExternalPermissionRequest(message)) {
+        return success(permissionBoundaryPayload(message));
       }
 
       if (isRelationshipStateMutationRequest(message)) {

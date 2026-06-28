@@ -84,6 +84,11 @@ const cases = [
   },
   {
     expected: "general_or_safe_chat",
+    name: "external permission boundary",
+    prompt: "连接我的 Gmail 和日历，帮我分析下周该跟进谁。",
+  },
+  {
+    expected: "general_or_safe_chat",
     name: "ambiguous recipient clarification",
     prompt: "帮我给她写一条下周三见面的消息。",
   },
@@ -192,6 +197,7 @@ const localBoundaryCases = new Set([
   "ambiguous recipient clarification",
   "delete contact boundary",
   "english privacy retention",
+  "external permission boundary",
   "multi-intent clarification",
   "privacy control",
   "privacy retention",

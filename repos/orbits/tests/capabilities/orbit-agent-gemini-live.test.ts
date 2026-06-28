@@ -870,6 +870,64 @@ test("live Gemini Orbit Agent asks users to choose one workflow for multi-intent
   );
 });
 
+test("live Gemini Orbit Agent handles external account permission requests locally", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      fetchImplementation: typeof fetch;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          assistantMessage: string;
+          proposedToolIntents: readonly unknown[];
+          provenance: {
+            generationMethod: string;
+            safety: {
+              aiProviderRequested: boolean;
+              domainToolCallsExecuted: boolean;
+              externalNetworkRequested: boolean;
+              externalSideEffectsExecuted: false;
+            };
+            source: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({});
+    }) as typeof fetch,
+  });
+  const result = await service.sendMessage({
+    message: "连接我的 Gmail 和日历，帮我分析下周该跟进谁。",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 0);
+  assert.equal(result.data?.artifacts.length, 0);
+  assert.equal(result.data?.proposedToolIntents.length, 0);
+  assert.match(result.data?.assistantMessage ?? "", /权限|授权|Gmail|日历/);
+  assert.match(result.data?.assistantMessage ?? "", /没有连接|没有读取|没有调用/);
+  assert.equal(
+    result.data?.provenance.source,
+    "local:orbit-agent-permission-boundary",
+  );
+  assert.equal(result.data?.provenance.generationMethod, "rule-based-agent-reply");
+  assert.equal(result.data?.provenance.safety.aiProviderRequested, false);
+  assert.equal(result.data?.provenance.safety.externalNetworkRequested, false);
+  assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, false);
+  assert.equal(
+    result.data?.provenance.safety.externalSideEffectsExecuted,
+    false,
+  );
+});
+
 test("live Gemini Orbit Agent asks for a contact before drafting to an ambiguous pronoun", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{
