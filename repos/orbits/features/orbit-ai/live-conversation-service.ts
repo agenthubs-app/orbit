@@ -23,6 +23,7 @@ import {
   createGeminiOrbitAgentPlanner,
   type GeminiOrbitAgentIntent,
   type GeminiOrbitAgentPlannerResult,
+  type OrbitAgentProviderSource,
   type GeminiOrbitAgentProviderConfig,
   type GeminiOrbitAgentToolResultSummary,
   type GeminiOrbitAgentToolName,
@@ -70,14 +71,15 @@ function provenance(input: {
   generationMethod: OrbitAgentConversationProvenance["generationMethod"];
   label: string;
   safety: OrbitAgentSafetyLedger;
+  source?: OrbitAgentProviderSource;
 }): OrbitAgentConversationProvenance {
   return {
     collectedAt: liveCollectedAt,
-    evidenceIds: ["evidence:orbit-agent:gemini-live-provider"],
+    evidenceIds: ["evidence:orbit-agent:model-provider"],
     generationMethod: input.generationMethod,
     privacy: "demo-orbit-agent-conversation-only",
     safety: input.safety,
-    source: "provider:gemini-interactions-api",
+    source: input.source ?? "provider:gemini-interactions-api",
     sourceLabel: input.label,
   };
 }
@@ -121,18 +123,20 @@ function failure(
   code: OrbitAgentConversationErrorCode,
   safety: OrbitAgentSafetyLedger,
   message?: string,
+  source?: OrbitAgentProviderSource,
 ): OrbitAgentConversationFailure {
   const definition = ORBIT_AGENT_CONVERSATION_ERROR_DEFINITIONS[code];
 
   return {
     error: {
       ...definition,
-      evidenceIds: ["evidence:orbit-agent:gemini-live-failure"],
+      evidenceIds: ["evidence:orbit-agent:model-provider-failure"],
       message: message ?? definition.message,
       provenance: provenance({
-        generationMethod: "gemini-live-agent-state",
-        label: "Gemini Orbit Agent live provider failure",
+        generationMethod: "model-provider-live-agent-state",
+        label: "Orbit Agent live model provider failure",
         safety,
+        source,
       }),
       state: "failure",
     },
@@ -152,11 +156,11 @@ function conversationSummary(
 ): OrbitAgentConversationSummary {
   return {
     conversationId: liveConversationId,
-    evidenceIds: ["evidence:orbit-agent:gemini-live-provider"],
+    evidenceIds: ["evidence:orbit-agent:model-provider"],
     lastMessagePreview:
       message?.content ??
-      "Gemini-backed Orbit Agent is ready for a natural-language request.",
-    title: "Gemini Orbit Agent conversation",
+      "Orbit Agent is ready for a natural-language request.",
+    title: "Orbit Agent live conversation",
     updatedAt: message?.createdAt ?? liveCollectedAt,
   };
 }
@@ -174,7 +178,7 @@ function statePayload(input: {
             content: input.assistantMessage,
             conversationId: liveConversationId,
             createdAt: liveCollectedAt,
-            evidenceIds: ["evidence:orbit-agent:gemini-live-provider"],
+            evidenceIds: ["evidence:orbit-agent:model-provider"],
             messageId: "orbit-agent-live-ready",
             role: "assistant" as const,
           },
@@ -188,11 +192,11 @@ function statePayload(input: {
       input.state === "empty" ? [] : [conversationSummary(messages[0] ?? null)],
     messages,
     nextAction:
-      "Send a natural-language prompt; Orbit will ask Gemini to plan before any internal tool is considered.",
+      "Send a natural-language prompt; Orbit will ask the configured model provider to plan before any internal tool is considered.",
     proposedToolIntents: [],
     provenance: provenance({
-      generationMethod: "gemini-live-agent-state",
-      label: "Gemini Orbit Agent live provider state",
+      generationMethod: "model-provider-live-agent-state",
+      label: "Orbit Agent live model provider state",
       safety: input.safety,
     }),
     state: input.state,
@@ -212,7 +216,7 @@ function scenarioResult(
       return success(
         statePayload({
           assistantMessage:
-            "Gemini-backed Orbit Agent has no active local conversation yet.",
+            "Orbit Agent has no active local conversation yet.",
           safety: safe,
           state: "empty",
         }),
@@ -221,13 +225,13 @@ function scenarioResult(
       return success(
         statePayload({
           assistantMessage:
-            "Gemini-backed Orbit Agent is waiting behind a local guard.",
+            "Orbit Agent is waiting behind a local guard.",
           safety: safe,
           state: "pending",
         }),
       );
     case "failure":
-      return failure("ORBIT_AGENT_GEMINI_REQUEST_FAILED", safe);
+      return failure("ORBIT_AGENT_PROVIDER_REQUEST_FAILED", safe);
     case "success":
     default:
       return null;
@@ -283,7 +287,7 @@ function proposedIntentForTool(
     intentId: `intent:gemini:${request.toolName}`,
     label: labels[request.toolName],
     reason:
-      "Gemini selected this allowed Orbit tool from the user prompt; execution remains inside Orbit and requires confirmation before side effects.",
+      "The configured model provider selected this allowed Orbit tool from the user prompt; execution remains inside Orbit and requires confirmation before side effects.",
     requiresUserConfirmation: true,
     toolFamily:
       request.toolName === "chat.context"
@@ -334,30 +338,33 @@ function failureForPlannerResult(
   plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: false }>,
 ): OrbitAgentConversationResult {
   const safety = safetyLedger({
-    aiProviderRequested: plannerResult.error.code !== "GEMINI_API_KEY_MISSING",
-    externalNetworkRequested: plannerResult.error.code !== "GEMINI_API_KEY_MISSING",
+    aiProviderRequested: plannerResult.error.code !== "MODEL_API_KEY_MISSING",
+    externalNetworkRequested: plannerResult.error.code !== "MODEL_API_KEY_MISSING",
   });
 
-  if (plannerResult.error.code === "GEMINI_API_KEY_MISSING") {
+  if (plannerResult.error.code === "MODEL_API_KEY_MISSING") {
     return failure(
-      "ORBIT_AGENT_GEMINI_API_KEY_MISSING",
+      "ORBIT_AGENT_PROVIDER_API_KEY_MISSING",
       safety,
       plannerResult.error.message,
+      plannerResult.error.source,
     );
   }
 
-  if (plannerResult.error.code === "GEMINI_SCHEMA_INVALID") {
+  if (plannerResult.error.code === "MODEL_SCHEMA_INVALID") {
     return failure(
-      "ORBIT_AGENT_GEMINI_SCHEMA_INVALID",
+      "ORBIT_AGENT_PROVIDER_SCHEMA_INVALID",
       safety,
       plannerResult.error.message,
+      plannerResult.error.source,
     );
   }
 
   return failure(
-    "ORBIT_AGENT_GEMINI_REQUEST_FAILED",
+    "ORBIT_AGENT_PROVIDER_REQUEST_FAILED",
     safety,
     plannerResult.error.message,
+    plannerResult.error.source,
   );
 }
 
@@ -412,7 +419,7 @@ export function createLiveOrbitAgentConversationService(
       return success(
         statePayload({
           assistantMessage:
-            "Gemini-backed Orbit Agent is ready for a natural-language request.",
+            "Orbit Agent is ready for a natural-language request.",
           safety: safetyLedger({
             aiProviderRequested: false,
             externalNetworkRequested: false,
@@ -432,7 +439,7 @@ export function createLiveOrbitAgentConversationService(
       return success(
         statePayload({
           assistantMessage:
-            "Gemini-backed Orbit Agent is ready for a natural-language request.",
+            "Orbit Agent is ready for a natural-language request.",
           safety: safetyLedger({
             aiProviderRequested: false,
             externalNetworkRequested: false,
@@ -521,7 +528,7 @@ export function createLiveOrbitAgentConversationService(
           ? "Loop stopped after planner by ORBIT_AGENT_MAX_LOOP_STEPS; review proposed tool intents before executing any domain tool."
           : artifacts.length > 0 && !shouldSynthesizeAfterTools
             ? "Review the generated artifact; synthesis is skipped by ORBIT_AGENT_MAX_LOOP_STEPS."
-            : "Review the Gemini-planned Orbit result; confirm before any external action or record write.";
+            : "Review the model-planned Orbit result; confirm before any external action or record write.";
 
       return success({
         activeConversationId: liveConversationId,
@@ -532,12 +539,10 @@ export function createLiveOrbitAgentConversationService(
         nextAction,
         proposedToolIntents: toolRequests.map(proposedIntentForTool),
         provenance: provenance({
-          generationMethod:
-            synthesisResult?.success === true
-              ? "gemini-live-agent-reply"
-              : "gemini-live-agent-reply",
-          label: `Gemini Orbit Agent live reply via ${plannerResult.data.model}`,
+          generationMethod: "model-provider-live-agent-reply",
+          label: `Orbit Agent live reply via ${plannerResult.data.provider}:${plannerResult.data.model}`,
           safety,
+          source: plannerResult.data.source,
         }),
         state: "success",
       });

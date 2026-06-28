@@ -29,19 +29,28 @@ Mock 使用规则匹配用户 prompt，返回稳定 intent 和 panel。它不调
 
 Live 可以接 LLM intent parser 或 tool planner。模型输出必须经过 schema validation、allowed intent mapping 和 safety guard。LLM 不能直接返回任意 route 或任意 API call；只能选择注册过的能力。
 
-Gemini live agent 使用 server-side Gemini Interactions API。必需环境变量：
+Live agent 使用 server-side model provider API。必需环境变量：
 
 - `ORBIT_AGENT_CONVERSATION_MODE=live`
-- `GEMINI_API_KEY=<server-side key>`
+- `ORBIT_AGENT_PROVIDER=gemini | deepseek | openai`
+- 对应 provider 的 server-side key：`GEMINI_API_KEY`、`DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`
 
 可选环境变量：
 
 - `ORBIT_GEMINI_MODEL=gemini-3.5-flash`
+- `ORBIT_DEEPSEEK_MODEL=deepseek-v4-flash`
+- `ORBIT_OPENAI_MODEL=gpt-4.1`
 - `ORBIT_AGENT_MAX_LOOP_STEPS=3`
 
-`ORBIT_AGENT_CONVERSATION_MODE` 只切换 Chat Agent conversation provider，不切换 `/app` 首页 command center 或其他模块。缺少 `GEMINI_API_KEY` 时，live conversation service 必须 fail closed，返回可恢复错误，不回退到 mock、不执行工具、不请求外部网络。Gemini planner 输出必须通过白名单 schema，只有 `events.recommend`、`contacts.recommend`、`followups.reviewQueue` 和 `chat.context` 可以进入内部工具适配层。
+`ORBIT_AGENT_CONVERSATION_MODE` 只切换 Chat Agent conversation provider，不切换 `/app` 首页 command center 或其他模块。缺少所选 provider 的 API key 时，live conversation service 必须 fail closed，返回可恢复错误，不回退到 mock、不执行工具、不请求外部网络。Model provider planner 输出必须通过白名单 schema，只有 `events.recommend`、`contacts.recommend`、`followups.reviewQueue` 和 `chat.context` 可以进入内部工具适配层。
 
-Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限制在 1 到 3 之间：`1` 表示只做 Gemini planner；`2` 表示 planner 后允许 Orbit 内部 tool/artifact mapping；`3` 表示 tool/artifact 返回后再调用 Gemini synthesis 生成最终自然语言回复。默认值是 `3`，不允许开放式无限循环。
+Provider API 映射：
+
+- `gemini` 使用 Gemini Interactions API。
+- `deepseek` 使用 DeepSeek Chat Completions API。
+- `openai` 使用 OpenAI Responses API；`gpt` 是 `openai` 的别名。
+
+Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限制在 1 到 3 之间：`1` 表示只做 model provider planner；`2` 表示 planner 后允许 Orbit 内部 tool/artifact mapping；`3` 表示 tool/artifact 返回后再调用 model provider synthesis 生成最终自然语言回复。默认值是 `3`，不允许开放式无限循环。
 
 ## API 与页面使用
 

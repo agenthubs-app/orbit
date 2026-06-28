@@ -86,6 +86,138 @@ test("Gemini Orbit Agent provider validates the planner schema", async () => {
   assert.equal(invalidGeneralChat, null);
 });
 
+test("Orbit Agent provider can plan through DeepSeek chat completions", async () => {
+  const requests: {
+    body: Record<string, unknown>;
+    headers: HeadersInit | undefined;
+    url: string;
+  }[] = [];
+  const provider = await importProjectModule<{
+    createGeminiOrbitAgentPlanner: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      model: string;
+      provider: "deepseek";
+    }) => {
+      plan: (input: { message: string }) => Promise<{
+        data?: {
+          intent: string;
+          provider: string;
+          source: string;
+          toolRequests: readonly { toolName: string }[];
+        };
+        success: boolean;
+      }>;
+    };
+  }>("features/orbit-ai/gemini-provider.ts");
+
+  const planner = provider.createGeminiOrbitAgentPlanner({
+    apiKey: "test-deepseek-key",
+    fetchImplementation: (async (url, init) => {
+      requests.push({
+        body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+        headers: init?.headers,
+        url: String(url),
+      });
+
+      return jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                assistantMessage: "我会查找活动。",
+                intent: "event_recommendations",
+                toolRequests: [
+                  {
+                    arguments: {},
+                    requiresUserConfirmation: true,
+                    toolName: "events.recommend",
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      });
+    }) as typeof fetch,
+    model: "deepseek-chat",
+    provider: "deepseek",
+  });
+  const result = await planner.plan({ message: "看下有什么有意思的活动" });
+
+  assert.equal(result.success, true);
+  assert.equal(requests[0]?.url, "https://api.deepseek.com/chat/completions");
+  assert.equal(requests[0]?.body.model, "deepseek-chat");
+  assert.equal(Array.isArray(requests[0]?.body.messages), true);
+  assert.equal(result.data?.provider, "deepseek");
+  assert.equal(result.data?.source, "provider:deepseek-chat-completions-api");
+  assert.equal(result.data?.intent, "event_recommendations");
+  assert.equal(result.data?.toolRequests[0]?.toolName, "events.recommend");
+});
+
+test("Orbit Agent provider can plan through OpenAI Responses API", async () => {
+  const requests: {
+    body: Record<string, unknown>;
+    headers: HeadersInit | undefined;
+    url: string;
+  }[] = [];
+  const provider = await importProjectModule<{
+    createGeminiOrbitAgentPlanner: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      model: string;
+      provider: "openai";
+    }) => {
+      plan: (input: { message: string }) => Promise<{
+        data?: {
+          intent: string;
+          provider: string;
+          source: string;
+          toolRequests: readonly { toolName: string }[];
+        };
+        success: boolean;
+      }>;
+    };
+  }>("features/orbit-ai/gemini-provider.ts");
+
+  const planner = provider.createGeminiOrbitAgentPlanner({
+    apiKey: "test-openai-key",
+    fetchImplementation: (async (url, init) => {
+      requests.push({
+        body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+        headers: init?.headers,
+        url: String(url),
+      });
+
+      return jsonResponse({
+        output_text: JSON.stringify({
+          assistantMessage: "我会查找联系人。",
+          intent: "contact_recommendations",
+          toolRequests: [
+            {
+              arguments: {},
+              requiresUserConfirmation: true,
+              toolName: "contacts.recommend",
+            },
+          ],
+        }),
+      });
+    }) as typeof fetch,
+    model: "gpt-4.1",
+    provider: "openai",
+  });
+  const result = await planner.plan({ message: "推荐一些适合认识的人" });
+
+  assert.equal(result.success, true);
+  assert.equal(requests[0]?.url, "https://api.openai.com/v1/responses");
+  assert.equal(requests[0]?.body.model, "gpt-4.1");
+  assert.equal(typeof requests[0]?.body.instructions, "string");
+  assert.equal(result.data?.provider, "openai");
+  assert.equal(result.data?.source, "provider:openai-responses-api");
+  assert.equal(result.data?.intent, "contact_recommendations");
+  assert.equal(result.data?.toolRequests[0]?.toolName, "contacts.recommend");
+});
+
 test("live Gemini Orbit Agent fails closed without an API key", async () => {
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config?: {
@@ -115,7 +247,7 @@ test("live Gemini Orbit Agent fails closed without an API key", async () => {
   });
 
   assert.equal(result.success, false);
-  assert.equal(result.error?.code, "ORBIT_AGENT_GEMINI_API_KEY_MISSING");
+  assert.equal(result.error?.code, "ORBIT_AGENT_PROVIDER_API_KEY_MISSING");
   assert.equal(result.error?.provenance.safety.aiProviderRequested, false);
   assert.equal(result.error?.provenance.safety.externalNetworkRequested, false);
   assert.equal(
@@ -254,7 +386,10 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
     true,
   );
   assert.equal(result.data?.provenance.source, "provider:gemini-interactions-api");
-  assert.equal(result.data?.provenance.generationMethod, "gemini-live-agent-reply");
+  assert.equal(
+    result.data?.provenance.generationMethod,
+    "model-provider-live-agent-reply",
+  );
   assert.equal(result.data?.provenance.safety.aiProviderRequested, true);
   assert.equal(result.data?.provenance.safety.externalNetworkRequested, true);
   assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, true);
@@ -480,7 +615,7 @@ test("live Gemini Orbit Agent rejects invalid planner output before tools run", 
   });
 
   assert.equal(result.success, false);
-  assert.equal(result.error?.code, "ORBIT_AGENT_GEMINI_SCHEMA_INVALID");
+  assert.equal(result.error?.code, "ORBIT_AGENT_PROVIDER_SCHEMA_INVALID");
   assert.equal(result.error?.provenance.safety.aiProviderRequested, true);
   assert.equal(result.error?.provenance.safety.externalNetworkRequested, true);
   assert.equal(result.error?.provenance.safety.domainToolCallsExecuted, false);
@@ -533,7 +668,7 @@ test("live Gemini Orbit Agent surfaces provider request failures", async () => {
   });
 
   assert.equal(result.success, false);
-  assert.equal(result.error?.code, "ORBIT_AGENT_GEMINI_REQUEST_FAILED");
+  assert.equal(result.error?.code, "ORBIT_AGENT_PROVIDER_REQUEST_FAILED");
   assert.match(result.error?.message ?? "", /disabled for this project/);
   assert.equal(result.error?.provenance.safety.aiProviderRequested, true);
   assert.equal(result.error?.provenance.safety.externalNetworkRequested, true);

@@ -1,6 +1,21 @@
 export const DEFAULT_GEMINI_ORBIT_AGENT_MODEL = "gemini-3.5-flash" as const;
+export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-v4-flash" as const;
+export const DEFAULT_OPENAI_ORBIT_AGENT_MODEL = "gpt-4.1" as const;
 export const GEMINI_INTERACTIONS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/interactions" as const;
+export const DEEPSEEK_CHAT_COMPLETIONS_ENDPOINT =
+  "https://api.deepseek.com/chat/completions" as const;
+export const OPENAI_RESPONSES_ENDPOINT =
+  "https://api.openai.com/v1/responses" as const;
+
+export const ORBIT_AGENT_MODEL_PROVIDERS = [
+  "gemini",
+  "deepseek",
+  "openai",
+] as const;
+
+export type OrbitAgentModelProvider =
+  (typeof ORBIT_AGENT_MODEL_PROVIDERS)[number];
 
 export const GEMINI_ORBIT_AGENT_INTENTS = [
   "general_chat",
@@ -61,6 +76,7 @@ export interface GeminiOrbitAgentProviderConfig {
   endpoint?: string;
   fetchImplementation?: typeof fetch;
   model?: string | null;
+  provider?: OrbitAgentModelProvider | "gpt" | string | null;
 }
 
 export type GeminiOrbitAgentPlannerResult =
@@ -68,18 +84,22 @@ export type GeminiOrbitAgentPlannerResult =
       success: true;
       data: GeminiOrbitAgentPlannerOutput & {
         model: string;
+        provider: OrbitAgentModelProvider;
         rawOutputText: string;
+        source: OrbitAgentProviderSource;
       };
     }
   | {
       success: false;
       error: {
         code:
-          | "GEMINI_API_KEY_MISSING"
-          | "GEMINI_REQUEST_FAILED"
-          | "GEMINI_SCHEMA_INVALID";
+          | "MODEL_API_KEY_MISSING"
+          | "MODEL_REQUEST_FAILED"
+          | "MODEL_SCHEMA_INVALID";
         message: string;
+        provider: OrbitAgentModelProvider;
         rawOutputText?: string;
+        source: OrbitAgentProviderSource;
       };
     };
 
@@ -89,19 +109,36 @@ export type GeminiOrbitAgentSynthesisResult =
       data: {
         assistantMessage: string;
         model: string;
+        provider: OrbitAgentModelProvider;
         rawOutputText: string;
+        source: OrbitAgentProviderSource;
       };
     }
   | {
       success: false;
       error: {
-        code: "GEMINI_API_KEY_MISSING" | "GEMINI_REQUEST_FAILED";
+        code: "MODEL_API_KEY_MISSING" | "MODEL_REQUEST_FAILED";
         message: string;
+        provider: OrbitAgentModelProvider;
         rawOutputText?: string;
+        source: OrbitAgentProviderSource;
       };
     };
 
 type JsonRecord = Record<string, unknown>;
+
+export type OrbitAgentProviderSource =
+  | "provider:deepseek-chat-completions-api"
+  | "provider:gemini-interactions-api"
+  | "provider:openai-responses-api";
+
+interface ResolvedOrbitAgentProvider {
+  apiKey: string | null;
+  endpoint: string;
+  model: string;
+  provider: OrbitAgentModelProvider;
+  source: OrbitAgentProviderSource;
+}
 
 const allowedIntents = new Set<string>(GEMINI_ORBIT_AGENT_INTENTS);
 const allowedToolNames = new Set<string>(GEMINI_ORBIT_AGENT_TOOL_NAMES);
@@ -112,6 +149,62 @@ function isRecord(value: unknown): value is JsonRecord {
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeProvider(value: unknown): OrbitAgentModelProvider {
+  const provider = readString(value)?.toLowerCase();
+
+  if (provider === "deepseek") {
+    return "deepseek";
+  }
+
+  if (provider === "openai" || provider === "gpt") {
+    return "openai";
+  }
+
+  return "gemini";
+}
+
+function resolveProvider(
+  config: GeminiOrbitAgentProviderConfig,
+): ResolvedOrbitAgentProvider {
+  const provider = normalizeProvider(
+    config.provider ?? process.env.ORBIT_AGENT_PROVIDER,
+  );
+
+  if (provider === "deepseek") {
+    return {
+      apiKey: readString(config.apiKey ?? process.env.DEEPSEEK_API_KEY),
+      endpoint: config.endpoint ?? DEEPSEEK_CHAT_COMPLETIONS_ENDPOINT,
+      model:
+        readString(config.model ?? process.env.ORBIT_DEEPSEEK_MODEL) ??
+        DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL,
+      provider,
+      source: "provider:deepseek-chat-completions-api",
+    };
+  }
+
+  if (provider === "openai") {
+    return {
+      apiKey: readString(config.apiKey ?? process.env.OPENAI_API_KEY),
+      endpoint: config.endpoint ?? OPENAI_RESPONSES_ENDPOINT,
+      model:
+        readString(config.model ?? process.env.ORBIT_OPENAI_MODEL) ??
+        DEFAULT_OPENAI_ORBIT_AGENT_MODEL,
+      provider,
+      source: "provider:openai-responses-api",
+    };
+  }
+
+  return {
+    apiKey: readString(config.apiKey ?? process.env.GEMINI_API_KEY),
+    endpoint: config.endpoint ?? GEMINI_INTERACTIONS_ENDPOINT,
+    model:
+      readString(config.model ?? process.env.ORBIT_GEMINI_MODEL) ??
+      DEFAULT_GEMINI_ORBIT_AGENT_MODEL,
+    provider,
+    source: "provider:gemini-interactions-api",
+  };
 }
 
 function readObject(value: unknown): Record<string, unknown> {
@@ -301,9 +394,85 @@ function readGeminiOutputText(value: unknown): string | null {
   return outputParts.length > 0 ? outputParts.join("\n") : null;
 }
 
-function readGeminiErrorMessage(value: unknown): string | null {
+function readChatCompletionsOutputText(value: unknown): string | null {
+  if (!isRecord(value) || !Array.isArray(value.choices)) {
+    return null;
+  }
+
+  const outputParts: string[] = [];
+
+  for (const choice of value.choices) {
+    if (!isRecord(choice) || !isRecord(choice.message)) {
+      continue;
+    }
+
+    const content = readString(choice.message.content);
+
+    if (content) {
+      outputParts.push(content);
+    }
+  }
+
+  return outputParts.length > 0 ? outputParts.join("\n") : null;
+}
+
+function readOpenAiResponsesOutputText(value: unknown): string | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const legacyOutputText =
+    readString(value.output_text) ?? readString(value.outputText);
+
+  if (legacyOutputText) {
+    return legacyOutputText;
+  }
+
+  if (!Array.isArray(value.output)) {
+    return null;
+  }
+
+  const outputParts: string[] = [];
+
+  for (const item of value.output) {
+    if (!isRecord(item) || !Array.isArray(item.content)) {
+      continue;
+    }
+
+    for (const content of item.content) {
+      if (!isRecord(content)) {
+        continue;
+      }
+
+      const text = readString(content.text);
+
+      if (text) {
+        outputParts.push(text);
+      }
+    }
+  }
+
+  return outputParts.length > 0 ? outputParts.join("\n") : null;
+}
+
+function readProviderOutputText(
+  provider: OrbitAgentModelProvider,
+  value: unknown,
+): string | null {
+  if (provider === "deepseek") {
+    return readChatCompletionsOutputText(value);
+  }
+
+  if (provider === "openai") {
+    return readOpenAiResponsesOutputText(value);
+  }
+
+  return readGeminiOutputText(value);
+}
+
+function readProviderErrorMessage(value: unknown): string | null {
   if (Array.isArray(value)) {
-    return readGeminiErrorMessage(value[0]);
+    return readProviderErrorMessage(value[0]);
   }
 
   if (!isRecord(value)) {
@@ -319,6 +488,62 @@ function readGeminiErrorMessage(value: unknown): string | null {
   return readString(error.message);
 }
 
+function providerRequestBody(input: {
+  inputText: string;
+  model: string;
+  provider: OrbitAgentModelProvider;
+  systemInstructionText: string;
+}) {
+  if (input.provider === "deepseek") {
+    return {
+      messages: [
+        {
+          content: input.systemInstructionText,
+          role: "system",
+        },
+        {
+          content: input.inputText,
+          role: "user",
+        },
+      ],
+      model: input.model,
+      stream: false,
+    };
+  }
+
+  if (input.provider === "openai") {
+    return {
+      input: input.inputText,
+      instructions: input.systemInstructionText,
+      model: input.model,
+    };
+  }
+
+  return {
+    generation_config: {
+      thinking_level: "low",
+    },
+    input: input.inputText,
+    model: input.model,
+    store: false,
+    system_instruction: input.systemInstructionText,
+  };
+}
+
+function providerHeaders(provider: ResolvedOrbitAgentProvider): HeadersInit {
+  if (provider.provider === "gemini") {
+    return {
+      "content-type": "application/json",
+      "x-goog-api-key": provider.apiKey ?? "",
+    };
+  }
+
+  return {
+    authorization: `Bearer ${provider.apiKey ?? ""}`,
+    "content-type": "application/json",
+  };
+}
+
 export function createGeminiOrbitAgentPlanner(
   config: GeminiOrbitAgentProviderConfig = {},
 ) {
@@ -326,37 +551,31 @@ export function createGeminiOrbitAgentPlanner(
     async plan(
       input: GeminiOrbitAgentPlannerInput,
     ): Promise<GeminiOrbitAgentPlannerResult> {
-      const apiKey = readString(config.apiKey ?? process.env.GEMINI_API_KEY);
-      const model =
-        readString(config.model ?? process.env.ORBIT_GEMINI_MODEL) ??
-        DEFAULT_GEMINI_ORBIT_AGENT_MODEL;
-      const endpoint = config.endpoint ?? GEMINI_INTERACTIONS_ENDPOINT;
+      const provider = resolveProvider(config);
       const fetchImplementation = config.fetchImplementation ?? fetch;
 
-      if (!apiKey) {
+      if (!provider.apiKey) {
         return {
           error: {
-            code: "GEMINI_API_KEY_MISSING",
-            message: "GEMINI_API_KEY is not configured.",
+            code: "MODEL_API_KEY_MISSING",
+            message: `${provider.provider} API key is not configured.`,
+            provider: provider.provider,
+            source: provider.source,
           },
           success: false,
         };
       }
 
-      const response = await fetchImplementation(endpoint, {
-        body: JSON.stringify({
-          generation_config: {
-            thinking_level: "low",
-          },
-          input: plannerInput(input),
-          model,
-          store: false,
-          system_instruction: systemInstruction(),
-        }),
-        headers: {
-          "content-type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
+      const response = await fetchImplementation(provider.endpoint, {
+        body: JSON.stringify(
+          providerRequestBody({
+            inputText: plannerInput(input),
+            model: provider.model,
+            provider: provider.provider,
+            systemInstructionText: systemInstruction(),
+          }),
+        ),
+        headers: providerHeaders(provider),
         method: "POST",
       });
 
@@ -365,22 +584,26 @@ export function createGeminiOrbitAgentPlanner(
       if (!response.ok) {
         return {
           error: {
-            code: "GEMINI_REQUEST_FAILED",
+            code: "MODEL_REQUEST_FAILED",
             message:
-              readGeminiErrorMessage(responseBody) ??
-              `Gemini request failed with HTTP ${response.status}.`,
+              readProviderErrorMessage(responseBody) ??
+              `${provider.provider} request failed with HTTP ${response.status}.`,
+            provider: provider.provider,
+            source: provider.source,
           },
           success: false,
         };
       }
 
-      const outputText = readGeminiOutputText(responseBody);
+      const outputText = readProviderOutputText(provider.provider, responseBody);
 
       if (!outputText) {
         return {
           error: {
-            code: "GEMINI_REQUEST_FAILED",
-            message: "Gemini response did not include output text.",
+            code: "MODEL_REQUEST_FAILED",
+            message: `${provider.provider} response did not include output text.`,
+            provider: provider.provider,
+            source: provider.source,
           },
           success: false,
         };
@@ -391,9 +614,11 @@ export function createGeminiOrbitAgentPlanner(
       if (!plannerOutput) {
         return {
           error: {
-            code: "GEMINI_SCHEMA_INVALID",
-            message: "Gemini planner output did not match the Orbit Agent schema.",
+            code: "MODEL_SCHEMA_INVALID",
+            message: `${provider.provider} planner output did not match the Orbit Agent schema.`,
+            provider: provider.provider,
             rawOutputText: outputText,
+            source: provider.source,
           },
           success: false,
         };
@@ -402,8 +627,10 @@ export function createGeminiOrbitAgentPlanner(
       return {
         data: {
           ...plannerOutput,
-          model,
+          model: provider.model,
+          provider: provider.provider,
           rawOutputText: outputText,
+          source: provider.source,
         },
         success: true,
       };
@@ -412,37 +639,31 @@ export function createGeminiOrbitAgentPlanner(
     async synthesize(
       input: GeminiOrbitAgentSynthesisInput,
     ): Promise<GeminiOrbitAgentSynthesisResult> {
-      const apiKey = readString(config.apiKey ?? process.env.GEMINI_API_KEY);
-      const model =
-        readString(config.model ?? process.env.ORBIT_GEMINI_MODEL) ??
-        DEFAULT_GEMINI_ORBIT_AGENT_MODEL;
-      const endpoint = config.endpoint ?? GEMINI_INTERACTIONS_ENDPOINT;
+      const provider = resolveProvider(config);
       const fetchImplementation = config.fetchImplementation ?? fetch;
 
-      if (!apiKey) {
+      if (!provider.apiKey) {
         return {
           error: {
-            code: "GEMINI_API_KEY_MISSING",
-            message: "GEMINI_API_KEY is not configured.",
+            code: "MODEL_API_KEY_MISSING",
+            message: `${provider.provider} API key is not configured.`,
+            provider: provider.provider,
+            source: provider.source,
           },
           success: false,
         };
       }
 
-      const response = await fetchImplementation(endpoint, {
-        body: JSON.stringify({
-          generation_config: {
-            thinking_level: "low",
-          },
-          input: synthesisInput(input),
-          model,
-          store: false,
-          system_instruction: synthesisInstruction(),
-        }),
-        headers: {
-          "content-type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
+      const response = await fetchImplementation(provider.endpoint, {
+        body: JSON.stringify(
+          providerRequestBody({
+            inputText: synthesisInput(input),
+            model: provider.model,
+            provider: provider.provider,
+            systemInstructionText: synthesisInstruction(),
+          }),
+        ),
+        headers: providerHeaders(provider),
         method: "POST",
       });
 
@@ -451,22 +672,26 @@ export function createGeminiOrbitAgentPlanner(
       if (!response.ok) {
         return {
           error: {
-            code: "GEMINI_REQUEST_FAILED",
+            code: "MODEL_REQUEST_FAILED",
             message:
-              readGeminiErrorMessage(responseBody) ??
-              `Gemini request failed with HTTP ${response.status}.`,
+              readProviderErrorMessage(responseBody) ??
+              `${provider.provider} request failed with HTTP ${response.status}.`,
+            provider: provider.provider,
+            source: provider.source,
           },
           success: false,
         };
       }
 
-      const outputText = readGeminiOutputText(responseBody);
+      const outputText = readProviderOutputText(provider.provider, responseBody);
 
       if (!outputText) {
         return {
           error: {
-            code: "GEMINI_REQUEST_FAILED",
-            message: "Gemini response did not include output text.",
+            code: "MODEL_REQUEST_FAILED",
+            message: `${provider.provider} response did not include output text.`,
+            provider: provider.provider,
+            source: provider.source,
           },
           success: false,
         };
@@ -475,8 +700,10 @@ export function createGeminiOrbitAgentPlanner(
       return {
         data: {
           assistantMessage: outputText,
-          model,
+          model: provider.model,
+          provider: provider.provider,
           rawOutputText: outputText,
+          source: provider.source,
         },
         success: true,
       };

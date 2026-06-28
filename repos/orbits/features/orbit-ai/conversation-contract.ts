@@ -13,6 +13,9 @@ export const ORBIT_AGENT_CONVERSATION_ERROR_CODES = [
   "ORBIT_AGENT_CONVERSATION_EMPTY",
   "ORBIT_AGENT_CONVERSATION_PENDING",
   "ORBIT_AGENT_CONVERSATION_MOCK_FAILED",
+  "ORBIT_AGENT_PROVIDER_API_KEY_MISSING",
+  "ORBIT_AGENT_PROVIDER_REQUEST_FAILED",
+  "ORBIT_AGENT_PROVIDER_SCHEMA_INVALID",
   "ORBIT_AGENT_GEMINI_API_KEY_MISSING",
   "ORBIT_AGENT_GEMINI_REQUEST_FAILED",
   "ORBIT_AGENT_GEMINI_SCHEMA_INVALID",
@@ -78,7 +81,9 @@ export interface OrbitAgentSafetyLedger {
 export interface OrbitAgentConversationProvenance {
   source:
     | typeof ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE
-    | "provider:gemini-interactions-api";
+    | "provider:deepseek-chat-completions-api"
+    | "provider:gemini-interactions-api"
+    | "provider:openai-responses-api";
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
@@ -87,7 +92,9 @@ export interface OrbitAgentConversationProvenance {
     | "rule-based-agent-reply"
     | "rule-based-agent-state"
     | "gemini-live-agent-reply"
-    | "gemini-live-agent-state";
+    | "gemini-live-agent-state"
+    | "model-provider-live-agent-reply"
+    | "model-provider-live-agent-state";
   privacy: "demo-orbit-agent-conversation-only";
   safety: OrbitAgentSafetyLedger;
 }
@@ -188,6 +195,30 @@ export const ORBIT_AGENT_CONVERSATION_ERROR_DEFINITIONS = {
     message: "The Orbit Agent conversation mock is pinned to a controlled failure.",
     recovery:
       "Render the controlled failure state and avoid retrying live AI, network, or database services.",
+  },
+  ORBIT_AGENT_PROVIDER_API_KEY_MISSING: {
+    code: "ORBIT_AGENT_PROVIDER_API_KEY_MISSING",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "A configured model provider API key is required before the live Orbit Agent can reply.",
+    recovery:
+      "Set the selected provider API key on the server or switch ORBIT_AGENT_CONVERSATION_MODE back to mock.",
+  },
+  ORBIT_AGENT_PROVIDER_REQUEST_FAILED: {
+    code: "ORBIT_AGENT_PROVIDER_REQUEST_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The configured model provider did not return a usable Orbit Agent response.",
+    recovery:
+      "Keep the conversation local, do not execute tools, and retry after checking the selected provider status.",
+  },
+  ORBIT_AGENT_PROVIDER_SCHEMA_INVALID: {
+    code: "ORBIT_AGENT_PROVIDER_SCHEMA_INVALID",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The configured model provider returned an Orbit Agent planner response outside the allowed schema.",
+    recovery:
+      "Reject the planner output, do not execute tools, and fall back to a safe local explanation.",
   },
   ORBIT_AGENT_GEMINI_API_KEY_MISSING: {
     code: "ORBIT_AGENT_GEMINI_API_KEY_MISSING",

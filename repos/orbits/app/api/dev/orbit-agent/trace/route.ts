@@ -199,7 +199,8 @@ async function tracePlanner(input: {
       },
       provider: {
         model: result.data.model,
-        source: "provider:gemini-interactions-api",
+        name: result.data.provider,
+        source: result.data.source,
       },
       loop: {
         maxSteps: input.maxLoopSteps,
