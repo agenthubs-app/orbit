@@ -694,6 +694,66 @@ test("live Gemini Orbit Agent asks for a contact before drafting to an ambiguous
   );
 });
 
+test("live Gemini Orbit Agent requires confirmation before relationship state mutations", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      fetchImplementation: typeof fetch;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          assistantMessage: string;
+          proposedToolIntents: readonly unknown[];
+          provenance: {
+            generationMethod: string;
+            safety: {
+              aiProviderRequested: boolean;
+              domainToolCallsExecuted: boolean;
+              externalNetworkRequested: boolean;
+              externalSideEffectsExecuted: false;
+              liveDatabaseWriteExecuted: boolean;
+            };
+            source: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({});
+    }) as typeof fetch,
+  });
+  const result = await service.sendMessage({
+    message: "把 Maya 的公司更新成 Acme。",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 0);
+  assert.equal(result.data?.artifacts.length, 0);
+  assert.equal(result.data?.proposedToolIntents.length, 0);
+  assert.match(result.data?.assistantMessage ?? "", /确认|复核|资料变更/);
+  assert.match(result.data?.assistantMessage ?? "", /没有写入|没有删除|没有调用/);
+  assert.equal(
+    result.data?.provenance.source,
+    "local:orbit-agent-state-change-boundary",
+  );
+  assert.equal(result.data?.provenance.generationMethod, "rule-based-agent-reply");
+  assert.equal(result.data?.provenance.safety.aiProviderRequested, false);
+  assert.equal(result.data?.provenance.safety.externalNetworkRequested, false);
+  assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, false);
+  assert.equal(result.data?.provenance.safety.liveDatabaseWriteExecuted, false);
+  assert.equal(
+    result.data?.provenance.safety.externalSideEffectsExecuted,
+    false,
+  );
+});
+
 test("Orbit Agent conversation live mode can be enabled without switching command center live", async () => {
   const previousAgentMode = process.env.ORBIT_AGENT_CONVERSATION_MODE;
   const previousModuleMode = process.env.ORBIT_MODULE_MODE;

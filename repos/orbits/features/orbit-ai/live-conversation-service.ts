@@ -125,6 +125,15 @@ function isAmbiguousRecipientDraftRequest(message: string): boolean {
   return relationshipAction.test(message) && ambiguousRecipient.test(message);
 }
 
+function isRelationshipStateMutationRequest(message: string): boolean {
+  const mutationVerb =
+    /(?:更新|修改|改成|改为|保存|記住|记住|记录|刪除|删除|移除|忘记|update|change|save|remember|record|delete|remove|forget)/i;
+  const relationshipObject =
+    /(?:联系人|关系|资料|資料|公司|职位|职务|标签|备注|画像|contact|relationship|profile|company|title|tag|note|Maya|Diego)/i;
+
+  return mutationVerb.test(message) && relationshipObject.test(message);
+}
+
 function readMaxLoopSteps(value: unknown): number {
   const parsed =
     typeof value === "number"
@@ -503,6 +512,35 @@ function clarificationBoundaryPayload(message: string): OrbitAgentConversationPa
   };
 }
 
+function stateChangeBoundaryPayload(message: string): OrbitAgentConversationPayload {
+  const assistant =
+    "这类联系人资料变更需要先确认。Orbit 已停在本地确认边界：没有调用模型、没有写入联系人资料、没有删除记录，也没有执行外部动作。请打开联系人详情复核字段和值，确认后再保存。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Open the contact detail confirmation flow before saving or deleting relationship state.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local state-change confirmation boundary",
+      safety,
+      source: "local:orbit-agent-state-change-boundary",
+    }),
+    state: "success",
+  };
+}
+
 export function createLiveOrbitAgentConversationService(
   config: LiveOrbitAgentConversationServiceConfig = {},
 ): OrbitAgentConversationService {
@@ -587,6 +625,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isUntrustedInstructionInjectionRequest(message)) {
         return success(untrustedContentBoundaryPayload(message));
+      }
+
+      if (isRelationshipStateMutationRequest(message)) {
+        return success(stateChangeBoundaryPayload(message));
       }
 
       if (isAmbiguousRecipientDraftRequest(message)) {
