@@ -986,6 +986,65 @@ test("live Gemini Orbit Agent handles unsupported realtime lookup requests local
   );
 });
 
+test("live Gemini Orbit Agent handles professional advice requests locally", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      fetchImplementation: typeof fetch;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          assistantMessage: string;
+          proposedToolIntents: readonly unknown[];
+          provenance: {
+            generationMethod: string;
+            safety: {
+              aiProviderRequested: boolean;
+              domainToolCallsExecuted: boolean;
+              externalNetworkRequested: boolean;
+              externalSideEffectsExecuted: false;
+            };
+            source: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({});
+    }) as typeof fetch,
+  });
+  const result = await service.sendMessage({
+    message: "我胸口很痛，应该吃什么药？",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 0);
+  assert.equal(result.data?.artifacts.length, 0);
+  assert.equal(result.data?.proposedToolIntents.length, 0);
+  assert.match(result.data?.assistantMessage ?? "", /医疗|医生|急救|急诊/);
+  assert.match(result.data?.assistantMessage ?? "", /没有调用|不会给|不能代替/);
+  assert.doesNotMatch(result.data?.assistantMessage ?? "", /布洛芬|阿司匹林|剂量/);
+  assert.equal(
+    result.data?.provenance.source,
+    "local:orbit-agent-professional-advice-boundary",
+  );
+  assert.equal(result.data?.provenance.generationMethod, "rule-based-agent-reply");
+  assert.equal(result.data?.provenance.safety.aiProviderRequested, false);
+  assert.equal(result.data?.provenance.safety.externalNetworkRequested, false);
+  assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, false);
+  assert.equal(
+    result.data?.provenance.safety.externalSideEffectsExecuted,
+    false,
+  );
+});
+
 test("live Gemini Orbit Agent asks for a contact before drafting to an ambiguous pronoun", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{

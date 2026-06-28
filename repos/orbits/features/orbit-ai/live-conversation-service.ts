@@ -154,6 +154,15 @@ function isUnsupportedRealtimeLookupRequest(message: string): boolean {
   );
 }
 
+function isProfessionalAdviceRequest(message: string): boolean {
+  const adviceVerb =
+    /(?:应该|應該|要不要|怎么处理|怎麼處理|怎么办|怎麼辦|吃什么药|吃什麼藥|用什么药|用什麼藥|诊断|診斷|起诉|诉讼|合同|避税|报税|买哪只|卖哪只|投资建议|should i|what should i|diagnose|prescribe|sue|lawsuit|contract|tax|invest|buy|sell)/i;
+  const professionalDomain =
+    /(?:胸口痛|胸痛|头痛|發燒|发烧|药|藥|医生|醫生|急诊|急診|医疗|醫療|法律|律师|律師|法院|起诉|诉讼|合同|税|稅|股票|基金|债券|債券|期权|期權|投资|投資|财务|財務|medical|doctor|medicine|legal|lawyer|court|tax|stock|fund|bond|option|financial|investment)/i;
+
+  return adviceVerb.test(message) && professionalDomain.test(message);
+}
+
 function isAmbiguousRecipientDraftRequest(message: string): boolean {
   const relationshipAction =
     /(?:写|草稿|消息|短信|微信|邮件|邀|约|见面|联系|follow[ -]?up|message|draft|send|invite|meet)/i;
@@ -660,6 +669,37 @@ function unsupportedRealtimeBoundaryPayload(
   };
 }
 
+function professionalAdviceBoundaryPayload(
+  message: string,
+): OrbitAgentConversationPayload {
+  const assistant =
+    "这属于医疗、法律或财务等专业判断。Orbit 已停在本地边界：没有调用模型，也不会给诊断、用药、法律结论或投资指令。胸口痛这类情况请尽快联系医生；如果症状严重或突然出现，请直接联系急救或去急诊。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Direct high-risk professional advice requests to qualified professionals before doing relationship-work drafting or organization.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local professional advice boundary",
+      safety,
+      source: "local:orbit-agent-professional-advice-boundary",
+    }),
+    state: "success",
+  };
+}
+
 function multiIntentBoundaryPayload(message: string): OrbitAgentConversationPayload {
   const workflowLabels = detectWorkflowSignals(message);
   const choices =
@@ -847,6 +887,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isUnsupportedRealtimeLookupRequest(message)) {
         return success(unsupportedRealtimeBoundaryPayload(message));
+      }
+
+      if (isProfessionalAdviceRequest(message)) {
+        return success(professionalAdviceBoundaryPayload(message));
       }
 
       if (isRelationshipStateMutationRequest(message)) {

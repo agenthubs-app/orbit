@@ -84,6 +84,7 @@ export interface OrbitAgentConversationProvenance {
     | "local:orbit-agent-clarification-boundary"
     | "local:orbit-agent-multi-intent-boundary"
     | "local:orbit-agent-permission-boundary"
+    | "local:orbit-agent-professional-advice-boundary"
     | "local:orbit-agent-privacy-boundary"
     | "local:orbit-agent-secret-boundary"
     | "local:orbit-agent-state-change-boundary"
