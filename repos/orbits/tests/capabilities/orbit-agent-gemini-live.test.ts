@@ -170,6 +170,7 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
     createLiveOrbitAgentConversationService: (config: {
       apiKey: string;
       fetchImplementation: typeof fetch;
+      maxLoopSteps?: number;
       model: string;
     }) => {
       sendMessage: (input: { message?: string | null }) => Promise<{
@@ -232,6 +233,7 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
         ],
       });
     }) as typeof fetch,
+    maxLoopSteps: 2,
     model: "gemini-3.5-flash",
   });
 
@@ -264,6 +266,163 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
     result.data?.artifacts[0]?.result.safety.externalSideEffectsExecuted,
     false,
   );
+});
+
+test("live Gemini Orbit Agent uses loop limit 3 to synthesize after tools", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      maxLoopSteps: number;
+      model: string;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          assistantMessage: string;
+          provenance: {
+            safety: {
+              domainToolCallsExecuted: boolean;
+            };
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      if (requests.length === 1) {
+        return jsonResponse({
+          steps: [
+            {
+              content: [
+                {
+                  text: JSON.stringify({
+                    assistantMessage: "我会先查找活动。",
+                    intent: "event_recommendations",
+                    toolRequests: [
+                      {
+                        arguments: {},
+                        requiresUserConfirmation: true,
+                        toolName: "events.recommend",
+                      },
+                    ],
+                  }),
+                  type: "text",
+                },
+              ],
+              type: "model_output",
+            },
+          ],
+        });
+      }
+
+      return jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: "我找到了一个适合 review 的活动推荐，右侧面板已经准备好，任何报名或日历动作都需要你确认。",
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      });
+    }) as typeof fetch,
+    maxLoopSteps: 3,
+    model: "gemini-3.5-flash",
+  });
+
+  const result = await service.sendMessage({
+    message: "看下有什么有意思的活动",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 2);
+  assert.equal(result.data?.artifacts.length, 1);
+  assert.equal(
+    result.data?.assistantMessage,
+    "我找到了一个适合 review 的活动推荐，右侧面板已经准备好，任何报名或日历动作都需要你确认。",
+  );
+  assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, true);
+});
+
+test("live Gemini Orbit Agent loop limit 1 plans but skips domain tools", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      maxLoopSteps: number;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          assistantMessage: string;
+          nextAction: string;
+          provenance: {
+            safety: {
+              domainToolCallsExecuted: boolean;
+            };
+          };
+          proposedToolIntents: readonly unknown[];
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  assistantMessage: "我会先查找活动。",
+                  intent: "event_recommendations",
+                  toolRequests: [
+                    {
+                      arguments: {},
+                      requiresUserConfirmation: true,
+                      toolName: "events.recommend",
+                    },
+                  ],
+                }),
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      });
+    }) as typeof fetch,
+    maxLoopSteps: 1,
+  });
+
+  const result = await service.sendMessage({
+    message: "看下有什么有意思的活动",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 1);
+  assert.equal(result.data?.artifacts.length, 0);
+  assert.equal(result.data?.assistantMessage, "我会先查找活动。");
+  assert.equal(result.data?.proposedToolIntents.length, 1);
+  assert.match(result.data?.nextAction ?? "", /Loop stopped after planner/);
+  assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, false);
 });
 
 test("live Gemini Orbit Agent rejects invalid planner output before tools run", async () => {
@@ -378,4 +537,115 @@ test("live Gemini Orbit Agent surfaces provider request failures", async () => {
   assert.match(result.error?.message ?? "", /disabled for this project/);
   assert.equal(result.error?.provenance.safety.aiProviderRequested, true);
   assert.equal(result.error?.provenance.safety.externalNetworkRequested, true);
+});
+
+test("development Orbit Agent trace route exposes raw planner output", async () => {
+  const previousApiKey = process.env.GEMINI_API_KEY;
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousFetch = globalThis.fetch;
+  const rawOutputText = JSON.stringify({
+    assistantMessage: "好的，我来为您查找一些近期有趣的活动。",
+    intent: "event_recommendations",
+    toolRequests: [
+      {
+        arguments: { topic: "interesting events" },
+        requiresUserConfirmation: true,
+        toolName: "events.recommend",
+      },
+    ],
+  });
+
+  try {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    process.env.NODE_ENV = "development";
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: rawOutputText,
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      })) as typeof fetch;
+
+    const route = await importProjectModule<{
+      POST: (request: Request) => Promise<Response>;
+    }>("app/api/dev/orbit-agent/trace/route.ts");
+    const response = await route.POST(
+      new Request("http://localhost/api/dev/orbit-agent/trace", {
+        body: JSON.stringify({
+          message: "看下有什么有意思的活动",
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      }),
+    );
+    const body = (await response.json()) as {
+      data?: {
+        loop: {
+          maxSteps: number;
+          phaseLimit: {
+            synthesisCanRun: boolean;
+          };
+        };
+        planner: {
+          parsed: {
+            intent: string;
+            toolRequests: readonly {
+              toolFamily: string;
+              toolName: string;
+            }[];
+          };
+          rawOutputText: string;
+        };
+        safety: {
+          debugEndpoint: boolean;
+          domainToolCallsExecuted: boolean;
+          externalSideEffectsExecuted: boolean;
+        };
+        toolTrace: {
+          domainToolCallsWouldExecute: boolean;
+        };
+      };
+      success: boolean;
+    };
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-orbit-dev-trace"), "orbit-agent-planner");
+    assert.equal(body.success, true);
+    assert.equal(body.data?.planner.rawOutputText, rawOutputText);
+    assert.equal(body.data?.planner.parsed.intent, "event_recommendations");
+    assert.equal(
+      body.data?.planner.parsed.toolRequests[0]?.toolName,
+      "events.recommend",
+    );
+    assert.equal(body.data?.planner.parsed.toolRequests[0]?.toolFamily, "events");
+    assert.equal(body.data?.loop.maxSteps, 3);
+    assert.equal(body.data?.loop.phaseLimit.synthesisCanRun, true);
+    assert.equal(body.data?.toolTrace.domainToolCallsWouldExecute, true);
+    assert.equal(body.data?.safety.debugEndpoint, true);
+    assert.equal(body.data?.safety.domainToolCallsExecuted, false);
+    assert.equal(body.data?.safety.externalSideEffectsExecuted, false);
+  } finally {
+    if (previousApiKey === undefined) {
+      delete process.env.GEMINI_API_KEY;
+    } else {
+      process.env.GEMINI_API_KEY = previousApiKey;
+    }
+
+    if (previousNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+
+    globalThis.fetch = previousFetch;
+  }
 });

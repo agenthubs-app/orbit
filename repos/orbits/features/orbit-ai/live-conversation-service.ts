@@ -24,6 +24,7 @@ import {
   type GeminiOrbitAgentIntent,
   type GeminiOrbitAgentPlannerResult,
   type GeminiOrbitAgentProviderConfig,
+  type GeminiOrbitAgentToolResultSummary,
   type GeminiOrbitAgentToolName,
   type GeminiOrbitAgentToolRequest,
 } from "./gemini-provider";
@@ -31,6 +32,14 @@ import { createMockOrbitAgentArtifactTaskService } from "./mock-artifact-task-se
 
 const liveCollectedAt = "2026-06-27T00:00:00.000Z";
 const liveConversationId = "live-orbit-agent-conversation";
+const defaultMaxLoopSteps = 3;
+const maxSupportedLoopSteps = 3;
+const minSupportedLoopSteps = 1;
+
+export interface LiveOrbitAgentConversationServiceConfig
+  extends GeminiOrbitAgentProviderConfig {
+  maxLoopSteps?: number | string | null;
+}
 
 const supportedScenarios = new Set<OrbitAgentConversationScenario>([
   "success",
@@ -88,6 +97,24 @@ function normalizeScenario(
 
 function readText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readMaxLoopSteps(value: unknown): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : defaultMaxLoopSteps;
+
+  if (!Number.isFinite(parsed)) {
+    return defaultMaxLoopSteps;
+  }
+
+  return Math.min(
+    maxSupportedLoopSteps,
+    Math.max(minSupportedLoopSteps, Math.floor(parsed)),
+  );
 }
 
 function failure(
@@ -289,6 +316,20 @@ function artifactForRequest(input: {
   return result.success ? result.data : null;
 }
 
+function artifactSummaryForSynthesis(
+  artifact: OrbitAgentArtifactPayload,
+): GeminiOrbitAgentToolResultSummary {
+  return {
+    kind: artifact.task.kind,
+    preferredSurface: artifact.result.presentation.preferredSurface,
+    summary:
+      artifact.result.generatedView?.summary ??
+      artifact.result.nextAction ??
+      "Orbit prepared a reviewable artifact.",
+    title: artifact.result.presentation.title,
+  };
+}
+
 function failureForPlannerResult(
   plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: false }>,
 ): OrbitAgentConversationResult {
@@ -343,9 +384,12 @@ function assistantMessage(content: string): OrbitAgentConversationMessage {
 }
 
 export function createLiveOrbitAgentConversationService(
-  config: GeminiOrbitAgentProviderConfig = {},
+  config: LiveOrbitAgentConversationServiceConfig = {},
 ): OrbitAgentConversationService {
   const planner = createGeminiOrbitAgentPlanner(config);
+  const maxLoopSteps = readMaxLoopSteps(
+    config.maxLoopSteps ?? process.env.ORBIT_AGENT_MAX_LOOP_STEPS,
+  );
 
   return {
     getConversation(input): OrbitAgentConversationResult {
@@ -439,32 +483,59 @@ export function createLiveOrbitAgentConversationService(
                 },
               ]
             : [];
-      const artifacts = toolRequests
-        .map((request) => artifactForRequest({ message, request }))
-        .filter((artifact): artifact is OrbitAgentArtifactPayload =>
-          Boolean(artifact),
-        );
+      const shouldExecuteDomainTools = maxLoopSteps >= 2;
+      const artifacts = shouldExecuteDomainTools
+        ? toolRequests
+            .map((request) => artifactForRequest({ message, request }))
+            .filter((artifact): artifact is OrbitAgentArtifactPayload =>
+              Boolean(artifact),
+            )
+        : [];
+      const shouldSynthesizeAfterTools =
+        maxLoopSteps >= 3 && artifacts.length > 0;
+      const synthesisResult = shouldSynthesizeAfterTools
+        ? await planner.synthesize({
+            artifacts: artifacts.map(artifactSummaryForSynthesis),
+            assistantMessage: plannerResult.data.assistantMessage,
+            intent: plannerResult.data.intent,
+            locale: input.locale,
+            message,
+            toolRequests,
+          })
+        : null;
+      const finalAssistantMessage =
+        synthesisResult?.success === true
+          ? synthesisResult.data.assistantMessage
+          : plannerResult.data.assistantMessage;
       const messages = [
         userMessage(message),
-        assistantMessage(plannerResult.data.assistantMessage),
+        assistantMessage(finalAssistantMessage),
       ];
       const safety = safetyLedger({
         aiProviderRequested: true,
-        domainToolCallsExecuted: toolRequests.length > 0,
+        domainToolCallsExecuted: artifacts.length > 0,
         externalNetworkRequested: true,
       });
+      const nextAction =
+        maxLoopSteps === 1 && toolRequests.length > 0
+          ? "Loop stopped after planner by ORBIT_AGENT_MAX_LOOP_STEPS; review proposed tool intents before executing any domain tool."
+          : artifacts.length > 0 && !shouldSynthesizeAfterTools
+            ? "Review the generated artifact; synthesis is skipped by ORBIT_AGENT_MAX_LOOP_STEPS."
+            : "Review the Gemini-planned Orbit result; confirm before any external action or record write.";
 
       return success({
         activeConversationId: liveConversationId,
         artifacts,
-        assistantMessage: plannerResult.data.assistantMessage,
+        assistantMessage: finalAssistantMessage,
         conversations: [conversationSummary(messages[messages.length - 1])],
         messages,
-        nextAction:
-          "Review the Gemini-planned Orbit result; confirm before any external action or record write.",
+        nextAction,
         proposedToolIntents: toolRequests.map(proposedIntentForTool),
         provenance: provenance({
-          generationMethod: "gemini-live-agent-reply",
+          generationMethod:
+            synthesisResult?.success === true
+              ? "gemini-live-agent-reply"
+              : "gemini-live-agent-reply",
           label: `Gemini Orbit Agent live reply via ${plannerResult.data.model}`,
           safety,
         }),

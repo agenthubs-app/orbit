@@ -40,6 +40,22 @@ export interface GeminiOrbitAgentPlannerInput {
   message: string;
 }
 
+export interface GeminiOrbitAgentToolResultSummary {
+  kind: string;
+  preferredSurface: string;
+  summary: string;
+  title: string;
+}
+
+export interface GeminiOrbitAgentSynthesisInput {
+  artifacts: readonly GeminiOrbitAgentToolResultSummary[];
+  assistantMessage: string;
+  intent: GeminiOrbitAgentIntent;
+  locale?: string | null;
+  message: string;
+  toolRequests: readonly GeminiOrbitAgentToolRequest[];
+}
+
 export interface GeminiOrbitAgentProviderConfig {
   apiKey?: string | null;
   endpoint?: string;
@@ -62,6 +78,24 @@ export type GeminiOrbitAgentPlannerResult =
           | "GEMINI_API_KEY_MISSING"
           | "GEMINI_REQUEST_FAILED"
           | "GEMINI_SCHEMA_INVALID";
+        message: string;
+        rawOutputText?: string;
+      };
+    };
+
+export type GeminiOrbitAgentSynthesisResult =
+  | {
+      success: true;
+      data: {
+        assistantMessage: string;
+        model: string;
+        rawOutputText: string;
+      };
+    }
+  | {
+      success: false;
+      error: {
+        code: "GEMINI_API_KEY_MISSING" | "GEMINI_REQUEST_FAILED";
         message: string;
         rawOutputText?: string;
       };
@@ -203,6 +237,27 @@ function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
   });
 }
 
+function synthesisInstruction(): string {
+  return [
+    "You are Orbit Agent, writing the final user-facing response after Orbit tools returned information.",
+    "Return natural language only, not JSON.",
+    "Use the provided tool result summaries, but do not invent executed actions.",
+    "Mention when recommendations are staged for review or require confirmation.",
+    "Keep the response concise and useful.",
+  ].join("\n");
+}
+
+function synthesisInput(input: GeminiOrbitAgentSynthesisInput): string {
+  return JSON.stringify({
+    artifacts: input.artifacts,
+    locale: input.locale ?? "zh",
+    originalAssistantMessage: input.assistantMessage,
+    originalUserMessage: input.message,
+    plannerIntent: input.intent,
+    toolRequests: input.toolRequests,
+  });
+}
+
 function readGeminiOutputText(value: unknown): string | null {
   if (!isRecord(value)) {
     return null;
@@ -325,7 +380,7 @@ export function createGeminiOrbitAgentPlanner(
         return {
           error: {
             code: "GEMINI_REQUEST_FAILED",
-            message: "Gemini response did not include output_text.",
+            message: "Gemini response did not include output text.",
           },
           success: false,
         };
@@ -347,6 +402,79 @@ export function createGeminiOrbitAgentPlanner(
       return {
         data: {
           ...plannerOutput,
+          model,
+          rawOutputText: outputText,
+        },
+        success: true,
+      };
+    },
+
+    async synthesize(
+      input: GeminiOrbitAgentSynthesisInput,
+    ): Promise<GeminiOrbitAgentSynthesisResult> {
+      const apiKey = readString(config.apiKey ?? process.env.GEMINI_API_KEY);
+      const model =
+        readString(config.model ?? process.env.ORBIT_GEMINI_MODEL) ??
+        DEFAULT_GEMINI_ORBIT_AGENT_MODEL;
+      const endpoint = config.endpoint ?? GEMINI_INTERACTIONS_ENDPOINT;
+      const fetchImplementation = config.fetchImplementation ?? fetch;
+
+      if (!apiKey) {
+        return {
+          error: {
+            code: "GEMINI_API_KEY_MISSING",
+            message: "GEMINI_API_KEY is not configured.",
+          },
+          success: false,
+        };
+      }
+
+      const response = await fetchImplementation(endpoint, {
+        body: JSON.stringify({
+          generation_config: {
+            thinking_level: "low",
+          },
+          input: synthesisInput(input),
+          model,
+          store: false,
+          system_instruction: synthesisInstruction(),
+        }),
+        headers: {
+          "content-type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        method: "POST",
+      });
+
+      const responseBody = (await response.json()) as unknown;
+
+      if (!response.ok) {
+        return {
+          error: {
+            code: "GEMINI_REQUEST_FAILED",
+            message:
+              readGeminiErrorMessage(responseBody) ??
+              `Gemini request failed with HTTP ${response.status}.`,
+          },
+          success: false,
+        };
+      }
+
+      const outputText = readGeminiOutputText(responseBody);
+
+      if (!outputText) {
+        return {
+          error: {
+            code: "GEMINI_REQUEST_FAILED",
+            message: "Gemini response did not include output text.",
+          },
+          success: false,
+        };
+      }
+
+      return {
+        data: {
+          assistantMessage: outputText,
           model,
           rawOutputText: outputText,
         },
