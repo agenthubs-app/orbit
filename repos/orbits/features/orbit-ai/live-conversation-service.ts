@@ -116,6 +116,15 @@ function isUntrustedInstructionInjectionRequest(message: string): boolean {
   return injectionInstruction.test(message) || crossRelationshipLeak.test(message);
 }
 
+function isAmbiguousRecipientDraftRequest(message: string): boolean {
+  const relationshipAction =
+    /(?:写|草稿|消息|短信|微信|邮件|邀|约|见面|联系|follow[ -]?up|message|draft|send|invite|meet)/i;
+  const ambiguousRecipient =
+    /(?:给|發給|发给|約|约|邀請|邀请|联系|和)(?:她|他|ta|TA)|\b(?:write|message|send|invite|meet|follow up with)\s+(?:her|him|them)\b/i;
+
+  return relationshipAction.test(message) && ambiguousRecipient.test(message);
+}
+
 function readMaxLoopSteps(value: unknown): number {
   const parsed =
     typeof value === "number"
@@ -465,6 +474,35 @@ function untrustedContentBoundaryPayload(
   };
 }
 
+function clarificationBoundaryPayload(message: string): OrbitAgentConversationPayload {
+  const assistant =
+    "需要先明确联系人对象。我不会假定“她”是谁，也没有调用模型、执行工具或生成草稿。请告诉我联系人姓名或选择一位联系人后，我再准备可复核的消息草稿。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Ask the user to identify the recipient before drafting relationship outreach.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local clarification boundary",
+      safety,
+      source: "local:orbit-agent-clarification-boundary",
+    }),
+    state: "success",
+  };
+}
+
 export function createLiveOrbitAgentConversationService(
   config: LiveOrbitAgentConversationServiceConfig = {},
 ): OrbitAgentConversationService {
@@ -549,6 +587,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isUntrustedInstructionInjectionRequest(message)) {
         return success(untrustedContentBoundaryPayload(message));
+      }
+
+      if (isAmbiguousRecipientDraftRequest(message)) {
+        return success(clarificationBoundaryPayload(message));
       }
 
       const plannerResult = await planner.plan({
