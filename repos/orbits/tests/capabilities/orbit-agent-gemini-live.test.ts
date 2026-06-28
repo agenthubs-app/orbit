@@ -577,6 +577,64 @@ test("live Gemini Orbit Agent handles privacy control requests locally", async (
   );
 });
 
+test("live Gemini Orbit Agent handles privacy retention requests locally", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      fetchImplementation: typeof fetch;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          assistantMessage: string;
+          proposedToolIntents: readonly unknown[];
+          provenance: {
+            generationMethod: string;
+            safety: {
+              aiProviderRequested: boolean;
+              domainToolCallsExecuted: boolean;
+              externalNetworkRequested: boolean;
+              externalSideEffectsExecuted: false;
+              liveDatabaseWriteExecuted: boolean;
+            };
+            source: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({});
+    }) as typeof fetch,
+  });
+  const result = await service.sendMessage({
+    message: "不要保存这段聊天。",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 0);
+  assert.equal(result.data?.artifacts.length, 0);
+  assert.equal(result.data?.proposedToolIntents.length, 0);
+  assert.match(result.data?.assistantMessage ?? "", /隐私控制|隐私设置/);
+  assert.match(result.data?.assistantMessage ?? "", /没有执行|没有保存|没有删除/);
+  assert.doesNotMatch(result.data?.assistantMessage ?? "", /不会[^。.!?]*保存/);
+  assert.equal(result.data?.provenance.source, "local:orbit-agent-privacy-boundary");
+  assert.equal(result.data?.provenance.generationMethod, "rule-based-agent-reply");
+  assert.equal(result.data?.provenance.safety.aiProviderRequested, false);
+  assert.equal(result.data?.provenance.safety.externalNetworkRequested, false);
+  assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, false);
+  assert.equal(result.data?.provenance.safety.liveDatabaseWriteExecuted, false);
+  assert.equal(
+    result.data?.provenance.safety.externalSideEffectsExecuted,
+    false,
+  );
+});
+
 test("live Gemini Orbit Agent handles untrusted instruction injection locally", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{
