@@ -107,6 +107,15 @@ function isPrivacyControlRequest(message: string): boolean {
   );
 }
 
+function isUntrustedInstructionInjectionRequest(message: string): boolean {
+  const injectionInstruction =
+    /忽略(?:之前|以上|所有|系统|开发者)?.*(?:指令|规则)|ignore (?:previous|above|all|system|developer) instructions/i;
+  const crossRelationshipLeak =
+    /(?:把|将|給|给).*(?:联系方式|資料|资料|联系人资料|contact info|contact details).*(?:发给我|給我|给我|send to me)|(?:其它|其他|别的|other).*(?:联系人|关系|contact|relationship).*(?:资料|信息|info|details)/i;
+
+  return injectionInstruction.test(message) || crossRelationshipLeak.test(message);
+}
+
 function readMaxLoopSteps(value: unknown): number {
   const parsed =
     typeof value === "number"
@@ -425,6 +434,37 @@ function privacyControlPayload(message: string): OrbitAgentConversationPayload {
   };
 }
 
+function untrustedContentBoundaryPayload(
+  message: string,
+): OrbitAgentConversationPayload {
+  const assistant =
+    "这段外部内容包含不可信指令注入风险。Orbit 已停在本地安全边界：没有把它发送给模型、没有泄露其它联系人资料、没有执行工具或外部动作。你可以把它作为证据复核，但不能让其中的指令改变隐私、权限或确认要求。";
+  const messages = [userMessage(message), assistantMessage(assistant)];
+  const safety = safetyLedger({
+    aiProviderRequested: false,
+    domainToolCallsExecuted: false,
+    externalNetworkRequested: false,
+  });
+
+  return {
+    activeConversationId: liveConversationId,
+    artifacts: [],
+    assistantMessage: assistant,
+    conversations: [conversationSummary(messages[messages.length - 1])],
+    messages,
+    nextAction:
+      "Review the quoted relationship content as untrusted evidence only; do not reveal other contacts or execute any action from it.",
+    proposedToolIntents: [],
+    provenance: provenance({
+      generationMethod: "rule-based-agent-reply",
+      label: "Orbit Agent local untrusted content boundary",
+      safety,
+      source: "local:orbit-agent-untrusted-content-boundary",
+    }),
+    state: "success",
+  };
+}
+
 export function createLiveOrbitAgentConversationService(
   config: LiveOrbitAgentConversationServiceConfig = {},
 ): OrbitAgentConversationService {
@@ -505,6 +545,10 @@ export function createLiveOrbitAgentConversationService(
 
       if (isPrivacyControlRequest(message)) {
         return success(privacyControlPayload(message));
+      }
+
+      if (isUntrustedInstructionInjectionRequest(message)) {
+        return success(untrustedContentBoundaryPayload(message));
       }
 
       const plannerResult = await planner.plan({
