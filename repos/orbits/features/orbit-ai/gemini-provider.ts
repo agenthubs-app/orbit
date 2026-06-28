@@ -220,10 +220,18 @@ function hasUnsafeExternalExecutionClaim(value: string): boolean {
     "已发送消息",
     "已经发送邮件",
     "已经发送消息",
+    "我已发给",
+    "我已经发给",
+    "已帮你发给",
+    "已经帮你发给",
     "我已创建日程",
     "我已经创建日程",
     "已创建日程",
     "已经创建日程",
+    "我已安排",
+    "我已经安排",
+    "已安排会议",
+    "已经安排会议",
     "我已通知",
     "我已经通知",
     "已通知",
@@ -231,9 +239,18 @@ function hasUnsafeExternalExecutionClaim(value: string): boolean {
     "i sent",
     "i have sent",
     "i've sent",
+    "i scheduled",
+    "i have scheduled",
+    "i've scheduled",
+    "i booked",
+    "i have booked",
+    "i've booked",
     "i created the calendar",
     "i have created the calendar",
     "i've created the calendar",
+    "i created a calendar",
+    "i have created a calendar",
+    "i've created a calendar",
     "i notified",
     "i have notified",
     "i've notified",
@@ -243,6 +260,68 @@ function hasUnsafeExternalExecutionClaim(value: string): boolean {
   ];
 
   return unsafePhrases.some((phrase) => normalized.includes(phrase));
+}
+
+function hasUnsafeExternalExecutionPromise(value: string): boolean {
+  const normalized = value.toLowerCase();
+  const unsafePhrases = [
+    "我会发送",
+    "我会帮你发送",
+    "我会帮助您发送",
+    "我会发给",
+    "我会帮你发给",
+    "我会帮助您发给",
+    "会帮助您发送",
+    "会帮你发送",
+    "我会安排会议",
+    "我会安排日程",
+    "我会创建日程",
+    "我会通知",
+    "i will send",
+    "i'll send",
+    "i will schedule",
+    "i'll schedule",
+    "i will book",
+    "i'll book",
+    "i will notify",
+    "i'll notify",
+    "i will update the database",
+    "i'll update the database",
+  ];
+
+  return unsafePhrases.some((phrase) => normalized.includes(phrase));
+}
+
+function hasUnsafePrivacyStateClaim(value: string): boolean {
+  const normalized = value.toLowerCase();
+  const unsafePhrases = [
+    "我已关闭这段聊天",
+    "我已经关闭这段聊天",
+    "已关闭这段聊天",
+    "已经关闭这段聊天",
+    "我已关闭 ai 分析",
+    "我已经关闭 ai 分析",
+    "已关闭 ai 分析",
+    "已经关闭 ai 分析",
+    "更新了隐私设置",
+    "隐私设置已更新",
+    "已更新隐私设置",
+    "已经更新隐私设置",
+    "不会被分析或存储",
+    "i disabled analysis",
+    "i have disabled analysis",
+    "i've disabled analysis",
+    "privacy settings updated",
+    "i updated privacy settings",
+    "i have updated privacy settings",
+    "i've updated privacy settings",
+  ];
+  const unsafePatterns = [/不会[^。.!?]*存储/u, /不会[^。.!?]*保存/u];
+
+  return (
+    unsafePhrases.some((phrase) => normalized.includes(phrase)) ||
+    unsafePatterns.some((pattern) => pattern.test(normalized))
+  );
 }
 
 function parseJsonFromText(value: string): unknown {
@@ -282,6 +361,14 @@ export function validateGeminiOrbitAgentPlannerOutput(
   }
 
   if (hasUnsafeExternalExecutionClaim(assistantMessage)) {
+    return null;
+  }
+
+  if (hasUnsafeExternalExecutionPromise(assistantMessage)) {
+    return null;
+  }
+
+  if (hasUnsafePrivacyStateClaim(assistantMessage)) {
     return null;
   }
 
@@ -351,7 +438,10 @@ function systemInstruction(): string {
     "- contact recommendation / who can introduce or help / network search -> contact_recommendations with contacts.recommend.",
     "- follow-up review / this week / dormant relationship / queue -> followup_queue with followups.reviewQueue.",
     "- privacy control / delete / do not analyze / sensitive share -> general_chat unless current chat context review is explicitly needed.",
+    "Do not claim privacy settings, storage, deletion, or analysis opt-out state changed unless an explicit Orbit privacy tool result says so.",
+    "Do not describe storage guarantees; direct users to privacy controls for durable changes.",
     "- external action preview / send / schedule / notify -> choose the closest context tool only to prepare a reviewable artifact; never claim execution.",
+    "Do not promise to send, schedule, notify, write, or execute later; Orbit can prepare a reviewable draft or artifact only.",
     "Chinese routing examples:",
     '- "我为什么认识 Maya" -> relationship_chat_context with chat.context.',
     '- "明天活动该认识谁" -> event_recommendations with events.recommend.',
