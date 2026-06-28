@@ -53,9 +53,19 @@ const cases = [
     prompt: "明天活动该认识谁？",
   },
   {
+    expected: "event_recommendations",
+    name: "english event preparation",
+    prompt: "Who should I meet at tomorrow's event?",
+  },
+  {
     expected: "followup_queue",
     name: "follow-up review",
     prompt: "本周应该跟进谁？",
+  },
+  {
+    expected: "followup_queue",
+    name: "mixed-language follow-up review",
+    prompt: "帮我 review this week 应该 follow up 谁。",
   },
   {
     expected: "contact_recommendations",
@@ -81,6 +91,11 @@ const cases = [
     expected: "general_or_safe_chat",
     name: "privacy retention",
     prompt: "不要保存这段聊天。",
+  },
+  {
+    expected: "general_or_safe_chat",
+    name: "english privacy retention",
+    prompt: "Don't save this chat.",
   },
   {
     expected: "general_or_safe_chat",
@@ -166,6 +181,7 @@ const localBoundaryCases = new Set([
   "add event contacts boundary",
   "ambiguous recipient clarification",
   "delete contact boundary",
+  "english privacy retention",
   "privacy control",
   "privacy retention",
   "profile mutation boundary",
@@ -173,7 +189,11 @@ const localBoundaryCases = new Set([
   "relationship memory boundary",
   "reminder creation boundary",
 ]);
-const privacyBoundaryCases = new Set(["privacy control", "privacy retention"]);
+const privacyBoundaryCases = new Set([
+  "english privacy retention",
+  "privacy control",
+  "privacy retention",
+]);
 const failClosedCodes = new Set([
   "ORBIT_AGENT_PROVIDER_API_KEY_MISSING",
   "ORBIT_AGENT_PROVIDER_REQUEST_FAILED",
