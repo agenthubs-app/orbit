@@ -18,18 +18,87 @@ interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
 }
 
-type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
+type ReferenceAgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle"> & {
+  source: "reference";
+};
+
+interface AgentArtifactActionPreview {
+  id: string;
+  label: string;
+  requiresConfirmation: boolean;
+}
+
+interface AgentArtifactItemPreview {
+  actions: readonly AgentArtifactActionPreview[];
+  body: string | null;
+  confidenceLabel: string | null;
+  id: string;
+  metadata: readonly { label: string; value: string }[];
+  reason: string | null;
+  subtitle: string | null;
+  title: string;
+}
+
+interface AgentArtifactSectionPreview {
+  body: string | null;
+  items: readonly AgentArtifactItemPreview[];
+  title: string;
+}
+
+interface AgentArtifactPreview {
+  actions: readonly AgentArtifactActionPreview[];
+  id: string;
+  kind: string;
+  sections: readonly AgentArtifactSectionPreview[];
+  status: string;
+  subtitle: string | null;
+  summary: string;
+  title: string;
+}
+
+interface AgentToolIntentPreview {
+  id: string;
+  label: string;
+  reason: string | null;
+  requiresUserConfirmation: boolean;
+  toolFamily: string | null;
+}
+
+interface ApiAgentPanel {
+  artifacts: readonly AgentArtifactPreview[];
+  intents: readonly AgentToolIntentPreview[];
+  nextAction: string | null;
+  panelTitle: string;
+  source: "api";
+  sourceLabel: string | null;
+}
+
+type AgentPanel = ReferenceAgentPanel | ApiAgentPanel;
 
 type AgentMessage =
   | { role: "user"; text: string }
   | {
-      items: OrbitAgentScenarioView["items"];
-      kind: OrbitAgentScenarioView["kind"];
+      error?: boolean;
+      panel?: AgentPanel;
       note?: string;
-      panelTitle: string;
       role: "assistant";
+      sourceLabel?: string | null;
       text: string;
     };
+
+interface OrbitAgentApiData {
+  artifacts?: unknown;
+  assistantMessage?: unknown;
+  nextAction?: unknown;
+  proposedToolIntents?: unknown;
+  provenance?: unknown;
+}
+
+interface OrbitAgentApiEnvelope {
+  data?: OrbitAgentApiData;
+  error?: { message?: unknown };
+  success?: boolean;
+}
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -57,20 +126,193 @@ function parseDate(value: string) {
   return date && Number.isFinite(date.getTime()) ? date : null;
 }
 
-function isPeopleResult(item: OrbitAgentPeopleResultView | OrbitAgentEventResultView): item is OrbitAgentPeopleResultView {
-  return "connection" in item;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function routeScenario(query: string, scenarios: OrbitAgentViewModel["scenarios"]) {
-  const text = String(query || "");
-  if (/女装|服装|时尚|设计|fashion|买手|面料|服饰|穿搭/i.test(text)) return scenarios.peopleToEvents;
-  if (/活动|参加|想去|meetup|沙龙|局\b|聚会|峰会|展会|类型的活动|去哪/i.test(text)) return scenarios.events;
-  return scenarios.people;
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function readBoolean(value: unknown): boolean {
+  return value === true;
+}
+
+function readArray(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function isPeopleResult(item: OrbitAgentPeopleResultView | OrbitAgentEventResultView): item is OrbitAgentPeopleResultView {
+  return "connection" in item;
 }
 
 function currentAgentQuery() {
   if (typeof window === "undefined") return "";
   return new URLSearchParams(window.location.search).get("q") ?? "";
+}
+
+function artifactKindLabel(kind: string, t: Translate) {
+  const labels: Record<string, Copy> = {
+    contact_recommendations: { en: "Contact recommendations", zh: "人脉推荐" },
+    email_context: { en: "Message context", zh: "消息上下文" },
+    event_recommendations: { en: "Event recommendations", zh: "活动推荐" },
+    followup_queue: { en: "Follow-up queue", zh: "跟进队列" },
+    generic: { en: "Orbit result", zh: "Orbit 结果" },
+    relationship_chat_context: { en: "Relationship context", zh: "关系上下文" },
+  };
+
+  return t(labels[kind] ?? labels.generic);
+}
+
+function readActionPreview(value: unknown, index: number): AgentArtifactActionPreview | null {
+  if (!isRecord(value)) return null;
+  const label = readString(value.label);
+  if (!label) return null;
+
+  return {
+    id: readString(value.actionId) ?? `action-${index + 1}`,
+    label,
+    requiresConfirmation: readBoolean(value.requiresConfirmation),
+  };
+}
+
+function readItemPreview(value: unknown, index: number, t: Translate): AgentArtifactItemPreview | null {
+  if (!isRecord(value)) return null;
+  const title = readString(value.title);
+  if (!title) return null;
+
+  return {
+    actions: readArray(value.actions)
+      .map((action, actionIndex) => readActionPreview(action, actionIndex))
+      .filter((action): action is AgentArtifactActionPreview => Boolean(action)),
+    body: readString(value.body),
+    confidenceLabel: readString(value.confidenceLabel),
+    id: readString(value.id) ?? `item-${index + 1}`,
+    metadata: readArray(value.metadata)
+      .map((metadata) => {
+        if (!isRecord(metadata)) return null;
+        const label = readString(metadata.label);
+        const valueText = readString(metadata.value);
+        return label && valueText ? { label, value: valueText } : null;
+      })
+      .filter((metadata): metadata is { label: string; value: string } => Boolean(metadata)),
+    reason: readString(value.reason),
+    subtitle: readString(value.subtitle),
+    title: title || t({ en: "Untitled result", zh: "未命名结果" }),
+  };
+}
+
+function readSectionPreview(value: unknown, index: number, t: Translate): AgentArtifactSectionPreview | null {
+  if (!isRecord(value)) return null;
+  const items = readArray(value.items)
+    .map((item, itemIndex) => readItemPreview(item, itemIndex, t))
+    .filter((item): item is AgentArtifactItemPreview => Boolean(item));
+  const title = readString(value.title);
+
+  if (!title && items.length === 0) return null;
+
+  return {
+    body: readString(value.body),
+    items,
+    title: title ?? t({ en: "Results", zh: "结果" }),
+  };
+}
+
+function readArtifactPreview(value: unknown, index: number, t: Translate): AgentArtifactPreview | null {
+  if (!isRecord(value)) return null;
+
+  const task = isRecord(value.task) ? value.task : {};
+  const result = isRecord(value.result) ? value.result : {};
+  const presentation = isRecord(result.presentation) ? result.presentation : {};
+  const generatedView = isRecord(result.generatedView) ? result.generatedView : {};
+  const kind = readString(task.kind) ?? readString(result.kind) ?? "generic";
+  const sections = readArray(generatedView.sections)
+    .map((section, sectionIndex) => readSectionPreview(section, sectionIndex, t))
+    .filter((section): section is AgentArtifactSectionPreview => Boolean(section));
+  const title = readString(presentation.title) ?? artifactKindLabel(kind, t);
+
+  return {
+    actions: sections.flatMap((section) => section.items.flatMap((item) => item.actions)),
+    id: readString(task.artifactId) ?? readString(result.artifactId) ?? `artifact-${index + 1}`,
+    kind,
+    sections,
+    status: readString(result.status) ?? readString(task.status) ?? "ready",
+    subtitle: readString(presentation.subtitle),
+    summary:
+      readString(generatedView.summary) ??
+      readString(result.nextAction) ??
+      readString(task.query) ??
+      t({ en: "Orbit prepared this result for review.", zh: "Orbit 已整理好这份结果，等待你确认。" }),
+    title,
+  };
+}
+
+function readToolIntentPreview(value: unknown, index: number): AgentToolIntentPreview | null {
+  if (!isRecord(value)) return null;
+  const label = readString(value.label);
+  if (!label) return null;
+
+  return {
+    id: readString(value.intentId) ?? `intent-${index + 1}`,
+    label,
+    reason: readString(value.reason),
+    requiresUserConfirmation: readBoolean(value.requiresUserConfirmation),
+    toolFamily: readString(value.toolFamily),
+  };
+}
+
+function panelFromApiData(data: OrbitAgentApiData, t: Translate): ApiAgentPanel | null {
+  const artifacts = readArray(data.artifacts)
+    .map((artifact, index) => readArtifactPreview(artifact, index, t))
+    .filter((artifact): artifact is AgentArtifactPreview => Boolean(artifact));
+  const intents = readArray(data.proposedToolIntents)
+    .map((intent, index) => readToolIntentPreview(intent, index))
+    .filter((intent): intent is AgentToolIntentPreview => Boolean(intent));
+
+  if (artifacts.length === 0 && intents.length === 0) return null;
+
+  const provenance = isRecord(data.provenance) ? data.provenance : {};
+
+  return {
+    artifacts,
+    intents,
+    nextAction: readString(data.nextAction),
+    panelTitle: t({ en: "Orbit result", zh: "Orbit 结果" }),
+    source: "api",
+    sourceLabel: readString(provenance.sourceLabel),
+  };
+}
+
+async function sendOrbitAgentMessage(message: string, locale: "en" | "zh", t: Translate) {
+  const response = await fetch("/api/ai/conversations", {
+    body: JSON.stringify({ locale, message }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const envelope = (await response.json().catch(() => ({}))) as OrbitAgentApiEnvelope;
+
+  if (!response.ok || envelope.success === false) {
+    return {
+      error: true,
+      panel: null,
+      sourceLabel: null,
+      text:
+        readString(envelope.error?.message) ??
+        t({ en: "Orbit could not reply right now. Please try again.", zh: "Orbit 现在没有返回结果，请稍后再试。" }),
+    };
+  }
+
+  const data = isRecord(envelope.data) ? envelope.data : {};
+  const provenance = isRecord(data.provenance) ? data.provenance : {};
+
+  return {
+    error: false,
+    panel: panelFromApiData(data, t),
+    sourceLabel: readString(provenance.sourceLabel),
+    text:
+      readString(data.assistantMessage) ??
+      t({ en: "Orbit replied, but no message text was returned.", zh: "Orbit 已返回，但没有可显示的回复文本。" }),
+  };
 }
 
 function AgentHistoryList({
@@ -274,7 +516,7 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
   );
 }
 
-function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
+function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: ReferenceAgentPanel; t: Translate }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {panel.items.map((item, index) =>
@@ -286,6 +528,107 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
       )}
     </div>
   );
+}
+
+function LiveAgentPanelCards({ panel, t }: { panel: ApiAgentPanel; t: Translate }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {panel.artifacts.map((artifact) => {
+        const items = artifact.sections.flatMap((section) => section.items).slice(0, 4);
+
+        return (
+          <div key={artifact.id} className="card" style={{ padding: 15 }}>
+            <div style={{ alignItems: "flex-start", display: "flex", gap: 11 }}>
+              <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 10, color: "var(--accent)", display: "flex", flexShrink: 0, height: 34, justifyContent: "center", width: 34 }}>
+                <Icon name="sparkle" size={17} />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 680, lineHeight: 1.3 }}>{artifact.title}</div>
+                {artifact.subtitle ? <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>{artifact.subtitle}</div> : null}
+                <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
+                  <span className="chip" style={{ height: 24 }}>{artifactKindLabel(artifact.kind, t)}</span>
+                  <span className="chip" style={{ height: 24 }}>{artifact.status}</span>
+                </div>
+              </div>
+            </div>
+            <p style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, margin: "12px 0 0" }}>{artifact.summary}</p>
+            {items.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                {items.map((item) => (
+                  <div key={item.id} style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 11, padding: 11 }}>
+                    <div style={{ color: "var(--ink)", fontSize: 13.5, fontWeight: 650 }}>{item.title}</div>
+                    {item.subtitle ? <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>{item.subtitle}</div> : null}
+                    {item.body ?? item.reason ? <div style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.5, marginTop: 7 }}>{item.body ?? item.reason}</div> : null}
+                    {item.metadata.length > 0 ? (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                        {item.metadata.slice(0, 4).map((metadata) => (
+                          <span key={`${item.id}-${metadata.label}`} className="mono" style={{ background: "var(--bg)", borderRadius: 999, color: "var(--text-3)", fontSize: 10.5, padding: "4px 7px" }}>
+                            {metadata.label}: {metadata.value}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {artifact.actions.length > 0 ? (
+              <div style={{ background: "var(--amber-soft)", borderRadius: 11, color: "var(--amber)", fontSize: 12.5, lineHeight: 1.5, marginTop: 12, padding: "9px 11px" }}>
+                {t({ en: "Actions need your confirmation before anything is sent or changed.", zh: "动作需要你确认后才会发送或改动。" })}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+      {panel.intents.map((intent) => (
+        <div key={intent.id} className="card" style={{ padding: 14 }}>
+          <div style={{ alignItems: "center", display: "flex", gap: 9 }}>
+            <Icon name="eye" size={16} color="var(--amber)" />
+            <div style={{ color: "var(--ink)", flex: 1, fontSize: 14, fontWeight: 650, minWidth: 0 }}>{intent.label}</div>
+            {intent.requiresUserConfirmation ? <span className="chip" style={{ height: 24 }}>{t({ en: "Confirm", zh: "需确认" })}</span> : null}
+          </div>
+          {intent.reason ? <div style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.5, marginTop: 8 }}>{intent.reason}</div> : null}
+          {intent.toolFamily ? <div className="mono" style={{ color: "var(--text-4)", fontSize: 10.5, marginTop: 8 }}>{intent.toolFamily}</div> : null}
+        </div>
+      ))}
+      {panel.nextAction ? (
+        <div style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5, padding: "0 2px" }}>{panel.nextAction}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function AgentPanelContent({
+  language,
+  navigate,
+  panel,
+  t,
+}: {
+  language: "en" | "zh";
+  navigate: (href: string) => void;
+  panel: AgentPanel;
+  t: Translate;
+}) {
+  return panel.source === "reference" ? (
+    <PanelCards language={language} panel={panel} navigate={navigate} t={t} />
+  ) : (
+    <LiveAgentPanelCards panel={panel} t={t} />
+  );
+}
+
+function agentPanelIcon(panel: AgentPanel) {
+  if (panel.source === "api") return "sparkle";
+  return panel.kind === "people" ? "users" : "calendar";
+}
+
+function agentPanelHint(panel: AgentPanel, t: Translate) {
+  if (panel.source === "api") {
+    return panel.sourceLabel ?? t({ en: "Review before confirming anything.", zh: "确认前先看清楚。" });
+  }
+
+  return panel.kind === "people"
+    ? t({ en: "Click a card to open the contact page.", zh: "点卡片可直接跳转到对应名片页" })
+    : t({ en: "Click a card to open the event page.", zh: "点卡片可直接跳转到对应活动页" });
 }
 
 function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (value: string) => void; onSend: () => void; value: string }) {
@@ -347,7 +690,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   const [histOpen, setHistOpen] = useState(false);
   const [activeQ, setActiveQ] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const timerRef = useRef<number | null>(null);
+  const requestSeqRef = useRef(0);
 
   const navigate = useCallback((prototypeHref: string) => {
     const href = preserveHref(productHref(prototypeHref));
@@ -362,29 +705,44 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     window.location.href = href;
   }, [preserveHref]);
 
-  const ask = useCallback((query: string) => {
-    const scenario = routeScenario(query, viewModel.scenarios);
-
-    if (timerRef.current) window.clearTimeout(timerRef.current);
+  const ask = useCallback(async (query: string) => {
+    const requestSeq = requestSeqRef.current + 1;
+    requestSeqRef.current = requestSeq;
     setMessages((current) => [...current, { role: "user", text: query }]);
     setThinking(true);
     setPanel(null);
-    timerRef.current = window.setTimeout(() => {
-      setThinking(false);
+
+    try {
+      const reply = await sendOrbitAgentMessage(query, language, t);
+      if (requestSeq !== requestSeqRef.current) return;
+
       setMessages((current) => [
         ...current,
         {
-          items: scenario.items,
-          kind: scenario.kind,
-          note: scenario.note,
-          panelTitle: scenario.panelTitle,
+          error: reply.error,
+          panel: reply.panel ?? undefined,
           role: "assistant",
-          text: scenario.intro,
+          sourceLabel: reply.sourceLabel,
+          text: reply.text,
         },
       ]);
-      setPanel({ items: scenario.items, kind: scenario.kind, panelTitle: scenario.panelTitle });
-    }, 750);
-  }, [viewModel.scenarios]);
+      setPanel(reply.panel);
+    } catch {
+      if (requestSeq !== requestSeqRef.current) return;
+
+      setMessages((current) => [
+        ...current,
+        {
+          error: true,
+          role: "assistant",
+          text: t({ en: "Orbit could not reply right now. Please try again.", zh: "Orbit 现在没有返回结果，请稍后再试。" }),
+        },
+      ]);
+      setPanel(null);
+    } finally {
+      if (requestSeq === requestSeqRef.current) setThinking(false);
+    }
+  }, [language, t]);
 
   useEffect(() => {
     const query = currentAgentQuery();
@@ -396,9 +754,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       ask(query);
     }
 
-    return () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-    };
+    return undefined;
   }, [ask]);
 
   useEffect(() => {
@@ -432,7 +788,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   };
 
   const newChat = () => {
-    if (timerRef.current) window.clearTimeout(timerRef.current);
+    requestSeqRef.current += 1;
     setHistOpen(false);
     setMessages([]);
     setPanel(null);
@@ -461,11 +817,11 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                   {message.note}
                 </div>
               ) : null}
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", fontSize: 14.5, lineHeight: 1.6, padding: "12px 15px" }}>{message.text}</div>
-              {inlinePanel ? (
+              <div style={{ background: message.error ? "var(--amber-soft)" : "var(--surface)", border: `1px solid ${message.error ? "var(--amber)" : "var(--border)"}`, borderRadius: "4px 16px 16px 16px", color: message.error ? "var(--amber)" : "var(--text)", fontSize: 14.5, lineHeight: 1.6, padding: "12px 15px" }}>{message.text}</div>
+              {inlinePanel && message.panel ? (
                 <div style={{ marginTop: 12 }}>
-                  <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panelTitle}</div>
-                  <PanelCards language={language} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} navigate={navigate} t={t} />
+                  <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panel.panelTitle}</div>
+                  <AgentPanelContent language={language} panel={message.panel} navigate={navigate} t={t} />
                 </div>
               ) : null}
             </div>
@@ -540,18 +896,16 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             <div style={{ borderBottom: "1px solid var(--border)", padding: "18px 20px 12px" }}>
               <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
                 <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 9, color: "var(--accent)", display: "flex", height: 30, justifyContent: "center", width: 30 }}>
-                  <Icon name={panel.kind === "people" ? "users" : "calendar"} size={17} />
+                  <Icon name={agentPanelIcon(panel)} size={17} />
                 </span>
                 <h3 className="h-section">{panel.panelTitle}</h3>
               </div>
               <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 6 }}>
-                {panel.kind === "people"
-                  ? t({ en: "Click a card to open the contact page.", zh: "点卡片可直接跳转到对应名片页" })
-                  : t({ en: "Click a card to open the event page.", zh: "点卡片可直接跳转到对应活动页" })}
+                {agentPanelHint(panel, t)}
               </div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 24px" }}>
-              <PanelCards language={language} panel={panel} navigate={navigate} t={t} />
+              <AgentPanelContent language={language} panel={panel} navigate={navigate} t={t} />
             </div>
           </aside>
         ) : null}
