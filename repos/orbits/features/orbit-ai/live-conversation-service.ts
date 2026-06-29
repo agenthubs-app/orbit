@@ -869,6 +869,56 @@ function stateChangeBoundaryPayload(message: string): OrbitAgentConversationPayl
   };
 }
 
+export function createLiveOrbitAgentLocalBoundaryPayload(
+  message: string,
+): OrbitAgentConversationPayload | null {
+  if (isPrivacyControlRequest(message)) {
+    return privacyControlPayload(message);
+  }
+
+  if (isUntrustedInstructionInjectionRequest(message)) {
+    return untrustedContentBoundaryPayload(message);
+  }
+
+  if (isSensitiveContactShareRequest(message)) {
+    return sensitiveShareBoundaryPayload(message);
+  }
+
+  if (isSecretDisclosureRequest(message)) {
+    return secretBoundaryPayload(message);
+  }
+
+  if (isExternalPermissionRequest(message)) {
+    return permissionBoundaryPayload(message);
+  }
+
+  if (isUnsupportedRealtimeLookupRequest(message)) {
+    return unsupportedRealtimeBoundaryPayload(message);
+  }
+
+  if (isCrisisSupportRequest(message)) {
+    return crisisBoundaryPayload(message);
+  }
+
+  if (isProfessionalAdviceRequest(message)) {
+    return professionalAdviceBoundaryPayload(message);
+  }
+
+  if (isRelationshipStateMutationRequest(message)) {
+    return stateChangeBoundaryPayload(message);
+  }
+
+  if (isMultiIntentWorkflowRequest(message)) {
+    return multiIntentBoundaryPayload(message);
+  }
+
+  if (isAmbiguousRecipientDraftRequest(message)) {
+    return clarificationBoundaryPayload(message);
+  }
+
+  return null;
+}
+
 export function createLiveOrbitAgentConversationService(
   config: LiveOrbitAgentConversationServiceConfig = {},
 ): OrbitAgentConversationService {
@@ -947,48 +997,11 @@ export function createLiveOrbitAgentConversationService(
         );
       }
 
-      if (isPrivacyControlRequest(message)) {
-        return success(privacyControlPayload(message));
-      }
+      const localBoundaryPayload =
+        createLiveOrbitAgentLocalBoundaryPayload(message);
 
-      if (isUntrustedInstructionInjectionRequest(message)) {
-        return success(untrustedContentBoundaryPayload(message));
-      }
-
-      if (isSensitiveContactShareRequest(message)) {
-        return success(sensitiveShareBoundaryPayload(message));
-      }
-
-      if (isSecretDisclosureRequest(message)) {
-        return success(secretBoundaryPayload(message));
-      }
-
-      if (isExternalPermissionRequest(message)) {
-        return success(permissionBoundaryPayload(message));
-      }
-
-      if (isUnsupportedRealtimeLookupRequest(message)) {
-        return success(unsupportedRealtimeBoundaryPayload(message));
-      }
-
-      if (isCrisisSupportRequest(message)) {
-        return success(crisisBoundaryPayload(message));
-      }
-
-      if (isProfessionalAdviceRequest(message)) {
-        return success(professionalAdviceBoundaryPayload(message));
-      }
-
-      if (isRelationshipStateMutationRequest(message)) {
-        return success(stateChangeBoundaryPayload(message));
-      }
-
-      if (isMultiIntentWorkflowRequest(message)) {
-        return success(multiIntentBoundaryPayload(message));
-      }
-
-      if (isAmbiguousRecipientDraftRequest(message)) {
-        return success(clarificationBoundaryPayload(message));
+      if (localBoundaryPayload) {
+        return success(localBoundaryPayload);
       }
 
       const plannerResult = await planner.plan({
