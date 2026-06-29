@@ -30,6 +30,7 @@ import {
   type OrbitAiTraceDataSource,
   type OrbitAiTraceFullChain,
   type OrbitAiTracePayload,
+  type OrbitAiTraceRuntimeSubAgent,
   type OrbitAiTraceResult,
   type OrbitAiTraceRuntimeSnapshot,
   type OrbitAiTraceStage,
@@ -463,7 +464,7 @@ function runtimeSnapshot(input: {
       toolName: request.toolName,
     };
   });
-  const subAgents = Array.from(
+  const subAgents: OrbitAiTraceRuntimeSubAgent[] = Array.from(
     new Map(
       input.artifacts.map((artifact) => [
         artifact.task.subAgent,

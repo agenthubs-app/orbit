@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -7,6 +8,9 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+const testRequire = createRequire(import.meta.url);
+
+testRequire.extensions[".css"] = () => undefined;
 
 async function importProjectModule<TModule>(
   pathFromRoot: string,
@@ -41,7 +45,7 @@ test("Orbit AI trace debugger posts prompts to the full-chain trace API", () => 
 
   assert.match(source, /fetch\(["']\/api\/dev\/orbit-ai\/trace["']/);
   assert.match(source, /method:\s*["']POST["']/);
-  assert.match(source, /JSON\.stringify\(.*null,\s*2\)/s);
+  assert.match(source, /JSON\.stringify\([\s\S]*null,\s*2\)/);
   assert.match(source, /<details[^>]*data-stage-output-source="true"/);
   assert.match(source, /disabled=\{[^}]*!prompt\.trim\(\)/);
   assert.match(source, /runtimeSnapshot/);

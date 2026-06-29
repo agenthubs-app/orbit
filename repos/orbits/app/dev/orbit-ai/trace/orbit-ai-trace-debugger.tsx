@@ -51,6 +51,14 @@ const traceDebuggerStyles = `
 
 .orbit-ai-trace-debugger .trace-shell {
   max-width: 1440px;
+  overflow-x: clip;
+}
+
+.orbit-ai-trace-debugger .workbench-header h1,
+.orbit-ai-trace-debugger .workbench-intro {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .trace-toolbar,
@@ -228,6 +236,18 @@ const traceDebuggerStyles = `
   .trace-toolbar,
   .trace-main-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .orbit-ai-trace-debugger .workbench-header h1 {
+    font-size: 2rem;
+    line-height: 1.08;
+    max-width: min(100%, 320px);
+  }
+
+  .orbit-ai-trace-debugger .workbench-intro {
+    max-width: min(100%, 330px);
   }
 }
 `;
@@ -536,7 +556,7 @@ export function OrbitAiTraceDebugger() {
       });
       const body = (await response.json()) as TraceApiResponse;
 
-      if (!body.success) {
+      if (body.success === false) {
         throw new Error(body.error?.message ?? "Trace request failed.");
       }
 
