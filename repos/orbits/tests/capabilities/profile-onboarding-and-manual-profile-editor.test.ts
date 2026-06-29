@@ -15,13 +15,18 @@ import {
   mockProfileUpdateInput,
 } from "../../features/profile/fixtures";
 import { createMockProfileService } from "../../features/profile/mock-service";
-import {
-  ProfileOnboardingCapabilityDemo,
-  PROFILE_ONBOARDING_CAPABILITY_SLUG,
-} from "../../features/profile/profile-onboarding-and-manual-profile-editor/debug-view";
+import * as profileOnboardingDebugViewModule from "../../features/profile/profile-onboarding-and-manual-profile-editor/debug-view";
 import * as profileRoute from "../../app/api/profile/route";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+const profileOnboardingDebugView =
+  profileOnboardingDebugViewModule["module.exports"] ??
+  profileOnboardingDebugViewModule.default ??
+  profileOnboardingDebugViewModule;
+const {
+  ProfileOnboardingCapabilityDemo,
+  PROFILE_ONBOARDING_CAPABILITY_SLUG,
+} = profileOnboardingDebugView;
 
 test("profile contract exposes onboarding, update, completeness, and controlled error definitions", () => {
   const service = createMockProfileService();

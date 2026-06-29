@@ -15,14 +15,19 @@ import {
   mockSignedOutSessionFixture,
 } from "../../features/account/fixtures";
 import { createMockAccountSessionService } from "../../features/account/mock-service";
-import {
-  MockAccountSessionCapabilityDemo,
-  MOCK_ACCOUNT_SESSION_CAPABILITY_SLUG,
-} from "../../features/account/mock-account-session/debug-view";
+import * as accountDebugViewModule from "../../features/account/mock-account-session/debug-view";
 import * as meRoute from "../../app/api/account/me/route";
 import * as signOutRoute from "../../app/api/account/session/sign-out/route";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+const accountDebugView =
+  accountDebugViewModule["module.exports"] ??
+  accountDebugViewModule.default ??
+  accountDebugViewModule;
+const {
+  MockAccountSessionCapabilityDemo,
+  MOCK_ACCOUNT_SESSION_CAPABILITY_SLUG,
+} = accountDebugView;
 
 test("account contract exposes demo sign-in, signed-out, and require-account behavior", () => {
   const service = createMockAccountSessionService();

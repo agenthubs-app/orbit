@@ -805,7 +805,7 @@ function OrbitAgentPromptPanel({
   return (
     <WorkbenchSurface
       className="chat-agent-prompt-panel"
-      eyebrow={bilingualText("Orbit Agent", "Orbit Agent")}
+      eyebrow={bilingualText("iOrbit", "iOrbit")}
       title={bilingualText("自然语言请求", "Natural language request")}
     >
       <form action="/app/chat" className="chat-agent-prompt-form" method="get">
