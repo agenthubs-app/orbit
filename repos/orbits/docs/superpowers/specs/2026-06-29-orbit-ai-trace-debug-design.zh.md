@@ -1,0 +1,175 @@
+# Orbit AI 可视化 Trace Debug 页面设计
+
+日期：2026-06-29
+状态：设计方向已确认，等待实现计划
+选定方案：完整链路 debug 视图，并展示 planner-only 对比
+
+## 目标
+
+做一个只在开发环境可用的 Orbit AI 可视化 debug 页面。页面接收一段用户输入，然后展示这次请求背后的处理链路。
+
+这个页面要回答几个具体问题：
+
+- 哪些本地 guardrail 被检查了，是否有某个边界拦住请求。
+- 模型 planner 返回了什么 intent 和 toolRequests。
+- Orbit 选择了哪个 tool 或 artifact task。
+- artifact 的数据来自哪些模块、证据和 tool call trace。
+- agent chain 走到了哪一步，是继续、跳过、失败，还是被某个边界挡住。
+- 最终返回给用户的 assistant message 是什么。
+
+本次实现采用用户确认的第二个方案：页面同时展示完整链路 trace 和现有 planner-only trace。完整链路用于看真实执行路径，planner-only 用于诊断模型路由本身。
+
+## 当前状态
+
+代码里已经有几块可以复用：
+
+- `/api/dev/orbit-agent/trace`：只调用 planner，返回 raw planner output。它不会执行 Orbit artifact mapping。
+- `/api/ai/conversations`：调用 Orbit Agent conversation service。在 live mode 下，这条路径会跑本地 guardrail、planner routing、Orbit artifact mapping、可选 synthesis 和最终回复组装。
+- `features/orbit-ai/live-conversation-service.ts`：里面已有真实链路，但现在只返回最终 conversation payload，没有把中间步骤暴露出来。
+- `features/orbit-ai/mock-artifact-task-service.ts`：artifact payload 已经带有 `sourceModules`、`toolCalls`、`generatedView`、`evidenceIds` 和 safety metadata。
+
+新的 debug 页不要重新发明一套 agent 流程。它要把现有流程结构化地暴露出来。
+
+## 架构
+
+新增一个只在开发环境可用的 trace API：
+
+- `POST /api/dev/orbit-ai/trace`
+- `GET /api/dev/orbit-ai/trace`，用于简单 query-string probe
+
+这个 API 返回两个诊断 lane：
+
+- `fullChain`：完整 Orbit Agent 路径的结构化 trace。
+- `plannerOnly`：现有 planner-only trace 的兼容形态，用来和 full-chain 结果对比。
+
+现有 `/api/dev/orbit-agent/trace` 必须保持兼容。可以把 planner trace 抽成共享 helper，但不能改变它现在的 header、返回结构和 planner-only 行为。
+
+新增一个共享 trace runner，放在 `features/orbit-ai/` 下。API 不应该从最终 conversation payload 里倒推链路，而是由 trace runner 按和 `createLiveOrbitAgentConversationService` 相同的顺序执行决策，并记录每一步。
+
+目标文件：
+
+- `features/orbit-ai/trace-contract.ts`：trace stage 和 payload 类型。
+- `features/orbit-ai/live-conversation-trace.ts`：完整链路 trace runner 和转换 helper。
+- `app/api/dev/orbit-ai/trace/route.ts`：开发环境 trace API route。
+- `app/dev/orbit-ai/trace/page.tsx`：debug 页 server shell。
+- `app/dev/orbit-ai/trace/orbit-ai-trace-debugger.tsx`：client component，负责输入、运行状态、stage 选择、对比视图和 raw JSON 面板。
+
+## Trace Contract
+
+`fullChain` 至少包含这些字段：
+
+- `input`：归一化后的 prompt、locale、max loop steps、provider 和当前 conversation mode。
+- `stages`：有序 stage 列表。每个 stage 包含 `id`、`label`、`status`、`summary`、`startedAt`、`completedAt`、`inputs`、`outputs`、`evidenceIds`、`safety`，可选 `skipReason`。
+- `chain`：给时间线使用的精简顺序摘要。
+- `toolCalls`：扁平化后的 planner tool 和 artifact tool call trace。
+- `dataSources`：从 artifact provenance 里抽取的 source modules、artifact source、evidence ids 和 generated view sections。
+- `conversation`：最终 `OrbitAgentConversationPayload`，或者失败摘要。
+- `raw`：可用时记录 raw planner output 和 raw synthesis output。
+
+Stage 顺序固定：
+
+1. `input_received`
+2. `local_guardrails`
+3. `planner`
+4. `tool_mapping`
+5. `artifact_generation`
+6. `synthesis`
+7. `final_response`
+
+Stage status 固定为：
+
+- `completed`
+- `skipped`
+- `blocked`
+- `failed`
+
+如果本地 guardrail 拦住请求，后面的模型和工具 stage 要标记为 `skipped`，并写清楚原因。如果 `ORBIT_AGENT_MAX_LOOP_STEPS` 阻止了某个 phase，也要把限制写进 `skipReason`。如果 provider 失败，失败 stage 要带 provider error code，但不能泄露 secret。
+
+## 页面设计
+
+Route：`/dev/orbit-ai/trace`
+
+这是开发调试工具，不是产品落地页。页面保持高信息密度，复用现有 workbench primitives 和 Orbit 视觉语言，但布局要像 debugger：
+
+- 左侧 rail：prompt textarea、locale selector、max loop steps、run button、安全和 runtime badge。
+- 中间主面板：full-chain timeline。每个 stage 一行，展示 status、短摘要、tool 数量、source 数量，以及链路是否停在这里。
+- 右侧详情面板：当前选中 stage 的 inputs、outputs、evidence ids、source modules、safety ledger 和相关 raw JSON。
+- 底部或右侧次级区域：planner-only comparison，展示 raw planner text、parsed intent、planner-selected tools，以及 full-chain 是否 fallback 或提前停止。
+
+主流程：
+
+1. 用户输入 prompt。
+2. 用户点击运行 trace。
+3. 页面 POST 到 `/api/dev/orbit-ai/trace`。
+4. 页面渲染 full-chain timeline，并默认选中第一个非 completed stage；如果全部完成，就选中 `final_response`。
+5. 用户点击任意 stage，查看该 stage 的数据来源和 raw payload。
+
+提交按钮只在两种情况下 disabled：prompt 为空，或者请求正在执行。
+
+## 安全和运行边界
+
+Trace API 只能在开发环境使用：
+
+- `NODE_ENV=production` 时返回 404。
+- 响应加 `Cache-Control: no-store`。
+- 响应 header 包含 `X-Orbit-Dev-Trace: orbit-ai-full-chain` 和 `X-Orbit-Privacy: developer-debug-prompt-visible`。
+- 不暴露 API key、环境变量值或 secret。
+- 不执行外部 side effect。
+- 不写数据库。
+- 不发送 email，不创建 calendar event，不投递 notification，不修改 live storage。
+- 唯一允许的外部网络请求，是现有 live Orbit Agent planner/synthesis 路径已经会调用的模型 provider。
+
+页面上要明确标注：prompt 会在 developer debug 中可见；tool artifact 是 review-only，不代表动作已经执行。
+
+## 错误处理
+
+API 要返回结构化失败：
+
+- 缺少 prompt。
+- production runtime。
+- provider key 缺失。
+- provider request failure。
+- provider schema failure。
+- trace runner 未预期失败。
+
+如果某一步失败，响应要尽量保留已经完成的 stages。页面展示失败 stage、恢复建议，以及现有 app error envelope 允许暴露的 raw error context。
+
+## 测试策略
+
+实现前先写 RED 测试。
+
+RED 测试覆盖：
+
+- `POST /api/dev/orbit-ai/trace` 对 event recommendation prompt 返回 full-chain payload，包含有序 stages、tool calls、data sources、safety metadata 和 planner-only comparison。
+- 本地 guardrail prompt 会在 planner 和工具执行前停止，后续 stage 标记为 skipped。
+- production runtime 返回 404。
+- 现有 `/api/dev/orbit-agent/trace` planner-only contract 继续通过。
+- `/dev/orbit-ai/trace` 渲染输入表单、stage timeline、选中 stage 详情区域、planner-only 对比区域，并 fetch `/api/dev/orbit-ai/trace`。
+
+实现后的验证命令：
+
+- 新 trace API 和页面的 targeted tests。
+- 现有 Orbit Agent live tests。
+- `npm test`
+- `npm run lint`
+- `npm run build`
+- 启动 dev server 后，用浏览器验证 `/dev/orbit-ai/trace`。
+
+## 不做
+
+- 生产环境 admin observability。
+- 持久化 trace run。
+- streaming trace。
+- 真实数据库读写。
+- email、calendar、notification 或外部动作执行。
+- 替换正常 chat UI。
+
+## 验收标准
+
+- 开发者可以打开 `/dev/orbit-ai/trace`，输入 prompt，并看到 full-chain execution 和 planner-only comparison。
+- full-chain 视图能显示链路在哪里继续、跳过、失败或停止。
+- 页面能看到 tool name、artifact kind、source modules、tool call traces、evidence ids、generated artifact summaries 和 safety metadata。
+- 本地 guardrail 作为一等 stage 展示。
+- 现有 planner-only trace 行为保持兼容。
+- 页面和 API 在 production 中不可用。
+- 测试和 build verification 能证明行为正确，且不会暴露 secret。
