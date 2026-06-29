@@ -10,7 +10,9 @@ Build a development-only visual debug page for Orbit AI that accepts a user
 prompt and shows the processing chain behind the response. The page must make
 it clear which guardrails ran, which model planner output was produced, which
 Orbit tool or artifact task was selected, where artifact data came from, where
-the agent chain stopped or continued, and what final response was returned.
+the agent chain stopped or continued, what final response was returned, and
+what raw output source each part produced. Source panels are collapsed by
+default and pretty printed when expanded.
 
 The page must support the second reviewed design: run a full-chain trace and
 show a planner-only comparison beside it. This keeps the current
@@ -73,11 +75,22 @@ Target modules:
 
 `fullChain` should include:
 
+- `traceSchemaVersion`: schema version for compatibility checks as the agent
+  architecture changes.
 - `input`: normalized prompt, locale, max loop steps, selected provider, and
   current conversation mode.
+- `runtimeSnapshot`: agent architecture observed during this run. It should
+  include the planner provider, sub-agents, tool registry, each tool family,
+  artifact kind, source modules, renderer hint, and output schema name.
 - `stages`: ordered stages with `id`, `label`, `status`, `summary`,
   `startedAt`, `completedAt`, `inputs`, `outputs`, `evidenceIds`, `safety`,
   and optional `skipReason`.
+- `stages[].outputSource`: redacted source-view data for that stage output.
+  The UI keeps it collapsed by default and pretty prints JSON when expanded.
+  Non-JSON text stays in a monospaced source block.
+- `stages[].renderHint`: render instruction such as `summary_card`,
+  `tool_call_table`, `artifact_panel`, `source_json`, or `raw_text`. Unknown
+  hints fall back to the generic source renderer.
 - `chain`: compact ordered summary for rendering a timeline.
 - `toolCalls`: flattened list of selected planner tools and artifact tool
   call traces.
@@ -108,6 +121,38 @@ with a concrete reason. If `ORBIT_AGENT_MAX_LOOP_STEPS` stops a phase, that
 phase must show the limit as the reason. If the provider fails, the failed
 stage must include the provider error code without leaking secrets.
 
+Every stage with real output must include `outputSource`. This is the redacted
+raw output source, not the UI summary. Object outputs should stay structured so
+the page can render `JSON.stringify(value, null, 2)`. String outputs should be
+shown as-is inside the source block.
+
+## Architecture Detection And Render Extensibility
+
+The debug page must not assume the agent architecture will always have the same
+tool set. It should detect the planner, sub-agents, tools, and artifact kinds
+from `runtimeSnapshot` and each stage `renderHint`.
+
+Detection rules:
+
+- New sub-agents or tools must appear in `runtimeSnapshot`, `toolCalls`, and the
+  related stage when they participate in a trace.
+- If a new tool uses an existing `renderHint`, the page should render it with
+  the existing renderer without code changes.
+- If a tool has no known renderer, the page should show an `unknown tool` or
+  `unregistered renderer` badge while preserving metadata, source modules, tool
+  calls, evidence ids, and collapsed output source.
+- If the architecture adds a new agent phase, such as retrieval or memory before
+  planning, the trace runner may return a new stage. The timeline renders stages
+  in returned order. The seven baseline stages are defaults, not a limit.
+- A new renderer is only required when a new tool needs a new visual form. The
+  page must still show the output through the generic source renderer before
+  that renderer exists.
+
+This gives the page two behaviors: known render hints get structured rendering,
+and unknown tools still get complete source visibility. The page cannot invent a
+new UI for a future tool by itself, but it can detect and show the new agent,
+tool, and output safely.
+
 ## Page Design
 
 Route: `/dev/orbit-ai/trace`
@@ -123,9 +168,14 @@ debugger layout:
   stopped there.
 - Right panel: details for the selected full-chain stage, including inputs,
   outputs, evidence ids, source modules, safety ledger, and related raw JSON.
+  Each output source panel is collapsed by default, shows output type and size
+  in the header, and expands to a pretty printed code block.
 - Bottom or secondary column: planner-only comparison, including raw planner
   text, parsed intent, planner-selected tools, and a diff-like note when the
   full chain executed a fallback or stopped before tools.
+- Architecture snapshot area: detected sub-agents, tools, render hints, and
+  unknown renderer warnings for the current trace. It starts collapsed and opens
+  automatically when an unknown tool or renderer appears.
 
 The primary interaction is simple:
 
@@ -134,6 +184,8 @@ The primary interaction is simple:
 3. Page posts to `/api/dev/orbit-ai/trace`.
 4. Page renders the chain and selects the first non-completed or final stage.
 5. User can select any stage to inspect data sources and raw payloads.
+6. User can expand a stage output source panel to inspect the redacted pretty
+   printed source for that part of the chain.
 
 The submit button should be disabled only for empty prompts or while a request
 is in flight.
@@ -147,6 +199,7 @@ The trace API is development-only:
 - Add headers such as `X-Orbit-Dev-Trace: orbit-ai-full-chain` and
   `X-Orbit-Privacy: developer-debug-prompt-visible`.
 - Never expose API keys or environment variable values.
+- Redact `outputSource` before returning it to the page.
 - Never execute external side effects, database writes, email, calendar,
   notifications, or live storage mutations.
 - The only external network request allowed is the selected model provider
@@ -179,6 +232,11 @@ RED tests should cover:
 - `POST /api/dev/orbit-ai/trace` returns a full-chain payload with ordered
   stages, tool calls, data sources, safety metadata, and planner-only
   comparison for an event recommendation prompt.
+- Stages with output return `outputSource`; the page renders source panels
+  collapsed by default and shows pretty printed JSON when expanded.
+- New tools or sub-agents in the trace payload appear in `runtimeSnapshot`, the
+  timeline, and source panels. Unknown renderers do not drop data; they use the
+  generic fallback.
 - A local guardrail prompt stops before planner/tool execution and marks later
   stages skipped.
 - Production runtime returns 404.
@@ -212,6 +270,11 @@ Verification after implementation:
 - The full-chain view shows where processing stopped or continued.
 - Tool names, artifact kinds, source modules, tool call traces, evidence ids,
   generated artifact summaries, and safety metadata are visible.
+- Each stage output source can be expanded; source panels are collapsed by
+  default and show pretty printed output instead of minified JSON.
+- New sub-agents or tools are detected from the trace payload. Known
+  `renderHint` values use the matching renderer; unknown values show a warning
+  and use the generic source panel.
 - Local guardrails are visible as first-class stages.
 - Existing planner-only trace behavior remains compatible.
 - The page and API are unavailable in production.
