@@ -110,9 +110,16 @@ export interface OrbitAiTraceChainItem {
 
 export interface OrbitAiTraceRuntimeTool {
   artifactKind?: OrbitAgentArtifactKind;
+  descriptionZh: string;
+  inputSpecZh: string;
   outputSchema: string;
+  outputSpecZh: string;
   renderHint: OrbitAiTraceRenderHint | string;
+  requiresConfirmation: boolean;
+  riskLevel: "read" | "draft" | "write" | "external" | string;
+  selectedInCurrentRun: boolean;
   sourceModules: readonly OrbitAgentArtifactSourceModule[];
+  specificationZh: string;
   toolFamily: string;
   toolName: GeminiOrbitAgentToolName | string;
 }

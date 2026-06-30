@@ -48,6 +48,7 @@ import {
   ORBIT_LOCAL_REMOTE_DATABASE_KEY,
   ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION,
 } from "../../shared/local-remote-store/orbit-database";
+import { ORBIT_AGENT_TOOL_CATALOG } from "./agent-tools/registry";
 
 const traceCollectedAt = "2026-06-27T00:03:00.000Z";
 const liveCollectedAt = "2026-06-27T00:00:00.000Z";
@@ -610,19 +611,28 @@ function runtimeSnapshot(input: {
     artifactsByKind.set(artifact.task.kind, artifact);
   }
 
-  const tools = input.toolRequests.map((request) => {
-    const artifactKind = artifactKindForTool(request.toolName);
-    const artifact = artifactsByKind.get(artifactKind);
+  const selectedToolNames = new Set(
+    input.toolRequests.map((request) => request.toolName),
+  );
+
+  const tools = ORBIT_AGENT_TOOL_CATALOG.map((tool) => {
+    const artifact = artifactsByKind.get(tool.artifactKind);
 
     return {
-      artifactKind,
-      outputSchema: "OrbitAgentArtifactPayload",
-      renderHint: "artifact_panel",
+      artifactKind: tool.artifactKind,
+      descriptionZh: tool.descriptionZh,
+      inputSpecZh: tool.inputSpecZh,
+      outputSchema: tool.outputSchema,
+      outputSpecZh: tool.outputSpecZh,
+      renderHint: tool.renderHint,
+      requiresConfirmation: tool.requiresConfirmation,
+      riskLevel: tool.riskLevel,
+      selectedInCurrentRun: selectedToolNames.has(tool.toolName),
       sourceModules:
-        artifact?.result.provenance.sourceModules ??
-        sourceModulesForArtifactKind(artifactKind),
-      toolFamily: toolFamilyForToolName(request.toolName),
-      toolName: request.toolName,
+        artifact?.result.provenance.sourceModules ?? tool.sourceModules,
+      specificationZh: `${tool.inputSpecZh} ${tool.specificationZh}`,
+      toolFamily: tool.toolFamily,
+      toolName: tool.toolName,
     };
   });
   const subAgents: OrbitAiTraceRuntimeSubAgent[] = Array.from(

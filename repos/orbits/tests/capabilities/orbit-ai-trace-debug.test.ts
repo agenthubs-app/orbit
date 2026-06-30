@@ -127,7 +127,17 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
           runtimeSnapshot: {
             renderers: readonly { hint: string; renderer: string }[];
             subAgents: readonly { subAgent: string }[];
-            tools: readonly { toolName: string; renderHint: string }[];
+            tools: readonly {
+              descriptionZh: string;
+              inputSpecZh: string;
+              outputSpecZh: string;
+              renderHint: string;
+              requiresConfirmation: boolean;
+              riskLevel: string;
+              selectedInCurrentRun: boolean;
+              specificationZh: string;
+              toolName: string;
+            }[];
           };
           loopSummary: {
             loopCount: number;
@@ -244,6 +254,35 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
       body.data?.fullChain.runtimeSnapshot.tools[0]?.renderHint,
       "artifact_panel",
     );
+    const tools = body.data?.fullChain.runtimeSnapshot.tools ?? [];
+
+    assert.deepEqual(
+      tools.map((tool) => tool.toolName),
+      [
+        "events.recommend",
+        "contacts.recommend",
+        "followups.reviewQueue",
+        "chat.context",
+      ],
+    );
+
+    const eventTool = tools.find((tool) => tool.toolName === "events.recommend");
+    const contactTool = tools.find((tool) => tool.toolName === "contacts.recommend");
+    const followupTool = tools.find(
+      (tool) => tool.toolName === "followups.reviewQueue",
+    );
+    const chatTool = tools.find((tool) => tool.toolName === "chat.context");
+
+    assert.equal(eventTool?.selectedInCurrentRun, true);
+    assert.equal(contactTool?.selectedInCurrentRun, false);
+    assert.equal(followupTool?.selectedInCurrentRun, false);
+    assert.equal(chatTool?.selectedInCurrentRun, false);
+    assert.equal(eventTool?.riskLevel, "read");
+    assert.equal(eventTool?.requiresConfirmation, true);
+    assert.match(eventTool?.descriptionZh ?? "", /活动/);
+    assert.match(eventTool?.specificationZh ?? "", /输入/);
+    assert.match(eventTool?.inputSpecZh ?? "", /query/);
+    assert.match(eventTool?.outputSpecZh ?? "", /artifact/);
     assert.equal(
       body.data?.fullChain.runtimeSnapshot.subAgents[0]?.subAgent,
       "event_recommendation_agent",
