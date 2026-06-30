@@ -1,6 +1,6 @@
 {
   "schema_version": "relationship_mockdata_v1",
-  "generated_at": "2026-06-29T23:37:10.143897+00:00",
+  "generated_at": "2026-06-30T14:14:38.537342+00:00",
   "minimax_plan_excerpt": "{\n  \"generated_at\": \"2026-06-29T23:34:42.115144+00:00\",\n  \"plan_text\": \"{\\n  \\\"generated_at\\\": \\\"2026-06-29T22:34:40.372848+00:00\\\",\\n  \\\"plan_text\\\": \\\"{\\\\n  \\\\\\\"generated_at\\\\\\\": \\\\\\\"2026-06-29T22:26:55.599733+00:00\\\\\\\",\\\\n  \\\\\\\"plan_text\\\\\\\": \\\\\\\"```json\\\\\\\\n{\\\\\\\\n  \\\\\\\\\\\\\\\"themes\\\\\\\\\\\\\\\": [\\\\\\\\n    \\\\\\\\\\\\\\\"Japan-China business bridge as primary narrative: Japanese SMEs (飲食店、制造、零售、小売) needing inbound / 多言語 / 华人渠道 partner with Chinese-marketing or 大中華-side founders and operators.\\\\\\\\\\\\\\\",\\\\\\\\n    \\\\\\\\\\\\\\\"Orbit's differentiated value is relationship reasoning, not contact storage — every mock record must answer: who is this person, what do they want, what can they offer, why should they meet, what happens next.\\\\\\\\\\\\\\\",\\\\\\\\n    \\\\\\\\\\\\\\\"Event-scoped intent dominates profile-only intent — the same user appears differently across an inbound 活動, an investor mixer, and a 中華圏 founder dinner.\\\\\\\\\\\\\\\",\\\\\\\\n    \\\\\\\\\\\\\\\"Three-layer data model: product layer (users/events/contacts/connections), AI semantic layer (ai_analyses, recommendations, relationship_profiles), test/demo layer (golden_matches, dirty_cases, demo_scenarios).\\\\\\\\\\\\\\\",\\\\\\\\n    \\\\\\\\\\\\\\\"Field-confirmed facts are separated from AI-inferred traits; confidence and source_refs travel with every inference so the demo never looks like hallucinated chatbot output.\\\\\\\\\\\\\\\",\\\\\\\\n    \\\\\\\\\\\\\\\"Bilingual reality (ja/zh/en) — Japanese-first for 日本 local SMEs, Chinese-first for 华人 operators, mixed for cross-border orchestrators; never make one language decorative.\\\\\\\\\\\\\\\",\\\\\\\\n    \\\\\\\\\\\\\\\"Deterministic expander produces all v1 volumes from a seeded blueprint so a second run reproduces the same fixtures and recommendation regressions are testable.\\\\\\\\\\\\\\\"\\\\\\\\n  ],\\\\\\\\n  \\\\\\\\\\\\\\\"persona_templates\\\\\\\\\\\\\\\": [\\\\\\\\n    {\\\\\\\\n      \\\\\\\\\\\\\\\"id\\\\\\\\\\\\\\\": \\\\\\\\\\\\\\\"jp_sme_owner\\\\\\\\\\\\\\\",\\\\\\\\n      \\\\\\\\\\\\\\\"label\\\\\\\\\\\\\\\": \\\\\\\\\\\\\\\"日本ローカル中小企業オーナー\\\\\\\\\\\\\\\",\\\\\\\\n      \\\\\\\\\\\\\\\"weight_pct\\\\\\\\\\\\\\\": \\\\\\\\\\\\\\\"35-45\\\\\\\\\\\\\\\",\\\\\\\\n      \\\\\\\\\\\\\\\"language\\",
   "users": [
     {
@@ -3661,6 +3661,54 @@
       "starts_at": "2026-05-15T10:00:00+09:00",
       "evidence_ids": [
         "evidence:event:10"
+      ]
+    },
+    {
+      "id": "event_signup_01",
+      "title": "関西越境ビジネス申込テスト会",
+      "title_ja": "関西越境ビジネス申込テスト会",
+      "title_zh": "关西跨境商务报名测试会",
+      "title_en": "Kansai Cross-Border Business Signup Lab",
+      "description_ja": "新規参加者が申込フォームから関心、提供価値、紹介希望を入力するためのテスト用未開催イベント。",
+      "description_zh": "用于测试新参与者通过报名表填写兴趣、可提供价值和希望介绍对象的未开始活动。",
+      "description_en": "A not-yet-started event for testing signup form intake, interests, offers, and requested introductions.",
+      "event_type": "meetup",
+      "city": "Osaka",
+      "starts_at": "2026-07-21T10:00:00+09:00",
+      "evidence_ids": [
+        "evidence:event_signup:01"
+      ]
+    },
+    {
+      "id": "event_signup_02",
+      "title": "東京AI実装パートナー申込会",
+      "title_ja": "東京AI実装パートナー申込会",
+      "title_zh": "东京 AI 落地伙伴报名会",
+      "title_en": "Tokyo AI Implementation Partner Registration Meetup",
+      "description_ja": "AI導入責任者と実装パートナー候補が、申込時点の課題と期待成果を登録する未開催イベント。",
+      "description_zh": "让 AI 导入负责人和实施伙伴候选人在报名阶段登记课题与预期成果的未开始活动。",
+      "description_en": "A not-yet-started event for testing registration intake from AI buyers and implementation partners.",
+      "event_type": "roundtable",
+      "city": "Tokyo",
+      "starts_at": "2026-08-04T14:00:00+09:00",
+      "evidence_ids": [
+        "evidence:event_signup:02"
+      ]
+    },
+    {
+      "id": "event_signup_03",
+      "title": "日中投資家・創業者申込サロン",
+      "title_ja": "日中投資家・創業者申込サロン",
+      "title_zh": "日中投资人与创业者报名沙龙",
+      "title_en": "Japan-China Investor Founder Signup Salon",
+      "description_ja": "投資家と創業者が申込入口から資金調達ステージ、紹介希望、会話テーマを登録する未開催イベント。",
+      "description_zh": "让投资人与创业者通过报名入口登记融资阶段、希望介绍对象和会谈主题的未开始活动。",
+      "description_en": "A not-yet-started event for testing signup intake around fundraising stage, intro requests, and meeting topics.",
+      "event_type": "private_dinner",
+      "city": "Tokyo",
+      "starts_at": "2026-08-18T18:00:00+09:00",
+      "evidence_ids": [
+        "evidence:event_signup:03"
       ]
     }
   ],

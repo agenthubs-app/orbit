@@ -23,13 +23,21 @@ type SourceBackedRecord = {
   source: {
     type: string;
     id: string;
+    label?: string;
   };
 };
 
 type RelationshipSchemaState = {
   accounts: RefRecord[];
   profiles: RefRecord[];
-  events: RefRecord[];
+  events: Array<
+    RefRecord &
+      SourceBackedRecord & {
+        name: string;
+        startsAt: string;
+        evidenceIds: readonly string[];
+      }
+  >;
   networkPeople: Array<
     RefRecord &
       SourceBackedRecord & {
@@ -286,6 +294,30 @@ test("generated relationship fixture separates platform people from current-user
     ),
     "some recommendations should target platform people who are not current-user contacts",
   );
+});
+
+test("generated relationship fixture includes future signup entry events", () => {
+  const state = createOrbitLocalRemoteDatabase().getState() as unknown as RelationshipSchemaState;
+  const generatedAt = new Date(createOrbitLocalRemoteDatabase().getState().generatedAt).getTime();
+  const evidenceIds = idSet(state.evidence);
+  const signupEvents = state.events.filter((event) =>
+    event.id.startsWith("event_signup_"),
+  );
+
+  assert.ok(signupEvents.length >= 3, "fixture should include several future signup entry events");
+
+  for (const event of signupEvents) {
+    assert.ok(
+      new Date(event.startsAt).getTime() > generatedAt,
+      `${event.id} must not have started yet`,
+    );
+    assert.match(
+      `${event.name} ${event.source.label ?? ""}`,
+      /signup|registration|报名|申込/i,
+      `${event.id} should be identifiable as a signup entry event`,
+    );
+    assertEvidenceBacked(event.id, event.evidenceIds, evidenceIds);
+  }
 });
 
 test("generated relationship fixture keeps a non-current-user platform graph", () => {

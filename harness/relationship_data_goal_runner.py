@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -29,7 +29,7 @@ DEFAULT_MINIMAX_AGENT_TIMEOUT_SECONDS = 900
 @dataclass(frozen=True)
 class MockdataCountRanges:
     users: tuple[int, int] = (120, 150)
-    events: tuple[int, int] = (10, 12)
+    events: tuple[int, int] = (13, 15)
     companies: tuple[int, int] = (80, 100)
     participants: tuple[int, int] = (400, 600)
     connections: tuple[int, int] = (800, 1200)
@@ -1469,7 +1469,8 @@ def _write_hybrid_runtime_fixture(mockdata_dir: Path, fixture: dict[str, Any]) -
 
 def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str) -> dict[str, int]:
     """Expand a compact MiniMax-authored plan into deterministic demo-scale relationship data."""
-    generated_at = datetime.now(timezone.utc).isoformat()
+    generated_at_datetime = datetime.now(timezone.utc)
+    generated_at = generated_at_datetime.isoformat()
     for folder in ["dictionaries", "seed", "tests", "scenarios", "generated", "exports", "validators", "generation"]:
         (mockdata_dir / folder).mkdir(parents=True, exist_ok=True)
 
@@ -2042,11 +2043,67 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
         }
         for index in range(1, 11)
     ]
+    relationship_events = events[:]
+    signup_event_templates = [
+        (
+            "関西越境ビジネス申込テスト会",
+            "关西跨境商务报名测试会",
+            "Kansai Cross-Border Business Signup Lab",
+            "新規参加者が申込フォームから関心、提供価値、紹介希望を入力するためのテスト用未開催イベント。",
+            "用于测试新参与者通过报名表填写兴趣、可提供价值和希望介绍对象的未开始活动。",
+            "A not-yet-started event for testing signup form intake, interests, offers, and requested introductions.",
+            "Osaka",
+            21,
+            10,
+        ),
+        (
+            "東京AI実装パートナー申込会",
+            "东京 AI 落地伙伴报名会",
+            "Tokyo AI Implementation Partner Registration Meetup",
+            "AI導入責任者と実装パートナー候補が、申込時点の課題と期待成果を登録する未開催イベント。",
+            "让 AI 导入负责人和实施伙伴候选人在报名阶段登记课题与预期成果的未开始活动。",
+            "A not-yet-started event for testing registration intake from AI buyers and implementation partners.",
+            "Tokyo",
+            35,
+            14,
+        ),
+        (
+            "日中投資家・創業者申込サロン",
+            "日中投资人与创业者报名沙龙",
+            "Japan-China Investor Founder Signup Salon",
+            "投資家と創業者が申込入口から資金調達ステージ、紹介希望、会話テーマを登録する未開催イベント。",
+            "让投资人与创业者通过报名入口登记融资阶段、希望介绍对象和会谈主题的未开始活动。",
+            "A not-yet-started event for testing signup intake around fundraising stage, intro requests, and meeting topics.",
+            "Tokyo",
+            49,
+            18,
+        ),
+    ]
+    events.extend(
+        {
+            "id": f"event_signup_{index:02d}",
+            "title": template[0],
+            "title_ja": template[0],
+            "title_zh": template[1],
+            "title_en": template[2],
+            "description_ja": template[3],
+            "description_zh": template[4],
+            "description_en": template[5],
+            "event_type": ["meetup", "roundtable", "private_dinner"][(index - 1) % 3],
+            "city": template[6],
+            "starts_at": (
+                generated_at_datetime.astimezone(timezone(timedelta(hours=9)))
+                + timedelta(days=template[7])
+            ).replace(hour=template[8], minute=0, second=0, microsecond=0).isoformat(),
+            "evidence_ids": [f"evidence:event_signup:{index:02d}"],
+        }
+        for index, template in enumerate(signup_event_templates, start=1)
+    )
 
     participants = [
         {
             "id": f"participant_{index:03d}",
-            "event_id": events[(index - 1) % len(events)]["id"],
+            "event_id": relationship_events[(index - 1) % len(relationship_events)]["id"],
             "user_id": users[(index * 7) % len(users)]["id"],
             "looking_for_at_event": [needs[index % len(needs)], needs[(index + 2) % len(needs)]],
             "looking_for_at_event_ja": [needs_i18n[index % len(needs_i18n)][0], needs_i18n[(index + 2) % len(needs_i18n)][0]],
@@ -2115,7 +2172,7 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
     recommendations = [
         {
             "id": f"recommendation_{index:04d}",
-            "event_id": events[index % len(events)]["id"],
+            "event_id": relationship_events[index % len(relationship_events)]["id"],
             "user_id": users[(index * 3) % len(users)]["id"],
             "recommended_user_id": users[((index * 3) + 17) % len(users)]["id"],
             "score": round(0.5 + (index % 45) / 100, 2),
@@ -2141,7 +2198,7 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
     negative_cases = [
         {
             "id": f"negative_case_{index:03d}",
-            "event_id": events[index % len(events)]["id"],
+            "event_id": relationship_events[index % len(relationship_events)]["id"],
             "user_id": users[(index * 2) % len(users)]["id"],
             "recommended_user_id": users[((index * 2) + 53) % len(users)]["id"],
             "score": round(0.05 + (index % 20) / 100, 2),
