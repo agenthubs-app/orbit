@@ -38,3 +38,10 @@
 - 页面可查看全部 146 个文档条目，并提供搜索、筛选和详情面板。
 - 知识主题、开发历史和经验库在同一页面保留入口。
 - 运行时仍只读取 app-local manifest，不读取父目录知识库文件。
+
+## [2026-06-30] implementation | 真实 Wiki 风格浏览工具
+
+- 根据用户反馈移除 dashboard/list 呈现方式。
+- 将 `/dev/knowledge` 改为 wiki shell：顶栏、左侧全站导航、中心文章、右侧目录和 infobox。
+- 文档库改为 Wiki 风格索引表，并继续覆盖 146 个文档。
+- 页面测试防止回退到 workbench card/grid 结构。

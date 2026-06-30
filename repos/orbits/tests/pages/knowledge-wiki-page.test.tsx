@@ -28,14 +28,16 @@ test("/dev/knowledge renders the Orbit knowledge wiki", async () => {
 
   assert.match(html, /Orbit 知识库/);
   assert.match(html, /data-orbit-knowledge-wiki="true"/);
-  assert.match(html, /data-knowledge-explorer="true"/);
-  assert.match(html, /文档浏览器/);
-  assert.match(html, /搜索文档和知识/);
-  assert.match(html, /按类型筛选/);
-  assert.match(html, /按状态筛选/);
-  assert.match(html, /按新鲜度筛选/);
-  assert.match(html, /条目详情/);
-  assert.match(html, /全部 146 个文档/);
+  assert.match(html, /data-wiki-shell="true"/);
+  assert.match(html, /class="wiki-global-nav"/);
+  assert.match(html, /class="wiki-article"/);
+  assert.match(html, /class="wiki-page-toc"/);
+  assert.match(html, /class="wiki-infobox"/);
+  assert.match(html, /文档索引/);
+  assert.match(html, /页面目录/);
+  assert.match(html, /最近更改/);
+  assert.match(html, /搜索 Orbit Wiki/);
+  assert.match(html, /146 个文档/);
   assert.match(html, /审计依据|关联代码路径/);
   assert.match(
     html,
@@ -48,6 +50,7 @@ test("/dev/knowledge renders the Orbit knowledge wiki", async () => {
   assert.match(html, /需要代码核对/);
   assert.match(html, /docs\/designs\/orbit_technical_design\.md/);
   assert.match(html, /knowledge\/docs\/catalog\.zh\.md/);
+  assert.doesNotMatch(html, /workbench-surface|workbench-grid|relationship-record/);
 });
 
 test("knowledge wiki page consumes the app-local manifest only", () => {

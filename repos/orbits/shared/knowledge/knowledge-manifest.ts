@@ -1651,6 +1651,13 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
   ],
   "recentHistory": [
     {
+      "id": "knowledge-real-wiki-ui",
+      "date": "2026-06-30",
+      "titleZh": "真实 Wiki 风格浏览工具",
+      "summaryZh": "根据反馈将 /dev/knowledge 从 dashboard/list 改为 wiki shell：左侧导航、中间文章、右侧目录、文档索引表。",
+      "sourcePath": "knowledge/history/development-log.zh.md"
+    },
+    {
       "id": "knowledge-wiki-explorer",
       "date": "2026-06-30",
       "titleZh": "可浏览知识库 Wiki Explorer",

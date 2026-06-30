@@ -45,3 +45,10 @@
 - 修改摘要：将 `/dev/knowledge` 升级为可交互 Wiki Explorer，支持查看全部 146 个 catalog 文档、搜索、按类型/状态/新鲜度筛选、选择条目查看来源路径/摘要/审计依据，并在同页浏览知识主题、开发历史和经验库入口。
 - 架构边界：页面仍只消费 `repos/orbits/shared/knowledge/knowledge-manifest.ts`，不在 app runtime 读取父目录 Markdown；原始全文仍保留在来源路径，Explorer 展示编译后的中文元数据和知识库入口。
 - 验证方式：新增 page test 断言全量浏览器、筛选控件、详情面板和后段文档可见；运行 app page test、manifest test、lint、app full test、HTTP 页面检查和 `git diff --check`。
+
+## [2026-06-30] implementation | 真实 Wiki 风格浏览工具
+
+- 用户反馈：上一版 Wiki Explorer 仍像 dashboard/list，太丑且不好用，不像真实 Wiki。
+- 修改摘要：参考真实 Wiki 的组织方式重做 `/dev/knowledge`：新增顶栏搜索与页面标签、左侧全站导航树、中间文章阅读区、右侧页面目录和 infobox、Wiki 风格文档索引表；移除 workbench card/grid 结构，让页面以“文章 + 索引 + 最近更改 + 经验库”的方式组织。
+- 架构边界：继续只消费 app-local manifest，不在运行时读取父目录 Markdown；文档索引表仍覆盖 146 个 catalog 文档，并保留审计依据、新鲜度和来源路径。
+- 验证方式：更新 page test 要求 `data-wiki-shell`、`wiki-global-nav`、`wiki-article`、`wiki-page-toc`、`wiki-infobox`、`wiki-index-table`，并禁止 `workbench-surface`/`workbench-grid`/`relationship-record` 结构回退。
