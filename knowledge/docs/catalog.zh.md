@@ -14,14 +14,14 @@
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`architecture`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/modules.zh.md`
 - **Local Remote Database 边界**（`repos/orbits/docs/architecture/local-remote-database.md`）
-  - 简介：说明 app 本地/远端数据库边界和 relationship schema。由于数据层近期变化频繁，需要持续代码核对。
-  - 审计依据：已登记关联代码路径：repos/orbits/shared/local-remote-store/orbit-database.ts。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`data`
+  - 简介：说明 app 本地/远端数据库边界和 relationship schema，是当前数据层和 mock/hybrid 模式的重要文档。
+  - 审计依据：已核对 ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION、orbit-database.ts、local-remote tests 和 relationship schema tests，当前数据层测试覆盖该边界。
+  - 状态：`current`；新鲜度：`verified-current`；负责人域：`data`
   - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`
 - **Orbit AI 性能检查**（`repos/orbits/docs/architecture/orbit-ai-agent-performance-check-2026-06-30.md`）
   - 简介：记录 2026-06-30 Orbit AI Agent 性能检查，作为优化历史和风险背景。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/orbit-ai。
-  - 状态：`historical`；新鲜度：`needs-code-check`；负责人域：`orbit-ai`
+  - 审计依据：已标记为历史性能记录；当前性能和交互状态应以后续 trace/debug 页面、app tests 和新的性能记录为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/agent-system.zh.md`
 
 ### developer-guide
@@ -33,109 +33,109 @@
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
 - **手动验收指南**（`repos/orbits/scripts/manual-acceptance.md`）
   - 简介：记录 app 手动验收路径和检查点，适合在自动测试之外做产品表面回归。
-  - 审计依据：已核对文档仍在 app scripts 目录；具体路径是否完整需随页面路由变化持续更新。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`qa`
+  - 审计依据：已核对文档仍在 app scripts 目录，且当前 app 路由与页面测试已覆盖主要产品表面；路径变化时仍需同步维护。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`qa`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
 
 ### feature-design
 
 - **account Feature 设计**（`repos/orbits/features/account/DESIGN.md`）
   - 简介：记录 account feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/account。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:account`
+  - 审计依据：已核对 repos/orbits/features/account 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:account`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **acquisition Feature 设计**（`repos/orbits/features/acquisition/DESIGN.md`）
   - 简介：记录 acquisition feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/acquisition。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:acquisition`
+  - 审计依据：已核对 repos/orbits/features/acquisition 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:acquisition`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **agent Feature 设计**（`repos/orbits/features/agent/DESIGN.md`）
   - 简介：记录 agent feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/agent。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:agent`
+  - 审计依据：已核对 repos/orbits/features/agent 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:agent`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **analysis Feature 设计**（`repos/orbits/features/analysis/DESIGN.md`）
   - 简介：记录 analysis feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/analysis。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:analysis`
+  - 审计依据：已核对 repos/orbits/features/analysis 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:analysis`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **audit Feature 设计**（`repos/orbits/features/audit/DESIGN.md`）
   - 简介：记录 audit feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/audit。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:audit`
+  - 审计依据：已核对 repos/orbits/features/audit 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:audit`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **bootstrap Feature 设计**（`repos/orbits/features/bootstrap/DESIGN.md`）
   - 简介：记录 bootstrap feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/bootstrap。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:bootstrap`
+  - 审计依据：已核对 repos/orbits/features/bootstrap 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:bootstrap`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **chat Feature 设计**（`repos/orbits/features/chat/DESIGN.md`）
   - 简介：记录 chat feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/chat。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:chat`
+  - 审计依据：已核对 repos/orbits/features/chat 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:chat`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **connections Feature 设计**（`repos/orbits/features/connections/DESIGN.md`）
   - 简介：记录 connections feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/connections。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:connections`
+  - 审计依据：已核对 repos/orbits/features/connections 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:connections`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **contacts Feature 设计**（`repos/orbits/features/contacts/DESIGN.md`）
   - 简介：记录 contacts feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/contacts。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:contacts`
+  - 审计依据：已核对 repos/orbits/features/contacts 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:contacts`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **dashboard Feature 设计**（`repos/orbits/features/dashboard/DESIGN.md`）
   - 简介：记录 dashboard feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/dashboard。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:dashboard`
+  - 审计依据：已核对 repos/orbits/features/dashboard 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:dashboard`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **events Feature 设计**（`repos/orbits/features/events/DESIGN.md`）
   - 简介：记录 events feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/events。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:events`
+  - 审计依据：已核对 repos/orbits/features/events 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:events`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **followups Feature 设计**（`repos/orbits/features/followups/DESIGN.md`）
   - 简介：记录 followups feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/followups。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:followups`
+  - 审计依据：已核对 repos/orbits/features/followups 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:followups`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **notifications Feature 设计**（`repos/orbits/features/notifications/DESIGN.md`）
   - 简介：记录 notifications feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/notifications。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:notifications`
+  - 审计依据：已核对 repos/orbits/features/notifications 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:notifications`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **orbit-ai Feature 设计**（`repos/orbits/features/orbit-ai/DESIGN.md`）
   - 简介：记录 orbit-ai feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/orbit-ai。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:orbit-ai`
+  - 审计依据：已核对 repos/orbits/features/orbit-ai 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:orbit-ai`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **permissions Feature 设计**（`repos/orbits/features/permissions/DESIGN.md`）
   - 简介：记录 permissions feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/permissions。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:permissions`
+  - 审计依据：已核对 repos/orbits/features/permissions 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:permissions`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **profile Feature 设计**（`repos/orbits/features/profile/DESIGN.md`）
   - 简介：记录 profile feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/profile。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:profile`
+  - 审计依据：已核对 repos/orbits/features/profile 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:profile`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **recommendations Feature 设计**（`repos/orbits/features/recommendations/DESIGN.md`）
   - 简介：记录 recommendations feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/recommendations。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:recommendations`
+  - 审计依据：已核对 repos/orbits/features/recommendations 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:recommendations`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **search Feature 设计**（`repos/orbits/features/search/DESIGN.md`）
   - 简介：记录 search feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/search。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`feature:search`
+  - 审计依据：已核对 repos/orbits/features/search 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:search`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 
 ### harness
 
 - **Harness 审计 2026-06-24**（`harness-state/audits/2026-06-24-harness-audit.md`）
   - 简介：记录长跑 harness 的早期审计结果、风险和修正方向，是理解 harness 演进的历史证据。
-  - 审计依据：已纳入历史审计；当前 harness 行为仍需以 harness/README、AGENT.md 和实际脚本为准。
-  - 状态：`historical`；新鲜度：`needs-code-check`；负责人域：`harness`
+  - 审计依据：已纳入历史审计；当前 harness 行为已用 harness/README、AGENT.md 和 harness 脚本作为后续权威入口。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`harness`
   - 关联知识页：`knowledge/wiki/harness.zh.md`
 - **根 Agent 运行规则**（`AGENT.md`）
   - 简介：定义 harness、repos/orbits、参考项目、sprint 粒度、产品化策略和知识库维护规则。
@@ -144,23 +144,23 @@
   - 关联知识页：`knowledge/wiki/harness.zh.md`
 - **Orbit 长跑 Harness README**（`harness/README.md`）
   - 简介：说明 harness 架构、命令、运行证据和长跑开发流程，是 harness 操作的主要英文来源。
-  - 审计依据：已登记关联代码路径：harness。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`harness`
+  - 审计依据：已核对 harness 主脚本、preflight、workspace、prompt 和 AGENT 规则仍存在；README 作为当前操作入口保留。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`harness`
   - 关联知识页：`knowledge/wiki/harness.zh.md`
 - **Harness 执行规格摘要**（`harness-state/spec.md`）
   - 简介：当前 harness-state/spec 是执行摘要，不是 sprint 详细需求来源。
-  - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
-  - 状态：`current`；新鲜度：`needs-code-check`；负责人域：`harness`
+  - 审计依据：已核对 harness.py 明确把 contract JSON 和 sprints.md 作为详细需求来源；该文件定位为当前执行摘要。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`harness`
   - 关联知识页：`knowledge/wiki/harness.zh.md`
 - **Harness Sprint 索引**（`harness-state/sprints.md`）
   - 简介：人类可读 sprint 历史索引，具体成功标准仍以 contract JSON 为准。
-  - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
-  - 状态：`current`；新鲜度：`needs-code-check`；负责人域：`harness`
+  - 审计依据：已核对 harness.py 将 sprints.md 作为可读索引，并把 contract JSON 作为权威成功标准来源。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`harness`
   - 关联知识页：`knowledge/wiki/harness.zh.md`
 - **产品化 Sprint Backlog**（`harness-state/productization-notes/product-facing-sprints.md`）
   - 简介：记录 Sprint 68 后从 mock capability loop 转向 /app/** 产品表面的产品化 backlog。
-  - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`product`
+  - 审计依据：已核对 /app 产品路由、route view-model tests 和 capability registry tests 存在；该 backlog 作为产品化历史和后续方向保留。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`product`
   - 关联知识页：`knowledge/wiki/project-overview.zh.md`
 - **长跑 Harness planner 提示词**（`harness/prompts/planner.md`）
   - 简介：定义长跑 harness 中 planner 角色的职责、输入输出和执行约束，是多代理循环的系统提示来源。
@@ -187,8 +187,8 @@
 
 - **Sprint 68 Mock-to-Live 交接文档**（`repos/orbits/docs/mock-to-live/verify-that-the-capability-first-framework-can-run-the-mvp-loop-in-mock-mode-wit/LIVE_IMPLEMENTATION.md`）
   - 简介：记录 capability-first framework mock mode 到 live implementation 的替换要求。
-  - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`architecture`
+  - 审计依据：已核对 capability registry、service factory tests 和 mock-to-live handoff tests 仍覆盖该框架；该文档作为 Sprint 68 交接证据保留。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`architecture`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
 - **App 页面组合交接：agent/compose app agent from previously approved mock first capabilities**（`repos/orbits/app/(app)/app/agent/compose-app-agent-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md`）
   - 简介：记录 app 路由 agent/compose app agent from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
@@ -525,8 +525,8 @@
 
 - **Chat Agent 质量循环计划**（`docs/superpowers/plans/2026-06-29-orbit-chat-agent-quality-loop.md`）
   - 简介：记录 Orbit Chat Agent 质量检查、trace 和改进循环的实施计划，是后续 agent 质量迭代的历史入口。
-  - 审计依据：已纳入历史计划类文档；当前实现状态应和 Orbit AI trace、chat API 和相关测试一起核对。
-  - 状态：`historical`；新鲜度：`needs-code-check`；负责人域：`orbit-ai`
+  - 审计依据：已核对 Orbit AI trace 页面、chat API 边界和相关测试仍存在；该计划作为历史质量循环入口保留。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/agent-system.zh.md`
 - **Orbit AI Trace 工具目录计划**（`docs/superpowers/plans/2026-06-30-orbit-ai-trace-tool-catalog.md`）
   - 简介：实施 trace debug 页面展示工具 catalog 和中文规格说明的计划。
@@ -540,8 +540,8 @@
   - 关联知识页：`knowledge/index.zh.md`
 - **Hybrid Mockdata Handoff 计划**（`docs/superpowers/plans/2026-06-30-hybrid-mockdata-handoff.md`）
   - 简介：实施 generated relationship fixture 接入 app mock/hybrid 数据层的计划。
-  - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`data`
+  - 审计依据：已核对生成 fixture 已接入 shared/mock/fixtures.ts，且 core hybrid local-remote services 与 relationship schema tests 覆盖该链路。
+  - 状态：`current`；新鲜度：`verified-current`；负责人域：`data`
   - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`
 - **Orbit AI Trace Debug 计划**（`repos/orbits/docs/superpowers/plans/2026-06-29-orbit-ai-trace-debug.md`）
   - 简介：实现 Orbit AI trace debug 页面和 API 的计划。
@@ -568,8 +568,8 @@
   - 关联知识页：`knowledge/learnings/patterns.zh.md`
 - **性能经验**（`.learnings/PERFORMANCE.md`）
   - 简介：记录性能检查相关经验，作为后续优化和回归排查入口。
-  - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`learning`
+  - 审计依据：已标记为历史性能 learnings；当前性能判断需要结合新的 trace、测试或性能记录，但该经验仍是有效排查入口。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`learning`
   - 关联知识页：`knowledge/learnings/patterns.zh.md`
 - **App 错误记录**（`repos/orbits/.learnings/ERRORS.md`）
   - 简介：记录 repos/orbits 内 fixture migration、comment patch、git diff 正则等错误经验。
@@ -586,13 +586,13 @@
 
 - **Relationship Mockdata 设计**（`repos/mockdata/orbit_mock_data_ai_relationship_design.md`）
   - 简介：用于生成关系 mock 数据、AI 画像建模、活动场景和 demo 数据的长文档。
-  - 审计依据：已登记关联代码路径：harness/relationship_data_goal_runner.py、repos/mockdata。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`data`
+  - 审计依据：已核对 mockdata exports、validator、relationship_data_goal_runner.py 和 generated relationship fixtures 存在；长文档作为数据设计来源保留。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`data`
   - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`
 - **Mockdata 生成 README**（`repos/mockdata/generation/README.md`）
   - 简介：说明 relationship mockdata 生成目录和运行方式，需要和当前 generator 代码保持同步。
-  - 审计依据：已登记关联代码路径：repos/mockdata/generation、harness/relationship_data_goal_runner.py。
-  - 状态：`needs-review`；新鲜度：`needs-code-check`；负责人域：`data`
+  - 审计依据：已核对 README 描述的 generated-relationship-fixtures.ts、fixtures.ts 和 validate_relationship_mockdata.mjs 存在。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`data`
   - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`
 
 ### module-architecture
@@ -698,7 +698,7 @@
 - **Bootstrap 产品上下文**（`harness-state/bootstrap-product-context.md`）
   - 简介：记录 harness 启动阶段使用的产品上下文，用于解释早期 sprint 为什么围绕 Orbit 关系管理和 mock capability 展开。
   - 审计依据：已纳入历史上下文；当前产品方向应优先阅读 knowledge/wiki/project-overview.zh.md 和 docs/designs/inital_design.md。
-  - 状态：`historical`；新鲜度：`needs-code-check`；负责人域：`product`
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`product`
   - 关联知识页：`knowledge/wiki/project-overview.zh.md`
 - **Orbit 产品设计**（`docs/designs/inital_design.md`）
   - 简介：描述 Orbit 复杂版产品方向，是理解关系资产、人脉管理和 Agent 目标的产品来源。
@@ -707,8 +707,8 @@
   - 关联知识页：`knowledge/wiki/project-overview.zh.md`
 - **Orbit 产品设计 v0**（`docs/designs/inital_design.v0.md`）
   - 简介：早期产品设计版本，保留用于理解历史上下文，阅读时应和当前产品设计对照。
-  - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
-  - 状态：`historical`；新鲜度：`needs-code-check`；负责人域：`product`
+  - 审计依据：已和当前产品入口区分：该文件作为 historical 资料保留，当前产品方向以 docs/designs/inital_design.md 和 project overview 为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`product`
   - 关联知识页：`knowledge/wiki/project-overview.zh.md`
 
 ### sprint-spec
@@ -716,7 +716,7 @@
 - **Orbit AI 参考重设计 Sprint**（`docs/superpowers/specs/2026-06-27-orbit-ai-reference-redesign-sprints.md`）
   - 简介：记录 Orbit AI 参考界面重设计的 sprint 拆分和验收方向，是 UI/agent 体验历史资料。
   - 审计依据：已纳入历史设计类文档；当前 UI 以 app/(app)/app/orbit-ai* 和 dev trace 页面源码为准。
-  - 状态：`historical`；新鲜度：`needs-code-check`；负责人域：`orbit-ai`
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/agent-system.zh.md`
 - **Orbit AI Trace Debug 英文设计源**（`repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.md`）
   - 简介：Orbit AI trace debug 设计的英文源文件；中文 companion 已在同目录保留，二者共同说明调试页面边界。
@@ -735,8 +735,8 @@
   - 关联知识页：`knowledge/wiki/harness.zh.md`
 - **产品级 Chat Agent 设计**（`docs/superpowers/specs/2026-06-29-orbit-product-chat-agent-design.md`）
   - 简介：记录 Orbit 产品级 Chat Agent 的目标、边界和 agent 工作流判断。
-  - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
-  - 状态：`current`；新鲜度：`needs-code-check`；负责人域：`orbit-ai`
+  - 审计依据：已核对 Orbit AI service、chat/agent API、trace debug 页面和相关 tests 仍存在；更细的 ReAct 工具边界以 bounded ReAct 设计为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/agent-system.zh.md`
 - **Bounded ReAct 工具注册设计**（`docs/superpowers/specs/2026-06-30-orbit-bounded-react-tool-registry-design.md`）
   - 简介：设计 Orbit AI bounded ReAct runtime、工具 registry、policy gate、确认边界和工具风险等级。
@@ -750,8 +750,8 @@
   - 关联知识页：`knowledge/index.zh.md`
 - **Hybrid Mockdata Handoff 设计**（`docs/superpowers/specs/2026-06-30-hybrid-mockdata-handoff-design.md`）
   - 简介：定义 relationship mockdata 如何生成 TypeScript fixture 并接入 hybrid local-remote database。
-  - 审计依据：已登记关联代码路径：harness/relationship_data_goal_runner.py、repos/orbits/shared/mock/fixtures.ts。
-  - 状态：`current`；新鲜度：`needs-code-check`；负责人域：`data`
+  - 审计依据：已核对 relationship_data_goal_runner.py、generated-relationship-fixtures.ts、fixtures.ts 和 hybrid/local-remote 相关测试存在。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`data`
   - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`
 - **Orbit AI Trace Debug 设计**（`repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.zh.md`）
   - 简介：设计 /dev/orbit-ai/trace 调试页面，用于观察 pipeline、trace、工具调用和运行快照。

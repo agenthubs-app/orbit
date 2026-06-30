@@ -23,4 +23,12 @@
 - 修改摘要：扩展 catalog 扫描范围到 `repos/orbits` 全部 Markdown、harness prompt、app/shared/feature `LIVE_IMPLEMENTATION.md`、README 和手动验收文档；为每个条目补中文审计依据 `reviewEvidenceZh`；`/dev/knowledge` 显示审计依据；app manifest 不再截断 catalog。
 - 覆盖结果：`knowledge/docs/catalog.json` 纳入 146 个文档；扫描范围内未纳入目录降为 0；`.venv/**`、`.pytest_cache/**`、`.superpowers/**`、`harness-state/runs/**` 和参考项目 `repos/tokyo-business-connect/**` 继续排除在默认 Orbit 文档库之外。
 - 验证方式：运行 catalog 生成、manifest 同步、root knowledge tests、app manifest/page tests、app lint、app full test、`git diff --check`。
-- 后续注意：`needs-code-check` 仍用于保守标记尚未逐行对照当前代码的历史设计、feature DESIGN、mockdata 和 harness 文档；它们已经有中文入口和审计依据，但不应被当成完全验证当前行为。
+- 当时后续注意：`needs-code-check` 用于保守标记尚未逐行对照当前代码的历史设计、feature DESIGN、mockdata 和 harness 文档；该状态已在后续“文档新鲜度审计收敛”中处理。
+
+## [2026-06-30] implementation | 文档新鲜度审计收敛
+
+- 用户目标：让文档库不只是列出文档，还要明确每个文档是否落后于当前代码和数据。
+- 修改摘要：逐类审计 37 个 `needs-code-check` 条目，按历史资料、当前设计、数据层、mockdata、harness 和 feature DESIGN 分类补充证据；将可由代码、测试或历史定位判断的条目改为 `likely-current` 或 `verified-current`；保留 1 个明确 `known-stale` 的旧组件级 sprint 设计。
+- 覆盖结果：`knowledge/docs/freshness-report.zh.md` 显示 `needs-code-check` 为 0，扫描范围内未纳入为 0，catalog 总量保持 146。
+- 验证方式：运行 catalog 生成、manifest 同步、root knowledge tests、app manifest/page tests、app lint、app full test、`git diff --check`。
+- 后续注意：`likely-current` 表示已有合理代码/测试/历史定位证据，不等价于每个英文原文段落都逐行重写；未来文档变更仍必须更新 catalog 审计依据。

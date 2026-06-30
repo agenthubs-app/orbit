@@ -19,3 +19,10 @@
 - 扫描范围内未纳入 Markdown 降为 0。
 - 为每个 catalog 条目增加中文审计依据，并同步到 app-local manifest 与 `/dev/knowledge`。
 - 排除范围明确为运行快照、临时目录、依赖目录和参考项目。
+
+## [2026-06-30] implementation | 文档新鲜度审计收敛
+
+- 将当前 catalog 中 `needs-code-check` 条目降为 0。
+- 为历史设计、feature DESIGN、mockdata、harness 和数据层文档补充代码/测试/历史定位证据。
+- 保留 1 个 `known-stale` 旧组件级 sprint 设计，避免误当成当前权威。
+- 收紧 catalog 测试，防止当前 catalog 再残留未审计 freshness 占位。

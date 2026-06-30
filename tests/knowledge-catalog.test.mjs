@@ -23,6 +23,7 @@ test("knowledge document catalog has valid Chinese entries", () => {
   );
 
   const ids = new Set();
+  const needsCodeCheck = [];
   for (const doc of catalog.documents) {
     assert.equal(typeof doc.id, "string");
     assert.equal(ids.has(doc.id), false, `${doc.id} must be unique`);
@@ -55,7 +56,11 @@ test("knowledge document catalog has valid Chinese entries", () => {
       ),
     );
     assert.equal(typeof doc.lastReviewedOn, "string");
+    if (doc.freshness === "needs-code-check") {
+      needsCodeCheck.push(doc.sourcePath);
+    }
   }
+  assert.deepEqual(needsCodeCheck, [], "current catalog must not leave unaudited freshness placeholders");
 });
 
 test("catalog includes core Orbit document families and learnings", () => {
@@ -104,6 +109,6 @@ test("Chinese catalog and freshness report are readable entry points", () => {
   assert.match(catalogZh, /文档查询入口/);
   assert.match(catalogZh, /docs\/designs\/orbit_technical_design\.md/);
   assert.match(freshness, /# Orbit 文档新鲜度报告/);
-  assert.match(freshness, /needs-code-check|需要代码核对/);
+  assert.match(freshness, /需要代码核对（needs-code-check）：0 个文档/);
   assert.match(freshness, /扫描范围内未纳入目录：0 个 Markdown/);
 });

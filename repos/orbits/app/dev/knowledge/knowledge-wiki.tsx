@@ -23,12 +23,15 @@ const freshnessTone = {
   "known-stale": "warning",
 } as const;
 
+type FreshnessState = keyof typeof freshnessTone;
+
 function zhCount(label: string, value: number) {
   return `${value} ${label}`;
 }
 
 function MetricCards() {
-  const documents = ORBIT_KNOWLEDGE_MANIFEST.documents;
+  const documents: ReadonlyArray<{ freshness: FreshnessState }> =
+    ORBIT_KNOWLEDGE_MANIFEST.documents;
   const needsCodeCheck = documents.filter(
     (document) => document.freshness === "needs-code-check",
   ).length;

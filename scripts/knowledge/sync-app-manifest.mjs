@@ -94,6 +94,14 @@ const manifest = {
   ],
   recentHistory: [
     {
+      id: "knowledge-freshness-audit",
+      date: "2026-06-30",
+      titleZh: "文档新鲜度审计收敛",
+      summaryZh:
+        "将当前 catalog 的 needs-code-check 降为 0，保留 1 个明确 known-stale 历史设计，并补充代码/测试/历史定位证据。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
+    {
       id: "knowledge-catalog-full-coverage",
       date: "2026-06-30",
       titleZh: "文档库全量覆盖审计",
