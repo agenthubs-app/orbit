@@ -77,3 +77,15 @@ workspace root for implementation work.
   artifact payload into a page-owned view model before passing it into UI
   components. UI components must not depend on raw provider payloads, raw feature
   DTO shapes, or feature-specific mock implementation details.
+
+## App Documentation And Knowledge Manifest
+
+- App implementation changes must update the related 文档: `docs/**`, feature
+  `DESIGN.md`, `LIVE_IMPLEMENTATION.md`, or knowledge catalog entry.
+- The `/dev/knowledge` page must consume
+  `shared/knowledge/knowledge-manifest.ts`; app code must not read 父目录
+  knowledge files directly.
+- Changes to the app knowledge manifest or `/dev/knowledge` page must update
+  the related page and service tests.
+- Keep app-facing knowledge copy in Chinese, with English technical names only
+  where they are source identifiers.

@@ -179,3 +179,14 @@ Use `harness-state/sprints.md` as a human-readable index, not as the final sourc
 
 Long-form business positioning, market reasoning, and future product vision belong in product
 context documents under `docs/`, not in `harness-state/spec.md`.
+
+## Documentation And Knowledge Base Maintenance
+
+- Use `knowledge/index.zh.md` as the first project knowledge entry before deep code exploration.
+- 每次实现变更都必须更新或新增相关文档；architecture change, data contract change,
+  agent tool change, or harness workflow change must also update or add the relevant documentation.
+- Every user-visible or architecture-relevant change must append a 中文 entry to
+  `knowledge/history/development-log.zh.md`.
+- New document catalog and knowledge entries must include 中文 titles and 中文 summaries.
+- New troubleshooting, error, and recurring-pattern learnings under `.learnings/` must be
+  reflected in `knowledge/learnings/`.
