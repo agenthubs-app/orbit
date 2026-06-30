@@ -25,10 +25,11 @@ const manifest = {
     "knowledge/index.zh.md",
     "Orbit 项目的结构化中文知识入口。",
   ),
-  documents: catalog.documents.slice(0, 60).map((entry) => ({
+  documents: catalog.documents.map((entry) => ({
     id: entry.id,
     titleZh: entry.titleZh,
     summaryZh: entry.summaryZh,
+    reviewEvidenceZh: entry.reviewEvidenceZh,
     sourcePath: entry.sourcePath,
     category: entry.category,
     status: entry.status,
@@ -92,6 +93,14 @@ const manifest = {
     },
   ],
   recentHistory: [
+    {
+      id: "knowledge-catalog-full-coverage",
+      date: "2026-06-30",
+      titleZh: "文档库全量覆盖审计",
+      summaryZh:
+        "将 catalog 扩展到 146 个条目，扫描范围内未纳入 Markdown 降为 0，并为每项加入中文审计依据。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
     {
       id: "knowledge-wiki-implementation",
       date: "2026-06-30",

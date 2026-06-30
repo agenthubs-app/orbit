@@ -29,6 +29,7 @@ test("/dev/knowledge renders the Orbit knowledge wiki", async () => {
   assert.match(html, /Orbit 知识库/);
   assert.match(html, /data-orbit-knowledge-wiki="true"/);
   assert.match(html, /文档库入口/);
+  assert.match(html, /审计依据|关联代码路径/);
   assert.match(html, /开发历史/);
   assert.match(html, /排障经验/);
   assert.match(html, /需要代码核对/);

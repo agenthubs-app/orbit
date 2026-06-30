@@ -10,7 +10,7 @@ const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 test("app knowledge manifest exposes Chinese project knowledge without parent-directory reads", () => {
   assert.equal(ORBIT_KNOWLEDGE_MANIFEST.schemaVersion, 1);
   assert.match(ORBIT_KNOWLEDGE_MANIFEST.titleZh, /知识库/);
-  assert.ok(ORBIT_KNOWLEDGE_MANIFEST.documents.length >= 20);
+  assert.ok(ORBIT_KNOWLEDGE_MANIFEST.documents.length >= 120);
   assert.ok(ORBIT_KNOWLEDGE_MANIFEST.topicPages.length >= 5);
   assert.ok(ORBIT_KNOWLEDGE_MANIFEST.recentHistory.length >= 1);
   assert.ok(ORBIT_KNOWLEDGE_MANIFEST.learnings.length >= 3);
@@ -18,6 +18,7 @@ test("app knowledge manifest exposes Chinese project knowledge without parent-di
   for (const doc of ORBIT_KNOWLEDGE_MANIFEST.documents) {
     assert.match(doc.titleZh, /[\u4e00-\u9fff]/);
     assert.match(doc.summaryZh, /[\u4e00-\u9fff]/);
+    assert.match(doc.reviewEvidenceZh, /[\u4e00-\u9fff]/);
     assert.doesNotMatch(doc.sourcePath, /^harness-state\/runs\//);
   }
 

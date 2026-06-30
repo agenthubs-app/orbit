@@ -12,3 +12,10 @@
 - 同步 `repos/orbits/shared/knowledge/knowledge-manifest.ts`。
 - 新增 `/dev/knowledge` 可视化 Wiki 页面。
 - 验证命令记录在 `knowledge/history/development-log.zh.md`。
+
+## [2026-06-30] implementation | 文档库全量覆盖审计
+
+- 将 catalog 扩展到 146 个文档条目。
+- 扫描范围内未纳入 Markdown 降为 0。
+- 为每个 catalog 条目增加中文审计依据，并同步到 app-local manifest 与 `/dev/knowledge`。
+- 排除范围明确为运行快照、临时目录、依赖目录和参考项目。

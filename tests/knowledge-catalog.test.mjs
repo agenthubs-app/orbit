@@ -18,8 +18,8 @@ test("knowledge document catalog has valid Chinese entries", () => {
   assert.equal(catalog.generatedOn, "2026-06-30");
   assert.ok(Array.isArray(catalog.documents));
   assert.ok(
-    catalog.documents.length >= 35,
-    "catalog must cover the authoritative docs",
+    catalog.documents.length >= 120,
+    "catalog must cover the authoritative docs and implementation handoff docs",
   );
 
   const ids = new Set();
@@ -32,6 +32,11 @@ test("knowledge document catalog has valid Chinese entries", () => {
       doc.summaryZh,
       /[\u4e00-\u9fff]/,
       `${doc.id} needs Chinese summary`,
+    );
+    assert.match(
+      doc.reviewEvidenceZh,
+      /[\u4e00-\u9fff]/,
+      `${doc.id} needs Chinese review evidence`,
     );
     assert.equal(
       existsSync(join(projectRoot, doc.sourcePath)),
@@ -62,6 +67,25 @@ test("catalog includes core Orbit document families and learnings", () => {
   assert.ok(sourcePaths.includes("repos/orbits/AGENTS.md"));
   assert.ok(sourcePaths.includes("repos/orbits/docs/architecture/modular-design.md"));
   assert.ok(sourcePaths.includes("repos/orbits/docs/architecture/modules/orbit-ai.md"));
+  assert.ok(sourcePaths.includes("repos/orbits/README.md"));
+  assert.ok(sourcePaths.includes("harness/prompts/planner.md"));
+  assert.ok(sourcePaths.includes("harness/prompts/generator.md"));
+  assert.ok(sourcePaths.includes("repos/orbits/scripts/manual-acceptance.md"));
+  assert.ok(
+    sourcePaths.includes(
+      "repos/orbits/features/agent/agent-action-queue-mock/LIVE_IMPLEMENTATION.md",
+    ),
+  );
+  assert.ok(
+    sourcePaths.includes(
+      "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md",
+    ),
+  );
+  assert.ok(
+    sourcePaths.includes(
+      "repos/orbits/shared/local-remote-store/RELATIONSHIP_SCHEMA_LIVE_IMPLEMENTATION.md",
+    ),
+  );
   assert.ok(sourcePaths.includes(".learnings/TROUBLESHOOTING.md"));
   assert.ok(sourcePaths.includes("repos/orbits/.learnings/LEARNINGS.md"));
 });
@@ -81,4 +105,5 @@ test("Chinese catalog and freshness report are readable entry points", () => {
   assert.match(catalogZh, /docs\/designs\/orbit_technical_design\.md/);
   assert.match(freshness, /# Orbit 文档新鲜度报告/);
   assert.match(freshness, /needs-code-check|需要代码核对/);
+  assert.match(freshness, /扫描范围内未纳入目录：0 个 Markdown/);
 });

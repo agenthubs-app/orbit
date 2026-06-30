@@ -91,6 +91,7 @@ function DocumentCatalog() {
           <article className="relationship-record" key={document.id}>
             <h3>{document.titleZh}</h3>
             <p className="type-body">{document.summaryZh}</p>
+            <p className="type-body">{document.reviewEvidenceZh}</p>
             <div className="chip-row" aria-label={`${document.titleZh} 状态`}>
               <Chip tone={statusTone[document.status]}>{document.status}</Chip>
               <Chip tone={freshnessTone[document.freshness]}>

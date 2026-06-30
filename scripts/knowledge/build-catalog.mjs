@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,6 +25,7 @@ function doc({
   id,
   titleZh,
   summaryZh,
+  reviewEvidenceZh,
   sourcePath,
   category,
   status = "current",
@@ -37,6 +38,11 @@ function doc({
     id,
     titleZh,
     summaryZh,
+    reviewEvidenceZh:
+      reviewEvidenceZh ??
+      (relatedCodePaths.length
+        ? `已登记关联代码路径：${relatedCodePaths.join("、")}。`
+        : "已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。"),
     sourcePath,
     category,
     status,
@@ -46,6 +52,124 @@ function doc({
     relatedKnowledgePages,
     lastReviewedOn: generatedOn,
   };
+}
+
+function walkMarkdown(dir) {
+  const absolute = join(projectRoot, dir);
+  if (!existsSync(absolute)) return [];
+  return readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
+    const absolutePath = join(absolute, entry.name);
+    const relativePath = relative(projectRoot, absolutePath);
+    if (
+      relativePath.startsWith("harness-state/runs/") ||
+      relativePath.startsWith("harness-state/tmp/") ||
+      relativePath.includes("/node_modules/") ||
+      relativePath.includes("/.next/") ||
+      relativePath.includes("/dist/") ||
+      relativePath.includes("/coverage/")
+    ) {
+      return [];
+    }
+    if (entry.isDirectory()) {
+      return walkMarkdown(relativePath);
+    }
+    return /\.mdx?$/.test(entry.name) ? [relativePath] : [];
+  });
+}
+
+function uniqueSorted(paths) {
+  return [...new Set(paths)].sort();
+}
+
+function readableSlug(slug) {
+  return slug.replace(/[-_]+/g, " ");
+}
+
+function liveImplementationDoc(sourcePath) {
+  const parentDir = dirname(sourcePath);
+  const segments = sourcePath.split("/");
+  const parentName = readableSlug(segments.at(-2) ?? sourcePath);
+  const featureMatch = sourcePath.match(/^repos\/orbits\/features\/([^/]+)\/([^/]+)\//);
+  const appMatch = sourcePath.match(/^repos\/orbits\/app\/(.+)\/[^/]+$/);
+  const sharedMatch = sourcePath.match(/^repos\/orbits\/shared\/([^/]+)\//);
+
+  if (featureMatch) {
+    const [, moduleId, capabilityId] = featureMatch;
+    const capability = readableSlug(capabilityId);
+    return doc({
+      id: `live-handoff-feature-${moduleId}-${capabilityId}`,
+      titleZh: `${moduleId} 能力 Live 交接：${capability}`,
+      summaryZh: `记录 ${moduleId} 模块中 ${capability} 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。`,
+      reviewEvidenceZh:
+        `已核对对应 feature 目录存在：${parentDir}。目录级实时行为仍以 service factory、API route 和测试为准。`,
+      sourcePath,
+      category: "implementation-handoff",
+      status: "generated-evidence",
+      freshness: "likely-current",
+      ownerArea: `feature:${moduleId}`,
+      relatedCodePaths: [parentDir, `repos/orbits/features/${moduleId}/service-factory.ts`],
+      relatedKnowledgePages: ["knowledge/wiki/modules.zh.md"],
+    });
+  }
+
+  if (appMatch) {
+    const routeLabel = readableSlug(appMatch[1].replace(/^(\(app\)\/)?app\//, ""));
+    return doc({
+      id: `live-handoff-app-${sourcePath
+        .replace(/^repos\/orbits\/app\//, "")
+        .replace(/\/LIVE_IMPLEMENTATION\.md$/, "")
+        .replace(/[^a-zA-Z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")}`,
+      titleZh: `App 页面组合交接：${routeLabel}`,
+      summaryZh: `记录 app 路由 ${routeLabel} 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。`,
+      reviewEvidenceZh:
+        `已核对页面目录存在：${parentDir}。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。`,
+      sourcePath,
+      category: "implementation-handoff",
+      status: "generated-evidence",
+      freshness: "likely-current",
+      ownerArea: "app",
+      relatedCodePaths: [parentDir],
+      relatedKnowledgePages: ["knowledge/wiki/architecture.zh.md"],
+    });
+  }
+
+  if (sharedMatch) {
+    const [, sharedArea] = sharedMatch;
+    return doc({
+      id: `live-handoff-shared-${sourcePath
+        .replace(/^repos\/orbits\/shared\//, "")
+        .replace(/\/?RELATIONSHIP_SCHEMA_LIVE_IMPLEMENTATION\.md$/, "")
+        .replace(/\/LIVE_IMPLEMENTATION\.md$/, "")
+        .replace(/[^a-zA-Z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")}`,
+      titleZh: `Shared Runtime 交接：${readableSlug(sharedArea)}`,
+      summaryZh: `记录 shared/${sharedArea} 共享层从 mock 或本地实现迁移到 live/runtime provider 时的契约、替换点和验证要求。`,
+      reviewEvidenceZh:
+        `已核对共享代码目录存在：${parentDir}。具体数据结构和 API 仍以 shared 层源码与测试为准。`,
+      sourcePath,
+      category: "implementation-handoff",
+      status: "generated-evidence",
+      freshness: "likely-current",
+      ownerArea: `shared:${sharedArea}`,
+      relatedCodePaths: [parentDir],
+      relatedKnowledgePages: ["knowledge/wiki/architecture.zh.md"],
+    });
+  }
+
+  return doc({
+    id: `live-handoff-${sourcePath.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+    titleZh: `Live 实现交接：${parentName}`,
+    summaryZh: `记录 ${parentName} 的 live 替换要求和实现证据。`,
+    reviewEvidenceZh: `已核对来源目录存在：${parentDir}。`,
+    sourcePath,
+    category: "implementation-handoff",
+    status: "generated-evidence",
+    freshness: "likely-current",
+    ownerArea: "implementation",
+    relatedCodePaths: [parentDir],
+    relatedKnowledgePages: ["knowledge/wiki/architecture.zh.md"],
+  });
 }
 
 const moduleDocs = [
@@ -119,7 +243,132 @@ const featureDesignDocs = [
   }),
 );
 
+const liveImplementationDocs = uniqueSorted([
+  ...walkMarkdown("repos/orbits/app"),
+  ...walkMarkdown("repos/orbits/features"),
+  ...walkMarkdown("repos/orbits/shared"),
+])
+  .filter((path) => /(?:^|\/)(?:LIVE_IMPLEMENTATION|RELATIONSHIP_SCHEMA_LIVE_IMPLEMENTATION)\.md$/.test(path))
+  .map((path) => liveImplementationDoc(path));
+
+const harnessPromptDocs = ["planner", "generator", "evaluator", "verifier"].map((role) =>
+  doc({
+    id: `harness-prompt-${role}`,
+    titleZh: `长跑 Harness ${role} 提示词`,
+    summaryZh: `定义长跑 harness 中 ${role} 角色的职责、输入输出和执行约束，是多代理循环的系统提示来源。`,
+    reviewEvidenceZh:
+      "已核对 prompt 文件仍在 harness/prompts 下；实际执行行为需要和 harness 调用代码及运行证据一起审计。",
+    sourcePath: `harness/prompts/${role}.md`,
+    category: "harness",
+    status: "current",
+    freshness: "likely-current",
+    ownerArea: "harness",
+    relatedCodePaths: ["harness"],
+    relatedKnowledgePages: ["knowledge/wiki/harness.zh.md"],
+  }),
+);
+
+const additionalOrbitDocs = [
+  doc({
+    id: "chat-agent-quality-loop-plan",
+    titleZh: "Chat Agent 质量循环计划",
+    summaryZh: "记录 Orbit Chat Agent 质量检查、trace 和改进循环的实施计划，是后续 agent 质量迭代的历史入口。",
+    reviewEvidenceZh:
+      "已纳入历史计划类文档；当前实现状态应和 Orbit AI trace、chat API 和相关测试一起核对。",
+    sourcePath: "docs/superpowers/plans/2026-06-29-orbit-chat-agent-quality-loop.md",
+    category: "implementation-plan",
+    status: "historical",
+    freshness: "needs-code-check",
+    ownerArea: "orbit-ai",
+    relatedCodePaths: ["repos/orbits/features/orbit-ai", "repos/orbits/app/dev/orbit-ai/trace"],
+    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+  }),
+  doc({
+    id: "orbit-ai-reference-redesign-sprints",
+    titleZh: "Orbit AI 参考重设计 Sprint",
+    summaryZh: "记录 Orbit AI 参考界面重设计的 sprint 拆分和验收方向，是 UI/agent 体验历史资料。",
+    reviewEvidenceZh:
+      "已纳入历史设计类文档；当前 UI 以 app/(app)/app/orbit-ai* 和 dev trace 页面源码为准。",
+    sourcePath: "docs/superpowers/specs/2026-06-27-orbit-ai-reference-redesign-sprints.md",
+    category: "sprint-spec",
+    status: "historical",
+    freshness: "needs-code-check",
+    ownerArea: "orbit-ai",
+    relatedCodePaths: ["repos/orbits/app/(app)/app/orbit-ai-command-center.tsx"],
+    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+  }),
+  doc({
+    id: "harness-audit-2026-06-24",
+    titleZh: "Harness 审计 2026-06-24",
+    summaryZh: "记录长跑 harness 的早期审计结果、风险和修正方向，是理解 harness 演进的历史证据。",
+    reviewEvidenceZh:
+      "已纳入历史审计；当前 harness 行为仍需以 harness/README、AGENT.md 和实际脚本为准。",
+    sourcePath: "harness-state/audits/2026-06-24-harness-audit.md",
+    category: "harness",
+    status: "historical",
+    freshness: "needs-code-check",
+    ownerArea: "harness",
+    relatedCodePaths: ["harness"],
+    relatedKnowledgePages: ["knowledge/wiki/harness.zh.md"],
+  }),
+  doc({
+    id: "bootstrap-product-context",
+    titleZh: "Bootstrap 产品上下文",
+    summaryZh: "记录 harness 启动阶段使用的产品上下文，用于解释早期 sprint 为什么围绕 Orbit 关系管理和 mock capability 展开。",
+    reviewEvidenceZh:
+      "已纳入历史上下文；当前产品方向应优先阅读 knowledge/wiki/project-overview.zh.md 和 docs/designs/inital_design.md。",
+    sourcePath: "harness-state/bootstrap-product-context.md",
+    category: "product-design",
+    status: "historical",
+    freshness: "needs-code-check",
+    ownerArea: "product",
+    relatedKnowledgePages: ["knowledge/wiki/project-overview.zh.md"],
+  }),
+  doc({
+    id: "trace-debug-design-en",
+    titleZh: "Orbit AI Trace Debug 英文设计源",
+    summaryZh: "Orbit AI trace debug 设计的英文源文件；中文 companion 已在同目录保留，二者共同说明调试页面边界。",
+    reviewEvidenceZh:
+      "已核对同目录存在中文 companion 和 /dev/orbit-ai/trace 页面；英文源保留为历史来源。",
+    sourcePath: "repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.md",
+    category: "sprint-spec",
+    status: "historical",
+    freshness: "likely-current",
+    ownerArea: "orbit-ai",
+    relatedCodePaths: ["repos/orbits/app/dev/orbit-ai/trace"],
+    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+  }),
+  doc({
+    id: "orbits-app-readme",
+    titleZh: "Orbits App 开发 README",
+    summaryZh: "记录 Next.js app 的基础启动、开发命令和项目入口，是 repos/orbits 内最短的操作说明。",
+    reviewEvidenceZh:
+      "已核对 package.json 中仍存在 README 提到的核心脚本；详细实现边界以 AGENTS.md 和知识库为准。",
+    sourcePath: "repos/orbits/README.md",
+    category: "developer-guide",
+    freshness: "likely-current",
+    ownerArea: "repos/orbits",
+    relatedCodePaths: ["repos/orbits/package.json"],
+    relatedKnowledgePages: ["knowledge/wiki/architecture.zh.md"],
+  }),
+  doc({
+    id: "manual-acceptance-guide",
+    titleZh: "手动验收指南",
+    summaryZh: "记录 app 手动验收路径和检查点，适合在自动测试之外做产品表面回归。",
+    reviewEvidenceZh:
+      "已核对文档仍在 app scripts 目录；具体路径是否完整需随页面路由变化持续更新。",
+    sourcePath: "repos/orbits/scripts/manual-acceptance.md",
+    category: "developer-guide",
+    status: "needs-review",
+    freshness: "needs-code-check",
+    ownerArea: "qa",
+    relatedCodePaths: ["repos/orbits/app"],
+    relatedKnowledgePages: ["knowledge/wiki/architecture.zh.md"],
+  }),
+];
+
 const documents = [
+  ...additionalOrbitDocs,
   doc({
     id: "root-agent-operating-notes",
     titleZh: "根 Agent 运行规则",
@@ -467,28 +716,9 @@ const documents = [
     ownerArea: "learning",
     relatedKnowledgePages: ["knowledge/learnings/patterns.zh.md"],
   }),
+  ...harnessPromptDocs,
+  ...liveImplementationDocs,
 ];
-
-function walkMarkdown(dir) {
-  const absolute = join(projectRoot, dir);
-  if (!existsSync(absolute)) return [];
-  return readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
-    const absolutePath = join(absolute, entry.name);
-    const relativePath = relative(projectRoot, absolutePath);
-    if (
-      relativePath.startsWith("harness-state/runs/") ||
-      relativePath.startsWith("harness-state/tmp/") ||
-      relativePath.includes("/node_modules/") ||
-      relativePath.includes("/.next/")
-    ) {
-      return [];
-    }
-    if (entry.isDirectory()) {
-      return walkMarkdown(relativePath);
-    }
-    return /\.mdx?$/.test(entry.name) ? [relativePath] : [];
-  });
-}
 
 function validateDocuments() {
   const ids = new Set();
@@ -499,6 +729,9 @@ function validateDocuments() {
     ids.add(entry.id);
     if (!/[\u4e00-\u9fff]/.test(entry.titleZh)) invalid.push(`${entry.id} missing Chinese title`);
     if (!/[\u4e00-\u9fff]/.test(entry.summaryZh)) invalid.push(`${entry.id} missing Chinese summary`);
+    if (!/[\u4e00-\u9fff]/.test(entry.reviewEvidenceZh)) {
+      invalid.push(`${entry.id} missing Chinese review evidence`);
+    }
     if (!existsSync(join(projectRoot, entry.sourcePath))) missing.push(entry.sourcePath);
     if (entry.sourcePath.startsWith("harness-state/runs/")) invalid.push(`${entry.id} uses run snapshot`);
     if (!statuses.has(entry.status)) invalid.push(`${entry.id} invalid status`);
@@ -543,6 +776,7 @@ function renderCatalogMarkdown() {
       lines.push(
         `- **${entry.titleZh}**（\`${entry.sourcePath}\`）`,
         `  - 简介：${entry.summaryZh}`,
+        `  - 审计依据：${entry.reviewEvidenceZh}`,
         `  - 状态：\`${entry.status}\`；新鲜度：\`${entry.freshness}\`；负责人域：\`${entry.ownerArea}\``,
         `  - 关联知识页：${entry.relatedKnowledgePages.map((page) => `\`${page}\``).join("、") || "暂无"}`,
       );
@@ -554,18 +788,15 @@ function renderCatalogMarkdown() {
 }
 
 function renderFreshnessReport() {
-  const allMarkdown = [
+  const allMarkdown = uniqueSorted([
     "AGENT.md",
-    "repos/orbits/AGENTS.md",
     ...walkMarkdown("docs"),
     ...walkMarkdown("harness"),
     ...walkMarkdown("harness-state"),
     ...walkMarkdown("repos/mockdata"),
-    ...walkMarkdown("repos/orbits/docs"),
-    ...walkMarkdown("repos/orbits/features"),
+    ...walkMarkdown("repos/orbits"),
     ...walkMarkdown(".learnings"),
-    ...walkMarkdown("repos/orbits/.learnings"),
-  ].sort();
+  ]);
   const cataloged = new Set(documents.map((entry) => entry.sourcePath));
   const uncataloged = allMarkdown.filter((path) => !cataloged.has(path));
   const needsReview = documents.filter((entry) => entry.freshness === "needs-code-check");
@@ -581,7 +812,7 @@ function renderFreshnessReport() {
     `- 已纳入 catalog：${documents.length} 个文档。`,
     `- 需要代码核对（needs-code-check）：${needsReview.length} 个文档。`,
     `- 已知过期（known-stale）：${knownStale.length} 个文档。`,
-    `- 未纳入首版目录：${uncataloged.length} 个 Markdown。`,
+    `- 扫描范围内未纳入目录：${uncataloged.length} 个 Markdown。`,
     "",
     "## 需要代码核对",
     "",
@@ -593,15 +824,16 @@ function renderFreshnessReport() {
       ? knownStale.map((entry) => `- \`${entry.sourcePath}\`：${entry.summaryZh}`)
       : ["- 暂无。"]),
     "",
-    "## 未纳入首版目录",
+    "## 扫描范围内未纳入目录",
     "",
     ...(uncataloged.length
       ? uncataloged.map((path) => `- \`${path}\``)
-      : ["- 首版扫描范围内的 Markdown 都已纳入。"]),
+      : ["- 扫描范围内的 Markdown 都已纳入。"]),
     "",
     "## 规则",
     "",
     "- `harness-state/runs/**` 和 `harness-state/tmp/**` 默认排除，只能作为历史证据引用。",
+    "- `.venv/**`、`.pytest_cache/**`、`.superpowers/**` 和参考项目 `repos/tokyo-business-connect/**` 不属于默认 Orbit 文档库范围。",
     "- `needs-code-check` 不代表文档错误，只代表还没有足够证据证明它和当前代码完全一致。",
   ];
 

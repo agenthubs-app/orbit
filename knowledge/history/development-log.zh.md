@@ -16,3 +16,11 @@
 - 关联文件：`knowledge/index.zh.md`、`knowledge/docs/catalog.zh.md`、`knowledge/docs/freshness-report.zh.md`、`knowledge/learnings/index.zh.md`、`repos/orbits/shared/knowledge/knowledge-manifest.ts`、`repos/orbits/app/dev/knowledge/page.tsx`。
 - 验证方式：运行 root knowledge tests、app manifest/page tests、app lint、`git diff --check`。
 - 后续注意：首版 catalog 纳入 69 个权威入口，仍有一批 `LIVE_IMPLEMENTATION.md` 和 harness prompt 属于未纳入或 `needs-code-check`，后续应分批做深度中文化和代码新鲜度审计。
+
+## [2026-06-30] implementation | 文档库全量覆盖审计
+
+- 用户目标：继续收敛散落文档，避免 freshness report 长期保留未纳入 Markdown。
+- 修改摘要：扩展 catalog 扫描范围到 `repos/orbits` 全部 Markdown、harness prompt、app/shared/feature `LIVE_IMPLEMENTATION.md`、README 和手动验收文档；为每个条目补中文审计依据 `reviewEvidenceZh`；`/dev/knowledge` 显示审计依据；app manifest 不再截断 catalog。
+- 覆盖结果：`knowledge/docs/catalog.json` 纳入 146 个文档；扫描范围内未纳入目录降为 0；`.venv/**`、`.pytest_cache/**`、`.superpowers/**`、`harness-state/runs/**` 和参考项目 `repos/tokyo-business-connect/**` 继续排除在默认 Orbit 文档库之外。
+- 验证方式：运行 catalog 生成、manifest 同步、root knowledge tests、app manifest/page tests、app lint、app full test、`git diff --check`。
+- 后续注意：`needs-code-check` 仍用于保守标记尚未逐行对照当前代码的历史设计、feature DESIGN、mockdata 和 harness 文档；它们已经有中文入口和审计依据，但不应被当成完全验证当前行为。
