@@ -54,6 +54,25 @@ test("/dev/orbit-ai/trace renders the Orbit AI trace debugger shell", async () =
   assert.match(html, /developer-debug-prompt-visible/);
 });
 
+test("/dev/orbit-ai/trace keeps pipeline nodes compact", async () => {
+  const page = await importProjectModule<{ default: () => React.ReactElement }>(
+    "app/dev/orbit-ai/trace/page.tsx",
+  );
+  const html = renderToStaticMarkup(React.createElement(page.default));
+  const stageButtons = Array.from(
+    html.matchAll(/<button[^>]*class="trace-stage-button"[\s\S]*?<\/button>/g),
+    (match) => match[0],
+  );
+  const graphNodes = Array.from(
+    html.matchAll(/<button[^>]*class="trace-graph-node"[\s\S]*?<\/button>/g),
+    (match) => match[0],
+  );
+
+  assert.match(html, /运行一次 trace 后，在管线检查台查看当前阶段。/);
+  assert.equal(stageButtons.every((button) => !button.includes("<p>")), true);
+  assert.equal(graphNodes.every((button) => !button.includes("<p>")), true);
+});
+
 test("Orbit AI trace debugger posts prompts to the full-chain trace API", () => {
   const source = readFileSync(
     join(projectRoot, "app/dev/orbit-ai/trace/orbit-ai-trace-debugger.tsx"),

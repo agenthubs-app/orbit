@@ -332,9 +332,9 @@ const traceDebuggerStyles = `
   color: var(--trace-ink);
   cursor: pointer;
   display: grid;
-  gap: 8px;
-  min-height: 132px;
-  padding: 12px;
+  gap: 6px;
+  min-height: 78px;
+  padding: 10px 12px;
   position: relative;
   text-align: left;
 }
@@ -375,15 +375,8 @@ const traceDebuggerStyles = `
   text-transform: uppercase;
 }
 
-.trace-graph-node strong,
-.trace-graph-node p {
+.trace-graph-node strong {
   overflow-wrap: anywhere;
-}
-
-.trace-graph-node p {
-  color: var(--orbit-color-muted);
-  line-height: 1.4;
-  margin: 0;
 }
 
 .trace-edge-row {
@@ -421,8 +414,8 @@ const traceDebuggerStyles = `
   color: var(--trace-ink);
   display: grid;
   gap: 8px;
-  grid-template-rows: auto 1fr;
-  min-height: 138px;
+  grid-template-rows: auto auto;
+  min-height: 92px;
   padding: 12px;
   position: relative;
   text-align: left;
@@ -527,7 +520,6 @@ const traceDebuggerStyles = `
 }
 
 .trace-panel p,
-.trace-stage-button p,
 .trace-runtime-card p,
 .trace-call-row p,
 .trace-database-row p,
@@ -766,11 +758,6 @@ function StagePipeline({
                 <span className="trace-stage-title">
                   <strong>{stageLabel(stage.id, language)}</strong>
                 </span>
-                <p>
-                  {stage.summary === "Waiting for trace data."
-                    ? copy.waitingSummary
-                    : stage.summary}
-                </p>
               </span>
             </button>
           );
@@ -897,7 +884,6 @@ function TraceGraph({
                   <strong>
                     {node.stageId ? stageLabel(node.stageId, language) : node.label}
                   </strong>
-                  <p>{node.summary}</p>
                 </button>
               ))}
             </div>
