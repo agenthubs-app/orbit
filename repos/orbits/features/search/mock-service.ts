@@ -33,6 +33,8 @@ import {
 } from "./fixtures";
 import type { RelationshipNaturalSearchService } from "./service";
 
+// RelationshipNaturalSearch mock service 模拟自然语言关系搜索。
+// 它使用本地 token/filter 匹配 fixtures，不调用向量库、全文索引或 live database。
 const supportedScenarios = new Set<RelationshipNaturalSearchScenario>([
   "success",
   "empty",
@@ -58,6 +60,7 @@ const supportedFollowUpStatuses =
   );
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 搜索结果会被 UI 高亮/排序，返回 clone 防止修改全局 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -82,6 +85,7 @@ function suggestionsSuccess(
 function failure(
   code: RelationshipNaturalSearchErrorCode,
 ): RelationshipNaturalSearchFailure {
+  // 失败结果使用 mock search provenance，说明没有执行真实搜索后端。
   const definition = RELATIONSHIP_NATURAL_SEARCH_ERROR_DEFINITIONS[code];
 
   return {
@@ -132,6 +136,7 @@ function hasUnsupportedValue<TValue extends string>(
 function unsupportedFilterFailure(
   input: RelationshipNaturalSearchInput,
 ): RelationshipNaturalSearchFailure | null {
+  // filter 是 contract 白名单；不支持的过滤值直接失败，避免静默返回误导性结果。
   if (
     input.businessIntent &&
     !supportedBusinessIntents.has(
@@ -197,6 +202,7 @@ function suggestionsScenarioResult(
 }
 
 function queryTokens(query?: string | null): string[] {
+  // 自然语言查询被拆成小写 token；所有 token 都必须在 itemSearchText 中命中。
   return (
     query
       ?.toLowerCase()
@@ -207,6 +213,7 @@ function queryTokens(query?: string | null): string[] {
 }
 
 function itemSearchText(item: RelationshipNaturalSearchResultItem): string {
+  // 搜索文本显式包含身份、组织、上下文、意图、价值类型和 evidence excerpt。
   return [
     item.displayName,
     item.role,
@@ -256,6 +263,7 @@ function matchesRelationshipSearchInput(
   item: RelationshipNaturalSearchResultItem,
   input: RelationshipNaturalSearchInput,
 ): boolean {
+  // query 与各类 filters 是 AND 关系；同一 filter 数组内部是 OR 关系。
   return (
     matchesQuery(item, input.query) &&
     (!input.businessIntent ||
@@ -283,6 +291,7 @@ function hasSearchInput(input: RelationshipNaturalSearchInput): boolean {
 function runRelationshipNaturalSearch(
   input: RelationshipNaturalSearchInput = {},
 ): RelationshipNaturalSearchResult {
+  // 没有任何搜索输入时返回默认 fixture；有输入时按本地规则重新构建 payload。
   const resolvedScenario = scenarioResult(normalizeScenario(input.scenario));
 
   if (resolvedScenario) {
@@ -313,6 +322,7 @@ function runRelationshipNaturalSearch(
 }
 
 export function createMockRelationshipNaturalSearchService(): RelationshipNaturalSearchService {
+  // suggestions 是独立的轻量接口，只受 scenario 控制，不执行搜索过滤。
   return {
     queryRelationships(input = {}): RelationshipNaturalSearchResult {
       return runRelationshipNaturalSearch(input);

@@ -1,3 +1,10 @@
+/**
+ * 敏感动作确认守卫的 mock 服务。
+ *
+ * 所有可能写入关系图、发送消息、创建日历或修改个人资料的动作，都应该先变成
+ * confirmation requirement，由用户明确 approve/reject。这个 mock 只记录本地决定，
+ * 不会执行外部动作。
+ */
 import type { ApiErrorContext } from "../../shared/api/envelope";
 import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
@@ -26,6 +33,7 @@ import {
 export const CONFIRMATION_GUARD_FIXTURE_SOURCE =
   "fixture:features/permissions/mock-confirmation-service.ts" as const;
 
+// 固定时间戳让 UI snapshot 和 contract 测试稳定。
 const fixtureCollectedAt = "2026-06-24T15:00:00.000Z";
 const fixtureCreatedAt = "2026-06-24T15:05:00.000Z";
 const fixtureDecidedAt = "2026-06-24T15:10:00.000Z";
@@ -97,6 +105,8 @@ const profileEvidence: ConfirmationEvidence = {
   collectedAt: fixtureCollectedAt,
 };
 
+  // 这四条 requirement 覆盖 outbound message、contact write、calendar write、
+  // profile write 四类敏感动作，帮助页面一次性展示多种确认风险。
 export const mockConfirmationRequirements: readonly ConfirmationRequirement[] = [
   {
     id: "demo-confirmation-1",
@@ -276,6 +286,7 @@ const supportedDecisionScenarios = new Set<ConfirmationDecisionScenario>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 确认项会被 UI 局部修改状态，返回 clone 可以保护 fixture 原始值。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -298,6 +309,7 @@ function decisionSuccess(
 }
 
 function failure(code: ConfirmationGuardErrorCode): ConfirmationGuardFailure {
+  // guard 和 decision 共用一组错误定义，便于 API route 统一转换。
   const definition = CONFIRMATION_GUARD_ERROR_DEFINITIONS[code];
 
   return {
@@ -314,6 +326,7 @@ function failure(code: ConfirmationGuardErrorCode): ConfirmationGuardFailure {
 function normalizeGuardScenario(
   scenario?: ConfirmationGuardInput["scenario"],
 ): ConfirmationGuardScenario {
+  // listConfirmationRequirements 支持 success/empty/pending/failure 四种页面状态。
   if (
     scenario &&
     supportedGuardScenarios.has(scenario as ConfirmationGuardScenario)
@@ -327,6 +340,7 @@ function normalizeGuardScenario(
 function normalizeDecisionScenario(
   scenario?: ConfirmationDecisionInput["scenario"],
 ): ConfirmationDecisionScenario {
+  // decision 额外支持 blocked，用来模拟当前动作不允许被批准/拒绝。
   if (
     scenario &&
     supportedDecisionScenarios.has(scenario as ConfirmationDecisionScenario)
@@ -342,6 +356,7 @@ function findRequirement(id: string): ConfirmationRequirement | undefined {
 }
 
 function resolveActorLabel(actorLabel?: string | null): string {
+  // 未传操作者时使用稳定默认值，保证审计文案可预测。
   const normalizedActor = actorLabel?.trim();
 
   return normalizedActor ? normalizedActor : "Demo operator";
@@ -352,6 +367,7 @@ function buildDecisionPayload(
   requirement: ConfirmationRequirement,
   actorLabel?: string | null,
 ): ConfirmationDecisionPayload {
+  // 默认 demo-confirmation-1 复用标准 fixture；其它确认项按输入动态生成审计结果。
   if (
     requirement.id === mockConfirmationApprovedFixture.requirement.id &&
     resolveActorLabel(actorLabel) === "Demo operator"
@@ -391,6 +407,7 @@ function resolveDecision(
   input: ConfirmationDecisionInput,
   status: ConfirmationDecisionStatus,
 ): ConfirmationDecisionResult {
+  // approve/reject 共用该流程：scenario 短路、确认项存在性校验、状态校验、生成决定。
   const scenario = normalizeDecisionScenario(input.scenario);
 
   if (scenario === "blocked") {
@@ -415,6 +432,7 @@ function resolveDecision(
 }
 
 export function createMockSensitiveActionConfirmationService(): SensitiveActionConfirmationService {
+  // 对外 service 不执行敏感动作，只返回待确认列表或本地决策结果。
   return {
     listConfirmationRequirements(input = {}) {
       switch (normalizeGuardScenario(input.scenario)) {
@@ -443,6 +461,7 @@ export function createMockSensitiveActionConfirmationService(): SensitiveActionC
 export function confirmationGuardFailureToAppError(
   result: ConfirmationGuardFailure,
 ): AppError {
+  // API 层只需要 AppError，不需要知道 confirmation contract 的内部字段。
   return new AppError(result.error.appCode, result.error.message);
 }
 
@@ -450,6 +469,7 @@ export function confirmationGuardFailureContext(
   result: ConfirmationGuardFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  // 失败上下文标记 mock guard 边界，方便调试 confirmation 相关 API。
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     confirmationGuardErrorCode: result.error.code,

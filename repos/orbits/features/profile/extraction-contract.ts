@@ -1,5 +1,7 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 
+// Profile Document Extraction contract 描述从简历/名片文档生成 profile draft。
+// 当前是 fixture/rule-based 提取，不调用真实 OCR、解析器或 AI 系统。
 export const PROFILE_DOCUMENT_EXTRACTION_ERROR_CODES = [
   "PROFILE_DOCUMENT_REQUIRED",
   "PROFILE_DOCUMENT_UNSUPPORTED_TYPE",
@@ -23,6 +25,7 @@ export type ProfileDocumentExtractionState = "success" | "empty" | "pending";
 
 export type ProfileDocumentExtractionConfidence = "high" | "medium" | "low";
 
+// extraction 错误定义覆盖缺文档、不支持类型和受控失败。
 export interface ProfileDocumentExtractionErrorDefinition {
   code: ProfileDocumentExtractionErrorCode;
   appCode: AppErrorCode;
@@ -66,6 +69,7 @@ export interface ProfileDocumentExtractionInput {
   text?: string;
 }
 
+// provenance 说明提取方式和 demo 文档边界。
 export interface ProfileDocumentExtractionProvenance {
   source: string;
   sourceLabel: string;
@@ -75,6 +79,7 @@ export interface ProfileDocumentExtractionProvenance {
   extractionMethod: "fixture" | "rule-based-text-match";
 }
 
+// FieldEvidence 把 suggested field 和原始文档片段关联起来。
 export interface ProfileDocumentFieldEvidence {
   field: string;
   value: string;
@@ -82,6 +87,7 @@ export interface ProfileDocumentFieldEvidence {
   excerpt: string;
 }
 
+// SuggestedFields 是可合并进 ManualProfile 的字段子集。
 export interface ProfileDocumentSuggestedFields {
   headline?: string;
   homeMarket?: string;
@@ -91,6 +97,7 @@ export interface ProfileDocumentSuggestedFields {
   preferredIntroChannels?: readonly string[];
 }
 
+// ExtractionDraft 是待用户确认的资料草稿，不会自动覆盖 profile。
 export interface ProfileDocumentExtractionDraft {
   id: string;
   kind: ProfileDocumentExtractionKind;
@@ -112,6 +119,7 @@ export interface ProfileDocumentExtractionDraft {
   suggestedProfileFields: ProfileDocumentSuggestedFields;
 }
 
+// payload 同时返回 draft、confidenceSummary 和 nextAction，供 onboarding UI 复核。
 export interface ProfileDocumentExtractionPayload {
   state: ProfileDocumentExtractionState;
   kind: ProfileDocumentExtractionKind;

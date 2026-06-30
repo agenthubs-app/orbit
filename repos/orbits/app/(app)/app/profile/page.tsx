@@ -1,3 +1,8 @@
+/**
+ * 个人资料页 route adapter。
+ *
+ * 负责生成 profile view model 和本地化文案，真实编辑 UI 在 `OrbitRealProfile` 中。
+ */
 import { getOrbitProfileViewModel } from "../orbit-profile-route-view-model";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";

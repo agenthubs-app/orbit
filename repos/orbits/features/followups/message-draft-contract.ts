@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const MESSAGE_DRAFT_GENERATOR_FIXTURE_SOURCE =
   "fixture:features/followups/message-draft-contract.ts" as const;
+// Message Draft Generator contract 描述跟进消息草稿的生成和编辑流程。
+// 草稿只供用户复核；mock/live 的具体数据和执行策略由各自实现提供。
 
 export const MESSAGE_DRAFT_GENERATOR_DRAFT_KINDS = [
   "greeting",
@@ -49,6 +51,7 @@ export type MessageDraftChannel =
   | "linkedin"
   | "calendar_note"
   | "internal_note";
+// create 输入描述要生成什么草稿；update 输入描述用户如何修改/复核现有草稿。
 
 export interface MessageDraftGeneratorCreateInput {
   scenario?: MessageDraftGeneratorScenario | string | null;
@@ -82,6 +85,7 @@ export interface MessageDraftGeneratorErrorDefinition {
   message: string;
   recovery: string;
 }
+// 草稿失败定义确保缺上下文、pending 或失败时不触发 live AI/send channel。
 
 export const MESSAGE_DRAFT_GENERATOR_ERROR_DEFINITIONS = {
   MESSAGE_DRAFT_GENERATOR_DRAFT_ID_REQUIRED: {
@@ -140,12 +144,14 @@ export type MessageDraftGeneratorSourceReference = SourceReferenceDTO & {
   providerRecordId: string;
   generatedBy: "mock-message-draft-rules";
 };
+// audit 告诉 UI 该草稿必须复核来源证据。
 
 export interface MessageDraftAudit {
   sourceLabel: string;
   providerBoundary: "AI false, external send false, persistence false";
   verificationAction: "Review source evidence";
 }
+// MessageDraft 是可编辑草稿；sendActionRequiresConfirmation=true 表示不能自动发送。
 
 export interface MessageDraft {
   draftId: string;
@@ -175,6 +181,7 @@ export interface MessageDraft {
   liveDatabaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
 }
+// provenance 汇总草稿生成方法和所有未触发的外部能力。
 
 export interface MessageDraftGeneratorProvenance {
   source: typeof MESSAGE_DRAFT_GENERATOR_FIXTURE_SOURCE;

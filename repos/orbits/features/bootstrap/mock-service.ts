@@ -1,3 +1,10 @@
+/**
+ * App bootstrap 的 mock 服务。
+ *
+ * bootstrap 是应用启动时的聚合入口，会给 UI 提供用户、任务、权限等初始状态。
+ * 这个实现只从 fixture 生成启动 payload，并支持 scenario 与 taskLimit，
+ * 用来稳定测试空状态、加载中、失败和任务截断。
+ */
 import {
   APP_BOOTSTRAP_ERROR_DEFINITIONS,
   mockAppBootstrapFailureProvenance,
@@ -21,6 +28,7 @@ const supportedScenarios = new Set<AppBootstrapScenario>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // bootstrap payload 会被页面拆开使用，返回 clone 可以保护全局 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -32,6 +40,7 @@ function success(data: AppBootstrapPayload): AppBootstrapResult {
 }
 
 function failure(code: AppBootstrapErrorCode): AppBootstrapFailure {
+  // mock 层不自行拼错误文本，全部复用 contract 的错误定义。
   const definition = APP_BOOTSTRAP_ERROR_DEFINITIONS[code];
 
   return {
@@ -48,6 +57,7 @@ function failure(code: AppBootstrapErrorCode): AppBootstrapFailure {
 function normalizeScenario(
   scenario?: AppBootstrapInput["scenario"],
 ): AppBootstrapScenario {
+  // 未知 scenario 回到 success，保证 API query 参数不会创建未定义状态。
   if (scenario && supportedScenarios.has(scenario as AppBootstrapScenario)) {
     return scenario as AppBootstrapScenario;
   }
@@ -56,6 +66,7 @@ function normalizeScenario(
 }
 
 function normalizedTaskLimit(limit?: number | null): number | null {
+  // taskLimit 是可选开发/测试开关；无效值表示不截断。
   if (!Number.isFinite(limit ?? Number.NaN)) {
     return null;
   }
@@ -66,6 +77,7 @@ function normalizedTaskLimit(limit?: number | null): number | null {
 function scenarioResult(
   scenario: AppBootstrapScenario,
 ): AppBootstrapResult | null {
+  // success 返回 null 表示继续走正常 bootstrap fixture；其它 scenario 直接短路。
   switch (scenario) {
     case "empty":
       return success(mockEmptyAppBootstrapFixture);
@@ -83,6 +95,7 @@ function applyTaskLimit(
   payload: AppBootstrapPayload,
   taskLimit?: number | null,
 ): AppBootstrapPayload {
+  // 截断任务列表时同步改 provenance，方便调试层知道结果来自本地规则。
   const limit = normalizedTaskLimit(taskLimit);
 
   if (limit === null) {
@@ -101,6 +114,7 @@ function applyTaskLimit(
 }
 
 export function createMockAppBootstrapService(): AppBootstrapService {
+  // 应用启动页只依赖这个 service contract，不需要感知背后是 mock 还是真实实现。
   return {
     getAppBootstrap(input = {}): AppBootstrapResult {
       const result = scenarioResult(normalizeScenario(input.scenario));

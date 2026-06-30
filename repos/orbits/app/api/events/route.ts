@@ -19,6 +19,8 @@ import {
 } from "../../../features/events/service";
 import { createEventCrudAndImportService } from "../../../features/events/service-factory";
 
+// Events route 提供活动列表读取和手动活动创建预览。
+// 当前 mock 不写真实活动库；POST 只经过 event service 生成可复核结果。
 export const dynamic = "force-dynamic";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -57,6 +59,7 @@ type ManualEventCreationInputResult =
 async function readManualEventCreationInput(
   request: Request,
 ): Promise<ManualEventCreationInputResult> {
+  // POST 同时支持表单和 JSON，便于页面 form action 与 API 测试共用一个端点。
   const searchParams = new URL(request.url).searchParams;
   const queryInput: ManualEventCreationInput = {
     scenario: searchParams.get("scenario"),
@@ -129,6 +132,7 @@ async function readManualEventCreationInput(
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // GET 读取活动列表，不创建或导入活动。
   const mode = resolveFeatureMode();
   const eventService = createEventCrudAndImportService();
   const result = eventService.listEvents(readEventListInput(request));

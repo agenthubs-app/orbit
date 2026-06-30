@@ -1,3 +1,10 @@
+/**
+ * `/app` 工作台的聚合组件。
+ *
+ * 这里从多个 mock-first service 读取首屏关系工作数据：bootstrap、profile、
+ * events、followups、dashboard、notifications 和 agent queue。它只生成可复核
+ * 的页面预览和本地 action 结果，不发送消息、写数据库或触发外部网络。
+ */
 import { createAgentActionQueueService } from "../../../features/agent/service-factory";
 import type {
   AppBootstrapPayload,
@@ -14,6 +21,7 @@ import { Chip, WorkbenchSurface } from "../../../shared/ui/primitives";
 import { StateView } from "../../../shared/ui/state-view";
 
 const appWorkbenchStyles = `
+/* 工作台样式只约束这个 route 的聚合布局，避免影响共享组件。 */
 .app-workbench-route {
   display: grid;
   gap: var(--orbit-space-md);
@@ -202,6 +210,7 @@ function readSearchParam(
   searchParams: AppWorkbenchSearchParams | undefined,
   key: string,
 ): string | null {
+  // Next.js searchParams 可能是字符串或字符串数组，这里统一取第一个值。
   const value = searchParams?.[key];
 
   if (Array.isArray(value)) {
@@ -214,6 +223,7 @@ function readSearchParam(
 function readRouteScenario(
   searchParams: AppWorkbenchSearchParams | undefined,
 ): RouteScenario | null {
+  // scenario 只允许 empty/pending/failure；success 是默认主路径，不通过 query 显式触发。
   const scenario = readSearchParam(searchParams, "scenario");
 
   if (
@@ -230,6 +240,7 @@ function readRouteScenario(
 function readTaskLimit(
   searchParams: AppWorkbenchSearchParams | undefined,
 ): number | null {
+  // taskLimit 用来演示“只聚焦一个跟进任务”的首屏模式，无效值会被忽略。
   const rawLimit = readSearchParam(searchParams, "taskLimit");
 
   if (!rawLimit) {
@@ -272,6 +283,7 @@ function formatSourceLabel(label: string): string {
 function uniqueSourceLabels(
   records: readonly ({ sourceRefs?: readonly { label: string }[] } | null | undefined)[],
 ): string[] {
+  // 从多个业务对象提取 source label，给首屏展示“为什么这个关系优先”。
   return [
     ...new Set(
       records.flatMap((record) =>
@@ -316,6 +328,7 @@ function RouteStateBoundary({
   payload?: AppBootstrapPayload;
   scenario: RouteScenario;
 }) {
+  // App workbench 的 empty/pending/failure 都通过 StateView 展示，并明确说明不会执行副作用。
   if (scenario === "empty" && payload) {
     return (
       <div data-route-recovery-copy="Add a sourced contact or import an event attendee roster.">
@@ -419,6 +432,7 @@ function OutcomeSummaries({ outcomes }: { outcomes: readonly OutcomeSummary[] })
 }
 
 export function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
+  // 主聚合路径：先实例化各 capability service，再读取首屏所需的最小数据集。
   const bootstrapService = createAppBootstrapService();
   const profileService = createProfileService();
   const eventService = createEventCrudAndImportService();
@@ -454,6 +468,7 @@ export function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
   }
 
   if (requestedScenario) {
+    // scenario route 用于开发/测试恢复状态，不参与正常首屏推荐排序。
     const scenarioBootstrap = bootstrapService.getAppBootstrap({
       scenario: requestedScenario,
     });
@@ -605,6 +620,7 @@ export function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
     },
   ];
   const actionResult = actionRequested
+    // 点击 focus queue 只接受 mock agent action，返回 provenance；不触发外部动作。
     ? agentService.acceptAction({
         actionId: "demo-action-1",
         actorLabel: "Orbit workspace reviewer",

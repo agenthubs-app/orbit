@@ -1,3 +1,8 @@
+/**
+ * Chat 会话与消息 mock 的契约测试。
+ *
+ * 覆盖会话列表、线程、发送状态和 debug-view 的基础聊天数据边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

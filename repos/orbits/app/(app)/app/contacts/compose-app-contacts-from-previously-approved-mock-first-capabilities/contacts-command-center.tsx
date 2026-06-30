@@ -12,6 +12,8 @@ import {
   type AppContactsSearchParams,
 } from "./contacts-route-view-model";
 
+// ContactsCommandCenter 是联系人列表页的纯 UI 组合层。
+// 数据和状态都来自 contacts-route-view-model；这里不直接调用 feature service。
 const appContactsStyles = `
 .app-contacts-route {
   display: grid;
@@ -211,6 +213,7 @@ function EvidenceChips({
   );
 }
 
+// ValueChips 把关系价值类型展示成标签，不重新计算 value score。
 function ValueChips({ contact }: { contact: AppContactListItemViewModel }) {
   return (
     <div
@@ -260,6 +263,7 @@ function RouteRecoveryActions({
   );
 }
 
+// RouteStateBoundary 只负责 empty/pending/failure；成功列表在 SuccessBoundary 渲染。
 function RouteStateBoundary({
   routeState,
 }: {
@@ -282,6 +286,7 @@ function RouteStateBoundary({
   );
 }
 
+// ContactsLedger 是列表级摘要，所有数字都来自 view-model，不在组件中重新查询。
 function ContactsLedger({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <dl
@@ -311,6 +316,7 @@ function ContactsLedger({ payload }: { payload: AppContactsPayloadViewModel }) {
   );
 }
 
+// ContactsSearchForm 用 GET query 驱动筛选，便于复制 URL 和测试状态。
 function ContactsSearchForm({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <form
@@ -380,6 +386,7 @@ function ContactsSearchForm({ payload }: { payload: AppContactsPayloadViewModel 
   );
 }
 
+// ContactCard 展示单个联系人及其证据；不负责发起详情查询或外部查找。
 function ContactCard({ contact }: { contact: AppContactListItemViewModel }) {
   return (
     <article
@@ -434,6 +441,7 @@ function ContactCard({ contact }: { contact: AppContactListItemViewModel }) {
   );
 }
 
+// ReviewActionResult 是本地复核预览的结果面板，明确标记 data-side-effects="none"。
 function ReviewActionResult({
   payload,
 }: {
@@ -529,6 +537,7 @@ function ReviewActionResult({
   );
 }
 
+// AttentionQueueCard 只展示下一步建议，不会创建任务或发送消息。
 function AttentionQueueCard({
   contact,
 }: {
@@ -567,6 +576,7 @@ function AttentionQueueCard({
   );
 }
 
+// RelationshipReviewQueue 是联系人页的主工作区：先看需要关注的人，再看安全下一步。
 function RelationshipReviewQueue({
   payload,
 }: {
@@ -602,6 +612,7 @@ function RelationshipReviewQueue({
   );
 }
 
+// ReviewActionForm 提交的是本地 preview action，不写联系人、不发消息、不改外部账号。
 function ReviewActionForm() {
   return (
     <form
@@ -637,6 +648,7 @@ function ReviewActionForm() {
   );
 }
 
+// SuccessBoundary 给成功状态一个明确 DOM 边界，方便页面测试定位。
 function SuccessBoundary({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <div data-state-boundary="app-contacts-success">
@@ -646,6 +658,7 @@ function SuccessBoundary({ payload }: { payload: AppContactsPayloadViewModel }) 
   );
 }
 
+// SecondaryControls 包含搜索表单、preview action 和状态检查入口。
 function SecondaryControls({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <WorkbenchSurface
@@ -682,6 +695,7 @@ function SecondaryControls({ payload }: { payload: AppContactsPayloadViewModel }
   );
 }
 
+// ContactsListSection 展示当前筛选后的联系人集合。
 function ContactsListSection({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <WorkbenchSurface
@@ -698,6 +712,7 @@ function ContactsListSection({ payload }: { payload: AppContactsPayloadViewModel
   );
 }
 
+// FilterVocabulary 展示当前可用筛选词汇和列表证据。
 function FilterVocabulary({ payload }: { payload: AppContactsPayloadViewModel }) {
   return (
     <WorkbenchSurface
@@ -738,6 +753,7 @@ function FilterVocabulary({ payload }: { payload: AppContactsPayloadViewModel })
   );
 }
 
+// 页面入口：根据 view-model state 选择 route-state、failure 或 success 工作区。
 export function AppContactsCommandCenter({
   searchParams,
 }: AppContactsCommandCenterProps) {

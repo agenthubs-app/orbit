@@ -1,3 +1,8 @@
+/**
+ * 忘记密码页 route adapter。
+ *
+ * 这个文件只选择 forgot 模式 view model，并复用账号认证组件渲染页面。
+ */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { getOrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";

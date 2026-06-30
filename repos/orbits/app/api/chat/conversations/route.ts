@@ -14,6 +14,8 @@ import {
 } from "../../../../features/chat/service";
 import { createChatConversationMessageService } from "../../../../features/chat/service-factory";
 
+// 传统 chat conversation 列表 route。
+// 注意它不同于 Orbit Agent 的 `/api/ai/conversations`，这里仍是 chat mock capability。
 export const dynamic = "force-dynamic";
 
 function readInput(request: Request): ChatConversationListInput {
@@ -28,6 +30,7 @@ function responseForResult(
   result: ChatConversationListResult,
   mode: ReturnType<typeof resolveFeatureMode>,
 ): Response {
+  // feature failure 在 route 层统一转成 shared API envelope 和 HTTP status。
   if (result.success === false) {
     const appError = chatConversationMockFailureToAppError(result);
 

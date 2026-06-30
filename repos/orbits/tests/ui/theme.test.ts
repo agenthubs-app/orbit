@@ -1,3 +1,8 @@
+/**
+ * 共享 UI theme/primitives 测试。
+ *
+ * 锁住 token 导出、primitive 别名和基础组件渲染结构。
+ */
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";

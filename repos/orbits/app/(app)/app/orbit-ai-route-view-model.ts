@@ -8,6 +8,8 @@ import type {
 } from "../../../features/orbit-ai/contract";
 import { createOrbitAiCommandService } from "../../../features/orbit-ai/service-factory";
 
+// Orbit AI route view-model 是旧命令中心的页面适配层。
+// 它把 features/orbit-ai 的 command payload 转成 React 组件更容易消费的 UI 字段。
 export type OrbitAiCommandSearchParams = Record<
   string,
   string | string[] | undefined
@@ -48,6 +50,7 @@ export interface AppOrbitAiCommandViewModel {
   stageTitle: string;
 }
 
+// Next.js searchParams 可能是 string 或 string[]；页面只取第一个值作为命令输入。
 function readSearchParam(
   searchParams: OrbitAiCommandSearchParams | undefined,
   key: string,
@@ -61,6 +64,7 @@ function readSearchParam(
   return value ?? null;
 }
 
+// 加载命令中心视图模型：这里只调用 command service，不执行 live conversation 或外部动作。
 export function loadOrbitAiCommandViewModel(
   searchParams?: OrbitAiCommandSearchParams,
 ): AppOrbitAiCommandViewModel {

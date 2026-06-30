@@ -1,3 +1,8 @@
+/**
+ * Profile onboarding 与手动编辑 mock 的契约测试。
+ *
+ * 锁住 profile 读取、编辑输入、错误码和页面可视化。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

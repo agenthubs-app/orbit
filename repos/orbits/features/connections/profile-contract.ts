@@ -7,6 +7,8 @@ import type { AppErrorCode } from "../../shared/errors/app-error";
 export const RELATIONSHIP_PROFILE_FIXTURE_SOURCE =
   "fixture:features/connections/profile-contract.ts" as const;
 
+// Relationship Profile contract 描述单条关系的阶段、类型、互惠价值和下一步动作。
+// 这里的更新是 staged/mock profile update，不直接写生产关系库。
 export const RELATIONSHIP_PROFILE_TYPES = [
   "event_peer",
   "customer_candidate",
@@ -37,6 +39,7 @@ export type RelationshipProfileScenario =
 
 export type RelationshipProfileState = "success" | "empty" | "pending";
 
+// 错误定义把 profile 缺失、非法 body、不支持 stage 和 pending guard 分开。
 export interface RelationshipProfileErrorDefinition {
   code: RelationshipProfileErrorCode;
   appCode: AppErrorCode;
@@ -92,12 +95,14 @@ export interface RelationshipMutualValue {
   valueTypes: readonly RelationshipValueType[];
 }
 
+// NextAction 是关系画像建议的下一步，不会自动创建任务或通知。
 export interface RelationshipNextAction {
   label: string;
   rationale: string;
   dueAt?: string;
 }
 
+// LatestSummary 是关系画像摘要，来自 fixture/rule，不来自 live AI。
 export interface RelationshipLatestSummary {
   text: string;
   generatedAt: string;
@@ -106,6 +111,7 @@ export interface RelationshipLatestSummary {
   createdBy: "mock-relationship-stage-and-profile-service";
 }
 
+// RelationshipProfileRecord 是详情页可编辑/可复核的关系画像读模型。
 export interface RelationshipProfileRecord {
   connectionId: string;
   contactId: string;
@@ -127,6 +133,7 @@ export interface RelationshipProfileRecord {
   notificationDelivered: false;
 }
 
+// provenance 记录没有执行真实数据库读写、AI、日历、邮件或通知。
 export interface RelationshipProfileProvenance {
   source: string;
   sourceLabel: string;
@@ -145,6 +152,7 @@ export interface RelationshipProfileProvenance {
   notificationDelivered: false;
 }
 
+// update 输入按 stage 和 profile 字段拆分，便于 API route 做精确校验。
 export interface RelationshipStageUpdateInput {
   connectionId: string;
   relationshipStage?: RelationshipStage | string | null;

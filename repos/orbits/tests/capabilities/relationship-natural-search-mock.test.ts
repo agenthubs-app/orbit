@@ -1,3 +1,8 @@
+/**
+ * 自然语言关系搜索 mock 的契约测试。
+ *
+ * 锁住 query/filter 结果、搜索建议和不访问真实索引的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

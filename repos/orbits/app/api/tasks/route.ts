@@ -13,6 +13,8 @@ import {
   followupTaskGenerationFailureToAppError,
 } from "../../../features/followups/service";
 
+// Tasks route 暴露跟进任务列表。
+// 任务生成由 followups service 负责；route 只解析 triggerKind/limit/scenario。
 export const dynamic = "force-dynamic";
 
 function readLimit(searchParams: URLSearchParams): number | null {
@@ -38,6 +40,7 @@ function readInput(request: Request): FollowupTaskGenerationListInput {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // 当前 mock 只返回可展示任务，不创建真实提醒或通知。
   const mode = resolveFeatureMode();
   const taskService = createFollowupTaskGenerationService();
   const result = taskService.listTasks(readInput(request));

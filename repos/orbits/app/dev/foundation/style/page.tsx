@@ -1,4 +1,10 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
+/**
+ * UI 风格基础页。
+ *
+ * 这是设计 token 和基础组件的实物样张，用真实业务场景展示颜色、状态、
+ * privacy/confirmation/evidence 等语义样式如何组合。
+ */
 import "../../../globals.css";
 import {
   Chip,

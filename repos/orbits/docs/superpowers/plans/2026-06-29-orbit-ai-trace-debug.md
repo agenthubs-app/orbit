@@ -4,7 +4,7 @@
 
 **Goal:** Build `/dev/orbit-ai/trace`, a development-only visual debugger that accepts a prompt and shows full-chain Orbit Agent execution beside planner-only comparison.
 
-**Architecture:** Add a typed trace contract and full-chain trace runner under `features/orbit-ai/`, then expose it through `POST /api/dev/orbit-ai/trace` and a client debugger page. The runner records input, local guardrails, planner output, tool mapping, artifact generation, synthesis, final response, source panels, and architecture snapshot metadata without executing external side effects.
+**Architecture:** Add a typed trace contract and full-chain trace runner under `features/orbit-ai/`, then expose it through `POST /api/dev/orbit-ai/trace` and a client debugger page. The runner records input, local guardrails, planner output, tool mapping, local-remote database context, artifact generation, synthesis, final response, source panels, and architecture snapshot metadata without executing external side effects.
 
 **Tech Stack:** Next.js App Router, React 18, TypeScript, Node `node:test`, existing Orbit workbench primitives, existing Gemini/DeepSeek/OpenAI provider adapter.
 

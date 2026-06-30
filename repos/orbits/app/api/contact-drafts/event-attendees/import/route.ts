@@ -15,6 +15,8 @@ import { createEventAttendeeImportService } from "../../../../../features/acquis
 
 export const dynamic = "force-dynamic";
 
+// event-attendees import route 将活动参会者转成联系人草稿。
+// route 兼容 query/form/json；活动读取、关系状态过滤和草稿生成都在 attendee import service 中。
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -32,6 +34,7 @@ async function readEventAttendeeImportInput(
   request: Request,
 ): Promise<EventAttendeeImportInput> {
   const url = new URL(request.url);
+  // queryInput 是默认输入，body 可以覆盖 eventId 或 relationshipStatusFilter。
   const queryInput: EventAttendeeImportInput = {
     eventId: url.searchParams.get("eventId") ?? undefined,
     relationshipStatusFilter:
@@ -44,6 +47,7 @@ async function readEventAttendeeImportInput(
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
   ) {
+    // 表单路径服务活动页面的导入按钮。
     const formData = await request.formData();
 
     return {
@@ -68,6 +72,7 @@ async function readEventAttendeeImportInput(
   const parsedBody: unknown = JSON.parse(rawBody);
   const body = isRecord(parsedBody) ? parsedBody : {};
 
+  // JSON 路径只读取白名单字段，不在 route 层查询或修改活动数据。
   return {
     ...queryInput,
     eventId:
@@ -80,6 +85,7 @@ async function readEventAttendeeImportInput(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // importEventAttendees 生成待确认草稿，不直接创建联系人。
   const mode = resolveFeatureMode();
   const importService = createEventAttendeeImportService();
   const result = importService.importEventAttendees(
@@ -87,6 +93,7 @@ export async function POST(request: Request): Promise<Response> {
   );
 
   if (result.success === false) {
+    // attendee import failure 统一映射成 AppError/envelope。
     const appError = eventAttendeeImportFailureToAppError(result);
 
     return NextResponse.json(

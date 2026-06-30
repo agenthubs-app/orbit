@@ -1,3 +1,9 @@
+/**
+ * Capability debug dashboard 的错误码映射。
+ *
+ * 当前只有受控 mock 失败场景；错误上下文会说明没有调用生产 admin、
+ * observability、数据库、AI provider 或外部网络。
+ */
 import type { ApiErrorContext } from "../../../../shared/api/envelope";
 import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../../../shared/api/envelope";
 import type { FeatureMode } from "../../../../shared/config/feature-mode";

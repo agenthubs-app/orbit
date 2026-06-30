@@ -1,3 +1,8 @@
+/**
+ * Chat 写作辅助 mock 的契约测试。
+ *
+ * 验证 rewrite/follow-up draft 建议、来源证据和 debug-view 可视化。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

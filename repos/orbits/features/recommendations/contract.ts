@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const EVENT_RECOMMENDATION_FIXTURE_SOURCE =
   "fixture:features/recommendations/fixtures.ts" as const;
+// Recommendations contract 描述活动前联系人推荐和开场白草稿协议。
+// mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const EVENT_RECOMMENDATION_ERROR_CODES = [
   "EVENT_RECOMMENDATION_EVENT_ID_REQUIRED",
@@ -32,17 +34,20 @@ export type EventOpeningLineStyle =
   | "warm_context"
   | "context_question"
   | "post_event_follow_up";
+// recommendation input 以 eventId 为中心；limit 控制返回的推荐人数。
 
 export interface EventRecommendationInput {
   eventId?: string | null;
   scenario?: EventRecommendationScenario | string | null;
   limit?: number | null;
 }
+// opening line 在活动和 attendee 的上下文中生成，可指定表达风格。
 
 export interface EventOpeningLineInput extends EventRecommendationInput {
   attendeeId?: string | null;
   style?: EventOpeningLineStyle | string | null;
 }
+// 错误定义覆盖活动缺失、参会人缺失、pending guard 和 controlled failure。
 
 export interface EventRecommendationErrorDefinition {
   code: EventRecommendationErrorCode;
@@ -102,6 +107,7 @@ export type EventRecommendationSourceReference = SourceReferenceDTO & {
   providerRecordId: string;
   generatedBy: "mock-event-recommendation-service";
 };
+// EventRecommendationEvent 是推荐链路里需要的活动摘要，不代表真实日历记录。
 
 export interface EventRecommendationEvent {
   id: string;
@@ -115,6 +121,7 @@ export interface EventRecommendationEvent {
   liveDatabaseWriteExecuted: false;
   externalNetworkRequested: false;
 }
+// attendee 表示某个可推荐对象；外部画像、数据库、AI provider 全部保持 false。
 
 export interface EventRecommendationAttendee {
   attendeeId: string;
@@ -132,6 +139,7 @@ export interface EventRecommendationAttendee {
   emailProviderRequested: false;
   notificationDelivered: false;
 }
+// match signal 解释推荐分数来源；当前由 mock 规则生成，不走 embedding/vector search。
 
 export interface EventRecommendationMatchSignal {
   signalId: string;
@@ -148,6 +156,7 @@ export interface EventRecommendationMatchSignal {
   externalNetworkRequested: false;
   databaseQueryExecuted: false;
 }
+// opening line 是可复核草稿，不会直接发送邮件或消息。
 
 export interface EventRecommendationOpeningLine {
   lineId: string;
@@ -165,6 +174,7 @@ export interface EventRecommendationOpeningLine {
   emailProviderRequested: false;
   notificationDelivered: false;
 }
+// EventAttendeeRecommendation 聚合 attendee、分数、理由、信号和默认开场白。
 
 export interface EventAttendeeRecommendation {
   recommendationId: string;
@@ -190,6 +200,7 @@ export interface EventAttendeeRecommendation {
   emailProviderRequested: false;
   notificationDelivered: false;
 }
+// provenance 记录推荐生成方式和所有未触发的外部能力。
 
 export interface EventRecommendationProvenance {
   source: typeof EVENT_RECOMMENDATION_FIXTURE_SOURCE;
@@ -215,6 +226,7 @@ export interface EventRecommendationProvenance {
   emailProviderRequested: false;
   notificationDelivered: false;
 }
+// 推荐 payload 返回活动和候选人列表；开场白 payload 返回单个候选人的草稿集合。
 
 export interface EventRecommendationsPayload {
   state: EventRecommendationState;

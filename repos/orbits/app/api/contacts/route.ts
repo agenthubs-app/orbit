@@ -13,6 +13,8 @@ import {
 } from "../../../features/contacts/service";
 import type { ContactsListSearchFilterInput } from "../../../features/contacts/contract";
 
+// Contacts list route 提供联系人列表搜索和过滤 API。
+// 具体筛选规则在 contacts service 内；route 只解析 querystring 并返回统一 envelope。
 export const dynamic = "force-dynamic";
 
 function readListParam(
@@ -20,6 +22,7 @@ function readListParam(
   singularName: string,
   pluralName: string,
 ): string[] {
+  // 支持 ?tag=a&tag=b 和 ?tags=a,b 两种形式，方便表单和测试共用。
   const values = [
     ...searchParams.getAll(singularName),
     ...searchParams.getAll(pluralName),
@@ -47,6 +50,7 @@ function readContactsListInput(request: Request): ContactsListSearchFilterInput 
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // 当前 contacts service 是 mock-first；即使 query/filter 存在，也不读真实搜索索引。
   const mode = resolveFeatureMode();
   const contactsService = createContactsListSearchAndFilterService();
   const result = contactsService.listContacts(readContactsListInput(request));

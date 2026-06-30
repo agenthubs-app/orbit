@@ -1,3 +1,8 @@
+/**
+ * Profile onboarding 与手动编辑 mock 的开发者面板。
+ *
+ * 这里展示 profile 读取、更新输入和错误状态，用来验证资料页编辑契约。
+ */
 import {
   Chip,
   Field,

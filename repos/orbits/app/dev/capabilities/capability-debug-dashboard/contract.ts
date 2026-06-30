@@ -1,3 +1,9 @@
+/**
+ * Capability debug dashboard 的契约定义。
+ *
+ * 这里描述 dashboard payload 中的能力链接、mock route、scenario、
+ * API probe、reset control 和 provenance 字段，供 UI、service 和测试共享。
+ */
 import type { AppErrorCode } from "../../../../shared/errors/app-error";
 import type { CapabilityServiceStatus } from "../../../../shared/services/capability-registry";
 import type { ModuleMode } from "../../../../shared/services/module-mode";

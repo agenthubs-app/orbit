@@ -1,5 +1,7 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 
+// Confirmation Guard contract 描述所有敏感动作前的确认门。
+// 它覆盖发送消息、添加联系人、创建日历事件、更新 profile 等动作，但不执行这些动作。
 export const SENSITIVE_ACTION_KINDS = [
   "send-message",
   "add-contact",
@@ -39,6 +41,7 @@ export type ConfirmationRequirementStatus =
 
 export type ConfirmationDecisionStatus = "approved" | "rejected";
 
+// GuardInput 读取确认队列；DecisionInput 记录用户批准或拒绝某个确认项。
 export interface ConfirmationGuardInput {
   scenario?: ConfirmationGuardScenario | string | null;
 }
@@ -56,6 +59,7 @@ export interface ConfirmationGuardErrorDefinition {
   recovery: string;
 }
 
+// 确认错误定义确保找不到、已处理或被阻止时敏感动作仍保持未执行。
 export const CONFIRMATION_GUARD_ERROR_DEFINITIONS = {
   CONFIRMATION_REQUIREMENT_NOT_FOUND: {
     code: "CONFIRMATION_REQUIREMENT_NOT_FOUND",
@@ -108,6 +112,7 @@ export interface ConfirmationEvidence {
   collectedAt: string;
 }
 
+// SensitiveActionPreview 是“即将执行什么”的只读预览，externalActionExecuted=false。
 export interface SensitiveActionPreview {
   kind: SensitiveActionKind;
   label: string;
@@ -120,6 +125,7 @@ export interface SensitiveActionPreview {
   mockEffect: string;
 }
 
+// ConfirmationRequirement 是一个等待用户决定的确认项。
 export interface ConfirmationRequirement {
   id: string;
   status: ConfirmationRequirementStatus;
@@ -140,6 +146,7 @@ export interface ConfirmationRequirementPayload {
   nextAction: string;
 }
 
+// DecisionRecord 只记录用户决定，不替代真实外部动作执行。
 export interface ConfirmationDecisionRecord {
   id: string;
   confirmationId: string;

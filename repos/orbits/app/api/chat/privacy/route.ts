@@ -16,6 +16,8 @@ import { createChatPrivacyControlsService } from "../../../../features/chat/serv
 
 export const dynamic = "force-dynamic";
 
+// privacy controls 是聊天隐私状态的读取入口。
+// route 只解析 conversationId/scenario；隐私默认值和可见文案由 chat privacy service 提供。
 function readInput(request: Request): ChatPrivacyControlsInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -29,6 +31,7 @@ function responseForResult(
   result: ChatPrivacyControlsResult,
   mode: ReturnType<typeof resolveFeatureMode>,
 ): Response {
+  // privacy contract 的失败统一映射到 AppError，避免 UI 依赖底层 mock/live 差异。
   if (result.success === false) {
     const appError = chatPrivacyControlsFailureToAppError(result);
 
@@ -48,6 +51,7 @@ function responseForResult(
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // GET 不改变任何隐私设置，只返回当前 conversation 的控制面板状态。
   const mode = resolveFeatureMode();
   const service = createChatPrivacyControlsService();
   const result = service.getPrivacyControls(readInput(request));

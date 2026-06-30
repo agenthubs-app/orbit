@@ -1,3 +1,8 @@
+/**
+ * Capability dashboard 页面测试。
+ *
+ * 锁住 registry 页到 debug dashboard 的链接和 live handoff 文案。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

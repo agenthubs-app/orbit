@@ -30,6 +30,8 @@ const supportedScenarios = new Set<WantConnectScenario>([
   "failure",
 ]);
 
+// want-connect mock 覆盖“我想认识某人”和“列出匹配”两条活动社交流程。
+// 它只操作 fixture 状态，不触发真实介绍、通知或联系人写入。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -89,6 +91,7 @@ function normalizeContactId(contactId?: string | null): string {
 function eventFailure(
   input: WantConnectIntentInput | WantConnectMatchesInput,
 ): WantConnectFailure | null {
+  // intent 和 matches 都必须绑定 demo event。
   const eventId = normalizeEventId(input.eventId);
 
   if (!eventId) {
@@ -135,12 +138,14 @@ function scenarioMatchesResult(
 }
 
 function targetFailure(input: WantConnectIntentInput): WantConnectFailure | null {
+  // 创建 intent 必须指定目标联系人；matches 列表不需要 target。
   return normalizeContactId(input.targetContactId)
     ? null
     : failure("WANT_CONNECT_TARGET_REQUIRED");
 }
 
 function ruleBasedIntentResult(input: WantConnectIntentInput): WantConnectResult {
+  // Aiko Mori 用 pending fixture 模拟需要进一步确认的介绍，其它联系人返回成功 fixture。
   const targetContactId = normalizeContactId(input.targetContactId);
 
   if (targetContactId === "contact:aiko-mori") {
@@ -153,6 +158,7 @@ function ruleBasedIntentResult(input: WantConnectIntentInput): WantConnectResult
 export function createMockWantConnectService(): WantConnectService {
   return {
     createWantToConnectIntent(input = {}): WantConnectResult {
+      // 创建 intent：scenario -> event 校验 -> target 校验 -> 本地规则结果。
       const scenarioResult = scenarioIntentResult(
         normalizeScenario(input.scenario),
       );
@@ -177,6 +183,7 @@ export function createMockWantConnectService(): WantConnectService {
     },
 
     listMatches(input = {}): WantConnectMatchesResult {
+      // 匹配列表只读，不创建 intent 或发送介绍请求。
       const scenarioResult = scenarioMatchesResult(
         normalizeScenario(input.scenario),
       );

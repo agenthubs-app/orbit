@@ -1,3 +1,9 @@
+/**
+ * 活动参会者推荐 fixture。
+ *
+ * 这里定义活动上下文、推荐联系人、推荐 provenance 和 opening line 示例。
+ * mock recommendation service 用这些数据展示“为什么推荐这个人”和可复核开场白。
+ */
 import type {
   EventAttendeeRecommendation,
   EventOpeningLinePayload,

@@ -8,6 +8,8 @@ import type { AppErrorCode } from "../../shared/errors/app-error";
 export const CONNECTION_EVIDENCE_SERVICE_FIXTURE_SOURCE =
   "fixture:features/connections/fixtures.ts" as const;
 
+// Connections contract 描述关系证据链的读写模型。
+// 它回答“我为什么认识这个人”，并且所有新增证据都保留来源、贡献类型和安全边界。
 export const CONNECTION_EVIDENCE_SOURCE_TYPES = [
   "manual",
   "event_import",
@@ -51,6 +53,7 @@ export type ConnectionEvidenceScenario =
 
 export type ConnectionEvidenceState = "success" | "empty" | "pending";
 
+// 领域错误覆盖 not found、非法 body、不支持来源、pending 和受控失败。
 export interface ConnectionEvidenceErrorDefinition {
   code: ConnectionEvidenceErrorCode;
   appCode: AppErrorCode;
@@ -101,6 +104,7 @@ export const CONNECTION_EVIDENCE_SERVICE_ERROR_DEFINITIONS = {
   ConnectionEvidenceErrorDefinition
 >;
 
+// SourceLink 把证据来源、来源类型和 confidence 绑定到关系记录上。
 export interface ConnectionSourceLink extends SourceReferenceDTO {
   type: ConnectionEvidenceSourceType;
   label: string;
@@ -109,6 +113,7 @@ export interface ConnectionSourceLink extends SourceReferenceDTO {
   confidence: "explicit" | "inferred_from_fixture";
 }
 
+// TimelineItem 是证据时间线的单条记录，说明某条关系判断来自哪里。
 export interface ConnectionEvidenceTimelineItem {
   evidenceId: string;
   sourceLink: ConnectionSourceLink;
@@ -120,6 +125,7 @@ export interface ConnectionEvidenceTimelineItem {
   createdBy: "mock-connection-and-evidence-service";
 }
 
+// ConnectionRecord 是关系详情的核心 DTO，false 字段证明未访问真实数据库/provider。
 export interface ConnectionRecord {
   id: string;
   contactId: string;
@@ -145,6 +151,7 @@ export interface ConnectionRecord {
   notificationDelivered: false;
 }
 
+// provenance 汇总关系证据读取/新增的来源和安全账本。
 export interface ConnectionEvidenceProvenance {
   source: string;
   sourceLabel: string;
@@ -163,6 +170,7 @@ export interface ConnectionEvidenceProvenance {
   notificationDelivered: false;
 }
 
+// lookup/list/add 输入分开定义，避免 route 在不同动作间复用不完整请求体。
 export interface ConnectionEvidenceLookupInput {
   connectionId: string;
   scenario?: ConnectionEvidenceScenario | string | null;

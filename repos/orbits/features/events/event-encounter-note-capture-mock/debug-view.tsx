@@ -1,3 +1,8 @@
+/**
+ * 活动现场 encounter note mock 的开发者面板。
+ *
+ * 这里展示现场笔记、参与者、语音占位和证据记录如何组成 encounter payload。
+ */
 import {
   Chip,
   Field,

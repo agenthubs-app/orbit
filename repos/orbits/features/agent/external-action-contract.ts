@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const EXTERNAL_ACTION_SANDBOX_FIXTURE_SOURCE =
   "fixture:features/agent/external-action-contract.ts" as const;
 
+// External Action Sandbox contract 描述外部副作用的 no-op 沙盒。
+// 它模拟发送消息、创建日历和通知投递的审计结果，但绝不调用真实 provider。
 export const EXTERNAL_ACTION_SANDBOX_ACTION_TYPES = [
   "send_message",
   "create_calendar_event",
@@ -43,6 +45,7 @@ export type ExternalActionSandboxGenerationMethod =
   | "fixture"
   | "rule-based-no-op"
   | "rule-based-state";
+// actionId 指向已确认的本地动作；targetLabel/actorLabel 只用于审计展示。
 
 export interface ExternalActionSandboxInput {
   actionId?: string | null;
@@ -61,6 +64,7 @@ export interface ExternalActionSandboxErrorDefinition {
   message: string;
   recovery: string;
 }
+// sandbox 错误定义强调“返回 envelope，不碰外部 provider”。
 
 export const EXTERNAL_ACTION_SANDBOX_ERROR_DEFINITIONS = {
   EXTERNAL_ACTION_SANDBOX_ACTION_ID_REQUIRED: {
@@ -106,6 +110,7 @@ export const EXTERNAL_ACTION_SANDBOX_ERROR_DEFINITIONS = {
   ExternalActionSandboxErrorCode,
   ExternalActionSandboxErrorDefinition
 >;
+// provenance 明确记录 confirmation 和 no-op 状态，证明没有执行副作用。
 
 export interface ExternalActionSandboxProvenance {
   source: typeof EXTERNAL_ACTION_SANDBOX_FIXTURE_SOURCE;
@@ -137,6 +142,7 @@ export interface ExternalActionRelationshipContext {
   followupRationale: string;
   sourceContextIds: readonly string[];
 }
+// SandboxAction 描述被抑制的外部动作：requestedEffect 是想做什么，suppressedEffect 是为什么没做。
 
 export interface ExternalActionSandboxAction {
   actionId: string;
@@ -153,6 +159,7 @@ export interface ExternalActionSandboxAction {
   evidenceIds: readonly string[];
   provenance: ExternalActionSandboxProvenance;
 }
+// AuditRecord 是本地审计视图，不代表生产审计日志已经持久化。
 
 export interface ExternalActionAuditRecord {
   auditId: string;

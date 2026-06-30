@@ -15,6 +15,8 @@ import { createDuplicateMergeService } from "../../../../../../features/acquisit
 
 export const dynamic = "force-dynamic";
 
+// apply merge route 确认执行一条重复联系人合并建议。
+// route 只解析 suggestionId/actorLabel/scenario；实际合并规则和冲突处理在 merge service 中。
 interface ApplyDuplicateMergeRouteContext {
   params: Promise<{
     id: string;
@@ -39,6 +41,7 @@ async function readApplyInput(
   suggestionId: string,
 ): Promise<DuplicateMergeApplyInput> {
   const url = new URL(request.url);
+  // suggestionId 固定来自 path，避免 body 修改要应用的合并建议。
   const queryInput: DuplicateMergeApplyInput = {
     suggestionId,
     actorLabel: url.searchParams.get("actorLabel"),
@@ -50,6 +53,7 @@ async function readApplyInput(
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
   ) {
+    // 表单路径允许确认按钮传 actorLabel，用于审计谁执行了合并。
     const formData = await request.formData();
 
     return {
@@ -73,6 +77,7 @@ async function readApplyInput(
   const parsedBody: unknown = JSON.parse(rawBody);
   const body = isRecord(parsedBody) ? parsedBody : {};
 
+  // JSON body 只允许补充 actor/scenario，业务目标仍由 path 控制。
   return {
     ...queryInput,
     actorLabel:
@@ -88,6 +93,7 @@ export async function POST(
   request: Request,
   context: ApplyDuplicateMergeRouteContext,
 ): Promise<Response> {
+  // applyMergeSuggestion 是有状态动作，但 route 不直接改数据，只调用 service contract。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const mergeService = createDuplicateMergeService();
@@ -96,6 +102,7 @@ export async function POST(
   );
 
   if (result.success === false) {
+    // 合并失败统一映射成 AppError/envelope。
     const appError = duplicateMergeFailureToAppError(result);
 
     return NextResponse.json(

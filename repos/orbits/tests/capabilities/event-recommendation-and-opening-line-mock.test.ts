@@ -1,3 +1,8 @@
+/**
+ * 活动推荐与 opening line mock 的契约测试。
+ *
+ * 锁住推荐联系人、匹配信号、开场白生成和确认前边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

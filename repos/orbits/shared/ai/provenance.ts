@@ -1,3 +1,5 @@
+// shared/ai/provenance 记录旧 AI mock provider 的可审计运行信息。
+// 这里的 providerMode 固定为 mock-local-rules，明确说明没有真实模型、网络或数据库调用。
 export interface AiRunProvenanceRecord {
   source: string;
   runId: string;
@@ -27,6 +29,8 @@ export interface AiRunProvenanceRecord {
   productionAuditLogWriteExecuted: false;
 }
 
+  // 所有 mock AI run 都必须继承这组 false 标记。
+  // live provider 接入时不能复用这些 provenance 字段来伪装安全账本。
 const mockOnlyExecutionFlags = {
   modelCallExecuted: false,
   liveAiProviderRequested: false,
@@ -41,6 +45,7 @@ const mockOnlyExecutionFlags = {
 } as const;
 
 function stableStringify(value: unknown): string {
+  // inputHash 需要跨运行稳定，所以对象 key 按字典序序列化。
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(",")}]`;
   }
@@ -60,6 +65,7 @@ function stableStringify(value: unknown): string {
 }
 
 export function createMockInputHash(input: unknown): `mock-sha256-${string}` {
+  // 这里用轻量 FNV 风格哈希，只用于 mock 可重复标识，不用于安全校验。
   const serialized = stableStringify(input);
   let hash = 2166136261;
 
@@ -83,6 +89,7 @@ export function buildMockAiRunProvenance(input: {
   generationMethod: AiRunProvenanceRecord["generationMethod"];
   fallbackUsed: boolean;
 }): AiRunProvenanceRecord {
+  // provenance builder 是唯一创建 AiRunProvenanceRecord 的出口，确保 mock-only flags 不漏字段。
   return {
     source: input.source,
     runId: input.runId,

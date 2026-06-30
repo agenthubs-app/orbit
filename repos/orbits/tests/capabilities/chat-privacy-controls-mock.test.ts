@@ -1,3 +1,8 @@
+/**
+ * Chat 隐私控制 mock 的契约测试。
+ *
+ * 验证分析开关、私密 note、privacy provenance 和 debug-view 状态。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

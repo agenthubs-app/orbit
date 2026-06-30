@@ -23,6 +23,8 @@ import {
 } from "./fixtures";
 import type { AgentActionQueueService } from "./service";
 
+// Agent action queue mock service 管理“建议动作”的展示和接受/忽略决策。
+// 接受动作只返回本地决策 payload，不真正发送消息、创建日程或修改联系人。
 const supportedScenarios = new Set<AgentActionQueueScenario>([
   "success",
   "empty",
@@ -39,6 +41,7 @@ const supportedActionTypes = new Set<AgentActionType>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // action payload 含可展示状态，clone 后返回避免决策 UI 改动共享 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -61,6 +64,7 @@ function decisionSuccess(
 }
 
 function failure(code: AgentActionQueueErrorCode): AgentActionQueueFailure {
+  // 所有失败都保持在本地 mock 队列边界内。
   const definition = AGENT_ACTION_QUEUE_ERROR_DEFINITIONS[code];
 
   return {
@@ -90,6 +94,7 @@ function normalizeScenario(
 }
 
 function isActionType(value: unknown): value is AgentActionType {
+  // actionType filter 只接受已定义类型；未知值表示不过滤。
   return (
     typeof value === "string" &&
     supportedActionTypes.has(value as AgentActionType)
@@ -97,6 +102,7 @@ function isActionType(value: unknown): value is AgentActionType {
 }
 
 function filteredFixture(input: AgentActionQueueListInput): AgentActionQueuePayload {
+  // 按 actionType 派生列表，不修改 mockAgentActions 原始 fixture。
   if (!isActionType(input.actionType)) {
     return mockAgentActionQueueFixture;
   }
@@ -142,6 +148,7 @@ function decisionPayload(
   decision: AgentActionDecision,
   input: AgentActionDecisionInput,
 ): AgentActionDecisionPayload {
+  // accepted/dismissed 共用 fixture，只允许 actorLabel 被输入覆盖。
   const base =
     decision === "accepted"
       ? mockAcceptedAgentActionFixture
@@ -157,6 +164,7 @@ function decisionResult(
   decision: AgentActionDecision,
   input: AgentActionDecisionInput,
 ): AgentActionDecisionResult {
+  // 决策前先校验 scenario、actionId 是否存在；不存在则返回稳定错误码。
   const scenario = normalizeScenario(input.scenario);
 
   if (scenario === "failure") {
@@ -175,6 +183,7 @@ function decisionResult(
 }
 
 export function createMockAgentActionQueueService(): AgentActionQueueService {
+  // public API 与 route 一一对应：列表、接受、忽略。
   return {
     listActions(input = {}): AgentActionQueueResult {
       return listScenarioResult(input);

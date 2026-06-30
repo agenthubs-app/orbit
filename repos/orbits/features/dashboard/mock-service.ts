@@ -18,6 +18,9 @@ import {
 } from "./contract";
 import type { DashboardAggregateService } from "./service";
 
+// Dashboard mock service 汇总多个关系视图的只读数据：
+// aggregate 给完整 dashboard，summary 给轻量 header/overview。
+// 它不重算真实分析，只从 deterministic fixtures 派生展示 payload。
 const supportedScenarios = new Set<DashboardAggregateScenario>([
   "success",
   "empty",
@@ -26,6 +29,7 @@ const supportedScenarios = new Set<DashboardAggregateScenario>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // dashboard fixture 会被多个页面共享，返回 clone 可以避免前端排序/裁剪污染源数据。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -50,6 +54,7 @@ function summarySuccess(
 function failure(
   code: DashboardAggregateErrorCode,
 ): DashboardAggregateFailure {
+  // controlled failure 用于 route/UI 错误态测试，不代表真实 analytics provider 失败。
   const definition = DASHBOARD_AGGREGATE_ERROR_DEFINITIONS[code];
 
   return {
@@ -68,6 +73,7 @@ function normalizeScenario(
     | DashboardAggregateInput["scenario"]
     | DashboardAggregateSummaryInput["scenario"],
 ): DashboardAggregateScenario {
+  // dashboard 的 scenario 参数同样只接受白名单，缺省或未知都走 success。
   if (scenario && supportedScenarios.has(scenario as DashboardAggregateScenario)) {
     return scenario as DashboardAggregateScenario;
   }
@@ -123,6 +129,7 @@ function applyActivityLimit(
   payload: DashboardAggregatePayload,
   activityLimit?: number | null,
 ): DashboardAggregatePayload {
+  // activityLimit 只裁剪 recentActivity，并在 provenance 中标记这是 rule-based limit。
   const limit = normalizedActivityLimit(activityLimit);
 
   if (limit === null) {
@@ -141,6 +148,7 @@ function applyActivityLimit(
 }
 
 export function createMockDashboardAggregateService(): DashboardAggregateService {
+  // summary 不使用 activityLimit，因为它已经是从 aggregate 提前压缩出的概览数据。
   return {
     getDashboardAggregate(input = {}): DashboardAggregateResult {
       const scenarioResult = aggregateScenarioResult(

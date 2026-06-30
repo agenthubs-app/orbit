@@ -1,3 +1,9 @@
+/**
+ * QR 扫码建联流程 fixture。
+ *
+ * 数据覆盖扫码来源、互相关系上下文、证据链、连接草稿和确认后的候选联系人。
+ * 这些 fixture 用来验证 QR 建联 UI 和确认流程，不会写入真实联系人图谱。
+ */
 import {
   QR_SCAN_CONNECT_FIXTURE_SOURCE,
   type QrConnectionCandidate,

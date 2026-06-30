@@ -1,4 +1,10 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
+/**
+ * Capability registry 开发页。
+ *
+ * 这里展示所有已注册 capability 的 mock/hybrid/live 解析状态，
+ * 并把 live 接入前需要补齐的 provider、env、测试和权限边界列出来。
+ */
 import "../../globals.css";
 import {
   Chip,

@@ -1,3 +1,8 @@
+/**
+ * 联系人详情页 route adapter。
+ *
+ * 从动态路由参数读取 contact id，并把共享联系人 view model 交给详情组件。
+ */
 import { getOrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";

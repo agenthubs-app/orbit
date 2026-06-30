@@ -1,3 +1,8 @@
+/**
+ * 权限状态与 staged authorization mock 的契约测试。
+ *
+ * 验证权限列表、日历授权请求和不连接真实 provider 的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

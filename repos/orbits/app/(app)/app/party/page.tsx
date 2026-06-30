@@ -1,3 +1,8 @@
+/**
+ * Party 体验页 route adapter。
+ *
+ * route 只连接 party view model 和真实 party UI，现场交互逻辑不写在这里。
+ */
 import { OrbitRealParty } from "../dashboard/orbit-real-party";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { getOrbitPartyViewModel } from "../orbit-party-route-view-model";

@@ -25,6 +25,8 @@ import type { EventRecommendationService } from "./service";
 
 const defaultEventId = "demo-event-1";
 
+// EventRecommendation mock service 用本地规则模拟活动参会者推荐和 opening line。
+// 它不调用向量检索、排序服务或 AI 文案模型，所有输出都来自 source-backed fixtures。
 const supportedScenarios = new Set<EventRecommendationScenario>([
   "success",
   "empty",
@@ -39,6 +41,7 @@ const supportedOpeningLineStyles = new Set<EventOpeningLineStyle>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 推荐结果会在 UI 中被排序/截断/展开，返回 clone 避免污染 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -63,6 +66,7 @@ function openingLineSuccess(
 function failure(
   code: EventRecommendationErrorCode,
 ): EventRecommendationFailure {
+  // failure provenance 固定为 mock 推荐边界，方便 API 层稳定映射错误 envelope。
   const definition = EVENT_RECOMMENDATION_ERROR_DEFINITIONS[code];
 
   return {
@@ -90,6 +94,7 @@ function normalizeScenario(
 }
 
 function normalizeEventId(eventId?: string | null): string {
+  // 未传 eventId 时使用 demo-event-1；显式传空字符串才触发 EVENT_ID_REQUIRED。
   if (eventId === undefined) {
     return defaultEventId;
   }
@@ -100,6 +105,7 @@ function normalizeEventId(eventId?: string | null): string {
 function eventFailure(
   input: EventRecommendationInput,
 ): EventRecommendationFailure | null {
+  // 当前 fixture 只支持一个 demo event，非 demo id 走 NOT_FOUND，避免假装查到真实活动。
   const eventId = normalizeEventId(input.eventId);
 
   if (!eventId) {
@@ -156,6 +162,7 @@ function normalizedLimit(limit?: number | null): number | null {
 function recommendationsForLimit(
   limit?: number | null,
 ): readonly EventAttendeeRecommendation[] {
+  // limit 只裁剪本地推荐数组，不影响排序规则或原始 fixture。
   const resolvedLimit = normalizedLimit(limit);
 
   if (resolvedLimit === null) {
@@ -168,6 +175,7 @@ function recommendationsForLimit(
 function buildRecommendationsPayload(
   input: EventRecommendationInput,
 ): EventRecommendationsPayload {
+  // payload 会根据 limit 重写 state/provenance/evidenceIds，保持 UI 状态和证据同步。
   const recommendations = recommendationsForLimit(input.limit);
   const evidenceIds =
     recommendations.length > 0
@@ -202,6 +210,7 @@ function defaultRecommendation(): EventAttendeeRecommendation {
 function findRecommendation(
   attendeeId?: string | null,
 ): EventAttendeeRecommendation | null {
+  // 未指定 attendee 时默认取第一条推荐，用于 opening-line demo 的最短路径。
   const normalizedAttendeeId = attendeeId?.trim();
 
   if (!normalizedAttendeeId) {
@@ -251,6 +260,7 @@ function openingLineText(
 function buildOpeningLinePayload(
   input: EventOpeningLineInput,
 ): EventOpeningLineResult {
+  // opening line 只基于选中的 recommendation 和 style 派生，不调用 AI 写作服务。
   const recommendation = findRecommendation(input.attendeeId);
 
   if (!recommendation) {
@@ -299,6 +309,7 @@ function buildOpeningLinePayload(
 }
 
 export function createMockEventRecommendationService(): EventRecommendationService {
+  // service 暴露两步流程：先列推荐，再为某个 attendee 生成可复核 opening line。
   return {
     listEventRecommendations(input = {}): EventRecommendationsResult {
       const scenarioResult = scenarioRecommendationsResult(

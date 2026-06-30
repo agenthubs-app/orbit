@@ -1,3 +1,8 @@
+/**
+ * Profile 文档抽取 mock 的开发者面板。
+ *
+ * 面板展示简历/名片抽取出的 profile draft，当前 mock 不调用真实 OCR 或写入 profile。
+ */
 import {
   Chip,
   WorkbenchFrame,

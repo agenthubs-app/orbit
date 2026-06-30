@@ -1,3 +1,8 @@
+/**
+ * Dashboard 页 route adapter。
+ *
+ * 这里加载 party/dashboard view model；实际仪表盘布局由真实 party 组件负责。
+ */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { getOrbitPartyViewModel } from "../orbit-party-route-view-model";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";

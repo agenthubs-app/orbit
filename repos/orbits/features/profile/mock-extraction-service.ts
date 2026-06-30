@@ -43,6 +43,8 @@ const businessCardMimeTypes = new Set([
   "text/plain",
 ]);
 
+// Profile document extraction mock 用本地规则模拟简历/名片抽取。
+// 它只检查 mimeType、文本和文件名，不调用 OCR、LLM 或真实文档解析器。
 function clonePayload(
   payload: ProfileDocumentExtractionPayload,
 ): ProfileDocumentExtractionPayload {
@@ -93,6 +95,7 @@ function isSupportedMimeType(
   kind: ProfileDocumentExtractionKind,
   mimeType?: string,
 ): boolean {
+  // 未提供 mimeType 时允许走 demo 成功路径；提供后必须命中对应白名单。
   if (!mimeType) {
     return true;
   }
@@ -108,6 +111,7 @@ function resolveScenario(
   kind: ProfileDocumentExtractionKind,
   input: ProfileDocumentExtractionInput = {},
 ): ProfileDocumentExtractionScenario {
+  // 显式 scenario 优先；否则根据 mimeType/text/fileName 推导 mock 状态。
   const scenario = normalizeScenario(input.scenario);
 
   if (scenario !== "success") {
@@ -133,6 +137,7 @@ function extractByScenario(
   kind: ProfileDocumentExtractionKind,
   input: ProfileDocumentExtractionInput = {},
 ): ProfileDocumentExtractionResult {
+  // 不同 kind 共享同一套场景判断，只在 success fixture 上区分 resume/business-card。
   switch (resolveScenario(kind, input)) {
     case "empty":
       return success({
@@ -163,10 +168,12 @@ function extractByScenario(
 export function createMockProfileDocumentExtractionService(): ProfileDocumentExtractionService {
   return {
     extractResumeDraft(input) {
+      // 简历抽取返回 profile 更新草稿，不直接修改 profile。
       return extractByScenario("resume", input);
     },
 
     extractBusinessCardDraft(input) {
+      // 名片抽取返回 profile 更新草稿，不直接修改 profile。
       return extractByScenario("business-card", input);
     },
   };

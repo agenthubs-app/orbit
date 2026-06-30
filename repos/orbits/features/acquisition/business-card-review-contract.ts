@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const BUSINESS_CARD_REVIEW_FIXTURE_SOURCE =
   "fixture:features/acquisition/business-card-review-contract.ts" as const;
 
+// Business Card Review contract 描述名片 OCR 结果的人工复核流程。
+// 它负责字段接受/编辑/确认，不直接写联系人库或重跑真实 OCR。
 export const BUSINESS_CARD_REVIEW_ERROR_CODES = [
   "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
   "BUSINESS_CARD_REVIEW_FIELDS_REQUIRED",
@@ -41,6 +43,7 @@ export type BusinessCardReviewFieldState =
   | "edited";
 export type BusinessCardReviewConfidence = "high" | "medium" | "low";
 
+// review 错误区分草稿缺失、字段缺失、等待复核、确认被阻止和受控失败。
 export interface BusinessCardReviewErrorDefinition {
   code: BusinessCardReviewErrorCode;
   appCode: AppErrorCode;
@@ -115,6 +118,7 @@ export type BusinessCardReviewSourceReference = SourceReferenceDTO & {
   label: string;
 };
 
+// provenance 把复核结果固定在 demo 名片边界，避免误认成生产 OCR 数据。
 export interface BusinessCardReviewProvenance {
   source: string;
   sourceLabel: string;
@@ -134,6 +138,7 @@ export interface BusinessCardReviewEvidence {
   createdBy: "mock-business-card-review-service";
 }
 
+// 单个字段保留原值、复核值和 confidence，便于 UI 高亮需要人工确认的字段。
 export interface BusinessCardReviewField {
   field: keyof BusinessCardReviewedFields;
   label: string;
@@ -152,6 +157,7 @@ export interface BusinessCardReviewedFields {
   phone: string;
 }
 
+// map 类型保证每个可复核字段都有明确的 ReviewField 记录。
 export type BusinessCardReviewFieldMap = {
   readonly [FieldName in keyof BusinessCardReviewedFields]: BusinessCardReviewField;
 };

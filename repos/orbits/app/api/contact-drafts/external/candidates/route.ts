@@ -14,7 +14,10 @@ import { createExternalContactsImportService } from "../../../../../features/acq
 
 export const dynamic = "force-dynamic";
 
+// external candidates route 返回外部来源中可导入的联系人候选。
+// route 只读取 sourceKind/scenario；外部源模拟、候选过滤和 provenance 在 import service 中。
 export async function GET(request: Request): Promise<Response> {
+  // 当前实现是只读候选列表，不触发导入或写入联系人。
   const mode = resolveFeatureMode();
   const searchParams = new URL(request.url).searchParams;
   const candidatesService = createExternalContactsImportService();
@@ -24,6 +27,7 @@ export async function GET(request: Request): Promise<Response> {
   });
 
   if (result.success === false) {
+    // external import failure 统一映射为 AppError/envelope。
     const appError = externalContactsImportFailureToAppError(result);
 
     return NextResponse.json(

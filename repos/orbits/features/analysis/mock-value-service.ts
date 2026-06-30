@@ -27,6 +27,8 @@ const supportedScenarios = new Set<RelationshipValueScenario>([
   "failure",
 ]);
 
+// RelationshipValue mock service 模拟关系价值评分读取和重算。
+// 它只支持 demo connection，不运行真实分析 job、AI 模型或数据库聚合。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -43,6 +45,7 @@ function successPayload(
 function failure<TCode extends RelationshipValueErrorCode>(
   code: TCode,
 ): RelationshipValueFailureForCode<TCode> {
+  // 泛型保留错误码到失败类型的映射，route/test 可以精确断言错误分支。
   const definition = RELATIONSHIP_VALUE_ERROR_DEFINITIONS[code];
 
   return {
@@ -89,6 +92,7 @@ function scenarioResult(
 function recomputeScenarioResult(
   scenario: RelationshipValueScenario,
 ): RelationshipValueResult | null {
+  // recompute 的 pending 是阻塞错误，因为重算动作不能返回“已完成”payload。
   if (scenario === "pending") {
     return failure("RELATIONSHIP_VALUE_RECOMPUTE_PENDING");
   }
@@ -113,6 +117,7 @@ export function relationshipValueFailureContext(
   serviceFailure: RelationshipValueFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  // API route 用这个 context 说明失败仍处于 mock runtime boundary 内。
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
@@ -125,6 +130,7 @@ export function relationshipValueFailureContext(
 }
 
 export function createMockRelationshipValueScoringService(): RelationshipValueScoringService {
+  // get 返回固定评分；recompute 返回另一份 fixture，模拟本地规则重算后的结果。
   return {
     getRelationshipValue(input: RelationshipValueLookupInput): RelationshipValueResult {
       const currentScenario = normalizeScenario(input.scenario);

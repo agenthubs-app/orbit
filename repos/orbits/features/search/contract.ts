@@ -2,6 +2,8 @@ import type { AppErrorCode } from "../../shared/errors/app-error";
 
 export const RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE =
   "fixture:features/search/fixtures.ts" as const;
+// Relationship Natural Search contract 描述关系图的自然语言搜索读模型。
+// mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const RELATIONSHIP_NATURAL_SEARCH_BUSINESS_INTENTS = [
   "find_warm_intro",
@@ -75,6 +77,7 @@ export type RelationshipNaturalSearchScenario =
 
 export type RelationshipNaturalSearchState = "success" | "empty" | "pending";
 
+// 错误定义把不支持的过滤器、非法 body、pending 和受控失败拆开。
 export interface RelationshipNaturalSearchErrorDefinition {
   code: RelationshipNaturalSearchErrorCode;
   appCode: AppErrorCode;
@@ -125,6 +128,7 @@ export interface RelationshipNaturalSearchFilterOption<TValue extends string> {
   label: string;
 }
 
+// AvailableFilters 是 UI 渲染筛选器的枚举来源。
 export interface RelationshipNaturalSearchAvailableFilters {
   businessIntents: readonly RelationshipNaturalSearchFilterOption<RelationshipNaturalSearchBusinessIntent>[];
   industries: readonly RelationshipNaturalSearchFilterOption<RelationshipNaturalSearchIndustry>[];
@@ -133,6 +137,7 @@ export interface RelationshipNaturalSearchAvailableFilters {
   followUpStatuses: readonly RelationshipNaturalSearchFilterOption<RelationshipNaturalSearchFollowUpStatus>[];
 }
 
+// AppliedFilters 是一次查询真正生效的过滤器集合。
 export interface RelationshipNaturalSearchAppliedFilters {
   businessIntent: RelationshipNaturalSearchBusinessIntent | null;
   industries: readonly RelationshipNaturalSearchIndustry[];
@@ -148,6 +153,7 @@ export interface RelationshipNaturalSearchSourceReference {
   evidenceId: string;
 }
 
+// Evidence 解释每条搜索结果匹配到的关系证据。
 export interface RelationshipNaturalSearchEvidence {
   evidenceId: string;
   source: RelationshipNaturalSearchSourceReference;
@@ -163,6 +169,7 @@ export interface RelationshipNaturalSearchValue {
   evidenceIds: readonly string[];
 }
 
+// MatchScore 让 UI 可以展示相关性分数、档位和命中字段。
 export interface RelationshipNaturalSearchMatchScore {
   value: number;
   band: "high" | "medium" | "low";
@@ -170,6 +177,7 @@ export interface RelationshipNaturalSearchMatchScore {
   matchedFields: readonly string[];
 }
 
+// ResultItem 是自然语言搜索的一条关系结果。
 export interface RelationshipNaturalSearchResultItem {
   id: string;
   contactId: string;

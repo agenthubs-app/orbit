@@ -1,3 +1,8 @@
+/**
+ * Profile signal review queue 的开发者面板。
+ *
+ * 面板展示从关系信号推导出的 profile 更新建议，以及接受建议后的本地 patch。
+ */
 import {
   Chip,
   WorkbenchFrame,

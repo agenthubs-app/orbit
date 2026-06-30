@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const AGENT_AUTONOMY_SETTINGS_FIXTURE_SOURCE =
   "fixture:features/agent/settings-contract.ts" as const;
 
+// Agent Autonomy Settings contract 描述 agent 自主级别和确认规则。
+// 当前设置只影响本地展示/策略说明，不会启动 live agent job 或外部动作。
 export const AGENT_AUTONOMY_LEVELS = ["low", "medium", "high"] as const;
 
 export const AGENT_AUTONOMY_SETTINGS_ERROR_CODES = [
@@ -27,6 +29,7 @@ export type AgentAutonomySettingsScenario =
   | "failure";
 
 export type AgentAutonomySettingsState = "success" | "empty" | "pending";
+// update 输入只允许 low/medium/high；actorLabel 用于记录谁改了策略。
 
 export interface AgentAutonomySettingsInput {
   scenario?: AgentAutonomySettingsScenario | string | null;
@@ -44,6 +47,7 @@ export interface AgentAutonomySettingsErrorDefinition {
   message: string;
   recovery: string;
 }
+// settings 错误定义保证无效级别或 pending 状态不会触发 autonomous execution。
 
 export const AGENT_AUTONOMY_SETTINGS_ERROR_DEFINITIONS = {
   AGENT_AUTONOMY_SETTINGS_INVALID_LEVEL: {
@@ -81,6 +85,7 @@ export const AGENT_AUTONOMY_SETTINGS_ERROR_DEFINITIONS = {
   AgentAutonomySettingsErrorCode,
   AgentAutonomySettingsErrorDefinition
 >;
+// provenance 是自主策略的安全账本：策略可被展示，但没有注册真实任务。
 
 export interface AgentAutonomySettingsProvenance {
   source: typeof AGENT_AUTONOMY_SETTINGS_FIXTURE_SOURCE;
@@ -106,6 +111,7 @@ export interface AgentAutonomySettingsProvenance {
   notificationProviderRequested: false;
   deviceRequested: false;
 }
+// LevelBoundary 描述每个自主级别允许/阻止的能力，供设置页直接渲染。
 
 export interface AgentAutonomyLevelBoundary {
   level: AgentAutonomyLevel;
@@ -126,6 +132,7 @@ export interface AgentAutonomyConfirmationRule {
   requiresConfirmation: boolean;
   consequence: string;
 }
+// WorkflowProtection 说明哪些关系工作流必须保持人工确认。
 
 export interface AgentAutonomyRelationshipWorkflowProtection {
   workflowId:

@@ -1,3 +1,8 @@
+/**
+ * AI provider mock 与 provenance 边界的开发者面板。
+ *
+ * 面板展示 provider run record、模型来源和安全账本，用来验证 AI 调用边界的 UI 表达。
+ */
 import {
   Chip,
   WorkbenchFrame,

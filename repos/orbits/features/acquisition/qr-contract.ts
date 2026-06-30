@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const QR_SCAN_CONNECT_FIXTURE_SOURCE =
   "fixture:features/acquisition/qr-fixtures.ts" as const;
+// QR Scan Connect contract 描述通过 Orbit QR 建立关系草稿的流程。
+// mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const QR_SCAN_CONNECT_ERROR_CODES = [
   "QR_SCAN_PAYLOAD_REQUIRED",
@@ -32,6 +34,7 @@ export type QrScanConnectState = "success" | "empty" | "pending";
 export type QrConnectionDraftStatus = "pending_confirmation" | "confirmed";
 export type QrConnectionConfirmationState = "pending" | "confirmed";
 
+// qrText 可用来在测试中模拟二维码 payload；scanLabel 用于 UI 来源展示。
 export interface QrScanConnectInput {
   scenario?: QrScanConnectScenario | string | null;
   qrText?: string | null;
@@ -51,6 +54,7 @@ export interface QrScanConnectErrorDefinition {
   recovery: string;
 }
 
+// QR 错误定义覆盖缺 payload、草稿缺失、pending 和受控失败。
 export const QR_SCAN_CONNECT_ERROR_DEFINITIONS = {
   QR_SCAN_PAYLOAD_REQUIRED: {
     code: "QR_SCAN_PAYLOAD_REQUIRED",
@@ -93,6 +97,7 @@ export type QrScanSourceReference = SourceReferenceDTO & {
   label: string;
 };
 
+// provenance 记录 QR 草稿来自 demo 扫码边界。
 export interface QrScanConnectProvenance {
   source: string;
   sourceLabel: string;
@@ -102,6 +107,7 @@ export interface QrScanConnectProvenance {
   generationMethod: "fixture" | "rule-based-qr";
 }
 
+// QrScanResult 表示扫码解析结果；所有设备、解码、校验和写入副作用为 false。
 export interface QrScanResult {
   scanId: string;
   scanMethod: "fixture-camera-frame" | "rule-based-qr-text";
@@ -116,6 +122,7 @@ export interface QrScanResult {
   databaseWriteExecuted: false;
 }
 
+// mutual context 用于解释这段关系的共同活动/共同联系人来源。
 export interface QrMutualConnectionContext {
   contextId: string;
   eventId: string;
@@ -139,6 +146,7 @@ export interface QrConnectionEvidence {
   createdBy: "mock-qr-service";
 }
 
+// QR 草稿进入联系人图谱前仍需要用户确认。
 export interface QrConnectionDraftConfirmation {
   required: true;
   state: QrConnectionConfirmationState;

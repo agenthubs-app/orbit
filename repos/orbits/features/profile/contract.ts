@@ -1,5 +1,7 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 
+// Profile contract 描述用户手动资料编辑和完整度评分。
+// 它是 onboarding/profile 页的主读写模型，不包含外部文档解析或自动信号应用。
 export const PROFILE_ERROR_CODES = [
   "PROFILE_REQUIRED",
   "PROFILE_VALIDATION_FAILED",
@@ -17,6 +19,7 @@ export type ProfileCompletenessStatus =
   | "action-needed"
   | "ready";
 
+// profile 错误定义区分缺资料、校验失败和等待人工复核。
 export interface ProfileErrorDefinition {
   code: ProfileErrorCode;
   appCode: AppErrorCode;
@@ -48,6 +51,7 @@ export const PROFILE_ERROR_DEFINITIONS = {
   },
 } as const satisfies Record<ProfileErrorCode, ProfileErrorDefinition>;
 
+// provenance 说明资料来自 demo profile 边界。
 export interface ProfileProvenance {
   source: string;
   sourceLabel: string;
@@ -56,6 +60,7 @@ export interface ProfileProvenance {
   privacy: "demo-profile-only";
 }
 
+// ManualProfile 是用户可直接编辑的核心资料。
 export interface ManualProfile {
   id: string;
   displayName: string;
@@ -70,6 +75,7 @@ export interface ManualProfile {
   updatedAt: string;
 }
 
+// UpdateInput 只包含可编辑字段；缺失字段表示保持不变。
 export interface ManualProfileUpdateInput {
   displayName?: string;
   headline?: string;
@@ -82,6 +88,7 @@ export interface ManualProfileUpdateInput {
   preferredIntroChannels?: readonly string[];
 }
 
+// CompletenessField 是完整度评分会检查的字段集合。
 export type ProfileCompletenessField =
   | "displayName"
   | "headline"
@@ -90,6 +97,7 @@ export type ProfileCompletenessField =
   | "targetRelationshipTypes"
   | "preferredIntroChannels";
 
+// completeness 用于驱动 UI 的“还缺什么”提示。
 export interface ProfileCompleteness {
   score: number;
   status: ProfileCompletenessStatus;
@@ -98,6 +106,7 @@ export interface ProfileCompleteness {
   nextBestField: ProfileCompletenessField | null;
 }
 
+// editor state 描述当前表单能否保存以及哪些字段有改动。
 export interface ProfileEditorState {
   canSave: boolean;
   lastSavedAt: string | null;
@@ -105,6 +114,7 @@ export interface ProfileEditorState {
   validationMessages: readonly string[];
 }
 
+// ProfilePayload 是资料页成功响应的完整读模型。
 export interface ProfilePayload {
   state: ProfileViewState;
   profile: ManualProfile | null;

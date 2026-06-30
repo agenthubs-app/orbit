@@ -1,3 +1,8 @@
+/**
+ * 活动价值推荐 mock 的契约测试。
+ *
+ * 验证本地评分推荐、accept 结果和无外部副作用的动作边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

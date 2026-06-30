@@ -1,3 +1,8 @@
+/**
+ * 活动后联系人复核 mock 的契约测试。
+ *
+ * 锁住待复核联系人、confirm 结果和避免自动写联系人图谱的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

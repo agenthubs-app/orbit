@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const EMAIL_CALENDAR_SIGNAL_FIXTURE_SOURCE =
   "fixture:features/acquisition/email-calendar-contract.ts" as const;
 
+// Email/Calendar Signal contract 描述从邮件和日历中发现关系线索的 mock 流程。
+// 当前只展示 fixture 信号和确认门，不读取真实 Gmail、Calendar 或 Microsoft Graph。
 export const EMAIL_CALENDAR_SIGNAL_SOURCE_KINDS = [
   "gmail",
   "google_calendar",
@@ -46,6 +48,7 @@ export type EmailCalendarSignalKind =
   | "email_calendar_overlap";
 export type EmailCalendarSignalConfidence = "high" | "medium" | "low";
 
+// 错误定义特别强调权限和用户确认：没有 staged permission 不得转换信号。
 export interface EmailCalendarSignalErrorDefinition {
   code: EmailCalendarSignalErrorCode;
   appCode: AppErrorCode;
@@ -116,6 +119,7 @@ export type EmailCalendarSignalSourceReference = SourceReferenceDTO & {
   providerRecordId: string;
 };
 
+// permission 只表示 mock 授权状态，permissionFlowExecuted=false 表示未走真实 provider。
 export interface EmailCalendarSignalPermission {
   required: true;
   state: "mock-granted" | "mock-pending" | "mock-missing";
@@ -127,6 +131,7 @@ export interface EmailCalendarSignalPermission {
   deviceCalendarReadExecuted: false;
 }
 
+// 每条信号转换成联系人/关系动作前都需要用户确认。
 export interface EmailCalendarSignalConfirmation {
   required: true;
   state: "pending" | "confirmed";
@@ -135,6 +140,7 @@ export interface EmailCalendarSignalConfirmation {
   actorLabel?: string;
 }
 
+// provenance 是邮件/日历采集边界的安全账本。
 export interface EmailCalendarSignalProvenance {
   source: string;
   sourceLabel: string;

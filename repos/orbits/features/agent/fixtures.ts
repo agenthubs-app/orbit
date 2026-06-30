@@ -1,3 +1,9 @@
+/**
+ * Agent 动作队列 fixture。
+ *
+ * 队列项表示 Agent 建议用户复核的下一步动作，例如发送消息、添加联系人或安排日程。
+ * accept/dismiss fixture 只记录本地决定，不代表外部动作已经执行。
+ */
 import type {
   AgentActionDecisionPayload,
   AgentActionQueueItem,
@@ -112,6 +118,7 @@ const diegoAppointmentSource = source({
   providerRecordId: "calendar-window:diego-pilot",
 });
 
+// 动作队列覆盖不同风险等级和工具族，帮助 UI 展示确认、接受和忽略操作。
 export const mockAgentActions: readonly AgentActionQueueItem[] = [
   {
     actionId: "demo-action-1",

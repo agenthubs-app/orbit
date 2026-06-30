@@ -15,11 +15,14 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// resume extraction route 从简历材料生成 profile 更新草稿。
+// route 只合并 query scenario 和 JSON body；抽取逻辑和建议状态由 extraction service 负责。
 async function readExtractionInput(
   request: Request,
 ): Promise<ProfileDocumentExtractionInput> {
   const scenario = new URL(request.url).searchParams.get("scenario");
 
+  // query scenario 优先于 body，便于通过 URL 复现 mock 场景。
   try {
     const body = (await request.json()) as ProfileDocumentExtractionInput;
     const safeBody = body && typeof body === "object" ? body : {};
@@ -36,6 +39,7 @@ async function readExtractionInput(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // extractResumeDraft 只生成待复核草稿，不直接更新 profile。
   const mode = resolveFeatureMode();
   const extractionService = createProfileDocumentExtractionService();
   const result = extractionService.extractResumeDraft(
@@ -43,6 +47,7 @@ export async function POST(request: Request): Promise<Response> {
   );
 
   if (result.success === false) {
+    // extraction failure 使用 profile document extraction contract 的上下文。
     const appError = profileDocumentExtractionFailureToAppError(result);
 
     return NextResponse.json(

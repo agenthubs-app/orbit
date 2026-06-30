@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { bilingualText } from "./bilingual";
 import { WorkbenchFrame } from "./primitives";
 
+// AppShell 是旧工作台页面的统一布局壳。
+// 页面传入 activeRoute、账号摘要和 runtime 状态；这里只负责导航/布局，不读取 feature 数据。
 export type OrbitAppRoute =
   | "/app"
   | "/app/profile"
@@ -78,6 +80,7 @@ const nestedRoutePrefixes: OrbitAppRoute[] = [
   "/app/agent",
 ];
 
+// 顶部导航使用固定产品信息，避免每个页面重复维护同一套路由标签。
 interface OrbitProductNavigationItem {
   id: string;
   href: string;
@@ -166,6 +169,7 @@ function normalizeRouteSupportLinks(
 }
 
 export function resolveOrbitAppRoute(pathname: string | null): OrbitAppRoute {
+  // 嵌套路由归属到父级 route，例如 /app/contacts/demo-contact-1 仍高亮 contacts。
   if (!pathname) {
     return "/app";
   }

@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const WANT_CONNECT_FIXTURE_SOURCE =
   "fixture:features/events/want-connect-contract.ts" as const;
 
+// Want Connect contract 描述活动现场“我想认识 TA”的双向意图和匹配提示。
+// 当前不启用实时 presence、同伴通知或外部消息发送。
 export const WANT_CONNECT_ERROR_CODES = [
   "WANT_CONNECT_EVENT_ID_REQUIRED",
   "WANT_CONNECT_EVENT_NOT_FOUND",
@@ -32,6 +34,7 @@ export type WantConnectMutualInterestState =
 export type WantConnectNoticeState = "ready";
 export type WantConnectIntentStatus = "recorded" | "pending";
 
+// intent 输入记录某人想连接谁；matches 输入读取当前活动的匹配列表。
 export interface WantConnectIntentInput {
   eventId?: string | null;
   actorContactId?: string | null;
@@ -51,6 +54,7 @@ export interface WantConnectErrorDefinition {
   recovery: string;
 }
 
+// want-connect 错误定义保证 pending 或失败时不发 peer notification。
 export const WANT_CONNECT_ERROR_DEFINITIONS = {
   WANT_CONNECT_EVENT_ID_REQUIRED: {
     code: "WANT_CONNECT_EVENT_ID_REQUIRED",
@@ -104,6 +108,7 @@ export type WantConnectSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-want-connect-service";
 };
 
+// Participant 和 Intent 是本地匹配模型，不代表真实 presence 状态。
 export interface WantConnectEventSummary {
   id: string;
   name: string;
@@ -127,6 +132,7 @@ export interface WantConnectParticipant {
   externalMessageSent: false;
 }
 
+// MutualInterest 和 Notice 描述匹配结果，但不会真实投递通知。
 export interface WantConnectIntent {
   intentId: string;
   eventId: string;
@@ -163,6 +169,7 @@ export interface WantConnectMatchNotice {
   externalMessageSent: false;
 }
 
+// provenance 记录没有实时连接、同伴通知或外部消息副作用。
 export interface WantConnectProvenance {
   source: string;
   sourceLabel: string;

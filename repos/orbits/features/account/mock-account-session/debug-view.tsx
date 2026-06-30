@@ -1,3 +1,9 @@
+/**
+ * 账号会话 mock 的开发者面板。
+ *
+ * 这里展示 demo session、登出、pending 和 failure 等会话状态，
+ * 用来验证账号 API envelope 和 live auth 接入前的边界。
+ */
 import {
   Chip,
   WorkbenchFrame,

@@ -1,3 +1,8 @@
+/**
+ * 跟进任务生成 mock 的契约测试。
+ *
+ * 验证触发信号、任务列表、limit 规则和不创建真实提醒的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

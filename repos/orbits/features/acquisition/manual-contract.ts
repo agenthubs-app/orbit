@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const MANUAL_CONTACT_CREATION_FIXTURE_SOURCE =
   "fixture:features/acquisition/manual-contract.ts" as const;
 
+// Manual Contact Creation contract 描述人工录入联系人时的 staged draft 流程。
+// 手动输入必须先形成草稿并经过确认，不能直接写入联系人图谱。
 export const MANUAL_CONTACT_CREATION_ERROR_CODES = [
   "MANUAL_CONTACT_NOTE_REQUIRED",
   "MANUAL_CONTACT_DRAFT_NOT_FOUND",
@@ -33,6 +35,7 @@ export type ManualContactDraftStatus = "pending_confirmation" | "confirmed";
 export type ManualContactConfirmationState = "pending" | "confirmed";
 export type ManualContactDuplicateResult = "clear" | "possible_match";
 
+// 错误定义突出 source note 和 confirmation：缺上下文或确认被阻止时不创建草稿。
 export interface ManualContactCreationErrorDefinition {
   code: ManualContactCreationErrorCode;
   appCode: AppErrorCode;
@@ -95,6 +98,7 @@ export type ManualContactSourceReference = SourceReferenceDTO & {
   label: string;
 };
 
+// provenance 说明手动草稿来自 demo intake，而不是外部导入。
 export interface ManualContactCreationProvenance {
   source: string;
   sourceLabel: string;
@@ -114,6 +118,7 @@ export interface ManualContactEvidence {
   createdBy: "mock-manual-service";
 }
 
+// duplicate check 只做 mock 规则判断，不执行真实外部查重或数据库搜索。
 export interface ManualContactDuplicateCheck {
   mode: "mock-rule";
   result: ManualContactDuplicateResult;
@@ -130,6 +135,7 @@ export interface ManualContactConfirmation {
   actorLabel?: string;
 }
 
+// ManualContactDraft 是人工录入后的待确认草稿。
 export interface ManualContactDraft {
   id: string;
   status: ManualContactDraftStatus;

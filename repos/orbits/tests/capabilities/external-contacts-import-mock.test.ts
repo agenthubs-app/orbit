@@ -1,3 +1,8 @@
+/**
+ * 外部联系人导入 mock 的契约测试。
+ *
+ * 锁住外部候选、草稿生成、权限边界和 debug-view 表达。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

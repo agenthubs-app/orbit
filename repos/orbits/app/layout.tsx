@@ -1,3 +1,8 @@
+/**
+ * 应用根 layout。
+ *
+ * 这里声明全局 metadata 和基础样式，所有 App Router 页面都会包在这个 layout 下。
+ */
 export const metadata = {
   title: "Orbit",
   description: "An event-grounded relationship operating system.",

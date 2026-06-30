@@ -1,3 +1,8 @@
+/**
+ * Source/provenance UI 测试。
+ *
+ * 验证 SourceChip 和 ProvenanceDisclosure 如何展示证据、队列和来源标识。
+ */
 import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";

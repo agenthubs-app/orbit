@@ -15,6 +15,8 @@ import { createEventEncounterNoteService } from "../../../../../../../features/e
 
 export const dynamic = "force-dynamic";
 
+// encounter evidence route 为一次活动相遇生成/追加证据。
+// route 固定使用 eventId 和 encounterId 两个 path 参数，body 只允许覆盖 scenario。
 interface EventEncounterEvidenceRouteContext {
   params: Promise<{
     id: string;
@@ -32,6 +34,7 @@ async function readEncounterEvidenceInput(
   encounterId: string,
 ): Promise<EventEncounterEvidenceInput> {
   const url = new URL(request.url);
+  // eventId/encounterId 都来自 path，避免 body 改写目标资源。
   const queryInput: EventEncounterEvidenceInput = {
     encounterId,
     eventId,
@@ -54,11 +57,13 @@ async function readEncounterEvidenceInput(
   try {
     parsedBody = JSON.parse(rawBody);
   } catch {
+    // malformed JSON 回落到 query 输入，由 service 维持稳定响应。
     return queryInput;
   }
 
   const body = isRecord(parsedBody) ? parsedBody : {};
 
+  // 目前 evidence 创建只需要 scenario；证据内容由 service 从 encounter 上下文生成。
   return {
     ...queryInput,
     scenario:
@@ -70,6 +75,7 @@ export async function POST(
   request: Request,
   context: EventEncounterEvidenceRouteContext,
 ): Promise<Response> {
+  // 创建 evidence 是资源创建语义，成功返回 201。
   const mode = resolveFeatureMode();
   const { encounterId, id } = await context.params;
   const encounterNoteService = createEventEncounterNoteService();
@@ -78,6 +84,7 @@ export async function POST(
   );
 
   if (result.success === false) {
+    // evidence failure 复用 encounter note contract 的错误上下文。
     const appError = eventEncounterNoteFailureToAppError(result);
 
     return NextResponse.json(

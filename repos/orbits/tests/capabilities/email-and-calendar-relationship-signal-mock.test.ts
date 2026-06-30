@@ -1,3 +1,8 @@
+/**
+ * 邮件/日历关系信号 mock 的契约测试。
+ *
+ * 锁住外部信号 fixture、权限边界、候选更新和 debug-view 状态。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

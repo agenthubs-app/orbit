@@ -1,3 +1,9 @@
+/**
+ * referral/recommended contact 确认 mock 的开发者面板。
+ *
+ * 这里展示推荐联系人、推荐理由、来源摘要和确认结果，
+ * 用来验证引荐来源进入联系人草稿前的复核边界。
+ */
 import {
   Chip,
   Field,

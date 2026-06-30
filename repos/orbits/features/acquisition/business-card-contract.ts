@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const BUSINESS_CARD_SCAN_OCR_FIXTURE_SOURCE =
   "fixture:features/acquisition/business-card-fixtures.ts" as const;
+// Business Card OCR contract 描述名片扫描到联系人草稿的流程。
+// mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const BUSINESS_CARD_SCAN_OCR_ERROR_CODES = [
   "BUSINESS_CARD_IMAGE_REQUIRED",
@@ -28,6 +30,7 @@ export type BusinessCardOcrStatus = "complete" | "empty" | "pending";
 export type BusinessCardDraftStatus = "pending_confirmation";
 export type BusinessCardConfirmationState = "pending";
 
+// imageText 允许测试用纯文本模拟名片图像内容；imageName 只用于展示来源。
 export interface BusinessCardScanOcrInput {
   scenario?: BusinessCardScanOcrScenario | string | null;
   imageText?: string | null;
@@ -46,6 +49,7 @@ export interface BusinessCardScanOcrErrorDefinition {
   recovery: string;
 }
 
+// OCR 失败定义覆盖缺图、草稿不存在、pending 和受控失败。
 export const BUSINESS_CARD_SCAN_OCR_ERROR_DEFINITIONS = {
   BUSINESS_CARD_IMAGE_REQUIRED: {
     code: "BUSINESS_CARD_IMAGE_REQUIRED",
@@ -86,6 +90,7 @@ export type BusinessCardSourceReference = SourceReferenceDTO & {
   label: string;
 };
 
+// provenance 记录名片扫描的 fixture 来源和生成方式。
 export interface BusinessCardScanOcrProvenance {
   source: string;
   sourceLabel: string;
@@ -95,6 +100,7 @@ export interface BusinessCardScanOcrProvenance {
   generationMethod: "fixture" | "rule-based-card-ocr";
 }
 
+// capture 表示输入图像的 mock 捕获记录，所有设备/存储副作用固定为 false。
 export interface BusinessCardCapture {
   captureId: string;
   captureMethod: "fixture-camera-frame" | "rule-based-image-text";
@@ -106,6 +112,7 @@ export interface BusinessCardCapture {
   storageWriteExecuted: false;
 }
 
+// OCR extraction 保存原始文本和提取字段，但不代表真实 OCR 或 AI 已执行。
 export interface BusinessCardOcrExtraction {
   status: BusinessCardOcrStatus;
   rawText: string;
@@ -115,6 +122,7 @@ export interface BusinessCardOcrExtraction {
   aiExtractionExecuted: false;
 }
 
+// Evidence 把提取字段和来源片段关联起来，供复核界面解释字段来源。
 export interface BusinessCardEvidence {
   evidenceId: string;
   source: BusinessCardSourceReference;
@@ -125,12 +133,14 @@ export interface BusinessCardEvidence {
   createdBy: "mock-business-card-service";
 }
 
+// 名片草稿默认处于 pending confirmation，不会直接写联系人。
 export interface BusinessCardDraftConfirmation {
   required: true;
   state: BusinessCardConfirmationState;
   question: string;
 }
 
+// ContactDraft 是扫描后形成的待确认联系人草稿。
 export interface BusinessCardContactDraft {
   id: string;
   status: BusinessCardDraftStatus;
@@ -149,6 +159,7 @@ export interface BusinessCardContactDraft {
   createdAt: string;
 }
 
+// payload 同时返回 capture、ocr 和 draft，方便 UI 展示完整采集链路。
 export interface BusinessCardScanOcrPayload {
   state: BusinessCardScanOcrState;
   capture: BusinessCardCapture;

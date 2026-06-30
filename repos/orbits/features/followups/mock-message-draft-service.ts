@@ -35,6 +35,8 @@ const supportedStatuses = new Set<MessageDraftStatus>([
   "revised",
 ]);
 
+// MessageDraftGenerator mock service 用规则生成/更新跟进消息草稿。
+// 它不发送消息、不持久保存草稿，也不调用 AI 写作 provider。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -51,6 +53,7 @@ function success(
 function failure(
   code: MessageDraftGeneratorErrorCode,
 ): MessageDraftGeneratorFailure {
+  // 失败 provenance 固定在 message draft mock 边界，说明没有外部发送或 AI 调用。
   const definition = MESSAGE_DRAFT_GENERATOR_ERROR_DEFINITIONS[code];
 
   return {
@@ -107,6 +110,7 @@ function readText(value: unknown): string | null {
 }
 
 function statusForInput(value: unknown): MessageDraftStatus {
+  // 更新草稿时未知 status 回落到 revised，保证编辑动作有稳定结果。
   return typeof value === "string" &&
     supportedStatuses.has(value as MessageDraftStatus)
     ? (value as MessageDraftStatus)
@@ -116,6 +120,7 @@ function statusForInput(value: unknown): MessageDraftStatus {
 function selectedDrafts(
   input: MessageDraftGeneratorCreateInput,
 ): readonly MessageDraft[] {
+  // draftKind 是可选过滤；不传时返回全部本地草稿类型。
   if (isDraftKind(input.draftKind)) {
     return mockMessageDrafts.filter((draft) => draft.kind === input.draftKind);
   }
@@ -148,6 +153,7 @@ function personalizeDraft(
   draft: MessageDraft,
   input: MessageDraftGeneratorCreateInput,
 ): MessageDraft {
+  // 个性化只替换收件人、组织和上下文说明，不改变发送状态或 evidence。
   const recipientName = readText(input.recipientName);
   const organization = readText(input.organization);
   const contextNote = readText(input.contextNote);
@@ -174,6 +180,7 @@ function personalizeDraft(
 function buildCreatePayload(
   input: MessageDraftGeneratorCreateInput,
 ): MessageDraftGeneratorPayload {
+  // create payload 按输入生成一组草稿，并同步 provenance evidenceIds。
   const drafts = selectedDrafts(input).map((draft) =>
     personalizeDraft(draft, input),
   );
@@ -209,6 +216,7 @@ function buildUpdatedDraft(
   draft: MessageDraft,
   input: MessageDraftGeneratorUpdateInput,
 ): MessageDraft {
+  // update 只是把 reviewer/user edits 追加到 body，模拟本地复核后的版本。
   const userEdits = readText(input.userEdits);
   const reviewerLabel = readText(input.reviewerLabel) ?? "Local reviewer";
 
@@ -244,6 +252,7 @@ function buildUpdatePayload(
 }
 
 export function createMockMessageDraftGeneratorService(): MessageDraftGeneratorService {
+  // createDraft 生成候选草稿；updateDraft 要求已有 draftId，避免凭空更新。
   return {
     createDraft(input = {}): MessageDraftGeneratorResult {
       const scenario = scenarioResult(normalizeScenario(input.scenario));

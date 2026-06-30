@@ -38,6 +38,8 @@ const supportedTagFilters = new Set<EventAttendeeTagCode>(
   EVENT_ATTENDEE_TAG_CODES,
 );
 
+// attendee roster mock 支持按 tag/known/eligible 做本地规则过滤。
+// 它模拟活动参会者名册导入，不读取真实活动系统。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -90,6 +92,7 @@ function normalizeScenario(
 }
 
 function normalizeEventId(eventId?: string | null): string {
+  // eventId 未提供时使用 demo event；空字符串会触发 required failure。
   if (eventId === undefined) {
     return defaultEventId;
   }
@@ -110,12 +113,14 @@ function normalizeTagFilter(
 function normalizeBooleanFilter(
   value?: boolean | string | null,
 ): boolean {
+  // API route 可能传 boolean，也可能从 query/form 传 "true"。
   return value === true || value === "true";
 }
 
 function eventFailure(
   input: EventAttendeeRosterInput,
 ): EventAttendeeRosterFailure | null {
+  // 所有 roster/import 方法共享 eventId 校验。
   const eventId = normalizeEventId(input.eventId);
 
   if (!eventId) {
@@ -164,6 +169,7 @@ function scenarioImportResult(
 function filterAttendees(
   input: EventAttendeeRosterInput,
 ): readonly EventAttendeeRosterRecord[] {
+  // 过滤完全基于本地 fixture 标签和资格字段，保证测试可复现。
   const tagFilter = normalizeTagFilter(input.tagFilter);
   const knownContactOnly = normalizeBooleanFilter(input.knownContactOnly);
   const eligibleOnly = normalizeBooleanFilter(input.eligibleOnly);
@@ -186,6 +192,7 @@ function filterAttendees(
 function buildRuleBasedRosterPayload(
   input: EventAttendeeRosterInput,
 ): EventAttendeeRosterPayload {
+  // 有过滤条件时动态生成 payload summary/provenance，保留筛选原因。
   const attendees = filterAttendees(input);
   const tagFilter = normalizeTagFilter(input.tagFilter);
   const filterLabels = [
@@ -217,6 +224,7 @@ function buildRuleBasedRosterPayload(
 }
 
 function hasFilters(input: EventAttendeeRosterInput): boolean {
+  // 无过滤条件时直接返回完整 fixture，避免不必要地重建 payload。
   return (
     normalizeTagFilter(input.tagFilter) !== null ||
     normalizeBooleanFilter(input.knownContactOnly) ||
@@ -227,6 +235,7 @@ function hasFilters(input: EventAttendeeRosterInput): boolean {
 export function createMockEventAttendeeRosterService(): EventAttendeeRosterService {
   return {
     getAttendeeRoster(input = {}): EventAttendeeRosterResult {
+      // 读取 roster：scenario 短路优先，然后校验 eventId，最后应用可选过滤。
       const scenarioResult = scenarioRosterResult(
         normalizeScenario(input.scenario),
       );
@@ -249,6 +258,7 @@ export function createMockEventAttendeeRosterService(): EventAttendeeRosterServi
     },
 
     importAttendeeRoster(input = {}): EventAttendeeRosterImportResult {
+      // 导入 roster：同一套过滤规则，最后包装成 import payload。
       const scenarioResult = scenarioImportResult(
         normalizeScenario(input.scenario),
       );

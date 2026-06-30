@@ -1,3 +1,9 @@
+/**
+ * 连接与证据服务 mock 的开发者面板。
+ *
+ * 面板展示 connection 详情、证据时间线和新增证据结果，
+ * 用来验证关系来源解释和 add-evidence no-op 语义。
+ */
 import {
   Chip,
   Field,

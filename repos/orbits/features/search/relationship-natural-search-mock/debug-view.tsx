@@ -1,3 +1,8 @@
+/**
+ * 自然语言关系搜索 mock 的开发者面板。
+ *
+ * 这里展示自然语言 query、可用筛选器、搜索结果和 provenance，不访问真实搜索索引。
+ */
 import {
   Chip,
   Field,

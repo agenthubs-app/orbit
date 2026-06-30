@@ -1,3 +1,9 @@
+/**
+ * 自然语言关系搜索 fixture。
+ *
+ * 数据覆盖可用筛选器、搜索证据、搜索结果、结果构造器和搜索建议。
+ * mock search service 使用这些 fixture 模拟关系搜索，而不是访问真实索引或远程搜索。
+ */
 import {
   RELATIONSHIP_NATURAL_SEARCH_BUSINESS_INTENTS,
   RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE,
@@ -22,6 +28,7 @@ import {
   type RelationshipNaturalSearchSuggestionsPayload,
   type RelationshipNaturalSearchValueType,
 } from "./contract";
+
 
 const fixtureCollectedAt = "2026-06-25T21:00:00.000Z";
 const fixtureCapturedAt = "2026-06-25T20:45:00.000Z";
@@ -440,6 +447,8 @@ export function buildRelationshipNaturalSearchPayload({
   input?: RelationshipNaturalSearchInput;
   results: readonly RelationshipNaturalSearchResultItem[];
   state?: RelationshipNaturalSearchState;
+  // 搜索 payload 构造器统一计算摘要、applied filters 和 provenance。
+  // mock search service 因此可以用同一个函数生成默认、空、pending 和特定查询结果。
 }): RelationshipNaturalSearchPayload {
   const hasSearchInput =
     Boolean(normalizeQuery(input.query)) ||

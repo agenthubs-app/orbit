@@ -1,3 +1,8 @@
+/**
+ * 活动参会者名单 mock 的契约测试。
+ *
+ * 锁住 roster payload、推荐候选、import 结果和受控失败路径。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -1,3 +1,9 @@
+/**
+ * Capability debug dashboard 视图组件。
+ *
+ * 组件把本地 fixture service 输出渲染成开发者面板，集中展示 capability 链接、
+ * scenario、API probes、reset controls 和安全/provenance 边界。
+ */
 import {
   Chip,
   WorkbenchFrame,

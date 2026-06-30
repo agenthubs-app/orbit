@@ -48,6 +48,8 @@ const reviewFieldNames: readonly (keyof BusinessCardReviewedFields)[] = [
   "phone",
 ];
 
+// BusinessCardReview mock service 模拟 OCR 后的人工字段复核。
+// 它允许编辑提取字段并确认草稿，但不会写入真实联系人或调用再识别服务。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -111,6 +113,7 @@ function normalizeConfirmationScenario(
 }
 
 function resolveReviewerLabel(reviewerLabel?: string | null): string {
+  // reviewerLabel 缺省时使用稳定名称，保证 evidence excerpt 可预测。
   const normalizedReviewer = reviewerLabel?.trim();
 
   return normalizedReviewer ? normalizedReviewer : "Demo reviewer";
@@ -119,6 +122,7 @@ function resolveReviewerLabel(reviewerLabel?: string | null): string {
 function hasAnyReviewedField(
   reviewedFields?: Partial<BusinessCardReviewedFields> | null,
 ): boolean {
+  // 如果调用方显式传 reviewedFields，但没有任何有效字段，要返回字段必填错误。
   if (!reviewedFields) {
     return false;
   }
@@ -152,6 +156,7 @@ function buildRuleBasedField(
   fieldName: keyof BusinessCardReviewedFields,
   reviewedFields: Partial<BusinessCardReviewedFields>,
 ) {
+  // 字段值没变就是 accepted；被 reviewer 改过则标记为 edited。
   const baseField = mockBusinessCardReviewDraft.extractedFields[fieldName];
   const reviewedValue = reviewedFields[fieldName]?.trim() || baseField.value;
 
@@ -182,6 +187,7 @@ function buildRuleBasedReviewEvidence(
 function buildRuleBasedReviewPayload(
   input: BusinessCardReviewUpdateInput,
 ): BusinessCardReviewPayload {
+  // 更新 payload 会生成一条 review evidence，并把 draft 状态推进到 reviewed。
   const reviewedFields = input.reviewedFields ?? {};
   const fieldMap = buildRuleBasedFields(reviewedFields);
   const reviewEvidence = buildRuleBasedReviewEvidence(
@@ -219,6 +225,7 @@ function buildRuleBasedReviewPayload(
 }
 
 export function createMockBusinessCardReviewService(): BusinessCardReviewService {
+  // get/update/confirm 对应人工复核的三个阶段，confirm 仍停在 mock 联系人写入前。
   return {
     getReviewDraft(input): BusinessCardReviewResult {
       switch (normalizeReviewScenario(input.scenario)) {

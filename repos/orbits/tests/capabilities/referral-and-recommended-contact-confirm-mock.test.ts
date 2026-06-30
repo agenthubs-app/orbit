@@ -1,3 +1,8 @@
+/**
+ * Referral/recommended contact 确认 mock 的契约测试。
+ *
+ * 验证推荐联系人、草稿确认和引荐来源 provenance。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const EVENT_ENCOUNTER_NOTE_FIXTURE_SOURCE =
   "fixture:features/events/encounter-contract.ts" as const;
 
+// Event Encounter Note contract 描述活动现场遇见某人后的本地记录和证据生成。
+// 当前只处理 typed note 和 voice placeholder，不上传音频、不调用 speech-to-text。
 export const EVENT_ENCOUNTER_NOTE_ERROR_CODES = [
   "EVENT_ENCOUNTER_NOTE_EVENT_ID_REQUIRED",
   "EVENT_ENCOUNTER_NOTE_EVENT_NOT_FOUND",
@@ -26,6 +28,7 @@ export type EventEncounterNoteScenario =
   | "failure";
 export type EventEncounterNoteState = "success" | "empty" | "pending";
 
+// note 输入创建 encounter；evidence 输入把既有 encounter 转成证据。
 export interface EventEncounterNoteInput {
   eventId?: string | null;
   contactId?: string | null;
@@ -46,6 +49,7 @@ export interface EventEncounterNoteErrorDefinition {
   recovery: string;
 }
 
+// encounter 错误定义保证缺 event/encounter 或 pending 时不写 live note storage。
 export const EVENT_ENCOUNTER_NOTE_ERROR_DEFINITIONS = {
   EVENT_ENCOUNTER_NOTE_EVENT_ID_REQUIRED: {
     code: "EVENT_ENCOUNTER_NOTE_EVENT_ID_REQUIRED",
@@ -105,6 +109,7 @@ export type EventEncounterNoteSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-encounter-note-service";
 };
 
+// EventSummary 是 note 所属活动的轻量信息，不代表读取真实日历。
 export interface EventEncounterNoteEventSummary {
   id: string;
   name: string;
@@ -115,6 +120,7 @@ export interface EventEncounterNoteEventSummary {
   liveDatabaseWriteExecuted: false;
 }
 
+// participant 是本次遇见的人，externalLookupExecuted=false 表示未查外部资料。
 export interface EventEncounterParticipant {
   contactId: string;
   displayName: string;
@@ -127,6 +133,7 @@ export interface EventEncounterParticipant {
   notificationDelivered: false;
 }
 
+// provenance 是现场记录流程的安全账本。
 export interface EventEncounterNoteProvenance {
   source: string;
   sourceLabel: string;
@@ -151,6 +158,7 @@ export interface EventEncounterNoteProvenance {
   aiProviderRequested: false;
 }
 
+// EventEncounterRecord 是一次现场遇见的主记录。
 export interface EventEncounterRecord {
   encounterId: string;
   eventId: string;

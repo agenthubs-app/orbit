@@ -1,6 +1,8 @@
 import { bilingualText } from "./bilingual";
 import { Chip, WorkbenchSurface } from "./primitives";
 
+// StateView 是空态、pending、failure 等页面状态的统一展示组件。
+// 它把“为什么重要 / 当前上下文 / 安全下一步 / 来源证据”固定成一致结构。
 export type StateViewRecoveryAction =
   | {
       id: string;
@@ -82,6 +84,7 @@ const stateViewStyles = `
 function normalizeRecoveryActions(
   recoveryActions: StateViewRecoveryAction[],
 ): StateViewRecoveryAction[] {
+  // 空 label 的 recovery action 不渲染，避免出现无意义按钮或空链接。
   return recoveryActions.filter((action) => action.label.trim());
 }
 

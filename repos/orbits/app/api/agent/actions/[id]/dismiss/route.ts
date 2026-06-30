@@ -15,6 +15,8 @@ import { createAgentActionQueueService } from "../../../../../../features/agent/
 
 export const dynamic = "force-dynamic";
 
+// dismiss action 是 Agent action queue 的拒绝入口。
+// 它和 accept route 使用同一套输入解析，差别只在最终调用的 service 方法。
 interface AgentActionDecisionRouteContext {
   params: Promise<{
     id: string;
@@ -23,6 +25,7 @@ interface AgentActionDecisionRouteContext {
 
 type JsonRecord = Record<string, unknown>;
 
+// action decision body 很小，非法或空 JSON 会被当成空对象交给 service 校验。
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -48,6 +51,7 @@ async function readInput(
   const searchParams = new URL(request.url).searchParams;
   const body = await readJsonBody(request);
 
+  // query scenario 优先于 body，便于直接用 URL 复现队列状态。
   return {
     actionId,
     actorLabel: readString(body.actorLabel),
@@ -59,12 +63,14 @@ export async function POST(
   request: Request,
   context: AgentActionDecisionRouteContext,
 ): Promise<Response> {
+  // 拒绝动作仍然只改变 queue 中的可复核状态，不在 route 里执行外部副作用。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const agentActionService = createAgentActionQueueService();
   const result = agentActionService.dismissAction(await readInput(request, id));
 
   if (result.success === false) {
+    // 队列失败统一转成 AppError/envelope，保持前端错误处理稳定。
     const appError = agentActionQueueFailureToAppError(result);
 
     return NextResponse.json(

@@ -31,6 +31,8 @@ const supportedScenarios = new Set<EventEncounterNoteScenario>([
   "failure",
 ]);
 
+// encounter note mock 模拟活动现场记录和 evidence 生成。
+// 它只校验 demo event/encounter id，不会写真实活动或联系人数据。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -101,6 +103,7 @@ function normalizeNoteText(noteText?: string | null): string {
 function eventFailure(
   input: EventEncounterNoteInput | EventEncounterEvidenceInput,
 ): EventEncounterNoteFailure | null {
+  // note 和 evidence 两条路径共享 eventId 校验。
   const eventId = normalizeEventId(input.eventId);
 
   if (!eventId) {
@@ -117,6 +120,7 @@ function eventFailure(
 function encounterFailure(
   input: EventEncounterEvidenceInput,
 ): EventEncounterNoteFailure | null {
+  // evidence 额外要求 encounterId 命中 demo encounter。
   const encounterId = normalizeEncounterId(input.encounterId);
 
   if (!encounterId) {
@@ -169,6 +173,7 @@ function scenarioEvidenceResult(
 }
 
 function ruleBasedNoteResult(input: EventEncounterNoteInput): EventEncounterNoteResult {
+  // 空 noteText 返回 empty fixture；有文本时返回稳定成功 fixture。
   if (!normalizeNoteText(input.noteText)) {
     return noteSuccess(mockEmptyEventEncounterNoteFixture);
   }
@@ -179,6 +184,7 @@ function ruleBasedNoteResult(input: EventEncounterNoteInput): EventEncounterNote
 export function createMockEventEncounterNoteService(): EventEncounterNoteService {
   return {
     createEncounterNote(input = {}): EventEncounterNoteResult {
+      // 创建笔记先处理 scenario，再校验 eventId，最后按 noteText 生成结果。
       const scenarioResult = scenarioNoteResult(
         normalizeScenario(input.scenario),
       );
@@ -197,6 +203,7 @@ export function createMockEventEncounterNoteService(): EventEncounterNoteService
     },
 
     createEncounterEvidence(input = {}): EventEncounterEvidenceResult {
+      // 创建 evidence 还需要校验 encounterId；成功时返回固定 evidence fixture。
       const scenarioResult = scenarioEvidenceResult(
         normalizeScenario(input.scenario),
       );

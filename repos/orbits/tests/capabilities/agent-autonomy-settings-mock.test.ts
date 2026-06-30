@@ -1,3 +1,8 @@
+/**
+ * Agent 自主级别设置 capability 的契约测试。
+ *
+ * 锁住读取/更新自主级别、非法 level、debug-view 和 API envelope 行为。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

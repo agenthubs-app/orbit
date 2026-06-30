@@ -1,3 +1,8 @@
+/**
+ * Profile 文档抽取 mock 的契约测试。
+ *
+ * 验证简历/名片抽取草稿、状态 fixture 和 debug-view。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -26,6 +26,8 @@ const supportedScenarios = new Set<ChatWritingAssistScenario>([
   "failure",
 ]);
 
+// Chat writing assist mock 用本地规则生成改写、跟进、约时间和问候建议。
+// 它不调用模型，也不会发送消息；所有输出都必须先经过用户复核。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -93,6 +95,7 @@ function hasExplicitBlankText(
     "contextNote" | "preferredWindow" | "sourceText"
   >,
 ): boolean {
+  // 只有调用方显式传了空字符串才算输入错误；缺省值会走 demo fixture。
   return (
     Object.prototype.hasOwnProperty.call(input, key) &&
     typeof input[key] === "string" &&
@@ -103,6 +106,7 @@ function hasExplicitBlankText(
 function fixtureForKind(
   kind: ChatWritingAssistKind,
 ): ChatWritingAssistSuggestion {
+  // 每种 writing assist 都必须有对应 fixture，缺失说明 mock 数据不完整。
   const assist = mockChatWritingAssists.find((item) => item.kind === kind);
 
   if (!assist) {
@@ -139,6 +143,7 @@ function personalizeCommon(
   assist: ChatWritingAssistSuggestion,
   input: ChatWritingAssistInput,
 ): ChatWritingAssistSuggestion {
+  // participantName / organization 允许调用方覆盖，用于让 demo 文案看起来贴合当前上下文。
   const participantName = readText(input.participantName);
   const organization = readText(input.organization);
 
@@ -211,6 +216,7 @@ function buildPayload(input: {
   sourceLabel: string;
   summary: string;
 }): ChatWritingAssistPayload {
+  // payload 保留 provenance 和 nextAction，强调草稿生成后仍需确认。
   return {
     ...mockChatWritingAssistFixture,
     state: "success",
@@ -249,6 +255,7 @@ function validateRequiredText(
     "contextNote" | "preferredWindow" | "sourceText"
   >,
 ): ChatWritingAssistResult | null {
+  // 显式空输入返回统一 required failure，避免生成无来源的建议。
   if (hasExplicitBlankText(input, key)) {
     return failure("CHAT_WRITING_ASSIST_INPUT_REQUIRED");
   }
@@ -259,6 +266,7 @@ function validateRequiredText(
 export function createMockChatWritingAssistService(): ChatWritingAssistService {
   return {
     rewritePolitely(input = {}): ChatWritingAssistResult {
+      // 礼貌改写需要 sourceText；缺省时用 demo 文本，显式空文本失败。
       const scenario = scenarioResult(normalizeScenario(input.scenario));
 
       if (scenario) {
@@ -281,6 +289,7 @@ export function createMockChatWritingAssistService(): ChatWritingAssistService {
     },
 
     draftFollowup(input = {}): ChatWritingAssistResult {
+      // 跟进草稿基于 contextNote；输出仍只是草稿，不发送外部消息。
       const scenario = scenarioResult(normalizeScenario(input.scenario));
 
       if (scenario) {
@@ -303,6 +312,7 @@ export function createMockChatWritingAssistService(): ChatWritingAssistService {
     },
 
     suggestAppointment(input = {}): ChatWritingAssistResult {
+      // 约时间建议基于 preferredWindow；显式空窗口返回 required failure。
       const scenario = scenarioResult(normalizeScenario(input.scenario));
 
       if (scenario) {
@@ -325,6 +335,7 @@ export function createMockChatWritingAssistService(): ChatWritingAssistService {
     },
 
     createQuickGreeting(input = {}): ChatWritingAssistResult {
+      // 快速问候不要求额外文本，主要演示个性化字段覆盖。
       const scenario = scenarioResult(normalizeScenario(input.scenario));
 
       if (scenario) {

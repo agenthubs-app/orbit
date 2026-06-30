@@ -1,3 +1,10 @@
+/**
+ * 外部动作沙盒的 mock 实现。
+ *
+ * 真实外部动作包括发消息、创建日历事件和投递通知；这些都可能产生不可逆副作用。
+ * 这个 mock 服务只返回 no-op payload 和审计记录，用来证明“UI 可以展示动作结果”，
+ * 但不会真的发送消息、写入日历或触发通知。
+ */
 import {
   EXTERNAL_ACTION_SANDBOX_ERROR_DEFINITIONS,
   mockCreateCalendarEventNoOpFixture,
@@ -29,6 +36,7 @@ const supportedScenarios = new Set<ExternalActionSandboxScenario>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 每次返回独立对象，避免调用方修改 fixture 影响后续测试用例。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -49,6 +57,7 @@ function noOpSuccess(data: ExternalActionNoOpPayload): ExternalActionNoOpResult 
 function failure(
   code: ExternalActionSandboxErrorCode,
 ): ExternalActionSandboxFailure {
+  // mock 失败也沿用 contract 中的稳定错误定义，方便 API 层统一转换。
   const definition = EXTERNAL_ACTION_SANDBOX_ERROR_DEFINITIONS[code];
 
   return {
@@ -67,6 +76,7 @@ function normalizeScenario(
     | ExternalActionSandboxInput["scenario"]
     | ExternalActionAuditListInput["scenario"],
 ): ExternalActionSandboxScenario {
+  // scenario 是测试控制开关；未知值回落 success，避免任意字符串制造新状态。
   if (
     scenario &&
     supportedScenarios.has(scenario as ExternalActionSandboxScenario)
@@ -80,6 +90,7 @@ function normalizeScenario(
 function findAction(
   actionType: ExternalActionSandboxActionType,
 ): ExternalActionSandboxAction {
+  // 每种动作都必须有对应 fixture；缺失说明测试数据和 contract 不一致。
   const action = mockExternalActionSandboxActions.find(
     (candidate) => candidate.actionType === actionType,
   );
@@ -106,6 +117,8 @@ function operationResult(
   actionType: ExternalActionSandboxActionType,
   fixture: ExternalActionNoOpPayload,
   input: ExternalActionSandboxInput = {},
+  // 所有外部动作共用同一套校验：scenario、actionId、actor/target 覆盖。
+  // 即使返回 success，也只是 no-op 审计结果，不代表外部系统被调用。
 ): ExternalActionNoOpResult {
   const scenario = normalizeScenario(input.scenario);
 
@@ -135,6 +148,7 @@ function operationResult(
   const actorLabel = input.actorLabel?.trim();
 
   if (actorLabel) {
+    // 允许测试或 UI 注入当前操作者名称，同时同步到审计记录里。
     payload.actorLabel = actorLabel;
     payload.auditRecord.actorLabel = actorLabel;
   }
@@ -148,6 +162,7 @@ function operationResult(
 }
 
 function auditResult(input: ExternalActionAuditListInput = {}): ExternalActionAuditResult {
+  // 审计列表同样支持固定 scenario，便于页面测试 empty/pending/failure 状态。
   const scenario = normalizeScenario(input.scenario);
 
   switch (scenario) {
@@ -164,6 +179,7 @@ function auditResult(input: ExternalActionAuditListInput = {}): ExternalActionAu
 }
 
 export function createMockExternalActionSandboxService(): ExternalActionSandboxService {
+  // 对外暴露的 service 形状与 live sandbox 保持一致；调用方无需知道当前是 mock。
   return {
     sendMessage(input = {}): ExternalActionNoOpResult {
       return operationResult("send_message", mockSendMessageNoOpFixture, input);

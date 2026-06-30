@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const POST_EVENT_REVIEW_FIXTURE_SOURCE =
   "fixture:features/events/post-event-contract.ts" as const;
 
+// Post Event Review contract 描述活动结束后的新联系人复核和跟进建议。
+// 它不会批量写联系人，也不会发送 follow-up，只返回待确认草稿。
 export const POST_EVENT_REVIEW_ERROR_CODES = [
   "POST_EVENT_REVIEW_EVENT_ID_REQUIRED",
   "POST_EVENT_REVIEW_EVENT_NOT_FOUND",
@@ -24,6 +26,7 @@ export type PostEventReviewScenario =
   | "pending"
   | "failure";
 export type PostEventReviewState = "success" | "empty" | "pending";
+// review input 读取活动复盘；confirm input 选择要确认的联系人草稿。
 
 export interface PostEventReviewInput {
   eventId?: string | null;
@@ -42,6 +45,7 @@ export interface PostEventReviewErrorDefinition {
   message: string;
   recovery: string;
 }
+// post-event 错误定义确保导入未完成或无联系人时不启动批量持久化。
 
 export const POST_EVENT_REVIEW_ERROR_DEFINITIONS = {
   POST_EVENT_REVIEW_EVENT_ID_REQUIRED: {
@@ -92,6 +96,7 @@ export type PostEventReviewSourceReference = SourceReferenceDTO & {
   eventId: string;
   generatedBy: "mock-post-event-review-service";
 };
+// EventSummary 是复盘所属活动摘要，不代表读取真实日历。
 
 export interface PostEventReviewEventSummary {
   id: string;
@@ -102,6 +107,7 @@ export interface PostEventReviewEventSummary {
   calendarProviderRequested: false;
   liveDatabaseReadExecuted: false;
 }
+// Tag 和 ContactSummary 解释活动后新联系人为什么值得复核。
 
 export interface PostEventReviewTag {
   tagId: string;
@@ -125,6 +131,7 @@ export interface PostEventContactSummary {
   aiProviderRequested: false;
   externalNetworkRequested: false;
 }
+// FollowUpSuggestion 是可编辑草稿，不会自动发送邮件。
 
 export interface PostEventFollowUpSuggestion {
   suggestionId: string;
@@ -141,6 +148,7 @@ export interface PostEventFollowUpSuggestion {
   emailProviderRequested: false;
   aiProviderRequested: false;
 }
+// PostEventReviewContact 是待复核的新联系人草稿。
 
 export interface PostEventReviewContact {
   contactDraftId: string;
@@ -158,6 +166,7 @@ export interface PostEventReviewContact {
   liveDatabaseWriteExecuted: false;
   batchPersistenceExecuted: false;
 }
+// provenance 记录复盘流程没有 AI、网络、数据库批量写入或消息发送。
 
 export interface PostEventReviewProvenance {
   source: typeof POST_EVENT_REVIEW_FIXTURE_SOURCE;

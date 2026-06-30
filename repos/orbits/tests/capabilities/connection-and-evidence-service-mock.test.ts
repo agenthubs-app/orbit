@@ -1,3 +1,8 @@
+/**
+ * 连接与证据服务 mock 的契约测试。
+ *
+ * 覆盖 connection 详情、证据时间线、add evidence 和 API envelope 行为。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

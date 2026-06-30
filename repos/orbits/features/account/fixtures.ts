@@ -1,3 +1,9 @@
+/**
+ * 账号会话相关 fixture。
+ *
+ * 这里提供登录态、登出态、pending sign-in 和失败 provenance。
+ * mock account service 会直接返回这些 payload，用来稳定验证账号入口和会话 API。
+ */
 import type {
   AccountSessionPayload,
   AccountSessionProvenance,

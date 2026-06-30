@@ -15,6 +15,8 @@ import { createBusinessCardScanOcrService } from "../../../../../features/acquis
 
 export const dynamic = "force-dynamic";
 
+// business-card scan route 是名片 OCR 草稿入口。
+// route 只兼容 form/json 两种上传表达；OCR 解析、草稿生成和 provenance 在 scan service 中。
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -34,6 +36,7 @@ async function readBusinessCardScanInput(
 ): Promise<BusinessCardScanOcrInput> {
   const contentType = request.headers.get("content-type") ?? "";
 
+  // 表单路径服务浏览器表单或 multipart 上传；当前 mock 只读取 imageText/imageName。
   if (
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
@@ -47,6 +50,7 @@ async function readBusinessCardScanInput(
     };
   }
 
+  // 非 JSON/form 请求只保留 scenario，由 service 决定默认或失败状态。
   if (!contentType.includes("application/json")) {
     return { scenario };
   }
@@ -57,6 +61,7 @@ async function readBusinessCardScanInput(
     return { scenario };
   }
 
+  // JSON 路径服务 fetch 调用；route 不在这里做 OCR 业务校验。
   const parsedBody: unknown = JSON.parse(rawBody);
   const body = isRecord(parsedBody) ? parsedBody : {};
 
@@ -68,6 +73,7 @@ async function readBusinessCardScanInput(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // scanBusinessCard 返回的是可复核 contact draft，不会直接创建联系人。
   const mode = resolveFeatureMode();
   const scanService = createBusinessCardScanOcrService();
   const scenario = new URL(request.url).searchParams.get("scenario");
@@ -76,6 +82,7 @@ export async function POST(request: Request): Promise<Response> {
   );
 
   if (result.success === false) {
+    // OCR scan failure 统一映射成 AppError/envelope。
     const appError = businessCardScanOcrFailureToAppError(result);
 
     return NextResponse.json(

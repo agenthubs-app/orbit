@@ -1,3 +1,9 @@
+/**
+ * Chat 摘要与抽取 mock 的开发者面板。
+ *
+ * 面板展示从对话中抽取任务、需求和 profile 更新建议的结果；
+ * 这些建议仍需确认，不会直接写入 profile。
+ */
 import {
   Chip,
   WorkbenchFrame,

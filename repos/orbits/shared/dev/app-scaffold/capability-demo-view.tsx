@@ -1,3 +1,9 @@
+/**
+ * App scaffold capability 的开发者 demo route。
+ *
+ * 这个文件演示 capability registry、mock action runner 和 live guard 的最小闭环。
+ * 它只读 registry 并记录本地 debug action，不修改产品数据或写 artifact。
+ */
 import {
   Chip,
   WorkbenchFrame,
@@ -16,10 +22,12 @@ const liveImplementationNotesPath =
 const pathWrapStyle = { overflowWrap: "anywhere" } as const;
 
 function apiRouteLabel(route: CapabilitySummary["api"]["routes"][number]) {
+  // 把 registry 中的 API route 元数据格式化成页面可读的命令标签。
   return `${route.method} ${route.path}`;
 }
 
 function MissingCapabilityDemo({ slug }: { slug: string }) {
+  // 未注册 slug 进入受控 fallback，避免 dev route 尝试解析未知 capability。
   return (
     <WorkbenchFrame>
       <div className="workbench-shell">
@@ -56,6 +64,7 @@ function MissingCapabilityDemo({ slug }: { slug: string }) {
 }
 
 function AppScaffoldCapabilityDemo() {
+  // 主 demo 读取 capability registry，并执行一个 memory-only debug action。
   const capabilities = listCapabilitySummaries();
   const liveModePreview = listCapabilitySummaries({
     mode: "live",
@@ -206,6 +215,7 @@ function AppScaffoldCapabilityDemo() {
 }
 
 export function CapabilityDemoRoute({ slug }: { slug: string }) {
+  // 当前 scaffold 只处理自己的 slug；其它真实 capability 由动态 dev route 映射到各自 debug-view。
   if (slug !== APP_SCAFFOLD_CAPABILITY_SLUG) {
     return <MissingCapabilityDemo slug={slug} />;
   }

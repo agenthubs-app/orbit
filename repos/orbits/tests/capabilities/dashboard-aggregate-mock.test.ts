@@ -1,3 +1,8 @@
+/**
+ * Dashboard 聚合 mock 的契约测试。
+ *
+ * 锁住 dashboard summary、dormant/high-value/follow-up 聚合和 debug-view 输出。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

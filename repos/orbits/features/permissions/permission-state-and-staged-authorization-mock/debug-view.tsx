@@ -1,3 +1,8 @@
+/**
+ * 权限状态与 staged authorization mock 的开发者面板。
+ *
+ * 面板展示外部账号权限状态和授权请求结果，不连接真实 OAuth/provider。
+ */
 import {
   Chip,
   WorkbenchFrame,

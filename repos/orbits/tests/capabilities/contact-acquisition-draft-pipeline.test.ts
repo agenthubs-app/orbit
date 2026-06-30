@@ -1,3 +1,8 @@
+/**
+ * 联系人获取草稿 pipeline 的契约测试。
+ *
+ * 验证草稿列表、确认结果、scenario 状态和 debug-view 的 source-backed 输出。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

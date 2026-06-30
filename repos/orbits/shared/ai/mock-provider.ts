@@ -28,11 +28,15 @@ const supportedScenarios = new Set<AiProviderScenario>([
   "failure",
 ]);
 
+// mock AI provider 用本地规则生成 AI-shaped 输出。
+// 它模拟 prompt template、input hash、fallback 和 run provenance，
+// 但不会调用真实模型，也不会读写真实关系数据库。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
 function success(data: AiProviderPayload): AiProviderResult {
+  // 所有 payload clone 后返回，保持 mock provider 的输出不可被调用方反向污染。
   return {
     success: true,
     data: clonePayload(data),
@@ -55,6 +59,7 @@ function runSuccess(run: AiProviderRunRecord): AiProviderRunResult {
 }
 
 function failure(code: AiProviderErrorCode): AiProviderFailure {
+  // 失败同样使用 mock provenance，证明这是受控本地错误而不是 provider/network 错误。
   const definition = AI_PROVIDER_ERROR_DEFINITIONS[code];
 
   return {
@@ -73,6 +78,7 @@ function normalizeScenario(
     | AiProviderMessageDraftInput["scenario"]
     | AiProviderRunLookupInput["scenario"],
 ): AiProviderScenario {
+  // scenario 参数只接受白名单；未知值回到 success，避免任意 query string 改变服务分支。
   if (scenario && supportedScenarios.has(scenario as AiProviderScenario)) {
     return scenario as AiProviderScenario;
   }
@@ -104,6 +110,7 @@ function hasExplicitBlankText(
   input: AiProviderMessageDraftInput,
   key: keyof Pick<AiProviderMessageDraftInput, "relationshipContext">,
 ): boolean {
+  // 只有调用方显式传了空字符串才算输入错误；未传字段会走默认 mock 上下文。
   return (
     Object.prototype.hasOwnProperty.call(input, key) &&
     typeof input[key] === "string" &&
@@ -122,6 +129,7 @@ function uniqueEvidenceIds(
   run: AiProviderRunRecord,
   input: AiProviderMessageDraftInput,
 ): readonly string[] {
+  // 用户传入的 sourceEvidenceIds 会合并到 run evidence，保持生成结果可追溯到输入材料。
   const inputEvidenceIds = Array.isArray(input.sourceEvidenceIds)
     ? input.sourceEvidenceIds.filter((item): item is string => Boolean(item))
     : [];
@@ -137,6 +145,8 @@ function messageDraftText(input: {
   return `Hi ${input.recipientName}, following up on this context: ${input.relationshipContext} I can help with ${input.desiredOutcome}.`;
 }
 
+  // generatedRun 是 mock provider 的核心：把输入标准化成稳定 run record，
+  // 并在 promptTemplateId 不支持时走本地安全 fallback。
 function generatedRun(input: AiProviderMessageDraftInput): AiProviderRunRecord {
   const requestedPromptTemplateId = readText(input.promptTemplateId);
   const fallbackUsed = Boolean(
@@ -222,6 +232,7 @@ function payloadForRun(run: AiProviderRunRecord): AiProviderPayload {
 }
 
 export function createMockAiProviderService(): AiProviderService {
+  // 服务接口分两类：draftMessage 生成新的本地 run；getRun 只查 fixture 中已有 run。
   return {
     draftMessage(input = {}): AiProviderResult {
       const scenario = scenarioResult(normalizeScenario(input.scenario));

@@ -1,3 +1,8 @@
+/**
+ * 手动联系人创建 mock 的契约测试。
+ *
+ * 覆盖人工输入生成草稿、确认结果和 source-backed provenance。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

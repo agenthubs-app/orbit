@@ -14,6 +14,8 @@ import { createEventGoalAndReadinessService } from "../../../../../features/even
 
 export const dynamic = "force-dynamic";
 
+// readiness route 返回活动准备度状态。
+// route 只读取 eventId/scenario；准备度计算和缺口说明由 goal/readiness service 负责。
 interface EventReadinessRouteContext {
   params: Promise<{
     id: string;
@@ -24,6 +26,7 @@ export async function GET(
   request: Request,
   context: EventReadinessRouteContext,
 ): Promise<Response> {
+  // GET 是只读 readiness 视图，不设置目标。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
@@ -34,6 +37,7 @@ export async function GET(
   });
 
   if (result.success === false) {
+    // goal/readiness failure 统一映射成 AppError/envelope。
     const appError = eventGoalReadinessFailureToAppError(result);
 
     return NextResponse.json(

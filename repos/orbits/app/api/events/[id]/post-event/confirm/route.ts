@@ -15,6 +15,8 @@ import { createPostEventContactReviewService } from "../../../../../../features/
 
 export const dynamic = "force-dynamic";
 
+// post-event confirm route 用于确认活动后要保留/创建的联系人草稿。
+// route 解析 contactDraftIds；具体确认、去重和状态更新由 post-event review service 完成。
 interface PostEventReviewConfirmRouteContext {
   params: Promise<{
     id: string;
@@ -35,6 +37,7 @@ function readFormText(
 }
 
 function splitContactDraftIds(value?: string | null): readonly string[] | null {
+  // query/form 中用逗号分隔草稿 id；null 表示调用方没有指定范围。
   if (value === undefined || value === null) {
     return null;
   }
@@ -50,6 +53,7 @@ async function readPostEventReviewConfirmInput(
   eventId: string,
 ): Promise<ConfirmPostEventContactsInput> {
   const url = new URL(request.url);
+  // eventId 来自 path，contactDraftIds 可以来自 query/form/json。
   const queryInput: ConfirmPostEventContactsInput = {
     contactDraftIds: splitContactDraftIds(url.searchParams.get("contactDraftIds")),
     eventId,
@@ -61,6 +65,7 @@ async function readPostEventReviewConfirmInput(
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
   ) {
+    // 表单路径服务活动后复核页面的批量确认。
     const formData = await request.formData();
 
     return {
@@ -87,10 +92,12 @@ async function readPostEventReviewConfirmInput(
   try {
     parsedBody = JSON.parse(rawBody);
   } catch {
+    // malformed JSON 回落 query 输入，避免非标准异常响应。
     return queryInput;
   }
 
   const body = isRecord(parsedBody) ? parsedBody : {};
+  // JSON 路径中 contactDraftIds 必须是非空字符串数组。
   const bodyContactDraftIds = Array.isArray(body.contactDraftIds)
     ? body.contactDraftIds.filter(
         (contactDraftId): contactDraftId is string =>
@@ -110,6 +117,7 @@ export async function POST(
   request: Request,
   context: PostEventReviewConfirmRouteContext,
 ): Promise<Response> {
+  // confirmPostEventContacts 不在 route 层直接创建联系人，所有状态变更由 service contract 处理。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const postEventReviewService = createPostEventContactReviewService();
@@ -118,6 +126,7 @@ export async function POST(
   );
 
   if (result.success === false) {
+    // post-event failure 统一映射成 AppError/envelope。
     const appError = postEventReviewFailureToAppError(result);
 
     return NextResponse.json(

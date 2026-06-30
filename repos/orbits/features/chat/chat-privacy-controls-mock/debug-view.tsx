@@ -1,3 +1,8 @@
+/**
+ * Chat 隐私控制 mock 的开发者面板。
+ *
+ * 这里展示分析开关、私密 note 和隐私边界状态，确保聊天 UI 能解释哪些内容不会被分析。
+ */
 import {
   Chip,
   WorkbenchFrame,

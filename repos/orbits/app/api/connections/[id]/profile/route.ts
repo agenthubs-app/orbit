@@ -18,6 +18,8 @@ import type {
 
 export const dynamic = "force-dynamic";
 
+// relationship profile route 用于更新一条关系的画像字段。
+// route 只解析 PATCH body；关系类型、互惠价值、下一步动作的校验在 profile service 中。
 interface RelationshipProfileRouteContext {
   params: Promise<{
     id: string;
@@ -49,6 +51,7 @@ type ProfileBodyResult =
       success: false;
     };
 
+// profile PATCH body 允许嵌套对象，但每个字段仍做显式类型过滤。
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -66,12 +69,14 @@ function readStringArray(value: unknown): string[] | undefined {
 }
 
 function requestHasBody(request: Request): boolean {
+  // Next Request 的 body 可能为 null；content-length=0 也视为没有更新字段。
   return request.body !== null && request.headers.get("content-length") !== "0";
 }
 
 function readMutualValue(
   value: unknown,
 ): ProfileBody["mutualValue"] | undefined {
+  // mutualValue 是结构化字段，非对象输入直接忽略，由 service 判断是否足够更新。
   if (!isRecord(value)) {
     return undefined;
   }
@@ -84,6 +89,7 @@ function readMutualValue(
 }
 
 function readNextAction(value: unknown): ProfileBody["nextAction"] | undefined {
+  // nextAction 保留 label/dueAt/rationale 三个白名单字段。
   if (!isRecord(value)) {
     return undefined;
   }
@@ -96,6 +102,7 @@ function readNextAction(value: unknown): ProfileBody["nextAction"] | undefined {
 }
 
 async function readProfileBody(request: Request): Promise<ProfileBodyResult> {
+  // 空 PATCH body 合法进入 service，便于统一返回“无可更新字段”的业务结果。
   if (!requestHasBody(request)) {
     return {
       success: true,
@@ -134,6 +141,7 @@ function responseForResult(
   result: RelationshipProfileResult,
   mode: ReturnType<typeof resolveFeatureMode>,
 ): Response {
+  // profile/stage 更新共享关系画像错误映射。
   if (result.success === false) {
     const appError = relationshipProfileFailureToAppError(result);
 
@@ -156,6 +164,7 @@ export async function PATCH(
   request: Request,
   context: RelationshipProfileRouteContext,
 ): Promise<Response> {
+  // connectionId 来自 path，scenario 可由 query 覆盖 body，便于复现 mock 分支。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
@@ -163,12 +172,14 @@ export async function PATCH(
   const profileBody = await readProfileBody(request);
 
   if (!profileBody.success) {
+    // JSON 解析失败交给 service 产出标准 invalid body response。
     return responseForResult(
       profileService.invalidRelationshipProfileBody(),
       mode,
     );
   }
 
+  // route 不直接修改关系数据，只把白名单字段传给 service。
   const input: RelationshipProfileUpdateInput = {
     connectionId: id,
     context: profileBody.body.context,

@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const EVENT_ATTENDEE_IMPORT_FIXTURE_SOURCE =
   "fixture:features/acquisition/event-attendee-contract.ts" as const;
 
+// Event Attendee Import contract 描述从活动名单生成联系人候选人的 mock 流程。
+// 它不会查询真实 organizer feed，也不会批量写入联系人数据库。
 export const EVENT_ATTENDEE_IMPORT_ERROR_CODES = [
   "EVENT_ATTENDEE_EVENT_ID_REQUIRED",
   "EVENT_ATTENDEE_EVENT_NOT_FOUND",
@@ -41,6 +43,7 @@ export type EventAttendeeCheckInStatus =
 export type EventAttendeeRole = "attendee" | "speaker" | "organizer";
 export type EventAttendeeImportStatus = "ready" | "empty" | "pending";
 
+// 输入以 eventId 为中心，可按关系状态过滤候选人。
 export interface EventAttendeeImportInput {
   eventId?: string | null;
   scenario?: EventAttendeeImportScenario | string | null;
@@ -54,6 +57,7 @@ export interface EventAttendeeImportErrorDefinition {
   recovery: string;
 }
 
+// 活动名单导入失败必须停留在 fixture 边界，不触发真实导入或外部查询。
 export const EVENT_ATTENDEE_IMPORT_ERROR_DEFINITIONS = {
   EVENT_ATTENDEE_EVENT_ID_REQUIRED: {
     code: "EVENT_ATTENDEE_EVENT_ID_REQUIRED",
@@ -97,6 +101,7 @@ export type EventAttendeeSourceReference = SourceReferenceDTO & {
   attendeeId?: string;
 };
 
+// provenance 说明没有 organizer feed 请求、没有 bulk database import。
 export interface EventAttendeeImportProvenance {
   source: string;
   sourceLabel: string;
@@ -109,6 +114,7 @@ export interface EventAttendeeImportProvenance {
   externalNetworkRequested: false;
 }
 
+// relationship status 用于解释参会人为什么值得导入或优先跟进。
 export interface EventAttendeeRelationshipStatus {
   code: EventAttendeeRelationshipStatusCode;
   label: string;
@@ -138,6 +144,7 @@ export interface EventAttendeeEvidence {
   createdBy: "mock-event-attendee-import-service";
 }
 
+// EventAttendeeRecord 是单个参会人候选 DTO，importEligible 只表示可进入复核。
 export interface EventAttendeeRecord {
   attendeeId: string;
   displayName: string;

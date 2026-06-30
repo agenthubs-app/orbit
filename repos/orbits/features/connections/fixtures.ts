@@ -1,3 +1,9 @@
+/**
+ * 关系连接与证据时间线 fixture。
+ *
+ * 这里描述 connection 列表、详情页证据、添加证据后的 payload，以及 empty/pending/failure 状态。
+ * mock connection service 使用这些数据展示“为什么认识、证据来自哪里、是否可继续补充证据”。
+ */
 import {
   CONNECTION_EVIDENCE_SERVICE_FIXTURE_SOURCE,
   CONNECTION_EVIDENCE_SOURCE_TYPES,
@@ -11,6 +17,7 @@ import {
   type ConnectionRecord,
   type ConnectionSourceLink,
 } from "./contract";
+
 
 const fixtureCollectedAt = "2026-06-25T19:00:00.000Z";
 const fixtureCapturedAt = "2026-06-25T19:05:00.000Z";
@@ -258,6 +265,7 @@ function buildAddedEvidenceSourceLink(
 export function buildAddedConnectionEvidenceTimelineItem(
   input: ConnectionAddEvidenceInput = { connectionId: "demo-connection-1" },
 ): ConnectionEvidenceTimelineItem {
+  // 新增证据项由输入生成，但 ID、时间和来源仍保持 deterministic，方便测试断言。
   const sourceLink = buildAddedEvidenceSourceLink(input);
 
   return {
@@ -286,6 +294,7 @@ export function buildAddedConnectionEvidenceTimelineItem(
 export function buildAddedConnectionEvidencePayload(
   input: ConnectionAddEvidenceInput = { connectionId: "demo-connection-1" },
 ): ConnectionEvidenceDetailPayload {
+  // 详情 payload 在标准 connection 上追加证据，用来模拟“补充关系证据”后的页面状态。
   const baseConnection = mockConnectionRecords[0] as ConnectionRecord;
   const addedEvidence = buildAddedConnectionEvidenceTimelineItem(input);
   const addedSourceLinks = [

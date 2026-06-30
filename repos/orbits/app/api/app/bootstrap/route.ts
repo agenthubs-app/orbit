@@ -13,6 +13,8 @@ import {
 } from "../../../../features/bootstrap/service";
 import { createAppBootstrapService } from "../../../../features/bootstrap/service-factory";
 
+// App bootstrap route 提供客户端启动时需要的初始状态。
+// 它只做 HTTP 参数解析和 envelope 包装；启动数据由 bootstrap service 生成。
 export const dynamic = "force-dynamic";
 
 function readTaskLimit(searchParams: URLSearchParams): number | null {
@@ -37,6 +39,7 @@ function readInput(request: Request): AppBootstrapInput {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // scenario/taskLimit 用于本地演示和测试不同启动状态，不触发真实 provider。
   const mode = resolveFeatureMode();
   const bootstrapService = createAppBootstrapService();
   const result = bootstrapService.getAppBootstrap(readInput(request));

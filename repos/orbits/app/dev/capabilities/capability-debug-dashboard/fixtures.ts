@@ -1,3 +1,9 @@
+/**
+ * Capability debug dashboard fixture。
+ *
+ * 这些数据把 capability registry、mock scenarios、API probes 和 reset controls
+ * 聚合成一个开发者可视化面板；全部来自本地规则，不访问生产观测或管理工具。
+ */
 import { listCapabilitySummaries } from "../../../../shared/services/capability-registry";
 import { mockScenarioFixtures } from "../../../../shared/mock/scenarios";
 import type {
@@ -19,6 +25,7 @@ function createProvenance(input: {
   generationMethod: CapabilityDebugDashboardProvenance["generationMethod"];
   sourceLabel: string;
 }): CapabilityDebugDashboardProvenance {
+  // dashboard 的 provenance 明确标记所有生产工具和外部 provider 都被本地 fixture 替代。
   return {
     source: CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE,
     sourceLabel: input.sourceLabel,
@@ -40,6 +47,7 @@ function createProvenance(input: {
 }
 
 export const capabilityDebugDashboardCapabilityLinks: readonly CapabilityDebugDashboardCapabilityLink[] =
+  // capability 链接直接从共享 registry 派生，避免 dev 页维护另一份能力清单。
   listCapabilitySummaries().map((capability) => ({
     id: capability.id,
     label: capability.label,
@@ -78,6 +86,7 @@ export const capabilityDebugDashboardMockRouteLinks: readonly CapabilityDebugDas
   ];
 
 export const capabilityDebugDashboardScenarioLinks: readonly CapabilityDebugDashboardScenarioLink[] =
+  // scenario 链接来自共享 mock scenarios，保证 dashboard 和 scenario API 展示同一组状态。
   mockScenarioFixtures.map((scenario) => ({
     id: scenario.id,
     label: scenario.label,

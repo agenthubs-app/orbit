@@ -9,6 +9,7 @@ import type {
 // 当前实现是 mock-first：所有数据来自 fixture，不读真实数据库或搜索索引。
 export const CONTACTS_LIST_SEARCH_FILTER_FIXTURE_SOURCE =
   "fixture:features/contacts/fixtures.ts" as const;
+// mock/live 的数据来源和执行策略由各自实现提供。
 
 // 这些过滤枚举既是 UI 可展示的选项，也是 mock service 的白名单。
 // 传入不在白名单内的 filter 会被当作 validation error。

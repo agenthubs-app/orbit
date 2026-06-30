@@ -1,3 +1,9 @@
+/**
+ * 跟进任务生成 fixture。
+ *
+ * 数据覆盖任务类别、触发信号、生成后的任务列表和 provenance。
+ * 这些 fixture 用来验证 follow-up 页面和 API，不代表真实提醒或通知已经创建。
+ */
 import {
   FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE,
   type FollowupTask,
@@ -18,6 +24,7 @@ export {
   type FollowupTaskTrigger,
   type FollowupTaskTriggerKind,
 } from "./contract";
+
 
 const fixtureCollectedAt = "2026-06-25T22:10:00.000Z";
 

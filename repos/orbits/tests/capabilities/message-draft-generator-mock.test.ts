@@ -1,3 +1,8 @@
+/**
+ * 消息草稿生成 mock 的契约测试。
+ *
+ * 锁住 draft kind、正文、来源证据和不自动发送消息的确认边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

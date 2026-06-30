@@ -1,4 +1,10 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
+/**
+ * 单个 capability demo 的动态路由。
+ *
+ * 这个文件把 slug 映射到对应 debug-view 组件，让每个 mock capability
+ * 都能通过 `/dev/capabilities/[slug]` 独立查看、测试和复核。
+ */
 import "../../../globals.css";
 import { CapabilityDemoRoute } from "../../../../shared/dev/app-scaffold/capability-demo-view";
 import {

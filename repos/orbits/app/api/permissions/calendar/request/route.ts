@@ -15,11 +15,14 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// calendar permission request route 用于请求日历能力授权。
+// route 固定 capability=calendar；授权状态机和安全边界由 permission service 负责。
 async function readCalendarPermissionInput(
   request: Request,
 ): Promise<PermissionRequestInput> {
   const scenario = new URL(request.url).searchParams.get("scenario");
 
+  // body 可选；默认 intent 表示连接活动日历。
   try {
     const body = (await request.json()) as Partial<PermissionRequestInput>;
     const safeBody = body && typeof body === "object" ? body : {};
@@ -39,6 +42,7 @@ async function readCalendarPermissionInput(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // requestPermission 只是进入授权请求流程，route 不直接访问真实日历。
   const mode = resolveFeatureMode();
   const permissionService = createPermissionStateService();
   const result = permissionService.requestPermission(
@@ -46,6 +50,7 @@ export async function POST(request: Request): Promise<Response> {
   );
 
   if (result.success === false) {
+    // permission failure 统一映射成 AppError/envelope。
     const appError = permissionStateFailureToAppError(result);
 
     return NextResponse.json(

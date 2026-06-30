@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const NETWORK_DISTRIBUTION_ANALYTICS_FIXTURE_SOURCE =
   "fixture:features/dashboard/distribution-contract.ts" as const;
 
+// Network Distribution Analytics contract 描述 dashboard 的网络分布和缺口分析。
+// 当前使用 fixture/rule，不运行图算法、embedding search 或 live analytics job。
 export const NETWORK_DISTRIBUTION_ANALYTICS_ERROR_CODES = [
   "NETWORK_DISTRIBUTION_ANALYTICS_MOCK_FAILED",
 ] as const;
@@ -34,6 +36,7 @@ export type NetworkRelationshipValueType =
 export type NetworkRelationshipStrength = "strong" | "warm" | "weak";
 
 export type NetworkGapSeverity = "high" | "medium" | "low";
+// 输入只控制场景；真实分析参数后续应在这里扩展。
 
 export interface NetworkDistributionAnalyticsInput {
   scenario?: NetworkDistributionAnalyticsScenario | string | null;
@@ -45,6 +48,7 @@ export interface NetworkDistributionAnalyticsErrorDefinition {
   message: string;
   recovery: string;
 }
+// dashboard 分析失败必须停在 mock 边界，不触发后台分析或数据库读取。
 
 export const NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS = {
   NETWORK_DISTRIBUTION_ANALYTICS_MOCK_FAILED: {
@@ -72,6 +76,7 @@ export type NetworkDistributionAnalyticsSourceReference = SourceReferenceDTO & {
   providerRecordId: string;
   generatedBy: "mock-network-distribution-analytics-rules";
 };
+// provenance 是分布分析的安全账本。
 
 export interface NetworkDistributionAnalyticsProvenance {
   source: typeof NETWORK_DISTRIBUTION_ANALYTICS_FIXTURE_SOURCE;
@@ -92,6 +97,7 @@ export interface NetworkDistributionAnalyticsProvenance {
   notificationProviderRequested: false;
   deviceRequested: false;
 }
+// 三类 bucket 分别支持行业、关系价值类型和关系强度分布图。
 
 export interface IndustryDistributionBucket {
   bucketId: string;
@@ -129,6 +135,7 @@ export interface NetworkDistributionAnalyticsPayload {
   provenance: NetworkDistributionAnalyticsProvenance;
   nextAction: string;
 }
+// GapAnalysisItem 描述网络覆盖缺口和推荐动作，不会自动创建任务。
 
 export interface NetworkGapAnalysisItem {
   gapId: string;

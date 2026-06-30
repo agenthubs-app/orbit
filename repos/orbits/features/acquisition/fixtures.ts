@@ -1,3 +1,9 @@
+/**
+ * 联系人获取草稿列表 fixture。
+ *
+ * 这里聚合手动录入、名片、活动参会者、外部导入等来源产生的 contact draft。
+ * acquisition mock service 依赖这些数据来展示草稿列表、空状态、pending 状态和确认结果。
+ */
 import type {
   ContactAcquisitionDraft,
   ContactAcquisitionDraftPayload,
@@ -113,6 +119,7 @@ const referralEvidence: ContactDraftEvidence = {
   createdBy: "mock-pipeline",
 };
 
+// 草稿列表覆盖多种联系人来源，让 acquisition 页面能同时展示人工录入和自动导入路径。
 export const mockContactAcquisitionDrafts: readonly ContactAcquisitionDraft[] = [
   {
     id: "demo-draft-1",

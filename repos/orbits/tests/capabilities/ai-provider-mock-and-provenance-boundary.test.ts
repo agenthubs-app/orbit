@@ -1,3 +1,8 @@
+/**
+ * AI provider mock 与 provenance 边界测试。
+ *
+ * 验证 provider run record、来源追踪和 debug-view 不会触发真实 AI provider。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -1,3 +1,8 @@
+/**
+ * 账号会话 mock 的基础契约测试。
+ *
+ * 验证 fixture、错误码、service 和 debug-view 的账号状态覆盖。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

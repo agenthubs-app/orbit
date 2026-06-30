@@ -14,13 +14,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// permissions route 返回当前能力权限状态列表。
+// route 只读取 scenario；权限默认值、可请求动作和状态解释由 permission service 负责。
 export async function GET(request: Request): Promise<Response> {
+  // GET 是只读权限视图，不发起授权流程。
   const mode = resolveFeatureMode();
   const permissionService = createPermissionStateService();
   const scenario = new URL(request.url).searchParams.get("scenario");
   const result = permissionService.listPermissionStates({ scenario });
 
   if (result.success === false) {
+    // permission failure 统一映射成 AppError/envelope。
     const appError = permissionStateFailureToAppError(result);
 
     return NextResponse.json(

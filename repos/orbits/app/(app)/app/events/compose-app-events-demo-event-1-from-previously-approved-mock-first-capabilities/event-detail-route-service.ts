@@ -1,3 +1,10 @@
+/**
+ * 活动详情页的 route-level 聚合服务。
+ *
+ * 这个文件把活动详情、参会者名单、推荐、readiness、want-to-connect、
+ * encounter note 和 post-event review 多个 capability service 组合成一个页面模型。
+ * route 层只聚合和做一致性检查，不写真实日历、数据库、通知或外部消息。
+ */
 import { createEventAttendeeRosterService } from "../../../../../features/events/service-factory";
 import type {
   EventAttendeeRosterPayload,
@@ -41,6 +48,7 @@ import {
 
 export const APP_EVENT_DETAIL_EVENT_ID = "demo-event-1";
 export const APP_EVENT_DETAIL_COMPOSED_CAPABILITIES = [
+  // 页面宣称组合了哪些 capability，便于测试和 UI 解释执行链。
   "attendee-roster",
   "event-goal",
   "event-readiness",
@@ -211,6 +219,7 @@ const postEventReviewServiceFactory =
   });
 
 const routeBoundaryCopy = {
+  // 统一维护 event detail 的空、失败、pending 边界文案和恢复动作。
   empty: {
     description:
       "Choose an event with an approved roster before reviewing people, lines, notes, or post-event contacts.",
@@ -271,6 +280,7 @@ const routeBoundaryCopy = {
 function normalizeScenario(
   scenario?: string | null,
 ): AppEventDetailRouteScenario | null {
+  // scenario 是调试/测试开关；未知值不会传给下游服务。
   if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
     return scenario;
   }
@@ -279,6 +289,7 @@ function normalizeScenario(
 }
 
 function normalizeAction(action?: string | null): AppEventDetailRouteAction | null {
+  // `record-intent` 是历史动作名，当前统一映射到 want-to-connect 本地意图。
   if (action === "want-to-connect" || action === "record-intent") {
     return "want-to-connect";
   }
@@ -300,6 +311,7 @@ function createBoundaryModel(
 function resolveRouteServices(
   mode?: ModuleMode | string,
 ): AppEventDetailRouteServices | AppEventDetailBoundaryModel {
+  // 每个 capability 都通过 module factory 解析；任一解析失败就返回 route failure。
   const events = eventDetailServiceFactory.create(mode);
 
   if (events.success === false) {
@@ -360,6 +372,7 @@ function isBoundaryModel(
 }
 
 function collectFailureEvidence(results: readonly RouteResult[]): string[] {
+  // 多个 capability 可能同时失败，这里合并错误证据并去重。
   return Array.from(
     new Set(
       results.flatMap((result) =>
@@ -384,6 +397,7 @@ function hasEmptySuccessPayloads(
   readiness: EventGoalReadinessPayload,
   postEventReview: PostEventReviewPayload,
 ): boolean {
+  // 有些 service 成功返回但内容为空；页面需要把这种组合结果视为 empty route。
   return (
     attendeeRoster.attendees.length === 0 ||
     recommendations.recommendations.length === 0 ||
@@ -405,6 +419,7 @@ function targetDisplayName(
 }
 
 function hasOutsideSideEffects(payload: WantConnectPayload): boolean {
+  // want-to-connect action 必须保持 no-op；只要发现外部副作用标记，就拒绝展示 actionResult。
   return (
     payload.provenance.externalNetworkRequested ||
     payload.provenance.liveDatabaseWriteExecuted ||
@@ -420,6 +435,7 @@ function hasOutsideSideEffects(payload: WantConnectPayload): boolean {
 function buildWantConnectActionResult(
   result: WantConnectResult,
 ): AppEventDetailActionResult | null {
+  // 只有 create intent 成功且没有任何外部副作用时，才把本地 actionResult 展示给页面。
   if (result.success === false || result.data.intent === null) {
     return null;
   }
@@ -463,6 +479,7 @@ function uniqueEvidenceIds(evidenceIds: readonly string[]): string[] {
 function buildCanonicalEvent(
   eventDetail: EventDetailPayload,
 ): AppEventDetailCanonicalEvent {
+  // 以 event detail service 为 canonical source，其他 capability 的 event 字段都向它对齐。
   const event = eventDetail.event;
 
   return {
@@ -504,6 +521,7 @@ function buildSourceConsistency(input: {
   recommendations: EventRecommendationsPayload;
   wantConnectMatches: WantConnectMatchesPayload;
 }): AppEventDetailSourceConsistency {
+  // 多个 capability 可能携带旧活动标题/地点/时间；这里集中检查并输出可见的 reconciliation 摘要。
   const sourceDetails: readonly RouteEventSourceDetail[] = [
     {
       capability: "attendee roster",
@@ -603,6 +621,8 @@ export function loadAppEventDetailRoute({
   mode,
   scenario,
   targetContactId,
+  // 主入口：加载七个 capability payload，统一处理失败/空/pending，
+  // 再生成 opening line、canonical event、一致性摘要和可选 no-op action result。
 }: AppEventDetailRouteInput): AppEventDetailRouteModel {
   const services = resolveRouteServices(mode);
 

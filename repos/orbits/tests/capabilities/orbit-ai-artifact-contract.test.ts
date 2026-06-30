@@ -1,3 +1,8 @@
+/**
+ * Orbit AI artifact contract 测试。
+ *
+ * 验证 artifact request/result 形状、mock artifact service 和 UI 可复核输出。
+ */
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";

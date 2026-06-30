@@ -15,6 +15,9 @@ import { createManualContactCreationService } from "../../../../features/acquisi
 
 export const dynamic = "force-dynamic";
 
+// 手动创建联系人草稿支持 form 和 JSON 两种提交方式。
+// route 只把 HTTP 字段整理成 ManualContactCreationInput；
+// 去重、草稿状态、provenance 和错误语义由 acquisition service 负责。
 function isStringArray(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
@@ -35,6 +38,7 @@ function readFormText(
 function readFormTags(formData: FormData): readonly string[] | undefined {
   const value = readFormText(formData, "tags");
 
+  // 表单提交通常把 tags 放在逗号分隔字符串里，这里统一清理空白和空项。
   if (value === undefined) {
     return undefined;
   }
@@ -51,6 +55,7 @@ async function readManualContactCreationInput(
 ): Promise<ManualContactCreationInput> {
   const contentType = request.headers.get("content-type") ?? "";
 
+  // HTML form 和 multipart 都走 FormData，便于页面表单和文件上传入口复用。
   if (
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
@@ -67,6 +72,7 @@ async function readManualContactCreationInput(
     };
   }
 
+  // 非 JSON/form 的请求只保留 scenario，让 service 产出可解释的默认或失败状态。
   if (!contentType.includes("application/json")) {
     return { scenario };
   }
@@ -77,6 +83,7 @@ async function readManualContactCreationInput(
     return { scenario };
   }
 
+  // JSON body 允许 source 作为结构化对象传入，其他字段只接受明确类型。
   const parsedBody: unknown = JSON.parse(rawBody);
   const body = isRecord(parsedBody) ? parsedBody : {};
   const source = isRecord(body.source) ? body.source : undefined;
@@ -92,6 +99,7 @@ async function readManualContactCreationInput(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // 手动创建草稿是“创建资源”语义：success 返回 201，其余状态返回 200。
   const mode = resolveFeatureMode();
   const manualService = createManualContactCreationService();
   const scenario = new URL(request.url).searchParams.get("scenario");
@@ -100,6 +108,7 @@ export async function POST(request: Request): Promise<Response> {
   );
 
   if (result.success === false) {
+    // acquisition contract 的失败码在这里收敛到共享 AppError/envelope。
     const appError = manualContactCreationFailureToAppError(result);
 
     return NextResponse.json(

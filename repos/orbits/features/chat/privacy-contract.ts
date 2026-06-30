@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const CHAT_PRIVACY_CONTROLS_FIXTURE_SOURCE =
   "fixture:features/chat/privacy-contract.ts" as const;
+// Chat Privacy Controls contract 描述聊天分析、删除请求和敏感分享的控制面协议。
+// mock/live 的具体隐私状态和执行策略由各自实现提供。
 
 export const CHAT_PRIVACY_CONTROLS_ERROR_CODES = [
   "CHAT_PRIVACY_CONVERSATION_ID_REQUIRED",
@@ -28,6 +30,7 @@ export type ChatPrivacyControlsScenario =
 
 export type ChatPrivacyControlsState = "success" | "empty" | "pending";
 
+// 三类输入分别服务读取控制、切换 AI 分析、准备敏感分享。
 export interface ChatPrivacyControlsInput {
   conversationId?: string | null;
   scenario?: ChatPrivacyControlsScenario | string | null;
@@ -63,6 +66,7 @@ export interface ChatPrivacyControlsErrorDefinition {
   recovery: string;
 }
 
+// 隐私错误定义强调本地 guard：缺确认时不能泄露私密笔记或执行删除。
 export const CHAT_PRIVACY_CONTROLS_ERROR_DEFINITIONS = {
   CHAT_PRIVACY_CONVERSATION_ID_REQUIRED: {
     code: "CHAT_PRIVACY_CONVERSATION_ID_REQUIRED",
@@ -133,6 +137,7 @@ export type ChatPrivacyControlsSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-chat-privacy-controls-rules";
 };
 
+// AnalysisOptInState 描述当前是否允许聊天分析，但写入仍只在 mock 边界内。
 export interface ChatAnalysisOptInState {
   enabled: boolean;
   status: "opted_in" | "opted_out" | "pending_confirmation";
@@ -147,6 +152,7 @@ export interface ChatAnalysisOptInState {
   productionPrivacyAuditLogWritten: false;
 }
 
+// DeletionState 是 demo 删除状态，不代表生产数据删除已经完成。
 export interface ChatAnalysisDeletionState {
   status: "available" | "pending" | "deleted_mock_only";
   deletedInMock?: true;
@@ -160,6 +166,7 @@ export interface ChatAnalysisDeletionState {
   externalNetworkRequested: false;
 }
 
+// PrivateNote 默认对 AI 分析和分享预览都不可见。
 export interface ChatPrivateNote {
   noteId: string;
   conversationId: string;
@@ -177,6 +184,7 @@ export interface ChatPrivateNote {
   liveDatabaseWriteExecuted: false;
 }
 
+// SensitiveShareConfirmation 是共享前的确认门。
 export interface ChatSensitiveShareConfirmation {
   confirmationRequired: boolean;
   status: "required" | "pending_confirmation" | "confirmed_mock_only";

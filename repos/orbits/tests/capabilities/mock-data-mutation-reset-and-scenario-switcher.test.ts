@@ -1,3 +1,8 @@
+/**
+ * Mock 数据 reset 与 scenario 切换器测试。
+ *
+ * 验证共享 mock runtime 的 reset、scenario 激活和 debug-view 状态。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

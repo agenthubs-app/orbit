@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const SOURCE_CONSISTENCY_PROVENANCE_AUDIT_FIXTURE_SOURCE =
   "fixture:features/audit/provenance-contract.ts" as const;
 
+// Source Consistency Provenance Audit contract 描述来源一致性和 provenance 完整性检查。
+// 当前审计是 mock/rule-based，不写生产审计存储，也不生成真实合规报告。
 export const SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ENTITY_KINDS = [
   "contact",
   "connection",
@@ -42,6 +44,7 @@ export type SourceConsistencyProvenanceAuditSeverity =
   | "high"
   | "medium"
   | "low";
+// 输入只控制场景；审计范围由 fixture 定义。
 
 export interface SourceConsistencyProvenanceAuditInput {
   scenario?: SourceConsistencyProvenanceAuditScenario | string | null;
@@ -53,6 +56,7 @@ export interface SourceConsistencyProvenanceAuditErrorDefinition {
   message: string;
   recovery: string;
 }
+// 审计失败时保持本地 mock 边界，不调用 compliance reporting 或生产审计存储。
 
 export const SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ERROR_DEFINITIONS = {
   SOURCE_CONSISTENCY_PROVENANCE_AUDIT_MOCK_FAILED: {
@@ -75,6 +79,7 @@ export type SourceConsistencyProvenanceAuditSourceReference =
     providerRecordId: string;
     generatedBy: "mock-source-consistency-provenance-audit-rules";
   };
+// provenance 是审计运行自身的安全账本。
 
 export interface SourceConsistencyProvenanceAuditProvenance {
   source: typeof SOURCE_CONSISTENCY_PROVENANCE_AUDIT_FIXTURE_SOURCE;
@@ -97,6 +102,7 @@ export interface SourceConsistencyProvenanceAuditProvenance {
   notificationProviderRequested: false;
   deviceRequested: false;
 }
+// AuditedCollection 汇总某一类实体的来源一致性统计。
 
 export interface SourceConsistencyAuditedCollection {
   entityKind: SourceConsistencyProvenanceAuditEntityKind;
@@ -109,6 +115,7 @@ export interface SourceConsistencyAuditedCollection {
   sourceRefs: readonly SourceConsistencyProvenanceAuditSourceReference[];
   evidenceIds: readonly string[];
 }
+// Finding 是具体来源/证据问题和修复建议。
 
 export interface SourceConsistencyAuditFinding {
   findingId: string;
@@ -134,6 +141,7 @@ export interface SourceConsistencyProvenanceAuditPayload {
   provenance: SourceConsistencyProvenanceAuditProvenance;
   nextAction: string;
 }
+// RunPayload 描述一次审计运行结果，但 productionAuditStorageWritten=false。
 
 export interface SourceConsistencyProvenanceAuditRunPayload {
   state: SourceConsistencyProvenanceAuditState;

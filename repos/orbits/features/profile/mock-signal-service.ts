@@ -1,3 +1,9 @@
+/**
+ * 个人资料信号复核队列的 mock 服务。
+ *
+ * 信号队列会把邮件、日历、名片等来源推导出的个人资料更新建议展示给用户。
+ * 这个 mock 只返回待复核建议和“已接受”的本地 patch，不会直接保存 profile。
+ */
 import type { ApiErrorContext } from "../../shared/api/envelope";
 import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
@@ -34,6 +40,7 @@ const supportedScenarios = new Set<ProfileSignalReviewQueueScenario>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 队列数据会在 UI 中被标记状态，clone 避免污染共享 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -58,6 +65,7 @@ function accepted(
 function failure(
   code: ProfileSignalReviewQueueErrorCode,
 ): ProfileSignalReviewQueueFailure {
+  // 错误对象统一来自 signal contract，便于 route 和测试断言。
   const definition = PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_DEFINITIONS[code];
 
   return {
@@ -74,6 +82,7 @@ function failure(
 function normalizeScenario(
   scenario?: ProfileSignalReviewQueueInput["scenario"],
 ): ProfileSignalReviewQueueScenario {
+  // 只接受 contract 中定义过的 scenario；未传或未知时走 success。
   if (scenario && supportedScenarios.has(scenario as ProfileSignalReviewQueueScenario)) {
     return scenario as ProfileSignalReviewQueueScenario;
   }
@@ -82,12 +91,14 @@ function normalizeScenario(
 }
 
 function findSuggestion(id: string): ProfileUpdateSuggestion | undefined {
+  // 接受建议前必须能在当前 mock 队列中找到对应 suggestion。
   return mockProfileSignalReviewSuggestions.find(
     (suggestion) => suggestion.id === id,
   );
 }
 
 export function createMockProfileSignalReviewQueueService(): ProfileSignalReviewQueueService {
+  // list 负责展示复核队列；accept 只生成 patch，真正保存仍需后续确认流程。
   return {
     listUpdateSuggestions(input = {}) {
       switch (normalizeScenario(input.scenario)) {
@@ -140,6 +151,7 @@ export function createMockProfileSignalReviewQueueService(): ProfileSignalReview
 export function profileSignalReviewQueueFailureToAppError(
   result: ProfileSignalReviewQueueFailure,
 ): AppError {
+  // 统一转换成 AppError，避免 API 层重复理解 feature contract。
   return new AppError(result.error.appCode, result.error.message);
 }
 
@@ -147,6 +159,7 @@ export function profileSignalReviewQueueFailureContext(
   result: ProfileSignalReviewQueueFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  // envelope 使用这些字段说明失败来自 mock signal review 边界。
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,

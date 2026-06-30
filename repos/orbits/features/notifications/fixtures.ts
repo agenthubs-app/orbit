@@ -1,3 +1,9 @@
+/**
+ * 通知与提醒调度 fixture。
+ *
+ * 这里定义提醒频率、已调度提醒、低优先级分组和通知队列。
+ * mock notification service 只返回本地调度视图，不会投递真实通知。
+ */
 import {
   REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE,
   type GroupedLowPriorityReminder,
@@ -23,6 +29,7 @@ export {
   type ReminderScheduleNotificationProvenance,
   type ScheduledReminder,
 } from "./contract";
+
 
 const fixtureCollectedAt = "2026-06-25T23:10:00.000Z";
 

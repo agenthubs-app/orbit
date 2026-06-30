@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const CHAT_SUMMARY_EXTRACTION_FIXTURE_SOURCE =
   "fixture:features/chat/summary-contract.ts" as const;
+// Chat Summary Extraction contract 描述从聊天中生成摘要、需求、任务和 profile 建议的协议。
+// mock/live 的具体提取策略和数据由各自实现提供。
 
 export const CHAT_SUMMARY_EXTRACTION_ERROR_CODES = [
   "CHAT_SUMMARY_CONVERSATION_ID_REQUIRED",
@@ -26,6 +28,7 @@ export type ChatSummaryExtractionScenario =
 
 export type ChatSummaryExtractionState = "success" | "empty" | "pending";
 
+// conversationId 决定提取哪段关系聊天；scenario 用于固定测试状态。
 export interface ChatSummaryExtractionInput {
   conversationId?: string | null;
   scenario?: ChatSummaryExtractionScenario | string | null;
@@ -47,6 +50,7 @@ export interface ChatSummaryExtractionErrorDefinition {
   recovery: string;
 }
 
+// 摘要提取失败时停在本地，不能回退调用 live summarization 或持久化。
 export const CHAT_SUMMARY_EXTRACTION_ERROR_DEFINITIONS = {
   CHAT_SUMMARY_CONVERSATION_ID_REQUIRED: {
     code: "CHAT_SUMMARY_CONVERSATION_ID_REQUIRED",
@@ -101,6 +105,7 @@ export type ChatSummarySourceReference = SourceReferenceDTO & {
   generatedBy: "mock-chat-summary-extraction-rules";
 };
 
+// SummaryRecord 是聊天摘要的核心 DTO，同时列出提取出的需求、任务和 profile 建议 ID。
 export interface ChatSummaryRecord {
   summaryId: string;
   conversationId: string;
@@ -126,6 +131,7 @@ export interface ChatSummaryRecord {
   automaticProfileMutationExecuted: false;
 }
 
+// ExtractedNeed 是关系需求信号，不会自动写入生产 profile。
 export interface ExtractedNeed {
   needId: string;
   conversationId: string;
@@ -139,6 +145,7 @@ export interface ExtractedNeed {
   externalNetworkRequested: false;
 }
 
+// ExtractedTask 是建议任务，不会直接创建 reminder 或通知。
 export interface ExtractedTask {
   taskId: string;
   conversationId: string;
@@ -152,6 +159,7 @@ export interface ExtractedTask {
   liveDatabaseWriteExecuted: false;
 }
 
+// RelationshipProfileUpdate 是建议更新，autoApplied=false 表示必须人工确认。
 export interface RelationshipProfileUpdate {
   updateId: string;
   connectionId: string;

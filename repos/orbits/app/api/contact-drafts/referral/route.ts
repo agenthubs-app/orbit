@@ -15,6 +15,8 @@ import { createReferralRecommendationService } from "../../../../features/acquis
 
 export const dynamic = "force-dynamic";
 
+// referral route 根据指定来源生成推荐联系人草稿。
+// route 兼容 query/form/json；推荐逻辑、去重和草稿状态由 referral service 负责。
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -32,6 +34,7 @@ async function readReferralRecommendationInput(
   request: Request,
 ): Promise<ReferralRecommendationInput> {
   const url = new URL(request.url);
+  // queryInput 是基础输入，form/json body 可以覆盖对应字段。
   const queryInput: ReferralRecommendationInput = {
     sourceKind: url.searchParams.get("sourceKind"),
     scenario: url.searchParams.get("scenario"),
@@ -42,6 +45,7 @@ async function readReferralRecommendationInput(
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
   ) {
+    // 表单路径服务页面提交；sourceKind 决定推荐来源类型。
     const formData = await request.formData();
 
     return {
@@ -65,6 +69,7 @@ async function readReferralRecommendationInput(
   const parsedBody: unknown = JSON.parse(rawBody);
   const body = isRecord(parsedBody) ? parsedBody : {};
 
+  // JSON 路径服务 fetch 调用，仍只允许 sourceKind/scenario 进入 service。
   return {
     ...queryInput,
     sourceKind:
@@ -77,6 +82,7 @@ async function readReferralRecommendationInput(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // 创建推荐草稿是资源创建语义；success 返回 201，其余状态返回 200。
   const mode = resolveFeatureMode();
   const service = createReferralRecommendationService();
   const result = service.createReferralContactDrafts(
@@ -84,6 +90,7 @@ export async function POST(request: Request): Promise<Response> {
   );
 
   if (result.success === false) {
+    // referral failure 使用 acquisition referral contract 的上下文。
     const appError = referralRecommendationFailureToAppError(result);
 
     return NextResponse.json(

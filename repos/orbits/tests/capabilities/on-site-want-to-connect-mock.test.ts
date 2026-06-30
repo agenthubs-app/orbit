@@ -1,3 +1,8 @@
+/**
+ * 现场 want-to-connect mock 的契约测试。
+ *
+ * 验证匹配、意图记录、match notice 和无外部副作用边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

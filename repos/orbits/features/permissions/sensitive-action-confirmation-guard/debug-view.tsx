@@ -1,3 +1,8 @@
+/**
+ * 敏感动作确认守卫 mock 的开发者面板。
+ *
+ * 这里展示待确认动作、approve/reject 结果和 guard 错误，确保敏感动作不会绕过确认。
+ */
 import {
   Chip,
   WorkbenchFrame,

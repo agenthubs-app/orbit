@@ -16,6 +16,8 @@ import { createChatConversationMessageService } from "../../../../../features/ch
 
 export const dynamic = "force-dynamic";
 
+// conversation detail route 返回旧 Chat 的消息线程。
+// 这里只读 conversationId/scenario；消息构造、权限和 mock 场景在 chat service 中完成。
 interface ChatConversationRouteContext {
   params: Promise<{
     id: string;
@@ -28,6 +30,7 @@ function readInput(
 ): ChatMessageThreadInput {
   const searchParams = new URL(request.url).searchParams;
 
+  // conversationId 来自 path param，scenario 来自 query，保持目标资源和演示状态分离。
   return {
     conversationId,
     scenario: searchParams.get("scenario"),
@@ -38,6 +41,7 @@ function responseForResult(
   result: ChatMessageThreadResult,
   mode: ReturnType<typeof resolveFeatureMode>,
 ): Response {
+  // thread failure 统一走 chat conversation contract 的错误映射。
   if (result.success === false) {
     const appError = chatConversationMockFailureToAppError(result);
 
@@ -60,6 +64,7 @@ export async function GET(
   request: Request,
   context: ChatConversationRouteContext,
 ): Promise<Response> {
+  // 动态 params 先 await，再用统一 service 读取消息线程。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createChatConversationMessageService();

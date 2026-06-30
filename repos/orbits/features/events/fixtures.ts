@@ -1,3 +1,9 @@
+/**
+ * 活动 CRUD 与导入 fixture。
+ *
+ * 这里提供活动来源、证据、活动列表、导入记录、手动创建结果和详情 payload。
+ * mock event service 使用这些数据模拟活动管理流程，但不会写入真实日历或远程活动源。
+ */
 import type {
   EventCrudImportProvenance,
   EventDetailPayload,
@@ -311,6 +317,8 @@ export function buildManualEventCreationPayload(
     Pick<ManualEventCreationInput, "title" | "venue" | "startsAt" | "endsAt">
   > &
     Pick<ManualEventCreationInput, "description" | "sourceNote">,
+  // 手动创建活动只生成本地 payload，并把来源标记为 fixture 规则。
+  // 不会写入真实日历、活动数据库或远程活动系统。
 ): ManualEventCreationPayload {
   const event = createEventRecord({
     id: `event:manual:${slugFromTitle(input.title)}`,
@@ -349,6 +357,7 @@ export function buildEventListPayload(input: {
   summary: string;
   evidenceIds: readonly string[];
 }): EventListPayload {
+  // 列表构造器复用同一套 provenance，同时允许替换事件集合和页面状态。
   return {
     ...mockEventListFixture,
     state: input.events.length > 0 ? "success" : "empty",
@@ -369,6 +378,7 @@ export function buildEventListPayload(input: {
 }
 
 export function buildEventDetailPayload(event: EventRecord): EventDetailPayload {
+  // 详情页直接由 event record 派生，避免列表和详情里的活动字段漂移。
   return {
     ...mockEventDetailFixture,
     event,

@@ -24,6 +24,9 @@ import {
 } from "./fixtures";
 import type { ContactAcquisitionDraftService } from "./service";
 
+// ContactAcquisitionDraft mock service 是统一的联系人草稿管线。
+// 它汇总来自不同 intake 的候选联系人，并模拟“确认草稿”到 contact candidate 的过程，
+// 但不会写入真实 contacts 表。
 const supportedListScenarios = new Set<ContactAcquisitionDraftScenario>([
   "success",
   "empty",
@@ -39,6 +42,7 @@ const supportedConfirmationScenarios =
   ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // draft payload 包含嵌套 evidence/provenance，返回 clone 避免 UI 直接改 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -63,6 +67,7 @@ function confirmationSuccess(
 function failure(
   code: ContactAcquisitionDraftErrorCode,
 ): ContactAcquisitionDraftFailure {
+  // 失败分支统一带 mock provenance，说明这是草稿管线本地边界里的受控失败。
   const definition = CONTACT_ACQUISITION_DRAFT_ERROR_DEFINITIONS[code];
 
   return {
@@ -92,6 +97,7 @@ function normalizeListScenario(
 function normalizeConfirmationScenario(
   scenario?: ContactDraftConfirmationInput["scenario"],
 ): ContactDraftConfirmationScenario {
+  // confirmation 额外支持 blocked，用来测试“需要人工确认但不允许执行”的状态。
   if (
     scenario &&
     supportedConfirmationScenarios.has(
@@ -109,6 +115,7 @@ function findDraft(id: string): ContactAcquisitionDraft | undefined {
 }
 
 function resolveActorLabel(actorLabel?: string | null): string {
+  // actorLabel 缺省时使用 Demo operator，保证 confirmation evidence 文案稳定。
   const normalizedActor = actorLabel?.trim();
 
   return normalizedActor ? normalizedActor : "Demo operator";
@@ -118,6 +125,7 @@ function buildConfirmationPayload(
   draft: ContactAcquisitionDraft,
   actorLabel?: string | null,
 ): ContactDraftConfirmationPayload {
+  // 默认 fixture 命中时直接返回固定 payload；其它草稿走规则派生，保持测试可预测。
   if (
     draft.id === mockContactDraftConfirmedFixture.confirmedDraft.id &&
     resolveActorLabel(actorLabel) === "Demo operator"
@@ -172,6 +180,7 @@ function buildConfirmationPayload(
 }
 
 export function createMockContactAcquisitionDraftService(): ContactAcquisitionDraftService {
+  // listContactDrafts 展示候选草稿；confirmContactDraft 只生成 readyForContactWrite 候选结果。
   return {
     listContactDrafts(input = {}): ContactAcquisitionDraftResult {
       switch (normalizeListScenario(input.scenario)) {

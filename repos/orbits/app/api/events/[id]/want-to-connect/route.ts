@@ -15,6 +15,8 @@ import { createWantConnectService } from "../../../../../features/events/service
 
 export const dynamic = "force-dynamic";
 
+// want-to-connect route 记录用户在活动中想认识某人的意图。
+// route 只解析 actor/target contact id；匹配、冲突和状态更新由 want-connect service 决定。
 interface WantConnectRouteContext {
   params: Promise<{
     id: string;
@@ -39,6 +41,7 @@ async function readWantConnectInput(
   eventId: string,
 ): Promise<WantConnectIntentInput> {
   const url = new URL(request.url);
+  // targetContactId 带 demo 默认值，actorContactId 可由调用方显式提供。
   const queryInput: WantConnectIntentInput = {
     actorContactId: url.searchParams.get("actorContactId"),
     eventId,
@@ -52,6 +55,7 @@ async function readWantConnectInput(
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
   ) {
+    // 表单路径服务活动页上的“想认识”按钮。
     const formData = await request.formData();
 
     return {
@@ -80,11 +84,13 @@ async function readWantConnectInput(
   try {
     parsedBody = JSON.parse(rawBody);
   } catch {
+    // malformed JSON 回落 query/default 输入，保持 response envelope 稳定。
     return queryInput;
   }
 
   const body = isRecord(parsedBody) ? parsedBody : {};
 
+  // JSON 路径只允许修改 actor/target，不允许改 path 中的 eventId。
   return {
     ...queryInput,
     actorContactId:
@@ -102,6 +108,7 @@ export async function POST(
   request: Request,
   context: WantConnectRouteContext,
 ): Promise<Response> {
+  // createWantToConnectIntent 是有状态动作，但 route 不直接写活动匹配结果。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const wantConnectService = createWantConnectService();
@@ -110,6 +117,7 @@ export async function POST(
   );
 
   if (result.success === false) {
+    // want-connect failure 统一映射成 AppError/envelope。
     const appError = wantConnectFailureToAppError(result);
 
     return NextResponse.json(

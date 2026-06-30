@@ -1,3 +1,8 @@
+/**
+ * Chat 写作辅助 mock 的开发者面板。
+ *
+ * 这里展示 rewrite、follow-up draft 等建议如何带着来源和确认边界返回给 UI。
+ */
 import {
   Chip,
   WorkbenchFrame,

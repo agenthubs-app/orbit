@@ -1,3 +1,9 @@
+/**
+ * 联系人列表搜索与筛选 fixture。
+ *
+ * 数据包括联系人来源、证据、列表项、搜索/筛选构造器，以及常见预置搜索结果。
+ * mock contact service 通过这些 fixture 保持列表页、搜索页和筛选状态可预测。
+ */
 import {
   CONTACTS_LIST_SEARCH_FILTER_FIXTURE_SOURCE,
   CONTACT_SOURCE_FILTERS,
@@ -18,6 +24,7 @@ import {
   type ContactsListSearchPayload,
   type ContactsListSearchProvenance,
 } from "./contract";
+
 
 const fixtureCollectedAt = "2026-06-25T17:00:00.000Z";
 const fixtureCapturedAt = "2026-06-25T17:08:00.000Z";
@@ -441,6 +448,8 @@ function evidenceIdsForContacts(
 
 export function buildContactsListSearchPayload(
   input: ContactsListSearchFilterInput = {},
+  // 搜索构造器把 query 和多维筛选应用到本地联系人列表。
+  // 这样测试可以覆盖组合筛选，而不用维护大量手写 fixture。
 ): ContactsListSearchPayload {
   const appliedFilters = appliedFiltersFromInput(input);
   const hasActiveRules = hasActiveSearchOrFilters(appliedFilters);

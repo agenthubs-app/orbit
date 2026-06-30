@@ -1,3 +1,8 @@
+/**
+ * 活动参会者导入 mock 的契约测试。
+ *
+ * 验证 roster 导入、联系人草稿、provenance 和 API/debug-view 表达。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

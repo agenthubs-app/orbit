@@ -15,6 +15,8 @@ import {
 } from "../../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../../features/orbit-ai/service-factory";
 
+// 带 id 的 conversation route 适配单个会话。
+// 它和 `/api/ai/conversations` 使用同一个 service，只是从路径参数补 conversationId。
 export const dynamic = "force-dynamic";
 
 interface OrbitAgentConversationRouteContext {
@@ -74,6 +76,7 @@ function responseForResult(
   result: OrbitAgentConversationResult,
   mode: ReturnType<typeof resolveFeatureMode>,
 ): Response {
+  // 失败响应统一走 shared envelope，避免前端按 route 分支处理错误格式。
   if (result.success === false) {
     const appError = orbitAgentConversationFailureToAppError(result);
 
@@ -96,6 +99,7 @@ export async function GET(
   request: Request,
   context: OrbitAgentConversationRouteContext,
 ): Promise<Response> {
+  // GET 读取指定 conversation 的状态，不发送新消息。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createOrbitAgentConversationService();
@@ -108,6 +112,7 @@ export async function POST(
   request: Request,
   context: OrbitAgentConversationRouteContext,
 ): Promise<Response> {
+  // POST 在指定 conversation 上追加用户消息；是否 live 调模型由 service factory 决定。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createOrbitAgentConversationService();

@@ -24,6 +24,8 @@ import {
 } from "./fixtures";
 import type { FollowupTaskGenerationService } from "./service";
 
+// FollowupTaskGeneration mock service 把关系触发器派生成跟进任务。
+// 它不创建真实任务、不启动调度器，也不调用模型判断优先级。
 const supportedScenarios = new Set<FollowupTaskGenerationScenario>([
   "success",
   "empty",
@@ -32,6 +34,7 @@ const supportedScenarios = new Set<FollowupTaskGenerationScenario>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 跟进任务和 trigger fixture 会被列表/生成两条 API 复用，返回 clone 保持源数据只读。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -47,6 +50,7 @@ function success(
 function failure(
   code: FollowupTaskGenerationErrorCode,
 ): FollowupTaskGenerationFailure {
+  // 失败 provenance 说明这是 mock task generator 的本地错误，不是后台 job 失败。
   const definition = FOLLOWUP_TASK_GENERATION_ERROR_DEFINITIONS[code];
 
   return {
@@ -95,6 +99,7 @@ function isTriggerKind(value: unknown): value is FollowupTaskTriggerKind {
 function triggerKindsForInput(
   input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
 ): readonly FollowupTaskTriggerKind[] | null {
+  // list 支持 triggerKinds 数组，generate 支持单个 triggerKind；这里统一为数组过滤条件。
   if ("triggerKinds" in input && Array.isArray(input.triggerKinds)) {
     const kinds = input.triggerKinds.filter(isTriggerKind);
 
@@ -121,6 +126,7 @@ function connectionIdForInput(
 function selectedTasks(
   input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
 ): readonly FollowupTask[] {
+  // 任务选择只按 trigger kind、connectionId 和 limit 派生，不改动 mockFollowupTasks。
   const kinds = triggerKindsForInput(input);
   const connectionId = connectionIdForInput(input);
   const limit = normalizedLimit(input.limit);
@@ -139,6 +145,7 @@ function selectedTasks(
 }
 
 function selectedTriggers(tasks: readonly FollowupTask[]): readonly FollowupTaskTrigger[] {
+  // 返回的 triggers 只保留与当前 tasks 匹配的来源触发器，方便 UI 显示为什么生成任务。
   const taskIds = new Set(tasks.map((task) => task.connectionId));
   const kinds = new Set(tasks.map((task) => task.triggerKind));
 
@@ -174,6 +181,7 @@ function buildPayload(
   input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
   sourceLabel: string,
 ): FollowupTaskGenerationPayload {
+  // payload 把任务、触发器、summary 和 provenance 绑定在一起，确保每个任务都有来源证据。
   const tasks = selectedTasks(input);
   const triggers = selectedTriggers(tasks);
   const hasTasks = tasks.length > 0;
@@ -214,6 +222,7 @@ function scenarioResult(
 }
 
 export function createMockFollowupTaskGenerationService(): FollowupTaskGenerationService {
+  // listTasks 和 generateTasks 共用同一套规则；sourceLabel 用于区分是查看还是生成动作。
   return {
     listTasks(input = {}): FollowupTaskGenerationResult {
       const scenario = scenarioResult(normalizeScenario(input.scenario));

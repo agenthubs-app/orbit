@@ -8,6 +8,8 @@ import type {
   OrbitAgentArtifactWidthHint,
 } from "./artifact-contract";
 
+// artifact-view-model 把 agent 生成的结构化 artifact 转成 UI 可直接渲染的稳定形状。
+// 这里不做业务推理，只做字段清洗、空值规整和“动作必须确认”的展示约束。
 export interface OrbitAgentArtifactActionViewModel {
   id: string;
   label: string;
@@ -55,12 +57,14 @@ export interface OrbitAgentArtifactSurfaceViewModel {
 }
 
 function textOrNull(value: string | undefined): string | null {
+  // UI 层用 null 表示“不显示这一段文本”，避免空字符串占位。
   return value && value.trim() ? value : null;
 }
 
 function actionViewModel(
   action: OrbitAgentArtifactGeneratedViewAction,
 ): OrbitAgentArtifactActionViewModel {
+  // action 只是供 UI 展示/确认的候选动作，不代表已经执行。
   return {
     id: action.actionId,
     label: action.label,
@@ -80,6 +84,7 @@ function metadataViewModel(
 function itemViewModel(
   item: OrbitAgentArtifactGeneratedViewItem,
 ): OrbitAgentArtifactItemViewModel {
+  // item 级字段复制成只读数组，避免 UI 后续误改原始 artifact payload。
   return {
     actions: item.actions.map(actionViewModel),
     body: textOrNull(item.body),
@@ -108,11 +113,14 @@ export function createOrbitAgentArtifactSurfaceViewModel(
 ): OrbitAgentArtifactSurfaceViewModel | null {
   const { result, task } = payload;
 
+  // 只有 ready 且有 generatedView 的 artifact 才能渲染成 surface。
+  // pending/failure/null view 交给上层状态视图处理。
   if (result.status !== "ready" || result.generatedView === null) {
     return null;
   }
 
   return {
+    // 当前所有 artifact action 都要求用户确认，UI 不能把它们当作一键外部执行。
     actionsRequireConfirmation: true,
     artifactId: task.artifactId,
     emptyState: textOrNull(result.generatedView.emptyState),
@@ -133,6 +141,7 @@ export function createOrbitAgentArtifactSurfaceViewModel(
 export function selectPrimaryOrbitAgentArtifactSurface(
   payloads: readonly OrbitAgentArtifactPayload[],
 ): OrbitAgentArtifactSurfaceViewModel | null {
+  // 多 artifact 时选择第一个可渲染 surface，保持 chat side-panel 有稳定主视图。
   for (const payload of payloads) {
     const viewModel = createOrbitAgentArtifactSurfaceViewModel(payload);
 

@@ -34,6 +34,8 @@ const supportedScanScenarios = new Set<BusinessCardScanOcrScenario>([
   "failure",
 ]);
 
+// BusinessCardScanOcr mock service 模拟名片 OCR 到联系人草稿的流程。
+// 它只解析传入的 imageText 或固定 fixture，不调用相机、OCR provider、AI 提取或数据库。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -59,6 +61,7 @@ function draftSuccess(
 function failure(
   code: BusinessCardScanOcrErrorCode,
 ): BusinessCardScanOcrFailure {
+  // 失败 provenance 固定在本地 OCR mock 边界内，方便 route 生成稳定错误 envelope。
   const definition = BUSINESS_CARD_SCAN_OCR_ERROR_DEFINITIONS[code];
 
   return {
@@ -86,6 +89,7 @@ function normalizeScanScenario(
 }
 
 function compactDigest(value: string): string {
+  // digest 只是 mock 里的稳定指纹，不用于安全校验或真实文件完整性判断。
   let hash = 0;
   for (const character of value) {
     hash = (hash * 31 + character.charCodeAt(0)) % 1000000;
@@ -94,6 +98,8 @@ function compactDigest(value: string): string {
   return `sha256:mock-card-${hash.toString().padStart(6, "0")}`;
 }
 
+  // 规则解析假设文本每行是 name/role/org/email/phone 的近似结构。
+  // 这是为了测试字段流转，不代表真实 OCR 或名片理解能力。
 function parseRuleBasedText(imageText: string) {
   const lines = imageText
     .split(/\r?\n/)
@@ -118,6 +124,8 @@ function parseRuleBasedText(imageText: string) {
 
 function buildRuleBasedPayload(
   input: BusinessCardScanOcrInput,
+  // 传入 imageText 时按本地规则构造 capture/ocr/evidence/draft。
+  // 空文本返回 null，让调用方映射到 BUSINESS_CARD_IMAGE_REQUIRED。
 ): BusinessCardScanOcrPayload | null {
   const imageText = input.imageText?.trim();
 
@@ -188,6 +196,7 @@ function buildRuleBasedPayload(
 }
 
 export function createMockBusinessCardScanOcrService(): BusinessCardScanOcrService {
+  // scanBusinessCard 负责生成草稿；getBusinessCardDraft 只查固定 demo draft。
   return {
     scanBusinessCard(input = {}): BusinessCardScanOcrResult {
       switch (normalizeScanScenario(input.scenario)) {

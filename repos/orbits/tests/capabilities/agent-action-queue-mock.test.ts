@@ -1,3 +1,8 @@
+/**
+ * Agent 动作队列 capability 的契约测试。
+ *
+ * 覆盖 mock service、debug-view、API route 和 no-side-effect 动作决策边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

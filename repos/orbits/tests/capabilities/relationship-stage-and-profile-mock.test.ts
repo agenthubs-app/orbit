@@ -1,3 +1,8 @@
+/**
+ * 关系阶段与画像 mock 的契约测试。
+ *
+ * 验证 stage/profile 更新、非法输入和 source-backed profile 输出。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

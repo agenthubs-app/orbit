@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const EVENT_VALUE_RECOMMENDATION_FIXTURE_SOURCE =
   "fixture:features/recommendations/event-value-contract.ts" as const;
 
+// Event Value Recommendation contract 描述“哪些活动值得参加”的推荐模型。
+// 当前基于 fixture/rule 评分，不调用实时活动发现 feed、日历同步或 AI。
 export const EVENT_VALUE_RECOMMENDATION_ERROR_CODES = [
   "EVENT_VALUE_RECOMMENDATION_EVENT_ID_REQUIRED",
   "EVENT_VALUE_RECOMMENDATION_EVENT_NOT_FOUND",
@@ -31,6 +33,7 @@ export type EventValueRecommendationCalendarFit =
   | "open"
   | "tight"
   | "conflict";
+// recommendation 输入用 profile 目标、地点、行业和 calendar fit 过滤/评分活动。
 
 export interface EventValueRecommendationInput {
   profileGoal?: string | null;
@@ -52,6 +55,7 @@ export interface EventValueRecommendationErrorDefinition {
   message: string;
   recovery: string;
 }
+// 错误定义确保接受推荐前必须有 eventId，pending 时不访问真实 feed/provider。
 
 export const EVENT_VALUE_RECOMMENDATION_ERROR_DEFINITIONS = {
   EVENT_VALUE_RECOMMENDATION_EVENT_ID_REQUIRED: {
@@ -95,6 +99,7 @@ export type EventValueRecommendationSourceReference = SourceReferenceDTO & {
   providerRecordId: string;
   generatedBy: "mock-event-value-service";
 };
+// Factors 和 Signal 解释活动分数由哪些维度贡献。
 
 export interface EventValueRecommendationProfile {
   profileId: string;
@@ -129,6 +134,7 @@ export interface EventValueRecommendationSignal {
   aiProviderRequested: false;
   externalNetworkRequested: false;
 }
+// Recommendation 是可复核建议，不代表自动报名或写日历。
 
 export interface EventValueRecommendation {
   eventId: string;
@@ -157,6 +163,7 @@ export interface EventValueRecommendation {
   emailProviderRequested: false;
   notificationDelivered: false;
 }
+// provenance 记录没有日历同步、活动发现 feed、数据库或 AI 调用。
 
 export interface EventValueRecommendationProvenance {
   source: typeof EVENT_VALUE_RECOMMENDATION_FIXTURE_SOURCE;

@@ -1,3 +1,9 @@
+/**
+ * 名片 OCR 导入流程 fixture。
+ *
+ * 数据覆盖拍照来源、OCR 抽取结果、证据链、联系人草稿以及 empty/pending/failure 状态。
+ * 这些 fixture 只描述“待复核的导入结果”，不会代表真实 OCR 或联系人写入已经发生。
+ */
 import {
   BUSINESS_CARD_SCAN_OCR_FIXTURE_SOURCE,
   type BusinessCardCapture,

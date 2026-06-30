@@ -39,6 +39,8 @@ const supportedConfirmationScenarios =
     "failure",
   ]);
 
+// ManualContactCreation mock service 模拟手动录入联系人。
+// 它只生成/确认本地草稿，不执行真实联系人写入或重复联系人查询。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -64,6 +66,7 @@ function confirmationSuccess(
 function failure(
   code: ManualContactCreationErrorCode,
 ): ManualContactCreationFailure {
+  // failure 带固定 mock provenance，API route 可以稳定构造错误响应。
   const definition = MANUAL_CONTACT_CREATION_ERROR_DEFINITIONS[code];
 
   return {
@@ -106,6 +109,7 @@ function normalizeConfirmationScenario(
 }
 
 function normalizeTags(tags?: readonly string[] | null): readonly string[] {
+  // 空 tags 回落到 fixture 默认标签；非空 tags 会 trim 并过滤空字符串。
   const normalizedTags =
     tags
       ?.map((tag) => tag.trim())
@@ -123,6 +127,7 @@ function resolveActorLabel(actorLabel?: string | null): string {
 function buildSourceReference(
   source?: Partial<ManualContactSourceReference> | null,
 ): ManualContactSourceReference {
+  // 手动录入强制 source.type=manual，避免外部输入伪装成其它来源。
   return {
     ...mockManualContactDraft.source,
     ...source,
@@ -144,6 +149,7 @@ function shouldFlagPossibleDuplicate(
   note: string,
   tags: readonly string[],
 ): boolean {
+  // duplicate check 是本地关键词模拟，只用于 UI 展示确认流程，不查真实联系人库。
   const normalizedNote = note.toLowerCase();
   const normalizedTags = tags.map((tag) => tag.toLowerCase());
 
@@ -169,6 +175,7 @@ function buildRuleEvidence(
 function buildRuleBasedDraft(
   input: ManualContactCreationInput,
 ): ManualContactDraft {
+  // 非默认输入会通过本地规则派生 draft/evidence/provenance。
   const source = buildSourceReference(input.source);
   const note = input.note?.trim() || mockManualContactDraft.note;
   const tags = normalizeTags(input.tags);
@@ -216,6 +223,7 @@ function buildConfirmationPayload(
   draft: ManualContactDraft,
   actorLabel?: string | null,
 ): ManualContactConfirmationPayload {
+  // confirmation payload 表示“准备好写入联系人”，但 contactWriteExecuted 仍为 false。
   if (
     draft.id === mockManualContactConfirmedFixture.confirmedDraft.id &&
     resolveActorLabel(actorLabel) === "Demo operator"
@@ -276,6 +284,7 @@ function buildConfirmationPayload(
 }
 
 export function createMockManualContactCreationService(): ManualContactCreationService {
+  // create 阶段生成草稿；confirm 阶段生成候选 contact 和 confirmation evidence。
   return {
     createManualContactDraft(input = {}): ManualContactCreationResult {
       switch (normalizeCreationScenario(input.scenario)) {

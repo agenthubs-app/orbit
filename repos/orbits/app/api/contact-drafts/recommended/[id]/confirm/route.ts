@@ -15,6 +15,8 @@ import { createReferralRecommendationService } from "../../../../../../features/
 
 export const dynamic = "force-dynamic";
 
+// recommended contact confirm route 用于确认一条推荐联系人草稿。
+// route 只收集 recommendationId/actorLabel/scenario；确认后的状态变更由 referral service 负责。
 interface ConfirmRecommendedContactRouteContext {
   params: Promise<{
     id: string;
@@ -39,6 +41,7 @@ async function readConfirmInput(
   recommendationId: string,
 ): Promise<RecommendedContactConfirmInput> {
   const url = new URL(request.url);
+  // recommendationId 来自 path，actor/scenario 可从 query、form 或 JSON 读取。
   const queryInput: RecommendedContactConfirmInput = {
     recommendationId,
     actorLabel: url.searchParams.get("actorLabel"),
@@ -50,6 +53,7 @@ async function readConfirmInput(
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
   ) {
+    // 表单提交允许 actorLabel 覆盖 query，方便确认按钮携带操作者标签。
     const formData = await request.formData();
 
     return {
@@ -73,6 +77,7 @@ async function readConfirmInput(
   const parsedBody: unknown = JSON.parse(rawBody);
   const body = isRecord(parsedBody) ? parsedBody : {};
 
+  // JSON body 只读取 actorLabel/scenario，不允许改 path 中的 recommendationId。
   return {
     ...queryInput,
     actorLabel:
@@ -88,6 +93,7 @@ export async function POST(
   request: Request,
   context: ConfirmRecommendedContactRouteContext,
 ): Promise<Response> {
+  // confirmRecommendedContact 返回确认后的草稿/联系人状态；route 不直接写联系人表。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createReferralRecommendationService();
@@ -96,6 +102,7 @@ export async function POST(
   );
 
   if (result.success === false) {
+    // 推荐确认失败仍使用 referral contract 的错误上下文。
     const appError = referralRecommendationFailureToAppError(result);
 
     return NextResponse.json(

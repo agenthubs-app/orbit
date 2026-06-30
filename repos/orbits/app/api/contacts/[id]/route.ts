@@ -18,6 +18,8 @@ import { createContactDetailTagStatusService } from "../../../../features/contac
 
 export const dynamic = "force-dynamic";
 
+// contact detail route 支持读取联系人详情，以及更新标签、状态、备注和最近互动。
+// route 只做 PATCH body 白名单解析；具体状态约束和 provenance 由 contact detail service 处理。
 interface ContactDetailRouteContext {
   params: Promise<{
     id: string;
@@ -43,11 +45,13 @@ type PatchBodyResult =
       success: false;
     };
 
+// PATCH body 可以包含数组、逗号字符串或嵌套对象；这里先做结构化归一。
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function readStringList(value: unknown): readonly string[] | undefined {
+  // tag 字段兼容 "a,b" 和 ["a", "b"] 两种调用方式。
   if (typeof value === "string") {
     return value
       .split(",")
@@ -66,6 +70,7 @@ function readStringList(value: unknown): readonly string[] | undefined {
 }
 
 function readNote(value: unknown): ContactDetailNoteInput | string | undefined {
+  // note 既可传纯文本，也可传带 authorLabel 的结构化对象。
   if (typeof value === "string") {
     return value;
   }
@@ -84,6 +89,7 @@ function readNote(value: unknown): ContactDetailNoteInput | string | undefined {
 function readLastInteraction(
   value: unknown,
 ): ContactDetailLastInteractionInput | undefined {
+  // 最近互动只接受 channel/occurredAt/summary 三个字段。
   if (!isRecord(value)) {
     return undefined;
   }
@@ -97,6 +103,7 @@ function readLastInteraction(
 }
 
 async function readPatchBody(request: Request): Promise<PatchBodyResult> {
+  // malformed JSON 与空对象分开处理，保证 invalidPatchBody 能被 service 统一返回。
   try {
     const body: unknown = await request.json();
 
@@ -131,6 +138,7 @@ function responseForResult(
   result: ContactDetailTagStatusResult,
   mode: ReturnType<typeof resolveFeatureMode>,
 ): Response {
+  // contact detail 失败统一映射成 AppError/envelope。
   if (result.success === false) {
     const appError = contactDetailTagStatusFailureToAppError(result);
 
@@ -153,6 +161,7 @@ export async function GET(
   request: Request,
   context: ContactDetailRouteContext,
 ): Promise<Response> {
+  // GET 只读取详情，contactId 来自 path，scenario 用于 mock 状态切换。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
@@ -169,6 +178,7 @@ export async function PATCH(
   request: Request,
   context: ContactDetailRouteContext,
 ): Promise<Response> {
+  // PATCH 不直接更新数据源，只把白名单字段交给 contact detail service。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
@@ -176,10 +186,12 @@ export async function PATCH(
   const contactDetailService = createContactDetailTagStatusService();
 
   if (!patchBody.success) {
+    // JSON 解析失败走 service 的 invalid body 分支。
     return responseForResult(contactDetailService.invalidPatchBody(), mode);
   }
 
   const { body } = patchBody;
+  // scenario query 优先于 body，便于通过 URL 复现 mock 场景。
   const input: ContactDetailUpdateInput = {
     addTags: body.addTags,
     contactId: id,

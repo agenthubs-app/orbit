@@ -26,6 +26,8 @@ import {
 } from "./fixtures";
 import type { PermissionStateService } from "./service";
 
+// Permission mock service 模拟外部账号授权/设备权限前的 staged review。
+// requestPermission 只创建本地可复核授权请求，不会打开 provider 授权页或读取外部账号。
 const supportedStateScenarios = new Set<PermissionStateScenario>([
   "success",
   "empty",
@@ -56,6 +58,7 @@ const supportedIntents = new Set<PermissionIntent>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // permissions 会被 UI 改状态展示，clone 后返回避免共享 fixture 被修改。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -76,6 +79,7 @@ function requestSuccess(
 }
 
 function failure(code: PermissionStateErrorCode): PermissionStateFailure {
+  // 权限失败同样是本地受控失败，不代表真实账号授权 provider 返回错误。
   const definition = PERMISSION_STATE_ERROR_DEFINITIONS[code];
 
   return {
@@ -102,6 +106,7 @@ function normalizeStateScenario(
 function normalizeRequestScenario(
   scenario?: PermissionRequestInput["scenario"],
 ): PermissionRequestScenario {
+  // request 默认是 pending：权限请求天然需要用户复核，而不是立即成功授权。
   if (
     scenario &&
     supportedRequestScenarios.has(scenario as PermissionRequestScenario)
@@ -115,6 +120,7 @@ function normalizeRequestScenario(
 function normalizeCapability(
   capability: PermissionRequestInput["capability"],
 ): PermissionCapability | null {
+  // capability 是权限边界的核心，不支持的 capability 必须显式失败。
   if (supportedCapabilities.has(capability as PermissionCapability)) {
     return capability as PermissionCapability;
   }
@@ -123,6 +129,7 @@ function normalizeCapability(
 }
 
 function normalizeIntent(intent?: PermissionRequestInput["intent"]): PermissionIntent {
+  // intent 缺失时回落到 calendar 连接，用于保持旧调试入口稳定。
   if (intent && supportedIntents.has(intent as PermissionIntent)) {
     return intent as PermissionIntent;
   }
@@ -134,6 +141,7 @@ function buildRequestPayload(
   capability: PermissionCapability,
   intent: PermissionIntent,
 ): PermissionRequestPayload {
+  // calendar/connect-event-calendar 有专门 fixture；其它 capability 由 permission state 派生 request。
   if (capability === "calendar" && intent === "connect-event-calendar") {
     return mockCalendarPermissionRequestFixture;
   }
@@ -163,6 +171,7 @@ function buildRequestPayload(
 }
 
 export function createMockPermissionStateService(): PermissionStateService {
+  // list 展示当前权限矩阵；request 创建 staged review，不改变真实授权状态。
   return {
     listPermissionStates(input = {}): PermissionStateResult {
       switch (normalizeStateScenario(input.scenario)) {

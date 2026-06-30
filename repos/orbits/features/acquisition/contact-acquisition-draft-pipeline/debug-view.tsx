@@ -1,3 +1,9 @@
+/**
+ * 联系人获取草稿 pipeline 的开发者面板。
+ *
+ * 面板集中展示来自名片、手动录入、活动导入等来源的草稿队列，
+ * 用来验证草稿复核流程和 source provenance。
+ */
 import {
   Chip,
   WorkbenchFrame,

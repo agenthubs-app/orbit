@@ -1,3 +1,8 @@
+/**
+ * App bootstrap 聚合 mock 的开发者面板。
+ *
+ * 这里展示首屏聚合 payload 如何把账号、profile、活动、任务、通知和 Agent 动作组合起来。
+ */
 import {
   Chip,
   WorkbenchFrame,

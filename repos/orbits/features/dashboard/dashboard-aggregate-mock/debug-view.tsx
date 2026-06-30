@@ -1,3 +1,8 @@
+/**
+ * Dashboard 聚合 mock 的开发者面板。
+ *
+ * 面板展示首页指标、 dormant contacts、follow-ups、recent activity 等聚合结果。
+ */
 import {
   Chip,
   WorkbenchFrame,

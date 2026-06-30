@@ -1,3 +1,9 @@
+/**
+ * 权限状态 fixture。
+ *
+ * 数据覆盖 Gmail/Calendar/Contacts 等权限的当前状态，以及日历权限请求结果。
+ * 这些 fixture 只模拟授权状态视图，不会真的连接外部账号。
+ */
 import type {
   PermissionEvidence,
   PermissionRequestPayload,
@@ -103,6 +109,7 @@ const chatAnalysisEvidence: PermissionEvidence = {
   collectedAt: fixtureCollectedAt,
 };
 
+// 权限状态覆盖已授权、待授权和可请求等状态，供权限中心和 API 测试复用。
 export const mockPermissionStates: readonly PermissionStateRecord[] = [
   {
     capability: "contacts",

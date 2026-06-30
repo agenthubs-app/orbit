@@ -1,3 +1,8 @@
+/**
+ * 网络分布分析 mock 的开发者面板。
+ *
+ * 这里展示行业、关系强度、价值类型分布和 network gap 分析结果。
+ */
 import {
   Chip,
   WorkbenchFrame,

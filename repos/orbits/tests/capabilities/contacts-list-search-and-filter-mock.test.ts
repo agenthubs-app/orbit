@@ -1,3 +1,8 @@
+/**
+ * 联系人列表搜索筛选 mock 的契约测试。
+ *
+ * 验证 query/filter 组合、unsupported filter、API route 和 debug-view。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

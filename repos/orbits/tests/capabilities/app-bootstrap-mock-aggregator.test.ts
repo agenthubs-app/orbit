@@ -1,3 +1,8 @@
+/**
+ * App bootstrap 聚合 capability 的契约测试。
+ *
+ * 锁住首屏聚合 payload、scenario 状态、debug-view 和 bootstrap API 行为。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

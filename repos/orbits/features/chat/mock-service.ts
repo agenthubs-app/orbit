@@ -36,6 +36,8 @@ const supportedScenarios = new Set<ChatConversationMockScenario>([
   "failure",
 ]);
 
+// Chat conversation mock service 只模拟一对一关系聊天记录。
+// sendMessage 会把消息追加到返回 payload，但不写生产消息存储、不发 websocket、不调用 AI。
 const mockOnlyExecutionFlags = {
   realtimeTransportRequested: false,
   websocketSubscriptionRequested: false,
@@ -51,6 +53,7 @@ const mockOnlyExecutionFlags = {
 } as const;
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // chat payload 包含 messages 数组，返回 clone 防止调用方改共享 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -82,6 +85,7 @@ function sendSuccess(data: ChatSendMessagePayload): ChatSendMessageResult {
 function failure(
   code: ChatConversationMockErrorCode,
 ): ChatConversationMockFailure {
+  // chat failure 都保留在 mock conversation 边界内，避免暴露真实传输或存储细节。
   const definition = CHAT_CONVERSATION_MOCK_ERROR_DEFINITIONS[code];
 
   return {
@@ -163,6 +167,7 @@ function readText(value: unknown): string | null {
 function conversationById(
   conversationId: string,
 ): ChatConversationSummary | null {
+  // 当前 mock 只查 fixture 中的 conversation summary，不访问生产会话表。
   return (
     mockChatConversations.find(
       (conversation) => conversation.conversationId === conversationId,
@@ -197,6 +202,7 @@ function provenanceFor(input: {
   sourceLabel: string;
   extraEvidenceIds?: readonly string[];
 }): ChatConversationMockProvenance {
+  // provenance 汇总 conversation、messages 和额外 mock-send evidence。
   return {
     ...mockChatConversationProvenance,
     evidenceIds: uniqueEvidenceIds(input),
@@ -208,6 +214,7 @@ function provenanceFor(input: {
 function threadPayloadFor(
   conversation: ChatConversationSummary,
 ): ChatMessageThreadPayload {
+  // thread payload 由 conversation summary + 对应 messages 派生，保持一对一上下文一致。
   const messages = messagesForConversation(conversation.conversationId);
 
   return {
@@ -232,6 +239,7 @@ function buildSentMessage(input: {
   conversation: ChatConversationSummary;
   body: string;
 }): ChatMessage {
+  // 发送消息只是构造 mock_recorded_locally 记录；mockOnlyExecutionFlags 明确所有外部通道为 false。
   return {
     messageId: `demo-message-local-${input.conversation.conversationId}`,
     conversationId: input.conversation.conversationId,
@@ -279,6 +287,7 @@ function sendPayloadFor(input: {
 }
 
 export function createMockChatConversationMessageService(): ChatConversationMessageService {
+  // public API 对应列表、线程详情和本地发送三类 route。
   return {
     listConversations(input = {}): ChatConversationListResult {
       const scenario = listScenarioResult(normalizeScenario(input.scenario));

@@ -1,3 +1,8 @@
+/**
+ * `/app` workbench 页面测试。
+ *
+ * 验证首屏关系工作台、scenario 恢复状态和 no-side-effect 预览文案。
+ */
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";

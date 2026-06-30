@@ -6,6 +6,9 @@ import type {
 } from "../../../../../features/contacts/contract";
 import { createAppContactsListSearchAndFilterService } from "./contacts-service-factory";
 
+// Contacts route view model 是服务 contract 到页面 UI 的转换层。
+// 它不直接访问数据库或外部服务，只读取 contacts service 返回的 mock-first/hybrid payload。
+// service factory 会根据 module mode 决定使用静态 mock 还是 local-remote hybrid 数据源。
 export type AppContactsSearchParams = Record<
   string,
   string | string[] | undefined
@@ -16,6 +19,8 @@ type SourceType = ContactListItem["source"]["type"];
 type StatusType = ContactListItem["status"];
 type ValueType = ContactListItem["value"]["valueTypes"][number];
 
+// 这些 view model 类型专门服务页面渲染：
+// 字段名偏 UI 语义，避免 React 组件理解底层 contract 的 provenance 结构。
 export interface AppContactsFilterOptionViewModel {
   count: number;
   label: string;
@@ -171,6 +176,7 @@ function firstEvidence(evidenceIds: readonly string[] | undefined): string {
   return evidenceIds?.[0] ?? "evidence:unavailable";
 }
 
+// evidenceFromContactsResult 让成功/失败两种 contract 都能进入统一状态页证据展示。
 function evidenceFromContactsResult(
   result: ContactsListSearchResult,
 ): string[] {
@@ -223,6 +229,7 @@ function formatCount(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+// listSummary 额外识别 hybrid/local 查询，避免把底层 generationMethod 原样暴露给 UI。
 function listSummary(payload: ContactsListSearchPayload): string {
   if (payload.contacts.length === 0) {
     return "No source-backed contacts matched the current local search and filter rules.";
@@ -239,6 +246,7 @@ function listSummary(payload: ContactsListSearchPayload): string {
   return `${formatCount(payload.contacts.length, "source-backed contact")} are available from manual, external, email, and event evidence.`;
 }
 
+// detail href 兼容旧 demo 联系人的固定路由，其它联系人按 id 映射。
 function contactDetailHref(contact: ContactListItem): string {
   if (contact.displayName === "Kenji Watanabe") {
     return "/app/contacts/demo-contact-1";
@@ -266,6 +274,7 @@ function relationshipContextCopy(contact: ContactListItem): string {
   );
 }
 
+// externalServicesContacted 是 UI 安全账本聚合字段，任何外部 provider 触发都会显示出来。
 function externalServicesContacted(contact: ContactListItem): boolean {
   return (
     contact.externalNetworkRequested ||
@@ -276,6 +285,7 @@ function externalServicesContacted(contact: ContactListItem): boolean {
   );
 }
 
+// 单条联系人转换：把 contract 字段翻译成卡片需要的 copy、链接、标签和安全账本。
 function contactViewModel(contact: ContactListItem): AppContactListItemViewModel {
   const relationshipValueLabels = contact.value.valueTypes.map(valueLabel);
 
@@ -308,6 +318,7 @@ function contactsPayloadViewModel(input: {
   payload: ContactsListSearchPayload;
   reviewActionRequested: boolean;
 }): AppContactsPayloadViewModel {
+  // payload 级 view model 聚合列表统计和筛选态，供页面顶部 ledger 与卡片列表共用。
   const contacts = input.payload.contacts.map(contactViewModel);
   const needsAttention = contacts.filter((contact) => contact.needsAttention).length;
 

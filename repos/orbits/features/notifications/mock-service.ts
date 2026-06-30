@@ -27,6 +27,8 @@ import {
 } from "./fixtures";
 import type { ReminderScheduleNotificationService } from "./service";
 
+// ReminderScheduleNotification mock service 负责把 follow-up due date fixture
+// 派生成提醒列表和通知队列。它只模拟“准备通知”，不发送邮件、日历或推送。
 const supportedScenarios = new Set<ReminderScheduleNotificationScenario>([
   "success",
   "empty",
@@ -41,6 +43,7 @@ const reminderPriorities = new Set<ReminderPriority>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // mock payload 都按值返回，避免 route/UI 在展示时改到共享 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -56,6 +59,7 @@ function success(
 function failure(
   code: ReminderScheduleNotificationErrorCode,
 ): ReminderScheduleNotificationFailure {
+  // 失败结果使用固定 mock failure provenance，证明没有触发真实通知 provider。
   const definition = REMINDER_SCHEDULE_NOTIFICATION_ERROR_DEFINITIONS[code];
 
   return {
@@ -75,6 +79,7 @@ function normalizeScenario(
     | ReminderScheduleNotificationListInput["scenario"]
     | ReminderScheduleNotificationGenerateInput["scenario"],
 ): ReminderScheduleNotificationScenario {
+  // scenario 只接受 contract 白名单；未知值按 success 处理，避免 query string 注入分支。
   if (
     scenario &&
     supportedScenarios.has(scenario as ReminderScheduleNotificationScenario)
@@ -115,6 +120,7 @@ function isPriority(value: unknown): value is ReminderPriority {
 function frequenciesForInput(
   input: ReminderScheduleNotificationListInput | ReminderScheduleNotificationGenerateInput,
 ): readonly ReminderFrequency[] | null {
+  // list 接受 frequencies 数组，generate 接受单个 frequency；这里统一成数组过滤条件。
   if ("frequencies" in input && Array.isArray(input.frequencies)) {
     const frequencies = input.frequencies.filter(isFrequency);
 
@@ -130,6 +136,8 @@ function frequenciesForInput(
 
 function selectedReminders(
   input: ReminderScheduleNotificationListInput | ReminderScheduleNotificationGenerateInput,
+  // 选择规则集中处理频率、优先级、到期窗口、低优先级分组和 limit。
+  // 这让 listNotifications 和 generateReminders 共用同一套 mock 业务语义。
 ): readonly ScheduledReminder[] {
   const frequencies = frequenciesForInput(input);
   const limit = normalizedLimit(input.limit);
@@ -177,6 +185,7 @@ function uniqueEvidenceIds(reminders: readonly ScheduledReminder[]): readonly st
 function selectedGroups(
   reminders: readonly ScheduledReminder[],
 ): readonly GroupedLowPriorityReminder[] {
+  // 分组只保留当前筛选结果涉及的 reminder/evidence，避免 UI 展示无关低优先级组。
   const reminderIds = new Set(reminders.map((reminder) => reminder.reminderId));
 
   return mockGroupedLowPriorityReminders
@@ -195,6 +204,7 @@ function selectedGroups(
 function selectedQueueEntries(
   reminders: readonly ScheduledReminder[],
 ): readonly NotificationQueueEntry[] {
+  // 通知队列是提醒的派生视图；没有被选中的 reminder 不会出现在 queue entry 中。
   const reminderIds = new Set(reminders.map((reminder) => reminder.reminderId));
 
   return mockNotificationQueueEntries
@@ -227,6 +237,7 @@ function buildPayload(
   input: ReminderScheduleNotificationListInput | ReminderScheduleNotificationGenerateInput,
   sourceLabel: string,
 ): ReminderScheduleNotificationPayload {
+  // 最终 payload 把提醒、分组、队列和 provenance 放在一起，供 API/UI 直接消费。
   const reminders = selectedReminders(input);
   const groups = selectedGroups(reminders);
   const notificationQueue = selectedQueueEntries(reminders);
@@ -269,6 +280,7 @@ function scenarioResult(
 }
 
 export function createMockReminderScheduleNotificationService(): ReminderScheduleNotificationService {
+  // 两个公开方法共享构建逻辑；差异只体现在 sourceLabel，方便 provenance 区分调用来源。
   return {
     listNotifications(input = {}): ReminderScheduleNotificationResult {
       const scenario = scenarioResult(normalizeScenario(input.scenario));

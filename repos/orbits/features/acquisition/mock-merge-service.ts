@@ -36,6 +36,8 @@ const supportedApplyScenarios = new Set<DuplicateMergeApplyScenario>([
   "failure",
 ]);
 
+// Duplicate merge mock service 模拟重复联系人建议和人工确认 merge。
+// applyMergeSuggestion 返回合并预览/确认证据，但不会修改真实联系人记录。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -61,6 +63,7 @@ function applySuccess(
 function failure(
   code: DuplicateDetectionMergeErrorCode,
 ): DuplicateDetectionMergeFailure {
+  // merge 失败保持在本地 mock 边界，方便确认流程测试各种阻塞状态。
   const definition = DUPLICATE_DETECTION_MERGE_ERROR_DEFINITIONS[code];
 
   return {
@@ -144,6 +147,7 @@ function buildAppliedPayload(
   suggestion: DuplicateMergeSuggestion,
   actorLabel: string,
 ): DuplicateMergeApplyPayload {
+  // 默认 suggestion 命中固定 fixture；其它 suggestion 用同一结构派生合并预览。
   const base =
     suggestion.id === mockAppliedDuplicateMergeFixture.suggestionId
       ? mockAppliedDuplicateMergeFixture
@@ -178,6 +182,7 @@ function buildAppliedPayload(
 }
 
 export function createMockDuplicateMergeService(): DuplicateDetectionMergeService {
+  // list 只展示建议；apply 只记录确认结果，不执行真实字段合并写入。
   return {
     listMergeSuggestions(input = {}): DuplicateMergeSuggestionsResult {
       const scenarioResult = scenarioSuggestionsResult(

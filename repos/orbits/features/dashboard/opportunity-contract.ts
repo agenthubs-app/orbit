@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const OPPORTUNITY_REMINDER_ANALYTICS_FIXTURE_SOURCE =
   "fixture:features/dashboard/opportunity-contract.ts" as const;
 
+// Opportunity Reminder Analytics contract 描述 dashboard 的机会提醒和沉睡高价值联系人。
+// 当前不执行预测评分、后台挖掘或 live analytics job。
 export const OPPORTUNITY_REMINDER_ANALYTICS_ERROR_CODES = [
   "OPPORTUNITY_REMINDER_ANALYTICS_MOCK_FAILED",
 ] as const;
@@ -32,6 +34,7 @@ export type SuggestedContactReasonType =
   | "dormancy"
   | "event_context"
   | "referral_path";
+// 输入只控制 mock 场景；recompute 仍是本地规则结果。
 
 export interface OpportunityReminderAnalyticsInput {
   scenario?: OpportunityReminderAnalyticsScenario | string | null;
@@ -43,6 +46,7 @@ export interface OpportunityReminderAnalyticsErrorDefinition {
   message: string;
   recovery: string;
 }
+// 机会提醒失败时不触发预测 scoring、后台任务或数据库读写。
 
 export const OPPORTUNITY_REMINDER_ANALYTICS_ERROR_DEFINITIONS = {
   OPPORTUNITY_REMINDER_ANALYTICS_MOCK_FAILED: {
@@ -71,6 +75,7 @@ export type OpportunityReminderAnalyticsSourceReference = SourceReferenceDTO & {
   providerRecordId: string;
   generatedBy: "mock-opportunity-reminder-analytics-rules";
 };
+// provenance 记录 analytics 生成方式和所有未执行的后台能力。
 
 export interface OpportunityReminderAnalyticsProvenance {
   source: typeof OPPORTUNITY_REMINDER_ANALYTICS_FIXTURE_SOURCE;
@@ -95,6 +100,7 @@ export interface OpportunityReminderAnalyticsProvenance {
   notificationProviderRequested: false;
   deviceRequested: false;
 }
+// HighPriorityOpportunity 是建议机会，不是已创建任务。
 
 export interface HighPriorityOpportunity {
   opportunityId: string;
@@ -125,6 +131,7 @@ export interface DormantHighValueContact {
   sourceRefs: readonly OpportunityReminderAnalyticsSourceReference[];
   evidenceIds: readonly string[];
 }
+// CurrentGoalMatch 解释当前关系目标和机会之间的覆盖情况。
 
 export interface CurrentGoalMatch {
   goalId: string;

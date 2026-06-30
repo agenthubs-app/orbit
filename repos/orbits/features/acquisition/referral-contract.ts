@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const REFERRAL_RECOMMENDATION_FIXTURE_SOURCE =
   "fixture:features/acquisition/referral-contract.ts" as const;
 
+// Referral Recommendation contract 描述来自推荐人/社区/投资人介绍的联系人候选。
+// 当前不做多跳社交图发现，也不会自动向朋友的朋友发起触达。
 export const REFERRAL_SOURCE_KINDS = [
   "founder_referral",
   "investor_intro",
@@ -41,6 +43,7 @@ export type ReferralRecommendationConfirmScenario =
 export type ReferralRecommendationState = "success" | "empty" | "pending";
 export type ReferralRecommendationConfidence = "high" | "medium" | "low";
 
+// sourceKind 选择推荐来源类型；确认输入指定要转成草稿的 recommendationId。
 export interface ReferralRecommendationInput {
   sourceKind?: ReferralSourceKind | string | null;
   scenario?: ReferralRecommendationScenario | string | null;
@@ -59,6 +62,7 @@ export interface ReferralRecommendationErrorDefinition {
   recovery: string;
 }
 
+// 推荐错误定义覆盖来源不支持、推荐缺失、确认缺失、pending 和受控失败。
 export const REFERRAL_RECOMMENDATION_ERROR_DEFINITIONS = {
   REFERRAL_SOURCE_NOT_SUPPORTED: {
     code: "REFERRAL_SOURCE_NOT_SUPPORTED",
@@ -111,6 +115,7 @@ export type ReferralSourceReference = SourceReferenceDTO & {
   referralId: string;
 };
 
+// provenance 明确没有执行社交图探索、自动触达、设备/日历/邮件读取。
 export interface ReferralRecommendationProvenance {
   source: string;
   sourceLabel: string;
@@ -129,6 +134,7 @@ export interface ReferralRecommendationProvenance {
   notificationDelivered: false;
 }
 
+// source summary 描述推荐来源规模和是否请求了 provider，同样保持 mock-only。
 export interface ReferralSourceSummary {
   kind: ReferralSourceKind;
   label: string;
@@ -149,6 +155,7 @@ export interface ReferralRecommendationEvidence {
   createdBy: "mock-referral-recommendation-service";
 }
 
+// RecommenderContext 解释推荐路径和信任信号，帮助用户判断是否采纳推荐。
 export interface RecommenderContext {
   recommenderId: string;
   displayName: string;

@@ -1,3 +1,8 @@
+/**
+ * 活动探索页 route adapter。
+ *
+ * 这里加载活动落地 view model 并交给客户端探索组件，route 本身不做筛选逻辑。
+ */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { getOrbitLandingViewModel } from "../orbit-landing-route-view-model";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";

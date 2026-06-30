@@ -10,12 +10,15 @@ import {
   type ServiceResolution,
 } from "../../../../../shared/services/module-mode";
 
+// Followups 页面聚合任务生成、消息草稿和提醒通知三个能力。
+// 页面组件通过这个 service bundle 获取数据，不直接实例化 feature service。
 export interface AppFollowupsRouteServices {
   taskService: FollowupTaskGenerationService;
   draftService: MessageDraftGeneratorService;
   notificationService: ReminderScheduleNotificationService;
 }
 
+// 三个子能力分开声明 capabilityId，便于以后只替换任务、草稿或通知中的某一块。
 export const appFollowupTaskServiceFactory =
   createModuleServiceFactory<FollowupTaskGenerationService>({
     capabilityId: "followup-tasks",
@@ -43,6 +46,7 @@ export const appFollowupNotificationServiceFactory =
 export function resolveAppFollowupsRouteServices(
   mode?: ModuleMode | string,
 ): ServiceResolution<AppFollowupsRouteServices> {
+  // 逐个解析子服务；如果某个 mode 不支持某项能力，直接返回该失败。
   const taskResolution = appFollowupTaskServiceFactory.create(mode);
   const draftResolution = appFollowupDraftServiceFactory.create(mode);
   const notificationResolution =
@@ -57,6 +61,7 @@ export function resolveAppFollowupsRouteServices(
     return failedResolution;
   }
 
+  // fallback 分支避免构造出半可用的 followups 页面依赖。
   if (
     taskResolution.success === false ||
     draftResolution.success === false ||
@@ -75,6 +80,7 @@ export function resolveAppFollowupsRouteServices(
     };
   }
 
+  // 所有子服务可用时，返回页面可直接使用的聚合对象。
   return {
     success: true,
     mode: taskResolution.mode,
@@ -87,6 +93,7 @@ export function resolveAppFollowupsRouteServices(
 }
 
 export function createAppFollowupsRouteServices(): AppFollowupsRouteServices {
+  // 页面运行时使用 throwing 版本；需要测试 mode 的地方用 resolve 函数。
   const resolution = resolveAppFollowupsRouteServices();
 
   if (resolution.success === false) {

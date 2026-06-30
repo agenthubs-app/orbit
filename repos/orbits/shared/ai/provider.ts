@@ -7,6 +7,8 @@ import {
   createMockInputHash,
   type AiRunProvenanceRecord,
 } from "./provenance";
+// shared AI provider contract 描述旧 AI provider capability 的输入、输出和错误。
+// mock fixture 数据放在 mock-fixtures.ts；真实/替代实现只依赖这里的接口。
 
 export type { AiRunProvenanceRecord };
 

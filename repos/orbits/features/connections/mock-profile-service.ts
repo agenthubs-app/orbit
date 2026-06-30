@@ -1,3 +1,10 @@
+/**
+ * 关系阶段与关系画像的 mock 服务。
+ *
+ * 这个文件模拟联系人关系的“阶段更新”和“画像更新”流程。
+ * 它只接受 demo connection，所有输出都基于本地 fixture 和显式输入计算，
+ * 不调用模型、不读写数据库，也不触发外部副作用。
+ */
 import { RUNTIME_BOUNDARY_HEADER_VALUES, type ApiErrorContext } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
 import {
@@ -44,6 +51,7 @@ const supportedProfileTypes = new Set<RelationshipProfileType>(
 );
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 返回独立 payload，避免测试之间共享可变 fixture 引用。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -59,6 +67,7 @@ function successPayload(
 function failure<TCode extends RelationshipProfileErrorCode>(
   code: TCode,
 ): RelationshipProfileFailureForCode<TCode> {
+  // 泛型返回值让调用方保留具体错误码对应的错误类型。
   const definition = RELATIONSHIP_PROFILE_ERROR_DEFINITIONS[code];
 
   return {
@@ -75,6 +84,7 @@ function failure<TCode extends RelationshipProfileErrorCode>(
 function normalizeScenario(
   scenario?: RelationshipStageUpdateInput["scenario"],
 ): RelationshipProfileScenario {
+  // scenario 用于锁定 UI 状态；未声明值不会进入新分支。
   if (
     scenario &&
     supportedScenarios.has(scenario as RelationshipProfileScenario)
@@ -88,6 +98,7 @@ function normalizeScenario(
 function scenarioResult(
   scenario: RelationshipProfileScenario,
 ): RelationshipProfileResult | null {
+  // success 返回 null，表示继续执行真实 mock 规则；其它 scenario 直接返回固定状态。
   switch (scenario) {
     case "empty":
       return successPayload(mockEmptyRelationshipProfileFixture);
@@ -102,12 +113,14 @@ function scenarioResult(
 }
 
 function isDemoConnection(connectionId: string): boolean {
+  // 当前 fixture 只定义一个 demo connection，非 demo id 一律模拟 not found。
   return connectionId.trim() === "demo-connection-1";
 }
 
 function normalizeProfileType(
   relationshipType?: RelationshipProfileUpdateInput["relationshipType"],
 ): RelationshipProfileType {
+  // relationshipType 来自请求体，必须回到 contract 白名单后才能写入 payload。
   const normalized = relationshipType?.trim();
 
   if (
@@ -129,6 +142,7 @@ function normalizeText(value: string | null | undefined, fallback: string): stri
 function normalizeValueTypes(
   valueTypes: RelationshipProfileMutualValueInput["valueTypes"] | undefined,
 ): readonly RelationshipValueType[] {
+  // 过滤不认识的 mutual value 类型；如果全部无效，保留 fixture 默认值。
   if (!valueTypes || valueTypes.length === 0) {
     return mockRelationshipProfileRecord.mutualValue.valueTypes;
   }
@@ -171,6 +185,7 @@ function normalizeNextAction(
 }
 
 function buildStagePayload(stage: RelationshipStage): RelationshipProfilePayload {
+  // 默认 stage 直接复用标准 fixture；其它合法 stage 动态改写摘要，便于测试差异。
   if (stage === mockRelationshipStageUpdateFixture.profile?.relationshipStage) {
     return mockRelationshipStageUpdateFixture;
   }
@@ -194,6 +209,7 @@ function buildStagePayload(stage: RelationshipStage): RelationshipProfilePayload
 function buildProfilePayload(
   input: RelationshipProfileUpdateInput,
 ): RelationshipProfilePayload {
+  // 画像更新由显式输入覆盖 fixture 字段，未提供或空白字段保留默认值。
   const relationshipType = normalizeProfileType(input.relationshipType);
   const context = normalizeText(
     input.context,
@@ -239,6 +255,7 @@ function invalidBodyFailure(): RelationshipProfileInvalidBodyFailure {
 export function relationshipProfileFailureToAppError(
   profileFailure: RelationshipProfileFailure,
 ): AppError {
+  // API route 使用统一 AppError，不直接暴露 feature contract 的错误对象。
   return new AppError(
     profileFailure.error.appCode,
     profileFailure.error.message,
@@ -249,6 +266,7 @@ export function relationshipProfileFailureContext(
   profileFailure: RelationshipProfileFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  // 失败上下文会被 envelope 带到响应头/响应体，帮助定位 mock 边界来源。
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
@@ -261,6 +279,7 @@ export function relationshipProfileFailureContext(
 }
 
 export function createMockRelationshipStageAndProfileService(): RelationshipStageAndProfileService {
+  // service 方法先处理 scenario，再校验 demo connection，最后应用本地规则。
   return {
     updateStage(input: RelationshipStageUpdateInput): RelationshipProfileResult {
       const scenario = normalizeScenario(input.scenario);

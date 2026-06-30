@@ -1,3 +1,5 @@
+// Orbit AI command contract 是早期 Orbit AI 命令面板的轻量 UI contract。
+// 它不同于 live conversation service：这里只返回页面链接、阶段卡片和静态 assistant message。
 export const ORBIT_AI_PANELS = [
   "home",
   "events",
@@ -14,12 +16,14 @@ export const ORBIT_AI_LANGUAGES = ["zh", "en"] as const;
 
 export type OrbitAiLanguage = (typeof ORBIT_AI_LANGUAGES)[number];
 
+// CommandInput 由 UI 传入语言、当前 panel 和用户 prompt。
 export interface OrbitAiCommandInput {
   language?: string | null;
   panel?: string | null;
   prompt?: string | null;
 }
 
+// CommandLink/StageItem/OrbitContact 是命令面板的展示 DTO。
 export interface OrbitAiCommandLink {
   href: string;
   label: string;
@@ -47,6 +51,7 @@ export interface OrbitAiLanguageOption {
   language: OrbitAiLanguage;
 }
 
+// CommandPayload 是唯一成功返回形状，sideEffectsExecuted=false 表示没有真实动作。
 export interface OrbitAiCommandPayload {
   assistantMessage: string;
   commandLinks: readonly OrbitAiCommandLink[];

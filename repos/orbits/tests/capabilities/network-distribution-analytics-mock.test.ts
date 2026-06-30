@@ -1,3 +1,8 @@
+/**
+ * 网络分布分析 mock 的契约测试。
+ *
+ * 锁住行业/强度/价值类型分布、gap 分析和 debug-view 输出。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

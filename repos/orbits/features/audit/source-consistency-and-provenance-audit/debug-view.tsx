@@ -1,3 +1,9 @@
+/**
+ * Source/provenance 一致性审计 mock 的开发者面板。
+ *
+ * 面板展示各 mock collection 的来源、证据覆盖和审计发现，
+ * 用来检查能力之间是否保持可追溯的 provenance。
+ */
 import {
   Chip,
   WorkbenchFrame,

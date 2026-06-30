@@ -1,3 +1,8 @@
+/**
+ * QR 扫码建联 mock 的契约测试。
+ *
+ * 锁住扫码结果、互相关系上下文、确认候选和 debug-view 输出。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

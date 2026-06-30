@@ -1,3 +1,8 @@
+/**
+ * 外部动作沙盒 mock 的契约测试。
+ *
+ * 覆盖发消息、日历、通知 no-op 结果和审计记录，确保不执行真实外部动作。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -1,3 +1,9 @@
+/**
+ * 事件价值推荐的 mock 服务。
+ *
+ * 这个实现用本地规则对活动推荐进行打分、排序和接受动作模拟。
+ * 它不会读取实时活动源，也不会创建日历、发送通知或写数据库。
+ */
 import {
   EVENT_VALUE_RECOMMENDATION_ERROR_DEFINITIONS,
   mockAcceptedEventValueRecommendationFixture,
@@ -29,6 +35,7 @@ const supportedScenarios = new Set<EventValueRecommendationScenario>([
 ]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 推荐列表会被页面排序/选择，返回 clone 可以保护全局 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -53,6 +60,7 @@ function acceptanceSuccess(
 function failure(
   code: EventValueRecommendationErrorCode,
 ): EventValueRecommendationFailure {
+  // 失败响应统一来自 contract，避免 mock 和 live 服务暴露不同错误形状。
   const definition = EVENT_VALUE_RECOMMENDATION_ERROR_DEFINITIONS[code];
 
   return {
@@ -69,6 +77,7 @@ function failure(
 function normalizeScenario(
   scenario?: EventValueRecommendationInput["scenario"],
 ): EventValueRecommendationScenario {
+  // scenario 是测试开关；未声明字符串回落为 success，避免新状态隐式出现。
   if (
     scenario &&
     supportedScenarios.has(scenario as EventValueRecommendationScenario)
@@ -80,6 +89,7 @@ function normalizeScenario(
 }
 
 function hasRankingInput(input: EventValueRecommendationInput): boolean {
+  // 只有用户给了目标、地点、行业或日历偏好时，才重新计算推荐分数。
   return Boolean(
     input.profileGoal?.trim() ||
       input.location?.trim() ||
@@ -89,6 +99,7 @@ function hasRankingInput(input: EventValueRecommendationInput): boolean {
 }
 
 function normalizedLimit(limit?: number | null): number | null {
+  // limit 无效时表示不限制；有效时向下取整并禁止负数。
   if (!Number.isFinite(limit ?? Number.NaN)) {
     return null;
   }
@@ -111,6 +122,8 @@ function goalTerms(goal: string): readonly string[] {
 function scoreForInput(
   recommendation: EventValueRecommendation,
   input: EventValueRecommendationInput,
+  // 本地评分规则把目标匹配、地点、行业、参会密度和日历适配合成 0-99 分。
+  // 这是 deterministic mock，不代表真实推荐模型的最终算法。
 ): number {
   const profileGoal = normalizeText(input.profileGoal);
   const location = normalizeText(input.location);
@@ -162,6 +175,7 @@ function scoreBand(score: number): EventValueRecommendation["scoreBand"] {
 function rankedRecommendations(
   input: EventValueRecommendationInput,
 ): readonly EventValueRecommendation[] {
+  // 没有 ranking 输入时保留 fixture 顺序，避免列表默认状态被规则重新排序。
   if (!hasRankingInput(input)) {
     return mockEventValueRecommendations;
   }
@@ -195,6 +209,7 @@ function recommendationsForInput(
 function buildRecommendationsPayload(
   input: EventValueRecommendationInput,
 ): EventValueRecommendationsPayload {
+  // 重新汇总 evidenceIds 和 provenance，让 UI 知道推荐来自本地评分规则。
   const recommendations = recommendationsForInput(input);
   const evidenceIds =
     recommendations.length > 0
@@ -225,6 +240,7 @@ function buildRecommendationsPayload(
 function scenarioRecommendationsResult(
   scenario: EventValueRecommendationScenario,
 ): EventValueRecommendationsResult | null {
+  // listRecommendedEvents 的 scenario 控制列表页面状态。
   switch (scenario) {
     case "empty":
       return recommendationsSuccess(mockEmptyEventValueRecommendationsFixture);
@@ -241,6 +257,7 @@ function scenarioRecommendationsResult(
 function scenarioAcceptanceResult(
   scenario: EventValueRecommendationScenario,
 ): EventValueRecommendationAcceptanceResult | null {
+  // acceptRecommendedEvent 的 pending/empty 被解释为动作不可完成的失败状态。
   switch (scenario) {
     case "failure":
       return failure("EVENT_VALUE_RECOMMENDATION_MOCK_FAILED");
@@ -259,6 +276,7 @@ function normalizeEventId(eventId?: string | null): string {
 }
 
 function findRecommendation(eventId: string): EventValueRecommendation | null {
+  // 接受动作只能针对当前 mock 推荐列表中的活动。
   return (
     mockEventValueRecommendations.find(
       (recommendation) => recommendation.eventId === eventId,
@@ -269,6 +287,7 @@ function findRecommendation(eventId: string): EventValueRecommendation | null {
 function buildAcceptancePayload(
   recommendation: EventValueRecommendation,
 ): EventValueRecommendationAcceptancePayload {
+  // demo-event-1 复用标准接受 fixture；其它活动按推荐内容动态生成 no-op 动作。
   if (recommendation.eventId === "demo-event-1") {
     return mockAcceptedEventValueRecommendationFixture;
   }
@@ -302,6 +321,7 @@ function buildAcceptancePayload(
 }
 
 export function createMockEventValueRecommendationService(): EventValueRecommendationService {
+  // service 暴露推荐列表和接受推荐两个 contract 方法，均保持无外部副作用。
   return {
     listRecommendedEvents(input = {}): EventValueRecommendationsResult {
       const scenarioResult = scenarioRecommendationsResult(

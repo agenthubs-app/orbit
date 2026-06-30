@@ -1,6 +1,9 @@
 import type { SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
 import type { AppErrorCode } from "../../shared/errors/app-error";
 
+// Acquisition 主 contract 描述“联系人草稿队列”的统一形状。
+// 不同来源（手动、名片、QR、活动、外部联系人、邮件日历、推荐）最后都会汇入草稿，
+// 但草稿只代表待确认候选人，不等于已经写入联系人库。
 export const CONTACT_ACQUISITION_DRAFT_SOURCE_TYPES = [
   "manual",
   "business_card_ocr",
@@ -44,6 +47,7 @@ export type ContactDraftConfirmationState = "pending" | "confirmed";
 
 export type ContactDraftConfidence = "high" | "medium" | "low";
 
+// 列表输入只控制草稿队列状态；确认输入必须带 draftId 和操作者信息。
 export interface ContactAcquisitionDraftInput {
   scenario?: ContactAcquisitionDraftScenario | string | null;
 }
@@ -61,6 +65,7 @@ export interface ContactAcquisitionDraftErrorDefinition {
   recovery: string;
 }
 
+// 主草稿管线的失败都停在本地 mock 边界，不触发 OCR、导入、AI 或通知重试。
 export const CONTACT_ACQUISITION_DRAFT_ERROR_DEFINITIONS = {
   CONTACT_DRAFT_NOT_FOUND: {
     code: "CONTACT_DRAFT_NOT_FOUND",
@@ -102,6 +107,7 @@ export type ContactDraftSourceReference = SourceReferenceDTO & {
   label: string;
 };
 
+// provenance 说明草稿来源和生成方式，供 UI 展示“为什么推荐加入这个人”。
 export interface ContactAcquisitionDraftProvenance {
   source: string;
   sourceLabel: string;
@@ -121,6 +127,7 @@ export interface ContactDraftEvidence {
   createdBy: "mock-pipeline";
 }
 
+// confirmation 是草稿进入真实联系人写入前的人工复核门。
 export interface ContactDraftConfirmation {
   required: true;
   state: ContactDraftConfirmationState;
@@ -129,6 +136,7 @@ export interface ContactDraftConfirmation {
   actorLabel?: string;
 }
 
+// ContactAcquisitionDraft 是跨来源统一的候选联系人 DTO。
 export interface ContactAcquisitionDraft {
   id: string;
   status: ContactDraftStatus;
@@ -145,6 +153,7 @@ export interface ContactAcquisitionDraft {
   provenance: ContactAcquisitionDraftProvenance;
 }
 
+// payload 返回当前草稿队列；每条 draft 都带证据和复核状态。
 export interface ContactAcquisitionDraftPayload {
   state: ContactAcquisitionDraftState;
   drafts: readonly ContactAcquisitionDraft[];
@@ -153,6 +162,7 @@ export interface ContactAcquisitionDraftPayload {
   nextAction: string;
 }
 
+// ContactDraftCandidate 是确认后准备写入的联系人候选，但这里仍不执行写入。
 export interface ContactDraftCandidate {
   candidateId: string;
   displayName: string;
@@ -165,6 +175,7 @@ export interface ContactDraftCandidate {
   contactWriteExecuted: false;
 }
 
+// confirmation payload 会生成 contactCandidate，但仍显式标记 contactWriteExecuted=false。
 export interface ContactDraftConfirmationPayload {
   state: "confirmed";
   confirmedDraft: ContactAcquisitionDraft;

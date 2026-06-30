@@ -1,5 +1,7 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 
+// Permissions contract 描述分阶段授权 UI 的状态机。
+// 它只记录“准备/待审核/被依赖阻塞”等状态，不直接调用系统或第三方权限 API。
 export const PERMISSION_CAPABILITIES = [
   "contacts",
   "calendar",
@@ -56,6 +58,7 @@ export type PermissionIntent =
   | "import-event-data"
   | "analyze-chat-context";
 
+// list 输入只需要 scenario；request 输入明确 capability 和用户意图。
 export interface PermissionStateInput {
   scenario?: PermissionStateScenario | string | null;
 }
@@ -66,6 +69,7 @@ export interface PermissionRequestInput {
   scenario?: PermissionRequestScenario | string | null;
 }
 
+// 权限错误定义用于把未知 capability、非法请求和 mock failure 区分开。
 export interface PermissionStateErrorDefinition {
   code: PermissionStateErrorCode;
   appCode: AppErrorCode;
@@ -102,6 +106,7 @@ export const PERMISSION_STATE_ERROR_DEFINITIONS = {
   PermissionStateErrorDefinition
 >;
 
+// provenance 说明权限状态来自 staged authorization fixture。
 export interface PermissionStateProvenance {
   source: string;
   sourceLabel: string;
@@ -111,6 +116,7 @@ export interface PermissionStateProvenance {
   generationMethod: "fixture" | "rule-based-staged-authorization";
 }
 
+// PermissionEvidence 让 UI 能解释为什么某个权限被建议或被阻塞。
 export interface PermissionEvidence {
   evidenceId: string;
   sourceLabel: string;
@@ -118,6 +124,7 @@ export interface PermissionEvidence {
   collectedAt: string;
 }
 
+// PermissionStateRecord 是单个 capability 的展示状态。
 export interface PermissionStateRecord {
   capability: PermissionCapability;
   label: string;
@@ -130,6 +137,7 @@ export interface PermissionStateRecord {
   provenance: PermissionStateProvenance;
 }
 
+// PermissionStatePayload 是权限设置页的列表读模型。
 export interface PermissionStatePayload {
   state: PermissionBoundaryState;
   permissions: readonly PermissionStateRecord[];
@@ -138,6 +146,7 @@ export interface PermissionStatePayload {
   nextAction: string;
 }
 
+// PermissionRequestRecord 表示一个等待复核的授权请求，不替代真实 provider flow。
 export interface PermissionRequestRecord {
   id: string;
   capability: PermissionCapability;

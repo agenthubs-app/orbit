@@ -30,6 +30,8 @@ import {
 } from "./fixtures";
 import type { ConnectionEvidenceService } from "./service";
 
+// Connection evidence mock service 维护“关系 + 证据”的只读/追加模拟。
+// addEvidence 返回派生 payload，但不持久写入；它用于证明来源字段和贡献类型的 contract。
 const supportedScenarios = new Set<ConnectionEvidenceScenario>([
   "success",
   "empty",
@@ -44,6 +46,7 @@ const supportedContributions = new Set<ConnectionEvidenceContribution>(
 );
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // connection detail/list fixture 会被多个测试复用，返回 clone 防止调用方改共享对象。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -68,6 +71,7 @@ function detailSuccess(
 function failure<TCode extends ConnectionEvidenceErrorCode>(
   code: TCode,
 ): ConnectionEvidenceFailureForCode<TCode> {
+  // 泛型保留“错误码 -> 失败类型”的映射，route 测试可以断言具体错误分支。
   const definition = CONNECTION_EVIDENCE_SERVICE_ERROR_DEFINITIONS[code];
 
   return {
@@ -84,6 +88,7 @@ function failure<TCode extends ConnectionEvidenceErrorCode>(
 function normalizeScenario(
   scenario?: ConnectionEvidenceListInput["scenario"],
 ): ConnectionEvidenceScenario {
+  // scenario 是 mock 状态控制面，只接受 contract 白名单。
   if (
     scenario &&
     supportedScenarios.has(scenario as ConnectionEvidenceScenario)
@@ -95,6 +100,7 @@ function normalizeScenario(
 }
 
 function isDemoConnection(connectionId: string): boolean {
+  // 当前 fixture 只提供一个完整 demo connection；非 demo id 走 NOT_FOUND 分支。
   return connectionId.trim() === "demo-connection-1";
 }
 
@@ -151,6 +157,7 @@ function addPendingFailure(): ConnectionEvidenceAddPendingFailure {
 function normalizedSourceType(
   sourceType?: ConnectionAddEvidenceInput["sourceType"],
 ): ConnectionEvidenceSourceType | null {
+  // 未传 sourceType 默认为 manual；传了不支持的值则显式失败，避免来源类型被静默污染。
   const normalized = sourceType?.trim();
 
   if (!normalized) {
@@ -167,6 +174,7 @@ function normalizedSourceType(
 function normalizedContribution(
   contribution?: ConnectionAddEvidenceInput["contribution"],
 ): ConnectionEvidenceContribution {
+  // contribution 是证据对关系的作用；未知值保守回落到 follow_up_signal。
   const normalized = contribution?.trim();
 
   if (
@@ -182,6 +190,7 @@ function normalizedContribution(
 function normalizeAddInput(
   input: ConnectionAddEvidenceInput,
 ): ConnectionAddEvidenceInput | ConnectionEvidenceFailure {
+  // addEvidence 的输入归一化先校验 sourceType，再补默认 contribution。
   const sourceType = normalizedSourceType(input.sourceType);
 
   if (!sourceType) {
@@ -202,6 +211,7 @@ function isConnectionEvidenceFailure(
 }
 
 export function createMockConnectionEvidenceService(): ConnectionEvidenceService {
+  // list/get 使用固定 fixture；addEvidence 根据输入生成一个新的 detail payload。
   return {
     listConnections(input = {}): ConnectionEvidenceListResult {
       const scenarioResult = listScenarioResult(normalizeScenario(input.scenario));

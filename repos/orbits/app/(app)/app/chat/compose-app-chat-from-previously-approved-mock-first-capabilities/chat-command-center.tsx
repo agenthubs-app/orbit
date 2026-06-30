@@ -23,6 +23,8 @@ import {
   agentArtifactSidePanelStyles,
 } from "./agent-artifact-side-panel";
 
+// Chat command center 是纯 UI 组合层。
+// 它接收 chat-route-view-model 的结果并渲染对话、关系上下文、写作辅助、隐私和 Agent artifact。
 const appChatStyles = `
 .app-chat-route {
   display: grid;
@@ -290,6 +292,7 @@ const routeStateChecks = [
   },
 ] as const;
 
+// routeRecoveryActions 是状态页的本地恢复导航，不会触发任何外部副作用。
 const routeRecoveryActions: Record<
   AppChatRouteScenario,
   readonly { href: string; label: string }[]
@@ -325,12 +328,14 @@ const routeRecoveryActions: Record<
   ],
 };
 
+// 页面公开展示 evidence 时过滤 mock 字样，保留更像用户可读来源的 ID。
 function publicEvidenceIds(evidenceIds: readonly string[]): string[] {
   return evidenceIds.filter(
     (evidenceId) => !evidenceId.toLowerCase().includes("mock"),
   );
 }
 
+// RouteStateMarker 在 DOM 上保留可测试的 scenario URL 标记。
 function RouteStateMarker({
   children,
   scenario,
@@ -402,6 +407,7 @@ function RouteStateBoundary({
   );
 }
 
+// EvidenceChips 默认折叠在 details 里，避免证据 ID 挤占主要聊天工作区。
 function EvidenceChips({
   evidenceIds,
   label,
@@ -638,6 +644,7 @@ function PrivacyPanel({ privacy }: { privacy: AppChatPrivacyViewModel }) {
   );
 }
 
+// ReviewCard 是写作辅助、摘要、提取和隐私卡片的统一外壳。
 function ReviewCard({
   children,
   evidenceIds,
@@ -659,6 +666,7 @@ function ReviewCard({
   );
 }
 
+// ChatActionForm 只提交本地 preview action，不发送真实消息。
 function ChatActionForm({
   assist,
 }: {
@@ -685,6 +693,7 @@ function ChatActionForm({
   );
 }
 
+// ChatActionResult 明确展示安全账本：本地预览不会发消息、通知或改资料。
 function ChatActionResult({
   result,
 }: {
@@ -730,6 +739,7 @@ function ChatActionResult({
   );
 }
 
+// FollowupTracker 把 extraction 中的任务建议展示为本地追踪，不创建真实 reminder。
 function FollowupTracker({
   actionResult,
   extraction,
@@ -781,6 +791,7 @@ function FollowupTracker({
   );
 }
 
+// StateLinks 是用于手动检查 route-state 分支的本地导航。
 function StateLinks() {
   return (
     <nav
@@ -797,6 +808,7 @@ function StateLinks() {
   );
 }
 
+// OrbitAgentPromptPanel 是 chat 页向 Chat Agent API 提交自然语言请求的 UI 入口。
 function OrbitAgentPromptPanel({
   agentTurn,
 }: {
@@ -856,6 +868,7 @@ function OrbitAgentPromptPanel({
   );
 }
 
+// CurrentReplyPriority 汇总当前对话为什么需要先复核，帮助用户理解安全下一步。
 function CurrentReplyPriority({
   primaryAssist,
   privacy,
@@ -918,6 +931,7 @@ function CurrentReplyPriority({
   );
 }
 
+// ChatWorkspace 是成功状态的页面主体：左侧复核，右侧 Agent artifact，可独立关闭/打开。
 function ChatWorkspace({
   workspace,
 }: {

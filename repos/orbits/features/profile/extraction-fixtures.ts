@@ -1,3 +1,9 @@
+/**
+ * 个人资料文档抽取 fixture。
+ *
+ * 这里模拟简历和名片抽取产生的 profile draft、provenance 与 empty/pending/failure 状态。
+ * mock extraction service 依赖这些数据展示“待确认资料”，不会自动保存到 profile。
+ */
 import type {
   ProfileDocumentExtractionDraft,
   ProfileDocumentExtractionPayload,

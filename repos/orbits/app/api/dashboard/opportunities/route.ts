@@ -15,6 +15,8 @@ import { createOpportunityReminderAnalyticsService } from "../../../../features/
 
 export const dynamic = "force-dynamic";
 
+// opportunities 是 Dashboard 中“可能错过的关系机会”分析入口。
+// HTTP 层只读取 scenario；计算、排序和来源说明都由 opportunity analytics service 提供。
 function readInput(request: Request): OpportunityReminderAnalyticsInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -24,6 +26,7 @@ function readInput(request: Request): OpportunityReminderAnalyticsInput {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // GET 返回当前机会提醒分析，不在 route 层重新计算或写入状态。
   const mode = resolveFeatureMode();
   const opportunityService = createOpportunityReminderAnalyticsService();
   const result = opportunityService.getOpportunityReminderAnalytics(
@@ -31,6 +34,7 @@ export async function GET(request: Request): Promise<Response> {
   );
 
   if (result.success === false) {
+    // analytics failure 映射为共享 AppError，保持 dashboard 子接口错误格式一致。
     const appError = opportunityReminderAnalyticsFailureToAppError(result);
 
     return NextResponse.json(

@@ -1,3 +1,9 @@
+/**
+ * Agent 自主级别设置 mock 的开发者面板。
+ *
+ * 这里展示 low/medium/high 自主级别、保护边界和更新结果，
+ * 用于验证设置 UI 不会绕过确认要求。
+ */
 import {
   Chip,
   WorkbenchFrame,

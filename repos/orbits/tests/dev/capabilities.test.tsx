@@ -1,3 +1,8 @@
+/**
+ * Dev capability runtime 测试。
+ *
+ * 验证 app scaffold demo、debug action runner 和 capability route fallback。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

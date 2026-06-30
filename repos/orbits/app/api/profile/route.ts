@@ -18,9 +18,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// profile route 是当前用户资料的读写入口。
+// route 只处理 scenario 和 JSON body；资料完整性、默认值和失败语义由 profile service 负责。
 function getScenario(request: Request): ProfileScenario | undefined {
   const scenario = new URL(request.url).searchParams.get("scenario");
 
+  // 只接受 profile contract 支持的三种场景，避免任意 query 影响服务分支。
   if (scenario === "empty" || scenario === "pending" || scenario === "complete") {
     return scenario;
   }
@@ -31,6 +34,7 @@ function getScenario(request: Request): ProfileScenario | undefined {
 async function readProfileUpdateInput(
   request: Request,
 ): Promise<ManualProfileUpdateInput> {
+  // PUT 允许空 body 或非法 JSON 回落为空对象，由 service 返回明确校验结果。
   try {
     const body = (await request.json()) as ManualProfileUpdateInput;
 
@@ -41,6 +45,7 @@ async function readProfileUpdateInput(
 }
 
 export function GET(request: Request): Response {
+  // GET 只读取当前 profile，不触发抽取或更新建议。
   const mode = resolveFeatureMode();
   const profileService = createProfileService();
   const result = profileService.getProfile({
@@ -48,6 +53,7 @@ export function GET(request: Request): Response {
   });
 
   if (result.success === false) {
+    // profile failure 在这里统一转换成 AppError/envelope。
     const appError = profileFailureToAppError(result);
 
     return NextResponse.json(
@@ -66,6 +72,7 @@ export function GET(request: Request): Response {
 }
 
 export async function PUT(request: Request): Promise<Response> {
+  // 手动更新 profile 仍走 service contract，route 不直接写入存储。
   const mode = resolveFeatureMode();
   const profileService = createProfileService();
   const result = profileService.updateProfile(

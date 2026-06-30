@@ -1,3 +1,8 @@
+/**
+ * Chat 摘要与抽取 mock 的契约测试。
+ *
+ * 锁住任务/需求/profile 建议抽取结果，以及确认前不写 profile 的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

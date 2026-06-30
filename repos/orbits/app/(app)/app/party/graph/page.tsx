@@ -1,3 +1,8 @@
+/**
+ * Party 关系图页 route adapter。
+ *
+ * 负责本地化 party view model，并把图谱视图交给 `OrbitRealPartyGraph`。
+ */
 import { OrbitRealPartyGraph } from "../../dashboard/orbit-real-party";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { getOrbitPartyViewModel } from "../../orbit-party-route-view-model";

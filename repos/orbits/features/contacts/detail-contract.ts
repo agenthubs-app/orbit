@@ -9,6 +9,10 @@ import type { ContactStatusFilter, ContactTagFilter } from "./contract";
 export const CONTACT_DETAIL_TAG_STATUS_FIXTURE_SOURCE =
   "fixture:features/contacts/detail-contract.ts" as const;
 
+// Contact detail contract 描述单个联系人详情、标签/状态预览更新和来源证据。
+// 当前实现仍在 mock 边界内，不执行真实联系人存储或生产审计日志写入。
+// detail 页允许编辑的标签和状态是显式白名单。
+// mock update 只预览结果；真实写入必须另接 live service 和权限确认。
 export const CONTACT_DETAIL_TAG_OPTIONS = [
   "event:climate-founders-dinner",
   "topic:storage-pilots",
@@ -168,6 +172,10 @@ export interface ContactDetailNote {
   noteWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
 }
+// PublicProfile 是可展示的公开关系资料摘要。
+// 它和私密关系上下文分开建模，方便 UI 明确哪些内容来自公开介绍。
+// ContactDetail 是详情页完整读取模型。
+// 末尾的 executed/requested 布尔字段是安全审计，不是 UI 装饰字段。
 
 export interface ContactDetail {
   id: string;
@@ -198,6 +206,7 @@ export interface ContactDetail {
   notificationDelivered: false;
 }
 
+// Detail provenance 记录这次详情读取或预览更新的来源和副作用边界。
 export interface ContactDetailTagStatusProvenance {
   source: string;
   sourceLabel: string;
@@ -242,6 +251,8 @@ export interface ContactDetailLastInteractionInput {
   occurredAt?: string | null;
   summary?: string | null;
 }
+// Update input 支持替换/增删 tags、状态、note 和 lastInteraction。
+// mock service 会把这些输入变成预览 payload，不会真正保存。
 
 export interface ContactDetailUpdateInput extends ContactDetailLookupInput {
   tags?: readonly (ContactDetailTagOption | string)[] | null;

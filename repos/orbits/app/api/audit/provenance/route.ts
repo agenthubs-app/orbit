@@ -15,6 +15,8 @@ import { createSourceConsistencyProvenanceAuditService } from "../../../../featu
 
 export const dynamic = "force-dynamic";
 
+// provenance audit snapshot 是只读审计入口。
+// route 只读取 scenario；一致性检查、证据列表和问题分组由 audit service 生成。
 function readInput(request: Request): SourceConsistencyProvenanceAuditInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -24,11 +26,13 @@ function readInput(request: Request): SourceConsistencyProvenanceAuditInput {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // GET 读取最近一次/当前 mock 审计快照，不触发重新运行。
   const mode = resolveFeatureMode();
   const auditService = createSourceConsistencyProvenanceAuditService();
   const result = auditService.getAuditSnapshot(readInput(request));
 
   if (result.success === false) {
+    // audit failure 使用 provenance contract 的上下文，保留运行模式和 evidence 信息。
     const appError = sourceConsistencyProvenanceAuditFailureToAppError(result);
 
     return NextResponse.json(

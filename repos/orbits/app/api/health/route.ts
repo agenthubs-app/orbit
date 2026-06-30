@@ -9,6 +9,8 @@ import {
   resolveFeatureMode,
 } from "../../../shared/config/feature-mode";
 
+// Health route 是最小运行时探针：验证 shared envelope、feature mode 和边界 headers。
+// 它不会读取任何关系数据，也不会触发 capability provider。
 export const dynamic = "force-dynamic";
 
 const healthBoundary = {

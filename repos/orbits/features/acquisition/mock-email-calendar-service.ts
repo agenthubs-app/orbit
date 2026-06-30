@@ -42,6 +42,8 @@ const supportedSourceKinds = new Set<EmailCalendarSignalSourceKind>(
   EMAIL_CALENDAR_SIGNAL_SOURCE_KINDS,
 );
 
+// EmailCalendarSignal mock service 模拟从邮件/日历材料识别关系信号。
+// 它只读本地 fixture，不请求邮箱、日历、账号授权 token 或后台分析任务。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -67,6 +69,7 @@ function confirmationSuccess(
 function failure(
   code: EmailCalendarSignalErrorCode,
 ): EmailCalendarSignalFailure {
+  // sourceKind 不支持时用 permission-required 类错误，提醒真实接入前必须先授权。
   const definition = EMAIL_CALENDAR_SIGNAL_ERROR_DEFINITIONS[code];
 
   return {
@@ -128,6 +131,7 @@ function normalizeSourceKind(
 function sourceKindFailure(
   sourceKind?: EmailCalendarSignalListInput["sourceKind"],
 ): EmailCalendarSignalFailure | null {
+  // 显式传入未知 sourceKind 不能静默忽略，否则 UI 会误以为真的查询了外部来源。
   if (sourceKind === undefined || sourceKind === null || sourceKind.trim() === "") {
     return null;
   }
@@ -154,6 +158,7 @@ function filterSignals(
 function buildRuleBasedPayload(
   sourceKind: EmailCalendarSignalSourceKind,
 ): EmailCalendarSignalPayload {
+  // 过滤后的 signals 会同步 provenance evidenceIds，确保每个信号都能回溯来源。
   const signals = filterSignals(sourceKind);
   const state = signals.length > 0 ? "success" : "empty";
   const evidenceIds =
@@ -205,6 +210,7 @@ function findSignal(signalId: string): EmailCalendarRelationshipSignal | null {
 }
 
 export function createMockEmailCalendarSignalService(): EmailCalendarSignalService {
+  // confirmEmailCalendarSignal 只确认本地信号，不写入真实联系人或跟进记录。
   return {
     listEmailCalendarSignals(input = {}): EmailCalendarSignalResult {
       const resultForScenario = scenarioResult(

@@ -1,3 +1,8 @@
+/**
+ * 活动 CRUD 与导入 mock 的契约测试。
+ *
+ * 验证活动列表、详情、手动创建、导入和本地 no-op 行为。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

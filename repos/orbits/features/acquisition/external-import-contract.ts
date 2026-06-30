@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const EXTERNAL_CONTACTS_IMPORT_FIXTURE_SOURCE =
   "fixture:features/acquisition/external-import-contract.ts" as const;
 
+// External Contacts Import contract 描述从手机、Google Contacts、CSV 或客户列表导入候选人。
+// 当前只模拟导入候选和草稿，不读取真实设备通讯录、不解析大文件、不启动生产导入任务。
 export const EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS = [
   "phone",
   "google_contacts",
@@ -36,6 +38,7 @@ export type ExternalContactsImportScenario =
 export type ExternalContactsImportState = "success" | "empty" | "pending";
 export type ExternalContactsImportConfidence = "high" | "medium" | "low";
 
+// sourceKind 选择 mock 来源；scenario 锁定测试状态。
 export interface ExternalContactsImportInput {
   sourceKind?: ExternalContactsImportSourceKind | string | null;
   scenario?: ExternalContactsImportScenario | string | null;
@@ -48,6 +51,7 @@ export interface ExternalContactsImportErrorDefinition {
   recovery: string;
 }
 
+// 错误定义覆盖未选择来源、不支持来源、pending 和受控失败。
 export const EXTERNAL_CONTACTS_IMPORT_ERROR_DEFINITIONS = {
   EXTERNAL_CONTACTS_IMPORT_SOURCE_REQUIRED: {
     code: "EXTERNAL_CONTACTS_IMPORT_SOURCE_REQUIRED",
@@ -92,6 +96,7 @@ export type ExternalContactsSourceReference = SourceReferenceDTO & {
   batchId: string;
 };
 
+// provenance 是外部联系人导入的安全账本，所有真实 provider/file/job 写入都为 false。
 export interface ExternalContactsImportProvenance {
   source: string;
   sourceLabel: string;
@@ -109,6 +114,7 @@ export interface ExternalContactsImportProvenance {
   notificationDelivered: false;
 }
 
+// source summary 告诉 UI 当前 mock 来源的候选数量和权限/上传状态。
 export interface ExternalContactsSourceSummary {
   kind: ExternalContactsImportSourceKind;
   label: string;
@@ -130,6 +136,7 @@ export interface ExternalContactsEvidence {
   createdBy: "mock-external-contacts-import-service";
 }
 
+// candidate 是待复核候选人，不是已经创建的联系人。
 export interface ExternalContactCandidate {
   candidateId: string;
   displayName: string;

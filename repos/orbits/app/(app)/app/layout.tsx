@@ -1,3 +1,8 @@
+/**
+ * `/app` 分组 layout。
+ *
+ * 这里从请求头或 cookie 中恢复 Orbit 语言设置，然后把语言上下文提供给所有内部页面。
+ */
 import "../../globals.css";
 import type { ReactNode } from "react";
 import { cookies, headers } from "next/headers";

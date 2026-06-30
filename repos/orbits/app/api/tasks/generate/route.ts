@@ -17,7 +17,10 @@ export const dynamic = "force-dynamic";
 
 type JsonRecord = Record<string, unknown>;
 
+// tasks/generate route 根据关系上下文生成 follow-up 任务候选。
+// route 只解析 JSON 输入；任务触发规则和去重由 followup task service 负责。
 async function readJsonBody(request: Request): Promise<JsonRecord> {
+  // 空 body 或非法 JSON 回落为空对象，让 service 处理默认生成策略。
   try {
     const body = (await request.json()) as unknown;
 
@@ -32,6 +35,7 @@ async function readJsonBody(request: Request): Promise<JsonRecord> {
 }
 
 function readStringArray(value: unknown): readonly string[] | null {
+  // triggerKinds 兼容数组和逗号字符串。
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === "string");
   }
@@ -47,6 +51,7 @@ function readStringArray(value: unknown): readonly string[] | null {
 }
 
 function readNumber(value: unknown): number | null {
+  // limit 兼容 JSON number 和字符串。
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
@@ -70,6 +75,7 @@ async function readInput(
   const body = await readJsonBody(request);
   const searchParams = new URL(request.url).searchParams;
 
+  // scenario query 优先，方便 URL 直接切换 mock 状态。
   return {
     connectionId: readString(body.connectionId),
     limit: readNumber(body.limit),
@@ -79,11 +85,13 @@ async function readInput(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // generateTasks 生成可复核任务候选，不在 route 层创建真实提醒或通知。
   const mode = resolveFeatureMode();
   const taskService = createFollowupTaskGenerationService();
   const result = taskService.generateTasks(await readInput(request));
 
   if (result.success === false) {
+    // follow-up task failure 统一映射成 AppError/envelope。
     const appError = followupTaskGenerationFailureToAppError(result);
 
     return NextResponse.json(

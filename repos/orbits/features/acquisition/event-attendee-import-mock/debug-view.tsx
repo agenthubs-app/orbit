@@ -1,3 +1,8 @@
+/**
+ * 活动参会者导入 mock 的开发者面板。
+ *
+ * 这里展示 roster 导入、联系人草稿和 provenance，帮助验证活动来源如何进入联系人获取流程。
+ */
 import {
   Chip,
   Field,

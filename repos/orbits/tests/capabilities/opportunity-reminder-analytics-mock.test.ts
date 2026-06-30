@@ -1,3 +1,8 @@
+/**
+ * 机会提醒分析 mock 的契约测试。
+ *
+ * 锁住高优先级机会、沉睡关系、recompute 结果和 debug-view。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

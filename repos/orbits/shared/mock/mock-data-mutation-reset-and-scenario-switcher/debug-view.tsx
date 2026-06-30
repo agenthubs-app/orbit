@@ -1,3 +1,8 @@
+/**
+ * Mock 数据 reset 与 scenario 切换器的开发者面板。
+ *
+ * 这里展示共享 mock runtime 的场景切换、重置和 provenance，帮助调试不同页面状态。
+ */
 import {
   Chip,
   WorkbenchFrame,

@@ -1,3 +1,8 @@
+/**
+ * 重复检测与合并 mock 的契约测试。
+ *
+ * 验证候选重复项、匹配原因、apply merge 和无真实写入的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

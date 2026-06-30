@@ -3,6 +3,8 @@ import type { AppErrorCode } from "../../shared/errors/app-error";
 export const RELATIONSHIP_VALUE_FIXTURE_SOURCE =
   "fixture:features/analysis/value-contract.ts" as const;
 
+// Relationship Value contract 描述单条关系的价值评分和下一步建议。
+// 当前评分来自 mock/rule，不调用外部 scoring、AI 或数据库写入。
 export const RELATIONSHIP_VALUE_TYPES = [
   "strategic_intro",
   "event_follow_up",
@@ -40,6 +42,7 @@ export type RelationshipValueScenario =
 
 export type RelationshipValueState = "success" | "empty" | "pending";
 
+// 错误定义区分关系缺失、重算请求非法、pending 和受控失败。
 export interface RelationshipValueErrorDefinition {
   code: RelationshipValueErrorCode;
   appCode: AppErrorCode;
@@ -103,6 +106,7 @@ export interface RelationshipValuePriorityFactor {
   evidenceIds: readonly string[];
 }
 
+// PriorityScore 把分数、档位和加分因子拆开，便于 UI 解释评分来源。
 export interface RelationshipValuePriorityScore {
   value: number;
   band: RelationshipValuePriorityBand;
@@ -124,6 +128,7 @@ export interface RelationshipValueSuggestedNextAction {
   reason: string;
 }
 
+// RelationshipValueAssessment 是最终价值评估结果，不代表已创建任务。
 export interface RelationshipValueAssessment {
   id: string;
   connectionId: string;
@@ -138,6 +143,7 @@ export interface RelationshipValueAssessment {
   createdBy: "mock-relationship-value-scoring-service";
 }
 
+// provenance 记录评分没有触发真实数据库、AI、日历、邮件或通知。
 export interface RelationshipValueProvenance {
   source: string;
   sourceLabel: string;
@@ -156,6 +162,7 @@ export interface RelationshipValueProvenance {
   notificationDelivered: false;
 }
 
+// lookup 和 recompute 输入分开；recompute 允许指定参与重算的 evidenceIds。
 export interface RelationshipValueLookupInput {
   connectionId: string;
   scenario?: RelationshipValueScenario | string | null;

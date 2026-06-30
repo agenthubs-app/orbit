@@ -38,6 +38,8 @@ const supportedRelationshipStatusFilters =
     EVENT_ATTENDEE_RELATIONSHIP_STATUS_CODES,
   );
 
+// EventAttendeeImport mock service 模拟活动参会者名单读取和联系人草稿 staging。
+// 它只支持 demo-event-1，不导入真实活动系统，也不写联系人库。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -63,6 +65,7 @@ function importSuccess(
 function failure(
   code: EventAttendeeImportErrorCode,
 ): EventAttendeeImportFailure {
+  // 参会者导入失败使用固定 provenance，便于 UI 区分本地 mock 错误和 live provider 错误。
   const definition = EVENT_ATTENDEE_IMPORT_ERROR_DEFINITIONS[code];
 
   return {
@@ -87,6 +90,7 @@ function normalizeScenario(
 }
 
 function normalizeEventId(eventId?: string | null): string {
+  // 未传 eventId 时使用 demo event；显式空字符串才算缺少 event id。
   if (eventId === undefined) {
     return defaultEventId;
   }
@@ -110,6 +114,7 @@ function normalizeRelationshipStatusFilter(
 }
 
 function eventFailure(input: EventAttendeeImportInput): EventAttendeeImportFailure | null {
+  // 当前 fixture 只有 demo-event-1，非 demo id 返回 not found，避免假装远程查询。
   const eventId = normalizeEventId(input.eventId);
 
   if (!eventId) {
@@ -150,6 +155,7 @@ function filterDrafts(
 function buildRuleBasedRosterPayload(
   relationshipStatusFilter: EventAttendeeRelationshipStatusCode,
 ): EventAttendeeRosterPayload {
+  // roster payload 只按 relationshipStatusFilter 派生 attendee 列表。
   const attendees = filterAttendees(relationshipStatusFilter);
   const state = attendees.length > 0 ? "success" : "empty";
 
@@ -180,6 +186,7 @@ function buildRuleBasedRosterPayload(
 function buildRuleBasedImportPayload(
   relationshipStatusFilter: EventAttendeeRelationshipStatusCode,
 ): EventAttendeeImportPayload {
+  // import payload 在 roster 基础上追加 contactDrafts，但仍然不执行 contact write。
   const roster = buildRuleBasedRosterPayload(relationshipStatusFilter);
   const contactDrafts = filterDrafts(relationshipStatusFilter);
 
@@ -226,6 +233,7 @@ function scenarioImportResult(
 }
 
 export function createMockEventAttendeeImportService(): EventAttendeeImportService {
+  // listEventAttendees 展示名单；importEventAttendees 生成待确认联系人草稿。
   return {
     listEventAttendees(input = {}): EventAttendeeRosterResult {
       const scenarioResult = scenarioRosterResult(

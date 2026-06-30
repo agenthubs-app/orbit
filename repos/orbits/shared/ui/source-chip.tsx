@@ -1,5 +1,7 @@
 import { Chip } from "./primitives";
 
+// SourceChip 把来源类型和信任状态渲染成可读标签。
+// 它同时负责清洗 evidence/source raw identifier，避免在 UI copy 中暴露内部引用。
 type KnownSourceType =
   | "calendar"
   | "calendar_event"
@@ -86,6 +88,7 @@ function humanizeToken(value: string, fallback: string): string {
 }
 
 export function sanitizeSourceDisplayText(value: string, fallback = "Source context"): string {
+  // 如果传入的是纯 raw id，直接用 fallback；如果夹杂 raw id，则替换成 private reference。
   const trimmed = value.trim();
 
   if (!trimmed || compactRawIdentifierPattern.test(trimmed)) {

@@ -1,3 +1,8 @@
+/**
+ * 管理后台活动页 route adapter。
+ *
+ * 复用 admin view model，只把渲染目标切换到活动管理组件。
+ */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { getOrbitAdminViewModel } from "../../orbit-admin-platform-route-view-model";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";

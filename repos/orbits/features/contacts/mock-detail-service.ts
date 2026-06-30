@@ -1,3 +1,9 @@
+/**
+ * 联系人详情标签/状态编辑的 mock 服务。
+ *
+ * 这个服务模拟联系人详情页的读取和局部更新：标签、状态、备注、最近互动。
+ * 更新结果只来自本地 fixture 和请求输入，不写真实联系人记录。
+ */
 import {
   CONTACT_DETAIL_STATUS_OPTIONS,
   CONTACT_DETAIL_TAG_OPTIONS,
@@ -49,6 +55,7 @@ const supportedInteractionChannels = new Set<ContactDetailLastInteractionChannel
 );
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 联系人详情包含数组和嵌套对象，clone 可以避免 fixture 被调用方污染。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -64,6 +71,7 @@ function success(
 function failure<TCode extends ContactDetailTagStatusErrorCode>(
   code: TCode,
 ): ContactDetailTagStatusFailureForCode<TCode> {
+  // 保留具体错误码类型，让 route 和测试能精确断言失败原因。
   const definition = CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS[code];
 
   return {
@@ -80,6 +88,7 @@ function failure<TCode extends ContactDetailTagStatusErrorCode>(
 function normalizeScenario(
   scenario?: ContactDetailUpdateInput["scenario"],
 ): ContactDetailTagStatusScenario {
+  // scenario 只允许 contract 中定义的值，未知输入默认走 success 规则。
   if (
     scenario &&
     supportedScenarios.has(scenario as ContactDetailTagStatusScenario)
@@ -93,6 +102,7 @@ function normalizeScenario(
 function scenarioResult(
   scenario: ContactDetailTagStatusScenario,
 ): ContactDetailTagStatusResult | null {
+  // get 路径中的 pending 表示页面状态 pending；不会被当作更新冲突。
   switch (scenario) {
     case "empty":
       return success(mockEmptyContactDetailFixture);
@@ -109,6 +119,7 @@ function scenarioResult(
 function updateScenarioResult(
   scenario: ContactDetailTagStatusScenario,
 ): ContactDetailTagStatusResult | null {
+  // update 路径里的 pending 表示“更新暂不可执行”，因此返回错误而不是 pending payload。
   if (scenario === "pending") {
     return updatePendingFailure();
   }
@@ -125,12 +136,14 @@ function updatePendingFailure(): ContactDetailTagStatusUpdatePendingError {
 }
 
 function isDemoContact(contactId: string): boolean {
+  // 当前 mock 只支持一个联系人详情，非 demo id 一律模拟 not found。
   return contactId.trim() === "demo-contact-1";
 }
 
 function normalizedValues(
   values?: readonly (string | null | undefined)[] | null,
 ): string[] {
+  // 标签输入可能包含空值；先 trim 并去掉空字符串再做白名单判断。
   return (
     values
       ?.map((value) => value?.trim() ?? "")
@@ -141,6 +154,7 @@ function normalizedValues(
 function unsupportedTagFailure(
   input: ContactDetailUpdateInput,
 ): ContactDetailTagStatusFailure | null {
+  // tags/addTags/removeTags 三个入口都必须服从同一套可编辑标签白名单。
   const requestedTags = [
     ...normalizedValues(input.tags),
     ...normalizedValues(input.addTags),
@@ -175,6 +189,7 @@ function uniqueTags(tags: readonly string[]): ContactDetailTagOption[] {
 function applyTagRules(
   input: ContactDetailUpdateInput,
 ): ContactDetailTagOption[] {
+  // tags 表示整体替换；addTags/removeTags 表示在当前 fixture 标签上做增量修改。
   const replacementTags = normalizedValues(input.tags);
 
   if (input.tags) {
@@ -198,6 +213,7 @@ function normalizeStatus(
 function normalizeNoteInput(
   note?: ContactDetailUpdateInput["note"],
 ): ContactDetailNoteInput | null {
+  // note 既支持简写字符串，也支持带作者的对象；空白备注会被忽略。
   if (typeof note === "string") {
     const body = note.trim();
 
@@ -250,6 +266,7 @@ function normalizeInteractionChannel(
 function buildLastInteraction(
   input?: ContactDetailLastInteractionInput | null,
 ): ContactDetailLastInteractionMetadata {
+  // 没传最近互动时，使用标准更新 fixture；传入后只覆盖安全字段。
   if (!input) {
     return clonePayload(mockUpdatedContactDetailLastInteraction);
   }
@@ -270,6 +287,7 @@ function buildLastInteraction(
 function buildUpdatePayload(
   input: ContactDetailUpdateInput,
 ): ContactDetailTagStatusPayload {
+  // 汇总所有可编辑字段，生成一个“可复核的更新结果”而不是写入真实联系人。
   const tags = applyTagRules(input);
   const status = normalizeStatus(input.status);
   const note = buildNote(input.note);
@@ -298,6 +316,7 @@ function buildUpdatePayload(
 }
 
 export function createMockContactDetailTagStatusService(): ContactDetailTagStatusService {
+  // get 和 update 共用 not found 校验；update 额外校验状态和标签白名单。
   return {
     getContactDetail(input): ContactDetailTagStatusResult {
       const resolvedScenario = scenarioResult(normalizeScenario(input.scenario));

@@ -1,3 +1,8 @@
+/**
+ * 活动价值推荐 mock 的开发者面板。
+ *
+ * 面板展示本地评分后的活动推荐和 accept 结果，不创建真实日历或通知。
+ */
 import {
   Chip,
   WorkbenchFrame,

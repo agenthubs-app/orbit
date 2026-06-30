@@ -1,3 +1,8 @@
+/**
+ * 提醒调度与通知 mock 的契约测试。
+ *
+ * 验证 reminder schedule、notification queue 和不投递真实通知的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

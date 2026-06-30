@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE =
   "fixture:features/notifications/fixtures.ts" as const;
+// Reminder Schedule Notification contract 描述提醒和通知队列的计划协议。
+// mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const REMINDER_SCHEDULE_NOTIFICATION_ERROR_CODES = [
   "REMINDER_SCHEDULE_NOTIFICATION_REMINDER_ID_REQUIRED",
@@ -37,6 +39,7 @@ export type NotificationQueueChannel = "push" | "email" | "sms" | "in_app";
 
 export type NotificationQueueStatus = "mock_queued" | "mock_grouped";
 
+// list 输入用于过滤已有提醒；generate 输入用于按频率和时间窗口生成建议。
 export interface ReminderScheduleNotificationListInput {
   scenario?: ReminderScheduleNotificationScenario | string | null;
   frequency?: ReminderFrequency | string | null;
@@ -59,6 +62,7 @@ export interface ReminderScheduleNotificationErrorDefinition {
   recovery: string;
 }
 
+// 通知失败定义明确不会回退调用真实投递、cron、数据库或设备。
 export const REMINDER_SCHEDULE_NOTIFICATION_ERROR_DEFINITIONS = {
   REMINDER_SCHEDULE_NOTIFICATION_REMINDER_ID_REQUIRED: {
     code: "REMINDER_SCHEDULE_NOTIFICATION_REMINDER_ID_REQUIRED",
@@ -112,6 +116,7 @@ export type ReminderScheduleNotificationSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-reminder-rules";
 };
 
+// audit 描述提醒仍需人工复核，所有 delivery provider 均为 false。
 export interface ReminderNotificationAudit {
   sourceLabel: string;
   providerBoundary:
@@ -119,6 +124,7 @@ export interface ReminderNotificationAudit {
   verificationAction: "Review reminder evidence";
 }
 
+// ScheduledReminder 是计划中的提醒建议，不是已经注册的系统提醒。
 export interface ScheduledReminder {
   reminderId: string;
   followupTaskId: string;
@@ -163,6 +169,7 @@ export interface GroupedLowPriorityReminder {
   externalNetworkRequested: false;
 }
 
+// QueueEntry 是 mock 通知队列项，不代表任何 provider 已经接收任务。
 export interface NotificationQueueEntry {
   queueEntryId: string;
   reminderIds: readonly string[];

@@ -15,6 +15,8 @@ import { createNetworkDistributionAnalyticsService } from "../../../../features/
 
 export const dynamic = "force-dynamic";
 
+// distributions 是 Dashboard 中“网络分布”分析入口。
+// route 只读取 scenario；分布维度、聚合逻辑和 provenance 由 dashboard service 负责。
 function readInput(request: Request): NetworkDistributionAnalyticsInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -24,11 +26,13 @@ function readInput(request: Request): NetworkDistributionAnalyticsInput {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // 该接口是只读分析视图，返回标准 envelope 和 runtime boundary header。
   const mode = resolveFeatureMode();
   const distributionService = createNetworkDistributionAnalyticsService();
   const result = distributionService.getDistributions(readInput(request));
 
   if (result.success === false) {
+    // analytics failure 映射为共享 AppError，保持 dashboard 子接口错误格式一致。
     const appError = networkDistributionAnalyticsFailureToAppError(result);
 
     return NextResponse.json(

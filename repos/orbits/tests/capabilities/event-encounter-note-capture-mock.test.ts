@@ -1,3 +1,8 @@
+/**
+ * 活动 encounter note mock 的契约测试。
+ *
+ * 锁住现场笔记、参与者、证据记录和 debug-view 可视化。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

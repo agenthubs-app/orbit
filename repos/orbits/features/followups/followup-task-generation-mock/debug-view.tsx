@@ -1,3 +1,8 @@
+/**
+ * 跟进任务生成 mock 的开发者面板。
+ *
+ * 这里展示触发信号如何生成 follow-up tasks，并验证任务生成不会创建真实提醒。
+ */
 import {
   Chip,
   WorkbenchFrame,

@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const DUPLICATE_DETECTION_MERGE_FIXTURE_SOURCE =
   "fixture:features/acquisition/merge-contract.ts" as const;
 
+// Duplicate Detection Merge contract 描述导入候选人与既有联系人之间的合并建议。
+// 它只给出可复核合并计划，默认不执行破坏性 merge 或数据库写入。
 export const DUPLICATE_DETECTION_MATCH_REASONS = [
   "email",
   "name_organization",
@@ -42,6 +44,7 @@ export type DuplicateMergeApplyScenario =
 export type DuplicateDetectionMergeState = "success" | "empty" | "pending";
 export type DuplicateDetectionConfidence = "high" | "medium" | "low";
 
+// suggestion 输入读取合并建议；apply 输入必须指定 suggestionId 和确认场景。
 export interface DuplicateMergeSuggestionInput {
   scenario?: DuplicateDetectionMergeScenario | string | null;
 }
@@ -59,6 +62,7 @@ export interface DuplicateDetectionMergeErrorDefinition {
   recovery: string;
 }
 
+// 合并错误定义把 pending review 和 destructive merge blocked 明确区分。
 export const DUPLICATE_DETECTION_MERGE_ERROR_DEFINITIONS = {
   DUPLICATE_MERGE_SUGGESTION_NOT_FOUND: {
     code: "DUPLICATE_MERGE_SUGGESTION_NOT_FOUND",
@@ -101,6 +105,7 @@ export type DuplicateMergeSourceReference = SourceReferenceDTO & {
   batchId: string;
 };
 
+// provenance 记录合并流程未执行真实写入、破坏性合并或邮件日历读取。
 export interface DuplicateMergeProvenance {
   source: string;
   sourceLabel: string;
@@ -127,6 +132,7 @@ export interface DuplicateMergeEvidence {
   createdBy: "mock-duplicate-merge-service";
 }
 
+// duplicate candidate 只描述可能重复的两边记录，不自动选边或写入。
 export interface ImportedContactDuplicateCandidate {
   candidateId: string;
   importedDraftId: string;
@@ -149,6 +155,7 @@ export interface ImportedContactDuplicateCandidate {
   aiProviderRequested: false;
 }
 
+// field decision 是合并计划里逐字段选择的解释，便于用户复核。
 export interface DuplicateMergeFieldDecision {
   field: "displayName" | "role" | "organization" | "email" | "relationshipContext";
   selectedFrom: "imported_draft" | "existing_contact" | "combined";

@@ -25,6 +25,8 @@ const supportedScenarios = new Set<NetworkDistributionAnalyticsScenario>([
   "failure",
 ]);
 
+// Network distribution mock 只在 fixture 之间切换，模拟 dashboard 的成功/空/等待/失败状态。
+// 它不重新计算真实网络指标，所有 payload 都来自 contract fixture。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -48,6 +50,7 @@ function gapsSuccess(data: NetworkGapAnalysisPayload): NetworkGapAnalysisResult 
 function failure(
   code: NetworkDistributionAnalyticsErrorCode,
 ): NetworkDistributionAnalyticsFailure {
+  // dashboard 子分析失败统一带上 mock provenance，方便 API envelope 解释错误来源。
   const definition = NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS[code];
 
   return {
@@ -64,6 +67,7 @@ function failure(
 function normalizeScenario(
   scenario?: NetworkDistributionAnalyticsInput["scenario"],
 ): NetworkDistributionAnalyticsScenario {
+  // 只允许 contract 支持的 scenario；未知值回到默认 success。
   if (
     scenario &&
     supportedScenarios.has(scenario as NetworkDistributionAnalyticsScenario)
@@ -77,6 +81,7 @@ function normalizeScenario(
 function distributionsScenarioResult(
   scenario: NetworkDistributionAnalyticsScenario,
 ): NetworkDistributionAnalyticsResult {
+  // distribution 和 gaps 共用 scenario 语义，但返回不同 payload shape。
   switch (scenario) {
     case "empty":
       return distributionsSuccess(mockEmptyNetworkDistributionAnalyticsFixture);
@@ -109,10 +114,12 @@ function gapsScenarioResult(
 export function createMockNetworkDistributionAnalyticsService(): NetworkDistributionAnalyticsService {
   return {
     getDistributions(input = {}): NetworkDistributionAnalyticsResult {
+      // 返回网络分布分析 fixture。
       return distributionsScenarioResult(normalizeScenario(input.scenario));
     },
 
     getNetworkGaps(input = {}): NetworkGapAnalysisResult {
+      // 返回网络缺口分析 fixture。
       return gapsScenarioResult(normalizeScenario(input.scenario));
     },
   };

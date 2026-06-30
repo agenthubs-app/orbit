@@ -1,3 +1,8 @@
+/**
+ * 关系阶段与画像 mock 的开发者面板。
+ *
+ * 这里展示 stage/profile 更新如何从本地证据和显式输入生成可复核结果。
+ */
 import {
   Chip,
   Field,

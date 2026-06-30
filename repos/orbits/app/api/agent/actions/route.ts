@@ -13,6 +13,8 @@ import {
 } from "../../../../features/agent/service";
 import { createAgentActionQueueService } from "../../../../features/agent/service-factory";
 
+// Agent actions route 暴露待确认的 agent 动作队列。
+// 它只列出可复核动作，不执行外部发送、排程或写入。
 export const dynamic = "force-dynamic";
 
 function readInput(request: Request): AgentActionQueueListInput {
@@ -25,6 +27,7 @@ function readInput(request: Request): AgentActionQueueListInput {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // actionType/scenario 用于筛选 mock 队列和测试失败/空态。
   const mode = resolveFeatureMode();
   const agentActionService = createAgentActionQueueService();
   const result = agentActionService.listActions(readInput(request));

@@ -1,3 +1,8 @@
+/**
+ * 现场 want-to-connect mock 的开发者面板。
+ *
+ * 这里展示匹配候选、连接意图和 match notice，确认现场连接动作仍停在本地边界。
+ */
 import {
   Chip,
   Field,

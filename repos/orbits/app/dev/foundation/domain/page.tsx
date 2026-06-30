@@ -1,4 +1,10 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
+/**
+ * 领域契约基础页。
+ *
+ * 这个开发页把核心 DTO、source type、关系阶段和 feature mode 边界集中展示，
+ * 方便接新能力前先确认共享 domain contract。
+ */
 import "../../../globals.css";
 import {
   Chip,

@@ -23,6 +23,8 @@ const supportedScenarios = new Set<ChatSummaryExtractionScenario>([
 
 const knownConversationIds = new Set(["demo-conversation-1"]);
 
+// Chat summary/extraction mock 模拟从会话中生成摘要和关系信号。
+// 它不调用模型，只根据 conversationId 和 scenario 返回稳定 fixture。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -76,6 +78,7 @@ function normalizeScenario(
 function validateConversation(
   input: ChatSummaryExtractionInput,
 ): ChatSummaryExtractionFailure | null {
+  // 摘要和信号提取都必须绑定到已知 demo conversation。
   const conversationId = readConversationId(input);
 
   if (!conversationId) {
@@ -93,6 +96,7 @@ function resultForScenario(
   scenario: ChatSummaryExtractionScenario,
   successPayload: ChatSummaryExtractionPayload,
 ): ChatSummaryExtractionResult {
+  // summarize/extract 共用 scenario 分支，只是 success payload 不同。
   switch (scenario) {
     case "empty":
       return success(mockEmptyChatSummaryFixture);
@@ -111,6 +115,7 @@ export function createMockChatSummaryExtractionService(): ChatSummaryExtractionS
     summarizeConversation(
       input: ChatSummaryExtractionInput,
     ): ChatSummaryExtractionResult {
+      // 返回会话摘要 fixture。
       const validation = validateConversation(input);
 
       if (validation) {
@@ -125,6 +130,7 @@ export function createMockChatSummaryExtractionService(): ChatSummaryExtractionS
     extractConversationSignals(
       input: ChatSummaryExtractionInput,
     ): ChatSummaryExtractionResult {
+      // 返回关系信号 extraction fixture。
       const validation = validateConversation(input);
 
       if (validation) {

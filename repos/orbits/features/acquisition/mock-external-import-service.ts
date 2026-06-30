@@ -36,6 +36,8 @@ const supportedSourceKinds = new Set<ExternalContactsImportSourceKind>(
   EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS,
 );
 
+// ExternalContactsImport mock service 模拟从外部联系人来源筛选候选人并生成草稿。
+// 它不连接 Gmail/通讯录/CRM，也不执行真实导入写入。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -61,6 +63,7 @@ function importSuccess(
 function failure(
   code: ExternalContactsImportErrorCode,
 ): ExternalContactsImportFailure {
+  // 外部导入失败同样是本地 mock 边界里的受控失败，不代表 provider 错误。
   const definition = EXTERNAL_CONTACTS_IMPORT_ERROR_DEFINITIONS[code];
 
   return {
@@ -110,6 +113,7 @@ function normalizeSourceKind(
 function sourceFailure(
   sourceKind?: ExternalContactsImportInput["sourceKind"],
 ): ExternalContactsImportFailure | null {
+  // 未传 sourceKind 表示使用全部来源；显式传入不支持的来源必须失败。
   if (sourceKind === undefined || sourceKind === null || sourceKind.trim() === "") {
     return null;
   }
@@ -160,6 +164,7 @@ function filterDrafts(
 function buildRuleBasedCandidatesPayload(
   sourceKind: ExternalContactsImportSourceKind,
 ): ExternalContactsCandidatesPayload {
+  // candidates 视图只展示候选人；import 视图会在此基础上追加 contactDrafts。
   const candidates = filterCandidates(sourceKind);
   const sources = filterSources(sourceKind);
   const state = candidates.length > 0 ? "success" : "empty";
@@ -192,6 +197,7 @@ function buildRuleBasedCandidatesPayload(
 function buildRuleBasedImportPayload(
   sourceKind: ExternalContactsImportSourceKind,
 ): ExternalContactsImportPayload {
+  // import payload 仍然只是 staged drafts，未写真实 contacts。
   const candidatesPayload = buildRuleBasedCandidatesPayload(sourceKind);
   const contactDrafts = filterDrafts(sourceKind);
 
@@ -238,6 +244,7 @@ function scenarioImportResult(
 }
 
 export function createMockExternalContactsImportService(): ExternalContactsImportService {
+  // listExternalContactCandidates 和 importExternalContacts 共享 sourceKind 过滤规则。
   return {
     listExternalContactCandidates(
       input = {},

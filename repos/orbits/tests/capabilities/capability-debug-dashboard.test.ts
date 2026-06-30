@@ -1,3 +1,8 @@
+/**
+ * Capability debug dashboard 的契约测试。
+ *
+ * 验证 dashboard fixture、service scenario、debug-view 和 dev API probe 元数据。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

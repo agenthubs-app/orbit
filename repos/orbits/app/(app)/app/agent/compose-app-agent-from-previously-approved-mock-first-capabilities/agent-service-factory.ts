@@ -16,6 +16,8 @@ import {
   type ServiceResolution,
 } from "../../../../../shared/services/module-mode";
 
+// Agent 页面需要同时读取动作队列、自治设置、确认流、通知和外部动作沙箱。
+// 这个文件把这些 feature service 聚合成页面级依赖，页面组件不直接知道各模块的 factory。
 export interface AppAgentRouteServices {
   agentActionService: AgentActionQueueService;
   confirmationService: SensitiveActionConfirmationService;
@@ -24,6 +26,7 @@ export interface AppAgentRouteServices {
   settingsService: AgentAutonomySettingsService;
 }
 
+// 每个页面级 factory 都声明 capabilityId，方便未来把某个能力从 mock 切到 live/hybrid。
 export const appAgentActionServiceFactory =
   createModuleServiceFactory<AgentActionQueueService>({
     capabilityId: "app-agent-action-queue",
@@ -67,6 +70,7 @@ export const appAgentNotificationServiceFactory =
 export function resolveAppAgentRouteServices(
   mode?: ModuleMode | string,
 ): ServiceResolution<AppAgentRouteServices> {
+  // 分别解析每个子服务，任何一个能力在目标 mode 下不可用都会阻止页面继续装配。
   const agentActionResolution = appAgentActionServiceFactory.create(mode);
   const settingsResolution = appAgentSettingsServiceFactory.create(mode);
   const confirmationResolution = appAgentConfirmationServiceFactory.create(mode);
@@ -93,6 +97,7 @@ export function resolveAppAgentRouteServices(
     return notificationResolution;
   }
 
+  // 所有子服务解析成功后，返回一个页面可直接消费的聚合 service bundle。
   return {
     success: true,
     mode: agentActionResolution.mode,
@@ -107,6 +112,7 @@ export function resolveAppAgentRouteServices(
 }
 
 export function createAppAgentRouteServices(): AppAgentRouteServices {
+  // 页面运行时使用 throwing 版本；测试或上层切换 mode 时可用 resolve 版本拿结构化错误。
   const resolution = resolveAppAgentRouteServices();
 
   if (resolution.success === false) {

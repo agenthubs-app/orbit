@@ -29,6 +29,8 @@ const supportedScenarios = new Set<ChatPrivacyControlsScenario>([
 const defaultConversationId = "demo-conversation-privacy-1";
 const knownConversationIds = new Set([defaultConversationId]);
 
+// Chat privacy mock 模拟隐私控制面板、分析开关、删除请求和敏感分享确认。
+// 它只返回 fixture，不执行真实删除、共享或持久权限变更。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -59,6 +61,7 @@ function failure(
 function readConversationId(
   input?: ChatPrivacyControlsInput,
 ): string | null {
+  // 未传 conversationId 时使用默认 demo conversation；显式空字符串才触发 required failure。
   if (
     !input ||
     !Object.prototype.hasOwnProperty.call(input, "conversationId") ||
@@ -77,6 +80,7 @@ function readConversationId(
 function validateConversation(
   input?: ChatPrivacyControlsInput,
 ): ChatPrivacyControlsFailure | null {
+  // 所有 privacy 操作都必须落在已知 demo conversation 上。
   const conversationId = readConversationId(input);
 
   if (!conversationId) {
@@ -124,6 +128,7 @@ export function createMockChatPrivacyControlsService(): ChatPrivacyControlsServi
     getPrivacyControls(
       input?: ChatPrivacyControlsInput,
     ): ChatPrivacyControlsResult {
+      // 读取控制面板只做 conversation 校验和 scenario 切换。
       const validation = validateConversation(input);
 
       if (validation) {
@@ -135,6 +140,7 @@ export function createMockChatPrivacyControlsService(): ChatPrivacyControlsServi
     setAnalysisOptIn(
       input: ChatAnalysisOptInInput,
     ): ChatPrivacyControlsResult {
+      // 切换分析开关要求 enabled 是 boolean，避免字符串/缺省造成歧义。
       const validation = validateConversation(input);
 
       if (validation) {
@@ -160,6 +166,7 @@ export function createMockChatPrivacyControlsService(): ChatPrivacyControlsServi
     requestAnalysisDeletion(
       input?: ChatPrivacyControlsInput,
     ): ChatPrivacyControlsResult {
+      // 删除请求返回“已请求删除”的 fixture，不执行真实存储删除。
       const validation = validateConversation(input);
 
       if (validation) {
@@ -175,6 +182,7 @@ export function createMockChatPrivacyControlsService(): ChatPrivacyControlsServi
     prepareSensitiveShare(
       input: ChatSensitiveShareInput,
     ): ChatPrivacyControlsResult {
+      // 敏感分享必须 confirmed=true；否则返回确认要求失败。
       const validation = validateConversation(input);
 
       if (validation) {

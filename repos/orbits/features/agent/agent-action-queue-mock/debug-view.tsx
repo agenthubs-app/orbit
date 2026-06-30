@@ -1,3 +1,9 @@
+/**
+ * Agent 动作队列 mock 的开发者面板。
+ *
+ * 面板展示待确认的建议动作、来源、风险和 accept/dismiss 结果；
+ * 所有动作都停留在本地审计层，不执行外部副作用。
+ */
 import {
   Chip,
   WorkbenchFrame,

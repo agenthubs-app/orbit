@@ -25,6 +25,8 @@ const supportedScenarios = new Set<SourceConsistencyProvenanceAuditScenario>([
   "failure",
 ]);
 
+// Provenance audit mock service 汇总来源一致性和证据覆盖情况。
+// 它不扫描生产数据库，只返回 fixture 或本地 run fixture，供 UI/route 验证审计边界。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -50,6 +52,7 @@ function runSuccess(
 function failure(
   code: SourceConsistencyProvenanceAuditErrorCode,
 ): SourceConsistencyProvenanceAuditFailure {
+  // audit failure 代表本地审计 fixture 失败，不代表真实后台审计任务失败。
   const definition = SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ERROR_DEFINITIONS[code];
 
   return {
@@ -80,6 +83,7 @@ function normalizeScenario(
 function auditScenarioResult(
   scenario: SourceConsistencyProvenanceAuditScenario,
 ): SourceConsistencyProvenanceAuditResult {
+  // snapshot 是当前审计视图；run 是一次审计执行结果，两者共享 scenario 控制。
   switch (scenario) {
     case "empty":
       return auditSuccess(mockEmptySourceConsistencyProvenanceAuditFixture);
@@ -110,6 +114,7 @@ function runScenarioResult(
 }
 
 export function createMockSourceConsistencyProvenanceAuditService(): SourceConsistencyProvenanceAuditService {
+  // getAuditSnapshot 和 runAudit 都不产生副作用，只返回各自的 deterministic payload。
   return {
     getAuditSnapshot(
       input = {},

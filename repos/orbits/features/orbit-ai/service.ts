@@ -11,12 +11,17 @@ import type {
   OrbitAgentSendMessageInput,
 } from "./conversation-contract";
 
+// Orbit AI 的 service interface 聚合点。
+// 各 API route 和页面 view model 只依赖这些接口，
+// 具体 mock/live 实现由 service-factory 选择。
 export type MaybePromise<TValue> = TValue | Promise<TValue>;
 
+// 旧 command center 能力：当前只有 mock，用于首页/命令中心类 UI。
 export interface OrbitAiCommandService {
   getCommandCenter: (input?: OrbitAiCommandInput) => OrbitAiCommandResult;
 }
 
+// Chat Agent conversation 能力：mock 可以同步返回，live 会异步调用模型 provider。
 export interface OrbitAgentConversationService {
   listConversations: (
     input?: OrbitAgentConversationInput,
@@ -29,6 +34,8 @@ export interface OrbitAgentConversationService {
   ) => MaybePromise<OrbitAgentConversationResult>;
 }
 
+// Artifact task 能力：把模型计划出的内部工具请求转成可复核 UI 面板。
+// 当前实现仍是 mock，后续真实子 agent 可以在不改 UI contract 的前提下替换。
 export interface OrbitAgentArtifactTaskService {
   createArtifactTask: (
     input: OrbitAgentArtifactTaskRequest,

@@ -1,3 +1,8 @@
+/**
+ * 活动后联系人复核 mock 的开发者面板。
+ *
+ * 面板展示活动后待确认联系人、复核结果和 confirm payload，避免自动写入联系人。
+ */
 import {
   Chip,
   Field,

@@ -1,3 +1,10 @@
+/**
+ * 联系人详情页的 route-level 聚合服务。
+ *
+ * 这个文件把联系人详情、关系证据和关系价值评分三个 capability service
+ * 组合成页面需要的单一 view model。它不直接读写数据库；即使用户触发
+ * `prepare-follow-up`，也只生成本地草稿和证据结果，不发送消息或执行外部动作。
+ */
 import { createRelationshipValueScoringService } from "../../../../../features/analysis/service-factory";
 import type {
   RelationshipValueAssessment,
@@ -92,6 +99,7 @@ interface AppContactDetailRouteServices {
 }
 
 const contactDetailServiceFactory =
+  // route 通过 module factory 获取 service，后续可切换 mock/hybrid/live，而页面不用改。
   createModuleServiceFactory<ContactDetailTagStatusService>({
     capabilityId: "app-contacts-demo-contact-1.contact-detail",
     implementations: {
@@ -116,6 +124,7 @@ const relationshipValueServiceFactory =
   });
 
 const routeBoundaryCopy = {
+  // 三种非成功状态统一在这里维护文案和恢复动作，避免页面组件硬编码错误处理。
   empty: {
     description:
       "Choose a contact with source evidence before reviewing tags, status, connection context, or relationship value.",
@@ -176,6 +185,7 @@ const routeBoundaryCopy = {
 function normalizeScenario(
   scenario?: string | null,
 ): AppContactDetailRouteScenario | null {
+  // 只允许 route 明确支持的 scenario 进入下游 capability service。
   if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
     return scenario;
   }
@@ -184,6 +194,7 @@ function normalizeScenario(
 }
 
 function normalizeAction(action?: string | null): AppContactDetailRouteAction | null {
+  // 历史 query 名称 `stage-local-review` 也映射到同一个本地 follow-up 准备动作。
   if (action === "prepare-follow-up" || action === "stage-local-review") {
     return "prepare-follow-up";
   }
@@ -205,6 +216,7 @@ function createBoundaryModel(
 function resolveRouteServices(
   mode?: ModuleMode | string,
 ): AppContactDetailRouteServices | AppContactDetailBoundaryModel {
+  // 任一 capability factory 无法解析时，整条 route 进入 failure boundary。
   const contactDetail = contactDetailServiceFactory.create(mode);
 
   if (contactDetail.success === false) {
@@ -241,6 +253,7 @@ function collectRouteEvidenceIds(
   connectionPayload: ConnectionEvidenceDetailPayload,
   valuePayload: RelationshipValuePayload,
 ): string[] {
+  // 页面顶部只需要一组合并后的 evidence id，重复证据在这里去重。
   return Array.from(
     new Set([
       ...contactPayload.provenance.evidenceIds,
@@ -252,6 +265,8 @@ function collectRouteEvidenceIds(
 
 function buildLocalActionResult(
   connectionEvidence: ConnectionEvidenceService,
+  // 本地 action 只向 mock connection evidence 追加一条可复核证据。
+  // 返回的 actionResult 明确标记无数据库查询、无写入、无通知、无消息发送。
 ): AppContactDetailLocalActionResult | null {
   const result = connectionEvidence.addEvidence({
     connectionId: APP_CONTACT_DETAIL_CONNECTION_ID,
@@ -302,6 +317,7 @@ function routeStateForPayloads(
   connectionPayload: ConnectionEvidenceDetailPayload,
   valuePayload: RelationshipValuePayload,
 ): Exclude<AppContactDetailRouteState, "success"> | null {
+  // 任一组成 payload 还在 pending，就让整个 route 展示 pending 边界。
   if (
     contactPayload.state === "pending" ||
     connectionPayload.state === "pending" ||
@@ -322,6 +338,8 @@ export function loadAppContactDetailRoute({
   contactId,
   mode,
   scenario,
+  // 主入口：解析服务 -> 拉取三个 capability payload -> 合并失败/空/pending 状态 ->
+  // 成功时返回详情、证据时间线、关系价值和可选本地 actionResult。
 }: AppContactDetailRouteInput): AppContactDetailRouteModel {
   const services = resolveRouteServices(mode);
 

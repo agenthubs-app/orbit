@@ -6,10 +6,14 @@ import { loadOrbitAiCommandViewModel } from "./orbit-ai-route-view-model";
 import { bilingualText } from "../../../shared/ui/bilingual";
 import { Chip } from "../../../shared/ui/primitives";
 
+// OrbitAiCommandCenter 是旧 Orbit AI command 面板的纯展示组件。
+// 真实 Chat Agent 对话在 /app/chat 的 Orbit Agent 区域和 conversation service 中处理；
+// 这里只展示导航、命令建议、来源证据和“待确认预览”状态。
 export interface OrbitAiCommandCenterProps {
   searchParams?: OrbitAiCommandSearchParams;
 }
 
+// 这段 CSS 只属于 command center，避免全局 app shell 样式污染其它页面。
 const orbitAiCommandStyles = `
 .orbit-ai-command-center {
   --orbit-ai-dark: #16181d;
@@ -655,6 +659,7 @@ const orbitNodePositions = [
   { x: "18%", y: "36%" },
 ] as const;
 
+// rail 中的 panel 顺序是产品信息架构；不是 service 调用顺序。
 const orbitAiNavPanels = [
   "home",
   "people",
@@ -689,6 +694,7 @@ const orbitAiNavLabels: Record<
   },
 };
 
+// 根据 panel/lang 生成同页导航 URL，保持 command center 是 search-param 驱动。
 function orbitPanelHref(language: "zh" | "en", panel: AppOrbitAiPanel): string {
   const params = new URLSearchParams();
 
@@ -705,6 +711,7 @@ function orbitPanelHref(language: "zh" | "en", panel: AppOrbitAiPanel): string {
   return queryString ? `/app?${queryString}` : "/app";
 }
 
+// 这里用内联 SVG 保持 command center 独立；其它页面可继续使用共享 icon 体系。
 function OrbitAiNavIcon({ panel }: { panel: AppOrbitAiPanel }) {
   if (panel === "events") {
     return (
@@ -840,6 +847,7 @@ const orbitAiUiCopy = {
 
 type OrbitAiUiCopy = Record<keyof typeof orbitAiUiCopy.en, string>;
 
+// 中文主界面仍保留英文 fallback，便于中英双语审核同一屏 UI 文案。
 const orbitAiEnglishStageTitles: Record<AppOrbitAiPanel, string> = {
   agent: "Review-before-action queue",
   dashboard: "Network signal",
@@ -861,6 +869,7 @@ const orbitAiEnglishCommandLabels: Record<
   schedule: "Check schedule",
 };
 
+// bilingualOrbitAiCopy 只处理 UI 文案，不修改 service 返回的数据。
 function bilingualOrbitAiCopy(copy: typeof orbitAiUiCopy.zh): OrbitAiUiCopy {
   return {
     actionBarBody: bilingualText(
@@ -905,10 +914,12 @@ function bilingualOrbitAiCopy(copy: typeof orbitAiUiCopy.zh): OrbitAiUiCopy {
   };
 }
 
+// 避免中英文完全相同时重复展示双语。
 function bilingualIfDifferent(chinese: string, english: string): string {
   return chinese === english ? chinese : bilingualText(chinese, english);
 }
 
+// 组件入口：先加载 view-model，再按 chat + side stage + reviewed preview 三块渲染。
 export function OrbitAiCommandCenter({
   searchParams,
 }: OrbitAiCommandCenterProps = {}) {

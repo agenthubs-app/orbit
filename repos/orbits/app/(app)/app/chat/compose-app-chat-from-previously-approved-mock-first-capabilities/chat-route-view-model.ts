@@ -27,6 +27,9 @@ import {
 import { createOrbitAgentConversationService } from "../../../../../features/orbit-ai/service-factory";
 import { createAppChatRouteServices } from "./chat-service-factory";
 
+// Chat route view-model 是传统 chat 页的总装层。
+// 它同时读取 chat、writing assist、summary、privacy 和 Orbit Agent conversation service，
+// 再把多个 feature contract 合并成一个页面可渲染的 workspace。
 export type AppChatSearchParams = Record<string, string | string[] | undefined>;
 export type AppChatRouteScenario = "empty" | "pending" | "failure";
 
@@ -186,6 +189,7 @@ export type AppChatRouteViewModel =
       routeState: AppChatRouteStateViewModel;
     };
 
+// querystring 可能来自 Next searchParams 或表单提交；数组值只取第一个。
 export function readAppChatSearchParam(
   searchParams: AppChatSearchParams | undefined,
   key: string,
@@ -199,6 +203,7 @@ export function readAppChatSearchParam(
   return value ?? null;
 }
 
+// scenario 只服务状态演示/测试；正常页面不带 scenario 时走成功工作区。
 export function readAppChatRouteScenario(
   searchParams: AppChatSearchParams | undefined,
 ): AppChatRouteScenario | null {
@@ -234,6 +239,7 @@ function shortTimestamp(value: string): string {
   return value.replace("T", " ").slice(0, 16);
 }
 
+// productCopy 把底层 contract 的工程词替换成用户可读页面文案。
 function productCopy(value: string): string {
   const replacements: readonly [RegExp, string][] = [
     [/\bfixtures?\b/gi, "source record"],
@@ -261,6 +267,7 @@ function isRouteStateFailure(result: ChatRouteResult): result is ChatRouteFailur
   return result.success === false;
 }
 
+// route-state 需要从多个服务结果中抽取 evidence，成功和失败格式不同，先收敛到一个 helper。
 function evidenceIdsForResult(result: ChatRouteResult): readonly string[] {
   if (isRouteStateSuccess(result)) {
     return result.data.provenance.evidenceIds;
@@ -273,6 +280,7 @@ function evidenceIdsForResult(result: ChatRouteResult): readonly string[] {
   return [];
 }
 
+// 页面公开展示 evidence 时过滤 mock 字样，保留更像用户可读来源的 ID。
 function publicEvidenceIds(evidenceIds: readonly string[]): string[] {
   return evidenceIds.filter(
     (evidenceId) => !evidenceId.toLowerCase().includes("mock"),
@@ -289,6 +297,7 @@ function firstFailure(results: readonly ChatRouteResult[]): ChatRouteFailure | n
   return results.find(isRouteStateFailure) ?? null;
 }
 
+// stateCopy 是 empty/pending/failure 三个页面状态的文案表。
 function stateCopy(scenario: AppChatRouteScenario): AppChatRouteStateCopyViewModel {
   if (scenario === "empty") {
     return {
@@ -334,6 +343,7 @@ function stateCopy(scenario: AppChatRouteScenario): AppChatRouteStateCopyViewMod
   };
 }
 
+// 以下转换函数把 feature contract DTO 收窄成页面组件真正需要的字段。
 function conversationViewModel(
   conversation: ChatConversationListPayload["conversations"][number],
 ): AppChatConversationViewModel {
@@ -434,6 +444,7 @@ function actionResultViewModel(input: {
   };
 }
 
+// artifact surface 来自 Orbit Agent artifact view-model；这里只做 UI 字段透传和重命名。
 function agentArtifactSurfaceViewModel(
   surface: OrbitAgentArtifactSurfaceViewModel | null,
 ): AppChatAgentArtifactSurfaceViewModel | null {
@@ -475,6 +486,7 @@ function agentArtifactSurfaceViewModel(
   };
 }
 
+// prompt 存在时才触发 Orbit Agent；不带 prompt 的普通 chat 页面不会调用 agent。
 function readAgentPrompt(
   searchParams: AppChatSearchParams | undefined,
 ): string | null {
@@ -483,6 +495,8 @@ function readAgentPrompt(
   return prompt && prompt.trim() ? prompt.trim() : null;
 }
 
+// agentTurnViewModel 是 chat 页接入 Chat Agent API 的位置。
+// 服务具体走 mock 还是 live 由 ORBIT_AGENT_CONVERSATION_MODE/.env 决定，UI 只消费 contract。
 async function agentTurnViewModel(
   prompt: string | null,
 ): Promise<AppChatAgentTurnViewModel | null> {
@@ -514,6 +528,7 @@ async function agentTurnViewModel(
   };
 }
 
+// workspaceViewModel 把多个成功 payload 合成一个页面工作区。
 function workspaceViewModel(input: {
   actionResult: ChatSendMessagePayload | null;
   agentTurn: AppChatAgentTurnViewModel | null;
@@ -547,6 +562,7 @@ function workspaceViewModel(input: {
   };
 }
 
+// 加载固定 route-state，用于测试 empty/pending/failure 分支和恢复路径。
 export function loadAppChatRouteStateViewModel(
   scenario: AppChatRouteScenario,
 ): AppChatRouteStateViewModel {
@@ -592,6 +608,7 @@ export function loadAppChatRouteStateViewModel(
   };
 }
 
+// 主加载函数：先处理 scenario，再读 conversation/thread/assist/summary/privacy，最后按需跑 agent。
 export async function loadAppChatRouteViewModel(
   searchParams?: AppChatSearchParams,
 ): Promise<AppChatRouteViewModel> {

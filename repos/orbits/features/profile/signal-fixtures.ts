@@ -1,3 +1,9 @@
+/**
+ * 个人资料信号复核 fixture。
+ *
+ * 数据表示从外部证据推导出的 profile update suggestion，以及接受建议后的本地 patch。
+ * 这些 fixture 用来验证复核队列，不会绕过用户确认直接写入资料。
+ */
 import type {
   ProfileSignalEvidence,
   ProfileSignalReviewQueuePayload,

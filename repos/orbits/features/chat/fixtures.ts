@@ -1,3 +1,9 @@
+/**
+ * Chat 会话和消息 fixture。
+ *
+ * 这里定义 mock 对话列表、线程消息、发送状态和 provenance。
+ * 数据重点是关系上下文聊天，不负责 live Agent 的模型规划或外部动作执行。
+ */
 import type {
   ChatConversationListPayload,
   ChatConversationMockProvenance,
@@ -103,6 +109,7 @@ export const blockedSendMessageState: ChatSendMessageState = {
   externalSendRequested: false,
 };
 
+// 对话列表提供多个关系上下文，方便测试左侧会话列表和当前会话切换。
 export const mockChatConversations: readonly ChatConversationSummary[] = [
   {
     conversationId: "demo-conversation-1",

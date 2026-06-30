@@ -1,3 +1,9 @@
+/**
+ * 手动创建联系人 mock 的开发者面板。
+ *
+ * 这里展示人工输入如何变成 source-backed contact draft，
+ * 并覆盖确认、空状态、pending 和受控失败路径。
+ */
 import {
   Chip,
   Field,

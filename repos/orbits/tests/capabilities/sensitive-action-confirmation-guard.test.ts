@@ -1,3 +1,8 @@
+/**
+ * 敏感动作确认守卫的契约测试。
+ *
+ * 锁住 confirmation requirement、approve/reject 和敏感动作不直接执行的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

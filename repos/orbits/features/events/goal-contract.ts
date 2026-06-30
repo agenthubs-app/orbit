@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const EVENT_GOAL_READINESS_FIXTURE_SOURCE =
   "fixture:features/events/goal-contract.ts" as const;
 
+// Event Goal Readiness contract 描述活动前目标、准备清单和 readiness 状态。
+// 当前不会调用 AI、日历、邮件或通知，只生成可复核准备建议。
 export const EVENT_GOAL_READINESS_ERROR_CODES = [
   "EVENT_GOAL_READINESS_EVENT_ID_REQUIRED",
   "EVENT_GOAL_READINESS_EVENT_NOT_FOUND",
@@ -33,6 +35,7 @@ export type EventGoalFocus =
 
 export type EventReadinessChecklistStatus = "ready" | "pending" | "blocked";
 
+// readiness 读取、goal suggestion 和 goal set 输入分开，避免混淆读/写语义。
 export interface EventGoalReadinessInput {
   eventId?: string | null;
   scenario?: EventGoalReadinessScenario | string | null;
@@ -54,6 +57,7 @@ export interface EventGoalReadinessErrorDefinition {
   recovery: string;
 }
 
+// readiness 错误定义覆盖缺 event、缺 goal、准备 pending 和受控失败。
 export const EVENT_GOAL_READINESS_ERROR_DEFINITIONS = {
   EVENT_GOAL_READINESS_EVENT_ID_REQUIRED: {
     code: "EVENT_GOAL_READINESS_EVENT_ID_REQUIRED",
@@ -105,6 +109,7 @@ export type EventGoalReadinessSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-event-goal-readiness-service";
 };
 
+// EventGoalReadinessEvent 是准备状态里的活动摘要，不触碰真实日历。
 export interface EventGoalReadinessEvent {
   id: string;
   title: string;
@@ -117,6 +122,7 @@ export interface EventGoalReadinessEvent {
   liveDatabaseWriteExecuted: false;
 }
 
+// EventGoalSuggestion 是基于关系焦点的目标建议，不来自 live AI。
 export interface EventGoalSuggestion {
   goalId: string;
   focus: EventGoalFocus;
@@ -131,6 +137,7 @@ export interface EventGoalSuggestion {
   externalNetworkRequested: false;
 }
 
+// EventGoalRecord 是当前活动目标的 staged 记录。
 export interface EventGoalRecord {
   goalId: string;
   eventId: string;
@@ -147,6 +154,7 @@ export interface EventGoalRecord {
   externalNetworkRequested: false;
 }
 
+// ReadinessChecklistItem 是可展示的准备事项，owner 表示谁负责。
 export interface EventReadinessChecklistItem {
   itemId: string;
   label: string;
@@ -162,6 +170,7 @@ export interface EventReadinessChecklistItem {
   liveDatabaseWriteExecuted: false;
 }
 
+// CalendarConflictCheck 是 mock 规则检查，不访问真实日历。
 export interface EventCalendarConflictCheck {
   hasConflict: boolean;
   checkedWindow: string;

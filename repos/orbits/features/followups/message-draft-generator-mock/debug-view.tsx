@@ -1,3 +1,8 @@
+/**
+ * 消息草稿生成 mock 的开发者面板。
+ *
+ * 面板展示不同 draft kind 的来源、正文和确认边界；草稿不会被自动发送。
+ */
 import {
   Chip,
   WorkbenchFrame,

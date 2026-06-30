@@ -15,6 +15,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// Dashboard summary 是首页聚合数据入口。
+// route 只读取 scenario 并调用 dashboard aggregate service，不在 HTTP 层计算指标。
 function readInput(request: Request): DashboardAggregateSummaryInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -24,11 +26,13 @@ function readInput(request: Request): DashboardAggregateSummaryInput {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // feature mode 决定 mock/live/hybrid，同时通过 header 暴露给调试和测试。
   const mode = resolveFeatureMode();
   const dashboardService = createDashboardAggregateService();
   const result = dashboardService.getDashboardSummary(readInput(request));
 
   if (result.success === false) {
+    // 聚合服务失败统一映射为 AppError，避免 dashboard 页面依赖内部错误码。
     const appError = dashboardAggregateFailureToAppError(result);
 
     return NextResponse.json(
@@ -40,6 +44,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  // summary payload 已经是页面需要的 shape，route 只包一层标准 success envelope。
   return NextResponse.json(success(result.data), {
     headers: runtimeBoundaryHeaders(mode),
     status: 200,

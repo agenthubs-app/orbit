@@ -1,3 +1,8 @@
+/**
+ * API envelope 与错误码基础契约测试。
+ *
+ * 这里锁住 success/failure 响应形状、runtime boundary headers 和 AppError 到 HTTP status 的映射。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

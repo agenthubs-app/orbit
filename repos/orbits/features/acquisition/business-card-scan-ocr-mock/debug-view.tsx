@@ -1,3 +1,9 @@
+/**
+ * 名片扫描 OCR mock 的开发者面板。
+ *
+ * 这里可视化名片图片来源、OCR 抽取字段、证据链和 empty/pending/failure 状态，
+ * 用来验证导入 UI，而不是调用真实 OCR provider。
+ */
 import {
   Chip,
   Field,

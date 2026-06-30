@@ -47,6 +47,8 @@ const supportedConfirmationScenarios =
     "failure",
   ]);
 
+// QrScanConnect mock service 模拟扫描 Orbit 关系 QR 并生成连接草稿。
+// 它解析文本形式的 orbit-qr payload，不访问相机、签名校验、关系图、数据库或外部通知。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -68,6 +70,7 @@ function confirmationSuccess(
 }
 
 function failure(code: QrScanConnectErrorCode): QrScanConnectFailure {
+  // 失败结果固定使用 QR mock provenance，说明没有真实扫描/连接副作用。
   const definition = QR_SCAN_CONNECT_ERROR_DEFINITIONS[code];
 
   return {
@@ -129,6 +132,8 @@ function splitList(value: string | undefined): string[] {
     .filter((item) => item.length > 0);
 }
 
+  // 支持的 mock 格式是 orbit-qr:key=value;key=value。
+  // 不符合格式时返回 null，让 service 走 QR_SCAN_PAYLOAD_REQUIRED。
 function parseRuleBasedQrText(qrText: string) {
   const normalizedText = qrText.trim();
   const prefix = "orbit-qr:";
@@ -181,6 +186,7 @@ function buildRuleBasedContext(parsed: {
   mutualConnections: string[];
   sharedTopics: string[];
 }): QrMutualConnectionContext {
+  // mutualContext 是从 QR payload 派生的关系背景，不查真实 mutual graph。
   return {
     ...mockQrMutualConnectionContext,
     contextId: "context:qr-rule-based",
@@ -233,6 +239,7 @@ function buildRuleBasedEvidence(
 function buildRuleBasedPayload(
   input: QrScanConnectInput,
 ): QrScanConnectPayload | null {
+  // 本地规则一次性构造 scan、mutualContext、evidence 和 draft，供 UI 复核。
   const qrText = input.qrText?.trim();
 
   if (!qrText) {
@@ -282,6 +289,7 @@ function buildRuleBasedPayload(
 }
 
 export function createMockQrScanConnectService(): QrScanConnectService {
+  // confirmQrConnectionDraft 返回确认 fixture，但不会创建真实 connection。
   return {
     scanQrCode(input = {}): QrScanConnectResult {
       switch (normalizeScanScenario(input.scenario)) {

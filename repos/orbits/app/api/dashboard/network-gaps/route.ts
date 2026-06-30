@@ -15,6 +15,8 @@ import { createNetworkDistributionAnalyticsService } from "../../../../features/
 
 export const dynamic = "force-dynamic";
 
+// network-gaps 是 Dashboard 的网络缺口分析入口。
+// route 只读取 scenario；缺口维度、建议和 provenance 由 distribution service 生成。
 function readInput(request: Request): NetworkDistributionAnalyticsInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -24,11 +26,13 @@ function readInput(request: Request): NetworkDistributionAnalyticsInput {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // 该接口是只读分析视图，不在 route 层重新计算或写入关系数据。
   const mode = resolveFeatureMode();
   const distributionService = createNetworkDistributionAnalyticsService();
   const result = distributionService.getNetworkGaps(readInput(request));
 
   if (result.success === false) {
+    // dashboard analytics 失败统一映射为共享 AppError。
     const appError = networkDistributionAnalyticsFailureToAppError(result);
 
     return NextResponse.json(

@@ -29,6 +29,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// confirm contact draft 是联系人草稿的确认入口。
+// demo 草稿根据来源分派到对应服务；通用草稿走 acquisition draft service。
 interface ConfirmContactDraftRouteContext {
   params: Promise<{
     id: string;
@@ -39,11 +41,13 @@ export async function POST(
   request: Request,
   context: ConfirmContactDraftRouteContext,
 ): Promise<Response> {
+  // scenario 来自 query，用于复现不同确认状态；confirmation 逻辑在各 service 内部。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
 
   if (id === "demo-qr-draft") {
+    // QR 草稿有独立 confirm 路径，因为它的证据来源和字段结构不同。
     const qrService = createQrScanConnectService();
     const result = qrService.confirmQrConnectionDraft({
       draftId: id,
@@ -51,6 +55,7 @@ export async function POST(
     });
 
     if (result.success === false) {
+      // QR 失败使用 qr contract 的上下文。
       const appError = qrScanConnectFailureToAppError(result);
 
       return NextResponse.json(
@@ -69,6 +74,7 @@ export async function POST(
   }
 
   if (id === "demo-business-card-draft") {
+    // 名片草稿确认前通常已经经过 reviewedFields 复核。
     const reviewService = createBusinessCardReviewService();
     const result = reviewService.confirmReviewedDraft({
       draftId: id,
@@ -76,6 +82,7 @@ export async function POST(
     });
 
     if (result.success === false) {
+      // 名片复核失败使用 review contract 的上下文。
       const appError = businessCardReviewFailureToAppError(result);
 
       return NextResponse.json(
@@ -94,6 +101,7 @@ export async function POST(
   }
 
   if (id === "demo-manual-draft") {
+    // 手动草稿确认走 manual service，保留手工录入来源说明。
     const manualService = createManualContactCreationService();
     const result = manualService.confirmManualContactDraft({
       draftId: id,
@@ -101,6 +109,7 @@ export async function POST(
     });
 
     if (result.success === false) {
+      // 手动创建失败使用 manual contract 的上下文。
       const appError = manualContactCreationFailureToAppError(result);
 
       return NextResponse.json(
@@ -118,6 +127,7 @@ export async function POST(
     });
   }
 
+  // 其他 draft id 走通用草稿确认服务，后续真实数据源也从这里扩展。
   const draftService = createContactAcquisitionDraftService();
   const result = draftService.confirmContactDraft({
     draftId: id,
@@ -125,6 +135,7 @@ export async function POST(
   });
 
   if (result.success === false) {
+    // 通用草稿失败使用 acquisition draft contract 的上下文。
     const appError = contactAcquisitionDraftFailureToAppError(result);
 
     return NextResponse.json(

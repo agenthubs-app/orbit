@@ -1,4 +1,10 @@
 /* eslint-disable no-unused-vars -- The base ESLint config lacks JSX variable usage tracking. */
+/**
+ * Mock runtime 注册表说明页。
+ *
+ * 页面展示当前 fixture variant、mock state store 和 reset 边界，
+ * 用来帮助开发者理解所有 capability mock 共享的本地数据来源。
+ */
 import "../../../globals.css";
 import {
   Chip,

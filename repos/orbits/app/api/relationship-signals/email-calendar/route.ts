@@ -14,7 +14,10 @@ import { createEmailCalendarSignalService } from "../../../../features/acquisiti
 
 export const dynamic = "force-dynamic";
 
+// email-calendar signals route 返回邮件/日历来源中的关系信号。
+// route 只读取 sourceKind/scenario；外部来源模拟、信号解释和证据由 acquisition service 负责。
 export async function GET(request: Request): Promise<Response> {
+  // GET 是只读信号列表，不确认信号，也不访问真实邮箱/日历。
   const mode = resolveFeatureMode();
   const searchParams = new URL(request.url).searchParams;
   const service = createEmailCalendarSignalService();
@@ -24,6 +27,7 @@ export async function GET(request: Request): Promise<Response> {
   });
 
   if (result.success === false) {
+    // email/calendar signal failure 统一映射成 AppError/envelope。
     const appError = emailCalendarSignalFailureToAppError(result);
 
     return NextResponse.json(

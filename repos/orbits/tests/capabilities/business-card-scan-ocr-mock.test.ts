@@ -1,3 +1,8 @@
+/**
+ * 名片扫描 OCR mock 的契约测试。
+ *
+ * 锁住 OCR payload、empty/pending/failure 状态、API route 和 debug-view 展示。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

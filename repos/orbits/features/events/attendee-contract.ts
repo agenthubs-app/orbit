@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 export const EVENT_ATTENDEE_ROSTER_FIXTURE_SOURCE =
   "fixture:features/events/attendee-contract.ts" as const;
 
+// Event Attendee Roster contract 描述活动参会人名单的只读/筛选模型。
+// 当前名单来自 fixture，不请求 organizer API，也不做真实推荐写入。
 export const EVENT_ATTENDEE_ROSTER_ERROR_CODES = [
   "EVENT_ATTENDEE_ROSTER_EVENT_ID_REQUIRED",
   "EVENT_ATTENDEE_ROSTER_EVENT_NOT_FOUND",
@@ -42,6 +44,7 @@ export type EventAttendeeCheckInStatus =
 export type EventAttendeeRole = "attendee" | "speaker" | "organizer";
 export type EventAttendeeRosterAccessStatus = "available" | "empty" | "pending";
 
+// 输入支持按 tag、known contact 和 recommendation eligibility 过滤名单。
 export interface EventAttendeeRosterInput {
   eventId?: string | null;
   scenario?: EventAttendeeRosterScenario | string | null;
@@ -57,6 +60,7 @@ export interface EventAttendeeRosterErrorDefinition {
   recovery: string;
 }
 
+// 参会人名单错误定义强调隐私/访问 pending 时不生成推荐。
 export const EVENT_ATTENDEE_ROSTER_ERROR_DEFINITIONS = {
   EVENT_ATTENDEE_ROSTER_EVENT_ID_REQUIRED: {
     code: "EVENT_ATTENDEE_ROSTER_EVENT_ID_REQUIRED",
@@ -100,6 +104,7 @@ export type EventAttendeeSourceReference = SourceReferenceDTO & {
   attendeeId?: string;
 };
 
+// provenance 记录名单读取没有访问 organizer feed、数据库或 AI。
 export interface EventAttendeeRosterProvenance {
   source: string;
   sourceLabel: string;
@@ -120,6 +125,7 @@ export interface EventAttendeeRosterProvenance {
   notificationDelivered: false;
 }
 
+// tag/known marker/eligibility 用于解释“为什么这个人出现在名单里以及能否推荐”。
 export interface EventAttendeeTag {
   code: EventAttendeeTagCode;
   label: string;
@@ -167,6 +173,7 @@ export interface EventAttendeeEvidence {
   createdBy: "mock-event-attendee-roster-service";
 }
 
+// RosterRecord 是参会人列表中的单条记录。
 export interface EventAttendeeRosterRecord {
   attendeeId: string;
   displayName: string;

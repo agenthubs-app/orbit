@@ -15,6 +15,8 @@ import { createEmailCalendarSignalService } from "../../../../../features/acquis
 
 export const dynamic = "force-dynamic";
 
+// confirm relationship signal route 用于确认一条邮件/日历关系信号。
+// signalId 来自 path，actor/scenario 可从 query、form 或 JSON 读取。
 interface ConfirmRelationshipSignalRouteContext {
   params: Promise<{
     id: string;
@@ -39,6 +41,7 @@ async function readConfirmInput(
   signalId: string,
 ): Promise<EmailCalendarSignalConfirmInput> {
   const url = new URL(request.url);
+  // 固定使用 path signalId，避免 body 改写确认对象。
   const queryInput: EmailCalendarSignalConfirmInput = {
     signalId,
     actorLabel: url.searchParams.get("actorLabel"),
@@ -50,6 +53,7 @@ async function readConfirmInput(
     contentType.includes("application/x-www-form-urlencoded") ||
     contentType.includes("multipart/form-data")
   ) {
+    // 表单路径允许确认按钮带 actorLabel。
     const formData = await request.formData();
 
     return {
@@ -73,6 +77,7 @@ async function readConfirmInput(
   const parsedBody: unknown = JSON.parse(rawBody);
   const body = isRecord(parsedBody) ? parsedBody : {};
 
+  // JSON body 只补充 actor/scenario，不承载外部权限或真实邮件内容。
   return {
     ...queryInput,
     actorLabel:
@@ -88,6 +93,7 @@ export async function POST(
   request: Request,
   context: ConfirmRelationshipSignalRouteContext,
 ): Promise<Response> {
+  // confirmEmailCalendarSignal 会进入可复核状态更新，route 不直接写关系资料。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createEmailCalendarSignalService();
@@ -96,6 +102,7 @@ export async function POST(
   );
 
   if (result.success === false) {
+    // email/calendar signal failure 统一映射成 AppError/envelope。
     const appError = emailCalendarSignalFailureToAppError(result);
 
     return NextResponse.json(

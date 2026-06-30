@@ -15,6 +15,8 @@ import { createOpportunityReminderAnalyticsService } from "../../../../../featur
 
 export const dynamic = "force-dynamic";
 
+// opportunities recompute route 触发机会提醒分析重新计算。
+// route 只读取 scenario；重算逻辑、缓存/状态语义和 provenance 都在 opportunity service 中。
 function readInput(request: Request): OpportunityReminderAnalyticsInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -24,6 +26,7 @@ function readInput(request: Request): OpportunityReminderAnalyticsInput {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // POST 表达“触发重算”，但 route 本身不直接计算或写入分析结果。
   const mode = resolveFeatureMode();
   const opportunityService = createOpportunityReminderAnalyticsService();
   const result = opportunityService.recomputeOpportunityReminderAnalytics(
@@ -31,6 +34,7 @@ export async function POST(request: Request): Promise<Response> {
   );
 
   if (result.success === false) {
+    // opportunity analytics failure 统一映射成 AppError/envelope。
     const appError = opportunityReminderAnalyticsFailureToAppError(result);
 
     return NextResponse.json(

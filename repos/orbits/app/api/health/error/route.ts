@@ -10,6 +10,8 @@ import {
   getHttpStatusForAppErrorCode,
 } from "../../../../shared/errors/app-error";
 
+// Deterministic error probe：用于验证失败 envelope、HTTP status 和 runtime boundary headers。
+// 这里故意返回固定错误，不代表真实 provider 或业务能力失败。
 export const dynamic = "force-dynamic";
 
 const healthError = new AppError(

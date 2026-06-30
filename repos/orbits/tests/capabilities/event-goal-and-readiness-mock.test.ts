@@ -1,3 +1,8 @@
+/**
+ * 活动目标与 readiness mock 的契约测试。
+ *
+ * 验证目标、准备清单、建议和 API/debug-view 的状态覆盖。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

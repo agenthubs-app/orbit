@@ -1,3 +1,8 @@
+/**
+ * 联系人详情标签/状态 mock 的契约测试。
+ *
+ * 锁住详情读取、标签状态更新、非法输入和 debug-view 展示。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

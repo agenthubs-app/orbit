@@ -6,6 +6,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const CHAT_WRITING_ASSIST_FIXTURE_SOURCE =
   "fixture:features/chat/assist-contract.ts" as const;
+// Chat Writing Assist contract 描述聊天文案辅助的结果协议。
+// mock/live 的具体生成策略和数据由各自实现提供。
 
 export const CHAT_WRITING_ASSIST_KINDS = [
   "polite_rewrite",
@@ -37,6 +39,7 @@ export type ChatWritingAssistScenario =
   | "failure";
 
 export type ChatWritingAssistState = "success" | "empty" | "pending";
+// 输入既可以来自已有会话，也可以来自用户给出的 sourceText/contextNote。
 
 export interface ChatWritingAssistInput {
   scenario?: ChatWritingAssistScenario | string | null;
@@ -69,6 +72,7 @@ export interface ChatWritingAssistErrorDefinition {
   message: string;
   recovery: string;
 }
+// 写作辅助失败时必须停在本地，不能补调用 live AI 或发送通道。
 
 export const CHAT_WRITING_ASSIST_ERROR_DEFINITIONS = {
   CHAT_WRITING_ASSIST_INPUT_REQUIRED: {
@@ -115,12 +119,14 @@ export type ChatWritingAssistSourceReference = SourceReferenceDTO & {
   collectedAt: string;
   generatedBy: "mock-chat-writing-assist-rules";
 };
+// audit 提醒 UI：生成结果只是草稿，需要人工复核。
 
 export interface ChatWritingAssistAudit {
   sourceLabel: string;
   providerBoundary: "AI false, external send false, persistence false";
   verificationAction: `Review ${string}`;
 }
+// Suggestion 是可编辑草稿；sendActionRequiresConfirmation=true 表示不能直接发送。
 
 export interface ChatWritingAssistSuggestion {
   assistId: string;
@@ -149,6 +155,7 @@ export interface ChatWritingAssistSuggestion {
   productionMessageStorageRequested: false;
   productionAuditLogWriteExecuted: false;
 }
+// provenance 记录草稿生成方法和所有未触发的外部能力。
 
 export interface ChatWritingAssistProvenance {
   source: typeof CHAT_WRITING_ASSIST_FIXTURE_SOURCE;

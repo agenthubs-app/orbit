@@ -1,3 +1,9 @@
+/**
+ * 手动个人资料 fixture。
+ *
+ * 这里提供当前用户 profile、空状态、pending 状态、失败 provenance 和默认更新输入。
+ * mock profile service 用这些数据验证资料页读取和编辑流程。
+ */
 import type {
   ManualProfile,
   ManualProfileUpdateInput,

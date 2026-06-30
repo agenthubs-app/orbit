@@ -20,6 +20,8 @@ import { createBusinessCardScanOcrService } from "../../../../features/acquisiti
 
 export const dynamic = "force-dynamic";
 
+// contact draft detail route 同时支持读取 OCR 草稿和更新名片复核字段。
+// GET 走 scan service，PATCH 走 review service；route 负责按 HTTP 方法分发。
 interface ContactDraftLookupRouteContext {
   params: Promise<{
     id: string;
@@ -32,6 +34,7 @@ type PatchBody = {
   scenario?: string;
 };
 
+// PATCH body 只允许 reviewedFields/reviewerLabel/scenario 三组字段进入 review service。
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -39,6 +42,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseReviewedFields(
   value: unknown,
 ): Partial<BusinessCardReviewedFields> | undefined {
+  // reviewedFields 是人工复核后的白名单字段，非字符串字段会被丢弃。
   if (!isRecord(value)) {
     return undefined;
   }
@@ -55,6 +59,7 @@ function parseReviewedFields(
 }
 
 async function readPatchBody(request: Request): Promise<PatchBody> {
+  // 空 body 或非法 JSON 回落为空对象，由 review service 返回具体校验状态。
   try {
     const body = await request.json();
 
@@ -77,6 +82,7 @@ export async function GET(
   request: Request,
   context: ContactDraftLookupRouteContext,
 ): Promise<Response> {
+  // 查询草稿时只需要 draftId/scenario；OCR 数据来源和状态由 scan service 管。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
@@ -87,6 +93,7 @@ export async function GET(
   });
 
   if (result.success === false) {
+    // scan failure 使用 OCR contract 的错误上下文。
     const appError = businessCardScanOcrFailureToAppError(result);
 
     return NextResponse.json(
@@ -108,6 +115,7 @@ export async function PATCH(
   request: Request,
   context: ContactDraftLookupRouteContext,
 ): Promise<Response> {
+  // 更新复核字段不会直接创建联系人，只更新待确认 draft 的 review 状态。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
@@ -121,6 +129,7 @@ export async function PATCH(
   });
 
   if (result.success === false) {
+    // review failure 使用名片复核 contract 的错误上下文。
     const appError = businessCardReviewFailureToAppError(result);
 
     return NextResponse.json(

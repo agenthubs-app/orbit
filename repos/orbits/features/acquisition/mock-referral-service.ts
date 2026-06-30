@@ -46,6 +46,8 @@ const supportedSourceKinds = new Set<ReferralSourceKind>(
   REFERRAL_SOURCE_KINDS,
 );
 
+// ReferralRecommendation mock service 模拟从推荐人/介绍来源生成联系人草稿。
+// 它按 sourceKind 过滤本地 fixture，不联系推荐人、不创建真实联系人，也不发送介绍请求。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -69,6 +71,7 @@ function confirmationSuccess(): RecommendedContactConfirmationSuccess {
 function failure(
   code: ReferralRecommendationErrorCode,
 ): ReferralRecommendationFailure {
+  // 推荐失败保留在 mock referral 边界内，避免误导为真实推荐系统失败。
   const definition = REFERRAL_RECOMMENDATION_ERROR_DEFINITIONS[code];
 
   return {
@@ -130,6 +133,7 @@ function normalizeSourceKind(
 function sourceKindFailure(
   sourceKind?: ReferralRecommendationInput["sourceKind"],
 ): ReferralRecommendationFailure | null {
+  // sourceKind 显式传入但不在白名单时要失败；未传或空字符串表示不过滤。
   if (sourceKind === undefined || sourceKind === null || sourceKind.trim() === "") {
     return null;
   }
@@ -180,6 +184,7 @@ function filterDrafts(
 function buildRuleBasedPayload(
   sourceKind: ReferralSourceKind,
 ): ReferralRecommendationPayload {
+  // 过滤后同步 recommendations、contactDrafts、referralSources 和 provenance evidenceIds。
   const recommendations = filterRecommendations(sourceKind);
   const contactDrafts = filterDrafts(sourceKind);
   const referralSources = filterSources(sourceKind);
@@ -239,6 +244,7 @@ function findRecommendation(
 }
 
 export function createMockReferralRecommendationService(): ReferralRecommendationService {
+  // createReferralContactDrafts 只生成候选草稿；confirmRecommendedContact 只返回确认 payload。
   return {
     createReferralContactDrafts(input = {}): ReferralRecommendationResult {
       const resultForScenario = scenarioResult(

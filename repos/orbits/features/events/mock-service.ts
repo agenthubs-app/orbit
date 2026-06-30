@@ -35,6 +35,8 @@ import {
 } from "./fixtures";
 import type { EventCrudAndImportService } from "./service";
 
+// Event CRUD/import mock service 模拟活动列表、详情和手动创建。
+// 它验证 source note/title 这类最小来源要求，但不会写真实数据库或导入外部日历。
 const supportedScenarios = new Set<EventCrudImportScenario>([
   "success",
   "empty",
@@ -48,6 +50,7 @@ const supportedCaptureMethods = new Set<EventCaptureMethod>(
 );
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // events fixtures 同时被 list/detail/create 使用，返回 clone 保持 fixture 只读。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
@@ -75,6 +78,7 @@ function detailSuccess(payload: EventDetailSuccess["data"]): EventDetailSuccess 
 }
 
 function failure(code: EventCrudImportErrorCode): EventCrudImportFailure {
+  // mock failure 都带固定 provenance，API route 可以稳定映射到 AppError。
   const definition = EVENT_CRUD_AND_IMPORT_ERROR_DEFINITIONS[code];
 
   return {
@@ -104,6 +108,7 @@ function normalizeScenario(
 function normalizeStatusFilter(
   statusFilter?: EventCrudImportInput["statusFilter"],
 ): EventStatus | null {
+  // statusFilter 来自 query/body，必须收敛到 EVENT_STATUS_VALUES。
   if (statusFilter && supportedStatuses.has(statusFilter as EventStatus)) {
     return statusFilter as EventStatus;
   }
@@ -114,6 +119,7 @@ function normalizeStatusFilter(
 function normalizeCaptureMethod(
   sourceCaptureMethod?: EventCrudImportInput["sourceCaptureMethod"],
 ): EventCaptureMethod | null {
+  // source capture method 决定活动来源类型；不支持的值直接忽略为无过滤。
   if (
     sourceCaptureMethod &&
     supportedCaptureMethods.has(sourceCaptureMethod as EventCaptureMethod)
@@ -162,6 +168,7 @@ function scenarioCreateResult(
 function filterImportedRecords(
   events: readonly EventRecord[],
 ): readonly ImportedEventRecord[] {
+  // importedRecords 是 event 的附属来源记录；列表过滤后只保留匹配 event 的导入来源。
   const eventIds = new Set(events.map((event) => event.id));
 
   return mockImportedEventRecords.filter((record) =>
@@ -170,6 +177,7 @@ function filterImportedRecords(
 }
 
 function filteredEventList(input: EventCrudImportInput): EventListPayload {
+  // 过滤逻辑集中在这里，确保 status/source 两个 filter 与 provenance summary 同步。
   const statusFilter = normalizeStatusFilter(input.statusFilter);
   const captureMethod = normalizeCaptureMethod(input.sourceCaptureMethod);
   const events = mockEventRecords.filter((event) => {
@@ -209,6 +217,7 @@ function filteredEventList(input: EventCrudImportInput): EventListPayload {
 function manualInputOrDefault(
   input: ManualEventCreationInput,
 ): ManualEventCreationInput | "default" | EventCrudImportFailure {
+  // 没传 title 时返回默认创建 fixture；显式传了空 title/sourceNote 才算校验失败。
   if (input.title === undefined || input.title === null) {
     return "default";
   }
@@ -241,6 +250,7 @@ function isEventCrudImportFailure(
 function buildManualPayload(
   input: ManualEventCreationInput,
 ): ManualEventCreationPayload {
+  // 有效输入会覆盖默认创建 fixture 的展示字段，缺省字段仍回落到 fixture。
   const normalized = manualInputOrDefault(input);
 
   if (normalized === "default" || isEventCrudImportFailure(normalized)) {
@@ -272,6 +282,7 @@ function getManualValidationFailure(
 }
 
 export function createMockEventCrudAndImportService(): EventCrudAndImportService {
+  // service 方法对应 route 的三个主要用例：列表、手动创建和详情读取。
   return {
     listEvents(input = {}): EventListResult {
       const scenarioResult = scenarioListResult(normalizeScenario(input.scenario));

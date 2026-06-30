@@ -1,3 +1,8 @@
+/**
+ * 组织者公开页 route adapter。
+ *
+ * 从动态 slug 构建 public organizer view model，再交给公开页组件渲染。
+ */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { getOrbitOrganizerPublicViewModel } from "../../orbit-organizer-route-view-model";
 import { OrbitRealOrganizerPublic } from "../orbit-real-organizer-public";

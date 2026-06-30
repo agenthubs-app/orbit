@@ -1,3 +1,8 @@
+/**
+ * 名片复核确认 flow 的契约测试。
+ *
+ * 验证草稿复核、确认结果、错误状态和 debug-view 的受控输出。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

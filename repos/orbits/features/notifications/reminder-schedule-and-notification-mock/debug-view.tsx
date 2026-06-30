@@ -1,3 +1,8 @@
+/**
+ * 提醒调度与通知 mock 的开发者面板。
+ *
+ * 这里展示提醒频率、调度队列和通知队列，当前 mock 不投递真实通知。
+ */
 import {
   Chip,
   WorkbenchFrame,

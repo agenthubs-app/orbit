@@ -1,3 +1,8 @@
+/**
+ * Profile signal review queue 的契约测试。
+ *
+ * 验证更新建议、接受 patch 和确认前不直接写 profile 的边界。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

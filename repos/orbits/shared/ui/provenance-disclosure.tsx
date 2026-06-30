@@ -1,6 +1,8 @@
 import { StatusDisplay } from "./primitives";
 import { sanitizeSourceDisplayText } from "./source-chip";
 
+// ProvenanceDisclosure 统一展示可读来源、说明 notes 和原始 evidence id。
+// 所有展示文本先经过 source-chip 的清洗，避免把内部 raw id 当成用户可读 copy。
 export interface ProvenanceDisclosureProps {
   summaryLabel: string;
   sourceLabel: string;

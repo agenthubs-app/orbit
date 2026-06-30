@@ -40,6 +40,8 @@ const supportedFocusValues = new Set<EventGoalFocus>([
   "investor_context",
 ]);
 
+// Event goal/readiness mock 覆盖三条路径：建议目标、设置目标、读取准备度。
+// 所有结果由 fixture 和本地规则组成，不调用模型或真实日历/活动数据。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -109,6 +111,7 @@ function normalizeEventId(eventId?: string | null): string {
 function normalizeFocus(
   relationshipFocus?: EventGoalSuggestionInput["relationshipFocus"],
 ): EventGoalFocus | null {
+  // relationshipFocus 只接受已定义 focus；未知值返回全部建议。
   if (
     relationshipFocus &&
     supportedFocusValues.has(relationshipFocus as EventGoalFocus)
@@ -122,6 +125,7 @@ function normalizeFocus(
 function eventFailure(
   input: EventGoalReadinessInput,
 ): EventGoalReadinessFailure | null {
+  // goal、suggestions、readiness 都共享 demo event id 校验。
   const eventId = normalizeEventId(input.eventId);
 
   if (!eventId) {
@@ -169,6 +173,7 @@ function scenarioSetGoalResult(
 function suggestedGoalsFor(
   relationshipFocus?: EventGoalSuggestionInput["relationshipFocus"],
 ): readonly EventGoalSuggestion[] {
+  // 根据 relationshipFocus 过滤建议；没有 focus 时返回全部 mock 建议。
   const focus = normalizeFocus(relationshipFocus);
 
   if (!focus) {
@@ -182,6 +187,7 @@ function suggestionsPayload(input: {
   suggestedGoals: readonly EventGoalSuggestion[];
   state: EventGoalReadinessScenario;
 }): EventGoalSuggestionsPayload {
+  // suggestions payload 会把建议证据展开到 provenance，方便 UI 显示来源。
   const isEmpty = input.state === "empty";
   const isPending = input.state === "pending";
   const suggestedGoals = isEmpty ? [] : input.suggestedGoals;
@@ -252,6 +258,7 @@ function selectedSuggestion(
 }
 
 function buildGoalSetPayload(input: EventGoalSetInput): EventGoalSetPayload {
+  // 用户可以选择建议，也可以输入自定义 goalText；自定义目标会生成 custom goalId。
   const selected = selectedSuggestion(input.selectedSuggestionId);
   const goalText = input.goalText?.trim() || selected.intent;
   const goal = {
@@ -288,6 +295,7 @@ function buildGoalSetPayload(input: EventGoalSetInput): EventGoalSetPayload {
 function goalValidationFailure(
   input: EventGoalSetInput,
 ): EventGoalReadinessFailure | null {
+  // 只有显式传入空 goalText 才算校验失败；未传则使用默认建议。
   if (input.goalText === undefined || input.goalText === null) {
     return null;
   }
@@ -300,6 +308,7 @@ function goalValidationFailure(
 export function createMockEventGoalAndReadinessService(): EventGoalAndReadinessService {
   return {
     suggestGoals(input = {}): EventGoalSuggestionsResult {
+      // 建议目标：scenario 短路 -> event 校验 -> focus 过滤。
       const scenario = normalizeScenario(input.scenario);
       const scenarioResult = scenarioSuggestionsResult(scenario, input);
 
@@ -322,6 +331,7 @@ export function createMockEventGoalAndReadinessService(): EventGoalAndReadinessS
     },
 
     setGoal(input = {}): EventGoalSetResult {
+      // 设置目标：pending/failure 场景先短路，再校验 eventId 和 goalText。
       const scenarioResult = scenarioSetGoalResult(
         normalizeScenario(input.scenario),
       );
@@ -346,6 +356,7 @@ export function createMockEventGoalAndReadinessService(): EventGoalAndReadinessS
     },
 
     getReadiness(input = {}): EventGoalReadinessResult {
+      // 读取准备度：只返回当前 demo readiness fixture，不重新计算真实任务。
       const scenarioResult = scenarioReadinessResult(
         normalizeScenario(input.scenario),
       );

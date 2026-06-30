@@ -1,3 +1,8 @@
+/**
+ * Capability debug dashboard service contract。
+ *
+ * UI 和 route 只依赖这个接口，不直接绑定 mock fixture 的实现细节。
+ */
 import type {
   CapabilityDebugDashboardErrorDefinition,
   CapabilityDebugDashboardProvenance,

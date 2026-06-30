@@ -1,3 +1,8 @@
+/**
+ * 关系价值评分 mock 的契约测试。
+ *
+ * 锁住评分 payload、recompute 行为、API envelope 和 debug-view。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -207,6 +207,7 @@ export function OrbitAgentHero() {
   const [text, setText] = useState("");
   const suggests = buildSuggests(t);
 
+
   return (
     <section
       className="orbit-agent-hero"
