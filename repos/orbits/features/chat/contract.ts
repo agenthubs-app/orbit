@@ -6,12 +6,6 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 // Chat contract 描述传统聊天页的 mock-first 会话模型。
 // 它不是 live Orbit Agent：这里不调用模型、不走 websocket、不写生产消息存储。
-export const CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE =
-  "fixture:features/chat/fixtures.ts" as const;
-
-export const CHAT_CONVERSATION_MOCK_DEFAULT_MESSAGE_BODY =
-  "Let's compare pilot windows next week." as const;
-
 export const CHAT_CONVERSATION_STATUSES = [
   "active",
   "paused",

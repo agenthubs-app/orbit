@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as acquisitionBusinessCardReviewFixtures from "../../features/acquisition/business-card-review-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -93,7 +94,7 @@ test("business card review contract exposes human field review before contact co
   ]);
   assert.equal(
     success.data.provenance.source,
-    contract.BUSINESS_CARD_REVIEW_FIXTURE_SOURCE,
+    acquisitionBusinessCardReviewFixtures.BUSINESS_CARD_REVIEW_FIXTURE_SOURCE,
   );
 
   assert.equal(empty.success, true);
@@ -290,19 +291,19 @@ test("business card review API routes return stable envelopes with empty and fai
   assert.equal(patchResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await patchResponse.json(), {
     success: true,
-    data: contract.mockBusinessCardReviewUpdatedFixture,
+    data: acquisitionBusinessCardReviewFixtures.mockBusinessCardReviewUpdatedFixture,
   });
 
   assert.equal(confirmResponse.status, 200);
   assert.deepEqual(await confirmResponse.json(), {
     success: true,
-    data: contract.mockBusinessCardReviewConfirmedFixture,
+    data: acquisitionBusinessCardReviewFixtures.mockBusinessCardReviewConfirmedFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyBusinessCardReviewFixture,
+    data: acquisitionBusinessCardReviewFixtures.mockEmptyBusinessCardReviewFixture,
   });
 
   assert.equal(failureResponse.status, 503);

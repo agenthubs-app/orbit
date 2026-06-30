@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as connectionsProfileFixtures from "../../features/connections/profile-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -98,8 +99,8 @@ test("relationship profile contract exposes typed fixtures service methods and e
     "VALIDATION_ERROR",
   );
   assert.equal(
-    contract.RELATIONSHIP_PROFILE_FIXTURE_SOURCE,
-    "fixture:features/connections/profile-contract.ts",
+    connectionsProfileFixtures.RELATIONSHIP_PROFILE_FIXTURE_SOURCE,
+    "fixture:features/connections/profile-fixtures.ts",
   );
 
   assert.equal(stageUpdate.success, true);
@@ -172,15 +173,15 @@ test("relationship profile contract exposes typed fixtures service methods and e
   assert.equal(invalidBody.error.code, "RELATIONSHIP_PROFILE_INVALID_BODY");
 
   assert.deepEqual(
-    contract.mockRelationshipStageUpdateFixture,
+    connectionsProfileFixtures.mockRelationshipStageUpdateFixture,
     stageUpdate.data,
   );
   assert.deepEqual(
-    contract.mockRelationshipProfileUpdateFixture,
+    connectionsProfileFixtures.mockRelationshipProfileUpdateFixture,
     profileUpdate.data,
   );
-  assert.deepEqual(contract.mockEmptyRelationshipProfileFixture, empty.data);
-  assert.deepEqual(contract.mockPendingRelationshipProfileFixture, pending.data);
+  assert.deepEqual(connectionsProfileFixtures.mockEmptyRelationshipProfileFixture, empty.data);
+  assert.deepEqual(connectionsProfileFixtures.mockPendingRelationshipProfileFixture, pending.data);
 });
 
 test("relationship stage and profile mock is deterministic with no external provider calls", async () => {
@@ -385,37 +386,37 @@ test("relationship stage and profile API routes return stable envelopes", async 
   assert.equal(stageResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await stageResponse.json(), {
     success: true,
-    data: contract.mockRelationshipStageUpdateFixture,
+    data: connectionsProfileFixtures.mockRelationshipStageUpdateFixture,
   });
 
   assert.equal(profileResponse.status, 200);
   assert.deepEqual(await profileResponse.json(), {
     success: true,
-    data: contract.mockRelationshipProfileUpdateFixture,
+    data: connectionsProfileFixtures.mockRelationshipProfileUpdateFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyRelationshipProfileFixture,
+    data: connectionsProfileFixtures.mockEmptyRelationshipProfileFixture,
   });
 
   assert.equal(pendingResponse.status, 200);
   assert.deepEqual(await pendingResponse.json(), {
     success: true,
-    data: contract.mockPendingRelationshipProfileFixture,
+    data: connectionsProfileFixtures.mockPendingRelationshipProfileFixture,
   });
 
   assert.equal(noBodyStageResponse.status, 200);
   assert.deepEqual(await noBodyStageResponse.json(), {
     success: true,
-    data: contract.mockRelationshipStageUpdateFixture,
+    data: connectionsProfileFixtures.mockRelationshipStageUpdateFixture,
   });
 
   assert.equal(noBodyProfileResponse.status, 200);
   assert.deepEqual(await noBodyProfileResponse.json(), {
     success: true,
-    data: contract.mockRelationshipProfileUpdateFixture,
+    data: connectionsProfileFixtures.mockRelationshipProfileUpdateFixture,
   });
 
   assert.equal(failureResponse.status, 503);

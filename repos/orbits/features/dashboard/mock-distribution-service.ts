@@ -1,12 +1,5 @@
 import {
   NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS,
-  mockEmptyNetworkDistributionAnalyticsFixture,
-  mockEmptyNetworkGapAnalysisFixture,
-  mockNetworkDistributionAnalyticsFailureProvenance,
-  mockNetworkDistributionAnalyticsFixture,
-  mockNetworkGapAnalysisFixture,
-  mockPendingNetworkDistributionAnalyticsFixture,
-  mockPendingNetworkGapAnalysisFixture,
   type NetworkDistributionAnalyticsErrorCode,
   type NetworkDistributionAnalyticsFailure,
   type NetworkDistributionAnalyticsInput,
@@ -17,6 +10,15 @@ import {
   type NetworkGapAnalysisPayload,
   type NetworkGapAnalysisResult,
 } from "./distribution-contract";
+import {
+  mockEmptyNetworkDistributionAnalyticsFixture,
+  mockEmptyNetworkGapAnalysisFixture,
+  mockNetworkDistributionAnalyticsFailureProvenance,
+  mockNetworkDistributionAnalyticsFixture,
+  mockNetworkGapAnalysisFixture,
+  mockPendingNetworkDistributionAnalyticsFixture,
+  mockPendingNetworkGapAnalysisFixture,
+} from "./distribution-fixtures";
 
 const supportedScenarios = new Set<NetworkDistributionAnalyticsScenario>([
   "success",

@@ -36,9 +36,9 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
     >;
     EVENT_STATUS_VALUES: readonly string[];
     EVENT_SOURCE_CAPTURE_METHODS: readonly string[];
-    EVENT_CRUD_IMPORT_FIXTURE_SOURCE: string;
   }>("features/events/contract.ts");
   const fixtures = await importProjectModule<{
+    EVENT_CRUD_IMPORT_FIXTURE_SOURCE: string;
     mockEventListFixture: {
       state: string;
       events: readonly Array<{
@@ -185,7 +185,7 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
   ]);
   assert.equal(
     fixtures.mockEventListFixture.provenance.source,
-    contract.EVENT_CRUD_IMPORT_FIXTURE_SOURCE,
+    fixtures.EVENT_CRUD_IMPORT_FIXTURE_SOURCE,
   );
   assert.equal(fixtures.mockManualEventCreationFixture.state, "success");
   assert.equal(

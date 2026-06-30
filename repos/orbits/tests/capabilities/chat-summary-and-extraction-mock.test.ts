@@ -39,14 +39,16 @@ function assertNoLiveProviderCalls(filePath: string): void {
   assert.doesNotMatch(source, /sendgrid|postmark|gmail|calendar\.google/i);
 }
 
-test("chat summary contract exports typed fixtures errors and confirmation-required suggestions", async () => {
+test("chat summary keeps typed contract separate from mock fixture provenance", async () => {
   const contract = await importProjectModule<{
-    CHAT_SUMMARY_EXTRACTION_FIXTURE_SOURCE: string;
     CHAT_SUMMARY_EXTRACTION_ERROR_CODES: readonly string[];
     CHAT_SUMMARY_EXTRACTION_ERROR_DEFINITIONS: Record<
       string,
       { appCode: string; message: string; recovery: string }
     >;
+  }>("features/chat/summary-contract.ts");
+  const fixtures = await importProjectModule<{
+    CHAT_SUMMARY_EXTRACTION_FIXTURE_SOURCE: string;
     mockChatSummaryFixture: {
       state: string;
       conversationId: string;
@@ -115,7 +117,7 @@ test("chat summary contract exports typed fixtures errors and confirmation-requi
       extractedNeeds: readonly unknown[];
       nextAction: string;
     };
-  }>("features/chat/summary-contract.ts");
+  }>("features/chat/summary-fixtures.ts");
   const contractSource = readFileSync(
     join(projectRoot, "features/chat/summary-contract.ts"),
     "utf8",
@@ -141,82 +143,82 @@ test("chat summary contract exports typed fixtures errors and confirmation-requi
       .recovery,
     /source-backed chat messages|relationship context/i,
   );
-  assert.equal(contract.mockChatSummaryFixture.state, "success");
+  assert.equal(fixtures.mockChatSummaryFixture.state, "success");
   assert.equal(
-    contract.mockChatSummaryFixture.provenance.source,
-    contract.CHAT_SUMMARY_EXTRACTION_FIXTURE_SOURCE,
+    fixtures.mockChatSummaryFixture.provenance.source,
+    fixtures.CHAT_SUMMARY_EXTRACTION_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockChatSummaryFixture.summary.summaryId,
+    fixtures.mockChatSummaryFixture.summary.summaryId,
     "demo-chat-summary-maya-pilot",
   );
   assert.match(
-    contract.mockChatSummaryFixture.summary.narrative,
+    fixtures.mockChatSummaryFixture.summary.narrative,
     /pilot timing comparison/i,
   );
   assert.deepEqual(
-    contract.mockChatSummaryFixture.summary.extractedNeedIds,
+    fixtures.mockChatSummaryFixture.summary.extractedNeedIds,
     ["need:chat:maya:pilot-window"],
   );
   assert.deepEqual(
-    contract.mockChatSummaryFixture.summary.extractedTaskIds,
+    fixtures.mockChatSummaryFixture.summary.extractedTaskIds,
     ["task:chat:maya:send-pilot-comparison"],
   );
   assert.deepEqual(
-    contract.mockChatSummaryFixture.summary.relationshipProfileUpdateIds,
+    fixtures.mockChatSummaryFixture.summary.relationshipProfileUpdateIds,
     ["profile-update:chat:maya:operator-readiness"],
   );
   assert.deepEqual(
-    contract.mockChatSummaryFixture.summary
+    fixtures.mockChatSummaryFixture.summary
       .confirmationRequiredSuggestionIds,
     ["profile-suggestion:chat:maya:priority-topic"],
   );
-  assert.equal(contract.mockChatSummaryFixture.summary.aiProviderRequested, false);
+  assert.equal(fixtures.mockChatSummaryFixture.summary.aiProviderRequested, false);
   assert.equal(
-    contract.mockChatSummaryFixture.summary.liveDatabaseWriteExecuted,
+    fixtures.mockChatSummaryFixture.summary.liveDatabaseWriteExecuted,
     false,
   );
   assert.match(
-    contract.mockChatSummaryFixture.extractedNeeds[0].statement,
+    fixtures.mockChatSummaryFixture.extractedNeeds[0].statement,
     /operator readiness/i,
   );
   assert.match(
-    contract.mockChatSummaryFixture.extractedTasks[0].title,
+    fixtures.mockChatSummaryFixture.extractedTasks[0].title,
     /pilot timing comparison/i,
   );
   assert.equal(
-    contract.mockChatSummaryFixture.relationshipProfileUpdates[0].autoApplied,
+    fixtures.mockChatSummaryFixture.relationshipProfileUpdates[0].autoApplied,
     false,
   );
   assert.equal(
-    contract.mockChatSummaryFixture.confirmationRequiredProfileSuggestions[0]
+    fixtures.mockChatSummaryFixture.confirmationRequiredProfileSuggestions[0]
       .confirmationRequired,
     true,
   );
   assert.match(
-    contract.mockChatSummaryFixture.confirmationRequiredProfileSuggestions[0]
+    fixtures.mockChatSummaryFixture.confirmationRequiredProfileSuggestions[0]
       .guard,
     /profile confirmation/i,
   );
   assert.equal(
-    contract.mockChatSummaryFixture.provenance.aiProviderRequested,
+    fixtures.mockChatSummaryFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockChatSummaryFixture.provenance.externalNetworkRequested,
+    fixtures.mockChatSummaryFixture.provenance.externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockChatExtractionFixture.extractedNeeds.length,
-    contract.mockChatSummaryFixture.extractedNeeds.length,
+    fixtures.mockChatExtractionFixture.extractedNeeds.length,
+    fixtures.mockChatSummaryFixture.extractedNeeds.length,
   );
-  assert.equal(contract.mockEmptyChatSummaryFixture.state, "empty");
-  assert.equal(contract.mockEmptyChatSummaryFixture.summary, null);
+  assert.equal(fixtures.mockEmptyChatSummaryFixture.state, "empty");
+  assert.equal(fixtures.mockEmptyChatSummaryFixture.summary, null);
   assert.match(
-    contract.mockEmptyChatSummaryFixture.nextAction,
+    fixtures.mockEmptyChatSummaryFixture.nextAction,
     /source-backed chat messages|relationship context/i,
   );
-  assert.equal(contract.mockPendingChatExtractionFixture.state, "pending");
+  assert.equal(fixtures.mockPendingChatExtractionFixture.state, "pending");
 });
 
 test("mock chat summary service is deterministic and never calls live providers", async () => {
@@ -337,6 +339,7 @@ test("mock chat summary service is deterministic and never calls live providers"
 
   for (const filePath of [
     "features/chat/summary-contract.ts",
+    "features/chat/summary-fixtures.ts",
     "features/chat/mock-summary-service.ts",
     "features/chat/chat-summary-and-extraction-mock/debug-view.tsx",
     "app/api/chat/conversations/[id]/summary/route.ts",
@@ -359,9 +362,9 @@ test("chat summary and extraction API routes return stable envelopes with empty 
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
   }>("app/api/chat/conversations/[id]/extractions/route.ts");
-  const contract = await importProjectModule<{
+  const fixtures = await importProjectModule<{
     mockEmptyChatSummaryFixture: unknown;
-  }>("features/chat/summary-contract.ts");
+  }>("features/chat/summary-fixtures.ts");
 
   const summaryResponse = await summaryRoute.POST(
     new Request(
@@ -474,7 +477,7 @@ test("chat summary and extraction API routes return stable envelopes with empty 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyChatSummaryFixture,
+    data: fixtures.mockEmptyChatSummaryFixture,
   });
   assert.equal(failureResponse.status, 503);
   assert.deepEqual(await failureResponse.json(), {

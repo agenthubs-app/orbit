@@ -4,11 +4,6 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import { AppError } from "../../shared/errors/app-error";
 import {
   RELATIONSHIP_VALUE_ERROR_DEFINITIONS,
-  mockEmptyRelationshipValueScoringFixture,
-  mockPendingRelationshipValueScoringFixture,
-  mockRecomputedRelationshipValueFixture,
-  mockRelationshipValueFailureProvenance,
-  mockRelationshipValueScoringFixture,
   type RelationshipValueErrorCode,
   type RelationshipValueFailure,
   type RelationshipValueFailureForCode,
@@ -19,6 +14,13 @@ import {
   type RelationshipValueScenario,
   type RelationshipValueScoringService,
 } from "./value-contract";
+import {
+  mockEmptyRelationshipValueScoringFixture,
+  mockPendingRelationshipValueScoringFixture,
+  mockRecomputedRelationshipValueFixture,
+  mockRelationshipValueFailureProvenance,
+  mockRelationshipValueScoringFixture,
+} from "./value-fixtures";
 
 const supportedScenarios = new Set<RelationshipValueScenario>([
   "success",

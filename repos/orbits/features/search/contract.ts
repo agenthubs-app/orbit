@@ -1,7 +1,5 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 
-export const RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE =
-  "fixture:features/search/fixtures.ts" as const;
 // Relationship Natural Search contract 描述关系图的自然语言搜索读模型。
 // mock/live 的具体来源标记和执行策略由各自实现提供。
 
@@ -206,7 +204,7 @@ export interface RelationshipNaturalSearchResultItem {
 }
 
 export interface RelationshipNaturalSearchProvenance {
-  source: typeof RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE;
+  source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;

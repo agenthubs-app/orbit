@@ -39,15 +39,17 @@ function assertNoLiveProviderCalls(filePath: string): void {
   assert.doesNotMatch(source, /sendgrid|postmark|gmail|calendar\.google/i);
 }
 
-test("chat writing assist contract exports typed fixtures errors and mock-only provenance", async () => {
+test("chat writing assist keeps typed contract separate from mock fixture provenance", async () => {
   const contract = await importProjectModule<{
-    CHAT_WRITING_ASSIST_FIXTURE_SOURCE: string;
     CHAT_WRITING_ASSIST_KINDS: readonly string[];
     CHAT_WRITING_ASSIST_ERROR_CODES: readonly string[];
     CHAT_WRITING_ASSIST_ERROR_DEFINITIONS: Record<
       string,
       { appCode: string; message: string; recovery: string }
     >;
+  }>("features/chat/assist-contract.ts");
+  const fixtures = await importProjectModule<{
+    CHAT_WRITING_ASSIST_FIXTURE_SOURCE: string;
     mockChatWritingAssistFixture: {
       state: string;
       assists: readonly Array<{
@@ -95,7 +97,7 @@ test("chat writing assist contract exports typed fixtures errors and mock-only p
       assists: readonly unknown[];
       nextAction: string;
     };
-  }>("features/chat/assist-contract.ts");
+  }>("features/chat/assist-fixtures.ts");
   const contractSource = readFileSync(
     join(projectRoot, "features/chat/assist-contract.ts"),
     "utf8",
@@ -129,13 +131,13 @@ test("chat writing assist contract exports typed fixtures errors and mock-only p
     /relationship context|chat evidence|source/i,
   );
 
-  assert.equal(contract.mockChatWritingAssistFixture.state, "success");
+  assert.equal(fixtures.mockChatWritingAssistFixture.state, "success");
   assert.equal(
-    contract.mockChatWritingAssistFixture.provenance.source,
-    contract.CHAT_WRITING_ASSIST_FIXTURE_SOURCE,
+    fixtures.mockChatWritingAssistFixture.provenance.source,
+    fixtures.CHAT_WRITING_ASSIST_FIXTURE_SOURCE,
   );
   assert.deepEqual(
-    contract.mockChatWritingAssistFixture.assists.map((assist) => assist.kind),
+    fixtures.mockChatWritingAssistFixture.assists.map((assist) => assist.kind),
     [
       "polite_rewrite",
       "follow_up_draft",
@@ -144,41 +146,41 @@ test("chat writing assist contract exports typed fixtures errors and mock-only p
     ],
   );
   assert.equal(
-    contract.mockChatWritingAssistFixture.assists[0].generatedBy,
+    fixtures.mockChatWritingAssistFixture.assists[0].generatedBy,
     "mock-chat-writing-assist-rules",
   );
-  assert.deepEqual(contract.mockChatWritingAssistFixture.assists[0].audit, {
+  assert.deepEqual(fixtures.mockChatWritingAssistFixture.assists[0].audit, {
     sourceLabel: "Maya pilot timing chat evidence",
     providerBoundary: "AI false, external send false, persistence false",
     verificationAction: "Review Maya pilot timing chat evidence",
   });
   assert.equal(
-    contract.mockChatWritingAssistFixture.assists[0]
+    fixtures.mockChatWritingAssistFixture.assists[0]
       .sendActionRequiresConfirmation,
     true,
   );
   assert.equal(
-    contract.mockChatWritingAssistFixture.assists[0].aiProviderRequested,
+    fixtures.mockChatWritingAssistFixture.assists[0].aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockChatWritingAssistFixture.assists[0].externalSendRequested,
+    fixtures.mockChatWritingAssistFixture.assists[0].externalSendRequested,
     false,
   );
   assert.equal(
-    contract.mockChatWritingAssistFixture.provenance.aiProviderRequested,
+    fixtures.mockChatWritingAssistFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockChatWritingAssistFixture.provenance.externalNetworkRequested,
+    fixtures.mockChatWritingAssistFixture.provenance.externalNetworkRequested,
     false,
   );
-  assert.equal(contract.mockEmptyChatWritingAssistFixture.state, "empty");
+  assert.equal(fixtures.mockEmptyChatWritingAssistFixture.state, "empty");
   assert.match(
-    contract.mockEmptyChatWritingAssistFixture.nextAction,
+    fixtures.mockEmptyChatWritingAssistFixture.nextAction,
     /relationship context|chat evidence|source/i,
   );
-  assert.equal(contract.mockPendingChatWritingAssistFixture.state, "pending");
+  assert.equal(fixtures.mockPendingChatWritingAssistFixture.state, "pending");
 });
 
 test("mock chat writing assist service is deterministic and never calls live providers", async () => {
@@ -305,6 +307,7 @@ test("mock chat writing assist service is deterministic and never calls live pro
 
   for (const filePath of [
     "features/chat/assist-contract.ts",
+    "features/chat/assist-fixtures.ts",
     "features/chat/mock-assist-service.ts",
     "features/chat/chat-writing-assist-mock/debug-view.tsx",
     "app/api/chat/assist/rewrite/route.ts",
@@ -321,9 +324,9 @@ test("chat writing assist API routes return stable envelopes with empty and fail
   const followupRoute = await importProjectModule<{
     POST: (request: Request) => Promise<Response>;
   }>("app/api/chat/assist/followup-draft/route.ts");
-  const contract = await importProjectModule<{
+  const fixtures = await importProjectModule<{
     mockEmptyChatWritingAssistFixture: unknown;
-  }>("features/chat/assist-contract.ts");
+  }>("features/chat/assist-fixtures.ts");
 
   const rewriteResponse = await rewriteRoute.POST(
     new Request("https://orbit.local/api/chat/assist/rewrite", {
@@ -421,7 +424,7 @@ test("chat writing assist API routes return stable envelopes with empty and fail
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyChatWritingAssistFixture,
+    data: fixtures.mockEmptyChatWritingAssistFixture,
   });
   assert.equal(failureResponse.status, 503);
   assert.deepEqual(await failureResponse.json(), {

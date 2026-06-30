@@ -5,7 +5,6 @@
  * mock connection service 使用这些数据展示“为什么认识、证据来自哪里、是否可继续补充证据”。
  */
 import {
-  CONNECTION_EVIDENCE_SERVICE_FIXTURE_SOURCE,
   CONNECTION_EVIDENCE_SOURCE_TYPES,
   type ConnectionAddEvidenceInput,
   type ConnectionEvidenceContribution,
@@ -18,6 +17,8 @@ import {
   type ConnectionSourceLink,
 } from "./contract";
 
+export const CONNECTION_EVIDENCE_SERVICE_FIXTURE_SOURCE =
+  "fixture:features/connections/fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T19:00:00.000Z";
 const fixtureCapturedAt = "2026-06-25T19:05:00.000Z";

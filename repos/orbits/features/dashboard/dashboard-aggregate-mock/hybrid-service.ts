@@ -1,6 +1,5 @@
 import {
   DASHBOARD_AGGREGATE_ERROR_DEFINITIONS,
-  buildDashboardAggregateSummary,
   type DashboardAggregateErrorCode,
   type DashboardAggregateFailure,
   type DashboardAggregateInput,
@@ -17,6 +16,7 @@ import {
   type DashboardNewContact,
   type DashboardRecentActivity,
 } from "../contract";
+import { buildDashboardAggregateSummary } from "../fixtures";
 import type {
   ConnectionDTO,
   ContactDTO,

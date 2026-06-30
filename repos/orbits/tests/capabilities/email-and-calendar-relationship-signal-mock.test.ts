@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as acquisitionEmailCalendarFixtures from "../../features/acquisition/email-calendar-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -85,7 +86,7 @@ test("email calendar signal contract exposes fixtures service interface and perm
         sourceKind?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEmailCalendarSignalFixture;
+        data?: typeof acquisitionEmailCalendarFixtures.mockEmailCalendarSignalFixture;
         error?: { code: string; appCode: string };
       };
       confirmEmailCalendarSignal: (input: {
@@ -147,7 +148,7 @@ test("email calendar signal contract exposes fixtures service interface and perm
   assert.equal(success.data?.signals[2]?.microsoftGraphApiRequested, false);
   assert.equal(success.data?.signals[0]?.backgroundSyncEnqueued, false);
   assert.equal(success.data?.signals[0]?.messageBodyIngested, false);
-  assert.equal(success.data?.provenance.source, contract.EMAIL_CALENDAR_SIGNAL_FIXTURE_SOURCE);
+  assert.equal(success.data?.provenance.source, acquisitionEmailCalendarFixtures.EMAIL_CALENDAR_SIGNAL_FIXTURE_SOURCE);
   assert.equal(success.data?.provenance.gmailApiRequested, false);
   assert.equal(success.data?.provenance.googleCalendarApiRequested, false);
   assert.equal(success.data?.provenance.microsoftGraphApiRequested, false);
@@ -163,7 +164,7 @@ test("email calendar signal contract exposes fixtures service interface and perm
     gmailOnly.data?.signals.map((signal) => signal.sourceKind),
     ["gmail"],
   );
-  assert.equal(gmailOnly.data?.provenance.source, contract.EMAIL_CALENDAR_SIGNAL_FIXTURE_SOURCE);
+  assert.equal(gmailOnly.data?.provenance.source, acquisitionEmailCalendarFixtures.EMAIL_CALENDAR_SIGNAL_FIXTURE_SOURCE);
 
   assert.equal(empty.success, true);
   assert.equal(empty.data?.state, "empty");
@@ -289,7 +290,7 @@ test("email calendar signal API routes return stable envelopes with empty pendin
     mockEmptyEmailCalendarSignalFixture: unknown;
     mockPendingEmailCalendarSignalFixture: unknown;
     mockEmailCalendarSignalConfirmedFixture: unknown;
-  }>("features/acquisition/email-calendar-contract.ts");
+  }>("features/acquisition/email-calendar-fixtures.ts");
 
   const listResponse = await listRoute.GET(
     new Request("https://orbit.local/api/relationship-signals/email-calendar", {

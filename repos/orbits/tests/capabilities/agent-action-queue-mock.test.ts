@@ -35,9 +35,9 @@ test("agent action queue contract exports typed categories fixtures errors and s
       string,
       { appCode: string; message: string; recovery: string }
     >;
-    AGENT_ACTION_QUEUE_FIXTURE_SOURCE: string;
   }>("features/agent/contract.ts");
   const fixtures = await importProjectModule<{
+    AGENT_ACTION_QUEUE_FIXTURE_SOURCE: string;
     mockAgentActionQueueFixture: {
       state: string;
       actions: readonly Array<{
@@ -129,7 +129,7 @@ test("agent action queue contract exports typed categories fixtures errors and s
   assert.equal(fixtures.mockAgentActionQueueFixture.state, "success");
   assert.equal(
     fixtures.mockAgentActionQueueFixture.provenance.source,
-    contract.AGENT_ACTION_QUEUE_FIXTURE_SOURCE,
+    fixtures.AGENT_ACTION_QUEUE_FIXTURE_SOURCE,
   );
   assert.deepEqual(
     fixtures.mockAgentActionQueueFixture.actions.map(

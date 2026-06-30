@@ -1,13 +1,6 @@
 import {
   EXTERNAL_CONTACTS_IMPORT_ERROR_DEFINITIONS,
   EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS,
-  mockEmptyExternalContactsCandidatesFixture,
-  mockEmptyExternalContactsImportFixture,
-  mockExternalContactsCandidatesFixture,
-  mockExternalContactsImportFailureProvenance,
-  mockExternalContactsImportFixture,
-  mockPendingExternalContactsCandidatesFixture,
-  mockPendingExternalContactsImportFixture,
   type ExternalContactCandidate,
   type ExternalContactDraft,
   type ExternalContactsCandidatesPayload,
@@ -24,6 +17,15 @@ import {
   type ExternalContactsImportSuccess,
   type ExternalContactsSourceSummary,
 } from "./external-import-contract";
+import {
+  mockEmptyExternalContactsCandidatesFixture,
+  mockEmptyExternalContactsImportFixture,
+  mockExternalContactsCandidatesFixture,
+  mockExternalContactsImportFailureProvenance,
+  mockExternalContactsImportFixture,
+  mockPendingExternalContactsCandidatesFixture,
+  mockPendingExternalContactsImportFixture,
+} from "./external-import-fixtures";
 
 const supportedScenarios = new Set<ExternalContactsImportScenario>([
   "success",

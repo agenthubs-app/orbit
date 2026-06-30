@@ -14,7 +14,12 @@ import type {
   ChatSendMessageState,
   ChatSourceReference,
 } from "./contract";
-import { CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE } from "./contract";
+
+export const CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE =
+  "fixture:features/chat/fixtures.ts" as const;
+
+export const CHAT_CONVERSATION_MOCK_DEFAULT_MESSAGE_BODY =
+  "Let's compare pilot windows next week." as const;
 
 const fixtureCollectedAt = "2026-06-25T23:50:00.000Z";
 

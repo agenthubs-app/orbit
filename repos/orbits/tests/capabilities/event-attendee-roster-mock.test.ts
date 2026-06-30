@@ -10,6 +10,8 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as acquisitionEventAttendeeFixtures from "../../features/acquisition/event-attendee-fixtures";
+import * as eventsAttendeeFixtures from "../../features/events/attendee-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -92,7 +94,7 @@ test("event attendee roster contract exposes tags known-contact markers recommen
         eligibleOnly?: boolean;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventAttendeeRosterFixture;
+        data?: typeof acquisitionEventAttendeeFixtures.mockEventAttendeeRosterFixture;
         error?: { code: string; appCode: string };
       };
       importAttendeeRoster: (input?: {
@@ -102,7 +104,7 @@ test("event attendee roster contract exposes tags known-contact markers recommen
         eligibleOnly?: boolean;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventAttendeeRosterImportFixture;
+        data?: typeof eventsAttendeeFixtures.mockEventAttendeeRosterImportFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -187,7 +189,7 @@ test("event attendee roster contract exposes tags known-contact markers recommen
   assert.equal(roster.data?.attendees[0]?.aiProviderRequested, false);
   assert.equal(
     roster.data?.provenance.source,
-    contract.EVENT_ATTENDEE_ROSTER_FIXTURE_SOURCE,
+    eventsAttendeeFixtures.EVENT_ATTENDEE_ROSTER_FIXTURE_SOURCE,
   );
 
   assert.equal(filtered.success, true);
@@ -214,7 +216,7 @@ test("event attendee roster contract exposes tags known-contact markers recommen
   assert.equal(empty.data?.state, "empty");
   assert.equal(empty.data?.eligibleRecommendationPool.length, 0);
   assert.equal(
-    contract.mockEmptyEventAttendeeRosterFixture.nextAction,
+    eventsAttendeeFixtures.mockEmptyEventAttendeeRosterFixture.nextAction,
     "Wait for a privacy-approved local roster fixture before recommending attendees.",
   );
   assert.equal(pending.success, true);
@@ -301,7 +303,7 @@ test("event attendee roster API routes return stable envelopes with empty and fa
   const fixtures = await importProjectModule<{
     mockEventAttendeeRosterImportFixture: unknown;
     mockEmptyEventAttendeeRosterImportFixture: unknown;
-  }>("features/events/attendee-contract.ts");
+  }>("features/events/attendee-fixtures.ts");
 
   const rosterResponse = await attendeesRoute.GET(
     new Request("https://orbit.local/api/events/demo-event-1/attendees", {

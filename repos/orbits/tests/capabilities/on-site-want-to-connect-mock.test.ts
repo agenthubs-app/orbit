@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as eventsWantConnectFixtures from "../../features/events/want-connect-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -103,7 +104,7 @@ test("on-site want-to-connect contract exposes intent mutual-interest match succ
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockWantConnectFixture;
+        data?: typeof eventsWantConnectFixtures.mockWantConnectFixture;
         error?: { code: string; appCode: string };
       };
       listMatches: (input?: {
@@ -111,7 +112,7 @@ test("on-site want-to-connect contract exposes intent mutual-interest match succ
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockWantConnectMatchesFixture;
+        data?: typeof eventsWantConnectFixtures.mockWantConnectMatchesFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -175,7 +176,7 @@ test("on-site want-to-connect contract exposes intent mutual-interest match succ
   assert.equal(success.data?.matchNotice.externalMessageSent, false);
   assert.equal(
     success.data?.provenance.source,
-    contract.WANT_CONNECT_FIXTURE_SOURCE,
+    eventsWantConnectFixtures.WANT_CONNECT_FIXTURE_SOURCE,
   );
   assert.equal(success.data?.provenance.realtimePresenceRequested, false);
   assert.equal(success.data?.provenance.peerNotificationDelivered, false);
@@ -200,7 +201,7 @@ test("on-site want-to-connect contract exposes intent mutual-interest match succ
   assert.equal(empty.data?.state, "empty");
   assert.equal(empty.data?.matches.length, 0);
   assert.equal(
-    contract.mockEmptyWantConnectFixture.nextAction,
+    eventsWantConnectFixtures.mockEmptyWantConnectFixture.nextAction,
     "Wait for a deterministic mutual-interest fixture before showing a match success notice.",
   );
   assert.equal(pending.success, true);
@@ -286,7 +287,7 @@ test("on-site want-to-connect API routes return stable envelopes with empty and 
   const fixtures = await importProjectModule<{
     mockWantConnectFixture: unknown;
     mockEmptyWantConnectMatchesFixture: unknown;
-  }>("features/events/want-connect-contract.ts");
+  }>("features/events/want-connect-fixtures.ts");
 
   const intentResponse = await intentRoute.POST(
     new Request(

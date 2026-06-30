@@ -1,12 +1,5 @@
 import {
   EVENT_ENCOUNTER_NOTE_ERROR_DEFINITIONS,
-  mockEmptyEventEncounterNoteProvenance,
-  mockEmptyEventEncounterNoteFixture,
-  mockEventEncounterEvidenceFixture,
-  mockEventEncounterNoteFailureProvenance,
-  mockEventEncounterNoteFixture,
-  mockPendingEventEncounterNoteProvenance,
-  mockPendingEventEncounterNoteFixture,
   type EventEncounterEvidenceInput,
   type EventEncounterEvidenceResult,
   type EventEncounterEvidenceSuccess,
@@ -20,6 +13,15 @@ import {
   type EventEncounterNoteService,
   type EventEncounterNoteSuccess,
 } from "./encounter-contract";
+import {
+  mockEmptyEventEncounterNoteProvenance,
+  mockEmptyEventEncounterNoteFixture,
+  mockEventEncounterEvidenceFixture,
+  mockEventEncounterNoteFailureProvenance,
+  mockEventEncounterNoteFixture,
+  mockPendingEventEncounterNoteProvenance,
+  mockPendingEventEncounterNoteFixture,
+} from "./encounter-fixtures";
 
 const defaultEventId = "demo-event-1";
 const defaultEncounterId = "demo-encounter-1";

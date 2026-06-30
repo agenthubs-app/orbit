@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as agentExternalActionFixtures from "../../features/agent/external-action-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -166,49 +167,49 @@ test("external action sandbox contract exports no-op fixtures errors and service
     /audit record|source-backed/i,
   );
   assert.equal(
-    contract.EXTERNAL_ACTION_SANDBOX_FIXTURE_SOURCE,
-    "fixture:features/agent/external-action-contract.ts",
+    agentExternalActionFixtures.EXTERNAL_ACTION_SANDBOX_FIXTURE_SOURCE,
+    "fixture:features/agent/external-action-fixtures.ts",
   );
-  assert.equal(contract.mockExternalActionSandboxFixture.state, "success");
+  assert.equal(agentExternalActionFixtures.mockExternalActionSandboxFixture.state, "success");
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.source,
-    contract.EXTERNAL_ACTION_SANDBOX_FIXTURE_SOURCE,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.source,
+    agentExternalActionFixtures.EXTERNAL_ACTION_SANDBOX_FIXTURE_SOURCE,
   );
   assert.deepEqual(
-    contract.mockExternalActionSandboxFixture.actions.map(
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions.map(
       (action) => action.actionType,
     ),
     ["send_message", "create_calendar_event", "deliver_notification"],
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.actions[0].actionId,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].actionId,
     "sandbox-message-demo-1",
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.actions[0].noOp,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].noOp,
     true,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.actions[0].confirmationRequired,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].confirmationRequired,
     true,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.actions[0].relationshipContext
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].relationshipContext
       .contactLabel,
     "Maya Chen",
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.actions[0].relationshipContext
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].relationshipContext
       .eventLabel,
     "Tokyo Climate Operators Salon",
   );
   assert.match(
-    contract.mockExternalActionSandboxFixture.actions[0].relationshipContext
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].relationshipContext
       .connectionOrigin,
     /pilot reliability/i,
   );
   assert.deepEqual(
-    contract.mockExternalActionSandboxFixture.actions[0].relationshipContext
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].relationshipContext
       .sourceContextIds,
     [
       "relationship:maya-chen:pilot-reliability",
@@ -216,91 +217,91 @@ test("external action sandbox contract exports no-op fixtures errors and service
     ],
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.actions[0].provenance
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].provenance
       .externalSideEffectExecuted,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.externalNetworkRequested,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.databaseWriteExecuted,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.databaseWriteExecuted,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.aiProviderRequested,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.messageProviderRequested,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.messageProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.calendarProviderRequested,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.emailProviderRequested,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.emailProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.notificationProviderRequested,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.notificationProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.provenance.pushProviderRequested,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.provenance.pushProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.auditRecords.length,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.auditRecords.length,
     3,
   );
   assert.deepEqual(
-    contract.mockExternalActionSandboxFixture.auditRecords.map(
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.auditRecords.map(
       (record) => record.actionType,
     ),
     ["send_message", "create_calendar_event", "deliver_notification"],
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.auditRecords[0]
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.auditRecords[0]
       .sideEffectExecuted,
     false,
   );
   assert.equal(
-    contract.mockExternalActionSandboxFixture.auditRecords[0]
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.auditRecords[0]
       .productionAuditPersisted,
     false,
   );
   assert.deepEqual(
-    contract.mockExternalActionSandboxFixture.auditRecords[0]
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.auditRecords[0]
       .relationshipContext,
-    contract.mockExternalActionSandboxFixture.actions[0].relationshipContext,
+    agentExternalActionFixtures.mockExternalActionSandboxFixture.actions[0].relationshipContext,
   );
-  assert.equal(contract.mockSendMessageNoOpFixture.state, "success");
-  assert.equal(contract.mockSendMessageNoOpFixture.actionType, "send_message");
+  assert.equal(agentExternalActionFixtures.mockSendMessageNoOpFixture.state, "success");
+  assert.equal(agentExternalActionFixtures.mockSendMessageNoOpFixture.actionType, "send_message");
   assert.equal(
-    contract.mockSendMessageNoOpFixture.relationshipContext.followupRationale,
+    agentExternalActionFixtures.mockSendMessageNoOpFixture.relationshipContext.followupRationale,
     "Send the reliability memo while the pilot-scope question is still fresh.",
   );
   assert.equal(
-    contract.mockSendMessageNoOpFixture.auditRecord.sideEffectExecuted,
+    agentExternalActionFixtures.mockSendMessageNoOpFixture.auditRecord.sideEffectExecuted,
     false,
   );
   assert.equal(
-    contract.mockCreateCalendarEventNoOpFixture.actionType,
+    agentExternalActionFixtures.mockCreateCalendarEventNoOpFixture.actionType,
     "create_calendar_event",
   );
   assert.equal(
-    contract.mockNotificationDeliveryNoOpFixture.actionType,
+    agentExternalActionFixtures.mockNotificationDeliveryNoOpFixture.actionType,
     "deliver_notification",
   );
-  assert.equal(contract.mockEmptyExternalActionAuditFixture.state, "empty");
+  assert.equal(agentExternalActionFixtures.mockEmptyExternalActionAuditFixture.state, "empty");
   assert.match(
-    contract.mockEmptyExternalActionAuditFixture.nextAction,
+    agentExternalActionFixtures.mockEmptyExternalActionAuditFixture.nextAction,
     /audit record|confirmed action/i,
   );
-  assert.equal(contract.mockPendingExternalActionSandboxFixture.state, "pending");
+  assert.equal(agentExternalActionFixtures.mockPendingExternalActionSandboxFixture.state, "pending");
 });
 
 test("mock external action sandbox service is deterministic provider-free and side-effect-free", async () => {
@@ -482,7 +483,7 @@ test("external action sandbox API routes return stable envelopes with empty and 
     mockSendMessageNoOpFixture: unknown;
     mockExternalActionSandboxFixture: unknown;
     mockEmptyExternalActionAuditFixture: unknown;
-  }>("features/agent/external-action-contract.ts");
+  }>("features/agent/external-action-fixtures.ts");
 
   const sendResponse = await sendRoute.POST(
     new Request("https://orbit.local/api/sandbox/external-actions/send-message", {

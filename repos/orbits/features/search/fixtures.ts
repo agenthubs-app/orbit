@@ -6,7 +6,6 @@
  */
 import {
   RELATIONSHIP_NATURAL_SEARCH_BUSINESS_INTENTS,
-  RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE,
   RELATIONSHIP_NATURAL_SEARCH_FOLLOW_UP_STATUSES,
   RELATIONSHIP_NATURAL_SEARCH_INDUSTRIES,
   RELATIONSHIP_NATURAL_SEARCH_SOURCE_TYPES,
@@ -29,6 +28,8 @@ import {
   type RelationshipNaturalSearchValueType,
 } from "./contract";
 
+export const RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE =
+  "fixture:features/search/fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T21:00:00.000Z";
 const fixtureCapturedAt = "2026-06-25T20:45:00.000Z";
@@ -447,9 +448,9 @@ export function buildRelationshipNaturalSearchPayload({
   input?: RelationshipNaturalSearchInput;
   results: readonly RelationshipNaturalSearchResultItem[];
   state?: RelationshipNaturalSearchState;
+}): RelationshipNaturalSearchPayload {
   // 搜索 payload 构造器统一计算摘要、applied filters 和 provenance。
   // mock search service 因此可以用同一个函数生成默认、空、pending 和特定查询结果。
-}): RelationshipNaturalSearchPayload {
   const hasSearchInput =
     Boolean(normalizeQuery(input.query)) ||
     Boolean(input.businessIntent) ||

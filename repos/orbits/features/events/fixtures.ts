@@ -16,7 +16,9 @@ import type {
   ManualEventCreationInput,
   ManualEventCreationPayload,
 } from "./contract";
-import { EVENT_CRUD_IMPORT_FIXTURE_SOURCE } from "./contract";
+
+export const EVENT_CRUD_IMPORT_FIXTURE_SOURCE =
+  "fixture:features/events/fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T18:00:00.000Z";
 const fixtureCapturedAt = "2026-06-25T18:08:00.000Z";
@@ -317,9 +319,9 @@ export function buildManualEventCreationPayload(
     Pick<ManualEventCreationInput, "title" | "venue" | "startsAt" | "endsAt">
   > &
     Pick<ManualEventCreationInput, "description" | "sourceNote">,
+): ManualEventCreationPayload {
   // 手动创建活动只生成本地 payload，并把来源标记为 fixture 规则。
   // 不会写入真实日历、活动数据库或远程活动系统。
-): ManualEventCreationPayload {
   const event = createEventRecord({
     id: `event:manual:${slugFromTitle(input.title)}`,
     title: input.title,

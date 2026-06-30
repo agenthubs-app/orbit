@@ -1,13 +1,5 @@
 import {
   CHAT_PRIVACY_CONTROLS_ERROR_DEFINITIONS,
-  mockChatPrivacyAnalysisDeletedFixture,
-  mockChatPrivacyControlsFailureProvenance,
-  mockChatPrivacyControlsFixture,
-  mockChatPrivacyControlsToggleOffFixture,
-  mockChatPrivacyControlsToggleOnFixture,
-  mockChatPrivacySensitiveShareConfirmedFixture,
-  mockEmptyChatPrivacyControlsFixture,
-  mockPendingChatPrivacyControlsFixture,
   type ChatAnalysisOptInInput,
   type ChatPrivacyControlsErrorCode,
   type ChatPrivacyControlsFailure,
@@ -18,6 +10,16 @@ import {
   type ChatPrivacyControlsService,
   type ChatSensitiveShareInput,
 } from "./privacy-contract";
+import {
+  mockChatPrivacyAnalysisDeletedFixture,
+  mockChatPrivacyControlsFailureProvenance,
+  mockChatPrivacyControlsFixture,
+  mockChatPrivacyControlsToggleOffFixture,
+  mockChatPrivacyControlsToggleOnFixture,
+  mockChatPrivacySensitiveShareConfirmedFixture,
+  mockEmptyChatPrivacyControlsFixture,
+  mockPendingChatPrivacyControlsFixture,
+} from "./privacy-fixtures";
 
 const supportedScenarios = new Set<ChatPrivacyControlsScenario>([
   "success",

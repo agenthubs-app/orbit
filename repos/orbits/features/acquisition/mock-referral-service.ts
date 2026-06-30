@@ -1,14 +1,6 @@
 import {
   REFERRAL_RECOMMENDATION_ERROR_DEFINITIONS,
   REFERRAL_SOURCE_KINDS,
-  mockConfirmedRecommendedContactFixture,
-  mockEmptyReferralRecommendationFixture,
-  mockPendingReferralRecommendationFixture,
-  mockRecommendedContacts,
-  mockReferralContactDrafts,
-  mockReferralRecommendationFailureProvenance,
-  mockReferralRecommendationFixture,
-  mockReferralSourceSummaries,
   type RecommendedContact,
   type RecommendedContactConfirmInput,
   type RecommendedContactConfirmationResult,
@@ -26,6 +18,16 @@ import {
   type ReferralSourceKind,
   type ReferralSourceSummary,
 } from "./referral-contract";
+import {
+  mockConfirmedRecommendedContactFixture,
+  mockEmptyReferralRecommendationFixture,
+  mockPendingReferralRecommendationFixture,
+  mockRecommendedContacts,
+  mockReferralContactDrafts,
+  mockReferralRecommendationFailureProvenance,
+  mockReferralRecommendationFixture,
+  mockReferralSourceSummaries,
+} from "./referral-fixtures";
 
 const supportedScenarios = new Set<ReferralRecommendationScenario>([
   "success",

@@ -136,9 +136,9 @@ function frequenciesForInput(
 
 function selectedReminders(
   input: ReminderScheduleNotificationListInput | ReminderScheduleNotificationGenerateInput,
+): readonly ScheduledReminder[] {
   // 选择规则集中处理频率、优先级、到期窗口、低优先级分组和 limit。
   // 这让 listNotifications 和 generateReminders 共用同一套 mock 业务语义。
-): readonly ScheduledReminder[] {
   const frequencies = frequenciesForInput(input);
   const limit = normalizedLimit(input.limit);
   const dueWithinDays =

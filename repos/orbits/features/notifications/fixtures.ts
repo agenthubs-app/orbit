@@ -5,7 +5,6 @@
  * mock notification service 只返回本地调度视图，不会投递真实通知。
  */
 import {
-  REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE,
   type GroupedLowPriorityReminder,
   type NotificationQueueChannel,
   type NotificationQueueEntry,
@@ -20,7 +19,6 @@ import {
 export {
   REMINDER_SCHEDULE_NOTIFICATION_ERROR_CODES,
   REMINDER_SCHEDULE_NOTIFICATION_ERROR_DEFINITIONS,
-  REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE,
   type GroupedLowPriorityReminder,
   type NotificationQueueEntry,
   type ReminderFrequency,
@@ -30,6 +28,8 @@ export {
   type ScheduledReminder,
 } from "./contract";
 
+export const REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE =
+  "fixture:features/notifications/fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T23:10:00.000Z";
 

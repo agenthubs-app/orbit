@@ -5,7 +5,6 @@
  * mock contact service 通过这些 fixture 保持列表页、搜索页和筛选状态可预测。
  */
 import {
-  CONTACTS_LIST_SEARCH_FILTER_FIXTURE_SOURCE,
   CONTACT_SOURCE_FILTERS,
   CONTACT_STATUS_FILTERS,
   CONTACT_TAG_FILTERS,
@@ -25,6 +24,8 @@ import {
   type ContactsListSearchProvenance,
 } from "./contract";
 
+export const CONTACTS_LIST_SEARCH_FILTER_FIXTURE_SOURCE =
+  "fixture:features/contacts/fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T17:00:00.000Z";
 const fixtureCapturedAt = "2026-06-25T17:08:00.000Z";
@@ -141,6 +142,7 @@ export const mockContactListItems: readonly ContactListItem[] = [
     role: "Founder",
     organization: "Aster Grid",
     location: "Tokyo",
+    profileSnippet: "Founder at Aster Grid working on storage pilot partnerships.",
     relationshipContext:
       "Met at the climate founders dinner and discussed storage pilot operators.",
     lastInteractionAt: "2026-06-18T20:30:00.000Z",
@@ -174,6 +176,8 @@ export const mockContactListItems: readonly ContactListItem[] = [
     role: "Community Lead",
     organization: "Tokyo Climate Guild",
     location: "Tokyo",
+    profileSnippet:
+      "Community lead connecting climate founders with operator context.",
     relationshipContext:
       "Imported as a community contact from the climate dinner after-party.",
     lastInteractionAt: "2026-06-19T09:15:00.000Z",
@@ -207,6 +211,8 @@ export const mockContactListItems: readonly ContactListItem[] = [
     role: "Platform Partner",
     organization: "Northstar Ventures",
     location: "San Francisco",
+    profileSnippet:
+      "Platform partner focused on venture ecosystem introductions.",
     relationshipContext:
       "Email signal says Omar offered venture ecosystem introductions for partner diligence.",
     lastInteractionAt: "2026-06-17T14:05:00.000Z",
@@ -236,6 +242,8 @@ export const mockContactListItems: readonly ContactListItem[] = [
     role: "Head of Partnerships",
     organization: "HarborGrid",
     location: "Singapore",
+    profileSnippet:
+      "Partnerships lead building storage pilot distribution paths.",
     relationshipContext:
       "Event roster ties Mina to storage pilot distribution and partner education.",
     lastInteractionAt: "2026-06-20T11:20:00.000Z",
@@ -382,6 +390,7 @@ function includesText(contact: ContactListItem, query: string): boolean {
     contact.role,
     contact.organization,
     contact.location,
+    contact.profileSnippet,
     contact.relationshipContext,
     contact.nextAction,
     contact.tags.join(" "),
@@ -448,9 +457,9 @@ function evidenceIdsForContacts(
 
 export function buildContactsListSearchPayload(
   input: ContactsListSearchFilterInput = {},
+): ContactsListSearchPayload {
   // 搜索构造器把 query 和多维筛选应用到本地联系人列表。
   // 这样测试可以覆盖组合筛选，而不用维护大量手写 fixture。
-): ContactsListSearchPayload {
   const appliedFilters = appliedFiltersFromInput(input);
   const hasActiveRules = hasActiveSearchOrFilters(appliedFilters);
   const contacts = mockContactListItems.filter((contact) =>

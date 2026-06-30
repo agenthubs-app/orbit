@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as eventsEncounterFixtures from "../../features/events/encounter-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -124,7 +125,7 @@ test("event encounter note contract exposes note voice summary seed evidence fix
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventEncounterNoteFixture;
+        data?: typeof eventsEncounterFixtures.mockEventEncounterNoteFixture;
         error?: { code: string; appCode: string };
       };
       createEncounterEvidence: (input?: {
@@ -133,7 +134,7 @@ test("event encounter note contract exposes note voice summary seed evidence fix
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventEncounterEvidenceFixture;
+        data?: typeof eventsEncounterFixtures.mockEventEncounterEvidenceFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -212,7 +213,7 @@ test("event encounter note contract exposes note voice summary seed evidence fix
   assert.equal(success.data?.evidenceDraft.liveDatabaseWriteExecuted, false);
   assert.equal(
     success.data?.provenance.source,
-    contract.EVENT_ENCOUNTER_NOTE_FIXTURE_SOURCE,
+    eventsEncounterFixtures.EVENT_ENCOUNTER_NOTE_FIXTURE_SOURCE,
   );
   assert.equal(success.data?.provenance.speechToTextRequested, false);
   assert.equal(success.data?.provenance.audioUploadRequested, false);
@@ -233,7 +234,7 @@ test("event encounter note contract exposes note voice summary seed evidence fix
   assert.equal(empty.data?.state, "empty");
   assert.equal(empty.data?.encounter, null);
   assert.equal(empty.data?.evidenceDraft, null);
-  assert.match(contract.mockEmptyEventEncounterNoteFixture.nextAction, /Capture/i);
+  assert.match(eventsEncounterFixtures.mockEmptyEventEncounterNoteFixture.nextAction, /Capture/i);
   assert.equal(pending.success, true);
   assert.equal(pending.data?.state, "pending");
   assert.equal(pending.data?.voiceNote.status, "placeholder");
@@ -331,7 +332,7 @@ test("event encounter note API routes return stable envelopes with empty and fai
     mockEventEncounterNoteFixture: unknown;
     mockEmptyEventEncounterNoteFixture: unknown;
     mockEventEncounterEvidenceFixture: unknown;
-  }>("features/events/encounter-contract.ts");
+  }>("features/events/encounter-fixtures.ts");
 
   const encounterResponse = await encounterRoute.POST(
     new Request("https://orbit.local/api/events/demo-event-1/encounters", {
@@ -479,7 +480,7 @@ test("event encounter note API routes return stable envelopes with empty and fai
         eventEncounterNoteErrorCode: "EVENT_ENCOUNTER_NOTE_EMPTY",
         mode: "mock",
         privacy: "demo-event-encounter-note-only",
-        provenance: "fixture:features/events/encounter-contract.ts",
+        provenance: "fixture:features/events/encounter-fixtures.ts",
         service: "event-encounter-note-capture-mock",
       },
     },
@@ -497,7 +498,7 @@ test("event encounter note API routes return stable envelopes with empty and fai
         eventEncounterNoteErrorCode: "EVENT_ENCOUNTER_NOTE_PENDING",
         mode: "mock",
         privacy: "demo-event-encounter-note-only",
-        provenance: "fixture:features/events/encounter-contract.ts",
+        provenance: "fixture:features/events/encounter-fixtures.ts",
         service: "event-encounter-note-capture-mock",
       },
     },

@@ -1,12 +1,5 @@
 import {
   BUSINESS_CARD_REVIEW_ERROR_DEFINITIONS,
-  mockBusinessCardReviewDraft,
-  mockBusinessCardReviewFailureProvenance,
-  mockBusinessCardReviewFixture,
-  mockBusinessCardReviewUpdatedFixture,
-  mockBusinessCardReviewConfirmedFixture,
-  mockEmptyBusinessCardReviewFixture,
-  mockPendingBusinessCardReviewFixture,
   type BusinessCardReviewConfirmInput,
   type BusinessCardReviewConfirmationResult,
   type BusinessCardReviewConfirmationScenario,
@@ -24,6 +17,15 @@ import {
   type BusinessCardReviewUpdateInput,
   type BusinessCardReviewedFields,
 } from "./business-card-review-contract";
+import {
+  mockBusinessCardReviewDraft,
+  mockBusinessCardReviewFailureProvenance,
+  mockBusinessCardReviewFixture,
+  mockBusinessCardReviewUpdatedFixture,
+  mockBusinessCardReviewConfirmedFixture,
+  mockEmptyBusinessCardReviewFixture,
+  mockPendingBusinessCardReviewFixture,
+} from "./business-card-review-fixtures";
 
 const supportedReviewScenarios = new Set<BusinessCardReviewScenario>([
   "success",

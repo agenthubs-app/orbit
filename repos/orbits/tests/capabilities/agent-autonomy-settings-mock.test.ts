@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as agentSettingsFixtures from "../../features/agent/settings-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -121,54 +122,54 @@ test("agent autonomy settings contract exports levels fixtures service interface
     /low, medium, or high/i,
   );
   assert.equal(
-    contract.AGENT_AUTONOMY_SETTINGS_FIXTURE_SOURCE,
-    "fixture:features/agent/settings-contract.ts",
+    agentSettingsFixtures.AGENT_AUTONOMY_SETTINGS_FIXTURE_SOURCE,
+    "fixture:features/agent/settings-fixtures.ts",
   );
-  assert.equal(contract.mockAgentAutonomySettingsFixture.state, "success");
+  assert.equal(agentSettingsFixtures.mockAgentAutonomySettingsFixture.state, "success");
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance.source,
-    contract.AGENT_AUTONOMY_SETTINGS_FIXTURE_SOURCE,
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance.source,
+    agentSettingsFixtures.AGENT_AUTONOMY_SETTINGS_FIXTURE_SOURCE,
   );
   assert.deepEqual(
-    contract.mockAgentAutonomySettingsFixture.levels.map(
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.levels.map(
       (level) => level.level,
     ),
     ["low", "medium", "high"],
   );
   assert.deepEqual(
-    contract.mockAgentAutonomySettingsFixture.levels.map(
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.levels.map(
       (level) => level.autonomousExecutionAllowed,
     ),
     [false, false, false],
   );
   assert.deepEqual(
-    contract.mockAgentAutonomySettingsFixture.levels.map(
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.levels.map(
       (level) => level.scheduledLiveAgentJobsAllowed,
     ),
     [false, false, false],
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.levels[2]
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.levels[2]
       .confirmationRequiredBeforeExternalAction,
     true,
   );
   assert.match(
-    contract.mockAgentAutonomySettingsFixture.levels[2].boundary,
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.levels[2].boundary,
     /drafts and staged recommendations only/i,
   );
   assert.match(
-    contract.mockAgentAutonomySettingsFixture.levels[2]
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.levels[2]
       .blockedLiveCapabilities.join(" "),
     /calendar|email|notification|AI provider|database/i,
   );
   assert.deepEqual(
-    contract.mockAgentAutonomySettingsFixture.confirmationRules.map(
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.confirmationRules.map(
       (rule) => rule.level,
     ),
     ["low", "medium", "high"],
   );
   assert.deepEqual(
-    contract.mockAgentAutonomySettingsFixture.relationshipWorkflowProtections.map(
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.relationshipWorkflowProtections.map(
       (workflow) => workflow.workflowId,
     ),
     [
@@ -178,86 +179,86 @@ test("agent autonomy settings contract exports levels fixtures service interface
     ],
   );
   assert.match(
-    contract.mockAgentAutonomySettingsFixture.relationshipWorkflowProtections
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.relationshipWorkflowProtections
       .map((workflow) => workflow.protectedContext)
       .join(" "),
     /participant-facing follow-up|reminder timing|relationship evidence/i,
   );
   assert.match(
-    contract.mockAgentAutonomySettingsFixture.relationshipWorkflowProtections
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.relationshipWorkflowProtections
       .flatMap((workflow) => workflow.blockedUntilConfirmed)
       .join(" "),
     /email send|calendar write|database mutation|notification delivery/i,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.confirmationRules[2]
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.confirmationRules[2]
       .requiresConfirmation,
     true,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance
       .autonomousExecutionPolicyEvaluated,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance
       .scheduledLiveAgentJobRegistered,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance
       .externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance.databaseReadExecuted,
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance.databaseReadExecuted,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance.databaseWriteExecuted,
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance.databaseWriteExecuted,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance.aiProviderRequested,
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance.calendarProviderRequested,
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance.calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance.emailProviderRequested,
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance.emailProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance
       .notificationProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockAgentAutonomySettingsFixture.provenance.deviceRequested,
+    agentSettingsFixtures.mockAgentAutonomySettingsFixture.provenance.deviceRequested,
     false,
   );
-  assert.equal(contract.mockEmptyAgentAutonomySettingsFixture.state, "empty");
+  assert.equal(agentSettingsFixtures.mockEmptyAgentAutonomySettingsFixture.state, "empty");
   assert.match(
-    contract.mockEmptyAgentAutonomySettingsFixture.nextAction,
+    agentSettingsFixtures.mockEmptyAgentAutonomySettingsFixture.nextAction,
     /choose an autonomy level/i,
   );
-  assert.equal(contract.mockPendingAgentAutonomySettingsFixture.state, "pending");
+  assert.equal(agentSettingsFixtures.mockPendingAgentAutonomySettingsFixture.state, "pending");
   assert.equal(
-    contract.mockUpdatedHighAgentAutonomySettingsFixture.currentLevel,
+    agentSettingsFixtures.mockUpdatedHighAgentAutonomySettingsFixture.currentLevel,
     "high",
   );
   assert.equal(
-    contract.mockUpdatedHighAgentAutonomySettingsFixture.requestedLevel,
+    agentSettingsFixtures.mockUpdatedHighAgentAutonomySettingsFixture.requestedLevel,
     "high",
   );
   assert.match(
-    contract.mockUpdatedHighAgentAutonomySettingsFixture.confirmationSummary,
+    agentSettingsFixtures.mockUpdatedHighAgentAutonomySettingsFixture.confirmationSummary,
     /explicit confirmation/i,
   );
   assert.equal(
-    contract.mockUpdatedHighAgentAutonomySettingsFixture.provenance
+    agentSettingsFixtures.mockUpdatedHighAgentAutonomySettingsFixture.provenance
       .generationMethod,
     "rule-based-settings-update",
   );
@@ -443,19 +444,19 @@ test("agent autonomy settings API route returns stable envelopes with empty and 
   assert.equal(getResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await getResponse.json(), {
     success: true,
-    data: contract.mockAgentAutonomySettingsFixture,
+    data: agentSettingsFixtures.mockAgentAutonomySettingsFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyAgentAutonomySettingsFixture,
+    data: agentSettingsFixtures.mockEmptyAgentAutonomySettingsFixture,
   });
 
   assert.equal(putResponse.status, 200);
   assert.deepEqual(await putResponse.json(), {
     success: true,
-    data: contract.mockUpdatedHighAgentAutonomySettingsFixture,
+    data: agentSettingsFixtures.mockUpdatedHighAgentAutonomySettingsFixture,
   });
 
   assert.equal(failureResponse.status, 503);

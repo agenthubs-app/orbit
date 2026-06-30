@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as notificationsFixtures from "../../features/notifications/fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -126,28 +127,28 @@ test("reminder notification contract exports typed fixtures errors and mock-only
     /follow-up due dates|reminder frequency|relationship context/i,
   );
 
-  assert.deepEqual(contract.mockReminderFrequencies, [
+  assert.deepEqual(notificationsFixtures.mockReminderFrequencies, [
     "once",
     "daily",
     "weekly",
     "monthly",
   ]);
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.state,
+    notificationsFixtures.mockReminderScheduleNotificationFixture.state,
     "success",
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.provenance.source,
-    contract.REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE,
+    notificationsFixtures.mockReminderScheduleNotificationFixture.provenance.source,
+    notificationsFixtures.REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE,
   );
   assert.deepEqual(
-    contract.mockReminderScheduleNotificationFixture.reminders.map(
+    notificationsFixtures.mockReminderScheduleNotificationFixture.reminders.map(
       (reminder) => reminder.frequency,
     ),
     ["once", "daily", "weekly", "monthly"],
   );
   assert.deepEqual(
-    contract.mockReminderScheduleNotificationFixture.reminders[0].audit,
+    notificationsFixtures.mockReminderScheduleNotificationFixture.reminders[0].audit,
     {
       sourceLabel: "Follow-up task due date from Maya Chen",
       providerBoundary:
@@ -156,69 +157,69 @@ test("reminder notification contract exports typed fixtures errors and mock-only
     },
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.reminders[0]
+    notificationsFixtures.mockReminderScheduleNotificationFixture.reminders[0]
       .pushNotificationRequested,
     false,
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.reminders[0]
+    notificationsFixtures.mockReminderScheduleNotificationFixture.reminders[0]
       .emailDeliveryRequested,
     false,
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.reminders[0]
+    notificationsFixtures.mockReminderScheduleNotificationFixture.reminders[0]
       .smsDeliveryRequested,
     false,
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.reminders[0]
+    notificationsFixtures.mockReminderScheduleNotificationFixture.reminders[0]
       .cronJobRequested,
     false,
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture
+    notificationsFixtures.mockReminderScheduleNotificationFixture
       .groupedLowPriorityReminders[0].reminderIds.length,
     2,
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.notificationQueue[0].status,
+    notificationsFixtures.mockReminderScheduleNotificationFixture.notificationQueue[0].status,
     "mock_queued",
   );
   assert.deepEqual(
-    contract.mockReminderScheduleNotificationFixture.notificationQueue.map(
+    notificationsFixtures.mockReminderScheduleNotificationFixture.notificationQueue.map(
       (entry) => entry.channel,
     ),
     ["push", "email", "sms", "in_app"],
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.provenance
+    notificationsFixtures.mockReminderScheduleNotificationFixture.provenance
       .pushNotificationRequested,
     false,
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.provenance
+    notificationsFixtures.mockReminderScheduleNotificationFixture.provenance
       .emailDeliveryRequested,
     false,
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.provenance
+    notificationsFixtures.mockReminderScheduleNotificationFixture.provenance
       .smsDeliveryRequested,
     false,
   );
   assert.equal(
-    contract.mockReminderScheduleNotificationFixture.provenance.cronJobRequested,
+    notificationsFixtures.mockReminderScheduleNotificationFixture.provenance.cronJobRequested,
     false,
   );
   assert.equal(
-    contract.mockEmptyReminderScheduleNotificationFixture.state,
+    notificationsFixtures.mockEmptyReminderScheduleNotificationFixture.state,
     "empty",
   );
   assert.match(
-    contract.mockEmptyReminderScheduleNotificationFixture.nextAction,
+    notificationsFixtures.mockEmptyReminderScheduleNotificationFixture.nextAction,
     /follow-up due date|reminder frequency|relationship/i,
   );
   assert.equal(
-    contract.mockPendingReminderScheduleNotificationFixture.state,
+    notificationsFixtures.mockPendingReminderScheduleNotificationFixture.state,
     "pending",
   );
 });

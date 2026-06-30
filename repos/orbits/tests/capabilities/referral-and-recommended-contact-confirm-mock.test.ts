@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as acquisitionReferralFixtures from "../../features/acquisition/referral-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -122,7 +123,7 @@ test("referral recommendation contract exposes referral sources recommender cont
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockReferralRecommendationFixture;
+        data?: typeof acquisitionReferralFixtures.mockReferralRecommendationFixture;
         error?: { code: string; appCode: string };
       };
       confirmRecommendedContact: (input: {
@@ -131,7 +132,7 @@ test("referral recommendation contract exposes referral sources recommender cont
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockConfirmedRecommendedContactFixture;
+        data?: typeof acquisitionReferralFixtures.mockConfirmedRecommendedContactFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -212,7 +213,7 @@ test("referral recommendation contract exposes referral sources recommender cont
   assert.equal(success.data?.contactDrafts[0]?.databaseWriteExecuted, false);
   assert.equal(
     success.data?.provenance.source,
-    contract.REFERRAL_RECOMMENDATION_FIXTURE_SOURCE,
+    acquisitionReferralFixtures.REFERRAL_RECOMMENDATION_FIXTURE_SOURCE,
   );
   assert.equal(
     success.data?.provenance.multiHopSocialGraphDiscoveryExecuted,
@@ -239,7 +240,7 @@ test("referral recommendation contract exposes referral sources recommender cont
   );
   assert.equal(
     investorOnly.data?.provenance.source,
-    contract.REFERRAL_RECOMMENDATION_FIXTURE_SOURCE,
+    acquisitionReferralFixtures.REFERRAL_RECOMMENDATION_FIXTURE_SOURCE,
   );
 
   assert.equal(empty.success, true);
@@ -387,7 +388,7 @@ test("referral recommendation API routes return stable envelopes with empty pend
     mockEmptyReferralRecommendationFixture: unknown;
     mockPendingReferralRecommendationFixture: unknown;
     mockConfirmedRecommendedContactFixture: unknown;
-  }>("features/acquisition/referral-contract.ts");
+  }>("features/acquisition/referral-fixtures.ts");
 
   const referralResponse = await referralRoute.POST(
     new Request("https://orbit.local/api/contact-drafts/referral", {

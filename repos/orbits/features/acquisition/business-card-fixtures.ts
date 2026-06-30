@@ -5,7 +5,6 @@
  * 这些 fixture 只描述“待复核的导入结果”，不会代表真实 OCR 或联系人写入已经发生。
  */
 import {
-  BUSINESS_CARD_SCAN_OCR_FIXTURE_SOURCE,
   type BusinessCardCapture,
   type BusinessCardContactDraft,
   type BusinessCardEvidence,
@@ -15,7 +14,8 @@ import {
   type BusinessCardSourceReference,
 } from "./business-card-contract";
 
-export { BUSINESS_CARD_SCAN_OCR_FIXTURE_SOURCE };
+export const BUSINESS_CARD_SCAN_OCR_FIXTURE_SOURCE =
+  "fixture:features/acquisition/business-card-fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T11:00:00.000Z";
 const fixtureCreatedAt = "2026-06-25T11:04:00.000Z";

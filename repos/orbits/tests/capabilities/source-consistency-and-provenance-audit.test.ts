@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as auditProvenanceFixtures from "../../features/audit/provenance-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -128,129 +129,129 @@ test("source consistency provenance audit contract exports typed fixtures servic
     /source consistency and provenance audit mock/i,
   );
   assert.equal(
-    contract.SOURCE_CONSISTENCY_PROVENANCE_AUDIT_FIXTURE_SOURCE,
-    "fixture:features/audit/provenance-contract.ts",
+    auditProvenanceFixtures.SOURCE_CONSISTENCY_PROVENANCE_AUDIT_FIXTURE_SOURCE,
+    "fixture:features/audit/provenance-fixtures.ts",
   );
 
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.state,
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.state,
     "success",
   );
   assert.deepEqual(
-    contract.mockSourceConsistencyProvenanceAuditFixture.auditedCollections.map(
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.auditedCollections.map(
       (collection) => collection.entityKind,
     ),
     contract.SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ENTITY_KINDS,
   );
-  assert.equal(contract.mockSourceConsistencyProvenanceAuditFixture.activeFindingCount, 0);
-  assert.deepEqual(contract.mockSourceConsistencyProvenanceAuditFixture.findings, []);
-  for (const collection of contract.mockSourceConsistencyProvenanceAuditFixture
+  assert.equal(auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.activeFindingCount, 0);
+  assert.deepEqual(auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.findings, []);
+  for (const collection of auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture
     .auditedCollections) {
     assert.equal(collection.inconsistentCount, 0, collection.entityKind);
     assert.equal(collection.sourceConsistent, true, collection.entityKind);
     assert.equal(collection.provenanceComplete, true, collection.entityKind);
   }
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance.source,
-    contract.SOURCE_CONSISTENCY_PROVENANCE_AUDIT_FIXTURE_SOURCE,
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance.source,
+    auditProvenanceFixtures.SOURCE_CONSISTENCY_PROVENANCE_AUDIT_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .generationMethod,
     "fixture",
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .complianceReportingExecuted,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .productionAuditStorageWriteExecuted,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .databaseReadExecuted,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .databaseWriteExecuted,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .emailProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .notificationProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture.provenance
       .deviceRequested,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditRunFixture.state,
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditRunFixture.state,
     "success",
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditRunFixture
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditRunFixture
       .complianceReportPersisted,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditRunFixture.activeFindingCount,
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditRunFixture.activeFindingCount,
     0,
   );
   assert.deepEqual(
-    contract.mockSourceConsistencyProvenanceAuditRunFixture.generatedFindingIds,
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditRunFixture.generatedFindingIds,
     [],
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditRunFixture
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditRunFixture
       .productionAuditStorageWritten,
     false,
   );
   assert.equal(
-    contract.mockSourceConsistencyProvenanceAuditRunFixture.provenance
+    auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditRunFixture.provenance
       .generationMethod,
     "rule-based-audit-run",
   );
   assert.equal(
-    contract.mockEmptySourceConsistencyProvenanceAuditFixture.state,
+    auditProvenanceFixtures.mockEmptySourceConsistencyProvenanceAuditFixture.state,
     "empty",
   );
   assert.equal(
-    contract.mockEmptySourceConsistencyProvenanceAuditFixture
+    auditProvenanceFixtures.mockEmptySourceConsistencyProvenanceAuditFixture
       .auditedCollections.length,
     0,
   );
   assert.match(
-    contract.mockEmptySourceConsistencyProvenanceAuditFixture.nextAction,
+    auditProvenanceFixtures.mockEmptySourceConsistencyProvenanceAuditFixture.nextAction,
     /Add source-backed Orbit records/i,
   );
   assert.equal(
-    contract.mockPendingSourceConsistencyProvenanceAuditFixture.state,
+    auditProvenanceFixtures.mockPendingSourceConsistencyProvenanceAuditFixture.state,
     "pending",
   );
 });
@@ -395,25 +396,25 @@ test("source consistency provenance audit API routes return stable envelopes wit
   assert.equal(auditResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await auditResponse.json(), {
     success: true,
-    data: contract.mockSourceConsistencyProvenanceAuditFixture,
+    data: auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditFixture,
   });
 
   assert.equal(runResponse.status, 200);
   assert.deepEqual(await runResponse.json(), {
     success: true,
-    data: contract.mockSourceConsistencyProvenanceAuditRunFixture,
+    data: auditProvenanceFixtures.mockSourceConsistencyProvenanceAuditRunFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptySourceConsistencyProvenanceAuditFixture,
+    data: auditProvenanceFixtures.mockEmptySourceConsistencyProvenanceAuditFixture,
   });
 
   assert.equal(pendingResponse.status, 200);
   assert.deepEqual(await pendingResponse.json(), {
     success: true,
-    data: contract.mockPendingSourceConsistencyProvenanceAuditRunFixture,
+    data: auditProvenanceFixtures.mockPendingSourceConsistencyProvenanceAuditRunFixture,
   });
 
   assert.equal(failureResponse.status, 503);

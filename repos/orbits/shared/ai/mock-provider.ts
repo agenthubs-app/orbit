@@ -1,12 +1,14 @@
 import {
-  AI_PROVIDER_ERROR_DEFINITIONS,
-  AI_PROVIDER_PROMPT_TEMPLATE_IDS,
   mockAiProviderFailureProvenance,
   mockAiProviderFixture,
   mockAiProviderProvenance,
   mockAiProviderRuns,
   mockEmptyAiProviderFixture,
   mockPendingAiProviderFixture,
+} from "./mock-fixtures";
+import {
+  AI_PROVIDER_ERROR_DEFINITIONS,
+  AI_PROVIDER_PROMPT_TEMPLATE_IDS,
   type AiProviderErrorCode,
   type AiProviderFailure,
   type AiProviderMessageDraftInput,
@@ -145,9 +147,9 @@ function messageDraftText(input: {
   return `Hi ${input.recipientName}, following up on this context: ${input.relationshipContext} I can help with ${input.desiredOutcome}.`;
 }
 
+function generatedRun(input: AiProviderMessageDraftInput): AiProviderRunRecord {
   // generatedRun 是 mock provider 的核心：把输入标准化成稳定 run record，
   // 并在 promptTemplateId 不支持时走本地安全 fallback。
-function generatedRun(input: AiProviderMessageDraftInput): AiProviderRunRecord {
   const requestedPromptTemplateId = readText(input.promptTemplateId);
   const fallbackUsed = Boolean(
     requestedPromptTemplateId &&

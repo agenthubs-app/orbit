@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as acquisitionMergeFixtures from "../../features/acquisition/merge-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -86,7 +87,7 @@ test("duplicate detection and merge contract exposes typed fixtures service inte
     createMockDuplicateMergeService: () => {
       listMergeSuggestions: (input?: { scenario?: string | null }) => {
         success: boolean;
-        data?: typeof contract.mockDuplicateMergeSuggestionsFixture;
+        data?: typeof acquisitionMergeFixtures.mockDuplicateMergeSuggestionsFixture;
         error?: { code: string; appCode: string };
       };
       applyMergeSuggestion: (input: {
@@ -95,7 +96,7 @@ test("duplicate detection and merge contract exposes typed fixtures service inte
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockAppliedDuplicateMergeFixture;
+        data?: typeof acquisitionMergeFixtures.mockAppliedDuplicateMergeFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -147,7 +148,7 @@ test("duplicate detection and merge contract exposes typed fixtures service inte
   assert.equal(success.data?.duplicateCandidates[0]?.aiProviderRequested, false);
   assert.equal(
     success.data?.provenance.source,
-    contract.DUPLICATE_DETECTION_MERGE_FIXTURE_SOURCE,
+    acquisitionMergeFixtures.DUPLICATE_DETECTION_MERGE_FIXTURE_SOURCE,
   );
   assert.equal(success.data?.provenance.externalNetworkRequested, false);
   assert.equal(success.data?.provenance.databaseWriteExecuted, false);
@@ -259,7 +260,7 @@ test("duplicate merge API routes return stable envelopes with empty and controll
     mockDuplicateMergeSuggestionsFixture: unknown;
     mockEmptyDuplicateMergeSuggestionsFixture: unknown;
     mockAppliedDuplicateMergeFixture: unknown;
-  }>("features/acquisition/merge-contract.ts");
+  }>("features/acquisition/merge-fixtures.ts");
 
   const listResponse = await listRoute.GET(
     new Request("https://orbit.local/api/contact-drafts/merge-suggestions", {

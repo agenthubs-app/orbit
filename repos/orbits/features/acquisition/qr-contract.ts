@@ -4,8 +4,6 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
-export const QR_SCAN_CONNECT_FIXTURE_SOURCE =
-  "fixture:features/acquisition/qr-fixtures.ts" as const;
 // QR Scan Connect contract 描述通过 Orbit QR 建立关系草稿的流程。
 // mock/live 的具体来源标记和执行策略由各自实现提供。
 

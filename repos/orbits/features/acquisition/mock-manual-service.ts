@@ -1,12 +1,5 @@
 import {
   MANUAL_CONTACT_CREATION_ERROR_DEFINITIONS,
-  mockEmptyManualContactCreationFixture,
-  mockManualContactConfirmedFixture,
-  mockManualContactCreationFailureProvenance,
-  mockManualContactCreationFixture,
-  mockManualContactDraft,
-  mockManualContactEvidence,
-  mockPendingManualContactCreationFixture,
   type ManualContactConfirmationInput,
   type ManualContactConfirmationPayload,
   type ManualContactConfirmationResult,
@@ -24,6 +17,15 @@ import {
   type ManualContactEvidence,
   type ManualContactSourceReference,
 } from "./manual-contract";
+import {
+  mockEmptyManualContactCreationFixture,
+  mockManualContactConfirmedFixture,
+  mockManualContactCreationFailureProvenance,
+  mockManualContactCreationFixture,
+  mockManualContactDraft,
+  mockManualContactEvidence,
+  mockPendingManualContactCreationFixture,
+} from "./manual-fixtures";
 
 const supportedCreationScenarios = new Set<ManualContactCreationScenario>([
   "success",

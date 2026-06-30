@@ -16,7 +16,8 @@ import type {
   EventRecommendationsPayload,
 } from "./contract";
 
-const fixtureSource = "fixture:features/recommendations/fixtures.ts" as const;
+export const EVENT_RECOMMENDATION_FIXTURE_SOURCE =
+  "fixture:features/recommendations/fixtures.ts" as const;
 const fixtureCollectedAt = "2026-06-25T20:20:00.000Z";
 
 export const mockEventRecommendationSource: EventRecommendationSourceReference = {
@@ -315,7 +316,7 @@ export const mockEventRecommendations: readonly EventAttendeeRecommendation[] = 
 ];
 
 export const mockEventRecommendationProvenance: EventRecommendationProvenance = {
-  source: fixtureSource,
+  source: EVENT_RECOMMENDATION_FIXTURE_SOURCE,
   sourceLabel: "Mock event recommendation fixture",
   evidenceIds: [
     "evidence:event-rec-mina-roster",

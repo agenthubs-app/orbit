@@ -68,9 +68,6 @@ test("Orbit AI artifact contract exports supported kinds statuses surfaces and s
 });
 
 test("Orbit AI artifact contract supports traceable generated views and safe actions", async () => {
-  const contract = await importProjectModule<{
-    ORBIT_AGENT_ARTIFACT_FIXTURE_SOURCE: string;
-  }>("features/orbit-ai/artifact-contract.ts");
   type ArtifactContract = typeof import("../../features/orbit-ai/artifact-contract");
   type OrbitAgentArtifactPayload = ArtifactContract["OrbitAgentArtifactPayload"];
 
@@ -116,7 +113,7 @@ test("Orbit AI artifact contract supports traceable generated views and safe act
         evidenceIds: ["evidence:event:demo"],
         generatedAt: "2026-06-27T00:00:00.000Z",
         generationMethod: "sub-agent-generated-view",
-        source: contract.ORBIT_AGENT_ARTIFACT_FIXTURE_SOURCE,
+        source: "test:orbit-ai-artifact-contract",
         sourceModules: ["orbit-ai", "events"],
         toolCalls: [
           {

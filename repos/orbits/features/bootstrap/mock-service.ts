@@ -7,10 +7,6 @@
  */
 import {
   APP_BOOTSTRAP_ERROR_DEFINITIONS,
-  mockAppBootstrapFailureProvenance,
-  mockAppBootstrapFixture,
-  mockEmptyAppBootstrapFixture,
-  mockPendingAppBootstrapFixture,
   type AppBootstrapErrorCode,
   type AppBootstrapFailure,
   type AppBootstrapInput,
@@ -18,6 +14,12 @@ import {
   type AppBootstrapResult,
   type AppBootstrapScenario,
 } from "./contract";
+import {
+  mockAppBootstrapFailureProvenance,
+  mockAppBootstrapFixture,
+  mockEmptyAppBootstrapFixture,
+  mockPendingAppBootstrapFixture,
+} from "./fixtures";
 import type { AppBootstrapService } from "./service";
 
 const supportedScenarios = new Set<AppBootstrapScenario>([

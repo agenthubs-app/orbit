@@ -6,8 +6,6 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 // Agent Action Queue contract 描述 AI 建议动作的审核队列。
 // 队列项只是“建议”，接受/忽略不会自动执行邮件、日历、通知或数据库写入。
-export const AGENT_ACTION_QUEUE_FIXTURE_SOURCE =
-  "fixture:features/agent/fixtures.ts" as const;
 
 export const AGENT_ACTION_QUEUE_ACTION_TYPES = [
   "event_reminder",

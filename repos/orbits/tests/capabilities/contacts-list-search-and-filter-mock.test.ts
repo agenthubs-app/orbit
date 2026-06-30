@@ -105,6 +105,10 @@ test("contacts list search and filter contract exposes typed filters fixtures an
     success.data.contacts[0]?.relationshipContext,
     "Met at the climate founders dinner and discussed storage pilot operators.",
   );
+  assert.equal(
+    success.data.contacts[0]?.profileSnippet,
+    "Founder at Aster Grid working on storage pilot partnerships.",
+  );
   assert.equal(success.data.contacts[0]?.source.type, "manual");
   assert.deepEqual(success.data.contacts[0]?.tags, [
     "event:climate-founders-dinner",
@@ -126,7 +130,7 @@ test("contacts list search and filter contract exposes typed filters fixtures an
   ]);
   assert.equal(
     success.data.provenance.source,
-    contract.CONTACTS_LIST_SEARCH_FILTER_FIXTURE_SOURCE,
+    fixtures.CONTACTS_LIST_SEARCH_FILTER_FIXTURE_SOURCE,
   );
   assert.equal(success.data.provenance.searchIndexReadExecuted, false);
   assert.equal(success.data.provenance.databaseQueryExecuted, false);

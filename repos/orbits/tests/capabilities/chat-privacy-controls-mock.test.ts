@@ -39,14 +39,16 @@ function assertNoLiveProviderCalls(filePath: string): void {
   assert.doesNotMatch(source, /sendgrid|postmark|gmail|calendar\.google/i);
 }
 
-test("chat privacy controls contract exports typed fixtures errors and privacy guard states", async () => {
+test("chat privacy controls keeps typed contract separate from mock fixture states", async () => {
   const contract = await importProjectModule<{
-    CHAT_PRIVACY_CONTROLS_FIXTURE_SOURCE: string;
     CHAT_PRIVACY_CONTROLS_ERROR_CODES: readonly string[];
     CHAT_PRIVACY_CONTROLS_ERROR_DEFINITIONS: Record<
       string,
       { appCode: string; message: string; recovery: string }
     >;
+  }>("features/chat/privacy-contract.ts");
+  const fixtures = await importProjectModule<{
+    CHAT_PRIVACY_CONTROLS_FIXTURE_SOURCE: string;
     mockChatPrivacyControlsFixture: {
       state: string;
       conversationId: string;
@@ -110,7 +112,7 @@ test("chat privacy controls contract exports typed fixtures errors and privacy g
         productionDataDeletionExecuted: false;
       };
     };
-  }>("features/chat/privacy-contract.ts");
+  }>("features/chat/privacy-fixtures.ts");
   const contractSource = readFileSync(
     join(projectRoot, "features/chat/privacy-contract.ts"),
     "utf8",
@@ -140,114 +142,114 @@ test("chat privacy controls contract exports typed fixtures errors and privacy g
       .CHAT_PRIVACY_SENSITIVE_SHARE_CONFIRMATION_REQUIRED.recovery,
     /confirmation/i,
   );
-  assert.equal(contract.mockChatPrivacyControlsFixture.state, "success");
+  assert.equal(fixtures.mockChatPrivacyControlsFixture.state, "success");
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.provenance.source,
-    contract.CHAT_PRIVACY_CONTROLS_FIXTURE_SOURCE,
+    fixtures.mockChatPrivacyControlsFixture.provenance.source,
+    fixtures.CHAT_PRIVACY_CONTROLS_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.analysisOptIn.enabled,
+    fixtures.mockChatPrivacyControlsFixture.analysisOptIn.enabled,
     true,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.analysisOptIn.status,
+    fixtures.mockChatPrivacyControlsFixture.analysisOptIn.status,
     "opted_in",
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.analysisOptIn
+    fixtures.mockChatPrivacyControlsFixture.analysisOptIn
       .confirmationRequiredToDisable,
     true,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.analysisOptIn.aiProviderRequested,
+    fixtures.mockChatPrivacyControlsFixture.analysisOptIn.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.analysisDeletion.status,
+    fixtures.mockChatPrivacyControlsFixture.analysisDeletion.status,
     "available",
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.analysisDeletion
+    fixtures.mockChatPrivacyControlsFixture.analysisDeletion
       .productionDataDeletionExecuted,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.analysisDeletion
+    fixtures.mockChatPrivacyControlsFixture.analysisDeletion
       .productionPrivacyAuditLogWritten,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.privateNotes[0].visibility,
+    fixtures.mockChatPrivacyControlsFixture.privateNotes[0].visibility,
     "hidden",
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.privateNotes[0].bodyRedacted,
+    fixtures.mockChatPrivacyControlsFixture.privateNotes[0].bodyRedacted,
     true,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.privateNotes[0]
+    fixtures.mockChatPrivacyControlsFixture.privateNotes[0]
       .visibleToAiAnalysis,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.privateNotes[0]
+    fixtures.mockChatPrivacyControlsFixture.privateNotes[0]
       .visibleInSharePreview,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.sensitiveShareConfirmation
+    fixtures.mockChatPrivacyControlsFixture.sensitiveShareConfirmation
       .confirmationRequired,
     true,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.sensitiveShareConfirmation
+    fixtures.mockChatPrivacyControlsFixture.sensitiveShareConfirmation
       .canShareWithoutConfirmation,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.sensitiveShareConfirmation
+    fixtures.mockChatPrivacyControlsFixture.sensitiveShareConfirmation
       .externalActionExecuted,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.provenance.aiProviderRequested,
+    fixtures.mockChatPrivacyControlsFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.provenance.externalNetworkRequested,
+    fixtures.mockChatPrivacyControlsFixture.provenance.externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.provenance
+    fixtures.mockChatPrivacyControlsFixture.provenance
       .productionDataDeletionExecuted,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyControlsFixture.provenance
+    fixtures.mockChatPrivacyControlsFixture.provenance
       .productionPrivacyAuditLogWritten,
     false,
   );
-  assert.equal(contract.mockEmptyChatPrivacyControlsFixture.state, "empty");
-  assert.equal(contract.mockEmptyChatPrivacyControlsFixture.privateNotes.length, 0);
+  assert.equal(fixtures.mockEmptyChatPrivacyControlsFixture.state, "empty");
+  assert.equal(fixtures.mockEmptyChatPrivacyControlsFixture.privateNotes.length, 0);
   assert.match(
-    contract.mockEmptyChatPrivacyControlsFixture.nextAction,
+    fixtures.mockEmptyChatPrivacyControlsFixture.nextAction,
     /source-backed chat conversation/i,
   );
-  assert.equal(contract.mockPendingChatPrivacyControlsFixture.state, "pending");
+  assert.equal(fixtures.mockPendingChatPrivacyControlsFixture.state, "pending");
   assert.equal(
-    contract.mockPendingChatPrivacyControlsFixture.analysisOptIn.status,
+    fixtures.mockPendingChatPrivacyControlsFixture.analysisOptIn.status,
     "pending_confirmation",
   );
   assert.equal(
-    contract.mockPendingChatPrivacyControlsFixture.analysisDeletion.status,
+    fixtures.mockPendingChatPrivacyControlsFixture.analysisDeletion.status,
     "pending",
   );
   assert.equal(
-    contract.mockChatPrivacyControlsToggleOffFixture.analysisOptIn.enabled,
+    fixtures.mockChatPrivacyControlsToggleOffFixture.analysisOptIn.enabled,
     false,
   );
   assert.equal(
-    contract.mockChatPrivacyAnalysisDeletedFixture.analysisDeletion
+    fixtures.mockChatPrivacyAnalysisDeletedFixture.analysisDeletion
       .deletedInMock,
     true,
   );
@@ -391,6 +393,7 @@ test("mock chat privacy controls service is deterministic and never calls live p
 
   for (const filePath of [
     "features/chat/privacy-contract.ts",
+    "features/chat/privacy-fixtures.ts",
     "features/chat/mock-privacy-service.ts",
     "features/chat/chat-privacy-controls-mock/debug-view.tsx",
     "app/api/chat/privacy/route.ts",
@@ -407,9 +410,9 @@ test("chat privacy controls API routes return stable envelopes with empty and fa
   const toggleRoute = await importProjectModule<{
     POST: (request: Request) => Promise<Response>;
   }>("app/api/chat/privacy/analysis-toggle/route.ts");
-  const contract = await importProjectModule<{
+  const fixtures = await importProjectModule<{
     mockEmptyChatPrivacyControlsFixture: unknown;
-  }>("features/chat/privacy-contract.ts");
+  }>("features/chat/privacy-fixtures.ts");
 
   const privacyResponse = await privacyRoute.GET(
     new Request("https://orbit.local/api/chat/privacy"),
@@ -540,7 +543,7 @@ test("chat privacy controls API routes return stable envelopes with empty and fa
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyChatPrivacyControlsFixture,
+    data: fixtures.mockEmptyChatPrivacyControlsFixture,
   });
   assert.equal(failureResponse.status, 503);
   assert.deepEqual(await failureResponse.json(), {

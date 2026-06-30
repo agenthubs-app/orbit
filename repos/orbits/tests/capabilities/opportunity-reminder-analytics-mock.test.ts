@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as dashboardOpportunityFixtures from "../../features/dashboard/opportunity-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -123,19 +124,19 @@ test("opportunity reminder analytics contract exports typed fixtures service and
     /opportunity reminder analytics mock/i,
   );
   assert.equal(
-    contract.OPPORTUNITY_REMINDER_ANALYTICS_FIXTURE_SOURCE,
-    "fixture:features/dashboard/opportunity-contract.ts",
+    dashboardOpportunityFixtures.OPPORTUNITY_REMINDER_ANALYTICS_FIXTURE_SOURCE,
+    "fixture:features/dashboard/opportunity-fixtures.ts",
   );
 
-  assert.equal(contract.mockOpportunityReminderAnalyticsFixture.state, "success");
+  assert.equal(dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.state, "success");
   assert.deepEqual(
-    contract.mockOpportunityReminderAnalyticsFixture.highPriorityOpportunities.map(
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.highPriorityOpportunities.map(
       (opportunity) => opportunity.priority,
     ),
     ["high", "high", "medium"],
   );
   assert.deepEqual(
-    contract.mockOpportunityReminderAnalyticsFixture.currentGoalMatches.map(
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.currentGoalMatches.map(
       (match) => match.label,
     ),
     [
@@ -144,113 +145,113 @@ test("opportunity reminder analytics contract exports typed fixtures service and
     ],
   );
   assert.deepEqual(
-    contract.mockOpportunityReminderAnalyticsFixture.suggestedContactReasons.map(
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.suggestedContactReasons.map(
       (reason) => reason.reasonType,
     ),
     ["goal_match", "dormancy", "event_context", "referral_path"],
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance.source,
-    contract.OPPORTUNITY_REMINDER_ANALYTICS_FIXTURE_SOURCE,
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance.source,
+    dashboardOpportunityFixtures.OPPORTUNITY_REMINDER_ANALYTICS_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance.generationMethod,
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance.generationMethod,
     "fixture",
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .predictiveScoringExecuted,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .backgroundOpportunityMiningExecuted,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .liveAnalyticsJobExecuted,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .databaseReadExecuted,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .databaseWriteExecuted,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .emailProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance
       .notificationProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.provenance.deviceRequested,
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.provenance.deviceRequested,
     false,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.highPriorityOpportunities
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.highPriorityOpportunities
       .length,
     3,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.dormantHighValueContacts
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.dormantHighValueContacts
       .length,
     2,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.currentGoalMatches.length,
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.currentGoalMatches.length,
     2,
   );
   assert.equal(
-    contract.mockOpportunityReminderAnalyticsFixture.suggestedContactReasons
+    dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture.suggestedContactReasons
       .length,
     4,
   );
-  assert.equal(contract.mockOpportunityReminderRecomputeFixture.state, "success");
+  assert.equal(dashboardOpportunityFixtures.mockOpportunityReminderRecomputeFixture.state, "success");
   assert.equal(
-    contract.mockOpportunityReminderRecomputeFixture.generatedOpportunityCount,
+    dashboardOpportunityFixtures.mockOpportunityReminderRecomputeFixture.generatedOpportunityCount,
     3,
   );
   assert.equal(
-    contract.mockOpportunityReminderRecomputeFixture.provenance.generationMethod,
+    dashboardOpportunityFixtures.mockOpportunityReminderRecomputeFixture.provenance.generationMethod,
     "rule-based-recompute",
   );
-  assert.equal(contract.mockEmptyOpportunityReminderAnalyticsFixture.state, "empty");
+  assert.equal(dashboardOpportunityFixtures.mockEmptyOpportunityReminderAnalyticsFixture.state, "empty");
   assert.equal(
-    contract.mockEmptyOpportunityReminderAnalyticsFixture
+    dashboardOpportunityFixtures.mockEmptyOpportunityReminderAnalyticsFixture
       .highPriorityOpportunities.length,
     0,
   );
   assert.match(
-    contract.mockEmptyOpportunityReminderAnalyticsFixture.nextAction,
+    dashboardOpportunityFixtures.mockEmptyOpportunityReminderAnalyticsFixture.nextAction,
     /Add evidence-backed contacts/i,
   );
   assert.equal(
-    contract.mockPendingOpportunityReminderAnalyticsFixture.state,
+    dashboardOpportunityFixtures.mockPendingOpportunityReminderAnalyticsFixture.state,
     "pending",
   );
 });
@@ -396,25 +397,25 @@ test("opportunity reminder analytics API routes return stable envelopes with emp
   assert.equal(opportunitiesResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await opportunitiesResponse.json(), {
     success: true,
-    data: contract.mockOpportunityReminderAnalyticsFixture,
+    data: dashboardOpportunityFixtures.mockOpportunityReminderAnalyticsFixture,
   });
 
   assert.equal(recomputeResponse.status, 200);
   assert.deepEqual(await recomputeResponse.json(), {
     success: true,
-    data: contract.mockOpportunityReminderRecomputeFixture,
+    data: dashboardOpportunityFixtures.mockOpportunityReminderRecomputeFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyOpportunityReminderAnalyticsFixture,
+    data: dashboardOpportunityFixtures.mockEmptyOpportunityReminderAnalyticsFixture,
   });
 
   assert.equal(pendingResponse.status, 200);
   assert.deepEqual(await pendingResponse.json(), {
     success: true,
-    data: contract.mockPendingOpportunityReminderRecomputeFixture,
+    data: dashboardOpportunityFixtures.mockPendingOpportunityReminderRecomputeFixture,
   });
 
   assert.equal(failureResponse.status, 503);

@@ -7,14 +7,6 @@
  */
 import {
   EXTERNAL_ACTION_SANDBOX_ERROR_DEFINITIONS,
-  mockCreateCalendarEventNoOpFixture,
-  mockEmptyExternalActionAuditFixture,
-  mockExternalActionSandboxFailureProvenance,
-  mockExternalActionSandboxFixture,
-  mockExternalActionSandboxActions,
-  mockNotificationDeliveryNoOpFixture,
-  mockPendingExternalActionSandboxFixture,
-  mockSendMessageNoOpFixture,
   type ExternalActionAuditListInput,
   type ExternalActionAuditResult,
   type ExternalActionNoOpPayload,
@@ -27,6 +19,16 @@ import {
   type ExternalActionSandboxScenario,
   type ExternalActionSandboxService,
 } from "./external-action-contract";
+import {
+  mockCreateCalendarEventNoOpFixture,
+  mockEmptyExternalActionAuditFixture,
+  mockExternalActionSandboxFailureProvenance,
+  mockExternalActionSandboxFixture,
+  mockExternalActionSandboxActions,
+  mockNotificationDeliveryNoOpFixture,
+  mockPendingExternalActionSandboxFixture,
+  mockSendMessageNoOpFixture,
+} from "./external-action-fixtures";
 
 const supportedScenarios = new Set<ExternalActionSandboxScenario>([
   "success",
@@ -117,9 +119,9 @@ function operationResult(
   actionType: ExternalActionSandboxActionType,
   fixture: ExternalActionNoOpPayload,
   input: ExternalActionSandboxInput = {},
+): ExternalActionNoOpResult {
   // 所有外部动作共用同一套校验：scenario、actionId、actor/target 覆盖。
   // 即使返回 success，也只是 no-op 审计结果，不代表外部系统被调用。
-): ExternalActionNoOpResult {
   const scenario = normalizeScenario(input.scenario);
 
   if (scenario === "failure") {

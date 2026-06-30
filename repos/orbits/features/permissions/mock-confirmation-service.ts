@@ -105,9 +105,9 @@ const profileEvidence: ConfirmationEvidence = {
   collectedAt: fixtureCollectedAt,
 };
 
+export const mockConfirmationRequirements: readonly ConfirmationRequirement[] = [
   // 这四条 requirement 覆盖 outbound message、contact write、calendar write、
   // profile write 四类敏感动作，帮助页面一次性展示多种确认风险。
-export const mockConfirmationRequirements: readonly ConfirmationRequirement[] = [
   {
     id: "demo-confirmation-1",
     status: "pending_confirmation",

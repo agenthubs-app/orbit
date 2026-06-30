@@ -17,12 +17,6 @@ import { AppError } from "../../shared/errors/app-error";
 import {
   RELATIONSHIP_PROFILE_ERROR_DEFINITIONS,
   RELATIONSHIP_PROFILE_TYPES,
-  mockEmptyRelationshipProfileFixture,
-  mockPendingRelationshipProfileFixture,
-  mockRelationshipProfileFailureProvenance,
-  mockRelationshipProfileRecord,
-  mockRelationshipProfileUpdateFixture,
-  mockRelationshipStageUpdateFixture,
   type RelationshipMutualValue,
   type RelationshipNextAction,
   type RelationshipProfileErrorCode,
@@ -39,6 +33,14 @@ import {
   type RelationshipStageAndProfileService,
   type RelationshipStageUpdateInput,
 } from "./profile-contract";
+import {
+  mockEmptyRelationshipProfileFixture,
+  mockPendingRelationshipProfileFixture,
+  mockRelationshipProfileFailureProvenance,
+  mockRelationshipProfileRecord,
+  mockRelationshipProfileUpdateFixture,
+  mockRelationshipStageUpdateFixture,
+} from "./profile-fixtures";
 
 const supportedScenarios = new Set<RelationshipProfileScenario>([
   "success",

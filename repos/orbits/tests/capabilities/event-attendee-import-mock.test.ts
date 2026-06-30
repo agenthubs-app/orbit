@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as acquisitionEventAttendeeFixtures from "../../features/acquisition/event-attendee-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -66,7 +67,7 @@ test("event attendee import contract exposes attendee roster drafts relationship
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventAttendeeImportFixture;
+        data?: typeof acquisitionEventAttendeeFixtures.mockEventAttendeeImportFixture;
         error?: { code: string; appCode: string };
       };
       listEventAttendees: (input?: {
@@ -75,7 +76,7 @@ test("event attendee import contract exposes attendee roster drafts relationship
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventAttendeeRosterFixture;
+        data?: typeof acquisitionEventAttendeeFixtures.mockEventAttendeeRosterFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -146,7 +147,7 @@ test("event attendee import contract exposes attendee roster drafts relationship
   ]);
   assert.equal(
     success.data?.provenance.source,
-    contract.EVENT_ATTENDEE_IMPORT_FIXTURE_SOURCE,
+    acquisitionEventAttendeeFixtures.EVENT_ATTENDEE_IMPORT_FIXTURE_SOURCE,
   );
 
   assert.equal(empty.success, true);
@@ -260,7 +261,7 @@ test("event attendee import API routes return stable envelopes with empty and fa
     mockEventAttendeeImportFixture: unknown;
     mockEventAttendeeRosterFixture: unknown;
     mockEmptyEventAttendeeImportFixture: unknown;
-  }>("features/acquisition/event-attendee-contract.ts");
+  }>("features/acquisition/event-attendee-fixtures.ts");
 
   const importResponse = await importRoute.POST(
     new Request(

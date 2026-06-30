@@ -18,6 +18,8 @@ import {
   type AgentAutonomySettingsUpdateInput,
   type AgentAutonomySettingsUpdatePayload,
   type AgentAutonomySettingsUpdateResult,
+} from "./settings-contract";
+import {
   mockAgentAutonomySettingsFailureProvenance,
   mockAgentAutonomySettingsFixture,
   mockEmptyAgentAutonomySettingsFixture,
@@ -25,7 +27,7 @@ import {
   mockUpdatedHighAgentAutonomySettingsFixture,
   mockUpdatedLowAgentAutonomySettingsFixture,
   mockUpdatedMediumAgentAutonomySettingsFixture,
-} from "./settings-contract";
+} from "./settings-fixtures";
 
 const supportedScenarios = new Set<AgentAutonomySettingsScenario>([
   "success",

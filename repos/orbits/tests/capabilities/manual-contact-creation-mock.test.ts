@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as acquisitionManualFixtures from "../../features/acquisition/manual-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -78,7 +79,7 @@ test("manual contact creation contract exposes source note tags follow-up hints 
   ]);
   assert.equal(
     success.data.provenance.source,
-    contract.MANUAL_CONTACT_CREATION_FIXTURE_SOURCE,
+    acquisitionManualFixtures.MANUAL_CONTACT_CREATION_FIXTURE_SOURCE,
   );
 
   assert.equal(empty.success, true);
@@ -172,7 +173,7 @@ test("manual contact creation API routes return stable envelopes with empty and 
   >("app/api/contact-drafts/[id]/confirm/route.ts");
   const fixtures = await importProjectModule<
     typeof import("../../features/acquisition/manual-contract")
-  >("features/acquisition/manual-contract.ts");
+  >("features/acquisition/manual-fixtures.ts");
 
   const createResponse = await createRoute.POST(
     new Request("https://orbit.local/api/contact-drafts/manual", {

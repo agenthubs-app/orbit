@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as eventsGoalFixtures from "../../features/events/goal-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -97,8 +98,8 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
       }) => {
         success: boolean;
         data?: {
-          suggestedGoals: typeof contract.mockEventGoalReadinessFixture.suggestedGoals;
-          provenance: typeof contract.mockEventGoalReadinessFixture.provenance;
+          suggestedGoals: typeof eventsGoalFixtures.mockEventGoalReadinessFixture.suggestedGoals;
+          provenance: typeof eventsGoalFixtures.mockEventGoalReadinessFixture.provenance;
         };
         error?: { code: string; appCode: string };
       };
@@ -108,8 +109,8 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
         goalText?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventGoalReadinessFixture & {
-          goal: typeof contract.mockEventGoalReadinessFixture.goal;
+        data?: typeof eventsGoalFixtures.mockEventGoalReadinessFixture & {
+          goal: typeof eventsGoalFixtures.mockEventGoalReadinessFixture.goal;
         };
         error?: { code: string; appCode: string };
       };
@@ -118,7 +119,7 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventGoalReadinessFixture;
+        data?: typeof eventsGoalFixtures.mockEventGoalReadinessFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -142,15 +143,15 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
     /AI|calendar|email|notification|database/i,
   );
 
-  assert.equal(contract.mockEventGoalReadinessFixture.state, "success");
-  assert.equal(contract.mockEventGoalReadinessFixture.event.id, "demo-event-1");
+  assert.equal(eventsGoalFixtures.mockEventGoalReadinessFixture.state, "success");
+  assert.equal(eventsGoalFixtures.mockEventGoalReadinessFixture.event.id, "demo-event-1");
   assert.equal(
-    contract.mockEventGoalReadinessFixture.event.title,
+    eventsGoalFixtures.mockEventGoalReadinessFixture.event.title,
     "Climate founders dinner",
   );
-  assert.equal(contract.mockEventGoalReadinessFixture.suggestedGoals.length, 3);
+  assert.equal(eventsGoalFixtures.mockEventGoalReadinessFixture.suggestedGoals.length, 3);
   assert.deepEqual(
-    contract.mockEventGoalReadinessFixture.suggestedGoals.map(
+    eventsGoalFixtures.mockEventGoalReadinessFixture.suggestedGoals.map(
       (goal) => goal.goalId,
     ),
     [
@@ -160,37 +161,37 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
     ],
   );
   assert.deepEqual(
-    contract.mockEventGoalReadinessFixture.readinessChecklist.map(
+    eventsGoalFixtures.mockEventGoalReadinessFixture.readinessChecklist.map(
       (item) => item.status,
     ),
     ["ready", "ready", "pending", "ready"],
   );
   assert.equal(
-    contract.mockEventGoalReadinessFixture.preparationState
+    eventsGoalFixtures.mockEventGoalReadinessFixture.preparationState
       .calendarConflictCheck.liveCalendarRequested,
     false,
   );
   assert.equal(
-    contract.mockEventGoalReadinessFixture.provenance.source,
-    contract.EVENT_GOAL_READINESS_FIXTURE_SOURCE,
+    eventsGoalFixtures.mockEventGoalReadinessFixture.provenance.source,
+    eventsGoalFixtures.EVENT_GOAL_READINESS_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockEventGoalReadinessFixture.provenance.aiProviderRequested,
+    eventsGoalFixtures.mockEventGoalReadinessFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockEventGoalReadinessFixture.provenance.calendarProviderRequested,
+    eventsGoalFixtures.mockEventGoalReadinessFixture.provenance.calendarProviderRequested,
     false,
   );
-  assert.equal(contract.mockEmptyEventGoalReadinessFixture.state, "empty");
-  assert.equal(contract.mockEmptyEventGoalReadinessFixture.goal, null);
+  assert.equal(eventsGoalFixtures.mockEmptyEventGoalReadinessFixture.state, "empty");
+  assert.equal(eventsGoalFixtures.mockEmptyEventGoalReadinessFixture.goal, null);
   assert.equal(
-    contract.mockEmptyEventGoalReadinessFixture.nextAction,
+    eventsGoalFixtures.mockEmptyEventGoalReadinessFixture.nextAction,
     "Set a local mock goal before composing pre-event preparation.",
   );
-  assert.equal(contract.mockPendingEventGoalReadinessFixture.state, "pending");
+  assert.equal(eventsGoalFixtures.mockPendingEventGoalReadinessFixture.state, "pending");
   assert.equal(
-    contract.mockPendingEventGoalReadinessFixture.preparationState
+    eventsGoalFixtures.mockPendingEventGoalReadinessFixture.preparationState
       .preEventBriefReady,
     false,
   );
@@ -441,7 +442,7 @@ test("event goal and readiness API routes return stable envelopes with empty and
   assert.equal(emptyReadinessResponse.status, 200);
   assert.deepEqual(await emptyReadinessResponse.json(), {
     success: true,
-    data: contract.mockEmptyEventGoalReadinessFixture,
+    data: eventsGoalFixtures.mockEmptyEventGoalReadinessFixture,
   });
   assert.deepEqual(
     {
@@ -454,7 +455,7 @@ test("event goal and readiness API routes return stable envelopes with empty and
     {
       success: true,
       data: {
-        ...(contract.mockEventGoalReadinessFixture as Record<string, unknown>),
+        ...(eventsGoalFixtures.mockEventGoalReadinessFixture as Record<string, unknown>),
         goal: undefined,
       },
     },

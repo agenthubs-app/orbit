@@ -39,15 +39,17 @@ function assertNoLiveProviderCalls(filePath: string): void {
   assert.doesNotMatch(source, /sendgrid|postmark|gmail|calendar\.google/i);
 }
 
-test("AI provider contract exports typed provenance fixtures errors and service interface", async () => {
+test("AI provider contract exports typed provenance errors and service interface", async () => {
   const provider = await importProjectModule<{
-    AI_PROVIDER_FIXTURE_SOURCE: string;
     AI_PROVIDER_PROMPT_TEMPLATE_IDS: readonly string[];
     AI_PROVIDER_ERROR_CODES: readonly string[];
     AI_PROVIDER_ERROR_DEFINITIONS: Record<
       string,
       { appCode: string; message: string; recovery: string }
     >;
+  }>("shared/ai/provider.ts");
+  const fixtures = await importProjectModule<{
+    AI_PROVIDER_FIXTURE_SOURCE: string;
     mockAiProviderFixture: {
       state: string;
       runs: readonly Array<{
@@ -92,13 +94,17 @@ test("AI provider contract exports typed provenance fixtures errors and service 
       runs: readonly unknown[];
       nextAction: string;
     };
-  }>("shared/ai/provider.ts");
+  }>("shared/ai/mock-fixtures.ts");
   const providerSource = readFileSync(
     join(projectRoot, "shared/ai/provider.ts"),
     "utf8",
   );
   const provenanceSource = readFileSync(
     join(projectRoot, "shared/ai/provenance.ts"),
+    "utf8",
+  );
+  const fixturesSource = readFileSync(
+    join(projectRoot, "shared/ai/mock-fixtures.ts"),
     "utf8",
   );
 
@@ -109,6 +115,9 @@ test("AI provider contract exports typed provenance fixtures errors and service 
   assert.match(providerSource, /PromptTemplateId/);
   assert.match(providerSource, /inputHash/);
   assert.match(providerSource, /fallbackBehavior/);
+  assert.doesNotMatch(providerSource, /\b(?:Maya|Diego)\b/);
+  assert.doesNotMatch(providerSource, /mockAiProviderFixture/);
+  assert.match(fixturesSource, /mockAiProviderFixture/);
   assert.match(provenanceSource, /createMockInputHash/);
   assert.match(provenanceSource, /buildMockAiRunProvenance/);
   assert.deepEqual(provider.AI_PROVIDER_PROMPT_TEMPLATE_IDS, [
@@ -130,43 +139,43 @@ test("AI provider contract exports typed provenance fixtures errors and service 
     provider.AI_PROVIDER_ERROR_DEFINITIONS.AI_PROVIDER_EMPTY.recovery,
     /relationship context|source evidence|prompt/i,
   );
-  assert.equal(provider.mockAiProviderFixture.state, "success");
+  assert.equal(fixtures.mockAiProviderFixture.state, "success");
   assert.equal(
-    provider.mockAiProviderFixture.provenance.source,
-    provider.AI_PROVIDER_FIXTURE_SOURCE,
+    fixtures.mockAiProviderFixture.provenance.source,
+    fixtures.AI_PROVIDER_FIXTURE_SOURCE,
   );
-  assert.equal(provider.mockAiProviderFixture.runs[0].runId, "demo-ai-run-1");
+  assert.equal(fixtures.mockAiProviderFixture.runs[0].runId, "demo-ai-run-1");
   assert.equal(
-    provider.mockAiProviderFixture.runs[0].promptTemplateId,
+    fixtures.mockAiProviderFixture.runs[0].promptTemplateId,
     "orbit.message-draft.followup.v1",
   );
   assert.match(
-    provider.mockAiProviderFixture.runs[0].inputHash,
+    fixtures.mockAiProviderFixture.runs[0].inputHash,
     /^mock-sha256-/,
   );
   assert.equal(
-    provider.mockAiProviderFixture.runs[0].output.kind,
+    fixtures.mockAiProviderFixture.runs[0].output.kind,
     "message_draft",
   );
   assert.equal(
-    provider.mockAiProviderFixture.runs[0].provenance.liveAiProviderRequested,
+    fixtures.mockAiProviderFixture.runs[0].provenance.liveAiProviderRequested,
     false,
   );
   assert.equal(
-    provider.mockAiProviderFixture.runs[0].provenance
+    fixtures.mockAiProviderFixture.runs[0].provenance
       .externalNetworkRequested,
     false,
   );
   assert.equal(
-    provider.mockAiProviderFixture.runs[0].fallbackBehavior.used,
+    fixtures.mockAiProviderFixture.runs[0].fallbackBehavior.used,
     false,
   );
-  assert.equal(provider.mockEmptyAiProviderFixture.state, "empty");
+  assert.equal(fixtures.mockEmptyAiProviderFixture.state, "empty");
   assert.match(
-    provider.mockEmptyAiProviderFixture.nextAction,
+    fixtures.mockEmptyAiProviderFixture.nextAction,
     /relationship context|source evidence|prompt/i,
   );
-  assert.equal(provider.mockPendingAiProviderFixture.state, "pending");
+  assert.equal(fixtures.mockPendingAiProviderFixture.state, "pending");
 });
 
 test("mock AI provider service is deterministic and never calls live providers", async () => {
@@ -278,6 +287,7 @@ test("mock AI provider service is deterministic and never calls live providers",
 
   for (const filePath of [
     "shared/ai/provider.ts",
+    "shared/ai/mock-fixtures.ts",
     "shared/ai/mock-provider.ts",
     "shared/ai/provenance.ts",
     "shared/ai/ai-provider-mock-and-provenance-boundary/debug-view.tsx",
@@ -301,7 +311,7 @@ test("AI provider API routes return stable envelopes with empty and failure path
   const provider = await importProjectModule<{
     mockEmptyAiProviderFixture: unknown;
     mockPendingAiProviderFixture: unknown;
-  }>("shared/ai/provider.ts");
+  }>("shared/ai/mock-fixtures.ts");
 
   const draftResponse = await draftRoute.POST(
     new Request("https://orbit.local/api/ai/mock/message-draft", {

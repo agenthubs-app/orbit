@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as dashboardFixtures from "../../features/dashboard/fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -115,78 +116,78 @@ test("dashboard aggregate contract exports typed fixtures service and errors", a
     /dashboard aggregate mock/i,
   );
   assert.equal(
-    contract.DASHBOARD_AGGREGATE_FIXTURE_SOURCE,
-    "fixture:features/dashboard/contract.ts",
+    dashboardFixtures.DASHBOARD_AGGREGATE_FIXTURE_SOURCE,
+    "fixture:features/dashboard/fixtures.ts",
   );
 
-  assert.equal(contract.mockDashboardAggregateFixture.state, "success");
-  assert.equal(contract.mockDashboardAggregateFixture.relationshipAssetTotals.contacts, 42);
+  assert.equal(dashboardFixtures.mockDashboardAggregateFixture.state, "success");
+  assert.equal(dashboardFixtures.mockDashboardAggregateFixture.relationshipAssetTotals.contacts, 42);
   assert.equal(
-    contract.mockDashboardAggregateFixture.relationshipAssetTotals
+    dashboardFixtures.mockDashboardAggregateFixture.relationshipAssetTotals
       .evidenceBackedRelationships,
     31,
   );
-  assert.equal(contract.mockDashboardAggregateFixture.newContacts.count, 6);
-  assert.equal(contract.mockDashboardAggregateFixture.highValueCount, 5);
-  assert.equal(contract.mockDashboardAggregateFixture.pendingFollowups.count, 7);
-  assert.equal(contract.mockDashboardAggregateFixture.dormantContacts.count, 4);
-  assert.equal(contract.mockDashboardAggregateFixture.recentActivity.length, 4);
+  assert.equal(dashboardFixtures.mockDashboardAggregateFixture.newContacts.count, 6);
+  assert.equal(dashboardFixtures.mockDashboardAggregateFixture.highValueCount, 5);
+  assert.equal(dashboardFixtures.mockDashboardAggregateFixture.pendingFollowups.count, 7);
+  assert.equal(dashboardFixtures.mockDashboardAggregateFixture.dormantContacts.count, 4);
+  assert.equal(dashboardFixtures.mockDashboardAggregateFixture.recentActivity.length, 4);
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.source,
-    contract.DASHBOARD_AGGREGATE_FIXTURE_SOURCE,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.source,
+    dashboardFixtures.DASHBOARD_AGGREGATE_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.generationMethod,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.generationMethod,
     "fixture",
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.liveAnalyticsQueryExecuted,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.liveAnalyticsQueryExecuted,
     false,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance
+    dashboardFixtures.mockDashboardAggregateFixture.provenance
       .productionAggregateReadExecuted,
     false,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.externalNetworkRequested,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.databaseReadExecuted,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.databaseReadExecuted,
     false,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.aiProviderRequested,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.calendarProviderRequested,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.emailProviderRequested,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.emailProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance
+    dashboardFixtures.mockDashboardAggregateFixture.provenance
       .notificationProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockDashboardAggregateFixture.provenance.deviceRequested,
+    dashboardFixtures.mockDashboardAggregateFixture.provenance.deviceRequested,
     false,
   );
   assert.deepEqual(
-    contract.mockDashboardAggregateFixture.recentActivity.map(
+    dashboardFixtures.mockDashboardAggregateFixture.recentActivity.map(
       (activity) => activity.type,
     ),
     ["new_contact", "high_value", "followup_due", "dormant"],
   );
 
-  assert.equal(contract.mockDashboardAggregateSummaryFixture.state, "success");
+  assert.equal(dashboardFixtures.mockDashboardAggregateSummaryFixture.state, "success");
   assert.deepEqual(
-    contract.mockDashboardAggregateSummaryFixture.metrics.map((metric) => metric.id),
+    dashboardFixtures.mockDashboardAggregateSummaryFixture.metrics.map((metric) => metric.id),
     [
       "relationship-assets",
       "new-contacts",
@@ -196,19 +197,19 @@ test("dashboard aggregate contract exports typed fixtures service and errors", a
     ],
   );
   assert.equal(
-    contract.mockDashboardAggregateSummaryFixture.provenance.generationMethod,
+    dashboardFixtures.mockDashboardAggregateSummaryFixture.provenance.generationMethod,
     "rule-based-summary",
   );
-  assert.equal(contract.mockEmptyDashboardAggregateFixture.state, "empty");
+  assert.equal(dashboardFixtures.mockEmptyDashboardAggregateFixture.state, "empty");
   assert.equal(
-    contract.mockEmptyDashboardAggregateFixture.relationshipAssetTotals.contacts,
+    dashboardFixtures.mockEmptyDashboardAggregateFixture.relationshipAssetTotals.contacts,
     0,
   );
   assert.match(
-    contract.mockEmptyDashboardAggregateFixture.nextAction,
+    dashboardFixtures.mockEmptyDashboardAggregateFixture.nextAction,
     /Add a sourced contact/i,
   );
-  assert.equal(contract.mockPendingDashboardAggregateFixture.state, "pending");
+  assert.equal(dashboardFixtures.mockPendingDashboardAggregateFixture.state, "pending");
 });
 
 test("mock dashboard aggregate service is deterministic and provider-free", async () => {
@@ -338,25 +339,25 @@ test("dashboard aggregate API routes return stable envelopes with empty pending 
   assert.equal(dashboardResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await dashboardResponse.json(), {
     success: true,
-    data: contract.mockDashboardAggregateFixture,
+    data: dashboardFixtures.mockDashboardAggregateFixture,
   });
 
   assert.equal(summaryResponse.status, 200);
   assert.deepEqual(await summaryResponse.json(), {
     success: true,
-    data: contract.mockDashboardAggregateSummaryFixture,
+    data: dashboardFixtures.mockDashboardAggregateSummaryFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyDashboardAggregateFixture,
+    data: dashboardFixtures.mockEmptyDashboardAggregateFixture,
   });
 
   assert.equal(pendingResponse.status, 200);
   assert.deepEqual(await pendingResponse.json(), {
     success: true,
-    data: contract.mockPendingDashboardAggregateFixture,
+    data: dashboardFixtures.mockPendingDashboardAggregateFixture,
   });
 
   assert.equal(failureResponse.status, 503);

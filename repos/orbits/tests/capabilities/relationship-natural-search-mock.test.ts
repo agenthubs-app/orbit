@@ -112,7 +112,7 @@ test("relationship natural search contract exposes typed filters fixtures servic
     "SERVICE_UNAVAILABLE",
   );
   assert.equal(
-    contract.RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE,
+    fixtures.RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE,
     "fixture:features/search/fixtures.ts",
   );
 
@@ -145,7 +145,7 @@ test("relationship natural search contract exposes typed filters fixtures servic
   ]);
   assert.equal(
     success.data.provenance.source,
-    contract.RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE,
+    fixtures.RELATIONSHIP_NATURAL_SEARCH_FIXTURE_SOURCE,
   );
   assert.equal(success.data.provenance.semanticSearchExecuted, false);
   assert.equal(success.data.provenance.embeddingsGenerated, false);

@@ -1,12 +1,5 @@
 import {
   WANT_CONNECT_ERROR_DEFINITIONS,
-  mockEmptyWantConnectFixture,
-  mockEmptyWantConnectMatchesFixture,
-  mockPendingWantConnectFixture,
-  mockPendingWantConnectMatchesFixture,
-  mockWantConnectFailureProvenance,
-  mockWantConnectFixture,
-  mockWantConnectMatchesFixture,
   type WantConnectErrorCode,
   type WantConnectFailure,
   type WantConnectIntentInput,
@@ -20,6 +13,15 @@ import {
   type WantConnectSuccess,
   type WantConnectMatchesSuccess,
 } from "./want-connect-contract";
+import {
+  mockEmptyWantConnectFixture,
+  mockEmptyWantConnectMatchesFixture,
+  mockPendingWantConnectFixture,
+  mockPendingWantConnectMatchesFixture,
+  mockWantConnectFailureProvenance,
+  mockWantConnectFixture,
+  mockWantConnectMatchesFixture,
+} from "./want-connect-fixtures";
 
 const defaultEventId = "demo-event-1";
 

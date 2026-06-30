@@ -1,12 +1,5 @@
 import {
-  CHAT_WRITING_ASSIST_DEFAULT_SOURCE_TEXT,
   CHAT_WRITING_ASSIST_ERROR_DEFINITIONS,
-  mockChatWritingAssistFailureProvenance,
-  mockChatWritingAssistFixture,
-  mockChatWritingAssistProvenance,
-  mockChatWritingAssists,
-  mockEmptyChatWritingAssistFixture,
-  mockPendingChatWritingAssistFixture,
   type ChatWritingAssistFailure,
   type ChatWritingAssistInput,
   type ChatWritingAssistKind,
@@ -18,6 +11,15 @@ import {
   type ChatWritingAssistSuggestion,
   type ChatWritingAssistErrorCode,
 } from "./assist-contract";
+import {
+  CHAT_WRITING_ASSIST_DEFAULT_SOURCE_TEXT,
+  mockChatWritingAssistFailureProvenance,
+  mockChatWritingAssistFixture,
+  mockChatWritingAssistProvenance,
+  mockChatWritingAssists,
+  mockEmptyChatWritingAssistFixture,
+  mockPendingChatWritingAssistFixture,
+} from "./assist-fixtures";
 
 const supportedScenarios = new Set<ChatWritingAssistScenario>([
   "success",

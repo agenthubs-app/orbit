@@ -34,6 +34,8 @@ test("event recommendation contract exposes ranked attendees signals opening lin
       string,
       { appCode: string; message: string; recovery: string }
     >;
+  }>("features/recommendations/contract.ts");
+  const fixtures = await importProjectModule<{
     EVENT_RECOMMENDATION_FIXTURE_SOURCE: string;
     mockEventRecommendationsFixture: {
       state: string;
@@ -84,7 +86,7 @@ test("event recommendation contract exposes ranked attendees signals opening lin
       openingLine: { text: string; evidenceIds: readonly string[] };
       provenance: { generationMethod: string };
     };
-  }>("features/recommendations/contract.ts");
+  }>("features/recommendations/fixtures.ts");
   const serviceModule = await importProjectModule<{
     createMockEventRecommendationService: () => {
       listEventRecommendations: (input?: {
@@ -93,7 +95,7 @@ test("event recommendation contract exposes ranked attendees signals opening lin
         limit?: number | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventRecommendationsFixture;
+        data?: typeof fixtures.mockEventRecommendationsFixture;
         error?: { code: string; appCode: string };
       };
       composeOpeningLine: (input?: {
@@ -103,7 +105,7 @@ test("event recommendation contract exposes ranked attendees signals opening lin
         style?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockOpeningLineFixture;
+        data?: typeof fixtures.mockOpeningLineFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -127,14 +129,14 @@ test("event recommendation contract exposes ranked attendees signals opening lin
     /network|database|model|calendar|email|notification/i,
   );
 
-  assert.equal(contract.mockEventRecommendationsFixture.state, "success");
-  assert.equal(contract.mockEventRecommendationsFixture.event.id, "demo-event-1");
+  assert.equal(fixtures.mockEventRecommendationsFixture.state, "success");
+  assert.equal(fixtures.mockEventRecommendationsFixture.event.id, "demo-event-1");
   assert.equal(
-    contract.mockEventRecommendationsFixture.event.title,
+    fixtures.mockEventRecommendationsFixture.event.title,
     "Climate founders dinner",
   );
   assert.deepEqual(
-    contract.mockEventRecommendationsFixture.recommendations.map(
+    fixtures.mockEventRecommendationsFixture.recommendations.map(
       (recommendation) => recommendation.recommendationId,
     ),
     [
@@ -144,56 +146,56 @@ test("event recommendation contract exposes ranked attendees signals opening lin
     ],
   );
   assert.deepEqual(
-    contract.mockEventRecommendationsFixture.recommendations.map(
+    fixtures.mockEventRecommendationsFixture.recommendations.map(
       (recommendation) => recommendation.rank,
     ),
     [1, 2, 3],
   );
   assert.equal(
-    contract.mockEventRecommendationsFixture.recommendations[0].attendee
+    fixtures.mockEventRecommendationsFixture.recommendations[0].attendee
       .displayName,
     "Mina Park",
   );
   assert.equal(
-    contract.mockEventRecommendationsFixture.recommendations[0].openingLine
+    fixtures.mockEventRecommendationsFixture.recommendations[0].openingLine
       .aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockEventRecommendationsFixture.recommendations[0].matchSignals[0]
+    fixtures.mockEventRecommendationsFixture.recommendations[0].matchSignals[0]
       .vectorSearchExecuted,
     false,
   );
   assert.equal(
-    contract.mockEventRecommendationsFixture.recommendations[0]
+    fixtures.mockEventRecommendationsFixture.recommendations[0]
       .rankingProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockEventRecommendationsFixture.provenance.source,
-    contract.EVENT_RECOMMENDATION_FIXTURE_SOURCE,
+    fixtures.mockEventRecommendationsFixture.provenance.source,
+    fixtures.EVENT_RECOMMENDATION_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockEventRecommendationsFixture.provenance.aiProviderRequested,
+    fixtures.mockEventRecommendationsFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockEventRecommendationsFixture.provenance.vectorSearchExecuted,
+    fixtures.mockEventRecommendationsFixture.provenance.vectorSearchExecuted,
     false,
   );
-  assert.equal(contract.mockEmptyEventRecommendationsFixture.state, "empty");
+  assert.equal(fixtures.mockEmptyEventRecommendationsFixture.state, "empty");
   assert.equal(
-    contract.mockEmptyEventRecommendationsFixture.nextAction,
+    fixtures.mockEmptyEventRecommendationsFixture.nextAction,
     "Import or review local event attendees before asking for recommendations.",
   );
-  assert.equal(contract.mockPendingEventRecommendationsFixture.state, "pending");
-  assert.equal(contract.mockOpeningLineFixture.state, "success");
+  assert.equal(fixtures.mockPendingEventRecommendationsFixture.state, "pending");
+  assert.equal(fixtures.mockOpeningLineFixture.state, "success");
   assert.equal(
-    contract.mockOpeningLineFixture.openingLine.text,
+    fixtures.mockOpeningLineFixture.openingLine.text,
     "Mina, your storage pilot work came up in the climate dinner context. I would like to compare notes on operator rollout blockers.",
   );
   assert.equal(
-    contract.mockOpeningLineFixture.provenance.generationMethod,
+    fixtures.mockOpeningLineFixture.provenance.generationMethod,
     "rule-based-opening-line",
   );
 
@@ -337,9 +339,9 @@ test("event recommendation API routes return stable envelopes with empty and fai
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
   }>("app/api/recommendations/event/[id]/opening-line/route.ts");
-  const contract = await importProjectModule<{
+  const fixtures = await importProjectModule<{
     mockEmptyEventRecommendationsFixture: unknown;
-  }>("features/recommendations/contract.ts");
+  }>("features/recommendations/fixtures.ts");
 
   const recommendationsResponse = await recommendationsRoute.GET(
     new Request("https://orbit.local/api/recommendations/event/demo-event-1", {
@@ -465,7 +467,7 @@ test("event recommendation API routes return stable envelopes with empty and fai
   assert.equal(emptyRecommendationsResponse.status, 200);
   assert.deepEqual(await emptyRecommendationsResponse.json(), {
     success: true,
-    data: contract.mockEmptyEventRecommendationsFixture,
+    data: fixtures.mockEmptyEventRecommendationsFixture,
   });
   assert.equal(failureOpeningLineResponse.status, 503);
   assert.deepEqual(await failureOpeningLineResponse.json(), {

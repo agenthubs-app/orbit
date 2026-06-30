@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as followupsFixtures from "../../features/followups/fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -90,7 +91,7 @@ test("followup task generation contract exports typed fixtures errors and mock-o
         limit?: number | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockFollowupTaskGenerationFixture;
+        data?: typeof followupsFixtures.mockFollowupTaskGenerationFixture;
         error?: { code: string; appCode: string };
       };
       generateTasks: (input?: {
@@ -100,7 +101,7 @@ test("followup task generation contract exports typed fixtures errors and mock-o
         limit?: number | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockFollowupTaskGenerationFixture;
+        data?: typeof followupsFixtures.mockFollowupTaskGenerationFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -141,19 +142,19 @@ test("followup task generation contract exports typed fixtures errors and mock-o
     /new connections|event encounters|promised actions|dormant relationships/i,
   );
 
-  assert.deepEqual(contract.mockFollowupTaskGenerationCategories, [
+  assert.deepEqual(followupsFixtures.mockFollowupTaskGenerationCategories, [
     "new_connection",
     "event_encounter",
     "promised_action",
     "dormant_relationship",
   ]);
-  assert.equal(contract.mockFollowupTaskGenerationFixture.state, "success");
+  assert.equal(followupsFixtures.mockFollowupTaskGenerationFixture.state, "success");
   assert.equal(
-    contract.mockFollowupTaskGenerationFixture.provenance.source,
-    contract.FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE,
+    followupsFixtures.mockFollowupTaskGenerationFixture.provenance.source,
+    followupsFixtures.FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE,
   );
   assert.deepEqual(
-    contract.mockFollowupTaskGenerationFixture.tasks.map(
+    followupsFixtures.mockFollowupTaskGenerationFixture.tasks.map(
       (task) => task.triggerKind,
     ),
     [
@@ -164,52 +165,52 @@ test("followup task generation contract exports typed fixtures errors and mock-o
     ],
   );
   assert.equal(
-    contract.mockFollowupTaskGenerationFixture.tasks[0]
+    followupsFixtures.mockFollowupTaskGenerationFixture.tasks[0]
       .backgroundSchedulerRequested,
     false,
   );
-  assert.deepEqual(contract.mockFollowupTaskGenerationFixture.tasks[0].audit, {
+  assert.deepEqual(followupsFixtures.mockFollowupTaskGenerationFixture.tasks[0].audit, {
     sourceLabel: "Climate operators breakfast roster",
     providerBoundary: "scheduler false, AI false, persistence false",
     verificationAction: "Verify evidence",
   });
   assert.equal(
-    contract.mockFollowupTaskGenerationFixture.tasks[0].aiProviderRequested,
+    followupsFixtures.mockFollowupTaskGenerationFixture.tasks[0].aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockFollowupTaskGenerationFixture.tasks[0].notificationDelivered,
+    followupsFixtures.mockFollowupTaskGenerationFixture.tasks[0].notificationDelivered,
     false,
   );
   assert.equal(
-    contract.mockFollowupTaskGenerationFixture.provenance
+    followupsFixtures.mockFollowupTaskGenerationFixture.provenance
       .backgroundSchedulerRequested,
     false,
   );
   assert.equal(
-    contract.mockFollowupTaskGenerationFixture.provenance
+    followupsFixtures.mockFollowupTaskGenerationFixture.provenance
       .liveDatabaseReadExecuted,
     false,
   );
   assert.equal(
-    contract.mockFollowupTaskGenerationFixture.provenance
+    followupsFixtures.mockFollowupTaskGenerationFixture.provenance
       .liveDatabaseWriteExecuted,
     false,
   );
   assert.equal(
-    contract.mockFollowupTaskGenerationFixture.provenance.aiProviderRequested,
+    followupsFixtures.mockFollowupTaskGenerationFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockEmptyFollowupTaskGenerationFixture.state,
+    followupsFixtures.mockEmptyFollowupTaskGenerationFixture.state,
     "empty",
   );
   assert.match(
-    contract.mockEmptyFollowupTaskGenerationFixture.nextAction,
+    followupsFixtures.mockEmptyFollowupTaskGenerationFixture.nextAction,
     /Add a new connection|record an encounter|promised action|relationship/i,
   );
   assert.equal(
-    contract.mockPendingFollowupTaskGenerationFixture.state,
+    followupsFixtures.mockPendingFollowupTaskGenerationFixture.state,
     "pending",
   );
 

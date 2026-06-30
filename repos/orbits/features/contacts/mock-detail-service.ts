@@ -8,15 +8,6 @@ import {
   CONTACT_DETAIL_STATUS_OPTIONS,
   CONTACT_DETAIL_TAG_OPTIONS,
   CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS,
-  mockContactDetail,
-  mockContactDetailFailureProvenance,
-  mockContactDetailFixture,
-  mockContactDetailSource,
-  mockEmptyContactDetailFixture,
-  mockPendingContactDetailFixture,
-  mockUpdatedContactDetailLastInteraction,
-  mockUpdatedContactDetailNote,
-  mockUpdatedContactDetailProvenance,
   type ContactDetail,
   type ContactDetailLastInteractionChannel,
   type ContactDetailLastInteractionInput,
@@ -36,6 +27,17 @@ import {
   type ContactDetailTagStatusUpdatePendingError,
   type ContactDetailUpdateInput,
 } from "./detail-contract";
+import {
+  mockContactDetail,
+  mockContactDetailFailureProvenance,
+  mockContactDetailFixture,
+  mockContactDetailSource,
+  mockEmptyContactDetailFixture,
+  mockPendingContactDetailFixture,
+  mockUpdatedContactDetailLastInteraction,
+  mockUpdatedContactDetailNote,
+  mockUpdatedContactDetailProvenance,
+} from "./detail-fixtures";
 
 const supportedScenarios = new Set<ContactDetailTagStatusScenario>([
   "success",

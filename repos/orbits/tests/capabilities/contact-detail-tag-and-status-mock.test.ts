@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as contactsDetailFixtures from "../../features/contacts/detail-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -107,14 +108,29 @@ test("contact detail tag and status contract exposes detail tags status notes la
     contract.CONTACT_DETAIL_TAG_OPTIONS.includes("topic:venture-ecosystem"),
   );
   assert.equal(
-    contract.CONTACT_DETAIL_TAG_STATUS_FIXTURE_SOURCE,
-    "fixture:features/contacts/detail-contract.ts",
+    contactsDetailFixtures.CONTACT_DETAIL_TAG_STATUS_FIXTURE_SOURCE,
+    "fixture:features/contacts/detail-fixtures.ts",
   );
 
   assert.equal(success.success, true);
   assert.equal(success.data.state, "success");
   assert.equal(success.data.contact?.id, "demo-contact-1");
   assert.equal(success.data.contact?.displayName, "Kenji Watanabe");
+  assert.deepEqual(success.data.contact?.publicProfile, {
+    bio: "Founder at Aster Grid focused on storage pilot partnerships.",
+    conversationPrompts: [
+      "Which operator profile makes a storage pilot credible?",
+      "Where do climate founders lose momentum after an event?",
+    ],
+    industry: "climate infrastructure",
+    offering: ["storage pilot operator access", "founder diligence context"],
+    seeking: ["operator introductions", "commercial pilot partners"],
+    selfIntroduction:
+      "I help climate infrastructure teams turn early storage pilots into operator-backed partnerships.",
+    topics: ["storage pilots", "operator partnerships", "climate infrastructure"],
+    source: contactsDetailFixtures.mockContactDetailSource,
+    evidenceIds: ["evidence:contact-detail-public-profile"],
+  });
   assert.equal(success.data.contact?.status, "needs_follow_up");
   assert.deepEqual(success.data.contact?.tags, [
     "event:climate-founders-dinner",
@@ -145,6 +161,7 @@ test("contact detail tag and status contract exposes detail tags status notes la
     "evidence:contact-detail-intro-request",
     "evidence:contact-detail-status",
     "evidence:contact-detail-note",
+    "evidence:contact-detail-public-profile",
   ]);
 
   assert.equal(updated.success, true);
@@ -206,8 +223,8 @@ test("contact detail tag and status contract exposes detail tags status notes la
   assert.equal(missing.success, false);
   assert.equal(missing.error.code, "CONTACT_DETAIL_NOT_FOUND");
 
-  assert.deepEqual(contract.mockContactDetailFixture, success.data);
-  assert.deepEqual(contract.mockUpdatedContactDetailFixture, updated.data);
+  assert.deepEqual(contactsDetailFixtures.mockContactDetailFixture, success.data);
+  assert.deepEqual(contactsDetailFixtures.mockUpdatedContactDetailFixture, updated.data);
 });
 
 test("mock contact detail tag and status service is deterministic with no external provider calls", async () => {
@@ -360,19 +377,19 @@ test("contact detail tag and status API route returns stable envelopes with empt
   assert.equal(getResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await getResponse.json(), {
     success: true,
-    data: contract.mockContactDetailFixture,
+    data: contactsDetailFixtures.mockContactDetailFixture,
   });
 
   assert.equal(patchResponse.status, 200);
   assert.deepEqual(await patchResponse.json(), {
     success: true,
-    data: contract.mockUpdatedContactDetailFixture,
+    data: contactsDetailFixtures.mockUpdatedContactDetailFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyContactDetailFixture,
+    data: contactsDetailFixtures.mockEmptyContactDetailFixture,
   });
 
   assert.equal(failureResponse.status, 503);

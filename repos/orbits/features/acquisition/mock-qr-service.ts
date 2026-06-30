@@ -132,9 +132,9 @@ function splitList(value: string | undefined): string[] {
     .filter((item) => item.length > 0);
 }
 
+function parseRuleBasedQrText(qrText: string) {
   // 支持的 mock 格式是 orbit-qr:key=value;key=value。
   // 不符合格式时返回 null，让 service 走 QR_SCAN_PAYLOAD_REQUIRED。
-function parseRuleBasedQrText(qrText: string) {
   const normalizedText = qrText.trim();
   const prefix = "orbit-qr:";
 

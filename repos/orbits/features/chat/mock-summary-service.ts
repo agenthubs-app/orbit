@@ -1,10 +1,5 @@
 import {
   CHAT_SUMMARY_EXTRACTION_ERROR_DEFINITIONS,
-  mockChatExtractionFixture,
-  mockChatSummaryExtractionFailureProvenance,
-  mockChatSummaryFixture,
-  mockEmptyChatSummaryFixture,
-  mockPendingChatExtractionFixture,
   type ChatSummaryExtractionErrorCode,
   type ChatSummaryExtractionFailure,
   type ChatSummaryExtractionInput,
@@ -13,6 +8,13 @@ import {
   type ChatSummaryExtractionScenario,
   type ChatSummaryExtractionService,
 } from "./summary-contract";
+import {
+  mockChatExtractionFixture,
+  mockChatSummaryExtractionFailureProvenance,
+  mockChatSummaryFixture,
+  mockEmptyChatSummaryFixture,
+  mockPendingChatExtractionFixture,
+} from "./summary-fixtures";
 
 const supportedScenarios = new Set<ChatSummaryExtractionScenario>([
   "success",

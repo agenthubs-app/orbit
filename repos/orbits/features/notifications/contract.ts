@@ -4,8 +4,6 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
-export const REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE =
-  "fixture:features/notifications/fixtures.ts" as const;
 // Reminder Schedule Notification contract 描述提醒和通知队列的计划协议。
 // mock/live 的具体来源标记和执行策略由各自实现提供。
 
@@ -189,7 +187,7 @@ export interface NotificationQueueEntry {
 }
 
 export interface ReminderScheduleNotificationProvenance {
-  source: typeof REMINDER_SCHEDULE_NOTIFICATION_FIXTURE_SOURCE;
+  source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;

@@ -6,9 +6,6 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 // Followups contract 描述关系跟进任务的生成和展示模型。
 // 当前只生成可复核任务建议，不调用调度器、不写任务库、不发送通知。
-export const FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE =
-  "fixture:features/followups/fixtures.ts" as const;
-
 export const FOLLOWUP_TASK_GENERATION_ERROR_CODES = [
   "FOLLOWUP_TASK_GENERATION_TASK_ID_REQUIRED",
   "FOLLOWUP_TASK_GENERATION_TASK_NOT_FOUND",

@@ -14,14 +14,14 @@ import {
 } from "../../../../../../features/chat/service";
 import {
   CHAT_CONVERSATION_MOCK_DEFAULT_MESSAGE_BODY,
-} from "../../../../../../features/chat/contract";
+} from "../../../../../../features/chat/fixtures";
 import { createChatConversationMessageService } from "../../../../../../features/chat/service-factory";
 
 export const dynamic = "force-dynamic";
+
 // 这个 route 是旧 Chat 会话里的“发送一条消息”入口。
 // 它解析 path id、body 和 scenario，然后交给 chat conversation message service；
 // Orbit AI live agent 有独立 /api/ai/conversations 路径，不在这里直接调用模型。
-
 interface ChatConversationMessagesRouteContext {
   params: Promise<{
     id: string;

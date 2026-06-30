@@ -1,11 +1,5 @@
 import {
   DUPLICATE_DETECTION_MERGE_ERROR_DEFINITIONS,
-  mockAppliedDuplicateMergeFixture,
-  mockDuplicateMergeFailureProvenance,
-  mockDuplicateMergeSuggestions,
-  mockDuplicateMergeSuggestionsFixture,
-  mockEmptyDuplicateMergeSuggestionsFixture,
-  mockPendingDuplicateMergeSuggestionsFixture,
   type DuplicateDetectionMergeErrorCode,
   type DuplicateDetectionMergeFailure,
   type DuplicateDetectionMergeScenario,
@@ -21,6 +15,14 @@ import {
   type DuplicateMergeSuggestionsResult,
   type DuplicateMergeSuggestionsSuccess,
 } from "./merge-contract";
+import {
+  mockAppliedDuplicateMergeFixture,
+  mockDuplicateMergeFailureProvenance,
+  mockDuplicateMergeSuggestions,
+  mockDuplicateMergeSuggestionsFixture,
+  mockEmptyDuplicateMergeSuggestionsFixture,
+  mockPendingDuplicateMergeSuggestionsFixture,
+} from "./merge-fixtures";
 
 const supportedListScenarios = new Set<DuplicateDetectionMergeScenario>([
   "success",

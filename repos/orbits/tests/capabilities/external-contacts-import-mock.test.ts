@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as acquisitionExternalImportFixtures from "../../features/acquisition/external-import-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -84,7 +85,7 @@ test("external contacts import contract exposes phone google csv and customer-li
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockExternalContactsCandidatesFixture;
+        data?: typeof acquisitionExternalImportFixtures.mockExternalContactsCandidatesFixture;
         error?: { code: string; appCode: string };
       };
       importExternalContacts: (input?: {
@@ -92,7 +93,7 @@ test("external contacts import contract exposes phone google csv and customer-li
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockExternalContactsImportFixture;
+        data?: typeof acquisitionExternalImportFixtures.mockExternalContactsImportFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -144,7 +145,7 @@ test("external contacts import contract exposes phone google csv and customer-li
   );
   assert.equal(
     candidates.data?.provenance.source,
-    contract.EXTERNAL_CONTACTS_IMPORT_FIXTURE_SOURCE,
+    acquisitionExternalImportFixtures.EXTERNAL_CONTACTS_IMPORT_FIXTURE_SOURCE,
   );
   assert.equal(
     candidates.data?.provenance.phoneAddressBookReadExecuted,
@@ -283,7 +284,7 @@ test("external contacts import API routes return stable envelopes with empty and
     mockExternalContactsImportFixture: unknown;
     mockEmptyExternalContactsCandidatesFixture: unknown;
     mockEmptyExternalContactsImportFixture: unknown;
-  }>("features/acquisition/external-import-contract.ts");
+  }>("features/acquisition/external-import-fixtures.ts");
 
   const importResponse = await importRoute.POST(
     new Request("https://orbit.local/api/contact-drafts/external/import", {

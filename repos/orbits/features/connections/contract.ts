@@ -5,9 +5,6 @@ import type {
 } from "../../shared/domain/source-types";
 import type { AppErrorCode } from "../../shared/errors/app-error";
 
-export const CONNECTION_EVIDENCE_SERVICE_FIXTURE_SOURCE =
-  "fixture:features/connections/fixtures.ts" as const;
-
 // Connections contract 描述关系证据链的读写模型。
 // 它回答“我为什么认识这个人”，并且所有新增证据都保留来源、贡献类型和安全边界。
 export const CONNECTION_EVIDENCE_SOURCE_TYPES = [

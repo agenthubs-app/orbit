@@ -39,18 +39,18 @@ function assertNoLiveProviderCalls(filePath: string): void {
   assert.doesNotMatch(source, /sendgrid|postmark|gmail|calendar\.google/i);
 }
 
-test("chat contract exports typed fixtures errors and mock-only provenance", async () => {
+test("chat conversation keeps typed contract separate from mock fixture provenance", async () => {
   const contract = await importProjectModule<{
     CHAT_CONVERSATION_MOCK_ERROR_CODES: readonly string[];
     CHAT_CONVERSATION_MOCK_ERROR_DEFINITIONS: Record<
       string,
       { appCode: string; message: string; recovery: string }
     >;
-    CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE: string;
     CHAT_CONVERSATION_STATUSES: readonly string[];
     SEND_MESSAGE_STATUSES: readonly string[];
   }>("features/chat/contract.ts");
   const fixtures = await importProjectModule<{
+    CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE: string;
     mockChatConversationListFixture: {
       state: string;
       conversations: readonly Array<{
@@ -161,7 +161,7 @@ test("chat contract exports typed fixtures errors and mock-only provenance", asy
   assert.equal(fixtures.mockChatConversationListFixture.state, "success");
   assert.equal(
     fixtures.mockChatConversationListFixture.provenance.source,
-    contract.CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE,
+    fixtures.CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE,
   );
   assert.deepEqual(
     fixtures.mockChatConversationListFixture.conversations.map(

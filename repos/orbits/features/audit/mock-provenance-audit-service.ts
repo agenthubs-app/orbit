@@ -1,12 +1,5 @@
 import {
   SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ERROR_DEFINITIONS,
-  mockEmptySourceConsistencyProvenanceAuditFixture,
-  mockEmptySourceConsistencyProvenanceAuditRunFixture,
-  mockPendingSourceConsistencyProvenanceAuditFixture,
-  mockPendingSourceConsistencyProvenanceAuditRunFixture,
-  mockSourceConsistencyProvenanceAuditFailureProvenance,
-  mockSourceConsistencyProvenanceAuditFixture,
-  mockSourceConsistencyProvenanceAuditRunFixture,
   type SourceConsistencyProvenanceAuditErrorCode,
   type SourceConsistencyProvenanceAuditFailure,
   type SourceConsistencyProvenanceAuditInput,
@@ -17,6 +10,15 @@ import {
   type SourceConsistencyProvenanceAuditScenario,
   type SourceConsistencyProvenanceAuditService,
 } from "./provenance-contract";
+import {
+  mockEmptySourceConsistencyProvenanceAuditFixture,
+  mockEmptySourceConsistencyProvenanceAuditRunFixture,
+  mockPendingSourceConsistencyProvenanceAuditFixture,
+  mockPendingSourceConsistencyProvenanceAuditRunFixture,
+  mockSourceConsistencyProvenanceAuditFailureProvenance,
+  mockSourceConsistencyProvenanceAuditFixture,
+  mockSourceConsistencyProvenanceAuditRunFixture,
+} from "./provenance-fixtures";
 
 const supportedScenarios = new Set<SourceConsistencyProvenanceAuditScenario>([
   "success",

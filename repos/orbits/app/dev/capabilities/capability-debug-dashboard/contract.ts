@@ -11,12 +11,8 @@ import type {
   CapabilityDebugDashboardErrorCode,
   CapabilityDebugDashboardErrorDefinition,
 } from "./error-codes";
-import type {
-  CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE,
-} from "./constants";
 
 export {
-  CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE,
   CAPABILITY_DEBUG_DASHBOARD_SLUG,
 } from "./constants";
 
@@ -93,7 +89,7 @@ export interface CapabilityDebugDashboardResetControl {
 }
 
 export interface CapabilityDebugDashboardProvenance {
-  source: typeof CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE;
+  source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;

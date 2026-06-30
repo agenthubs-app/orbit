@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as dashboardDistributionFixtures from "../../features/dashboard/distribution-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -120,13 +121,13 @@ test("network distribution analytics contract exports typed fixtures service and
     /network distribution analytics mock/i,
   );
   assert.equal(
-    contract.NETWORK_DISTRIBUTION_ANALYTICS_FIXTURE_SOURCE,
-    "fixture:features/dashboard/distribution-contract.ts",
+    dashboardDistributionFixtures.NETWORK_DISTRIBUTION_ANALYTICS_FIXTURE_SOURCE,
+    "fixture:features/dashboard/distribution-fixtures.ts",
   );
 
-  assert.equal(contract.mockNetworkDistributionAnalyticsFixture.state, "success");
+  assert.equal(dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.state, "success");
   assert.deepEqual(
-    contract.mockNetworkDistributionAnalyticsFixture.industryDistribution.map(
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.industryDistribution.map(
       (bucket) => bucket.label,
     ),
     [
@@ -137,7 +138,7 @@ test("network distribution analytics contract exports typed fixtures service and
     ],
   );
   assert.deepEqual(
-    contract.mockNetworkDistributionAnalyticsFixture.valueTypeDistribution.map(
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.valueTypeDistribution.map(
       (bucket) => bucket.valueType,
     ),
     [
@@ -148,88 +149,88 @@ test("network distribution analytics contract exports typed fixtures service and
     ],
   );
   assert.deepEqual(
-    contract.mockNetworkDistributionAnalyticsFixture.relationshipStrengthDistribution.map(
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.relationshipStrengthDistribution.map(
       (bucket) => bucket.strength,
     ),
     ["strong", "warm", "weak"],
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance.source,
-    contract.NETWORK_DISTRIBUTION_ANALYTICS_FIXTURE_SOURCE,
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance.source,
+    dashboardDistributionFixtures.NETWORK_DISTRIBUTION_ANALYTICS_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance.generationMethod,
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance.generationMethod,
     "fixture",
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance
       .graphAlgorithmExecuted,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance
       .embeddingSearchExecuted,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance
       .liveAnalyticsJobExecuted,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance
       .externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance.databaseReadExecuted,
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance.databaseReadExecuted,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance.databaseWriteExecuted,
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance.databaseWriteExecuted,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance.aiProviderRequested,
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance
       .calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance
       .emailProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance
       .notificationProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockNetworkDistributionAnalyticsFixture.provenance.deviceRequested,
+    dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture.provenance.deviceRequested,
     false,
   );
-  assert.equal(contract.mockNetworkGapAnalysisFixture.state, "success");
-  assert.equal(contract.mockNetworkGapAnalysisFixture.coverageScore, 68);
-  assert.equal(contract.mockNetworkGapAnalysisFixture.gaps.length, 3);
+  assert.equal(dashboardDistributionFixtures.mockNetworkGapAnalysisFixture.state, "success");
+  assert.equal(dashboardDistributionFixtures.mockNetworkGapAnalysisFixture.coverageScore, 68);
+  assert.equal(dashboardDistributionFixtures.mockNetworkGapAnalysisFixture.gaps.length, 3);
   assert.equal(
-    contract.mockNetworkGapAnalysisFixture.provenance.generationMethod,
+    dashboardDistributionFixtures.mockNetworkGapAnalysisFixture.provenance.generationMethod,
     "rule-based-gap-analysis",
   );
-  assert.equal(contract.mockEmptyNetworkDistributionAnalyticsFixture.state, "empty");
+  assert.equal(dashboardDistributionFixtures.mockEmptyNetworkDistributionAnalyticsFixture.state, "empty");
   assert.equal(
-    contract.mockEmptyNetworkDistributionAnalyticsFixture.industryDistribution
+    dashboardDistributionFixtures.mockEmptyNetworkDistributionAnalyticsFixture.industryDistribution
       .length,
     0,
   );
   assert.match(
-    contract.mockEmptyNetworkDistributionAnalyticsFixture.nextAction,
+    dashboardDistributionFixtures.mockEmptyNetworkDistributionAnalyticsFixture.nextAction,
     /Add sourced contacts/i,
   );
-  assert.equal(contract.mockPendingNetworkGapAnalysisFixture.state, "pending");
+  assert.equal(dashboardDistributionFixtures.mockPendingNetworkGapAnalysisFixture.state, "pending");
 });
 
 test("mock network distribution analytics service is deterministic and provider-free", async () => {
@@ -351,25 +352,25 @@ test("network distribution analytics API routes return stable envelopes with emp
   assert.equal(distributionsResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await distributionsResponse.json(), {
     success: true,
-    data: contract.mockNetworkDistributionAnalyticsFixture,
+    data: dashboardDistributionFixtures.mockNetworkDistributionAnalyticsFixture,
   });
 
   assert.equal(gapsResponse.status, 200);
   assert.deepEqual(await gapsResponse.json(), {
     success: true,
-    data: contract.mockNetworkGapAnalysisFixture,
+    data: dashboardDistributionFixtures.mockNetworkGapAnalysisFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyNetworkDistributionAnalyticsFixture,
+    data: dashboardDistributionFixtures.mockEmptyNetworkDistributionAnalyticsFixture,
   });
 
   assert.equal(pendingResponse.status, 200);
   assert.deepEqual(await pendingResponse.json(), {
     success: true,
-    data: contract.mockPendingNetworkGapAnalysisFixture,
+    data: dashboardDistributionFixtures.mockPendingNetworkGapAnalysisFixture,
   });
 
   assert.equal(failureResponse.status, 503);

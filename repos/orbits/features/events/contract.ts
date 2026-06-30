@@ -6,9 +6,6 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 // Events contract 描述活动 CRUD/import 的 mock-first 数据模型。
 // 当前 contract 用于活动页和推荐链路；它不会同步真实日历或写生产活动库。
-export const EVENT_CRUD_IMPORT_FIXTURE_SOURCE =
-  "fixture:features/events/fixtures.ts" as const;
-
 export const EVENT_STATUS_VALUES = [
   "draft",
   "confirmed",

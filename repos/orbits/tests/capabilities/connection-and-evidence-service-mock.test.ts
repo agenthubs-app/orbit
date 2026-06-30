@@ -105,7 +105,7 @@ test("connection and evidence contract exposes records timelines source links fi
     "user_note",
   ]);
   assert.equal(
-    contract.CONNECTION_EVIDENCE_SERVICE_FIXTURE_SOURCE,
+    fixtures.CONNECTION_EVIDENCE_SERVICE_FIXTURE_SOURCE,
     "fixture:features/connections/fixtures.ts",
   );
 

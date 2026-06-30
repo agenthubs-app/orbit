@@ -1,12 +1,5 @@
 import {
   OPPORTUNITY_REMINDER_ANALYTICS_ERROR_DEFINITIONS,
-  mockEmptyOpportunityReminderAnalyticsFixture,
-  mockEmptyOpportunityReminderRecomputeFixture,
-  mockOpportunityReminderAnalyticsFailureProvenance,
-  mockOpportunityReminderAnalyticsFixture,
-  mockOpportunityReminderRecomputeFixture,
-  mockPendingOpportunityReminderAnalyticsFixture,
-  mockPendingOpportunityReminderRecomputeFixture,
   type OpportunityReminderAnalyticsErrorCode,
   type OpportunityReminderAnalyticsFailure,
   type OpportunityReminderAnalyticsInput,
@@ -17,6 +10,15 @@ import {
   type OpportunityReminderRecomputePayload,
   type OpportunityReminderRecomputeResult,
 } from "./opportunity-contract";
+import {
+  mockEmptyOpportunityReminderAnalyticsFixture,
+  mockEmptyOpportunityReminderRecomputeFixture,
+  mockOpportunityReminderAnalyticsFailureProvenance,
+  mockOpportunityReminderAnalyticsFixture,
+  mockOpportunityReminderRecomputeFixture,
+  mockPendingOpportunityReminderAnalyticsFixture,
+  mockPendingOpportunityReminderRecomputeFixture,
+} from "./opportunity-fixtures";
 
 const supportedScenarios = new Set<OpportunityReminderAnalyticsScenario>([
   "success",

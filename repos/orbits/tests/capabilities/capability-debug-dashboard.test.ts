@@ -39,12 +39,14 @@ const providerFreeSourcePatterns = [
 test("capability debug dashboard exports typed contract fixtures service and errors", async () => {
   const contract = await importProjectModule<{
     CAPABILITY_DEBUG_DASHBOARD_SLUG: string;
-    CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE: string;
     CAPABILITY_DEBUG_DASHBOARD_ERROR_CODES: readonly string[];
     CAPABILITY_DEBUG_DASHBOARD_ERROR_DEFINITIONS: Record<
       string,
       { appCode: string; message: string; recovery: string }
     >;
+  }>("app/dev/capabilities/capability-debug-dashboard/contract.ts");
+  const fixtures = await importProjectModule<{
+    CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE: string;
     capabilityDebugDashboardFixture: {
       state: string;
       capabilityLinks: readonly Array<{
@@ -102,7 +104,7 @@ test("capability debug dashboard exports typed contract fixtures service and err
       pendingReason: string;
       nextAction: string;
     };
-  }>("app/dev/capabilities/capability-debug-dashboard/contract.ts");
+  }>("app/dev/capabilities/capability-debug-dashboard/fixtures.ts");
   const serviceSource = readFileSync(
     join(projectRoot, "app/dev/capabilities/capability-debug-dashboard/service.ts"),
     "utf8",
@@ -122,7 +124,7 @@ test("capability debug dashboard exports typed contract fixtures service and err
   assert.match(errorSource, /CAPABILITY_DEBUG_DASHBOARD_ERROR_DEFINITIONS/);
   assert.equal(contract.CAPABILITY_DEBUG_DASHBOARD_SLUG, "capability-debug-dashboard");
   assert.equal(
-    contract.CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE,
+    fixtures.CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE,
     "fixture:app/dev/capabilities/capability-debug-dashboard/fixtures.ts",
   );
   assert.deepEqual(contract.CAPABILITY_DEBUG_DASHBOARD_ERROR_CODES, [
@@ -138,79 +140,79 @@ test("capability debug dashboard exports typed contract fixtures service and err
       .CAPABILITY_DEBUG_DASHBOARD_MOCK_FAILED.recovery,
     /capability debug dashboard/i,
   );
-  assert.equal(contract.capabilityDebugDashboardFixture.state, "success");
+  assert.equal(fixtures.capabilityDebugDashboardFixture.state, "success");
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.source,
-    contract.CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE,
+    fixtures.capabilityDebugDashboardFixture.provenance.source,
+    fixtures.CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.generationMethod,
+    fixtures.capabilityDebugDashboardFixture.provenance.generationMethod,
     "fixture",
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.productionAdminToolsReplaced,
+    fixtures.capabilityDebugDashboardFixture.provenance.productionAdminToolsReplaced,
     true,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.externalObservabilityReplaced,
+    fixtures.capabilityDebugDashboardFixture.provenance.externalObservabilityReplaced,
     true,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.externalNetworkRequested,
+    fixtures.capabilityDebugDashboardFixture.provenance.externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.databaseReadExecuted,
+    fixtures.capabilityDebugDashboardFixture.provenance.databaseReadExecuted,
     false,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.databaseWriteExecuted,
+    fixtures.capabilityDebugDashboardFixture.provenance.databaseWriteExecuted,
     false,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.aiProviderRequested,
+    fixtures.capabilityDebugDashboardFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.calendarProviderRequested,
+    fixtures.capabilityDebugDashboardFixture.provenance.calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.emailProviderRequested,
+    fixtures.capabilityDebugDashboardFixture.provenance.emailProviderRequested,
     false,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.notificationProviderRequested,
+    fixtures.capabilityDebugDashboardFixture.provenance.notificationProviderRequested,
     false,
   );
   assert.equal(
-    contract.capabilityDebugDashboardFixture.provenance.deviceRequested,
+    fixtures.capabilityDebugDashboardFixture.provenance.deviceRequested,
     false,
   );
-  assert.ok(contract.capabilityDebugDashboardFixture.capabilityLinks.length >= 11);
+  assert.ok(fixtures.capabilityDebugDashboardFixture.capabilityLinks.length >= 11);
   assert.ok(
-    contract.capabilityDebugDashboardFixture.capabilityLinks.every((link) =>
+    fixtures.capabilityDebugDashboardFixture.capabilityLinks.every((link) =>
       link.href.startsWith("/dev/capabilities"),
     ),
   );
   assert.deepEqual(
-    contract.capabilityDebugDashboardFixture.apiProbes.map((probe) => probe.path),
+    fixtures.capabilityDebugDashboardFixture.apiProbes.map((probe) => probe.path),
     ["/api/app/bootstrap", "/api/mock/scenarios", "/api/audit/provenance"],
   );
   assert.deepEqual(
-    contract.capabilityDebugDashboardFixture.apiProbes.map(
+    fixtures.capabilityDebugDashboardFixture.apiProbes.map(
       (probe) => `${probe.method} ${probe.expectStatus}`,
     ),
     ["GET 200", "GET 200", "GET 200"],
   );
   assert.deepEqual(
-    contract.capabilityDebugDashboardFixture.scenarioLinks.map(
+    fixtures.capabilityDebugDashboardFixture.scenarioLinks.map(
       (scenario) => scenario.state,
     ),
     ["success", "pending", "success", "success", "empty", "failure"],
   );
   assert.deepEqual(
-    contract.capabilityDebugDashboardFixture.scenarioLinks.map(
+    fixtures.capabilityDebugDashboardFixture.scenarioLinks.map(
       (scenario) => scenario.activationTarget.path,
     ),
     [
@@ -223,7 +225,7 @@ test("capability debug dashboard exports typed contract fixtures service and err
     ],
   );
   assert.deepEqual(
-    contract.capabilityDebugDashboardFixture.scenarioLinks.map((scenario) => [
+    fixtures.capabilityDebugDashboardFixture.scenarioLinks.map((scenario) => [
       scenario.activationTarget.method,
       scenario.activationTarget.expectStatus,
       scenario.activationTarget.envelope,
@@ -238,23 +240,23 @@ test("capability debug dashboard exports typed contract fixtures service and err
     ],
   );
   assert.deepEqual(
-    contract.capabilityDebugDashboardFixture.resetControls.map(
+    fixtures.capabilityDebugDashboardFixture.resetControls.map(
       (control) => control.path,
     ),
     ["/api/mock/reset", "/api/mock/reset?scenario=empty-account-demo"],
   );
-  assert.equal(contract.capabilityDebugDashboardEmptyFixture.state, "empty");
+  assert.equal(fixtures.capabilityDebugDashboardEmptyFixture.state, "empty");
   assert.equal(
-    contract.capabilityDebugDashboardEmptyFixture.capabilityLinks.length,
+    fixtures.capabilityDebugDashboardEmptyFixture.capabilityLinks.length,
     0,
   );
   assert.match(
-    contract.capabilityDebugDashboardEmptyFixture.nextAction,
+    fixtures.capabilityDebugDashboardEmptyFixture.nextAction,
     /restore capability registrations/i,
   );
-  assert.equal(contract.capabilityDebugDashboardPendingFixture.state, "pending");
+  assert.equal(fixtures.capabilityDebugDashboardPendingFixture.state, "pending");
   assert.match(
-    contract.capabilityDebugDashboardPendingFixture.pendingReason,
+    fixtures.capabilityDebugDashboardPendingFixture.pendingReason,
     /local capability probe refresh/i,
   );
 });

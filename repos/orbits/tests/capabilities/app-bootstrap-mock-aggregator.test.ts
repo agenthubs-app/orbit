@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as bootstrapFixtures from "../../features/bootstrap/fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -93,74 +94,74 @@ test("app bootstrap contract exports typed fixture service and error definitions
     /app bootstrap mock aggregator/i,
   );
   assert.equal(
-    contract.APP_BOOTSTRAP_FIXTURE_SOURCE,
-    "fixture:features/bootstrap/contract.ts",
+    bootstrapFixtures.APP_BOOTSTRAP_FIXTURE_SOURCE,
+    "fixture:features/bootstrap/fixtures.ts",
   );
-  assert.equal(contract.mockAppBootstrapFixture.state, "success");
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.state, "success");
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.source,
-    contract.APP_BOOTSTRAP_FIXTURE_SOURCE,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.source,
+    bootstrapFixtures.APP_BOOTSTRAP_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.generationMethod,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.generationMethod,
     "fixture",
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.serverSidePersonalizationExecuted,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.serverSidePersonalizationExecuted,
     false,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.liveDatabaseAggregationExecuted,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.liveDatabaseAggregationExecuted,
     false,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.externalNetworkRequested,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.databaseReadExecuted,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.databaseReadExecuted,
     false,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.databaseWriteExecuted,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.databaseWriteExecuted,
     false,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.aiProviderRequested,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.calendarProviderRequested,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.emailProviderRequested,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.emailProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockAppBootstrapFixture.provenance.notificationProviderRequested,
+    bootstrapFixtures.mockAppBootstrapFixture.provenance.notificationProviderRequested,
     false,
   );
-  assert.equal(contract.mockAppBootstrapFixture.provenance.deviceRequested, false);
-  assert.equal(contract.mockAppBootstrapFixture.account.workspaceName, "Orbit Demo");
-  assert.equal(contract.mockAppBootstrapFixture.profile.displayName, "Mina Tanaka");
-  assert.equal(contract.mockAppBootstrapFixture.upcomingEvents.length, 2);
-  assert.equal(contract.mockAppBootstrapFixture.connectionSummary.totalContacts, 42);
-  assert.equal(contract.mockAppBootstrapFixture.pendingTasks.length, 3);
-  assert.equal(contract.mockAppBootstrapFixture.topAgentActions.length, 3);
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.provenance.deviceRequested, false);
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.account.workspaceName, "Orbit Demo");
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.profile.displayName, "Mina Tanaka");
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.upcomingEvents.length, 2);
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.connectionSummary.totalContacts, 42);
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.pendingTasks.length, 3);
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.topAgentActions.length, 3);
   assert.equal(
-    contract.mockAppBootstrapFixture.topAgentActions[0].confirmationRequired,
+    bootstrapFixtures.mockAppBootstrapFixture.topAgentActions[0].confirmationRequired,
     true,
   );
-  assert.equal(contract.mockAppBootstrapFixture.dashboardSummary.relationshipAssets, 42);
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.dashboardSummary.relationshipAssets, 42);
   assert.deepEqual(
-    contract.mockAppBootstrapFixture.permissionSummary.stagedPermissions,
+    bootstrapFixtures.mockAppBootstrapFixture.permissionSummary.stagedPermissions,
     ["calendar", "email", "notifications"],
   );
-  assert.equal(contract.mockAppBootstrapFixture.notificationSummary.unreadCount, 5);
-  assert.equal(contract.mockEmptyAppBootstrapFixture.state, "empty");
-  assert.match(contract.mockEmptyAppBootstrapFixture.nextAction, /Add a sourced contact/i);
-  assert.equal(contract.mockPendingAppBootstrapFixture.state, "pending");
+  assert.equal(bootstrapFixtures.mockAppBootstrapFixture.notificationSummary.unreadCount, 5);
+  assert.equal(bootstrapFixtures.mockEmptyAppBootstrapFixture.state, "empty");
+  assert.match(bootstrapFixtures.mockEmptyAppBootstrapFixture.nextAction, /Add a sourced contact/i);
+  assert.equal(bootstrapFixtures.mockPendingAppBootstrapFixture.state, "pending");
 });
 
 test("mock app bootstrap aggregator is deterministic provider-free and rule-based", async () => {
@@ -272,19 +273,19 @@ test("app bootstrap API route returns stable envelopes with empty pending and fa
   assert.equal(successResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await successResponse.json(), {
     success: true,
-    data: contract.mockAppBootstrapFixture,
+    data: bootstrapFixtures.mockAppBootstrapFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyAppBootstrapFixture,
+    data: bootstrapFixtures.mockEmptyAppBootstrapFixture,
   });
 
   assert.equal(pendingResponse.status, 200);
   assert.deepEqual(await pendingResponse.json(), {
     success: true,
-    data: contract.mockPendingAppBootstrapFixture,
+    data: bootstrapFixtures.mockPendingAppBootstrapFixture,
   });
 
   assert.equal(failureResponse.status, 503);

@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as eventsPostEventFixtures from "../../features/events/post-event-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -110,7 +111,7 @@ test("post-event review contract exposes review contacts summaries tags follow-u
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockPostEventReviewFixture;
+        data?: typeof eventsPostEventFixtures.mockPostEventReviewFixture;
         error?: { code: string; appCode: string };
       };
       confirmPostEventContacts: (input?: {
@@ -119,7 +120,7 @@ test("post-event review contract exposes review contacts summaries tags follow-u
         scenario?: string | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockPostEventReviewConfirmFixture;
+        data?: typeof eventsPostEventFixtures.mockPostEventReviewConfirmFixture;
         error?: { code: string; appCode: string };
       };
     };
@@ -195,7 +196,7 @@ test("post-event review contract exposes review contacts summaries tags follow-u
   assert.equal(success.data?.contacts[0]?.batchPersistenceExecuted, false);
   assert.equal(
     success.data?.provenance.source,
-    contract.POST_EVENT_REVIEW_FIXTURE_SOURCE,
+    eventsPostEventFixtures.POST_EVENT_REVIEW_FIXTURE_SOURCE,
   );
   assert.equal(success.data?.provenance.aiProviderRequested, false);
   assert.equal(success.data?.provenance.externalNetworkRequested, false);
@@ -219,11 +220,11 @@ test("post-event review contract exposes review contacts summaries tags follow-u
   assert.equal(empty.success, true);
   assert.equal(empty.data?.state, "empty");
   assert.equal(empty.data?.contacts.length, 0);
-  assert.match(contract.mockEmptyPostEventReviewFixture.nextAction, /Import/i);
+  assert.match(eventsPostEventFixtures.mockEmptyPostEventReviewFixture.nextAction, /Import/i);
   assert.equal(pending.success, true);
   assert.equal(pending.data?.state, "pending");
   assert.equal(pending.data?.contacts.length, 0);
-  assert.match(contract.mockPendingPostEventReviewFixture.nextAction, /Wait/i);
+  assert.match(eventsPostEventFixtures.mockPendingPostEventReviewFixture.nextAction, /Wait/i);
   assert.equal(failure.success, false);
   assert.equal(failure.error?.code, "POST_EVENT_REVIEW_MOCK_FAILED");
   assert.equal(failure.error?.appCode, "SERVICE_UNAVAILABLE");
@@ -308,7 +309,7 @@ test("post-event contact review API routes return stable envelopes with empty an
     mockEmptyPostEventReviewFixture: unknown;
     mockPostEventReviewConfirmFixture: unknown;
     mockPostEventReviewFixture: unknown;
-  }>("features/events/post-event-contract.ts");
+  }>("features/events/post-event-fixtures.ts");
 
   const reviewResponse = await reviewRoute.GET(
     new Request("https://orbit.local/api/events/demo-event-1/post-event", {
@@ -420,7 +421,7 @@ test("post-event contact review API routes return stable envelopes with empty an
         mode: "mock",
         postEventReviewErrorCode: "POST_EVENT_REVIEW_PENDING",
         privacy: "demo-post-event-review-only",
-        provenance: "fixture:features/events/post-event-contract.ts",
+        provenance: "fixture:features/events/post-event-fixtures.ts",
         service: "post-event-contact-review-mock",
       },
     },

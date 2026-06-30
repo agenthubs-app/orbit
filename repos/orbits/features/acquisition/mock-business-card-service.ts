@@ -98,9 +98,9 @@ function compactDigest(value: string): string {
   return `sha256:mock-card-${hash.toString().padStart(6, "0")}`;
 }
 
+function parseRuleBasedText(imageText: string) {
   // 规则解析假设文本每行是 name/role/org/email/phone 的近似结构。
   // 这是为了测试字段流转，不代表真实 OCR 或名片理解能力。
-function parseRuleBasedText(imageText: string) {
   const lines = imageText
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -124,9 +124,9 @@ function parseRuleBasedText(imageText: string) {
 
 function buildRuleBasedPayload(
   input: BusinessCardScanOcrInput,
+): BusinessCardScanOcrPayload | null {
   // 传入 imageText 时按本地规则构造 capture/ocr/evidence/draft。
   // 空文本返回 null，让调用方映射到 BUSINESS_CARD_IMAGE_REQUIRED。
-): BusinessCardScanOcrPayload | null {
   const imageText = input.imageText?.trim();
 
   if (!imageText) {

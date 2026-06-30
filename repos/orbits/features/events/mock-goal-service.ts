@@ -1,13 +1,5 @@
 import {
   EVENT_GOAL_READINESS_ERROR_DEFINITIONS,
-  mockEmptyEventGoalReadinessFixture,
-  mockEventGoalReadinessEvent,
-  mockEventGoalReadinessFailureProvenance,
-  mockEventGoalReadinessFixture,
-  mockEventGoalReadinessProvenance,
-  mockEventGoalRecord,
-  mockEventGoalSuggestions,
-  mockPendingEventGoalReadinessFixture,
   type EventGoalAndReadinessService,
   type EventGoalFocus,
   type EventGoalReadinessPayload,
@@ -24,6 +16,16 @@ import {
   type EventGoalSuggestionsResult,
   type EventGoalSuggestion,
 } from "./goal-contract";
+import {
+  mockEmptyEventGoalReadinessFixture,
+  mockEventGoalReadinessEvent,
+  mockEventGoalReadinessFailureProvenance,
+  mockEventGoalReadinessFixture,
+  mockEventGoalReadinessProvenance,
+  mockEventGoalRecord,
+  mockEventGoalSuggestions,
+  mockPendingEventGoalReadinessFixture,
+} from "./goal-fixtures";
 
 const defaultEventId = "demo-event-1";
 

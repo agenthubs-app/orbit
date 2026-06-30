@@ -1,12 +1,6 @@
 import {
   EMAIL_CALENDAR_SIGNAL_ERROR_DEFINITIONS,
   EMAIL_CALENDAR_SIGNAL_SOURCE_KINDS,
-  mockEmailCalendarSignalConfirmedFixture,
-  mockEmailCalendarSignalFailureProvenance,
-  mockEmailCalendarSignalFixture,
-  mockEmailCalendarSignals,
-  mockEmptyEmailCalendarSignalFixture,
-  mockPendingEmailCalendarSignalFixture,
   type EmailCalendarRelationshipSignal,
   type EmailCalendarSignalConfirmationResult,
   type EmailCalendarSignalConfirmationScenario,
@@ -22,6 +16,14 @@ import {
   type EmailCalendarSignalSourceKind,
   type EmailCalendarSignalSuccess,
 } from "./email-calendar-contract";
+import {
+  mockEmailCalendarSignalConfirmedFixture,
+  mockEmailCalendarSignalFailureProvenance,
+  mockEmailCalendarSignalFixture,
+  mockEmailCalendarSignals,
+  mockEmptyEmailCalendarSignalFixture,
+  mockPendingEmailCalendarSignalFixture,
+} from "./email-calendar-fixtures";
 
 const supportedScenarios = new Set<EmailCalendarSignalScenario>([
   "success",

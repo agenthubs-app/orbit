@@ -1,36 +1,58 @@
-# App Bootstrap Mock Aggregator Live Implementation
+# App Bootstrap Mock Aggregator 的 Live 实现说明
 
-## Live Service And Provider Files
+## Live Service 和 Provider 文件
 
-- `features/bootstrap/app-bootstrap-mock-aggregator/live-service.ts` should implement `AppBootstrapService` from `features/bootstrap/service.ts`.
-- `features/bootstrap/app-bootstrap-mock-aggregator/providers/account-provider.ts` should read the authenticated account and workspace context.
-- `features/bootstrap/app-bootstrap-mock-aggregator/providers/profile-provider.ts` should read the profile summary and manual profile preferences.
-- `features/bootstrap/app-bootstrap-mock-aggregator/providers/event-provider.ts` should read upcoming event readiness records.
-- `features/bootstrap/app-bootstrap-mock-aggregator/providers/relationship-provider.ts` should run the approved live database aggregation for connection summary, pending tasks, top agent actions, dashboard summary, permission summary, and notification summary.
+- `features/bootstrap/app-bootstrap-mock-aggregator/live-service.ts` 应该实现 `features/bootstrap/service.ts` 里的 `AppBootstrapService`。
+- `features/bootstrap/app-bootstrap-mock-aggregator/providers/account-provider.ts` 负责读取已登录账号和 workspace 上下文。
+- `features/bootstrap/app-bootstrap-mock-aggregator/providers/profile-provider.ts` 负责读取用户 profile 摘要和手动填写的 profile 偏好。
+- `features/bootstrap/app-bootstrap-mock-aggregator/providers/event-provider.ts` 负责读取即将开始的活动 readiness 记录。
+- `features/bootstrap/app-bootstrap-mock-aggregator/providers/relationship-provider.ts` 负责执行已批准的 live database 聚合，生成 connection summary、pending tasks、top agent actions、dashboard summary、permission summary 和 notification summary。
 
-## Switch Mechanism
+## 切换机制
 
-Use `ORBIT_APP_BOOTSTRAP_PROVIDER=mock|live` behind the existing feature-mode guard. Mock mode must keep using `createMockAppBootstrapService`; live mode may resolve the live service only after provider files, permissions, and replacement tests exist. Hybrid mode should prefer mock data for any field whose live provider is missing rather than silently dropping provenance.
+在现有 feature-mode guard 后面使用 `ORBIT_APP_BOOTSTRAP_PROVIDER=mock|live`。
 
-## Required Env Vars And Permissions
+`mock` 模式必须继续使用 `createMockAppBootstrapService`。`live` 模式只有在 provider 文件、权限检查和替换测试都准备好之后，才可以解析到 live service。
+
+`hybrid` 模式不要静默丢字段。如果某个字段还没有 live provider，就优先使用 mock 数据，并保留 provenance。
+
+## 必需环境变量和权限
 
 - `ORBIT_APP_BOOTSTRAP_PROVIDER`
-- Auth/session provider configuration for the live account read.
-- Database connection variables for the live database aggregation.
-- Calendar permission before calendar-derived upcoming events or readiness can affect the bootstrap.
-- Email permission before email relationship signals can affect tasks, agent actions, or connection summary.
-- Notification permission before notification summary can include live pending deliveries.
+- 用于读取 live account 的 auth/session provider 配置。
+- 用于 live database 聚合的数据库连接变量。
+- 如果 calendar 派生的 upcoming events 或 readiness 会影响 bootstrap，必须先有 calendar 权限。
+- 如果 email relationship signals 会影响 tasks、agent actions 或 connection summary，必须先有 email 权限。
+- 如果 notification summary 要包含 live pending deliveries，必须先有 notification 权限。
 
-## Privacy And Provenance Constraints
+## 隐私 / Privacy 和 Provenance 约束
 
-Every first-screen account, profile, upcoming events, connection summary, pending tasks, top agent actions, dashboard summary, permission summary, and notification summary field must carry source or evidence provenance. The live service must never infer relationship context without attaching source references or evidence ids. Server-side personalization and live database aggregation must be visible in provenance flags so evaluators can tell the live path ran. Sensitive actions in top agent actions must remain confirmation-required and route through the confirmation guard before any external side effect.
+首屏里的这些字段都必须带 source 或 evidence provenance：
 
-The live service must not copy mock-only evidence ids into production data. Empty, pending, and controlled failure states must remain explicit API envelopes instead of being hidden behind partial success payloads.
+- account
+- profile
+- upcoming events
+- connection summary
+- pending tasks
+- top agent actions
+- dashboard summary
+- permission summary
+- notification summary
 
-## Replacement Tests
+live service 不能在没有 source references 或 evidence ids 的情况下推断 relationship context。
 
-- Replace the mock provider guard tests with tests proving `ORBIT_APP_BOOTSTRAP_PROVIDER=mock` still performs no network, database, AI, calendar, email, notification, or device calls.
-- Add live service tests for success, empty, pending, and controlled failure envelopes.
-- Add contract tests that the live service returns the same top-level DTO fields as the mock: first-screen account, profile, upcoming events, connection summary, pending tasks, top agent actions, dashboard summary, permission summary, and notification summary.
-- Add permission tests proving calendar permission, email permission, and notification permission gate the relevant live fields.
-- Add provenance tests proving every aggregate field includes evidence ids or source references.
+server-side personalization 和 live database aggregation 必须在 provenance flags 里可见。这样 evaluator 才能判断这次走的是 live path。
+
+`topAgentActions` 里的敏感动作必须继续要求 confirmation。任何外部副作用发生前，都要先经过 confirmation guard。
+
+live service 不能把只属于 mock 的 evidence ids 复制到生产数据里。
+
+empty、pending 和 controlled failure 必须继续作为明确的 API envelope 返回，不能藏在 partial success payload 里。
+
+## 替换测试 / Replacement tests
+
+- 替换 mock provider guard 测试，证明 `ORBIT_APP_BOOTSTRAP_PROVIDER=mock` 仍然不会触发 network、database、AI、calendar、email、notification 或 device 调用。
+- 增加 live service 测试，覆盖 success、empty、pending 和 controlled failure envelope。
+- 增加 contract 测试，证明 live service 返回的 top-level DTO 字段和 mock 一致：first-screen account, profile, upcoming events, connection summary, pending tasks, top agent actions, dashboard summary, permission summary, and notification summary。
+- 增加权限测试，证明 calendar permission、email permission 和 notification permission 会分别 gate 对应的 live 字段。
+- 增加 provenance 测试，证明每个 aggregate 字段都包含 evidence ids 或 source references。

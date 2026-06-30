@@ -16,7 +16,9 @@ import type {
   CapabilityDebugDashboardScenarioLink,
   CapabilityDebugDashboardStateProbe,
 } from "./contract";
-import { CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE } from "./constants";
+
+export const CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE =
+  "fixture:app/dev/capabilities/capability-debug-dashboard/fixtures.ts" as const;
 
 const collectedAt = "2026-06-26T10:45:00.000+09:00";
 

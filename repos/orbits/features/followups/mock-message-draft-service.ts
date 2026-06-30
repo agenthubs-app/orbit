@@ -1,12 +1,6 @@
 import {
   MESSAGE_DRAFT_GENERATOR_DRAFT_KINDS,
   MESSAGE_DRAFT_GENERATOR_ERROR_DEFINITIONS,
-  mockEmptyMessageDraftGeneratorFixture,
-  mockMessageDraftGeneratorFailureProvenance,
-  mockMessageDraftGeneratorFixture,
-  mockMessageDraftGeneratorProvenance,
-  mockMessageDrafts,
-  mockPendingMessageDraftGeneratorFixture,
   type MessageDraft,
   type MessageDraftGeneratorCreateInput,
   type MessageDraftGeneratorErrorCode,
@@ -20,6 +14,14 @@ import {
   type MessageDraftKind,
   type MessageDraftStatus,
 } from "./message-draft-contract";
+import {
+  mockEmptyMessageDraftGeneratorFixture,
+  mockMessageDraftGeneratorFailureProvenance,
+  mockMessageDraftGeneratorFixture,
+  mockMessageDraftGeneratorProvenance,
+  mockMessageDrafts,
+  mockPendingMessageDraftGeneratorFixture,
+} from "./message-draft-fixtures";
 
 const supportedScenarios = new Set<MessageDraftGeneratorScenario>([
   "success",

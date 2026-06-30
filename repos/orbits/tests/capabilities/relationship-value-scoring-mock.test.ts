@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as analysisValueFixtures from "../../features/analysis/value-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -86,8 +87,8 @@ test("relationship value contract exposes typed scores rationale fixtures servic
     "SERVICE_UNAVAILABLE",
   );
   assert.equal(
-    contract.RELATIONSHIP_VALUE_FIXTURE_SOURCE,
-    "fixture:features/analysis/value-contract.ts",
+    analysisValueFixtures.RELATIONSHIP_VALUE_FIXTURE_SOURCE,
+    "fixture:features/analysis/value-fixtures.ts",
   );
 
   assert.equal(success.success, true);
@@ -150,11 +151,11 @@ test("relationship value contract exposes typed scores rationale fixtures servic
   assert.equal(recomputed.data.provenance.databaseWriteExecuted, false);
 
   assert.deepEqual(
-    contract.mockRelationshipValueScoringFixture,
+    analysisValueFixtures.mockRelationshipValueScoringFixture,
     success.data,
   );
   assert.deepEqual(
-    contract.mockRecomputedRelationshipValueFixture,
+    analysisValueFixtures.mockRecomputedRelationshipValueFixture,
     recomputed.data,
   );
 });
@@ -323,19 +324,19 @@ test("relationship value scoring API routes return stable envelopes with empty p
   assert.equal(detailResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.deepEqual(await detailResponse.json(), {
     success: true,
-    data: contract.mockRelationshipValueScoringFixture,
+    data: analysisValueFixtures.mockRelationshipValueScoringFixture,
   });
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyRelationshipValueScoringFixture,
+    data: analysisValueFixtures.mockEmptyRelationshipValueScoringFixture,
   });
 
   assert.equal(pendingResponse.status, 200);
   assert.deepEqual(await pendingResponse.json(), {
     success: true,
-    data: contract.mockPendingRelationshipValueScoringFixture,
+    data: analysisValueFixtures.mockPendingRelationshipValueScoringFixture,
   });
 
   assert.equal(failureResponse.status, 503);
@@ -380,19 +381,19 @@ test("relationship value scoring API routes return stable envelopes with empty p
   assert.equal(recomputeResponse.status, 200);
   assert.deepEqual(await recomputeResponse.json(), {
     success: true,
-    data: contract.mockRecomputedRelationshipValueFixture,
+    data: analysisValueFixtures.mockRecomputedRelationshipValueFixture,
   });
 
   assert.equal(defaultRecomputeResponse.status, 200);
   assert.deepEqual(await defaultRecomputeResponse.json(), {
     success: true,
-    data: contract.mockRecomputedRelationshipValueFixture,
+    data: analysisValueFixtures.mockRecomputedRelationshipValueFixture,
   });
 
   assert.equal(formRecomputeResponse.status, 200);
   assert.deepEqual(await formRecomputeResponse.json(), {
     success: true,
-    data: contract.mockRecomputedRelationshipValueFixture,
+    data: analysisValueFixtures.mockRecomputedRelationshipValueFixture,
   });
 
   assert.equal(malformedResponse.status, 400);

@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import * as recommendationsEventValueFixtures from "../../features/recommendations/event-value-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -95,7 +96,7 @@ test("event value recommendation contract exposes fixtures errors and mock-only 
         limit?: number | null;
       }) => {
         success: boolean;
-        data?: typeof contract.mockEventValueRecommendationsFixture;
+        data?: typeof recommendationsEventValueFixtures.mockEventValueRecommendationsFixture;
         error?: { code: string; appCode: string };
       };
       acceptRecommendedEvent: (input?: {
@@ -135,66 +136,66 @@ test("event value recommendation contract exposes fixtures errors and mock-only 
     /network|database|AI provider|calendar|email|notification|feed/i,
   );
 
-  assert.equal(contract.mockEventValueRecommendationsFixture.state, "success");
+  assert.equal(recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.state, "success");
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.profile.goal,
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.profile.goal,
     "Find climate operators with buyer urgency",
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.profile.location,
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.profile.location,
     "Tokyo",
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.recommendations[0].eventId,
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.recommendations[0].eventId,
     "demo-event-1",
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.recommendations[0].title,
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.recommendations[0].title,
     "Climate operators breakfast",
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.recommendations[0].valueScore,
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.recommendations[0].valueScore,
     94,
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.recommendations[0].factors
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.recommendations[0].factors
       .profileGoal,
     0.35,
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.recommendations[0]
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.recommendations[0]
       .calendarAvailabilitySynced,
     false,
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.recommendations[0]
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.recommendations[0]
       .liveEventDiscoveryFeedRequested,
     false,
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.provenance.source,
-    contract.EVENT_VALUE_RECOMMENDATION_FIXTURE_SOURCE,
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.provenance.source,
+    recommendationsEventValueFixtures.EVENT_VALUE_RECOMMENDATION_FIXTURE_SOURCE,
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.provenance
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.provenance
       .calendarProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockEventValueRecommendationsFixture.provenance
+    recommendationsEventValueFixtures.mockEventValueRecommendationsFixture.provenance
       .liveEventDiscoveryFeedRequested,
     false,
   );
   assert.equal(
-    contract.mockEmptyEventValueRecommendationsFixture.state,
+    recommendationsEventValueFixtures.mockEmptyEventValueRecommendationsFixture.state,
     "empty",
   );
   assert.equal(
-    contract.mockEmptyEventValueRecommendationsFixture.nextAction,
+    recommendationsEventValueFixtures.mockEmptyEventValueRecommendationsFixture.nextAction,
     "Adjust the local demo profile filters or review event fixtures before recommending events.",
   );
   assert.equal(
-    contract.mockPendingEventValueRecommendationsFixture.state,
+    recommendationsEventValueFixtures.mockPendingEventValueRecommendationsFixture.state,
     "pending",
   );
 
@@ -438,7 +439,7 @@ test("event value recommendation API routes return stable envelopes with empty a
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyEventValueRecommendationsFixture,
+    data: recommendationsEventValueFixtures.mockEmptyEventValueRecommendationsFixture,
   });
   assert.equal(failureResponse.status, 503);
   assert.deepEqual(await failureResponse.json(), {

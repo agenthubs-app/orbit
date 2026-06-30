@@ -11,7 +11,9 @@ import type {
   AgentActionQueueProvenance,
   AgentActionSourceReference,
 } from "./contract";
-import { AGENT_ACTION_QUEUE_FIXTURE_SOURCE } from "./contract";
+
+export const AGENT_ACTION_QUEUE_FIXTURE_SOURCE =
+  "fixture:features/agent/fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T23:50:00.000+09:00";
 const decisionAt = "2026-06-25T23:51:00.000+09:00";

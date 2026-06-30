@@ -5,7 +5,6 @@
  * 这些 fixture 用来验证 QR 建联 UI 和确认流程，不会写入真实联系人图谱。
  */
 import {
-  QR_SCAN_CONNECT_FIXTURE_SOURCE,
   type QrConnectionCandidate,
   type QrConnectionDraft,
   type QrConnectionEvidence,
@@ -17,7 +16,8 @@ import {
   type QrScanSourceReference,
 } from "./qr-contract";
 
-export { QR_SCAN_CONNECT_FIXTURE_SOURCE };
+export const QR_SCAN_CONNECT_FIXTURE_SOURCE =
+  "fixture:features/acquisition/qr-fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T14:00:00.000Z";
 const fixtureCreatedAt = "2026-06-25T14:03:00.000Z";

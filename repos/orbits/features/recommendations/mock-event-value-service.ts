@@ -6,14 +6,6 @@
  */
 import {
   EVENT_VALUE_RECOMMENDATION_ERROR_DEFINITIONS,
-  mockAcceptedEventValueRecommendationFixture,
-  mockEmptyEventValueRecommendationsFixture,
-  mockEventValueRecommendationFailureProvenance,
-  mockEventValueRecommendationProvenance,
-  mockEventValueRecommendations,
-  mockEventValueRecommendationsFixture,
-  mockEventValueRecommendationSource,
-  mockPendingEventValueRecommendationsFixture,
   type AcceptEventValueRecommendationInput,
   type EventValueRecommendation,
   type EventValueRecommendationAcceptancePayload,
@@ -26,6 +18,16 @@ import {
   type EventValueRecommendationsPayload,
   type EventValueRecommendationsResult,
 } from "./event-value-contract";
+import {
+  mockAcceptedEventValueRecommendationFixture,
+  mockEmptyEventValueRecommendationsFixture,
+  mockEventValueRecommendationFailureProvenance,
+  mockEventValueRecommendationProvenance,
+  mockEventValueRecommendations,
+  mockEventValueRecommendationsFixture,
+  mockEventValueRecommendationSource,
+  mockPendingEventValueRecommendationsFixture,
+} from "./event-value-fixtures";
 
 const supportedScenarios = new Set<EventValueRecommendationScenario>([
   "success",
@@ -122,9 +124,9 @@ function goalTerms(goal: string): readonly string[] {
 function scoreForInput(
   recommendation: EventValueRecommendation,
   input: EventValueRecommendationInput,
+): number {
   // 本地评分规则把目标匹配、地点、行业、参会密度和日历适配合成 0-99 分。
   // 这是 deterministic mock，不代表真实推荐模型的最终算法。
-): number {
   const profileGoal = normalizeText(input.profileGoal);
   const location = normalizeText(input.location);
   const industry = normalizeText(input.industryPreference);

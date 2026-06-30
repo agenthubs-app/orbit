@@ -1,13 +1,6 @@
 import {
   EVENT_ATTENDEE_IMPORT_ERROR_DEFINITIONS,
   EVENT_ATTENDEE_RELATIONSHIP_STATUS_CODES,
-  mockEmptyEventAttendeeImportFixture,
-  mockEmptyEventAttendeeRosterFixture,
-  mockEventAttendeeImportFailureProvenance,
-  mockEventAttendeeImportFixture,
-  mockEventAttendeeRosterFixture,
-  mockPendingEventAttendeeImportFixture,
-  mockPendingEventAttendeeRosterFixture,
   type EventAttendeeContactDraft,
   type EventAttendeeImportErrorCode,
   type EventAttendeeImportFailure,
@@ -23,6 +16,15 @@ import {
   type EventAttendeeRosterResult,
   type EventAttendeeRosterSuccess,
 } from "./event-attendee-contract";
+import {
+  mockEmptyEventAttendeeImportFixture,
+  mockEmptyEventAttendeeRosterFixture,
+  mockEventAttendeeImportFailureProvenance,
+  mockEventAttendeeImportFixture,
+  mockEventAttendeeRosterFixture,
+  mockPendingEventAttendeeImportFixture,
+  mockPendingEventAttendeeRosterFixture,
+} from "./event-attendee-fixtures";
 
 const defaultEventId = "demo-event-1";
 

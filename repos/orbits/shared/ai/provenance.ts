@@ -29,9 +29,9 @@ export interface AiRunProvenanceRecord {
   productionAuditLogWriteExecuted: false;
 }
 
+const mockOnlyExecutionFlags = {
   // 所有 mock AI run 都必须继承这组 false 标记。
   // live provider 接入时不能复用这些 provenance 字段来伪装安全账本。
-const mockOnlyExecutionFlags = {
   modelCallExecuted: false,
   liveAiProviderRequested: false,
   externalNetworkRequested: false,

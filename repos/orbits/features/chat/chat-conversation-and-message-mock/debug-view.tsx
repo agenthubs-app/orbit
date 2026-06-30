@@ -15,7 +15,7 @@ import type {
   ChatMessageThreadPayload,
   ChatSendMessagePayload,
 } from "../contract";
-import { CHAT_CONVERSATION_MOCK_DEFAULT_MESSAGE_BODY } from "../contract";
+import { CHAT_CONVERSATION_MOCK_DEFAULT_MESSAGE_BODY } from "../fixtures";
 import { createMockChatConversationMessageService } from "../mock-service";
 
 export const CHAT_CONVERSATION_AND_MESSAGE_MOCK_SLUG =

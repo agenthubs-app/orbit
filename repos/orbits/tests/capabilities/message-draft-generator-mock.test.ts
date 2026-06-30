@@ -27,7 +27,7 @@ async function importProjectModule<TModule>(
   return (await import(pathToFileURL(absolutePath).href)) as TModule;
 }
 
-test("message draft generator contract exports typed fixtures errors and mock-only provenance", async () => {
+test("message draft generator keeps typed contract separate from mock fixture provenance", async () => {
   const contract = await importProjectModule<{
     MESSAGE_DRAFT_GENERATOR_DRAFT_KINDS: readonly string[];
     MESSAGE_DRAFT_GENERATOR_ERROR_CODES: readonly string[];
@@ -35,6 +35,8 @@ test("message draft generator contract exports typed fixtures errors and mock-on
       string,
       { appCode: string; message: string; recovery: string }
     >;
+  }>("features/followups/message-draft-contract.ts");
+  const fixtures = await importProjectModule<{
     MESSAGE_DRAFT_GENERATOR_FIXTURE_SOURCE: string;
     mockMessageDraftGeneratorFixture: {
       state: string;
@@ -82,7 +84,7 @@ test("message draft generator contract exports typed fixtures errors and mock-on
       drafts: readonly unknown[];
       nextAction: string;
     };
-  }>("features/followups/message-draft-contract.ts");
+  }>("features/followups/message-draft-fixtures.ts");
   const serviceSource = readFileSync(
     join(projectRoot, "features/followups/message-draft-contract.ts"),
     "utf8",
@@ -117,13 +119,13 @@ test("message draft generator contract exports typed fixtures errors and mock-on
     /relationship context|contact evidence|source/i,
   );
 
-  assert.equal(contract.mockMessageDraftGeneratorFixture.state, "success");
+  assert.equal(fixtures.mockMessageDraftGeneratorFixture.state, "success");
   assert.equal(
-    contract.mockMessageDraftGeneratorFixture.provenance.source,
-    contract.MESSAGE_DRAFT_GENERATOR_FIXTURE_SOURCE,
+    fixtures.mockMessageDraftGeneratorFixture.provenance.source,
+    fixtures.MESSAGE_DRAFT_GENERATOR_FIXTURE_SOURCE,
   );
   assert.deepEqual(
-    contract.mockMessageDraftGeneratorFixture.drafts.map((draft) => draft.kind),
+    fixtures.mockMessageDraftGeneratorFixture.drafts.map((draft) => draft.kind),
     [
       "greeting",
       "follow_up",
@@ -134,41 +136,41 @@ test("message draft generator contract exports typed fixtures errors and mock-on
     ],
   );
   assert.equal(
-    contract.mockMessageDraftGeneratorFixture.drafts[0].generatedBy,
+    fixtures.mockMessageDraftGeneratorFixture.drafts[0].generatedBy,
     "mock-message-draft-rules",
   );
-  assert.deepEqual(contract.mockMessageDraftGeneratorFixture.drafts[0].audit, {
+  assert.deepEqual(fixtures.mockMessageDraftGeneratorFixture.drafts[0].audit, {
     sourceLabel: "Tokyo climate operator breakfast note",
     providerBoundary: "AI false, external send false, persistence false",
     verificationAction: "Review source evidence",
   });
   assert.equal(
-    contract.mockMessageDraftGeneratorFixture.drafts[0].aiProviderRequested,
+    fixtures.mockMessageDraftGeneratorFixture.drafts[0].aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockMessageDraftGeneratorFixture.drafts[0].externalSendRequested,
+    fixtures.mockMessageDraftGeneratorFixture.drafts[0].externalSendRequested,
     false,
   );
   assert.equal(
-    contract.mockMessageDraftGeneratorFixture.provenance.aiProviderRequested,
+    fixtures.mockMessageDraftGeneratorFixture.provenance.aiProviderRequested,
     false,
   );
   assert.equal(
-    contract.mockMessageDraftGeneratorFixture.provenance
+    fixtures.mockMessageDraftGeneratorFixture.provenance
       .externalNetworkRequested,
     false,
   );
   assert.equal(
-    contract.mockEmptyMessageDraftGeneratorFixture.state,
+    fixtures.mockEmptyMessageDraftGeneratorFixture.state,
     "empty",
   );
   assert.match(
-    contract.mockEmptyMessageDraftGeneratorFixture.nextAction,
+    fixtures.mockEmptyMessageDraftGeneratorFixture.nextAction,
     /relationship context|contact evidence|source/i,
   );
   assert.equal(
-    contract.mockPendingMessageDraftGeneratorFixture.state,
+    fixtures.mockPendingMessageDraftGeneratorFixture.state,
     "pending",
   );
 });
@@ -263,6 +265,7 @@ test("mock message draft generator service is deterministic and never calls live
 
   for (const filePath of [
     "features/followups/message-draft-contract.ts",
+    "features/followups/message-draft-fixtures.ts",
     "features/followups/mock-message-draft-service.ts",
     "features/followups/message-draft-generator-mock/debug-view.tsx",
     "app/api/message-drafts/route.ts",
@@ -290,9 +293,9 @@ test("message draft API routes return stable envelopes with empty and failure pa
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
   }>("app/api/message-drafts/[id]/route.ts");
-  const contract = await importProjectModule<{
+  const fixtures = await importProjectModule<{
     mockEmptyMessageDraftGeneratorFixture: unknown;
-  }>("features/followups/message-draft-contract.ts");
+  }>("features/followups/message-draft-fixtures.ts");
 
   const createResponse = await draftsRoute.POST(
     new Request("https://orbit.local/api/message-drafts", {
@@ -383,7 +386,7 @@ test("message draft API routes return stable envelopes with empty and failure pa
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: contract.mockEmptyMessageDraftGeneratorFixture,
+    data: fixtures.mockEmptyMessageDraftGeneratorFixture,
   });
   assert.equal(failureResponse.status, 503);
   assert.deepEqual(await failureResponse.json(), {

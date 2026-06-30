@@ -5,7 +5,6 @@
  * 这些 fixture 用来验证 follow-up 页面和 API，不代表真实提醒或通知已经创建。
  */
 import {
-  FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE,
   type FollowupTask,
   type FollowupTaskGenerationPayload,
   type FollowupTaskGenerationProvenance,
@@ -17,7 +16,6 @@ import {
 export {
   FOLLOWUP_TASK_GENERATION_ERROR_CODES,
   FOLLOWUP_TASK_GENERATION_ERROR_DEFINITIONS,
-  FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE,
   type FollowupTask,
   type FollowupTaskGenerationPayload,
   type FollowupTaskGenerationProvenance,
@@ -25,6 +23,8 @@ export {
   type FollowupTaskTriggerKind,
 } from "./contract";
 
+export const FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE =
+  "fixture:features/followups/fixtures.ts" as const;
 
 const fixtureCollectedAt = "2026-06-25T22:10:00.000Z";
 

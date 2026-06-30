@@ -1,12 +1,5 @@
 import {
   POST_EVENT_REVIEW_ERROR_DEFINITIONS,
-  mockEmptyPostEventReviewFixture,
-  mockEmptyPostEventReviewProvenance,
-  mockPendingPostEventReviewFixture,
-  mockPendingPostEventReviewProvenance,
-  mockPostEventReviewConfirmFixture,
-  mockPostEventReviewFailureProvenance,
-  mockPostEventReviewFixture,
   type ConfirmPostEventContactsInput,
   type PostEventContactReviewService,
   type PostEventReviewConfirmResult,
@@ -20,6 +13,15 @@ import {
   type PostEventReviewScenario,
   type PostEventReviewSuccess,
 } from "./post-event-contract";
+import {
+  mockEmptyPostEventReviewFixture,
+  mockEmptyPostEventReviewProvenance,
+  mockPendingPostEventReviewFixture,
+  mockPendingPostEventReviewProvenance,
+  mockPostEventReviewConfirmFixture,
+  mockPostEventReviewFailureProvenance,
+  mockPostEventReviewFixture,
+} from "./post-event-fixtures";
 
 const defaultEventId = "demo-event-1";
 

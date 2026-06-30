@@ -4,8 +4,6 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
-export const BUSINESS_CARD_SCAN_OCR_FIXTURE_SOURCE =
-  "fixture:features/acquisition/business-card-fixtures.ts" as const;
 // Business Card OCR contract 描述名片扫描到联系人草稿的流程。
 // mock/live 的具体来源标记和执行策略由各自实现提供。
 
