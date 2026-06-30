@@ -93,6 +93,14 @@ const manifest = {
   ],
   recentHistory: [
     {
+      id: "knowledge-wiki-implementation",
+      date: "2026-06-30",
+      titleZh: "文档库与知识库第一版",
+      summaryZh:
+        "建立 knowledge 骨架、文档 catalog、learnings 索引、app-local manifest 和 /dev/knowledge 页面。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
+    {
       id: "knowledge-wiki-design",
       date: "2026-06-30",
       titleZh: "设计 Orbit 文档库与知识库",
