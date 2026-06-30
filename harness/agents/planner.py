@@ -7,12 +7,16 @@ from harness.claude_runner import build_claude_options
 from harness.codex_runner import run_codex
 from harness.config import HarnessConfig
 
+# Planner 是长跑链路的需求拆解角色。
+# 它只产出 SPEC 和 Sprint Contract Seeds，不直接修改 app 或证据目录。
 
 def _run_async(coro, timeout: int):
     return asyncio.run(asyncio.wait_for(coro, timeout=timeout))
 
 
 def run_planner(brief: str, session_id: str | None = None, cfg: HarnessConfig | None = None) -> tuple[str, str | None]:
+    # Codex backend 是一次性 stdin prompt；Claude/DeepCode backend 支持 session_id 续写。
+    # 外层 harness 会检查 SPEC_COMPLETE 和 contract JSON 是否合格。
     cfg = cfg or HarnessConfig.load(Path(__file__).parents[1] / "config.yaml")
     prompt_path = Path(__file__).parents[1] / "prompts" / "planner.md"
     if cfg.agents.planner.backend == "codex":
@@ -29,6 +33,7 @@ def run_planner(brief: str, session_id: str | None = None, cfg: HarnessConfig | 
 
 
 async def _run_planner_claude(brief: str, session_id: str | None, cfg: HarnessConfig) -> tuple[str, str | None]:
+    # Planner 不需要文件或 shell 工具；它只根据 brief 和产品上下文输出计划文本。
     from claude_agent_sdk import AssistantMessage, ResultMessage, query
 
     prompt_path = Path(__file__).parents[1] / "prompts" / "planner.md"

@@ -18,6 +18,8 @@ REQUIRED_EXPERIENCE_KEYS = ("clarity", "trust", "efficiency", "delight")
 EVIDENCE_BUCKET_KEYS = ("commands", "navigation", "browser", "axe", "lighthouse", "api", "source_files")
 VALID_ISSUE_SEVERITIES = {"low", "medium", "high", "critical"}
 
+# Verifier 是体验维度的只读审查者。
+# 和 Evaluator 不同，它不逐条判 sprint contract，而是基于证据给 clarity/trust/efficiency/delight 评分。
 
 def _run_async(coro, timeout: int = 1200):
     return asyncio.run(asyncio.wait_for(coro, timeout=timeout))
@@ -34,6 +36,7 @@ def _valid_score(value: object) -> float:
 
 
 def _has_collected_evidence(evidence_data: object) -> bool:
+    # 没有 collected evidence 时，Verifier 的主观评分不可信，后面会强制降成失败结果。
     if not isinstance(evidence_data, dict):
         return False
     return any(bool(evidence_data.get(key)) for key in EVIDENCE_BUCKET_KEYS)
@@ -61,6 +64,8 @@ def _artifact_path_exists(citation: str, evidence_data: object) -> bool:
 
 
 def _evidence_citation_exists(citation: object, evidence_data: object | None) -> bool:
+    # issue.evidence 必须能解析到当前 iteration 的 evidence 或 artifact。
+    # 这可以防止 reviewer 写“看起来有问题”但没有可复核证据。
     if not _has_specific_evidence(citation):
         return False
     assert isinstance(citation, str)
@@ -84,6 +89,8 @@ def build_verifier_prompt(
     evidence_text: str,
     artifact_dir: Path | None = None,
 ) -> str:
+    # prompt 中包含 file boundary，是为了让 Verifier 区分“本 sprint 要负责的问题”
+    # 和 forbidden route 里的历史 backlog 问题。
     prompt_path = Path(__file__).parents[1] / "prompts" / "verifier.md"
     file_boundary = json.dumps(contract.file_boundary or {}, indent=2, ensure_ascii=False)
     out_of_scope = "\n".join(f"- {item}" for item in contract.out_of_scope) or "- none"
@@ -130,6 +137,8 @@ def build_verification_result_from_review(
     evidence_available: bool | None = None,
     evidence_data: dict | None = None,
 ) -> VerificationResult:
+    # 把 reviewer JSON 转成稳定 VerificationResult。
+    # 这里会二次校验 evidence citation，并根据阈值和高危 issue 计算 verdict。
     raw_scores = review.get("scores") or {}
     scores = {key: _valid_score(raw_scores.get(key)) for key in REQUIRED_EXPERIENCE_KEYS}
     if evidence_available is False:
@@ -207,6 +216,8 @@ def run_verifier(
     project_dir: Path | None = None,
     evidence_dir: Path | None = None,
 ) -> VerificationResult:
+    # run_verifier 只读取已采集 evidence，不自己跑浏览器或命令。
+    # 证据缺失时仍生成结构化失败，避免长跑流程静默接受空审查。
     cfg = cfg or HarnessConfig.load(Path(__file__).parents[1] / "config.yaml")
     project_dir = project_dir or Path.cwd()
     evidence_dir = evidence_dir or project_dir / cfg.workspace.evidence_root / f"sprint-{contract.sprint_number}"
@@ -245,6 +256,7 @@ def run_verifier(
 
 
 async def _run_verifier_claude(prompt: str, app_dir: Path, cfg: HarnessConfig) -> str:
+    # Claude Verifier 不开放工具；它只能根据 prompt 中的 evidence JSON 做判断。
     from claude_agent_sdk import AssistantMessage, ResultMessage, query
 
     options = build_claude_options(

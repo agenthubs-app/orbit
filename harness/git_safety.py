@@ -7,12 +7,67 @@ from typing import Any
 from harness.config import HarnessConfig
 from harness.workspace import path_allowed, path_protected
 
+# git_safety.py 负责把“Generator 能提交什么”这件事确定下来。
+# 它只面向 app root 的 git 状态，避免 harness 自身、证据目录或参考仓库
+# 被误提交到产品实现里。
 
 def _run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True)
 
 
+def _git_root(cwd: Path) -> Path | None:
+    # app_root 可能是独立 git repo，也可能只是项目级 git repo 的子目录。
+    # 先用 rev-parse 找真实 git root，后续 pathspec 再把范围收回 app_root。
+    result = _run_git(["rev-parse", "--show-toplevel"], cwd)
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    return Path(result.stdout.strip()).resolve()
+
+
+def _app_git_context(project_dir: Path, cfg: HarnessConfig) -> dict[str, Path] | None:
+    # context 同时保存绝对路径和 git 内相对路径。
+    # 这让同一套逻辑兼容“app 自带 .git”和“app 在父级 repo 里”两种布局。
+    app_dir = (project_dir / cfg.workspace.app_root).resolve()
+    if not app_dir.exists():
+        return None
+    git_root = _git_root(app_dir)
+    if git_root is None:
+        return None
+    try:
+        app_rel_to_git = app_dir.relative_to(git_root)
+    except ValueError:
+        return None
+    return {
+        "app_dir": app_dir,
+        "git_root": git_root,
+        "app_rel_to_git": app_rel_to_git,
+        "project_dir": project_dir.resolve(),
+    }
+
+
+def _pathspec_for_app(context: dict[str, Path]) -> list[str]:
+    # 当 git root 就是 app root 时不需要 pathspec；否则所有 git 命令都限制到 app 子目录。
+    rel = context["app_rel_to_git"].as_posix()
+    return [] if rel in {"", "."} else [rel]
+
+
+def _project_relative_app_status_path(context: dict[str, Path], git_relative_path: str) -> str | None:
+    # git 输出是相对 git root 的路径；harness 其他层统一使用 project-relative 路径。
+    # 如果变更不在 app_dir 下，返回 None，避免污染 app 变更列表。
+    candidate = (context["git_root"] / git_relative_path).resolve()
+    try:
+        candidate.relative_to(context["app_dir"])
+    except ValueError:
+        return None
+    try:
+        return candidate.relative_to(context["project_dir"]).as_posix()
+    except ValueError:
+        return None
+
+
 def parse_porcelain_paths(status: str) -> list[str]:
+    # porcelain v1 每行前 3 个字符是状态位和空格，后面才是路径。
+    # rename 会同时输出 old/new path，这里都保留，便于后续提交或证据记录覆盖完整变更。
     paths: list[str] = []
     for line in status.splitlines():
         if not line:
@@ -30,14 +85,27 @@ def parse_porcelain_paths(status: str) -> list[str]:
 
 
 def app_status_files(project_dir: Path, cfg: HarnessConfig, *, include_ignored: bool = False) -> list[str]:
-    app_dir = project_dir / cfg.workspace.app_root
+    # 返回值必须始终是 project-relative app 路径，例如 repos/orbits/app/page.tsx。
+    # 这条约定被 preflight、handoff、contract file boundary 和 git evidence 共用。
+    context = _app_git_context(project_dir, cfg)
+    if context is None:
+        raise RuntimeError("git status failed: app root is not inside a git worktree")
     args = ["status", "--porcelain=v1", "-uall"]
     if include_ignored:
         args.append("--ignored=matching")
-    result = _run_git(args, app_dir)
+    pathspec = _pathspec_for_app(context)
+    if pathspec:
+        args.extend(["--", *pathspec])
+    result = _run_git(args, context["git_root"])
     if result.returncode != 0:
         raise RuntimeError((result.stderr or result.stdout).strip() or "git status failed")
-    return [f"{cfg.workspace.app_root}/{path}" for path in parse_porcelain_paths(result.stdout)]
+    paths = [
+        normalized
+        for path in parse_porcelain_paths(result.stdout)
+        for normalized in [_project_relative_app_status_path(context, path)]
+        if normalized is not None
+    ]
+    return sorted(dict.fromkeys(paths))
 
 
 def app_changed_files(project_dir: Path, cfg: HarnessConfig) -> list[str]:
@@ -49,6 +117,8 @@ def sprint_commit_subject_matches(subject: str, sprint_number: int) -> bool:
 
 
 def sprint_committed_files(project_dir: Path, cfg: HarnessConfig, sprint_number: int, *, limit: int = 100) -> list[str]:
+    # handoff 需要知道本 sprint 已经提交过哪些文件。
+    # commit subject 是这里的筛选协议：wip/complete 两类 sprint commit 会被纳入累计上下文。
     app_dir = project_dir / cfg.workspace.app_root
     if not (app_dir / ".git").exists():
         return []
@@ -75,11 +145,13 @@ def sprint_committed_files(project_dir: Path, cfg: HarnessConfig, sprint_number:
 
 
 def current_app_branch(project_dir: Path, cfg: HarnessConfig) -> str:
-    app_dir = project_dir / cfg.workspace.app_root
-    symbolic = _run_git(["symbolic-ref", "--short", "HEAD"], app_dir)
+    context = _app_git_context(project_dir, cfg)
+    if context is None:
+        return ""
+    symbolic = _run_git(["symbolic-ref", "--short", "HEAD"], context["git_root"])
     if symbolic.returncode == 0 and symbolic.stdout.strip():
         return symbolic.stdout.strip()
-    branch = _run_git(["rev-parse", "--abbrev-ref", "HEAD"], app_dir)
+    branch = _run_git(["rev-parse", "--abbrev-ref", "HEAD"], context["git_root"])
     if branch.returncode == 0:
         value = branch.stdout.strip()
         if value and value != "HEAD":
@@ -88,9 +160,11 @@ def current_app_branch(project_dir: Path, cfg: HarnessConfig) -> str:
 
 
 def ensure_app_branch(project_dir: Path, cfg: HarnessConfig) -> dict[str, Any]:
-    app_dir = project_dir / cfg.workspace.app_root
-    if not (app_dir / ".git").exists() or not cfg.workspace.git.branch:
+    # 只在空仓库里设置初始分支名；已有提交历史时不重命名，避免破坏用户的 git 状态。
+    context = _app_git_context(project_dir, cfg)
+    if context is None or not cfg.workspace.git.branch:
         return {"changed": False, "reason": "repo or configured branch missing"}
+    app_dir = context["git_root"]
     current = current_app_branch(project_dir, cfg)
     if current == cfg.workspace.git.branch:
         return {"changed": False, "current_branch": current}
@@ -119,29 +193,61 @@ def record_app_git_evidence(
     *,
     phase: str,
 ) -> dict[str, Any]:
-    app_dir = project_dir / cfg.workspace.app_root
+    # 每个 iteration 都保存 status、name-only diff 和 patch。
+    # 这些文件是 Evaluator/Verifier 复核“本轮到底改了什么”的确定性证据。
+    context = _app_git_context(project_dir, cfg)
+    app_dir = context["git_root"] if context is not None else project_dir / cfg.workspace.app_root
     git_dir = paths["git"]
     git_dir.mkdir(parents=True, exist_ok=True)
 
-    status = _run_git(["status", "--porcelain=v1", "-uall"], app_dir)
+    pathspec = _pathspec_for_app(context) if context is not None else []
+    status_args = ["status", "--porcelain=v1", "-uall"]
+    if pathspec:
+        status_args.extend(["--", *pathspec])
+    status = _run_git(status_args, app_dir)
     status_text = status.stdout if status.returncode == 0 else status.stderr
     (git_dir / f"{phase}-status.txt").write_text(status_text)
 
-    unstaged = _run_git(["diff", "--name-only"], app_dir)
-    staged = _run_git(["diff", "--cached", "--name-only"], app_dir)
-    untracked = _run_git(["ls-files", "--others", "--exclude-standard"], app_dir)
+    diff_pathspec = ["--", *pathspec] if pathspec else []
+    unstaged = _run_git(["diff", "--name-only", *diff_pathspec], app_dir)
+    staged = _run_git(["diff", "--cached", "--name-only", *diff_pathspec], app_dir)
+    untracked = _run_git(["ls-files", "--others", "--exclude-standard", *diff_pathspec], app_dir)
     changed_rel = []
     if unstaged.returncode == 0:
-        changed_rel.extend(path for path in unstaged.stdout.splitlines() if path)
+        changed_rel.extend(
+            normalized
+            for path in unstaged.stdout.splitlines()
+            if path
+            for normalized in (
+                [_project_relative_app_status_path(context, path)] if context is not None else [path]
+            )
+            if normalized is not None
+        )
     if staged.returncode == 0:
-        changed_rel.extend(path for path in staged.stdout.splitlines() if path)
+        changed_rel.extend(
+            normalized
+            for path in staged.stdout.splitlines()
+            if path
+            for normalized in (
+                [_project_relative_app_status_path(context, path)] if context is not None else [path]
+            )
+            if normalized is not None
+        )
     if untracked.returncode == 0:
-        changed_rel.extend(path for path in untracked.stdout.splitlines() if path)
+        changed_rel.extend(
+            normalized
+            for path in untracked.stdout.splitlines()
+            if path
+            for normalized in (
+                [_project_relative_app_status_path(context, path)] if context is not None else [path]
+            )
+            if normalized is not None
+        )
     changed_rel = sorted(dict.fromkeys(changed_rel))
     (git_dir / f"{phase}-diff-name-only.txt").write_text("\n".join(changed_rel) + ("\n" if changed_rel else ""))
 
-    unstaged_diff = _run_git(["diff", "--binary"], app_dir)
-    staged_diff = _run_git(["diff", "--cached", "--binary"], app_dir)
+    unstaged_diff = _run_git(["diff", "--binary", *diff_pathspec], app_dir)
+    staged_diff = _run_git(["diff", "--cached", "--binary", *diff_pathspec], app_dir)
     diff_sections: list[str] = []
     if unstaged_diff.returncode == 0:
         if unstaged_diff.stdout:
@@ -160,7 +266,7 @@ def record_app_git_evidence(
 
     return {
         "phase": phase,
-        "changed_files": [f"{cfg.workspace.app_root}/{path}" for path in changed_rel],
+        "changed_files": changed_rel,
         "status_path": str(git_dir / f"{phase}-status.txt"),
         "diff_name_only_path": str(git_dir / f"{phase}-diff-name-only.txt"),
         "diff_patch_path": str(git_dir / f"{phase}-diff.patch"),
@@ -168,6 +274,8 @@ def record_app_git_evidence(
 
 
 def protected_repo_violations(project_dir: Path, cfg: HarnessConfig) -> list[str]:
+    # protected_paths 中的 repos/* 通常是参考仓库。
+    # 如果这些 repo 变脏，说明长跑流程可能越界写入了 reference-only 代码。
     protected_repos: set[str] = set()
     app_root = Path(cfg.workspace.app_root).as_posix()
     for pattern in cfg.workspace.protected_paths:
@@ -194,10 +302,15 @@ def protected_repo_violations(project_dir: Path, cfg: HarnessConfig) -> list[str
 
 
 def app_git_sync_status(project_dir: Path, cfg: HarnessConfig) -> dict[str, Any]:
-    app_dir = project_dir / cfg.workspace.app_root
+    # preflight 和 push 前检查都消费这个结构。
+    # repo_exists 表示 app_root 能被 git 管理，不要求 app_root 自己一定有 .git 目录。
+    context = _app_git_context(project_dir, cfg)
+    app_dir = context["git_root"] if context is not None else project_dir / cfg.workspace.app_root
     remote = _run_git(["remote", "get-url", "origin"], app_dir)
     return {
-        "repo_exists": (app_dir / ".git").exists(),
+        "repo_exists": context is not None,
+        "git_root": str(context["git_root"]) if context is not None else "",
+        "app_root_has_own_git_dir": (project_dir / cfg.workspace.app_root / ".git").exists(),
         "configured_remote_url": cfg.workspace.git.remote_url,
         "actual_remote_url": remote.stdout.strip() if remote.returncode == 0 else "",
         "remote_configured": remote.returncode == 0 and bool(remote.stdout.strip()),
@@ -210,7 +323,8 @@ def app_git_sync_status(project_dir: Path, cfg: HarnessConfig) -> dict[str, Any]
 
 
 def app_git_identity_status(project_dir: Path, cfg: HarnessConfig) -> dict[str, Any]:
-    app_dir = project_dir / cfg.workspace.app_root
+    context = _app_git_context(project_dir, cfg)
+    app_dir = context["git_root"] if context is not None else project_dir / cfg.workspace.app_root
     name = _run_git(["config", "--get", "user.name"], app_dir)
     email = _run_git(["config", "--get", "user.email"], app_dir)
     user_name = name.stdout.strip() if name.returncode == 0 else ""
@@ -225,6 +339,7 @@ def app_git_identity_status(project_dir: Path, cfg: HarnessConfig) -> dict[str, 
 
 
 def ensure_app_remote(project_dir: Path, cfg: HarnessConfig) -> dict[str, Any]:
+    # 只在没有 origin 时配置远端；如果已有 origin 不一致，直接失败，避免静默改写用户 remote。
     app_dir = project_dir / cfg.workspace.app_root
     if not cfg.workspace.git.remote_url:
         return app_git_sync_status(project_dir, cfg)
@@ -240,6 +355,8 @@ def ensure_app_remote(project_dir: Path, cfg: HarnessConfig) -> dict[str, Any]:
 
 
 def commit_app_changes(project_dir: Path, cfg: HarnessConfig, message: str, *, allow_empty: bool = False) -> dict[str, Any]:
+    # commit 阶段只提交允许范围内的 app 文件。
+    # protected 或超出 allowlist 的变更会被报告为 skipped，而不是被自动纳入提交。
     app_dir = project_dir / cfg.workspace.app_root
     if not cfg.workspace.git.enabled or cfg.workspace.git.strategy == "disabled":
         return {"committed": False, "reason": "git disabled"}
@@ -339,6 +456,7 @@ def _validate_push_git_config(cfg: HarnessConfig) -> None:
 
 
 def push_app_changes(project_dir: Path, cfg: HarnessConfig) -> dict[str, Any]:
+    # push 是最严格的出口：必须启用 git/push、工作树干净、remote 和 branch 都匹配配置。
     app_dir = project_dir / cfg.workspace.app_root
     if not cfg.workspace.git.push:
         return {"pushed": False, "reason": "push disabled"}

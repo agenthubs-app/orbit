@@ -16,7 +16,7 @@ from urllib.request import urlopen
 
 from harness.agents.planner import run_planner
 from harness.agents.evaluator import run_evaluator
-from harness.agents.generator import build_handoff, run_generator, self_assess
+from harness.agents.generator import build_handoff, fingerprint_app_changed_files, run_generator, self_assess
 from harness.agents.verifier import run_verifier
 from harness.config import HarnessConfig
 from harness.contract_review import assert_contract_reviewed
@@ -58,6 +58,10 @@ from harness.workspace import (
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 DESIGN_SPEC_RELATIVE = Path("docs") / "designs" / "inital_design.md"
 
+# harness.py 是长跑 agent 系统的主编排层。
+# 主要流程是：Planner 产出 SPEC 和 sprint contract seeds，
+# Generator 按 contract 改 app，Evaluator/Verifier 只读审查，
+# Evidence/Git 层负责把可复核证据和 app repo 提交边界固定下来。
 
 def new_run_id() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
@@ -93,6 +97,8 @@ def extract_sprint_plan(spec: str) -> str:
 
 
 def extract_spec_overview(spec: str) -> str:
+    # spec.md 只保存执行概览；每个 sprint 的细节以 contract JSON 为准。
+    # 这样可以避免 Generator 误把长篇规划文本当作权威需求来源。
     clean = strip_spec_complete(spec)
     marker = "## Sprint Definitions"
     index = clean.find(marker)
@@ -118,6 +124,8 @@ def extract_spec_overview(spec: str) -> str:
 
 
 def extract_contract_seed_payload(spec: str) -> list[dict]:
+    # Planner 必须在固定标题下输出 JSON contract seeds。
+    # 这里做结构化解析，禁止后续流程从自由文本里猜 sprint 范围。
     marker = "## Sprint Contract Seeds"
     index = spec.find(marker)
     if index < 0:
@@ -175,6 +183,8 @@ def _parse_sprint_number(raw: dict) -> int:
 
 
 def contracts_from_planner_spec(spec: str) -> list[SprintContract]:
+    # 将 Planner 的原始 JSON 转成强类型 SprintContract，并立即做 contract review。
+    # 只有被确认的 contract 才能进入 generator/evaluator/verifier loop。
     contracts: list[SprintContract] = []
     raw_contracts = extract_contract_seed_payload(spec)
     if not raw_contracts:
@@ -286,6 +296,8 @@ def _manifest_contract_valid(project_dir: Path, cfg: HarnessConfig, path: Path) 
 
 
 def plan_manifest_valid(project_dir: Path, cfg: HarnessConfig) -> bool:
+    # manifest 是“当前计划可复用”的信任根。
+    # 如果 spec、sprints 或 contract 文件缺失/越界/未 review，就必须重新规划。
     paths = ensure_project_layout(project_dir, cfg)
     manifest_path = paths["state"] / "plan-manifest.json"
     if not manifest_path.exists():
@@ -358,6 +370,8 @@ def run_planning_loop(
     brief: str | None = None,
     planner_func=run_planner,
 ) -> list[SprintContract]:
+    # Planner loop 只允许有限轮修正：缺 SPEC_COMPLETE 或 contract JSON 不合法时，
+    # 把失败原因反馈给 Planner，让它重新输出完整 SPEC，而不是让 harness 猜补。
     paths = ensure_project_layout(project_dir, cfg)
     ensure_development_repo(project_dir, cfg)
     prompt = build_planner_brief(project_dir, cfg, brief)
@@ -409,6 +423,8 @@ def run_planning_loop(
 
 
 def ensure_development_repo(project_dir: Path, cfg: HarnessConfig) -> Path:
+    # app repo 是真正被 Generator 修改和提交的边界。
+    # harness 自身、harness-state 和 reference-only repo 不属于实现写入面。
     app_dir = project_dir / cfg.workspace.app_root
     app_dir.mkdir(parents=True, exist_ok=True)
 
@@ -512,6 +528,8 @@ def init(project_dir: Path, cfg: HarnessConfig) -> None:
 
 
 def prepare_run_state(project_dir: Path, cfg: HarnessConfig, planner_func=run_planner, brief: str | None = None) -> None:
+    # 每次 run 前先确认 plan state 是否可信；不可信则重新走 Planner。
+    # 可信时只清理 tmp，保留已确认的 contracts 和历史证据。
     paths = ensure_project_layout(project_dir, cfg)
     ensure_development_repo(project_dir, cfg)
     if (
@@ -645,6 +663,8 @@ def assert_reviewer_artifact_boundary(
     allowed_workspace_paths: set[str] | None = None,
     allowed_workspace_roots: list[str] | None = None,
 ) -> None:
+    # Evaluator/Verifier 只能读 app 并写入受控证据目录。
+    # 这个断言捕获任何越权文件写入，避免 reviewer 角色偷偷修改产品代码。
     changes = workspace_changes_except_paths(
         protected_workspace_changes(before, after),
         allowed_workspace_paths or set(),
@@ -1485,6 +1505,7 @@ def run_sprint(
     score_history: list[dict] = []
     self_assess_repairs_used = 0
     self_assess_runtime_failed = False
+    baseline_app_fingerprints = fingerprint_app_changed_files(project_dir, cfg)
 
     for iteration in range(1, cfg.loop.max_iterations + 1):
         logger.info("[Harness] Sprint %s iteration %s", contract.sprint_number, iteration)
@@ -1519,7 +1540,7 @@ def run_sprint(
             raise RuntimeError("Protected workspace changed: " + json.dumps(workspace_changes, sort_keys=True))
         prepare_app_dependencies(project_dir, cfg, paths)
 
-        handoff = build_handoff(contract.sprint_number, project_dir, summary, cfg)
+        handoff = build_handoff(contract.sprint_number, project_dir, summary, cfg, baseline_app_fingerprints)
         assert_no_protected_app_changes(handoff, cfg)
         assert_contract_file_boundary_changes(contract, handoff, cfg)
         protected_violations = protected_repo_violations(project_dir, cfg)
@@ -1583,7 +1604,7 @@ def run_sprint(
                 raise RuntimeError("Protected workspace changed: " + json.dumps(workspace_changes, sort_keys=True))
             prepare_app_dependencies(project_dir, cfg, paths)
 
-            handoff = build_handoff(contract.sprint_number, project_dir, summary, cfg)
+            handoff = build_handoff(contract.sprint_number, project_dir, summary, cfg, baseline_app_fingerprints)
             assert_no_protected_app_changes(handoff, cfg)
             assert_contract_file_boundary_changes(contract, handoff, cfg)
             protected_violations = protected_repo_violations(project_dir, cfg)

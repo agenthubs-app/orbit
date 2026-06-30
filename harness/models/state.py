@@ -1,3 +1,9 @@
+"""Harness 持久化状态模型。
+
+这些 dataclass 会被 sprint contract、handoff、evaluation 和 verification 流程读写。
+每个模型都提供 save/load，保持磁盘 JSON 和内存对象之间的结构稳定。
+"""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -8,6 +14,8 @@ from typing import Any
 
 @dataclass
 class SuccessCriterion:
+    """单条成功标准及其当前验证状态。"""
+
     id: str
     description: str
     status: str = "pending"
@@ -16,6 +24,8 @@ class SuccessCriterion:
 
 @dataclass
 class SprintContract:
+    """单个 sprint 的目标、成功标准、证据要求和文件边界。"""
+
     sprint_number: int
     goal: str
     success_criteria: list[SuccessCriterion]
@@ -25,6 +35,7 @@ class SprintContract:
     confirmed: bool = False
 
     def all_criteria_met(self) -> bool:
+        """所有成功标准都为 pass 时，contract 才算完成。"""
         return all(item.status == "pass" for item in self.success_criteria)
 
     def failing_criteria(self) -> list[SuccessCriterion]:
@@ -51,6 +62,8 @@ class SprintContract:
 
 @dataclass
 class HandoffState:
+    """一次 sprint 交接给下一轮 agent 的状态摘要。"""
+
     sprint_number: int
     project_dir: str
     completed_features: list[str] = field(default_factory=list)
@@ -73,6 +86,8 @@ class HandoffState:
 
 @dataclass
 class EvalResult:
+    """Evaluator 对 sprint 输出的结论和 contract-level 反馈。"""
+
     verdict: str
     rubric_average: float
     contract_results: list[SuccessCriterion]
@@ -104,6 +119,8 @@ class ExperienceIssue:
 
 @dataclass
 class VerificationResult:
+    """Verifier 对用户体验、可用性和残留问题的评分结果。"""
+
     verdict: str
     experience_average: float
     scores: dict[str, float]
@@ -127,6 +144,7 @@ class VerificationResult:
 
 
 def format_handoff_for_prompt(handoff: HandoffState) -> str:
+    """把 handoff state 转成可直接放入下一轮 prompt 的 Markdown 摘要。"""
     lines = [f"## Handoff State - Sprint {handoff.sprint_number}"]
     if handoff.completed_features:
         lines.append("\n### Completed and verified:")

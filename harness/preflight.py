@@ -18,6 +18,8 @@ PreflightCheck = dict[str, Any]
 BrowserCheck = Callable[[], dict[str, Any]]
 RunnerCheck = Callable[[HarnessConfig], dict[str, Any]]
 
+# preflight 在长跑开始前做一次“环境和边界体检”。
+# 它不修改产品代码，只把配置错误、runtime 缺失、git 风险和证据目录污染提前暴露出来。
 _ALLOWED_AGENT_BACKENDS = {"claude", "codex", "deepcode"}
 _ALLOWED_CODEX_APPROVAL_MODES = {"full-auto", "read-only", "workspace-write", "danger-full-access"}
 _ALLOWED_CODEX_REASONING_EFFORTS = {"low", "medium", "high", "xhigh"}
@@ -33,6 +35,7 @@ def _check(name: str, status: str, message: str, details: dict[str, Any] | None 
 
 
 def _overall_status(checks: list[PreflightCheck]) -> str:
+    # 任一 fail 都阻断；没有 fail 但有 warning 时允许继续，但调用方应该把风险展示出来。
     statuses = {check["status"] for check in checks}
     if "fail" in statuses:
         return "fail"
@@ -42,6 +45,7 @@ def _overall_status(checks: list[PreflightCheck]) -> str:
 
 
 def check_playwright_runtime() -> dict[str, Any]:
+    # 浏览器证据采集依赖 Chromium；这里用最小页面启动测试，不触碰 app server。
     try:
         from playwright.sync_api import sync_playwright
 
@@ -106,6 +110,8 @@ def _temperature_issue(name: str, value: Any, thinking_enabled: bool) -> str | N
 
 
 def _agent_config_issues(cfg: HarnessConfig) -> list[str]:
+    # 这层只检查“配置是否自洽”，不检查实际 CLI/SDK 是否存在。
+    # runtime 是否可用由 check_agent_runtimes 单独负责。
     issues: list[str] = []
     for role, agent_cfg in _agent_configs(cfg):
         backend = agent_cfg.backend
@@ -181,6 +187,8 @@ def _agent_config_check(cfg: HarnessConfig) -> PreflightCheck:
 
 
 def check_agent_runtimes(cfg: HarnessConfig) -> dict[str, Any]:
+    # 根据每个 agent 的 backend 收集必需 runtime。
+    # Generator self-assess 固定需要 Claude SDK，所以无论 Generator backend 是什么都要检查。
     required: list[dict[str, Any]] = []
     missing: list[dict[str, Any]] = []
 
@@ -230,6 +238,8 @@ def check_agent_runtimes(cfg: HarnessConfig) -> dict[str, Any]:
 
 
 def _plan_manifest_check(project_dir: Path, cfg: HarnessConfig) -> PreflightCheck:
+    # plan manifest 是 Planner 输出可复用的证明。
+    # 缺失或过期只是 warning，因为 run_sprint 前还可以重新规划。
     from harness.harness import plan_manifest_valid
 
     manifest_path = project_dir / cfg.workspace.artifact_root / "plan-manifest.json"
@@ -249,13 +259,16 @@ def _plan_manifest_check(project_dir: Path, cfg: HarnessConfig) -> PreflightChec
 
 
 def _app_repo_check(project_dir: Path, cfg: HarnessConfig) -> PreflightCheck:
+    # app root 只要处于某个 git worktree 内即可通过；
+    # 它不一定要是独立 repo，这支持把整个项目放在一个大仓库里开发。
     app_dir = project_dir / cfg.workspace.app_root
-    if (app_dir / ".git").exists():
+    status = app_git_sync_status(project_dir, cfg)
+    if status["repo_exists"]:
         return _check(
             "app_repo",
             "pass",
-            "Application repo exists and is isolated from the harness.",
-            {"path": cfg.workspace.app_root},
+            "Application root is inside a git worktree.",
+            {"path": cfg.workspace.app_root, **status},
         )
     return _check(
         "app_repo",
@@ -266,6 +279,8 @@ def _app_repo_check(project_dir: Path, cfg: HarnessConfig) -> PreflightCheck:
 
 
 def _app_git_config_check(cfg: HarnessConfig) -> PreflightCheck:
+    # git.enabled、strategy、push 三者必须一致。
+    # 例如 push=true 但 commit disabled 会导致后续无法保证远端包含完整实现。
     strategy = cfg.workspace.git.strategy
     details = {
         "git_enabled": cfg.workspace.git.enabled,
@@ -303,11 +318,11 @@ def _app_git_config_check(cfg: HarnessConfig) -> PreflightCheck:
 
 
 def _app_git_remote_check(project_dir: Path, cfg: HarnessConfig) -> PreflightCheck:
-    app_dir = project_dir / cfg.workspace.app_root
-    if not (app_dir / ".git").exists():
+    # remote 不一致在 push 模式下是 fail；只本地运行时降级为 warning。
+    status = app_git_sync_status(project_dir, cfg)
+    if not status["repo_exists"]:
         return _check("app_git_remote", "fail", "Cannot inspect remote because the app repo is missing.")
 
-    status = app_git_sync_status(project_dir, cfg)
     actual_remote = status["actual_remote_url"]
     configured_remote = status["configured_remote_url"]
     if status["push_enabled"] and not configured_remote:
@@ -337,10 +352,10 @@ def _app_git_remote_check(project_dir: Path, cfg: HarnessConfig) -> PreflightChe
 
 
 def _app_git_branch_check(project_dir: Path, cfg: HarnessConfig) -> PreflightCheck:
-    app_dir = project_dir / cfg.workspace.app_root
-    if not (app_dir / ".git").exists():
-        return _check("app_git_branch", "fail", "Cannot inspect branch because the app repo is missing.")
+    # branch mismatch 会让 push 打到错误分支；启用 push 时必须阻断。
     status = app_git_sync_status(project_dir, cfg)
+    if not status["repo_exists"]:
+        return _check("app_git_branch", "fail", "Cannot inspect branch because the app repo is missing.")
     if status["current_branch"] == status["configured_branch"]:
         return _check("app_git_branch", "pass", "App repo branch matches workspace.git.branch.", status)
     severity = "fail" if status["push_enabled"] else "warning"
@@ -353,10 +368,11 @@ def _app_git_branch_check(project_dir: Path, cfg: HarnessConfig) -> PreflightChe
 
 
 def _app_git_identity_check(project_dir: Path, cfg: HarnessConfig) -> PreflightCheck:
-    app_dir = project_dir / cfg.workspace.app_root
-    if not (app_dir / ".git").exists():
-        return _check("app_git_identity", "fail", "Cannot inspect git identity because the app repo is missing.")
+    # 只有 harness 负责 commit/push 时才要求 user.name 和 user.email。
     status = app_git_identity_status(project_dir, cfg)
+    sync_status = app_git_sync_status(project_dir, cfg)
+    if not sync_status["repo_exists"]:
+        return _check("app_git_identity", "fail", "Cannot inspect git identity because the app repo is missing.")
     if not status["required"]:
         return _check(
             "app_git_identity",
@@ -375,8 +391,10 @@ def _app_git_identity_check(project_dir: Path, cfg: HarnessConfig) -> PreflightC
 
 
 def _app_worktree_check(project_dir: Path, cfg: HarnessConfig) -> PreflightCheck:
+    # 预先脏的 app worktree 会混淆“Generator 本轮改了什么”。
+    # git disabled 时只 warning；自动 commit/push 打开时必须 fail。
     app_dir = project_dir / cfg.workspace.app_root
-    if not (app_dir / ".git").exists():
+    if not app_dir.exists():
         return _check("app_worktree", "fail", "Cannot inspect worktree because the app repo is missing.")
     try:
         changed_files = app_changed_files(project_dir, cfg)
@@ -416,6 +434,8 @@ def _protected_repo_check(project_dir: Path, cfg: HarnessConfig) -> PreflightChe
 
 
 def _artifact_hygiene_check(project_dir: Path, cfg: HarnessConfig) -> PreflightCheck:
+    # evidence、trace、screenshot 等运行产物必须待在 harness artifact roots。
+    # 如果散落到源码树里，Generator 可能把它们误提交为产品代码。
     violations = find_artifact_hygiene_violations(project_dir, cfg)
     if violations:
         return _check(
@@ -440,6 +460,8 @@ def _workspace_paths_check(cfg: HarnessConfig) -> PreflightCheck:
 
 
 def _loop_config_check(cfg: HarnessConfig) -> PreflightCheck:
+    # loop 预算必须是正整数，并且 min_iterations 不能大于 max_iterations。
+    # 这是长跑 harness 防止无限循环或立即退出的硬边界。
     issues = [
         issue
         for issue in [
@@ -509,6 +531,8 @@ def run_preflight(
     browser_check: BrowserCheck = check_playwright_runtime,
     runner_check: RunnerCheck = check_agent_runtimes,
 ) -> dict[str, Any]:
+    # workspace path 配置不安全时，后续检查可能写到错误目录，所以只返回这一项 fail。
+    # 路径安全后再并行概念上检查配置、git、artifact、runtime 和 browser。
     workspace_check = _workspace_paths_check(cfg)
     if workspace_check["status"] == "fail":
         checks = [workspace_check]

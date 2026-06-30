@@ -1,3 +1,9 @@
+"""Harness 日志工具。
+
+这里统一创建 stdout + 文件双写 logger，并提供压缩、脱敏和工具调用描述函数。
+runner/agent 可以用这些工具输出可读日志，同时避免把 key/token 等敏感字段写进日志。
+"""
+
 from __future__ import annotations
 
 import json
@@ -11,6 +17,7 @@ _logger: logging.Logger | None = None
 
 
 def setup(project_dir: Path, label: str = "run", log_root: str = "harness-logs") -> None:
+    """初始化本次 harness run 的日志文件和 stdout handler。"""
     global _logger
     log_dir = project_dir / log_root
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -33,6 +40,7 @@ def setup(project_dir: Path, label: str = "run", log_root: str = "harness-logs")
 
 
 def get() -> logging.Logger:
+    """返回已初始化 logger；如果还未初始化，则创建一个 stdout-only fallback。"""
     if _logger is not None:
         return _logger
     logger = logging.getLogger("orbit-harness")
@@ -45,6 +53,7 @@ def get() -> logging.Logger:
 
 
 def compact(value: Any, limit: int = 600) -> str:
+    """把任意值转成单行短文本，避免日志被大对象刷屏。"""
     if isinstance(value, str):
         text = value
     else:
@@ -59,6 +68,7 @@ def compact(value: Any, limit: int = 600) -> str:
 
 
 def redact(value: Any) -> Any:
+    """递归脱敏常见 credential 字段，供日志和工具输入描述使用。"""
     if isinstance(value, dict):
         redacted: dict[str, Any] = {}
         for key, item in value.items():
@@ -74,6 +84,7 @@ def redact(value: Any) -> Any:
 
 
 def describe_block(block: Any) -> str:
+    """把模型输出 block 或工具调用 block 压缩成人类可读的一行。"""
     block_type = type(block).__name__
     text = getattr(block, "text", None)
     if text:

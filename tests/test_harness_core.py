@@ -4,6 +4,9 @@ from pathlib import Path
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+# 这个测试文件覆盖 harness 的核心安全契约：
+# 配置解析要严格，agent runner 的权限要可控，artifact/evidence 必须留在受控目录，
+# 并且 Generator/Evaluator/Verifier 的职责边界不能互相越权。
 
 def _write_config(tmp_path, text: str) -> Path:
     path = tmp_path / "config.yaml"
@@ -24,6 +27,8 @@ def test_runtime_dependencies_include_claude_agent_sdk():
 
 
 def test_config_loads_existing_app_and_verifier_defaults():
+    # 默认配置定义了当前长跑 harness 的运行形态：
+    # app repo 在 repos/orbits，Generator 用 Codex 写代码，Evaluator/Verifier 只读审查。
     from harness.config import HarnessConfig
 
     cfg = HarnessConfig.load(Path("harness/config.yaml"))
@@ -69,6 +74,7 @@ def test_config_does_not_expose_unused_strategic_decision_model():
 
 
 def test_config_rejects_unknown_top_level_keys(tmp_path):
+    # 配置拼写错误要 fail fast，不能静默忽略后继续用默认值跑长循环。
     import pytest
 
     from harness.config import HarnessConfig
@@ -332,6 +338,8 @@ def test_config_rejects_unsupported_workspace_git_strategy(tmp_path):
 
 
 def test_codex_command_includes_reasoning_effort_config():
+    # Codex runner 必须把配置里的 reasoning_effort 显式传给 CLI。
+    # 这避免不同 agent 角色因为默认值变化而出现不可解释的质量差异。
     from harness.codex_runner import build_codex_command
     from harness.config import HarnessConfig
 
@@ -373,6 +381,8 @@ def test_codex_command_sets_explicit_working_root(tmp_path):
 
 
 def test_sync_isolated_app_changes_copies_git_visible_changes(tmp_path):
+    # Generator 在隔离 app 里运行，完成后只同步 git 可见变更。
+    # node_modules/.next 等忽略文件不能被带回真实 app repo。
     import subprocess
 
     from harness.codex_runner import sync_isolated_app_changes
@@ -407,6 +417,8 @@ def test_sync_isolated_app_changes_copies_git_visible_changes(tmp_path):
 
 
 def test_generator_codex_uses_isolated_app(tmp_path, monkeypatch):
+    # 这个用例锁住 Generator 的隔离执行设计：
+    # Codex 不直接在主 app repo 改文件，而是通过 isolated app 同步结果。
     from harness.agents.generator import run_generator
     from harness.config import HarnessConfig
     from harness.models.state import SprintContract, SuccessCriterion
@@ -602,6 +614,8 @@ def test_planner_claude_uses_configured_max_turns(monkeypatch):
 
 
 def test_claude_reviewers_run_without_file_or_shell_tools(monkeypatch):
+    # Evaluator/Verifier 是只读 reviewer，不应该拿到文件工具或 shell 工具。
+    # 真实证据采集由 harness 做，reviewer 只消费证据和 contract。
     import asyncio
     import sys
     import types
@@ -642,6 +656,7 @@ def test_claude_reviewers_run_without_file_or_shell_tools(monkeypatch):
 
 
 def test_self_assessment_claude_runs_without_shell_tools(monkeypatch):
+    # self-assessment 可以读文件做源码审查，但禁止 Bash，避免它绕过 harness 证据流程。
     import asyncio
     import sys
     import types
@@ -806,6 +821,7 @@ def test_deepcode_options_pass_configured_model_and_cli_path():
 
 
 def test_project_layout_keeps_artifacts_outside_nested_app(tmp_path):
+    # 证据和日志必须放在 harness-state/harness-logs，不允许混进 app 源码树。
     from harness.config import HarnessConfig
     from harness.workspace import ensure_project_layout
 
@@ -3073,6 +3089,46 @@ def test_self_assess_reviewer_timeout_does_not_hide_deterministic_concerns(tmp_p
     assert concerns == ["No changed app files were reported for this sprint."]
 
 
+def test_self_assess_allows_no_changed_files_when_generator_reports_existing_implementation(tmp_path, monkeypatch):
+    from harness.agents.generator import self_assess
+    from harness.config import HarnessConfig
+    from harness.harness import init
+    from harness.models.state import SprintContract, SuccessCriterion
+
+    cfg = HarnessConfig.load(Path("harness/config.yaml"))
+    init(tmp_path, cfg)
+    app_dir = tmp_path / "repos/orbits"
+    (app_dir / "package.json").write_text('{"scripts": {"test": "echo ok"}}')
+    contract = SprintContract(
+        sprint_number=81,
+        goal="Self assess already implemented rerun",
+        success_criteria=[SuccessCriterion(id="SC-1", description="Existing implementation is verifiable by evidence.")],
+        confirmed=True,
+    )
+
+    def fake_run_self_assess_claude(prompt, agent_cfg, app_dir, timeout):
+        return """```json
+{
+  "confident": true,
+  "concerns": []
+}
+```"""
+
+    monkeypatch.setattr("harness.agents.generator._run_self_assess_claude", fake_run_self_assess_claude)
+
+    confident, concerns = self_assess(
+        "SPEC",
+        contract,
+        [],
+        "The current checkout already contained the Sprint 81 implementation, so no changes were needed.",
+        cfg,
+        tmp_path,
+    )
+
+    assert confident is True
+    assert concerns == []
+
+
 def test_self_assess_ignores_already_satisfied_boundary_notes(tmp_path, monkeypatch):
     from harness.agents.generator import self_assess
     from harness.config import HarnessConfig
@@ -3428,6 +3484,66 @@ def test_git_sync_status_reports_missing_remote(tmp_path):
     assert status["remote_configured"] is False
     assert status["configured_remote_url"] == ""
     assert status["push_enabled"] is False
+
+
+def test_app_changed_files_normalizes_when_app_root_uses_project_git_repo(tmp_path):
+    import subprocess
+
+    from harness.config import HarnessConfig
+    from harness.git_safety import app_changed_files
+
+    cfg = HarnessConfig.load(Path("harness/config.yaml"))
+    cfg.workspace.git.enabled = False
+    cfg.workspace.git.strategy = "disabled"
+    app_repo = tmp_path / "repos/orbits"
+    app_file = app_repo / "shared/domain/contracts.ts"
+    harness_file = tmp_path / "harness/harness.py"
+    app_file.parent.mkdir(parents=True)
+    harness_file.parent.mkdir(parents=True)
+    app_file.write_text("export const before = true;\n")
+    harness_file.write_text("print('before')\n")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "orbit@example.local"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Orbit Harness"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "--", "."], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "baseline"], cwd=tmp_path, check=True)
+    app_file.write_text("export const after = true;\n")
+    harness_file.write_text("print('after')\n")
+
+    changed = app_changed_files(tmp_path, cfg)
+
+    assert changed == ["repos/orbits/shared/domain/contracts.ts"]
+
+
+def test_preflight_accepts_app_root_inside_project_git_repo_when_git_disabled(tmp_path):
+    import subprocess
+
+    from harness.config import HarnessConfig
+    from harness.preflight import run_preflight
+
+    cfg = HarnessConfig.load(Path("harness/config.yaml"))
+    cfg.workspace.git.enabled = False
+    cfg.workspace.git.strategy = "disabled"
+    app_repo = tmp_path / "repos/orbits"
+    app_repo.mkdir(parents=True)
+    (app_repo / "package.json").write_text('{"scripts":{"test":"echo ok"}}')
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "orbit@example.local"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Orbit Harness"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "--", "."], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "baseline"], cwd=tmp_path, check=True)
+
+    report = run_preflight(
+        tmp_path,
+        cfg,
+        browser_check=lambda: {"available": True, "message": "chromium ok"},
+        runner_check=lambda cfg: {"available": True, "required": [], "missing": []},
+    )
+
+    checks = {check["name"]: check for check in report["checks"]}
+    assert checks["app_repo"]["status"] == "pass"
+    assert checks["app_worktree"]["status"] == "pass"
+    assert report["status"] == "warning"
 
 
 def test_init_configures_app_origin_when_remote_url_is_set(tmp_path):
@@ -5694,6 +5810,357 @@ def test_run_sprint_blocks_generator_changes_outside_contract_file_boundary(tmp_
         run_sprint("SPEC", contract, tmp_path, cfg, "http://localhost:3000")
 
 
+def test_run_sprint_ignores_preexisting_dirty_app_files_for_file_boundary(tmp_path, monkeypatch):
+    from harness.config import HarnessConfig
+    from harness.harness import init, run_sprint
+    from harness.models.state import EvalResult, SprintContract, SuccessCriterion, VerificationResult
+
+    cfg = HarnessConfig.load(Path("harness/config.yaml"))
+    cfg.workspace.git.enabled = False
+    cfg.workspace.git.strategy = "disabled"
+    cfg.loop.max_iterations = 1
+    cfg.loop.min_iterations = 1
+    init(tmp_path, cfg)
+    app_repo = tmp_path / "repos/orbits"
+    preexisting = app_repo / "features/chat/mock-service.ts"
+    preexisting.parent.mkdir(parents=True, exist_ok=True)
+    preexisting.write_text("export const preexistingDirty = true;\n")
+
+    contract = SprintContract(
+        sprint_number=81,
+        goal="Database schema evolution boundary",
+        success_criteria=[SuccessCriterion(id="SC-1", description="The database schema file is generated.")],
+        evidence={"source_files": ["features/database/schema.ts"]},
+        file_boundary={
+            "capability_root": "features/database",
+            "owned_paths": ["features/database/**"],
+            "allowed_shared_paths": [],
+            "forbidden_paths": ["features/chat/**"],
+            "shared_change_policy": "forbidden_unless_explicit",
+        },
+        confirmed=True,
+    )
+
+    def fake_run_generator(spec, contract, project_dir, handoff=None, strategic_framing=None, cfg=None):
+        target = project_dir / "repos/orbits/features/database/schema.ts"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("export const schema = 'v2';\n")
+        return "created database schema"
+
+    def fake_collect_evidence(project_dir, app_url, contract, paths):
+        (paths["sprint_evidence"] / "evidence.json").write_text("{}")
+        return {}
+
+    monkeypatch.setattr("harness.harness.run_generator", fake_run_generator)
+    monkeypatch.setattr("harness.harness.self_assess", lambda *args, **kwargs: (True, []))
+    monkeypatch.setattr("harness.harness.collect_evidence", fake_collect_evidence)
+    monkeypatch.setattr(
+        "harness.harness.run_evaluator",
+        lambda *args, **kwargs: EvalResult(
+            verdict="pass",
+            rubric_average=4.0,
+            contract_results=[SuccessCriterion(id="SC-1", description="The database schema file is generated.", status="pass")],
+            feedback="ok",
+        ),
+    )
+    monkeypatch.setattr(
+        "harness.harness.run_verifier",
+        lambda *args, **kwargs: VerificationResult(verdict="pass", experience_average=4.0, scores={"clarity": 4}, issues=[], feedback="ok"),
+    )
+
+    _eval_result, _verify_result, handoff = run_sprint("SPEC", contract, tmp_path, cfg, "http://localhost:3000")
+
+    assert handoff.files_changed == ["repos/orbits/features/database/schema.ts"]
+
+
+def test_handoff_ignores_preexisting_dirty_app_files_when_app_uses_project_git(tmp_path):
+    import subprocess
+
+    from harness.agents.generator import build_handoff, fingerprint_app_changed_files
+    from harness.config import HarnessConfig
+
+    cfg = HarnessConfig.load(Path("harness/config.yaml"))
+    cfg.workspace.git.enabled = False
+    cfg.workspace.git.strategy = "disabled"
+    app_repo = tmp_path / "repos/orbits"
+    forbidden = app_repo / "features/chat/mock-service.ts"
+    allowed = app_repo / "features/database/schema.ts"
+    forbidden.parent.mkdir(parents=True)
+    allowed.parent.mkdir(parents=True)
+    forbidden.write_text("export const value = 'baseline';\n")
+    allowed.write_text("export const schema = 'v1';\n")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "repos/orbits"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "baseline"], cwd=tmp_path, check=True)
+
+    forbidden.write_text("export const value = 'dirty before sprint';\n")
+    baseline_fingerprints = fingerprint_app_changed_files(tmp_path, cfg)
+    allowed.write_text("export const schema = 'v2';\n")
+
+    handoff = build_handoff(81, tmp_path, "updated schema", cfg, baseline_fingerprints)
+
+    assert handoff.files_changed == ["repos/orbits/features/database/schema.ts"]
+
+
+def test_relationship_data_runner_builds_minimax_env_without_exposing_secret(monkeypatch):
+    from harness.relationship_data_goal_runner import build_minimax_env, redacted_minimax_env
+
+    monkeypatch.setenv("MINIMAX_API_KEY", "sk-test-secret")
+
+    env = build_minimax_env()
+    redacted = redacted_minimax_env(env)
+
+    assert env["ANTHROPIC_BASE_URL"] == "https://api.minimaxi.com/anthropic"
+    assert env["ANTHROPIC_AUTH_TOKEN"] == "sk-test-secret"
+    assert env["ANTHROPIC_MODEL"] == "MiniMax-M3"
+    assert redacted["ANTHROPIC_AUTH_TOKEN"] == "<set>"
+    assert "sk-test-secret" not in str(redacted)
+
+
+def test_relationship_data_runner_reads_minimax_token_from_claude_settings(tmp_path, monkeypatch):
+    from harness.relationship_data_goal_runner import build_minimax_env
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        '{"env":{"ANTHROPIC_AUTH_TOKEN":"settings-secret","ANTHROPIC_BASE_URL":"https://api.minimaxi.com/anthropic"}}'
+    )
+    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+
+    env = build_minimax_env(settings_path=settings)
+
+    assert env["ANTHROPIC_AUTH_TOKEN"] == "settings-secret"
+    assert env["ANTHROPIC_BASE_URL"] == "https://api.minimaxi.com/anthropic"
+
+
+def test_relationship_minimax_agent_filters_unsupported_sdk_options(tmp_path, monkeypatch):
+    import asyncio
+
+    import claude_agent_sdk
+
+    from harness.relationship_data_goal_runner import MINIMAX_MODEL, _run_minimax_agent
+
+    captured = {}
+
+    async def fake_query(prompt, options):
+        captured["prompt"] = prompt
+        captured["options"] = options
+        if False:
+            yield None
+
+    monkeypatch.setattr(claude_agent_sdk, "query", fake_query)
+
+    summary = asyncio.run(
+        _run_minimax_agent(
+            "Generate relationship mockdata",
+            tmp_path,
+            {"ANTHROPIC_AUTH_TOKEN": "secret", "ANTHROPIC_BASE_URL": "https://api.minimaxi.com/anthropic"},
+        )
+    )
+
+    assert summary == ""
+    assert captured["prompt"] == "Generate relationship mockdata"
+    assert captured["options"].model == MINIMAX_MODEL
+    assert captured["options"].env["ANTHROPIC_AUTH_TOKEN"] == "secret"
+    assert not hasattr(captured["options"], "max_tokens")
+
+
+def test_relationship_minimax_agent_timeout_is_visible(tmp_path, monkeypatch):
+    import asyncio
+    import pytest
+
+    from harness.relationship_data_goal_runner import run_minimax_agent_with_timeout
+
+    async def never_returns(prompt, project_dir, env):
+        await asyncio.sleep(10)
+        return "done"
+
+    monkeypatch.setattr("harness.relationship_data_goal_runner._run_minimax_agent", never_returns)
+
+    with pytest.raises(TimeoutError):
+        run_minimax_agent_with_timeout("prompt", tmp_path, {}, timeout_seconds=0.01)
+
+
+def test_relationship_mockdata_generator_produces_valid_demo_scale(tmp_path):
+    import json
+
+    from harness.relationship_data_goal_runner import generate_relationship_mockdata, validate_relationship_mockdata
+
+    mockdata = tmp_path / "repos/mockdata"
+
+    generate_relationship_mockdata(mockdata, minimax_plan_text='{"themes":["inbound", "ai-poc", "follow-up"]}')
+    result = validate_relationship_mockdata(mockdata)
+    contacts = json.loads((mockdata / "generated/contacts.generated.json").read_text())
+    events = json.loads((mockdata / "generated/events.generated.json").read_text())
+
+    assert result["passed"], result["issues"][:10]
+    assert 120 <= result["counts"]["users"] <= 150
+    assert 10 <= result["counts"]["events"] <= 12
+    assert 80 <= result["counts"]["companies"] <= 100
+    assert 400 <= result["counts"]["participants"] <= 600
+    assert 800 <= result["counts"]["connections"] <= 1200
+    assert 1000 <= result["counts"]["interactions"] <= 1500
+    assert 300 <= result["counts"]["recommendations"] <= 500
+    assert 100 <= result["counts"]["golden_matches"] <= 200
+    assert (mockdata / "exports/local_seed.json").exists()
+    assert (mockdata / "validators/validate_relationship_mockdata.mjs").exists()
+    assert (mockdata / "generation/README.md").exists()
+    for contact in contacts:
+        assert "Orbit Demo" not in contact["display_name"]
+        assert contact["name_ja"].strip()
+        assert contact["name_zh"].strip()
+        assert contact["name_en"].strip()
+        assert contact["profile_ja"].strip()
+        assert contact["profile_zh"].strip()
+        assert contact["profile_en"].strip()
+    for event in events:
+        assert "Orbit Relationship Scenario" not in event["title"]
+        assert event["title_ja"].strip()
+        assert event["title_zh"].strip()
+        assert event["title_en"].strip()
+        assert event["description_ja"].strip()
+        assert event["description_zh"].strip()
+        assert event["description_en"].strip()
+
+
+def test_relationship_mockdata_generator_uses_diverse_realistic_contact_names(tmp_path):
+    import json
+    import re
+
+    from harness.relationship_data_goal_runner import generate_relationship_mockdata
+
+    mockdata = tmp_path / "repos/mockdata"
+
+    generate_relationship_mockdata(mockdata, minimax_plan_text='{"themes":["inbound", "ai-poc", "follow-up"]}')
+    contacts = json.loads((mockdata / "generated/contacts.generated.json").read_text())
+
+    display_names = [contact["display_name"] for contact in contacts]
+    english_names = [contact["name_en"] for contact in contacts]
+    english_name_parts = [name.split() for name in english_names]
+    english_given_names = {parts[0] for parts in english_name_parts if len(parts) >= 2}
+    english_family_names = {parts[-1] for parts in english_name_parts if len(parts) >= 2}
+    company_names = {contact["company_name_en"] for contact in contacts}
+
+    assert len(set(display_names)) == len(display_names)
+    assert len(english_given_names) >= 45
+    assert len(english_family_names) >= 45
+    assert len(company_names) >= 60
+    assert not [name for name in display_names if re.search(r"\d", name)]
+    assert not [name for name in english_names if re.search(r"\b(User|Demo|Sample|Test)\b", name, re.IGNORECASE)]
+
+
+def test_relationship_mockdata_generator_emits_hybrid_runtime_fixture(tmp_path):
+    from harness.relationship_data_goal_runner import generate_relationship_mockdata
+
+    mockdata = tmp_path / "repos/mockdata"
+    fixture_path = tmp_path / "repos/orbits/shared/mock/generated-relationship-fixtures.ts"
+
+    generate_relationship_mockdata(mockdata, minimax_plan_text='{"themes":["inbound", "ai-poc", "follow-up"]}')
+
+    fixture_text = fixture_path.read_text()
+    assert "import type { MockRuntimeFixtures } from \"./fixtures\";" in fixture_text
+    assert "export const generatedRelationshipFixtures" in fixture_text
+    assert "satisfies MockRuntimeFixtures" in fixture_text
+    assert "eventParticipantIntents" in fixture_text
+    assert "matchRecommendations" in fixture_text
+    assert "interactionMemories" in fixture_text
+    assert "recommendationTests" in fixture_text
+    assert "display_name" not in fixture_text
+    assert "event_participants" not in fixture_text
+    assert "evidence_ids" not in fixture_text
+
+
+def test_relationship_mockdata_validator_rejects_placeholder_generated_contacts_and_events(tmp_path):
+    import json
+
+    from harness.relationship_data_goal_runner import generate_relationship_mockdata, validate_relationship_mockdata
+
+    mockdata = tmp_path / "repos/mockdata"
+    generate_relationship_mockdata(mockdata, minimax_plan_text='{"themes":["inbound"]}')
+    contacts_path = mockdata / "generated/contacts.generated.json"
+    events_path = mockdata / "generated/events.generated.json"
+    contacts = json.loads(contacts_path.read_text())
+    events = json.loads(events_path.read_text())
+    contacts[0]["display_name"] = "Orbit Demo User 001"
+    contacts[0].pop("name_ja", None)
+    events[0]["title"] = "Orbit Relationship Scenario 01"
+    events[0].pop("description_zh", None)
+    contacts_path.write_text(json.dumps(contacts, ensure_ascii=False))
+    events_path.write_text(json.dumps(events, ensure_ascii=False))
+
+    result = validate_relationship_mockdata(mockdata)
+
+    assert result["passed"] is False
+    assert any("generated contact" in issue and "multilingual" in issue for issue in result["issues"])
+    assert any("generated event" in issue and "multilingual" in issue for issue in result["issues"])
+
+
+def test_relationship_mockdata_validator_rejects_dangling_recommendation_reference(tmp_path):
+    from harness.relationship_data_goal_runner import MockdataCountRanges, validate_relationship_mockdata
+
+    mockdata = tmp_path / "repos/mockdata"
+    for folder in ["seed", "tests", "scenarios", "generated", "exports"]:
+        (mockdata / folder).mkdir(parents=True)
+    (mockdata / "seed/users.seed.json").write_text('[{"id":"u_1","segment":"jp_local_business","preferred_languages":["ja"]}]')
+    (mockdata / "seed/events.seed.json").write_text('[{"id":"event_1"}]')
+    (mockdata / "seed/event_participants.seed.json").write_text('[{"id":"ep_1","event_id":"event_1","user_id":"u_1","looking_for_at_event":["中国語マーケティング"],"can_offer_at_event":["実証店舗"]}]')
+    (mockdata / "seed/contacts.seed.json").write_text('[{"id":"contact_1","user_id":"u_1"}]')
+    (mockdata / "seed/connections.seed.json").write_text('[{"id":"conn_1","user_id":"u_1","contact_id":"contact_1","business_relevance_score":0.8}]')
+    (mockdata / "seed/interactions.seed.json").write_text('[{"id":"int_1","connection_id":"conn_1"}]')
+    (mockdata / "seed/ai_analyses.seed.json").write_text('[{"id":"ai_1","target_type":"user","target_id":"u_1","result_json":{"confirmed_facts":[],"inferred_traits":[]}}]')
+    (mockdata / "seed/match_recommendations.seed.json").write_text('[{"id":"rec_1","event_id":"event_1","user_id":"u_1","recommended_user_id":"missing_user","score":0.7}]')
+    (mockdata / "tests/golden_matches.json").write_text('[{"id":"gm_1","event_id":"event_1","user_id":"u_1","recommended_user_id":"u_1","negative_case":false}]')
+    (mockdata / "tests/negative_cases.json").write_text('[]')
+    (mockdata / "tests/dirty_data_cases.json").write_text('[{"id":"dirty_1","case_type":"generic_goal","value":"人脉を広げたい"}]')
+
+    result = validate_relationship_mockdata(
+        mockdata,
+        count_ranges=MockdataCountRanges(
+            users=(1, 1),
+            events=(1, 1),
+            companies=(0, 1),
+            participants=(1, 1),
+            connections=(1, 1),
+            interactions=(1, 1),
+            recommendations=(1, 1),
+            golden_matches=(1, 1),
+        ),
+        require_scenarios=False,
+    )
+
+    assert result["passed"] is False
+    assert any("missing_user" in issue for issue in result["issues"])
+
+
+def test_relationship_data_boundary_detects_changes_outside_mockdata(tmp_path):
+    import subprocess
+
+    from harness.relationship_data_goal_runner import project_status_fingerprints, project_write_boundary_violations
+
+    allowed = tmp_path / "repos/mockdata/generated/users.generated.json"
+    blocked = tmp_path / "repos/orbits/shared/domain/contracts.ts"
+    allowed.parent.mkdir(parents=True)
+    blocked.parent.mkdir(parents=True)
+    allowed.write_text("[]\n")
+    blocked.write_text("export const before = true;\n")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "orbit@example.local"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Orbit Harness"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "--", "."], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "baseline"], cwd=tmp_path, check=True)
+    blocked.write_text("export const dirtyBefore = true;\n")
+    baseline = project_status_fingerprints(tmp_path)
+
+    allowed.write_text('[{"id":"u_1"}]\n')
+    blocked.write_text("export const changedByAgent = true;\n")
+
+    violations = project_write_boundary_violations(tmp_path, baseline)
+
+    assert violations == ["repos/orbits/shared/domain/contracts.ts"]
+
+
 def test_run_sprint_blocks_generator_changes_to_protected_app_paths(tmp_path, monkeypatch):
     import subprocess
     import pytest
@@ -6911,6 +7378,101 @@ def test_collect_evidence_rejects_unsafe_declared_commands(tmp_path, monkeypatch
     assert "one-shot" in evidence["commands"]["dev-server"]["error"]
 
 
+def test_collect_evidence_allows_focused_npm_test_paths(tmp_path, monkeypatch):
+    from harness.config import HarnessConfig
+    from harness.evidence import collect_evidence
+    from harness.harness import init
+    from harness.models.state import SprintContract, SuccessCriterion
+    from harness.workspace import ensure_project_layout
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _EvidenceHandler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    app_url = f"http://127.0.0.1:{server.server_port}"
+    cfg = HarnessConfig.load(Path("harness/config.yaml"))
+    init(tmp_path, cfg)
+    paths = ensure_project_layout(tmp_path, cfg, sprint=1)
+    captured: dict[str, list[str]] = {}
+
+    def fake_run(cmd, **kwargs):
+        import subprocess
+
+        captured["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("harness.evidence.subprocess.run", fake_run)
+    contract = SprintContract(
+        sprint_number=1,
+        goal="Focused relationship tests",
+        success_criteria=[SuccessCriterion(id="SC-1", description="Focused relationship tests pass.")],
+        evidence={
+            "routes": [],
+            "commands": [
+                {
+                    "name": "relationship-tests",
+                    "cmd": [
+                        "npm",
+                        "test",
+                        "--",
+                        "tests/services/local-remote-store.test.ts",
+                        "tests/services/local-remote-relationship-schema.test.ts",
+                    ],
+                }
+            ],
+        },
+    )
+
+    try:
+        evidence = collect_evidence(tmp_path, app_url, contract, paths)
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+    assert evidence["commands"]["relationship-tests"]["returncode"] == 0
+    assert captured["cmd"] == [
+        "npm",
+        "test",
+        "--",
+        "tests/services/local-remote-store.test.ts",
+        "tests/services/local-remote-relationship-schema.test.ts",
+    ]
+
+
+def test_collect_evidence_allows_relationship_schema_package_script(tmp_path, monkeypatch):
+    from harness.config import HarnessConfig
+    from harness.evidence import collect_evidence
+    from harness.harness import init
+    from harness.models.state import SprintContract, SuccessCriterion
+    from harness.workspace import ensure_project_layout
+
+    cfg = HarnessConfig.load(Path("harness/config.yaml"))
+    init(tmp_path, cfg)
+    paths = ensure_project_layout(tmp_path, cfg, sprint=1)
+    captured: dict[str, list[str]] = {}
+
+    def fake_run(cmd, **kwargs):
+        import subprocess
+
+        captured["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("harness.evidence.subprocess.run", fake_run)
+    contract = SprintContract(
+        sprint_number=1,
+        goal="Focused relationship tests",
+        success_criteria=[SuccessCriterion(id="SC-1", description="Relationship schema package script passes.")],
+        evidence={
+            "routes": [],
+            "commands": [{"name": "relationship-tests", "cmd": ["npm", "run", "test:relationship-schema"]}],
+        },
+    )
+
+    evidence = collect_evidence(tmp_path, "http://127.0.0.1:1", contract, paths)
+
+    assert evidence["commands"]["relationship-tests"]["returncode"] == 0
+    assert captured["cmd"] == ["npm", "run", "test:relationship-schema"]
+
+
 def test_collect_evidence_rejects_invalid_command_entries(tmp_path):
     from harness.config import HarnessConfig
     from harness.evidence import collect_evidence
@@ -7367,6 +7929,7 @@ def test_collect_evidence_allows_next_dynamic_segment_source_file_names(tmp_path
     record = evidence["source_files"][source]
     assert record["missing"] is False
     assert Path(record["artifact_path"]).exists()
+    assert record["text_excerpt"] == "export default function EventPage() { return null; }"
     assert "rejected" not in record
 
 
@@ -7865,6 +8428,57 @@ def test_contract_review_rejects_unsafe_declared_commands():
     assert any("commands" in issue and "node" in issue for issue in issues)
     assert any("commands" in issue and "npx" in issue for issue in issues)
     assert any("commands" in issue and "dev" in issue and "one-shot" in issue for issue in issues)
+
+
+def test_contract_review_allows_only_safe_focused_npm_test_paths():
+    from harness.contract_review import contract_review_issues
+    from harness.models.state import SprintContract, SuccessCriterion
+
+    valid_contract = SprintContract(
+        sprint_number=1,
+        goal="Focused relationship tests",
+        success_criteria=[SuccessCriterion(id="SC-1", description="Relationship service tests pass.")],
+        evidence={
+            "commands": [
+                {
+                    "name": "relationship-tests",
+                    "cmd": [
+                        "npm",
+                        "test",
+                        "--",
+                        "tests/services/local-remote-store.test.ts",
+                        "tests/services/local-remote-relationship-schema.test.ts",
+                    ],
+                },
+                {
+                    "name": "relationship-script",
+                    "cmd": ["npm", "run", "test:relationship-schema"],
+                }
+            ]
+        },
+        confirmed=True,
+    )
+    invalid_contract = SprintContract(
+        sprint_number=2,
+        goal="Unsafe focused tests",
+        success_criteria=[SuccessCriterion(id="SC-1", description="Unsafe paths are rejected.")],
+        evidence={
+            "commands": [
+                {"name": "traversal", "cmd": ["npm", "test", "--", "../secret.test.ts"]},
+                {"name": "flag", "cmd": ["npm", "test", "--", "--test-reporter=tap"]},
+                {"name": "source", "cmd": ["npm", "test", "--", "shared/mock/fixtures.ts"]},
+            ]
+        },
+        confirmed=True,
+    )
+
+    valid_issues = contract_review_issues(valid_contract)
+    invalid_issues = contract_review_issues(invalid_contract)
+
+    assert not [issue for issue in valid_issues if "commands" in issue]
+    assert any("traversal" in issue or "../secret.test.ts" in issue for issue in invalid_issues)
+    assert any("--test-reporter" in issue for issue in invalid_issues)
+    assert any("shared/mock/fixtures.ts" in issue for issue in invalid_issues)
 
 
 def test_contract_review_rejects_external_routes_and_api_paths():

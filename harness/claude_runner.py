@@ -8,8 +8,12 @@ from typing import Any
 from harness.config import SingleAgentConfig
 from harness import log
 
+# claude_runner.py 是 Claude SDK / DeepCode SDK-compatible 调用的 options 适配层。
+# 不同 SDK 版本支持的 ClaudeAgentOptions 参数可能不同，所以这里先构造完整 kwargs，
+# 再按运行时签名过滤，避免版本差异直接打断 harness。
 
 def _expand_env_value(value: str) -> str:
+    # DeepCode env 支持 "${NAME}" 形式从当前进程环境展开，避免把真实密钥写进 config.yaml。
     if value.startswith("${") and value.endswith("}"):
         return os.environ.get(value[2:-1], "")
     return value
@@ -27,7 +31,9 @@ def build_claude_options_kwargs(
     cwd: str | None = None,
     resume: str | None = None,
     max_turns: int | None = None,
+    env: dict[str, str] | None = None,
 ) -> dict[str, Any]:
+    # 这里不实例化 SDK options，只生成可检查的 kwargs，方便单元测试验证工具权限和模型配置。
     kwargs: dict[str, Any] = {
         "system_prompt": system_prompt,
         "permission_mode": permission_mode,
@@ -38,6 +44,8 @@ def build_claude_options_kwargs(
             **os.environ,
             **{key: _expand_env_value(value) for key, value in agent_cfg.deepcode.env.items()},
         }
+    elif env is not None:
+        kwargs["env"] = env
     if agent_cfg.model:
         kwargs["model"] = agent_cfg.model
     if allowed_tools is not None:
@@ -65,6 +73,7 @@ def build_claude_options_kwargs(
 
 
 def _filter_supported_option_kwargs(options_cls: Any, options_kwargs: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    # SDK 向后/向前兼容保护：不支持的 option 被丢弃并写日志，而不是让构造函数抛错。
     signature = inspect.signature(options_cls)
     if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()):
         return options_kwargs, []
@@ -75,6 +84,7 @@ def _filter_supported_option_kwargs(options_cls: Any, options_kwargs: dict[str, 
 
 
 def build_claude_options(agent_cfg: SingleAgentConfig, system_prompt: str, **kwargs: Any):
+    # 日志会隐藏 system_prompt 和 env，避免把 prompt 或密钥打进 harness 日志。
     from claude_agent_sdk import ClaudeAgentOptions
 
     options_kwargs = build_claude_options_kwargs(agent_cfg, system_prompt, **kwargs)

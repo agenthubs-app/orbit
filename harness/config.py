@@ -6,6 +6,9 @@ from typing import Optional
 
 import yaml
 
+# config.py 把 YAML 配置转换成强类型 dataclass。
+# 这里选择严格拒绝未知 key，目的是让长跑 agent 的权限、模型和路径配置
+# 出错时尽早失败，而不是静默落到默认值继续运行。
 
 def _mapping(section: str, data: object | None) -> dict:
     if data is None:
@@ -20,6 +23,8 @@ def _dataclass_keys(config_cls: type) -> set[str]:
 
 
 def _reject_unknown_keys(section: str, data: object | None, allowed: set[str]) -> dict:
+    # 配置拼写错误通常比缺省值更危险；例如把 generator 写成 generatr
+    # 会让整条链路用错误默认角色运行，所以这里直接抛错。
     mapped = _mapping(section, data)
     unknown = sorted(set(mapped) - allowed)
     if unknown:
@@ -102,6 +107,8 @@ class DeepcodeSettings:
 
 @dataclass
 class SingleAgentConfig:
+    # 单个 agent 的运行配置。backend 决定走 Claude SDK、Codex CLI 还是 DeepCode CLI；
+    # codex/deepcode 子配置即使当前 backend 不使用，也保留为统一 schema 的一部分。
     backend: str = "claude"
     model: str = ""
     max_tokens: int = 8192
@@ -136,6 +143,8 @@ _DEFAULT_MODELS = {
 
 @dataclass
 class AgentConfig:
+    # 四个 agent 角色共享同一配置形状，但职责不同：
+    # Planner 写 contract，Generator 改 app，Evaluator/Verifier 做只读审查。
     planner: SingleAgentConfig = field(default_factory=lambda: SingleAgentConfig(model=_DEFAULT_MODELS["planner"]))
     generator: SingleAgentConfig = field(default_factory=lambda: SingleAgentConfig(model=_DEFAULT_MODELS["generator"]))
     evaluator: SingleAgentConfig = field(default_factory=lambda: SingleAgentConfig(model=_DEFAULT_MODELS["evaluator"]))
@@ -161,6 +170,8 @@ class AgentConfig:
 
 @dataclass
 class LoopConfig:
+    # loop 预算是防止长跑 harness 无限制消耗的硬边界。
+    # timeout 控制单次 agent 调用，max/min_iterations 控制 sprint 迭代次数。
     max_iterations: int = 8
     min_iterations: int = 1
     planner_max_turns: int = 160
@@ -188,6 +199,7 @@ class VerificationConfig:
 
 @dataclass
 class WorkspaceGitConfig:
+    # git strategy 决定 harness 是否自动提交，以及提交范围是 app path-scoped 还是全部。
     enabled: bool = False
     strategy: str = "disabled"
     remote_url: str = ""
@@ -208,6 +220,8 @@ class WorkspaceGitConfig:
 
 @dataclass
 class WorkspaceConfig:
+    # workspace 配置定义 app、artifact、log、tmp 的相对路径。
+    # write_allowlist/protected_paths 是 Generator 与 git 提交的共同边界。
     mode: str = "greenfield"
     app_root: str = "repos/orbits"
     artifact_root: str = "harness-state"
@@ -257,6 +271,8 @@ class WorkspaceConfig:
 
 @dataclass
 class HarnessConfig:
+    # HarnessConfig 是所有 runner 的唯一配置入口。
+    # load() 只读取 YAML，不做 runtime 探测；preflight 负责检查环境是否真的可用。
     agents: AgentConfig = field(default_factory=AgentConfig)
     loop: LoopConfig = field(default_factory=LoopConfig)
     verdict: VerdictConfig = field(default_factory=VerdictConfig)

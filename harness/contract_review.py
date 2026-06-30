@@ -1,3 +1,10 @@
+"""Sprint contract 静态审查工具。
+
+这个模块在执行 sprint 前检查 contract 是否足够具体、安全且可验证。
+重点校验 evidence、file_boundary、API probe 和命令白名单，防止 generator
+拿到模糊目标、越界路径或不可控命令。
+"""
+
 from __future__ import annotations
 
 import json
@@ -9,6 +16,7 @@ from harness.models.state import SprintContract
 
 
 _VAGUE_PHRASES = (
+    # 这些描述太主观，无法让 evaluator/verifier 判定是否真正完成。
     "looks good",
     "works well",
     "handles errors",
@@ -34,10 +42,11 @@ _SAFE_EVIDENCE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 _SAFE_PACKAGE_SCRIPT = re.compile(r"^[A-Za-z0-9:_-]+$")
 _GLOB_CHARS = set("*?[")
 _SOURCE_GLOB_CHARS = set("*?")
-_ALLOWED_PACKAGE_SCRIPTS = {"build", "check", "format:check", "lint", "test", "typecheck"}
+_ALLOWED_PACKAGE_SCRIPTS = {"build", "check", "format:check", "lint", "test", "test:relationship-schema", "typecheck"}
 
 
 def _path_has_glob(value: str) -> bool:
+    """判断路径是否包含路由/文件通配符。"""
     return any(char in value for char in _GLOB_CHARS)
 
 
@@ -45,7 +54,37 @@ def _source_path_has_glob(value: str) -> bool:
     return any(char in value for char in _SOURCE_GLOB_CHARS)
 
 
+def _unsafe_focused_test_path(value: str) -> str | None:
+    path = PurePosixPath(value)
+    if value.startswith("-"):
+        return f"focused npm test path must be a test file, not a flag: {value}."
+    if path.is_absolute() or any(part == ".." for part in path.parts):
+        return f"focused npm test path must stay inside app root: {value}."
+    if "\\" in value:
+        return f"focused npm test path must not contain traversal segments: {value}."
+    if path.as_posix() != value or any(part == "" for part in value.split("/")):
+        return f"focused npm test path must be a normalized app-relative path: {value}."
+    if not path.parts or path.parts[0] != "tests":
+        return f"focused npm test path must be under tests/: {value}."
+    if _source_path_has_glob(value):
+        return f"focused npm test path must be concrete, not a glob: {value}."
+    if not (value.endswith(".test.ts") or value.endswith(".test.tsx")):
+        return f"focused npm test path must end with .test.ts or .test.tsx: {value}."
+    return None
+
+
+def _focused_test_command_issue(cmd: list[str]) -> str | None:
+    if len(cmd) < 4 or cmd[1] != "test" or cmd[2] != "--":
+        return "commands must be one-shot package-manager verification commands"
+    for test_path in cmd[3:]:
+        path_issue = _unsafe_focused_test_path(test_path)
+        if path_issue:
+            return path_issue
+    return None
+
+
 def _route_template_issue(value: str, decoded_path: str) -> str | None:
+    """禁止把动态路由模板当成可验证的具体 evidence route。"""
     parts = PurePosixPath(decoded_path).parts
     if any(part.startswith(":") or "[" in part or "]" in part for part in parts) or _path_has_glob(decoded_path):
         return f"path must be concrete, not a route template: {value}."
@@ -53,6 +92,7 @@ def _route_template_issue(value: str, decoded_path: str) -> str | None:
 
 
 def _unsafe_source_file_path(value: str) -> str | None:
+    """校验 source_files evidence 必须是 app root 内的具体相对路径。"""
     path = PurePosixPath(value)
     if path.is_absolute() or any(part == ".." for part in path.parts):
         return f"source_files path must stay inside app root: {value}."
@@ -66,6 +106,7 @@ def _unsafe_source_file_path(value: str) -> str | None:
 
 
 def _unsafe_file_boundary_path(value: object, field: str, allow_trailing_glob: bool) -> str | None:
+    """校验 file_boundary 中的 ownership 路径，避免越权或模糊 glob。"""
     if not isinstance(value, str) or not value.strip():
         return f"file_boundary.{field} entry must be a non-empty app-relative string."
     parsed = urlsplit(value)
@@ -125,6 +166,7 @@ def _append_file_boundary_path_issues(
 
 
 def _unsafe_app_relative_path(value: object) -> str | None:
+    """校验公开 route/API path 必须是具体的 app-relative URL path。"""
     if not isinstance(value, str) or not value.strip():
         return "path must be a non-empty app-relative string."
     parsed = urlsplit(value)
@@ -159,6 +201,7 @@ def _unsafe_public_route(value: object, sprint_number: object) -> str | None:
 
 
 def _unsafe_command(cmd: object) -> str | None:
+    """只允许一小组 package-manager 验证命令进入 contract。"""
     if not isinstance(cmd, list) or not cmd or not all(isinstance(part, str) and part for part in cmd):
         return "commands entry must contain a non-empty list[str] cmd."
     executable = PurePosixPath(cmd[0])
@@ -168,6 +211,11 @@ def _unsafe_command(cmd: object) -> str | None:
         return f"commands executable is not allowed: {cmd[0]}."
     if len(cmd) == 2 and cmd[1] == "test":
         return None
+    if len(cmd) >= 4 and cmd[1] == "test" and cmd[2] == "--":
+        focused_issue = _focused_test_command_issue(cmd)
+        if focused_issue is None:
+            return None
+        return f"commands {focused_issue}"
     if len(cmd) == 3 and cmd[1] == "run" and _SAFE_PACKAGE_SCRIPT.fullmatch(cmd[2]) and cmd[2] in _ALLOWED_PACKAGE_SCRIPTS:
         return None
     return f"commands must be one-shot package-manager verification commands: {cmd!r}."
@@ -188,6 +236,7 @@ def _invalid_expected_status(value: object) -> str | None:
 
 
 def _unsafe_api_probe(probe: dict) -> list[str]:
+    """校验 API probe 的 method、path、status 和 JSON body。"""
     issues: list[str] = []
     method = str(probe.get("method", "GET")).upper()
     if method not in _ALLOWED_API_METHODS:
@@ -217,6 +266,7 @@ def _duplicate_values(values: list[str]) -> list[str]:
 
 
 def _append_duplicate_issues(issues: list[str], evidence_type: str, values: list[str]) -> None:
+    """把重复 evidence key 追加到问题列表，避免同名证据互相覆盖。"""
     for value in _duplicate_values(values):
         issues.append(f"{evidence_type} evidence key is duplicated: {value}.")
 

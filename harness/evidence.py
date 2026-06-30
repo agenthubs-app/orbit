@@ -1,3 +1,10 @@
+"""Sprint evidence 采集工具。
+
+这个模块负责按 sprint contract 采集命令、API、源码和浏览器证据。
+所有采集结果会写入 evidence 目录，供 evaluator/verifier 后续引用，
+并且会拒绝不安全的命令、路径、动态 route 模板和外部 URL。
+"""
+
 from __future__ import annotations
 
 import json
@@ -21,9 +28,10 @@ ALLOWED_API_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS
 SAFE_PACKAGE_SCRIPT = re.compile(r"^[A-Za-z0-9:_-]+$")
 GLOB_CHARS = set("*?[")
 SOURCE_GLOB_CHARS = set("*?")
-ALLOWED_PACKAGE_SCRIPTS = {"build", "check", "format:check", "lint", "test", "typecheck"}
+ALLOWED_PACKAGE_SCRIPTS = {"build", "check", "format:check", "lint", "test", "test:relationship-schema", "typecheck"}
 
 BROWSER_VIEWPORTS = [
+    # 浏览器证据固定覆盖移动、平板、桌面三个 viewport，便于发现响应式问题。
     {"name": "mobile", "width": 375, "height": 812},
     {"name": "tablet", "width": 768, "height": 1024},
     {"name": "desktop", "width": 1440, "height": 900},
@@ -50,6 +58,7 @@ def _clean_html_text(value: str) -> str:
 
 
 def summarize_html(body: str) -> dict[str, Any]:
+    """从 HTML 字符串中抽取 title、按钮、输入框、链接和正文摘要。"""
     title_match = re.search(r"<title[^>]*>(.*?)</title>", body, re.IGNORECASE | re.DOTALL)
     buttons = [
         _clean_html_text(match)
@@ -74,6 +83,7 @@ def summarize_html(body: str) -> dict[str, Any]:
 
 
 def run_recorded(cmd: list[str], cwd: Path, out_dir: Path, name: str, timeout: int = 900) -> dict[str, Any]:
+    """执行验证命令并把 stdout/stderr/json 记录到 evidence 目录。"""
     out_dir.mkdir(parents=True, exist_ok=True)
     started = time.time()
     stdout = ""
@@ -134,6 +144,35 @@ def _source_path_has_glob(value: str) -> bool:
     return any(char in value for char in SOURCE_GLOB_CHARS)
 
 
+def _unsafe_focused_test_path(value: str) -> str | None:
+    path = PurePosixPath(value)
+    if value.startswith("-"):
+        return f"Focused npm test path must be a test file, not a flag: {value}."
+    if path.is_absolute() or any(part == ".." for part in path.parts):
+        return f"Focused npm test path must stay inside app root: {value}."
+    if "\\" in value:
+        return f"Focused npm test path must not contain traversal segments: {value}."
+    if path.as_posix() != value or any(part == "" for part in value.split("/")):
+        return f"Focused npm test path must be a normalized app-relative path: {value}."
+    if not path.parts or path.parts[0] != "tests":
+        return f"Focused npm test path must be under tests/: {value}."
+    if _source_path_has_glob(value):
+        return f"Focused npm test path must be concrete, not a glob: {value}."
+    if not (value.endswith(".test.ts") or value.endswith(".test.tsx")):
+        return f"Focused npm test path must end with .test.ts or .test.tsx: {value}."
+    return None
+
+
+def _focused_test_command_rejection_reason(cmd: list[str]) -> str | None:
+    if len(cmd) < 4 or cmd[1] != "test" or cmd[2] != "--":
+        return "Command must be a one-shot package-manager verification command"
+    for test_path in cmd[3:]:
+        path_issue = _unsafe_focused_test_path(test_path)
+        if path_issue:
+            return path_issue
+    return None
+
+
 def _route_template_rejection_reason(value: str, decoded_path: str) -> str | None:
     parts = PurePosixPath(decoded_path).parts
     if any(part.startswith(":") or "[" in part or "]" in part for part in parts) or _path_has_glob(decoded_path):
@@ -142,6 +181,7 @@ def _route_template_rejection_reason(value: str, decoded_path: str) -> str | Non
 
 
 def _resolve_app_source_file(app_dir: Path, source: Any) -> tuple[Path | None, Path | None, str | None]:
+    """把 contract 中的 app-relative source file 解析到真实文件，并拒绝越界路径。"""
     if not isinstance(source, str) or not source.strip():
         return None, None, "Source file evidence path must be a non-empty relative string."
     relative = Path(source)
@@ -161,6 +201,7 @@ def _resolve_app_source_file(app_dir: Path, source: Any) -> tuple[Path | None, P
 
 
 def _command_rejection_reason(cmd: Any) -> str | None:
+    """返回命令被拒绝的原因；None 表示命令在白名单内。"""
     if not isinstance(cmd, list) or not cmd or not all(isinstance(part, str) and part for part in cmd):
         return "Invalid command shape; expected non-empty list[str]."
     executable = Path(cmd[0])
@@ -170,12 +211,15 @@ def _command_rejection_reason(cmd: Any) -> str | None:
         return f"Command executable is not allowed: {cmd[0]}."
     if len(cmd) == 2 and cmd[1] == "test":
         return None
+    if len(cmd) >= 4 and cmd[1] == "test" and cmd[2] == "--":
+        return _focused_test_command_rejection_reason(cmd)
     if len(cmd) == 3 and cmd[1] == "run" and SAFE_PACKAGE_SCRIPT.fullmatch(cmd[2]) and cmd[2] in ALLOWED_PACKAGE_SCRIPTS:
         return None
     return f"Command must be a one-shot package-manager verification command: {cmd!r}."
 
 
 def _app_relative_rejection_reason(path: Any) -> str | None:
+    """校验 route/API 证据 path 必须是具体、app-relative 且无 traversal。"""
     if not isinstance(path, str) or not path.strip():
         return "Evidence path must be a non-empty app-relative string."
     parsed = urlsplit(path)
@@ -655,9 +699,15 @@ def collect_evidence(
         if path.exists() and path.is_file():
             target = paths["source"] / relative_source
             target.parent.mkdir(parents=True, exist_ok=True)
-            text = path.read_text(errors="replace")[:5000]
+            full_text = path.read_text(errors="replace")
+            text = full_text[:5000]
             target.write_text(text)
-            evidence["source_files"][source_key] = {"artifact_path": str(target), "missing": False}
+            evidence["source_files"][source_key] = {
+                "artifact_path": str(target),
+                "missing": False,
+                "text_excerpt": text[:2000],
+                "truncated": len(full_text) > len(text),
+            }
         else:
             evidence["source_files"][source_key] = {"missing": True, "expected_path": str(path)}
 

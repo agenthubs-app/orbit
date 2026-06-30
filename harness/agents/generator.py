@@ -12,10 +12,12 @@ from harness.git_safety import app_changed_files, sprint_committed_files
 from harness.json_output import parse_first_json_object
 from harness import log
 from harness.models.state import HandoffState, SprintContract, format_handoff_for_prompt
-from harness.workspace import path_protected
+from harness.workspace import file_fingerprint, path_protected
 
 
 class SelfAssessResult(tuple):
+    # 兼容旧的 tuple 解包接口，同时额外记录 reviewer 是否运行失败。
+    # reviewer 失败本身不阻断 sprint，但会被日志记录，方便排查质量门禁缺口。
     reviewer_failed: bool
 
     def __new__(cls, confident: bool, concerns: list[str], reviewer_failed: bool = False):
@@ -35,6 +37,8 @@ def build_generator_prompt(
     strategic_framing: str | None,
     cfg: HarnessConfig,
 ) -> str:
+    # Generator prompt 把 SPEC、当前 sprint contract、文件边界和上轮 handoff 合并。
+    # 这里故意把“可写路径”和“禁止路径”写进 prompt，减少 agent 越界编辑概率。
     prompt_path = Path(__file__).parents[1] / "prompts" / "generator.md"
     criteria = "\n".join(f"- {item.id}: {item.description}" for item in contract.success_criteria)
     out_of_scope = "\n".join(f"- {item}" for item in contract.out_of_scope) or "- none"
@@ -82,6 +86,8 @@ def run_generator(
     strategic_framing: str | None = None,
     cfg: HarnessConfig | None = None,
 ) -> str:
+    # Generator 是唯一允许改 app 的 agent。
+    # backend 可切换 Codex/Claude/DeepCode，但 cwd 都约束在 app root 内。
     cfg = cfg or HarnessConfig.load(Path(__file__).parents[1] / "config.yaml")
     app_dir = project_dir / cfg.workspace.app_root
     app_dir.mkdir(parents=True, exist_ok=True)
@@ -127,12 +133,58 @@ async def _run_generator_claude(prompt: str, app_dir: Path, cfg: HarnessConfig) 
     return summary
 
 
-def build_handoff(sprint_number: int, project_dir: Path, generator_summary: str, cfg: HarnessConfig) -> HandoffState:
+MISSING_APP_FILE_FINGERPRINT = "<missing>"
+
+
+def fingerprint_app_changed_files(
+    project_dir: Path,
+    cfg: HarnessConfig,
+    files_changed: list[str] | None = None,
+) -> dict[str, str]:
+    # 记录 sprint 开始前后的文件指纹，用于区分本轮新变化和历史遗留变化。
+    fingerprints: dict[str, str] = {}
+    for path in files_changed if files_changed is not None else app_changed_files(project_dir, cfg):
+        candidate = project_dir / path
+        fingerprints[path] = file_fingerprint(candidate) if candidate.is_file() else MISSING_APP_FILE_FINGERPRINT
+    return fingerprints
+
+
+def _files_changed_after_baseline(
+    project_dir: Path,
+    files_changed: list[str],
+    baseline_fingerprints: dict[str, str] | None,
+) -> list[str]:
+    if not baseline_fingerprints:
+        return files_changed
+    changed_after_baseline: list[str] = []
+    for path in files_changed:
+        baseline = baseline_fingerprints.get(path)
+        if baseline is None:
+            changed_after_baseline.append(path)
+            continue
+        candidate = project_dir / path
+        current = file_fingerprint(candidate) if candidate.is_file() else MISSING_APP_FILE_FINGERPRINT
+        if current != baseline:
+            changed_after_baseline.append(path)
+    return changed_after_baseline
+
+
+def build_handoff(
+    sprint_number: int,
+    project_dir: Path,
+    generator_summary: str,
+    cfg: HarnessConfig,
+    baseline_fingerprints: dict[str, str] | None = None,
+) -> HandoffState:
+    # handoff 是给下一轮 Generator 的短上下文：
+    # 包含已改文件、摘要和建议命令，但不替代 contract 的权威需求。
     app_dir = project_dir / cfg.workspace.app_root
-    files_changed = sorted(
-        set(app_changed_files(project_dir, cfg))
-        | set(sprint_committed_files(project_dir, cfg, sprint_number))
+    worktree_changes = _files_changed_after_baseline(
+        project_dir,
+        app_changed_files(project_dir, cfg),
+        baseline_fingerprints,
     )
+    files_changed = sorted(set(worktree_changes) | set(sprint_committed_files(project_dir, cfg, sprint_number)))
     return HandoffState(
         sprint_number=sprint_number,
         project_dir=str(app_dir),
@@ -150,6 +202,8 @@ def build_self_assess_prompt(
     deterministic_concerns: list[str],
     cfg: HarnessConfig,
 ) -> str:
+    # self-assessment 是 Generator 交付前的轻量只读门禁。
+    # 它检查明显缺口和边界问题，但不要求附带测试日志，证据由 harness 后续采集。
     criteria = "\n".join(f"- {item.id}: {item.description}" for item in contract.success_criteria)
     changed = "\n".join(f"- {path}" for path in files_changed) or "- none"
     concerns = "\n".join(f"- {item}" for item in deterministic_concerns) or "- none"
@@ -186,6 +240,8 @@ def build_self_assess_prompt(
 
 
 def _is_nonblocking_self_assess_concern(concern: str) -> bool:
+    # reviewer 有时会把“还没采集证据”误判为阻塞问题。
+    # 这些短语表示证据时机问题，由 harness 后续处理，所以不阻断 Generator。
     text = concern.lower()
     evidence_timing_phrases = (
         "explicit exit-code evidence",
@@ -233,6 +289,23 @@ def _is_nonblocking_self_assess_concern(concern: str) -> bool:
     if "is met" in text and "reviewer should note" in text:
         return True
     return False
+
+
+def _summary_indicates_existing_noop(generator_summary: str) -> bool:
+    text = generator_summary.lower()
+    existing = (
+        "already contained" in text
+        or "already implemented" in text
+        or "already present" in text
+    )
+    no_delta = (
+        "none in this turn" in text
+        or "no changes were needed" in text
+        or "no files changed" in text
+        or "no changed app files" in text
+        or "worktree remained clean" in text
+    )
+    return existing and no_delta
 
 
 def parse_self_assess_review(output: str) -> tuple[bool, list[str]]:
@@ -288,6 +361,8 @@ def self_assess(
     cfg: HarnessConfig,
     project_dir: Path,
 ) -> SelfAssessResult:
+    # 先做确定性检查，再调用只读 reviewer。
+    # 确定性问题永远阻塞；reviewer 失败或非阻塞担忧只记录，不让 loop 卡死。
     concerns: list[str] = []
     app_dir = project_dir / cfg.workspace.app_root
     if not (app_dir / "package.json").exists():
@@ -295,7 +370,7 @@ def self_assess(
     for changed in files_changed:
         if path_protected(changed, cfg.workspace.protected_paths):
             concerns.append(f"Changed protected path: {changed}")
-    if not files_changed:
+    if not files_changed and not _summary_indicates_existing_noop(generator_summary):
         concerns.append("No changed app files were reported for this sprint.")
     prompt = build_self_assess_prompt(spec, contract, files_changed, generator_summary, concerns, cfg)
     agent_cfg = _self_assess_agent_config(cfg)

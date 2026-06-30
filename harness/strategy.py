@@ -1,15 +1,23 @@
+"""Harness 迭代策略决策。
+
+根据 evaluator/verifier 的历史分数、最新反馈和阻塞项，决定下一轮应该继续 refine
+还是 pivot。这里的输出会进入下一轮 Generator prompt，所以需要保持明确、可执行。
+"""
+
 from __future__ import annotations
 
 from typing import Any
 
 
 def _combined_score(entry: dict[str, Any]) -> float:
+    """把 evaluator 和 verifier 平均分合成一个趋势分数。"""
     evaluator = float(entry.get("evaluator_average", 0.0))
     verifier = float(entry.get("verifier_average", 0.0))
     return (evaluator + verifier) / 2
 
 
 def _clean_blocking_items(blocking_items: list[str] | None) -> list[str]:
+    """清理空白、重复的阻塞项，避免下一轮 prompt 噪声过多。"""
     cleaned: list[str] = []
     seen: set[str] = set()
     for item in blocking_items or []:
@@ -22,10 +30,11 @@ def _clean_blocking_items(blocking_items: list[str] | None) -> list[str]:
 
 
 def decide_strategy(
-    score_history: list[dict[str, Any]],
-    latest_feedback: str,
-    blocking_items: list[str] | None = None,
+  score_history: list[dict[str, Any]],
+  latest_feedback: str,
+  blocking_items: list[str] | None = None,
 ) -> dict[str, Any]:
+    """根据分数趋势和阻塞项生成下一轮策略 directive。"""
     if len(score_history) < 2:
         decision = "refine"
         reason = "Insufficient history; continue with concrete evaluator and verifier feedback."

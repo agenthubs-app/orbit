@@ -45,8 +45,13 @@ _BLOCKED_CONFIG_PREFIXES = (
     "shell_environment_policy",
 )
 
+# codex_runner.py 负责把 Generator/Verifier 等角色映射成 Codex CLI 调用。
+# 这里的重点不是拼命开放参数，而是明确哪些 CLI 选项归 harness 管，
+# 防止 extra_args 绕过 sandbox、模型、provider 或 prompt 传递边界。
 
 def codex_extra_args_issues(extra_args: list[str]) -> list[str]:
+    # extra_args 只能追加非关键参数；sandbox、model、cwd、provider、stdin prompt
+    # 都由 harness 构造，避免配置文件覆盖安全边界。
     issues: list[str] = []
     index = 0
     while index < len(extra_args):
@@ -91,6 +96,7 @@ def validate_codex_extra_args(extra_args: list[str]) -> None:
 
 
 def build_codex_command(prompt: str, agent_cfg: SingleAgentConfig, cwd: Path | None = None) -> list[str]:
+    # prompt 始终通过 stdin 传给 `codex exec -`，避免大 prompt 出现在 argv 或进程列表里。
     validate_codex_extra_args(agent_cfg.codex.extra_args)
     cmd = [
         "codex",
@@ -126,6 +132,8 @@ def build_codex_command(prompt: str, agent_cfg: SingleAgentConfig, cwd: Path | N
 
 
 def run_codex(prompt: str, agent_cfg: SingleAgentConfig, cwd: Path | None = None, timeout: float = 1500) -> str:
+    # 真实 CLI 调用统一走这里，负责日志、超时和进程组清理。
+    # stdout 是 agent 最终回复；stderr 只在失败时进入错误信息尾部。
     if not shutil.which("codex"):
         raise RuntimeError("Codex CLI not found. Install and authenticate Codex CLI before running this harness.")
 
@@ -177,6 +185,7 @@ def _run_checked(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
 
 
 def _copy_app_for_isolated_codex(app_dir: Path, isolated_app: Path) -> None:
+    # 隔离 app 复制源码但复用 node_modules symlink，避免每次 Generator 都重新安装依赖。
     ignored = shutil.ignore_patterns(".git", ".next", ".turbo", "node_modules")
     shutil.copytree(app_dir, isolated_app, ignore=ignored)
     node_modules = app_dir / "node_modules"
@@ -207,6 +216,8 @@ def _parse_porcelain_paths(status: str) -> list[str]:
 
 
 def sync_isolated_app_changes(isolated_app: Path, app_dir: Path) -> list[str]:
+    # Codex 在临时 git repo 中改文件；同步时只复制 git 可见变更。
+    # 运行产物和 ignored 目录不会被带回真实 app repo。
     status = _run_checked(["git", "status", "--porcelain=v1", "-uall"], isolated_app)
     changed_paths = _parse_porcelain_paths(status.stdout)
     synced: list[str] = []
@@ -241,6 +252,8 @@ def run_codex_in_isolated_app(
     app_dir: Path,
     timeout: float = 1500,
 ) -> str:
+    # Generator 使用隔离 app 工作区，降低半成品或工具副作用直接污染主 app repo 的风险。
+    # CLI 成功后再按 git diff 同步回真实 app。
     temp_root = Path(tempfile.mkdtemp(prefix="orbit-codex-app-"))
     isolated_app = temp_root / "app"
     try:

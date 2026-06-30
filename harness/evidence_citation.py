@@ -7,8 +7,11 @@ from typing import Any
 
 EVIDENCE_ROOT_KEYS = ("commands", "navigation", "browser", "axe", "lighthouse", "api", "source_files")
 
+# evidence_citation.py 把 reviewer 写出的证据引用解析回 evidence.json。
+# 它支持 path、route 名、artifact 文件名和 snapshot alias，目的是真正确认引用可复核。
 
 def _select_from_list(items: list[Any], selector: str) -> Any | None:
+    # 列表既可以按数字下标选，也可以按常见 identity 字段选。
     if selector.isdigit():
         index = int(selector)
         if 0 <= index < len(items):
@@ -23,6 +26,7 @@ def _select_from_list(items: list[Any], selector: str) -> Any | None:
 
 
 def _resolve_key_with_selector(current: Any, key: str) -> Any | None:
+    # 支持 foo[bar] 这种 selector 语法，也支持 artifact slug alias。
     selector = None
     base_key = key
     match = re.fullmatch(r"(.+)\[([^\]]+)\]", key)
@@ -117,6 +121,8 @@ def _normalize_snapshot_parts(parts: list[str]) -> list[str]:
 
 
 def _resolve_viewport_snapshot_alias(current: Any, parts: list[str]) -> list[Any] | None:
+    # 浏览器快照通常挂在 viewports[].snapshot 下。
+    # reviewer 可以写 text/headings/buttons 这类短引用，这里会映射回真实结构。
     if not parts or not isinstance(current, dict):
         return None
     if parts[0] == "snapshot":
@@ -141,6 +147,7 @@ def _resolve_viewport_snapshot_alias(current: Any, parts: list[str]) -> list[Any
 
 
 def _resolve_parts(current: Any, parts: list[str]) -> list[Any] | None:
+    # 从当前节点递归解析 dotted path；若当前节点是 JSON 字符串，也会尝试解析后继续找。
     if not parts:
         return [current]
     for end in range(len(parts), 0, -1):
@@ -195,6 +202,8 @@ def _strip_candidate(value: str) -> str:
 
 
 def _candidate_paths(citation: str) -> list[str]:
+    # reviewer citation 可能是完整 dotted path、bucket/key 文本、source/... alias 或带断言的表达式。
+    # 这里生成候选路径列表，resolve_evidence_path_values 再逐个尝试。
     candidates = [_strip_candidate(citation)]
     root_pattern = "|".join(re.escape(root) for root in EVIDENCE_ROOT_KEYS)
     wildcard_pattern = re.compile(rf"\b({root_pattern})\.\*")
@@ -238,6 +247,8 @@ def _candidate_paths(citation: str) -> list[str]:
 
 
 def resolve_evidence_path_values(citation: str, evidence_data: object) -> list[object] | None:
+    # 返回的是从根到叶子的 value 链。
+    # Evaluator 可以检查中间节点是否有 collection_failed，Verifier 可以确认引用存在。
     if not isinstance(evidence_data, dict):
         return None
     for candidate in _candidate_paths(citation):

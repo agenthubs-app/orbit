@@ -11,8 +11,12 @@ from harness.config import HarnessConfig
 WORKSPACE_ROOT_FIELDS = ("app_root", "artifact_root", "log_root", "evidence_root", "tmp_root")
 ARTIFACT_ROOT_FIELDS = ("artifact_root", "log_root", "evidence_root", "tmp_root")
 
+# workspace.py 是 harness 的路径和文件边界工具箱。
+# 这里的函数不理解具体 sprint，只负责保证 app、证据、日志、tmp 和 protected 区域
+# 有稳定的相对路径语义。
 
 def _normalized_workspace_root(value: object) -> str | None:
+    # 所有 workspace root 都必须是项目内相对路径；绝对路径和 `..` 会破坏边界判断。
     if not isinstance(value, str) or not value.strip():
         return None
     path = Path(value)
@@ -30,6 +34,8 @@ def _root_contains(root: str, candidate: str) -> bool:
 
 
 def workspace_path_issues(cfg: HarnessConfig) -> list[str]:
+    # greenfield 模式要求 artifact/log/tmp 不和 app_root 重叠。
+    # 否则 evidence 或日志可能被当成产品源码提交。
     issues: list[str] = []
     normalized: dict[str, str] = {}
     for field in WORKSPACE_ROOT_FIELDS:
@@ -64,6 +70,8 @@ def ensure_project_layout(
     iteration: int | None = None,
     run_id: str | None = None,
 ) -> dict[str, Path]:
+    # 返回一张统一路径表，调用方通过 key 取目录，避免各模块自行拼接 evidence/log 路径。
+    # run_id 存在时，iteration 产物全部进入 harness-state/runs/<run>/sprint-N/iter-M。
     assert_workspace_paths_valid(cfg)
     state = project_dir / cfg.workspace.artifact_root
     logs = project_dir / cfg.workspace.log_root
@@ -119,6 +127,7 @@ def ensure_project_layout(
 
 
 def clean_tmp(project_dir: Path, cfg: HarnessConfig) -> None:
+    # tmp 是跨 run 可清理目录，不承载需要保留的证据。
     assert_workspace_paths_valid(cfg)
     tmp = project_dir / cfg.workspace.tmp_root
     if tmp.exists():
@@ -130,6 +139,7 @@ def clean_tmp(project_dir: Path, cfg: HarnessConfig) -> None:
 
 
 def apply_retention(project_dir: Path, cfg: HarnessConfig) -> None:
+    # retention 只清理日志、临时目录和旧 evidence/run 目录，不动 app 源码或 contracts。
     assert_workspace_paths_valid(cfg)
     clean_tmp(project_dir, cfg)
     log_dir = project_dir / cfg.workspace.log_root
@@ -170,6 +180,8 @@ def apply_retention(project_dir: Path, cfg: HarnessConfig) -> None:
 
 
 def _matches_pattern_or_glob_root(path: str, pattern: str) -> bool:
+    # `foo/**` 既匹配 foo 下的文件，也匹配 foo 目录本身。
+    # 这让 protected_paths/write_allowlist 对根目录和子文件的语义一致。
     normalized = Path(path).as_posix().rstrip("/")
     normalized_pattern = Path(pattern).as_posix().rstrip("/")
     if fnmatch.fnmatch(normalized, normalized_pattern):
@@ -196,6 +208,7 @@ def _under_any_root(rel: str, roots: list[str]) -> bool:
 
 
 def file_fingerprint(path: Path) -> str:
+    # snapshot 只需要内容哈希，不需要保存文件内容本身。
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -208,6 +221,8 @@ def protected_workspace_snapshot(
     cfg: HarnessConfig,
     excluded_roots: list[str] | None = None,
 ) -> dict[str, str]:
+    # reviewer/evidence 边界检查使用这个快照。
+    # 默认排除 app_root 和 log_root：app 由 git_safety 管，log 允许运行时追加。
     excluded_roots = excluded_roots if excluded_roots is not None else [
         cfg.workspace.app_root,
         cfg.workspace.log_root,
@@ -262,6 +277,7 @@ def workspace_changes_outside_roots(
     changes: dict[str, list[str]],
     allowed_roots: list[str],
 ) -> dict[str, list[str]]:
+    # 将 before/after diff 过滤到“真正越界”的部分，供 harness 抛错或记录。
     return {
         key: [path for path in paths if not _under_any_root(path, allowed_roots)]
         for key, paths in changes.items()
@@ -286,6 +302,8 @@ def _artifact_hygiene_allowed_roots(cfg: HarnessConfig | None) -> list[str]:
 
 
 def find_artifact_hygiene_violations(project_dir: Path, cfg: HarnessConfig | None = None) -> list[str]:
+    # 轻量扫描常见 evidence 文件名，发现它们是否落在源码树或其他非 artifact root。
+    # 这是启发式检查，不代替具体测试，但能提前抓住最常见的产物污染。
     suspicious = ("lighthouse", "axe", "screenshot", "eval", "trace", "console")
     source_suffixes = {
         ".css",

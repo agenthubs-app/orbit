@@ -17,12 +17,15 @@ from harness.models.state import EvalResult, SprintContract, SuccessCriterion
 
 REQUIRED_RUBRIC_KEYS = ("C1", "C2", "C3", "C4", "C5")
 
+# Evaluator 是 contract 维度的只读审查者。
+# 它读取 Generator 输出和 harness evidence，判断每条 success criterion 是否有足够证据。
 
 def _run_async(coro, timeout: int = 1200):
     return asyncio.run(asyncio.wait_for(coro, timeout=timeout))
 
 
 def _valid_score(value: object) -> float:
+    # rubric 分数必须落在 1-5；异常或越界值都按 0 处理，避免虚高平均分。
     try:
         score = float(value)
     except (TypeError, ValueError):
@@ -40,6 +43,8 @@ def _has_specific_evidence(value: object) -> bool:
 
 
 def _evidence_record_supports_pass(value: object, *, include_children: bool = False) -> bool:
+    # 结构化 evidence 中常见的失败字段会直接让该证据不支持 pass。
+    # include_children=True 时会递归检查嵌套对象，适合 artifact 或整棵记录。
     if isinstance(value, list):
         return not include_children or all(
             _evidence_record_supports_pass(item, include_children=True) for item in value
@@ -121,6 +126,8 @@ def _embedded_evidence_paths(citation: str, evidence_data: object) -> list[str]:
 
 
 def _evidence_citation_supports_pass(citation: object, evidence_data: object | None) -> bool:
+    # citation 可以是 evidence path、artifact path，或一段包含 evidence key 的文字。
+    # 只有能解析到真实且未失败的 evidence 时，才认为它支持通过。
     if not _has_specific_evidence(citation):
         return False
     assert isinstance(citation, str)
@@ -203,6 +210,8 @@ def _strip_expected_no_side_effect_phrases(evidence: str) -> str:
 
 
 def _evidence_text_has_explicit_failure(evidence: str, *, allow_expected_no_side_effects: bool = False) -> bool:
+    # evaluator 文本里如果写了 missing/not available/returncode!=0 等字样，
+    # 即使 verdict 声称 pass，也要按失败证据处理。
     text = evidence.lower()
     if allow_expected_no_side_effects:
         text = _strip_expected_no_side_effect_phrases(text)
