@@ -1,3 +1,8 @@
+/**
+ * Orbit AI trace debug 页面测试。
+ *
+ * 验证 trace debugger 页面能渲染执行链、source code 和折叠结构。
+ */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -31,9 +36,21 @@ test("/dev/orbit-ai/trace renders the Orbit AI trace debugger shell", async () =
   assert.match(html, /Orbit AI trace debugger/);
   assert.match(html, /data-orbit-ai-trace-debugger="true"/);
   assert.match(html, /data-trace-timeline="true"/);
+  assert.match(html, /data-trace-pipeline="true"/);
+  assert.match(html, /data-trace-graph="true"/);
+  assert.match(html, /Loop 1 \/ 1/);
+  assert.match(html, /data-pipeline-stage="input_received"/);
+  assert.match(html, /data-pipeline-stage="final_response"/);
   assert.match(html, /data-stage-output-source="true"/);
+  assert.match(html, /data-database-lane="true"/);
+  assert.match(html, /data-trace-lane="data"/);
   assert.match(html, /data-planner-only-comparison="true"/);
   assert.match(html, /data-runtime-snapshot="true"/);
+  assert.match(html, /aria-label="切换 trace 界面语言"/);
+  assert.match(html, />中文</);
+  assert.match(html, />English</);
+  assert.match(html, /Agent 执行管线/);
+  assert.match(html, /管线检查台/);
   assert.match(html, /developer-debug-prompt-visible/);
 });
 
@@ -50,4 +67,9 @@ test("Orbit AI trace debugger posts prompts to the full-chain trace API", () => 
   assert.match(source, /disabled=\{[^}]*!prompt\.trim\(\)/);
   assert.match(source, /runtimeSnapshot/);
   assert.match(source, /plannerOnly/);
+  assert.match(source, /loopSummary/);
+  assert.match(source, /graph/);
+  assert.match(source, /databaseInteractions/);
+  assert.match(source, /--trace-data/);
+  assert.match(source, /--trace-agent/);
 });

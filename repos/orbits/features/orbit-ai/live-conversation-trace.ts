@@ -26,9 +26,13 @@ import { createLiveOrbitAgentLocalBoundaryPayload } from "./live-conversation-se
 import { createMockOrbitAgentArtifactTaskService } from "./mock-artifact-task-service";
 import {
   ORBIT_AI_TRACE_SCHEMA_VERSION,
+  type OrbitAiTraceDatabaseInteraction,
   type OrbitAiPlannerOnlyTrace,
   type OrbitAiTraceDataSource,
   type OrbitAiTraceFullChain,
+  type OrbitAiTraceGraph,
+  type OrbitAiTraceLane,
+  type OrbitAiTraceLoopSummary,
   type OrbitAiTracePayload,
   type OrbitAiTraceRuntimeSubAgent,
   type OrbitAiTraceResult,
@@ -38,14 +42,23 @@ import {
   type OrbitAiTraceStageStatus,
   type OrbitAiTraceToolCall,
 } from "./trace-contract";
+import {
+  createOrbitLocalRemoteDatabase,
+  ORBIT_LOCAL_REMOTE_DATABASE_KEY,
+  ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION,
+} from "../../shared/local-remote-store/orbit-database";
+import { MOCK_FIXTURE_COLLECTION_NAMES } from "../../shared/mock/fixtures";
 
 const traceCollectedAt = "2026-06-27T00:03:00.000Z";
 const liveCollectedAt = "2026-06-27T00:00:00.000Z";
 const liveConversationId = "live-orbit-agent-conversation";
 const defaultMaxLoopSteps = 3;
 const maxSupportedLoopSteps = 3;
+const maxSupportedTraceLoops = 3;
 const minSupportedLoopSteps = 1;
 
+// live-conversation-trace 是开发调试用的完整执行链快照：
+// 输入、本地 guardrail、planner、tool mapping、artifact、synthesis、最终响应都会记录成 stage。
 export interface LiveOrbitAgentTraceConfig
   extends GeminiOrbitAgentProviderConfig {
   maxLoopSteps?: number | string | null;
@@ -59,6 +72,7 @@ type TraceStageInput = {
   evidenceIds?: readonly string[];
   id: OrbitAiTraceStageId;
   inputs?: unknown;
+  lane?: OrbitAiTraceLane;
   label: string;
   outputSource?: OrbitAiTraceStage["outputSource"];
   outputs?: unknown;
@@ -70,14 +84,17 @@ type TraceStageInput = {
 };
 
 function cloneJson<TValue>(value: TValue): TValue {
+  // trace payload 会暴露给调试 UI，clone 后避免外部修改内部对象。
   return JSON.parse(JSON.stringify(value)) as TValue;
 }
 
 function readText(value: unknown): string | null {
+  // 文本入口统一 trim，空值返回 null 以便生成明确 validation error。
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function readMaxLoopSteps(value: unknown): number {
+  // trace 也遵守 live agent 的 loop 预算：1 planner、2 artifact、3 synthesis。
   const parsed =
     typeof value === "number"
       ? value
@@ -171,11 +188,13 @@ function traceTimeFor(index: number): string {
 }
 
 function stage(index: number, input: TraceStageInput): OrbitAiTraceStage {
+  // 每个 stage 都经过 redactValue，避免密钥/token 等字段进入调试 UI。
   return {
     completedAt: traceTimeFor(index),
     evidenceIds: input.evidenceIds ?? [],
     id: input.id,
     inputs: redactValue(input.inputs),
+    lane: input.lane ?? "agent",
     label: input.label,
     outputSource: input.outputSource,
     outputs: redactValue(input.outputs),
@@ -189,6 +208,7 @@ function stage(index: number, input: TraceStageInput): OrbitAiTraceStage {
 }
 
 function redactValue(value: unknown): unknown {
+  // 递归脱敏常见 secret 字段；非 secret 的结构会保留，方便 debug。
   if (Array.isArray(value)) {
     return value.map((item) => redactValue(item));
   }
@@ -226,10 +246,114 @@ function chainFromStages(
   stages: readonly OrbitAiTraceStage[],
 ): OrbitAiTraceFullChain["chain"] {
   return stages.map((traceStage) => ({
+    lane: traceStage.lane,
     stageId: traceStage.id,
     status: traceStage.status,
     summary: traceStage.summary,
   }));
+}
+
+const databaseCollectionsByTool: Record<string, readonly string[]> = {
+  "chat.context": [
+    "contacts",
+    "connections",
+    "conversations",
+    "messages",
+    "interactionMemories",
+    "evidence",
+  ],
+  "contacts.recommend": [
+    "contacts",
+    "connections",
+    "eventParticipantIntents",
+    "matchRecommendations",
+    "recommendationTests",
+    "aiAnalyses",
+    "evidence",
+  ],
+  "events.recommend": [
+    "events",
+    "attendees",
+    "eventParticipantIntents",
+    "contacts",
+    "connections",
+    "matchRecommendations",
+    "recommendationTests",
+    "evidence",
+  ],
+  "followups.reviewQueue": [
+    "tasks",
+    "contacts",
+    "connections",
+    "messages",
+    "interactionMemories",
+    "evidence",
+  ],
+};
+
+function selectedDatabaseCollectionsForTools(
+  toolRequests: readonly GeminiOrbitAgentToolRequest[],
+): Set<string> {
+  const selected = new Set<string>(["accounts", "profiles", "evidence"]);
+
+  for (const request of toolRequests) {
+    for (const collectionName of databaseCollectionsByTool[request.toolName] ?? []) {
+      selected.add(collectionName);
+    }
+  }
+
+  return selected;
+}
+
+function databaseInteractionForTools(
+  toolRequests: readonly GeminiOrbitAgentToolRequest[],
+): OrbitAiTraceDatabaseInteraction {
+  // Trace 只读取本地 local-remote database 的表级快照，帮助调试数据上下文；不写 live 数据库。
+  const database = createOrbitLocalRemoteDatabase();
+  const state = database.getState() as unknown as Record<string, unknown>;
+  const selectedCollections = selectedDatabaseCollectionsForTools(toolRequests);
+  const collections = MOCK_FIXTURE_COLLECTION_NAMES.map((collectionName) => {
+    const collection = state[collectionName];
+
+    return {
+      collectionName,
+      recordCount: Array.isArray(collection) ? collection.length : 0,
+      selectedForTools: selectedCollections.has(collectionName),
+    };
+  });
+  const selectedCollectionCount = collections.filter(
+    (collection) => collection.selectedForTools,
+  ).length;
+
+  return {
+    adapterKind: "memory",
+    collections,
+    id: "database:local-remote-context",
+    liveDatabaseReadExecuted: false,
+    liveDatabaseWriteExecuted: false,
+    operation: "read",
+    role: "data",
+    schemaVersion: ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION,
+    source: `local-remote-store:${ORBIT_LOCAL_REMOTE_DATABASE_KEY}`,
+    storageKey: ORBIT_LOCAL_REMOTE_DATABASE_KEY,
+    summary: `${selectedCollectionCount} local-remote database collections were inspected for the planned Orbit tools.`,
+  };
+}
+
+function skippedDatabaseInteraction(reason: string): OrbitAiTraceDatabaseInteraction {
+  return {
+    adapterKind: "memory",
+    collections: [],
+    id: "database:local-remote-context",
+    liveDatabaseReadExecuted: false,
+    liveDatabaseWriteExecuted: false,
+    operation: "skipped",
+    role: "data",
+    schemaVersion: ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION,
+    source: `local-remote-store:${ORBIT_LOCAL_REMOTE_DATABASE_KEY}`,
+    storageKey: ORBIT_LOCAL_REMOTE_DATABASE_KEY,
+    summary: reason,
+  };
 }
 
 function toolNameForIntent(
@@ -344,6 +468,7 @@ function artifactForRequest(input: {
   message: string;
   request: GeminiOrbitAgentToolRequest;
 }): OrbitAgentArtifactPayload | null {
+  // trace 中的 artifact 仍来自 mock artifact service，不会读写真实业务数据。
   const artifactService = createMockOrbitAgentArtifactTaskService();
   const request: OrbitAgentArtifactTaskRequest = {
     conversationId: liveConversationId,
@@ -377,6 +502,7 @@ function artifactSummaryForSynthesis(
 function toolRequestsForPlannerResult(
   plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: true }>,
 ): readonly GeminiOrbitAgentToolRequest[] {
+  // provider 可能只返回 intent；这里用白名单 intent 映射补齐最小 tool request。
   const fallbackToolName = toolNameForIntent(plannerResult.data.intent);
 
   if (plannerResult.data.toolRequests.length > 0) {
@@ -443,6 +569,7 @@ function runtimeSnapshot(input: {
   plannerResult?: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }): OrbitAiTraceRuntimeSnapshot {
+  // runtimeSnapshot 告诉可视化页面：有哪些工具、sub-agent、renderer 和数据来源参与了本次链路。
   const artifactsByKind = new Map<OrbitAgentArtifactKind, OrbitAgentArtifactPayload>();
 
   for (const artifact of input.artifacts) {
@@ -499,6 +626,7 @@ function runtimeSnapshot(input: {
     renderers: [
       { hint: "summary_card", renderer: "summary-card" },
       { hint: "tool_call_table", renderer: "tool-call-table" },
+      { hint: "database_table", renderer: "database-table" },
       { hint: "artifact_panel", renderer: "artifact-panel" },
       { hint: "source_json", renderer: "source-json" },
       { hint: "raw_text", renderer: "raw-text" },
@@ -512,6 +640,7 @@ function runtimeSnapshot(input: {
 function dataSourcesForArtifacts(
   artifacts: readonly OrbitAgentArtifactPayload[],
 ): readonly OrbitAiTraceDataSource[] {
+  // dataSources 把 artifact provenance 展开成 UI 可显示的“模块 -> 证据 -> section”关系。
   const sources: OrbitAiTraceDataSource[] = [];
 
   for (const artifact of artifacts) {
@@ -544,6 +673,7 @@ function toolCallsFor(input: {
   artifacts: readonly OrbitAgentArtifactPayload[];
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }): readonly OrbitAiTraceToolCall[] {
+  // toolCalls 同时包含 planner 计划和 artifact provenance，区分“计划调用”和“mock 生成结果”。
   return [
     ...input.toolRequests.map((request) => ({
       evidenceIds: ["evidence:orbit-agent:model-provider"],
@@ -613,8 +743,137 @@ function skippedPlannerOnlyTrace(reason: string): OrbitAiPlannerOnlyTrace {
   };
 }
 
+function currentLoopSummary(): OrbitAiTraceLoopSummary {
+  return {
+    loopCount: 1,
+    maxSupportedLoops: maxSupportedTraceLoops,
+    mode: "single_live_loop",
+    reason:
+      "Current live agent policy runs one live loop; the trace graph schema can render additional loops when a demo or future runtime provides them.",
+  };
+}
+
+function graphForTrace(input: {
+  artifacts: readonly OrbitAgentArtifactPayload[];
+  databaseInteractions: readonly OrbitAiTraceDatabaseInteraction[];
+  stages: readonly OrbitAiTraceStage[];
+  toolRequests: readonly GeminiOrbitAgentToolRequest[];
+}): OrbitAiTraceGraph {
+  const loopIndex = 1;
+  const nodes: Array<OrbitAiTraceGraph["nodes"][number]> = input.stages.map((traceStage) => ({
+    id: `loop:${loopIndex}:stage:${traceStage.id}`,
+    kind:
+      traceStage.id === "planner" || traceStage.id === "synthesis"
+        ? "model"
+        : traceStage.id === "final_response"
+          ? "response"
+          : traceStage.id === "database_context"
+            ? "data"
+            : "stage",
+    label: traceStage.label,
+    lane: traceStage.lane ?? (traceStage.id === "database_context" ? "data" : "agent"),
+    loopIndex,
+    stageId: traceStage.id,
+    status: traceStage.status,
+    summary: traceStage.summary,
+  }));
+  const edges: Array<OrbitAiTraceGraph["edges"][number]> = [];
+
+  for (let index = 0; index < input.stages.length - 1; index += 1) {
+    const from = input.stages[index];
+    const to = input.stages[index + 1];
+
+    edges.push({
+      from: `loop:${loopIndex}:stage:${from.id}`,
+      kind:
+        to.id === "database_context"
+          ? "data"
+          : to.id === "artifact_generation"
+            ? "artifact"
+            : to.id === "synthesis"
+              ? "synthesis"
+              : "control",
+      to: `loop:${loopIndex}:stage:${to.id}`,
+    });
+  }
+
+  for (const request of input.toolRequests) {
+    const artifactKind = artifactKindForTool(request.toolName);
+    const artifact = input.artifacts.find(
+      (candidate) => candidate.task.kind === artifactKind,
+    );
+    const subAgent = artifact?.task.subAgent ?? subAgentForArtifactKind(artifactKind);
+    const toolNodeId = `loop:${loopIndex}:tool:${request.toolName}`;
+    const subAgentNodeId = `loop:${loopIndex}:subagent:${subAgent}`;
+
+    nodes.push({
+      id: toolNodeId,
+      kind: "tool",
+      label: request.toolName,
+      lane: "agent",
+      loopIndex,
+      stageId: "tool_mapping",
+      status: "completed",
+      summary: `Planner selected ${request.toolName}.`,
+    });
+    nodes.push({
+      id: subAgentNodeId,
+      kind: "subagent",
+      label: subAgent,
+      lane: "agent",
+      loopIndex,
+      stageId: "artifact_generation",
+      status: artifact ? "completed" : "skipped",
+      summary: artifact
+        ? `Sub-agent prepared ${artifact.task.kind}.`
+        : "Sub-agent would run if the trace budget reaches artifact generation.",
+    });
+    edges.push({
+      from: `loop:${loopIndex}:stage:tool_mapping`,
+      kind: "tool",
+      to: toolNodeId,
+    });
+    edges.push({
+      from: toolNodeId,
+      kind: "data",
+      to: `loop:${loopIndex}:stage:database_context`,
+    });
+    edges.push({
+      from: toolNodeId,
+      kind: "subagent",
+      to: subAgentNodeId,
+    });
+    edges.push({
+      from: subAgentNodeId,
+      kind: "artifact",
+      to: `loop:${loopIndex}:stage:artifact_generation`,
+    });
+  }
+
+  for (const interaction of input.databaseInteractions) {
+    nodes.push({
+      id: `loop:${loopIndex}:data:${interaction.id}`,
+      kind: "data",
+      label: interaction.storageKey,
+      lane: "data",
+      loopIndex,
+      stageId: "database_context",
+      status: interaction.operation === "skipped" ? "skipped" : "completed",
+      summary: interaction.summary,
+    });
+    edges.push({
+      from: `loop:${loopIndex}:stage:database_context`,
+      kind: "data",
+      to: `loop:${loopIndex}:data:${interaction.id}`,
+    });
+  }
+
+  return { edges, nodes };
+}
+
 function fullChain(input: {
   conversation: OrbitAgentConversationPayload;
+  databaseInteractions: readonly OrbitAiTraceDatabaseInteraction[];
   dataSources: readonly OrbitAiTraceDataSource[];
   locale: string;
   maxLoopSteps: number;
@@ -628,7 +887,14 @@ function fullChain(input: {
   return {
     chain: chainFromStages(input.stages),
     conversation: cloneJson(input.conversation),
+    databaseInteractions: input.databaseInteractions,
     dataSources: input.dataSources,
+    graph: graphForTrace({
+      artifacts: input.conversation.artifacts,
+      databaseInteractions: input.databaseInteractions,
+      stages: input.stages,
+      toolRequests: input.toolRequests,
+    }),
     input: {
       conversationMode: process.env.ORBIT_AGENT_CONVERSATION_MODE ?? "mock",
       locale: input.locale,
@@ -638,6 +904,7 @@ function fullChain(input: {
       provider: input.plannerResult?.data.provider,
     },
     raw: input.raw ?? {},
+    loopSummary: currentLoopSummary(),
     runtimeSnapshot: runtimeSnapshot({
       artifacts: input.conversation.artifacts,
       plannerResult: input.plannerResult,
@@ -655,7 +922,9 @@ function boundaryTrace(input: {
   maxLoopSteps: number;
   message: string;
 }): OrbitAiTracePayload {
+  // 本地边界命中时，trace 明确标出 planner/tool/artifact/synthesis 全部 skipped。
   const reason = `Stopped at ${input.boundaryPayload.provenance.sourceLabel} (${input.boundaryPayload.provenance.source}) before planner, tools, or synthesis.`;
+  const databaseInteractions = [skippedDatabaseInteraction(reason)];
   const stages = [
     stage(0, {
       id: "input_received",
@@ -699,6 +968,16 @@ function boundaryTrace(input: {
       summary: "No Orbit tool mapping ran.",
     }),
     stage(4, {
+      id: "database_context",
+      label: "Database context",
+      lane: "data",
+      outputSource: sourceView(databaseInteractions),
+      renderHint: "database_table",
+      skipReason: reason,
+      status: "skipped",
+      summary: "No local-remote database context was read.",
+    }),
+    stage(5, {
       id: "artifact_generation",
       label: "Artifact generation",
       renderHint: "artifact_panel",
@@ -706,7 +985,7 @@ function boundaryTrace(input: {
       status: "skipped",
       summary: "No sub-agent artifact was generated.",
     }),
-    stage(5, {
+    stage(6, {
       id: "synthesis",
       label: "Synthesis",
       renderHint: "raw_text",
@@ -714,7 +993,7 @@ function boundaryTrace(input: {
       status: "skipped",
       summary: "No synthesis provider call ran.",
     }),
-    stage(6, {
+    stage(7, {
       id: "final_response",
       label: "Final response",
       outputSource: sourceView(input.boundaryPayload),
@@ -728,6 +1007,7 @@ function boundaryTrace(input: {
   return {
     fullChain: fullChain({
       conversation: input.boundaryPayload,
+      databaseInteractions,
       dataSources: [],
       locale: input.locale,
       maxLoopSteps: input.maxLoopSteps,
@@ -759,6 +1039,7 @@ function failureForPlannerResult(
 export function createLiveOrbitAgentTrace(
   config: LiveOrbitAgentTraceConfig = {},
 ): OrbitAgentTraceRunner {
+  // planner 负责真实 provider 访问；trace runner 负责把各阶段结果编排成可视化 payload。
   const planner = createGeminiOrbitAgentPlanner(config);
   const maxLoopSteps = readMaxLoopSteps(
     config.maxLoopSteps ?? process.env.ORBIT_AGENT_MAX_LOOP_STEPS,
@@ -766,6 +1047,7 @@ export function createLiveOrbitAgentTrace(
 
   return {
     async traceMessage(input) {
+      // traceMessage 和 live service 同样先校验空消息，再走本地边界。
       const message = readText(input.message);
       const locale = readText(input.locale) ?? "zh";
 
@@ -783,6 +1065,7 @@ export function createLiveOrbitAgentTrace(
       const boundaryPayload = createLiveOrbitAgentLocalBoundaryPayload(message);
 
       if (boundaryPayload) {
+        // 本地边界响应仍算一次成功 trace，因为链路已经被明确、安全地截停。
         return {
           data: boundaryTrace({
             boundaryPayload,
@@ -800,9 +1083,11 @@ export function createLiveOrbitAgentTrace(
       });
 
       if (plannerResult.success === false) {
+        // provider 失败直接返回 trace error，不伪造后续 stage。
         return failureForPlannerResult(plannerResult);
       }
 
+      // 后续阶段都受 maxLoopSteps 控制，便于单独调试 planner/artifact/synthesis。
       const toolRequests = toolRequestsForPlannerResult(plannerResult);
       const shouldExecuteDomainTools = maxLoopSteps >= 2;
       const artifacts = shouldExecuteDomainTools
@@ -834,6 +1119,7 @@ export function createLiveOrbitAgentTrace(
         plannerResult,
         toolRequests,
       });
+      const databaseInteractions = [databaseInteractionForTools(toolRequests)];
       const dataSources = dataSourcesForArtifacts(artifacts);
       const toolCalls = toolCallsFor({ artifacts, toolRequests });
       const stages = [
@@ -902,6 +1188,20 @@ export function createLiveOrbitAgentTrace(
               : "No Orbit tool call was needed for this prompt.",
         }),
         stage(4, {
+          id: "database_context",
+          label: "Database context",
+          lane: "data",
+          outputSource: sourceView(databaseInteractions),
+          outputs: databaseInteractions,
+          renderHint: "database_table",
+          safety: safetyLedger({
+            aiProviderRequested: false,
+            externalNetworkRequested: false,
+          }),
+          status: "completed",
+          summary: databaseInteractions[0].summary,
+        }),
+        stage(5, {
           id: "artifact_generation",
           label: "Artifact generation",
           outputSource: sourceView(artifacts),
@@ -919,7 +1219,7 @@ export function createLiveOrbitAgentTrace(
               ? `Generated ${artifacts.length} reviewable sub-agent artifact.`
               : "No sub-agent artifact was generated.",
         }),
-        stage(5, {
+        stage(6, {
           id: "synthesis",
           label: "Synthesis",
           outputSource:
@@ -944,7 +1244,7 @@ export function createLiveOrbitAgentTrace(
               ? "Synthesized the final assistant response from the artifact summaries."
               : "Used the planner assistant message as the final response.",
         }),
-        stage(6, {
+        stage(7, {
           id: "final_response",
           label: "Final response",
           outputSource: sourceView(conversation),
@@ -959,6 +1259,7 @@ export function createLiveOrbitAgentTrace(
         data: {
           fullChain: fullChain({
             conversation,
+            databaseInteractions,
             dataSources,
             locale,
             maxLoopSteps,

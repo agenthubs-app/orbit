@@ -98,14 +98,42 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
               task: { kind: string; subAgent: string };
             }[];
           };
+          databaseInteractions: readonly {
+            collections: readonly {
+              collectionName: string;
+              recordCount: number;
+            }[];
+            operation: string;
+            role: string;
+            storageKey: string;
+          }[];
           dataSources: readonly {
             evidenceIds: readonly string[];
             sourceModule: string;
           }[];
+          graph: {
+            edges: readonly {
+              from: string;
+              kind: string;
+              to: string;
+            }[];
+            nodes: readonly {
+              id: string;
+              kind: string;
+              loopIndex: number;
+              stageId?: string;
+            }[];
+          };
           runtimeSnapshot: {
             renderers: readonly { hint: string; renderer: string }[];
             subAgents: readonly { subAgent: string }[];
             tools: readonly { toolName: string; renderHint: string }[];
+          };
+          loopSummary: {
+            loopCount: number;
+            maxSupportedLoops: number;
+            mode: string;
+            reason: string;
           };
           stages: readonly {
             id: string;
@@ -141,6 +169,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
         "local_guardrails",
         "planner",
         "tool_mapping",
+        "database_context",
         "artifact_generation",
         "synthesis",
         "final_response",
@@ -155,6 +184,57 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
       body.data?.fullChain.stages.find((stage) => stage.id === "artifact_generation")
         ?.renderHint,
       "artifact_panel",
+    );
+    assert.equal(
+      body.data?.fullChain.stages.find((stage) => stage.id === "database_context")
+        ?.renderHint,
+      "database_table",
+    );
+    assert.equal(
+      body.data?.fullChain.stages.find((stage) => stage.id === "database_context")
+        ?.outputSource?.kind,
+      "json",
+    );
+    assert.equal(
+      body.data?.fullChain.databaseInteractions[0]?.storageKey,
+      "orbit.local-remote-database.v2",
+    );
+    assert.equal(
+      body.data?.fullChain.databaseInteractions[0]?.operation,
+      "read",
+    );
+    assert.equal(body.data?.fullChain.databaseInteractions[0]?.role, "data");
+    assert.equal(body.data?.fullChain.loopSummary.loopCount, 1);
+    assert.equal(body.data?.fullChain.loopSummary.maxSupportedLoops, 3);
+    assert.equal(body.data?.fullChain.loopSummary.mode, "single_live_loop");
+    assert.match(body.data?.fullChain.loopSummary.reason ?? "", /one live loop/i);
+    assert.equal(
+      body.data?.fullChain.graph.nodes.some(
+        (node) =>
+          node.loopIndex === 1 &&
+          node.kind === "subagent" &&
+          node.id.includes("event_recommendation_agent"),
+      ),
+      true,
+    );
+    assert.equal(
+      body.data?.fullChain.graph.edges.some(
+        (edge) =>
+          edge.kind === "subagent" &&
+          edge.from.includes("events.recommend") &&
+          edge.to.includes("event_recommendation_agent"),
+      ),
+      true,
+    );
+    assert.equal(
+      body.data?.fullChain.graph.edges.some((edge) => edge.kind === "synthesis"),
+      true,
+    );
+    assert.equal(
+      body.data?.fullChain.databaseInteractions[0]?.collections.some(
+        (collection) => collection.collectionName === "events",
+      ),
+      true,
     );
     assert.equal(
       body.data?.fullChain.runtimeSnapshot.tools[0]?.toolName,
