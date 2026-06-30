@@ -2,6 +2,12 @@
 
 本文件定义知识库的结构和维护流程。它是 agent 维护知识库时的操作规约。
 
+## 参考模式
+
+- 本知识库参考 Andrej Karpathy 的 LLM Wiki 模式（https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f，2026-06-30 核对）：保留原始来源、让 LLM 维护结构化 Markdown wiki、用 schema/AGENTS 约束维护流程，并通过 ingest、query、lint、index 和 log 让知识持续积累。
+- Orbit 版本不是通用 RAG：默认不引入 embedding 或向量数据库，而是把文档 catalog、主题 wiki、开发历史、learnings 和 app-local manifest 作为可审计的编译后知识层。
+- 原始文档仍保留在来源路径；`knowledge/` 是中文优先的索引、综合和审计层，负责说明来源、状态、新鲜度和后续维护规则。
+
 ## 三层模型
 
 1. 原始来源：现有文档、代码、测试、运行证据和 `.learnings`。这些文件保留在原路径。

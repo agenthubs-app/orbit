@@ -1651,6 +1651,13 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
   ],
   "recentHistory": [
     {
+      "id": "knowledge-llm-wiki-reference",
+      "date": "2026-06-30",
+      "titleZh": "记录 LLM Wiki 参考模式",
+      "summaryZh": "在 schema 中记录 Karpathy LLM Wiki 参考来源，并说明 Orbit 采用可审计 Markdown/catalog/manifest 层。",
+      "sourcePath": "knowledge/history/development-log.zh.md"
+    },
+    {
       "id": "knowledge-freshness-audit",
       "date": "2026-06-30",
       "titleZh": "文档新鲜度审计收敛",

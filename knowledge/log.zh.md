@@ -26,3 +26,8 @@
 - 为历史设计、feature DESIGN、mockdata、harness 和数据层文档补充代码/测试/历史定位证据。
 - 保留 1 个 `known-stale` 旧组件级 sprint 设计，避免误当成当前权威。
 - 收紧 catalog 测试，防止当前 catalog 再残留未审计 freshness 占位。
+
+## [2026-06-30] maintenance | 记录 LLM Wiki 参考模式
+
+- 在 `knowledge/schema.zh.md` 记录 Karpathy LLM Wiki 参考来源和 Orbit 映射。
+- 明确 Orbit 知识库采用可审计 Markdown/catalog/manifest 层，不引入 RAG、embedding 或向量数据库。

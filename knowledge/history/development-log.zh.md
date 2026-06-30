@@ -32,3 +32,9 @@
 - 覆盖结果：`knowledge/docs/freshness-report.zh.md` 显示 `needs-code-check` 为 0，扫描范围内未纳入为 0，catalog 总量保持 146。
 - 验证方式：运行 catalog 生成、manifest 同步、root knowledge tests、app manifest/page tests、app lint、app full test、`git diff --check`。
 - 后续注意：`likely-current` 表示已有合理代码/测试/历史定位证据，不等价于每个英文原文段落都逐行重写；未来文档变更仍必须更新 catalog 审计依据。
+
+## [2026-06-30] maintenance | 记录 LLM Wiki 参考模式
+
+- 用户目标：知识库构建参考 Karpathy LLM Wiki 的最新模式，同时保持 Orbit 项目自身可审计、中文优先、无需 RAG 的实现边界。
+- 修改摘要：在 `knowledge/schema.zh.md` 增加参考模式说明，记录 raw sources、LLM-maintained wiki、schema/AGENTS、ingest/query/lint/index/log 等概念如何映射到 Orbit 的文档 catalog、主题 wiki、开发历史、learnings 和 app-local manifest。
+- 验证方式：运行 root knowledge tests、`git diff --check`。
