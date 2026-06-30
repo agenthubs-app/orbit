@@ -630,7 +630,7 @@ function runtimeSnapshot(input: {
       selectedInCurrentRun: selectedToolNames.has(tool.toolName),
       sourceModules:
         artifact?.result.provenance.sourceModules ?? tool.sourceModules,
-      specificationZh: `${tool.inputSpecZh} ${tool.specificationZh}`,
+      specificationZh: tool.specificationZh,
       toolFamily: tool.toolFamily,
       toolName: tool.toolName,
     };

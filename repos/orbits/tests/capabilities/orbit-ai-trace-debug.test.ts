@@ -280,7 +280,10 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
     assert.equal(eventTool?.riskLevel, "read");
     assert.equal(eventTool?.requiresConfirmation, true);
     assert.match(eventTool?.descriptionZh ?? "", /活动/);
-    assert.match(eventTool?.specificationZh ?? "", /输入/);
+    assert.equal(
+      eventTool?.specificationZh,
+      "只读取活动和关系上下文并生成推荐视图；不会报名、发消息、写日历或修改数据库。任何外部动作必须另走确认。",
+    );
     assert.match(eventTool?.inputSpecZh ?? "", /query/);
     assert.match(eventTool?.outputSpecZh ?? "", /artifact/);
     assert.equal(
