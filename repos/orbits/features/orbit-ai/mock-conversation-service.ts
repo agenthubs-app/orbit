@@ -20,6 +20,9 @@ import {
 } from "./conversation-contract";
 import { createMockOrbitAgentArtifactTaskService } from "./mock-artifact-task-service";
 
+export const ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE =
+  "fixture:features/orbit-ai/mock-conversation-service.ts" as const;
+
 const fixtureCollectedAt = "2026-06-27T00:00:00.000Z";
 const defaultConversationId = "demo-orbit-agent-conversation-1";
 
@@ -48,7 +51,7 @@ const fixtureProvenance: OrbitAgentConversationProvenance = {
   generationMethod: "fixture",
   privacy: "demo-orbit-agent-conversation-only",
   safety: safetyLedger,
-  source: "fixture:features/orbit-ai/mock-conversation-service.ts",
+  source: ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE,
   sourceLabel: "Orbit Agent local conversation fixture",
 };
 

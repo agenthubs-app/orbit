@@ -22,8 +22,9 @@ import {
   type GeminiOrbitAgentToolRequest,
   type GeminiOrbitAgentToolResultSummary,
 } from "./gemini-provider";
+import { createOrbitAgentArtifactPreviewService } from "./artifact-task-preview-service";
 import { createLiveOrbitAgentLocalBoundaryPayload } from "./live-conversation-service";
-import { createMockOrbitAgentArtifactTaskService } from "./mock-artifact-task-service";
+import type { OrbitAgentArtifactTaskService } from "./service";
 import {
   ORBIT_AI_TRACE_SCHEMA_VERSION,
   type OrbitAiTraceDatabaseInteraction,
@@ -47,7 +48,6 @@ import {
   ORBIT_LOCAL_REMOTE_DATABASE_KEY,
   ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION,
 } from "../../shared/local-remote-store/orbit-database";
-import { MOCK_FIXTURE_COLLECTION_NAMES } from "../../shared/mock/fixtures";
 
 const traceCollectedAt = "2026-06-27T00:03:00.000Z";
 const liveCollectedAt = "2026-06-27T00:00:00.000Z";
@@ -56,11 +56,13 @@ const defaultMaxLoopSteps = 3;
 const maxSupportedLoopSteps = 3;
 const maxSupportedTraceLoops = 3;
 const minSupportedLoopSteps = 1;
+type OrbitAgentLocale = "en" | "zh";
 
 // live-conversation-trace 是开发调试用的完整执行链快照：
 // 输入、本地 guardrail、planner、tool mapping、artifact、synthesis、最终响应都会记录成 stage。
 export interface LiveOrbitAgentTraceConfig
   extends GeminiOrbitAgentProviderConfig {
+  artifactTaskService?: OrbitAgentArtifactTaskService;
   maxLoopSteps?: number | string | null;
 }
 
@@ -91,6 +93,14 @@ function cloneJson<TValue>(value: TValue): TValue {
 function readText(value: unknown): string | null {
   // 文本入口统一 trim，空值返回 null 以便生成明确 validation error。
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeLocale(locale: unknown): OrbitAgentLocale {
+  return locale === "en" ? "en" : "zh";
+}
+
+function localize(locale: OrbitAgentLocale, copy: Record<OrbitAgentLocale, string>) {
+  return copy[locale];
 }
 
 function readMaxLoopSteps(value: unknown): number {
@@ -312,7 +322,10 @@ function databaseInteractionForTools(
   const database = createOrbitLocalRemoteDatabase();
   const state = database.getState() as unknown as Record<string, unknown>;
   const selectedCollections = selectedDatabaseCollectionsForTools(toolRequests);
-  const collections = MOCK_FIXTURE_COLLECTION_NAMES.map((collectionName) => {
+  const collectionNames = Object.keys(state)
+    .filter((collectionName) => Array.isArray(state[collectionName]))
+    .sort();
+  const collections = collectionNames.map((collectionName) => {
     const collection = state[collectionName];
 
     return {
@@ -443,12 +456,28 @@ function toolFamilyForToolName(toolName: string): string {
 
 function proposedIntentForTool(
   request: GeminiOrbitAgentToolRequest,
+  locale: OrbitAgentLocale = "en",
 ): OrbitAgentProposedToolIntent {
-  const labels: Record<GeminiOrbitAgentToolName, string> = {
-    "chat.context": "Review relationship conversation context",
-    "contacts.recommend": "Recommend relevant contacts",
-    "events.recommend": "Inspect event context",
-    "followups.reviewQueue": "Review follow-up queue",
+  const labels: Record<
+    GeminiOrbitAgentToolName,
+    Record<OrbitAgentLocale, string>
+  > = {
+    "chat.context": {
+      en: "Review relationship conversation context",
+      zh: "复核关系对话上下文",
+    },
+    "contacts.recommend": {
+      en: "Recommend relevant contacts",
+      zh: "推荐相关人脉",
+    },
+    "events.recommend": {
+      en: "Inspect event context",
+      zh: "推荐活动",
+    },
+    "followups.reviewQueue": {
+      en: "Review follow-up queue",
+      zh: "复核跟进队列",
+    },
   };
   const toolFamily = toolFamilyForToolName(
     request.toolName,
@@ -456,31 +485,36 @@ function proposedIntentForTool(
 
   return {
     intentId: `intent:trace:${request.toolName}`,
-    label: labels[request.toolName],
-    reason:
-      "The configured model provider selected this allowed Orbit tool from the user prompt; trace mode records the handoff without external side effects.",
+    label: localize(locale, labels[request.toolName]),
+    reason: localize(locale, {
+      en: "The configured model provider selected this allowed Orbit tool from the user prompt; trace mode records the handoff without external side effects.",
+      zh: "模型 provider 从用户请求中选择了这个 Orbit 允许工具；trace 模式只记录交接，不执行外部副作用。",
+    }),
     requiresUserConfirmation: true,
     toolFamily,
   };
 }
 
 function artifactForRequest(input: {
+  artifactTaskService: OrbitAgentArtifactTaskService;
+  locale?: string | null;
   message: string;
   request: GeminiOrbitAgentToolRequest;
 }): OrbitAgentArtifactPayload | null {
-  // trace 中的 artifact 仍来自 mock artifact service，不会读写真实业务数据。
-  const artifactService = createMockOrbitAgentArtifactTaskService();
+  const locale = normalizeLocale(input.locale);
+  // trace 中的 artifact 来自注入的 artifact task contract；默认 preview 不读取 fixture。
   const request: OrbitAgentArtifactTaskRequest = {
     conversationId: liveConversationId,
     kind: artifactKindForTool(input.request.toolName),
+    locale,
     presentation: {
       preferredSurface: "side_panel",
-      title: proposedIntentForTool(input.request).label,
+      title: proposedIntentForTool(input.request, locale).label,
       widthHint: "half",
     },
     query: input.message,
   };
-  const result = artifactService.createArtifactTask(request);
+  const result = input.artifactTaskService.createArtifactTask(request);
 
   return result.success ? result.data : null;
 }
@@ -702,6 +736,7 @@ function toolCallsFor(input: {
 function conversationForSuccess(input: {
   artifacts: readonly OrbitAgentArtifactPayload[];
   assistant: string;
+  locale: OrbitAgentLocale;
   message: string;
   plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
@@ -719,9 +754,13 @@ function conversationForSuccess(input: {
     assistantMessage: input.assistant,
     conversations: [conversationSummary(messages[messages.length - 1])],
     messages,
-    nextAction:
-      "Review the traced Orbit Agent plan, generated artifacts, and source panels before enabling any external side effect.",
-    proposedToolIntents: input.toolRequests.map(proposedIntentForTool),
+    nextAction: localize(input.locale, {
+      en: "Review the traced Orbit Agent plan, generated artifacts, and source panels before enabling any external side effect.",
+      zh: "启用任何外部副作用前，请复核 trace 中的 Orbit Agent 计划、生成结果和来源面板。",
+    }),
+    proposedToolIntents: input.toolRequests.map((request) =>
+      proposedIntentForTool(request, input.locale),
+    ),
     provenance: provenance({
       generationMethod: "model-provider-live-agent-reply",
       label: `Orbit Agent trace reply via ${input.plannerResult.data.provider}:${input.plannerResult.data.model}`,
@@ -1041,6 +1080,8 @@ export function createLiveOrbitAgentTrace(
 ): OrbitAgentTraceRunner {
   // planner 负责真实 provider 访问；trace runner 负责把各阶段结果编排成可视化 payload。
   const planner = createGeminiOrbitAgentPlanner(config);
+  const artifactTaskService =
+    config.artifactTaskService ?? createOrbitAgentArtifactPreviewService();
   const maxLoopSteps = readMaxLoopSteps(
     config.maxLoopSteps ?? process.env.ORBIT_AGENT_MAX_LOOP_STEPS,
   );
@@ -1049,7 +1090,7 @@ export function createLiveOrbitAgentTrace(
     async traceMessage(input) {
       // traceMessage 和 live service 同样先校验空消息，再走本地边界。
       const message = readText(input.message);
-      const locale = readText(input.locale) ?? "zh";
+      const locale = normalizeLocale(input.locale);
 
       if (!message) {
         return {
@@ -1092,7 +1133,14 @@ export function createLiveOrbitAgentTrace(
       const shouldExecuteDomainTools = maxLoopSteps >= 2;
       const artifacts = shouldExecuteDomainTools
         ? toolRequests
-            .map((request) => artifactForRequest({ message, request }))
+            .map((request) =>
+              artifactForRequest({
+                artifactTaskService,
+                locale,
+                message,
+                request,
+              }),
+            )
             .filter((artifact): artifact is OrbitAgentArtifactPayload =>
               Boolean(artifact),
             )
@@ -1115,6 +1163,7 @@ export function createLiveOrbitAgentTrace(
       const conversation = conversationForSuccess({
         artifacts,
         assistant: finalAssistant,
+        locale,
         message,
         plannerResult,
         toolRequests,

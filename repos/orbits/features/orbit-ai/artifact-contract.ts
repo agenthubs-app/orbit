@@ -3,9 +3,11 @@ import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
-export const ORBIT_AGENT_ARTIFACT_FIXTURE_SOURCE =
-  "fixture:features/orbit-ai/artifact-contract.ts" as const;
+// Artifact contract 描述 Chat Agent 计划出的“可复核结果”。
+// 它不是外部动作执行结果，而是展示给用户确认的面板数据。
 
+// kind 决定使用哪类内部子 agent/结果视图。
+// live conversation service 会从模型 tool name 映射到这些 kind。
 export const ORBIT_AGENT_ARTIFACT_KINDS = [
   "event_recommendations",
   "contact_recommendations",
@@ -82,6 +84,8 @@ export interface OrbitAgentArtifactPresentation {
   widthHint?: OrbitAgentArtifactWidthHint;
 }
 
+// TaskRequest 是创建 artifact 的输入，来自 Chat Agent 的 tool request。
+// query 保留用户意图，presentation 只影响 UI 展示，不代表真实动作已执行。
 export interface OrbitAgentArtifactTaskRequest {
   kind: OrbitAgentArtifactKind;
   query: string;
@@ -110,6 +114,8 @@ export interface OrbitAgentArtifactTask {
   updatedAt: string;
 }
 
+// GeneratedView 是前端可以直接渲染的结构化结果。
+// actions 只是待确认按钮；requiresConfirmation=true 时绝不能当成已执行动作。
 export interface OrbitAgentArtifactGeneratedViewAction {
   actionId: string;
   label: string;
@@ -154,7 +160,7 @@ export interface OrbitAgentArtifactToolCallTrace {
 }
 
 export interface OrbitAgentArtifactProvenance {
-  source: typeof ORBIT_AGENT_ARTIFACT_FIXTURE_SOURCE;
+  source: string;
   sourceModules: readonly OrbitAgentArtifactSourceModule[];
   evidenceIds: readonly string[];
   toolCalls: readonly OrbitAgentArtifactToolCallTrace[];
@@ -165,6 +171,8 @@ export interface OrbitAgentArtifactProvenance {
     | "sub-agent-generated-view";
 }
 
+// Artifact safety 明确限制当前 artifact 层：
+// 只生成可复核视图，不进行真实写入、外部网络、邮件、日历或通知。
 export interface OrbitAgentArtifactSafety {
   externalSideEffectsExecuted: false;
   domainWritesExecuted: false;
@@ -190,6 +198,7 @@ export interface OrbitAgentArtifactResult {
   nextAction: string;
 }
 
+// Payload 拆成 task/result，方便 UI 同时展示“用户请求了什么”和“子 agent 产出了什么”。
 export interface OrbitAgentArtifactPayload {
   task: OrbitAgentArtifactTask;
   result: OrbitAgentArtifactResult;
@@ -262,12 +271,14 @@ export const ORBIT_AGENT_ARTIFACT_ERROR_DEFINITIONS = {
   OrbitAgentArtifactErrorDefinition
 >;
 
+// artifact route 复用共享 AppError/envelope 模型，对外不暴露内部失败结构。
 export function orbitAgentArtifactFailureToAppError(
   result: OrbitAgentArtifactFailure,
 ): AppError {
   return new AppError(result.error.appCode, result.error.message);
 }
 
+// 错误 context 中保留 feature mode、artifact/task id 和恢复建议，便于 UI 做恢复态。
 export function orbitAgentArtifactFailureContext(
   result: OrbitAgentArtifactFailure,
   mode: FeatureMode,

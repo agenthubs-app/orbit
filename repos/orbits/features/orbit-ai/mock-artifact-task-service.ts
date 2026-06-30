@@ -1,6 +1,5 @@
 import {
   ORBIT_AGENT_ARTIFACT_ERROR_DEFINITIONS,
-  ORBIT_AGENT_ARTIFACT_FIXTURE_SOURCE,
   ORBIT_AGENT_ARTIFACT_KINDS,
   type OrbitAgentArtifactErrorCode,
   type OrbitAgentArtifactFailure,
@@ -23,12 +22,17 @@ import {
 } from "./artifact-contract";
 import type { OrbitAgentArtifactTaskService } from "./service";
 
+export const ORBIT_AGENT_ARTIFACT_FIXTURE_SOURCE =
+  "fixture:features/orbit-ai/mock-artifact-task-service.ts" as const;
+
 const fixtureNow = "2026-06-27T00:02:00.000Z";
 const fixtureReadyAt = "2026-06-27T00:02:01.000Z";
 const defaultConversationId = "demo-orbit-agent-conversation-1";
 const defaultArtifactId = "artifact:event-recommendations:demo";
 const defaultTaskId = "task:event-recommendations:demo";
 
+// mock artifact service 模拟“sub-agent 生成可复核 artifact”的过程。
+// 它不会调用真实工具、数据库或外部服务，只根据 kind/query 生成稳定 fixture payload。
 const supportedKinds = new Set<string>(ORBIT_AGENT_ARTIFACT_KINDS);
 const supportedScenarios = new Set<OrbitAgentArtifactScenario>([
   "ready",
@@ -50,10 +54,12 @@ const safety = {
 } as const;
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
+  // 返回前 clone，避免调用方修改共享 fixture。
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
 function readText(value: unknown): string | null {
+  // 所有文本入口统一 trim；空字符串按缺失处理。
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
@@ -68,6 +74,7 @@ function normalizeScenario(
 }
 
 function normalizeKind(kind: unknown): OrbitAgentArtifactKind | null {
+  // kind 必须来自 artifact contract 白名单，避免模型/调用方发明新 artifact 类型。
   if (typeof kind === "string" && supportedKinds.has(kind)) {
     return kind as OrbitAgentArtifactKind;
   }
@@ -90,6 +97,7 @@ function taskIdFor(kind: OrbitAgentArtifactKind): string {
 function defaultSubAgentFor(
   kind: OrbitAgentArtifactKind,
 ): OrbitAgentArtifactSubAgent {
+  // kind 到 sub-agent 的映射是 UI trace 和 artifact 面板解释执行链的基础。
   switch (kind) {
     case "event_recommendations":
       return "event_recommendation_agent";
@@ -108,6 +116,7 @@ function defaultSubAgentFor(
 function sourceModulesFor(
   kind: OrbitAgentArtifactKind,
 ): readonly OrbitAgentArtifactSourceModule[] {
+  // sourceModules 告诉 UI 这个 artifact 概念上来自哪些 Orbit 模块。
   switch (kind) {
     case "event_recommendations":
       return ["orbit-ai", "events"];
@@ -129,6 +138,7 @@ function presentationFor(
   kind: OrbitAgentArtifactKind,
   presentation?: Partial<OrbitAgentArtifactPresentation>,
 ): OrbitAgentArtifactPresentation {
+  // 每类 artifact 有默认展示面；调用方可以覆盖标题/宽度等 presentation 字段。
   const defaults: Record<OrbitAgentArtifactKind, OrbitAgentArtifactPresentation> = {
     contact_recommendations: {
       preferredSurface: "side_panel",
@@ -200,6 +210,7 @@ function toolTraceFor(
   kind: OrbitAgentArtifactKind,
   status: "completed" | "planned" | "failed",
 ): readonly OrbitAgentArtifactToolCallTrace[] {
+  // tool trace 只记录 mock sub-agent 的计划/完成状态，不表示真实外部工具被调用。
   return [
     {
       evidenceIds: evidenceIdsFor(kind),
@@ -236,6 +247,7 @@ function generatedViewFor(
   kind: OrbitAgentArtifactKind,
   query: string,
 ): OrbitAgentArtifactGeneratedView {
+  // generatedView 是给前端渲染的 pretty artifact；每个 action 都保留 confirmation 要求。
   switch (kind) {
     case "event_recommendations":
       return {
@@ -437,6 +449,7 @@ function resultFor(
   task: OrbitAgentArtifactTask,
   status: OrbitAgentArtifactStatus,
 ): OrbitAgentArtifactResult {
+  // pending artifact 不产生 generatedView，只给 UI loading/nextAction 状态。
   return {
     artifactId: task.artifactId,
     generatedView:
@@ -509,6 +522,7 @@ function payloadForLookup(
 ): OrbitAgentArtifactResultEnvelope {
   const artifactId = readText(input.artifactId);
 
+  // lookup 必须能从 artifactId 反推出已支持 kind，否则返回 not found。
   if (!artifactId) {
     return failure("ORBIT_AGENT_ARTIFACT_NOT_FOUND");
   }
@@ -533,6 +547,7 @@ function payloadForLookup(
 export function createMockOrbitAgentArtifactTaskService(): OrbitAgentArtifactTaskService {
   return {
     createArtifactTask(input): OrbitAgentArtifactResultEnvelope {
+      // create 路径先处理场景，再校验 query/kind，最后生成 ready 或 pending payload。
       const scenario = normalizeScenario(input.scenario);
 
       if (scenario === "failure") {
@@ -564,6 +579,7 @@ export function createMockOrbitAgentArtifactTaskService(): OrbitAgentArtifactTas
     },
 
     getArtifactTask(input): OrbitAgentArtifactResultEnvelope {
+      // get 路径按 artifactId 回放同一类 mock payload，方便 UI 详情页/调试页复用。
       const scenario = normalizeScenario(input.scenario);
 
       if (scenario === "failure") {

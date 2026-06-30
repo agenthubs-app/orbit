@@ -344,7 +344,7 @@ test("Orbit Agent provider sends diverse routing examples for Chinese relationsh
   )?.content;
 
   assert.equal(result.success, true);
-  assert.match(systemPrompt ?? "", /我为什么认识 Maya/);
+  assert.match(systemPrompt ?? "", /我为什么认识某联系人/);
   assert.match(systemPrompt ?? "", /明天活动该认识谁/);
   assert.match(systemPrompt ?? "", /本周应该跟进谁/);
   assert.match(systemPrompt ?? "", /帮我写一条跟进消息/);
@@ -1549,6 +1549,193 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
   );
 });
 
+test("live Orbit Agent localizes artifact preview copy from the request locale", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      maxLoopSteps?: number;
+      model: string;
+    }) => {
+      sendMessage: (input: {
+        locale?: string | null;
+        message?: string | null;
+      }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly {
+            result: {
+              generatedView: {
+                sections: readonly {
+                  items: readonly {
+                    actions: readonly { label: string }[];
+                    metadata: readonly { label: string; value: string }[];
+                    reason?: string;
+                  }[];
+                  title: string;
+                }[];
+                summary: string;
+              } | null;
+              nextAction: string;
+              presentation: { subtitle?: string; title: string };
+            };
+          }[];
+          nextAction: string;
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  assistantMessage: "我会先整理活动推荐，任何动作仍需确认。",
+                  intent: "event_recommendations",
+                  toolRequests: [
+                    {
+                      arguments: {},
+                      requiresUserConfirmation: true,
+                      toolName: "events.recommend",
+                    },
+                  ],
+                }),
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      });
+    }) as typeof fetch,
+    maxLoopSteps: 2,
+    model: "gemini-test-model",
+  });
+
+  const result = await service.sendMessage({
+    locale: "zh",
+    message: "帮我推荐下周适合认识投资人的活动。",
+  });
+  const artifact = result.data?.artifacts[0];
+  const artifactText = JSON.stringify(artifact);
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 1);
+  assert.equal(artifact?.result.presentation.title, "推荐活动");
+  assert.match(artifact?.result.generatedView?.summary ?? "", /可复核/);
+  assert.equal(
+    artifact?.result.generatedView?.sections[0]?.items[0]?.actions[0]?.label,
+    "复核计划",
+  );
+  assert.equal(
+    artifact?.result.generatedView?.sections[0]?.items[0]?.metadata[0]?.label,
+    "结果类型",
+  );
+  assert.match(artifact?.result.nextAction ?? "", /复核/);
+  assert.match(result.data?.nextAction ?? "", /复核/);
+  assert.doesNotMatch(artifactText, /Review plan|Orbit prepared|Recommended events/);
+  assert.doesNotMatch(result.data?.nextAction ?? "", /Review|synthesis is skipped/i);
+});
+
+test("live Orbit Agent defaults interactive turns to artifact generation without synthesis", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      model: string;
+    }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          diagnostics?: {
+            maxLoopSteps: number;
+            model: string;
+            provider: string;
+            timings: readonly {
+              durationMs: number;
+              phase: string;
+              skipped?: boolean;
+            }[];
+          };
+          nextAction: string;
+          proposedToolIntents: readonly unknown[];
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+
+      return jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  assistantMessage: "我先准备活动推荐结果，任何动作都需要你确认。",
+                  intent: "event_recommendations",
+                  toolRequests: [
+                    {
+                      arguments: {},
+                      requiresUserConfirmation: true,
+                      toolName: "events.recommend",
+                    },
+                  ],
+                }),
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      });
+    }) as typeof fetch,
+    model: "gemini-test-model",
+  });
+
+  const result = await service.sendMessage({
+    message: "帮我推荐下周适合认识投资人的活动。",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 1);
+  assert.equal(result.data?.artifacts.length, 1);
+  assert.equal(result.data?.proposedToolIntents.length, 1);
+  assert.match(result.data?.nextAction ?? "", /synthesis is skipped/i);
+  assert.equal(result.data?.diagnostics?.maxLoopSteps, 2);
+  assert.equal(result.data?.diagnostics?.provider, "gemini");
+  assert.equal(result.data?.diagnostics?.model, "gemini-test-model");
+  assert.deepEqual(
+    result.data?.diagnostics?.timings.map((timing) => timing.phase),
+    ["local_boundary", "planner", "artifact_generation", "synthesis"],
+  );
+  assert.equal(
+    result.data?.diagnostics?.timings.find(
+      (timing) => timing.phase === "synthesis",
+    )?.skipped,
+    true,
+  );
+  assert.equal(
+    result.data?.diagnostics?.timings.every(
+      (timing) => Number.isFinite(timing.durationMs) && timing.durationMs >= 0,
+    ),
+    true,
+  );
+});
+
 test("live Gemini Orbit Agent keeps relationship context tool traces on the planner allowlist", async () => {
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config: {
@@ -1974,6 +2161,61 @@ test("live Gemini Orbit Agent surfaces provider request failures", async () => {
   assert.match(result.error?.message ?? "", /disabled for this project/);
   assert.equal(result.error?.provenance.safety.aiProviderRequested, true);
   assert.equal(result.error?.provenance.safety.externalNetworkRequested, true);
+});
+
+test("Orbit Agent provider times out hung model requests", async () => {
+  const provider = await importProjectModule<{
+    createGeminiOrbitAgentPlanner: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      requestTimeoutMs: number;
+    }) => {
+      plan: (input: { message: string }) => Promise<{
+        error?: { code: string; message: string };
+        success: boolean;
+      }>;
+    };
+  }>("features/orbit-ai/gemini-provider.ts");
+
+  const planner = provider.createGeminiOrbitAgentPlanner({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async (_url, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+
+        if (signal instanceof AbortSignal) {
+          if (signal.aborted) {
+            reject(signal.reason);
+            return;
+          }
+
+          signal.addEventListener(
+            "abort",
+            () => reject(signal.reason),
+            { once: true },
+          );
+        }
+      })) as typeof fetch,
+    requestTimeoutMs: 5,
+  });
+
+  const result = await Promise.race([
+    planner.plan({ message: "帮我推荐活动" }),
+    new Promise<"not-aborted">((resolve) =>
+      setTimeout(() => resolve("not-aborted"), 50),
+    ),
+  ]);
+
+  assert.notEqual(result, "not-aborted");
+  assert.equal(typeof result === "string" ? undefined : result.success, false);
+  assert.equal(
+    typeof result === "string" ? undefined : result.error?.code,
+    "MODEL_REQUEST_FAILED",
+  );
+  assert.match(
+    typeof result === "string" ? "" : result.error?.message ?? "",
+    /timed out/i,
+  );
 });
 
 test("development Orbit Agent trace route exposes raw planner output", async () => {

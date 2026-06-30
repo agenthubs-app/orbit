@@ -1,3 +1,5 @@
+// 这个文件历史上叫 gemini-provider，但现在是 Orbit Agent 的模型 provider adapter。
+// 它把 Gemini / DeepSeek / OpenAI 的不同 HTTP 协议统一成 planner 和 synthesis 两个方法。
 export const DEFAULT_GEMINI_ORBIT_AGENT_MODEL = "gemini-3.5-flash" as const;
 export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-v4-flash" as const;
 export const DEFAULT_OPENAI_ORBIT_AGENT_MODEL = "gpt-4.1" as const;
@@ -17,6 +19,8 @@ export const ORBIT_AGENT_MODEL_PROVIDERS = [
 export type OrbitAgentModelProvider =
   (typeof ORBIT_AGENT_MODEL_PROVIDERS)[number];
 
+// planner 只能输出这些 intent；live service 会把非 general intent
+// 映射到内部白名单工具，避免模型直接控制任意函数调用。
 export const GEMINI_ORBIT_AGENT_INTENTS = [
   "general_chat",
   "event_recommendations",
@@ -25,6 +29,8 @@ export const GEMINI_ORBIT_AGENT_INTENTS = [
   "relationship_chat_context",
 ] as const;
 
+// 这是模型允许声明的全部工具名。
+// 每个工具都必须 requiresUserConfirmation=true，实际外部动作仍不会在这里执行。
 export const GEMINI_ORBIT_AGENT_TOOL_NAMES = [
   "events.recommend",
   "contacts.recommend",
@@ -77,6 +83,7 @@ export interface GeminiOrbitAgentProviderConfig {
   fetchImplementation?: typeof fetch;
   model?: string | null;
   provider?: OrbitAgentModelProvider | "gpt" | string | null;
+  requestTimeoutMs?: number | null;
 }
 
 export type GeminiOrbitAgentPlannerResult =
@@ -142,6 +149,7 @@ interface ResolvedOrbitAgentProvider {
 
 const allowedIntents = new Set<string>(GEMINI_ORBIT_AGENT_INTENTS);
 const allowedToolNames = new Set<string>(GEMINI_ORBIT_AGENT_TOOL_NAMES);
+const defaultProviderRequestTimeoutMs = 20_000;
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -149,6 +157,20 @@ function isRecord(value: unknown): value is JsonRecord {
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readRequestTimeoutMs(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : defaultProviderRequestTimeoutMs;
+}
+
+function requestErrorMessage(error: unknown, provider: OrbitAgentModelProvider) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return `${provider} request failed before a response was returned.`;
 }
 
 function normalizeProvider(value: unknown): OrbitAgentModelProvider {
@@ -165,6 +187,11 @@ function normalizeProvider(value: unknown): OrbitAgentModelProvider {
   return "gemini";
 }
 
+// provider 选择顺序：
+// 1. 显式 config.provider；
+// 2. ORBIT_AGENT_PROVIDER；
+// 3. 默认 gemini。
+// 各 provider 读取自己的 API key 和 model 环境变量。
 function resolveProvider(
   config: GeminiOrbitAgentProviderConfig,
 ): ResolvedOrbitAgentProvider {
@@ -211,6 +238,7 @@ function readObject(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
 }
 
+// 对每个 intent 固定期望工具，保证模型不能把“活动推荐”路由到联系人工具。
 function expectedToolNameForIntent(
   intent: GeminiOrbitAgentIntent,
 ): GeminiOrbitAgentToolName | null {
@@ -372,6 +400,10 @@ function parseJsonFromText(value: string): unknown {
   throw new Error("No JSON object found in Gemini planner output.");
 }
 
+// planner 输出必须先过 schema 和安全语义校验：
+// - assistantMessage 不能声称已发送、已写入、已改隐私设置；
+// - general_chat 不能带 tool；
+// - 非 general intent 必须且只能带一个匹配工具。
 export function validateGeminiOrbitAgentPlannerOutput(
   value: unknown,
 ): GeminiOrbitAgentPlannerOutput | null {
@@ -449,6 +481,8 @@ export function validateGeminiOrbitAgentPlannerOutput(
   };
 }
 
+// provider 可能返回纯 JSON、markdown fenced JSON，或带前后文的 JSON；
+// 解析失败时返回 null，由 live service 阻止后续工具执行。
 export function parseGeminiOrbitAgentPlannerOutput(
   outputText: string,
 ): GeminiOrbitAgentPlannerOutput | null {
@@ -459,6 +493,8 @@ export function parseGeminiOrbitAgentPlannerOutput(
   }
 }
 
+// planner prompt 是模型侧的硬约束说明。
+// 真正的安全边界仍在 validateGeminiOrbitAgentPlannerOutput 和 live service 里二次执行。
 function systemInstruction(): string {
   return [
     "You are Orbit Agent, a relationship-work orchestration planner.",
@@ -478,7 +514,7 @@ function systemInstruction(): string {
     "- external action preview / send / schedule / notify -> choose the closest context tool only to prepare a reviewable artifact; never claim execution.",
     "Do not promise to send, schedule, notify, write, or execute later; Orbit can prepare a reviewable draft or artifact only.",
     "Chinese routing examples:",
-    '- "我为什么认识 Maya" -> relationship_chat_context with chat.context.',
+    '- "我为什么认识某联系人" -> relationship_chat_context with chat.context.',
     '- "明天活动该认识谁" -> event_recommendations with events.recommend.',
     '- "本周应该跟进谁" -> followup_queue with followups.reviewQueue.',
     '- "帮我写一条跟进消息" -> relationship_chat_context with chat.context.',
@@ -509,6 +545,8 @@ function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
   });
 }
 
+// synthesis 只负责把已生成的 artifact 摘要写成自然语言回复。
+// 它不能新增工具请求，也不能声称已经执行外部动作。
 function synthesisInstruction(): string {
   return [
     "You are Orbit Agent, writing the final user-facing response after Orbit tools returned information.",
@@ -667,6 +705,8 @@ function readProviderErrorMessage(value: unknown): string | null {
   return readString(error.message);
 }
 
+// 各 provider 的请求体不同：
+// DeepSeek 使用 Chat Completions，OpenAI 使用 Responses，Gemini 使用 interactions。
 function providerRequestBody(input: {
   inputText: string;
   model: string;
@@ -709,6 +749,7 @@ function providerRequestBody(input: {
   };
 }
 
+// Gemini 使用 x-goog-api-key，其它 provider 使用 Bearer token。
 function providerHeaders(provider: ResolvedOrbitAgentProvider): HeadersInit {
   if (provider.provider === "gemini") {
     return {
@@ -723,6 +764,37 @@ function providerHeaders(provider: ResolvedOrbitAgentProvider): HeadersInit {
   };
 }
 
+async function fetchProviderResponse(
+  input: {
+    fetchImplementation: typeof fetch;
+    init: RequestInit;
+    provider: OrbitAgentModelProvider;
+    timeoutMs: number;
+    url: string;
+  },
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort(
+      new Error(
+        `${input.provider} request timed out after ${input.timeoutMs}ms.`,
+      ),
+    );
+  }, input.timeoutMs);
+
+  try {
+    return await input.fetchImplementation(input.url, {
+      ...input.init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// 对外提供两个阶段：
+// plan = 结构化路由/工具计划；synthesize = 基于 artifact 摘要写最终回复。
+// 这两个阶段都会 fail closed：缺 key、请求失败、输出不合规都返回结构化失败。
 export function createGeminiOrbitAgentPlanner(
   config: GeminiOrbitAgentProviderConfig = {},
 ) {
@@ -732,7 +804,9 @@ export function createGeminiOrbitAgentPlanner(
     ): Promise<GeminiOrbitAgentPlannerResult> {
       const provider = resolveProvider(config);
       const fetchImplementation = config.fetchImplementation ?? fetch;
+      const timeoutMs = readRequestTimeoutMs(config.requestTimeoutMs);
 
+      // 缺 key 时不发起网络请求，方便本地测试并避免误打 provider。
       if (!provider.apiKey) {
         return {
           error: {
@@ -745,20 +819,54 @@ export function createGeminiOrbitAgentPlanner(
         };
       }
 
-      const response = await fetchImplementation(provider.endpoint, {
-        body: JSON.stringify(
-          providerRequestBody({
-            inputText: plannerInput(input),
-            model: provider.model,
-            provider: provider.provider,
-            systemInstructionText: systemInstruction(),
-          }),
-        ),
-        headers: providerHeaders(provider),
-        method: "POST",
-      });
+      let response: Response;
 
-      const responseBody = (await response.json()) as unknown;
+      try {
+        response = await fetchProviderResponse({
+          fetchImplementation,
+          init: {
+            body: JSON.stringify(
+              providerRequestBody({
+                inputText: plannerInput(input),
+                model: provider.model,
+                provider: provider.provider,
+                systemInstructionText: systemInstruction(),
+              }),
+            ),
+            headers: providerHeaders(provider),
+            method: "POST",
+          },
+          provider: provider.provider,
+          timeoutMs,
+          url: provider.endpoint,
+        });
+      } catch (error) {
+        return {
+          error: {
+            code: "MODEL_REQUEST_FAILED",
+            message: requestErrorMessage(error, provider.provider),
+            provider: provider.provider,
+            source: provider.source,
+          },
+          success: false,
+        };
+      }
+
+      let responseBody: unknown;
+
+      try {
+        responseBody = (await response.json()) as unknown;
+      } catch (error) {
+        return {
+          error: {
+            code: "MODEL_REQUEST_FAILED",
+            message: requestErrorMessage(error, provider.provider),
+            provider: provider.provider,
+            source: provider.source,
+          },
+          success: false,
+        };
+      }
 
       if (!response.ok) {
         return {
@@ -776,6 +884,8 @@ export function createGeminiOrbitAgentPlanner(
 
       const outputText = readProviderOutputText(provider.provider, responseBody);
 
+      // provider adapter 先提取文本，再交给 Orbit schema parser。
+      // 任何不符合 contract 的模型输出都会阻断工具层。
       if (!outputText) {
         return {
           error: {
@@ -820,7 +930,9 @@ export function createGeminiOrbitAgentPlanner(
     ): Promise<GeminiOrbitAgentSynthesisResult> {
       const provider = resolveProvider(config);
       const fetchImplementation = config.fetchImplementation ?? fetch;
+      const timeoutMs = readRequestTimeoutMs(config.requestTimeoutMs);
 
+      // synthesis 和 planner 使用同一 provider 配置，也同样缺 key 即短路。
       if (!provider.apiKey) {
         return {
           error: {
@@ -833,20 +945,54 @@ export function createGeminiOrbitAgentPlanner(
         };
       }
 
-      const response = await fetchImplementation(provider.endpoint, {
-        body: JSON.stringify(
-          providerRequestBody({
-            inputText: synthesisInput(input),
-            model: provider.model,
-            provider: provider.provider,
-            systemInstructionText: synthesisInstruction(),
-          }),
-        ),
-        headers: providerHeaders(provider),
-        method: "POST",
-      });
+      let response: Response;
 
-      const responseBody = (await response.json()) as unknown;
+      try {
+        response = await fetchProviderResponse({
+          fetchImplementation,
+          init: {
+            body: JSON.stringify(
+              providerRequestBody({
+                inputText: synthesisInput(input),
+                model: provider.model,
+                provider: provider.provider,
+                systemInstructionText: synthesisInstruction(),
+              }),
+            ),
+            headers: providerHeaders(provider),
+            method: "POST",
+          },
+          provider: provider.provider,
+          timeoutMs,
+          url: provider.endpoint,
+        });
+      } catch (error) {
+        return {
+          error: {
+            code: "MODEL_REQUEST_FAILED",
+            message: requestErrorMessage(error, provider.provider),
+            provider: provider.provider,
+            source: provider.source,
+          },
+          success: false,
+        };
+      }
+
+      let responseBody: unknown;
+
+      try {
+        responseBody = (await response.json()) as unknown;
+      } catch (error) {
+        return {
+          error: {
+            code: "MODEL_REQUEST_FAILED",
+            message: requestErrorMessage(error, provider.provider),
+            provider: provider.provider,
+            source: provider.source,
+          },
+          success: false,
+        };
+      }
 
       if (!response.ok) {
         return {

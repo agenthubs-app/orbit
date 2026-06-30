@@ -4,9 +4,10 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 import type { OrbitAgentArtifactPayload } from "./artifact-contract";
 
-export const ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE =
-  "fixture:features/orbit-ai/mock-conversation-service.ts" as const;
-
+// Conversation contract 是 Chat Agent 的对外数据协议。
+// API route、UI 组件、mock service 和 live service 都必须通过这里的类型交互。
+// 这些是 feature 内部错误码；route 会再映射到 shared AppErrorCode。
+// 保留旧 Gemini 错误码是为了兼容已有测试和调用方。
 export const ORBIT_AGENT_CONVERSATION_ERROR_CODES = [
   "ORBIT_AGENT_MESSAGE_REQUIRED",
   "ORBIT_AGENT_CONVERSATION_NOT_FOUND",
@@ -66,6 +67,9 @@ export interface OrbitAgentProposedToolIntent {
   requiresUserConfirmation: boolean;
 }
 
+// safety ledger 是每次 conversation payload 的安全审计摘要。
+// 当前实现允许模型 provider 请求和 mock artifact 生成；
+// 真实数据库写入、邮件/日历/通知和外部副作用必须显式保持 false。
 export interface OrbitAgentSafetyLedger {
   externalSideEffectsExecuted: false;
   domainToolCallsExecuted: boolean;
@@ -78,23 +82,10 @@ export interface OrbitAgentSafetyLedger {
   notificationDelivered: false;
 }
 
+// provenance 让 UI 和测试知道回复来源。
+// 具体 source 字符串由 mock/live/provider 实现提供，contract 不携带 fixture 来源。
 export interface OrbitAgentConversationProvenance {
-  source:
-    | typeof ORBIT_AGENT_CONVERSATION_FIXTURE_SOURCE
-    | "local:orbit-agent-clarification-boundary"
-    | "local:orbit-agent-crisis-boundary"
-    | "local:orbit-agent-multi-intent-boundary"
-    | "local:orbit-agent-permission-boundary"
-    | "local:orbit-agent-professional-advice-boundary"
-    | "local:orbit-agent-privacy-boundary"
-    | "local:orbit-agent-secret-boundary"
-    | "local:orbit-agent-sensitive-share-boundary"
-    | "local:orbit-agent-state-change-boundary"
-    | "local:orbit-agent-unsupported-realtime-boundary"
-    | "local:orbit-agent-untrusted-content-boundary"
-    | "provider:deepseek-chat-completions-api"
-    | "provider:gemini-interactions-api"
-    | "provider:openai-responses-api";
+  source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
@@ -118,6 +109,22 @@ export interface OrbitAgentConversationSummary {
   evidenceIds: readonly string[];
 }
 
+export interface OrbitAgentConversationTimingSpan {
+  phase: string;
+  durationMs: number;
+  skipped?: boolean;
+}
+
+export interface OrbitAgentConversationDiagnostics {
+  maxLoopSteps: number;
+  model?: string;
+  provider?: string;
+  timings: readonly OrbitAgentConversationTimingSpan[];
+}
+
+// ConversationPayload 是 UI 渲染 Chat Agent 的完整数据包：
+// messages 渲染对话气泡，artifacts 渲染右侧/内联结果面板，
+// proposedToolIntents 告诉用户哪些动作只是计划，nextAction 给出下一步提示。
 export interface OrbitAgentConversationPayload {
   state: OrbitAgentConversationState;
   conversations: readonly OrbitAgentConversationSummary[];
@@ -128,6 +135,7 @@ export interface OrbitAgentConversationPayload {
   proposedToolIntents: readonly OrbitAgentProposedToolIntent[];
   provenance: OrbitAgentConversationProvenance;
   nextAction: string;
+  diagnostics?: OrbitAgentConversationDiagnostics;
 }
 
 export interface OrbitAgentConversationSuccess {
@@ -152,6 +160,8 @@ export type OrbitAgentConversationMaybePromise<TValue> =
   | TValue
   | Promise<TValue>;
 
+// 所有 conversation service 都实现同一接口。
+// mock 可以同步返回，live 可以异步调用 provider，所以返回值允许 Promise。
 export interface OrbitAgentConversationService {
   listConversations: (
     input?: OrbitAgentConversationInput,
@@ -257,12 +267,14 @@ export const ORBIT_AGENT_CONVERSATION_ERROR_DEFINITIONS = {
   OrbitAgentConversationErrorDefinition
 >;
 
+// route 层只理解 AppError；这里负责把 feature 失败转换成共享错误模型。
 export function orbitAgentConversationFailureToAppError(
   result: OrbitAgentConversationFailure,
 ): AppError {
   return new AppError(result.error.appCode, result.error.message);
 }
 
+// 错误 context 会返回给前端和测试，帮助定位当前 mode、隐私边界和恢复建议。
 export function orbitAgentConversationFailureContext(
   result: OrbitAgentConversationFailure,
   mode: FeatureMode,
