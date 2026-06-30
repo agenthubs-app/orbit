@@ -2,22 +2,77 @@
 
 ## 模块定位
 
-Orbit AI 是面向用户的 AI command center 编排层，负责把聊天输入映射到联系人、事件、任务、dashboard 和 agent 面板。
+Orbit AI 是面向用户的 AI command center 和 chat agent 编排层。它把自然语言输入映射到联系人、活动、跟进、聊天上下文、dashboard 和 agent action，但不拥有这些模块的数据。
+
+模块的职责是选择和组合 Orbit 内部能力；真实业务事实仍来自对应 feature module 的 contract、service factory 和测试。
+
+## 三个 Capability
+
+当前代码把 Orbit AI 拆成三个服务：
+
+- `OrbitAiCommandService`：旧 command center 能力，用于首页输入和功能面板跳转。
+- `OrbitAgentConversationService`：产品 chat agent 能力；mock 模式返回 fixture，live 模式进入 provider planner + 内部 artifact 编排链。
+- `OrbitAgentArtifactTaskService`：生成可复核 artifact，例如活动推荐、人脉推荐、跟进队列或关系聊天上下文。
+
+入口都在 `repos/orbits/features/orbit-ai/service-factory.ts`：
+
+- `createOrbitAiCommandService()`
+- `createOrbitAgentConversationService()`
+- `createOrbitAgentArtifactTaskService()`
+
+调用方必须走这些 factory，不直接导入 mock、live provider 或 fixture。
 
 ## 期望行为
 
-模块应读取核心业务服务的摘要，返回中文优先的 AI 响应、建议动作和可打开的功能面板。它不应绕过各业务模块的 service factory。
+Orbit AI 应返回中文优先的 assistant reply、建议动作、可打开面板和可复核 artifact。它可以建议下一步，但不能绕过业务模块直接写联系人、发邮件、创建日历、投递通知或修改 live storage。
 
-当 Orbit AI 嵌入 `/app/chat` 时，自然语言输入先进入普通 conversation。只有意图路由判断需要联系人、活动、跟进或关系聊天上下文时，才创建 artifact task。artifact 可以带 `preferredSurface`、generated view、证据、工具调用记录和安全账本；页面只能通过 route view model 渲染这些结果，不能直接消费 raw artifact payload。
+当 Orbit AI 嵌入 `/app/chat` 或 `/app/agent` 时，自然语言输入先进入 conversation。只有 planner 或本地意图判断需要联系人、活动、跟进或关系聊天上下文时，才创建 artifact task。
+
+artifact 可以带：
+
+- `preferredSurface`
+- generated view
+- evidence ids
+- source modules
+- tool call trace
+- artifact producer
+- safety ledger
+
+页面只能通过 route view model 渲染这些结果，不能直接消费 raw artifact payload。
 
 ## Mock 行为
 
-Mock 服务用本地规则和核心模块 factory 组合响应，不调用真实模型、网络、数据库、邮件、日历或通知服务。
+Mock 服务使用本地规则、fixture 和核心模块 factory 组合响应。它不调用真实模型、外部网络、数据库、邮件、日历、通知服务或设备 API。
 
 Mock conversation service 接受自由文本，不要求每句话都绑定工具。Mock artifact task service 只生成可查看的本地推荐或上下文结果，不执行报名、发信、日历、通知、资料写入或数据库写入。
 
+## Live 行为
+
+Live conversation 由 `features/orbit-ai/live-agent-runtime.ts` 拥有执行链：
+
+1. 本地 guardrail。
+2. provider planner。
+3. 工具白名单和 artifact kind 映射。
+4. artifact task service。
+5. 可选 provider synthesis。
+6. 最终 conversation payload。
+
+产品 API、full-chain trace 和 planner-only 兼容入口都应调用同一个 runtime：
+
+- `/api/ai/conversations`：产品 conversation API。
+- `/api/dev/orbit-ai/trace`：完整开发 trace。
+- `/api/dev/orbit-agent/trace`：旧 planner-only 诊断 API，固定 `maxLoopSteps=1`。
+
 ## 热拔插边界
 
-调用方必须通过 `features/orbit-ai/service-factory.ts` 获取 `OrbitAiCommandService`、`OrbitAgentConversationService` 和 `OrbitAgentArtifactTaskService`。未来可替换为真实 LLM 编排器、多步 artifact producer 或 live provider，但仍需要通过各业务模块 factory 获取能力。
+Live provider、artifact producer 和 matching method 都可以替换，但替换点必须停在 service factory、runtime、artifact service 或工具 registry。页面不应该知道当前 planner 是哪个 provider，也不应该依赖某个具体 artifact producer 的内部实现。
 
-产品页面不能直接导入 Orbit AI mock、live provider 或 raw contract 作为 presenter props。页面应在本路由的 `*-route-view-model.ts` 中调用 service factory，并把 conversation turn、tool intent、artifact surface 和 provenance 映射成页面自有 view model。
+当前 artifact producer 名称由 `ORBIT_AGENT_ARTIFACT_PRODUCERS` 定义。新增 producer 后，trace payload 必须在 `runtimeSnapshot.artifactProducers`、timeline 和源码面板里展示它；未知 renderer 也不能丢数据。
+
+## 阅读代码顺序
+
+1. `features/orbit-ai/service-factory.ts`：先确认调用方能拿到哪些服务。
+2. `features/orbit-ai/artifact-contract.ts` 和 `conversation-contract.ts`：确认 payload、safety 和 provenance 字段。
+3. `features/orbit-ai/live-agent-runtime.ts`：确认 live conversation 的真实执行顺序。
+4. `features/orbit-ai/live-conversation-trace.ts` 和 `trace-contract.ts`：确认 trace 页面暴露了哪些 runtime 事实。
+5. `features/orbit-ai/DESIGN.md`：阅读更完整的 feature 设计和协作规则。

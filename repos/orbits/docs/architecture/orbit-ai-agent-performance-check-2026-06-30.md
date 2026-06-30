@@ -11,6 +11,17 @@ There are two separate slow surfaces:
 1. Message response latency is dominated by external model provider round trips.
 2. Page startup/hydration is heavy because `/app/agent` SSRs a large inline reference style block extracted from the old prototype HTML.
 
+## How To Read This Record
+
+This file is a dated performance audit, not a live dashboard. Treat the measurements as evidence from the 2026-06-30 local environment. The implemented changes below describe code that landed after the audit; any new latency claim must be measured again against the current provider, model, environment variables, and browser session.
+
+For current code, start with:
+
+- `app/api/ai/conversations/route.ts` for route-level timing headers.
+- `features/orbit-ai/live-agent-runtime.ts` for planner, artifact generation, synthesis, and diagnostics timings.
+- `features/orbit-ai/artifact-task-preview-service.ts` and `features/orbit-ai/contact-recommendation-artifact-service.ts` for generated artifact payload return paths.
+- `app/(app)/app/orbit-reference-styles.tsx` and `app/api/orbit-reference/styles/route.ts` for reference CSS delivery and cache validation.
+
 ## Implemented Changes
 
 Implemented on 2026-06-30:

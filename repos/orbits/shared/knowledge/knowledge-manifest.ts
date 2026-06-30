@@ -2,7 +2,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
   "schemaVersion": 1,
   "generatedOn": "2026-06-30",
   "titleZh": "Orbit 知识库",
-  "summaryZh": "这是 Orbit 项目的结构化知识入口。理解项目时，先读这里，再进入文档库、主题知识页、开发历史和排障经验，最后再阅读代码。",
+  "summaryZh": "这是 Orbit 项目的结构化知识入口。理解项目时，先读这里，再进入主题知识页和文档库，最后回到代码与测试确认真实行为。",
   "documents": [
     {
       "id": "chat-agent-quality-loop-plan",
@@ -175,8 +175,8 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "orbit-ai-performance-check",
       "titleZh": "Orbit AI 性能检查",
-      "summaryZh": "记录 2026-06-30 Orbit AI Agent 性能检查，作为优化历史和风险背景。",
-      "reviewEvidenceZh": "已标记为历史性能记录；当前性能和交互状态应以后续 trace/debug 页面、app tests 和新的性能记录为准。",
+      "summaryZh": "2026-06-30 的 Orbit AI 性能审计和已落地优化记录：provider latency、loop steps、Server-Timing、外置 reference CSS、ETag 和重复 JSON clone 移除。",
+      "reviewEvidenceZh": "已核对本记录对应的优化已在 route、live runtime、artifact producer 和 OrbitReferenceStyles 相关代码中落地；它仍是历史快照，新的性能判断要重新测量。",
       "sourcePath": "repos/orbits/docs/architecture/orbit-ai-agent-performance-check-2026-06-30.md",
       "localizedSourcePath": "knowledge/docs/zh/orbit-ai-performance-check.zh.md",
       "category": "architecture",
@@ -187,7 +187,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-account",
       "titleZh": "account 模块架构",
-      "summaryZh": "说明 account 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 account 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/account/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/account.md",
       "localizedSourcePath": "knowledge/docs/zh/module-account.zh.md",
@@ -199,7 +199,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-acquisition",
       "titleZh": "acquisition 模块架构",
-      "summaryZh": "说明 acquisition 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 acquisition 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/acquisition/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/acquisition.md",
       "localizedSourcePath": "knowledge/docs/zh/module-acquisition.zh.md",
@@ -211,7 +211,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-agent",
       "titleZh": "agent 模块架构",
-      "summaryZh": "说明 agent 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 agent 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/agent/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/agent.md",
       "localizedSourcePath": "knowledge/docs/zh/module-agent.zh.md",
@@ -223,7 +223,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-ai-provider",
       "titleZh": "ai-provider 模块架构",
-      "summaryZh": "说明 ai-provider 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 ai-provider 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/shared/ai/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/ai-provider.md",
       "localizedSourcePath": "knowledge/docs/zh/module-ai-provider.zh.md",
@@ -235,7 +235,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-analysis",
       "titleZh": "analysis 模块架构",
-      "summaryZh": "说明 analysis 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 analysis 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/analysis/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/analysis.md",
       "localizedSourcePath": "knowledge/docs/zh/module-analysis.zh.md",
@@ -247,7 +247,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-audit",
       "titleZh": "audit 模块架构",
-      "summaryZh": "说明 audit 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 audit 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/audit/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/audit.md",
       "localizedSourcePath": "knowledge/docs/zh/module-audit.zh.md",
@@ -259,7 +259,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-bootstrap",
       "titleZh": "bootstrap 模块架构",
-      "summaryZh": "说明 bootstrap 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 bootstrap 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/bootstrap/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/bootstrap.md",
       "localizedSourcePath": "knowledge/docs/zh/module-bootstrap.zh.md",
@@ -271,7 +271,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-chat",
       "titleZh": "chat 模块架构",
-      "summaryZh": "说明 chat 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 chat 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/chat/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/chat.md",
       "localizedSourcePath": "knowledge/docs/zh/module-chat.zh.md",
@@ -283,7 +283,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-connections",
       "titleZh": "connections 模块架构",
-      "summaryZh": "说明 connections 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 connections 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/connections/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/connections.md",
       "localizedSourcePath": "knowledge/docs/zh/module-connections.zh.md",
@@ -295,7 +295,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-contacts",
       "titleZh": "contacts 模块架构",
-      "summaryZh": "说明 contacts 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 contacts 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/contacts/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/contacts.md",
       "localizedSourcePath": "knowledge/docs/zh/module-contacts.zh.md",
@@ -307,7 +307,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-dashboard",
       "titleZh": "dashboard 模块架构",
-      "summaryZh": "说明 dashboard 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 dashboard 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/dashboard/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/dashboard.md",
       "localizedSourcePath": "knowledge/docs/zh/module-dashboard.zh.md",
@@ -319,7 +319,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-events",
       "titleZh": "events 模块架构",
-      "summaryZh": "说明 events 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 events 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/events/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/events.md",
       "localizedSourcePath": "knowledge/docs/zh/module-events.zh.md",
@@ -331,7 +331,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-followups",
       "titleZh": "followups 模块架构",
-      "summaryZh": "说明 followups 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 followups 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/followups/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/followups.md",
       "localizedSourcePath": "knowledge/docs/zh/module-followups.zh.md",
@@ -343,7 +343,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-notifications",
       "titleZh": "notifications 模块架构",
-      "summaryZh": "说明 notifications 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 notifications 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/notifications/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/notifications.md",
       "localizedSourcePath": "knowledge/docs/zh/module-notifications.zh.md",
@@ -355,8 +355,8 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-orbit-ai",
       "titleZh": "orbit-ai 模块架构",
-      "summaryZh": "说明 orbit-ai 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
-      "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/orbit-ai/service-factory.ts。",
+      "summaryZh": "说明 Orbit AI command、conversation、artifact task 三个 capability 的职责差异，以及产品 chat、dev trace 和 planner-only 诊断共用 live runtime 的边界。",
+      "reviewEvidenceZh": "已核对 service-factory 暴露 command/conversation/artifact-task 三个服务；live-agent-runtime、live-conversation-trace 和 trace-contract 共同描述当前执行链与调试数据。",
       "sourcePath": "repos/orbits/docs/architecture/modules/orbit-ai.md",
       "localizedSourcePath": "knowledge/docs/zh/module-orbit-ai.zh.md",
       "category": "module-architecture",
@@ -367,7 +367,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-permissions",
       "titleZh": "permissions 模块架构",
-      "summaryZh": "说明 permissions 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 permissions 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/permissions/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/permissions.md",
       "localizedSourcePath": "knowledge/docs/zh/module-permissions.zh.md",
@@ -379,7 +379,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-profile",
       "titleZh": "profile 模块架构",
-      "summaryZh": "说明 profile 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 profile 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/profile/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/profile.md",
       "localizedSourcePath": "knowledge/docs/zh/module-profile.zh.md",
@@ -391,7 +391,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-recommendations",
       "titleZh": "recommendations 模块架构",
-      "summaryZh": "说明 recommendations 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 recommendations 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/recommendations/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/recommendations.md",
       "localizedSourcePath": "knowledge/docs/zh/module-recommendations.zh.md",
@@ -403,7 +403,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "module-search",
       "titleZh": "search 模块架构",
-      "summaryZh": "说明 search 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。",
+      "summaryZh": "说明 search 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/search/service-factory.ts。",
       "sourcePath": "repos/orbits/docs/architecture/modules/search.md",
       "localizedSourcePath": "knowledge/docs/zh/module-search.zh.md",
@@ -571,8 +571,8 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "feature-orbit-ai-design",
       "titleZh": "orbit-ai Feature 设计",
-      "summaryZh": "记录 Orbit AI 的 live runtime、planner 工具白名单、人脉推荐方法选择和产品/trace 共用执行链边界。",
-      "reviewEvidenceZh": "已核对 live-agent-runtime、live-conversation-service、live-conversation-trace、contact-recommendation artifact service 和相关 capability tests；产品 chat、full-chain trace、planner-only trace 共用同一 runtime。",
+      "summaryZh": "Orbit AI 的当前权威设计入口：解释 command center、live conversation、artifact producer、planner 工具白名单、人脉推荐方法和产品/trace 共用执行链。",
+      "reviewEvidenceZh": "已核对 artifact-contract、service-factory、live-agent-runtime、live-conversation-service、live-conversation-trace、contact-recommendation artifact service 和相关 capability tests；产品 chat、full-chain trace、planner-only trace 共用同一 runtime。",
       "sourcePath": "repos/orbits/features/orbit-ai/DESIGN.md",
       "localizedSourcePath": "knowledge/docs/zh/feature-orbit-ai-design.zh.md",
       "category": "feature-design",
@@ -823,8 +823,8 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     {
       "id": "trace-debug-design",
       "titleZh": "Orbit AI Trace Debug 设计",
-      "summaryZh": "设计 /dev/orbit-ai/trace 调试页面，并记录 full-chain trace、planner-only 兼容入口、共享 runtime 和 contacts.recommend 人脉推荐方法。",
-      "reviewEvidenceZh": "已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。",
+      "summaryZh": "说明 /dev/orbit-ai/trace 如何展示 full-chain trace、planner-only 对比、runtimeSnapshot、artifact producers、tool calls、数据来源和安全边界。",
+      "reviewEvidenceZh": "已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；trace-contract 暴露 artifactProducers，contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。",
       "sourcePath": "repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.zh.md",
       "localizedSourcePath": "knowledge/docs/zh/trace-debug-design.zh.md",
       "category": "sprint-spec",
@@ -1786,7 +1786,7 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "id": "agent-system",
       "titleZh": "Agent 系统",
       "path": "knowledge/wiki/agent-system.zh.md",
-      "summaryZh": "Orbit Agent 由两个相关但不同的层组成：产品内的 Orbit AI / Agent 功能，以及根 harness 的多 agent 生成流程。"
+      "summaryZh": "Orbit Agent 由两个相关但不同的层组成：产品内的 Orbit AI / Agent 功能，以及根 harness 的多 agent 生成流程。本页只做阅读导航；具体字段和执行顺序以代码、contract 和测试为准。"
     },
     {
       "id": "data-and-mockdata",

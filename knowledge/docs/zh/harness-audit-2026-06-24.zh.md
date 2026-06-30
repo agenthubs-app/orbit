@@ -1,6 +1,6 @@
 # Harness 审计 2026-06-24
 
-本页是 Orbit Wiki 的中文阅读版。它保留原始文档的路径、代码块、命令和接口标识，用中文说明阅读目的、审计依据和结构入口。
+本页是 Orbit Wiki 的中文阅读版，也是中文阅读入口。它不是新的权威副本；权威内容仍以原始来源、关联代码和测试为准。
 
 ## 页面元信息
 
@@ -13,6 +13,14 @@
 | 新鲜度 | `likely-current` |
 | 负责人域 | `harness` |
 
+## 怎么读
+
+这页主要提供历史背景。不要把它当成当前实现说明，当前行为应回到相关代码路径、主题知识页和更新后的设计文档确认。
+
+已登记来源和关联代码，但后续改动仍需要重新核对。
+
+下方“结构化阅读入口”按原文标题列出阅读顺序。
+
 ## 中文摘要
 
 记录长跑 harness 的早期审计结果、风险和修正方向，是理解 harness 演进的历史证据。
@@ -24,39 +32,39 @@
 ## 结构化阅读入口
 
 - 第 1 节：Orbit Harness 审计 2026 06 24
-- 第 2 节：源文档第 2 个标题
-- 第 3 节：源文档第 3 个标题
+- 第 2 节：源标题：Scope
+- 第 3 节：源标题：Evidence Reviewed
 - 第 4 节：当前 验证 Result
-- 第 5 节：源文档第 5 个标题
-- 第 6 节：源文档第 6 个标题
-- 第 7 节：源文档第 7 个标题
+- 第 5 节：源标题：Remediation Status
+- 第 6 节：源标题：Confirmed Assumptions
+- 第 7 节：源标题：A1 Claude roles intentionally use the MiniMax compatible Provider
 - 第 8 节：P0 问题
-- 第 9 节：P0 1 run Sprint can bypass a real 规划器 output
-- 第 10 节：源文档第 10 个标题
-- 第 11 节：源文档第 11 个标题
-- 第 12 节：源文档第 12 个标题
+- 第 9 节：P0 1 run Sprint 会 bypass a real 规划器 output
+- 第 10 节：P0 2 App git sync was not 已实现
+- 第 11 节：源标题：P0 3 Git evidence ignores untracked files
+- 第 12 节：源标题：P0 4 Evidence collection was too weak for the prompts
 - 第 13 节：P1 问题
-- 第 14 节：源文档第 14 个标题
-- 第 15 节：P1 2 契约 review is configured but not implemented
-- 第 16 节：P1 3 Protected path enforcement is 提示词 based
-- 第 17 节：源文档第 17 个标题
-- 第 18 节：源文档第 18 个标题
-- 第 19 节：源文档第 19 个标题
-- 第 20 节：P1 7 Agent and loop config 错误 were not validated before 运行时
-- 第 21 节：源文档第 21 个标题
-- 第 22 节：源文档第 22 个标题
-- 第 23 节：P1 10 Reviewer artifact 边界 allowed supplemental files despite evidence only prompts
+- 第 14 节：P1 1 Strategic 循环 is currently a retry 循环
+- 第 15 节：P1 2 契约 review is configured but not 已实现
+- 第 16 节：P1 3 Protected 路径 enforcement is 提示词 based
+- 第 17 节：P1 4 Retention policy is declared but not 已实现
+- 第 18 节：源标题：P1 5 Codex config fields are partly decorative
+- 第 19 节：源标题：P1 6 Configured Agent runtimes are not checked before long runs
+- 第 20 节：P1 7 Agent 和 循环 config 错误 were not validated before 运行时
+- 第 21 节：源标题：P1 8 JSON output parsing was brittle when agents emitted diagnostics
+- 第 22 节：P1 9 Config typo 处理 was too permissive
+- 第 23 节：P1 10 Reviewer Artifact 边界 allowed supplemental files despite evidence only prompts
 - 第 24 节：P2 问题
-- 第 25 节：源文档第 25 个标题
-- 第 26 节：P2 2 设计 path constant was stale
-- 第 27 节：P2 3 Bootstrap 状态 looked like 规划器 output
+- 第 25 节：源标题：P2 1 Log root configurability was incomplete
+- 第 26 节：P2 2 设计 路径 constant was stale
+- 第 27 节：P2 3 Bootstrap 状态 looked 像 规划器 output
 - 第 28 节：提示词 设计 Assessment
-- 第 29 节：Loop 设计 Assessment
-- 第 30 节：源文档第 30 个标题
-- 第 31 节：源文档第 31 个标题
+- 第 29 节：循环 设计 Assessment
+- 第 30 节：路径 和 Artifact Assessment
+- 第 31 节：源标题：GitHub Sync Assessment
 - 第 32 节：实现 Status
-- 第 33 节：源文档第 33 个标题
-- 第 34 节：源文档第 34 个标题
+- 第 33 节：源标题：Items Requiring User Confirmation
+- 第 34 节：源标题：Final Readiness Rating
 
 ## 保留的代码与命令证据
 
@@ -157,4 +165,4 @@ Path isolation by enforcement: implemented for workspace roots, app-root boundar
 
 ## 源文档正文
 
-该源文档主体不是中文。当前中文阅读版先保留中文摘要、审计依据、结构化入口和代码证据，不把英文原文混入默认阅读正文。
+源文档正文主要不是中文。中文镜像不直接机翻全文，避免生成一份看似同步、实际难以审计的副本；阅读时先看本页摘要、审计依据、标题入口和代码证据。需要逐段核对时，请打开上方原始来源。

@@ -4,6 +4,19 @@
 状态：已实现；2026-06-30 补充共享 runtime 和人脉匹配方法说明
 选定方案：完整链路 debug 视图，并展示 planner-only 对比
 
+## 怎么读
+
+这份文档现在同时承担两件事：保留 Trace Debug 页的设计背景，并记录当前实现必须遵守的 runtime 边界。读当前代码时，先看“当前状态”和“Trace Contract”；读历史取舍时，再看后面的页面设计、测试策略和不做范围。
+
+当前权威代码路径是：
+
+- `features/orbit-ai/live-agent-runtime.ts`：产品 chat、full-chain trace 和 planner-only 诊断共用的执行链。
+- `features/orbit-ai/live-conversation-trace.ts`：把 runtime 结果转换成 trace payload。
+- `features/orbit-ai/trace-contract.ts`：trace payload、runtimeSnapshot、artifact producers、tools、render hints 和 graph 的契约。
+- `app/api/dev/orbit-ai/trace/route.ts`：full-chain trace API。
+- `app/api/dev/orbit-agent/trace/route.ts`：旧 planner-only API 的兼容入口。
+- `app/dev/orbit-ai/trace/orbit-ai-trace-debugger.tsx`：debug UI。
+
 ## 目标
 
 做一个只在开发环境可用的 Orbit AI 可视化 debug 页面。页面接收一段用户输入，然后展示这次请求背后的处理链路。
@@ -126,7 +139,7 @@ Stage status 固定为：
 
 检测规则：
 
-- 新 artifact producer 或新 tool 只要进入 trace payload，就必须出现在 `runtimeSnapshot`、`toolCalls` 和相关 stage 里。
+- 新 artifact producer 或新 tool 只要进入 trace payload，就必须出现在 `runtimeSnapshot`、`toolCalls`、graph 和相关 stage 里。
 - 如果新 tool 使用已有 `renderHint`，页面不需要改代码，直接用现有 renderer 展示。
 - 如果新 tool 没有专属 renderer，页面必须显示 `unknown tool` 或 `unregistered renderer` badge，同时保留完整 metadata、sourceModules、toolCalls、evidenceIds 和折叠源码。
 - 如果新增的是全新 agent phase，比如 planner 之前多了 retrieval 或 memory phase，trace runner 可以增加新的 stage；页面 timeline 按返回顺序渲染，不依赖硬编码顺序。已有八个 stage 仍作为 baseline，不作为上限。

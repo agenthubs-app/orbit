@@ -198,7 +198,14 @@ const moduleDocs = [
   doc({
     id: `module-${moduleId}`,
     titleZh: `${moduleId} 模块架构`,
-    summaryZh: `说明 ${moduleId} 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。`,
+    summaryZh:
+      moduleId === "orbit-ai"
+        ? "说明 Orbit AI command、conversation、artifact task 三个 capability 的职责差异，以及产品 chat、dev trace 和 planner-only 诊断共用 live runtime 的边界。"
+        : `说明 ${moduleId} 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。`,
+    reviewEvidenceZh:
+      moduleId === "orbit-ai"
+        ? "已核对 service-factory 暴露 command/conversation/artifact-task 三个服务；live-agent-runtime、live-conversation-trace 和 trace-contract 共同描述当前执行链与调试数据。"
+        : undefined,
     sourcePath: `repos/orbits/docs/architecture/modules/${moduleId}.md`,
     category: "module-architecture",
     freshness: "verified-current",
@@ -206,6 +213,13 @@ const moduleDocs = [
     relatedCodePaths:
       moduleId === "ai-provider"
         ? ["repos/orbits/shared/ai/service-factory.ts"]
+        : moduleId === "orbit-ai"
+          ? [
+              "repos/orbits/features/orbit-ai/service-factory.ts",
+              "repos/orbits/features/orbit-ai/live-agent-runtime.ts",
+              "repos/orbits/features/orbit-ai/live-conversation-trace.ts",
+              "repos/orbits/features/orbit-ai/trace-contract.ts",
+            ]
         : [`repos/orbits/features/${moduleId}/service-factory.ts`],
     relatedKnowledgePages: ["knowledge/wiki/modules.zh.md"],
   }),
@@ -236,11 +250,11 @@ const featureDesignDocs = [
     titleZh: `${moduleId} Feature 设计`,
     summaryZh:
       moduleId === "orbit-ai"
-        ? "记录 Orbit AI 的 live runtime、planner 工具白名单、人脉推荐方法选择和产品/trace 共用执行链边界。"
+        ? "Orbit AI 的当前权威设计入口：解释 command center、live conversation、artifact producer、planner 工具白名单、人脉推荐方法和产品/trace 共用执行链。"
         : `记录 ${moduleId} feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。`,
     reviewEvidenceZh:
       moduleId === "orbit-ai"
-        ? "已核对 live-agent-runtime、live-conversation-service、live-conversation-trace、contact-recommendation artifact service 和相关 capability tests；产品 chat、full-chain trace、planner-only trace 共用同一 runtime。"
+        ? "已核对 artifact-contract、service-factory、live-agent-runtime、live-conversation-service、live-conversation-trace、contact-recommendation artifact service 和相关 capability tests；产品 chat、full-chain trace、planner-only trace 共用同一 runtime。"
         : `已核对 repos/orbits/features/${moduleId} 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。`,
     sourcePath: `repos/orbits/features/${moduleId}/DESIGN.md`,
     category: "feature-design",
@@ -249,7 +263,10 @@ const featureDesignDocs = [
     relatedCodePaths:
       moduleId === "orbit-ai"
         ? [
+            "repos/orbits/features/orbit-ai/artifact-contract.ts",
+            "repos/orbits/features/orbit-ai/service-factory.ts",
             "repos/orbits/features/orbit-ai/live-agent-runtime.ts",
+            "repos/orbits/features/orbit-ai/live-conversation-trace.ts",
             "repos/orbits/features/orbit-ai/contact-recommendation-artifact-service.ts",
             "repos/orbits/features/orbit-ai/contact-recommendation-matching.ts",
           ]
@@ -472,9 +489,9 @@ const documents = [
   doc({
     id: "orbit-ai-performance-check",
     titleZh: "Orbit AI 性能检查",
-    summaryZh: "记录 2026-06-30 Orbit AI Agent 性能检查，作为优化历史和风险背景。",
+    summaryZh: "2026-06-30 的 Orbit AI 性能审计和已落地优化记录：provider latency、loop steps、Server-Timing、外置 reference CSS、ETag 和重复 JSON clone 移除。",
     reviewEvidenceZh:
-      "已标记为历史性能记录；当前性能和交互状态应以后续 trace/debug 页面、app tests 和新的性能记录为准。",
+      "已核对本记录对应的优化已在 route、live runtime、artifact producer 和 OrbitReferenceStyles 相关代码中落地；它仍是历史快照，新的性能判断要重新测量。",
     sourcePath: "repos/orbits/docs/architecture/orbit-ai-agent-performance-check-2026-06-30.md",
     category: "architecture",
     status: "historical",
@@ -683,9 +700,9 @@ const documents = [
   doc({
     id: "trace-debug-design",
     titleZh: "Orbit AI Trace Debug 设计",
-    summaryZh: "设计 /dev/orbit-ai/trace 调试页面，并记录 full-chain trace、planner-only 兼容入口、共享 runtime 和 contacts.recommend 人脉推荐方法。",
+    summaryZh: "说明 /dev/orbit-ai/trace 如何展示 full-chain trace、planner-only 对比、runtimeSnapshot、artifact producers、tool calls、数据来源和安全边界。",
     reviewEvidenceZh:
-      "已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。",
+      "已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；trace-contract 暴露 artifactProducers，contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。",
     sourcePath: "repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.zh.md",
     category: "sprint-spec",
     freshness: "verified-current",
@@ -840,6 +857,8 @@ function renderCatalogMarkdown() {
     "# Orbit 文档库目录",
     "",
     "这是 Orbit 的文档查询入口。每个条目提供中文简介、来源路径、状态、新鲜度和关联知识页。默认不收录 `harness-state/runs/**` 运行快照。",
+    "",
+    "阅读规则：`current` 是当前可用入口；`historical` 和 `superseded` 只能解释背景；`verified-current` 表示最近已和代码或测试核对；`likely-current` 仍需要在改代码前重新确认。",
     "",
     `生成日期：${generatedOn}`,
     "",

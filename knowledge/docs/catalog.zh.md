@@ -2,6 +2,8 @@
 
 这是 Orbit 的文档查询入口。每个条目提供中文简介、来源路径、状态、新鲜度和关联知识页。默认不收录 `harness-state/runs/**` 运行快照。
 
+阅读规则：`current` 是当前可用入口；`historical` 和 `superseded` 只能解释背景；`verified-current` 表示最近已和代码或测试核对；`likely-current` 仍需要在改代码前重新确认。
+
 生成日期：2026-06-30
 
 ## 文档查询入口
@@ -22,8 +24,8 @@
   - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`
 - **Orbit AI 性能检查**（`repos/orbits/docs/architecture/orbit-ai-agent-performance-check-2026-06-30.md`）
   - 中文阅读版：`knowledge/docs/zh/orbit-ai-performance-check.zh.md`
-  - 简介：记录 2026-06-30 Orbit AI Agent 性能检查，作为优化历史和风险背景。
-  - 审计依据：已标记为历史性能记录；当前性能和交互状态应以后续 trace/debug 页面、app tests 和新的性能记录为准。
+  - 简介：2026-06-30 的 Orbit AI 性能审计和已落地优化记录：provider latency、loop steps、Server-Timing、外置 reference CSS、ETag 和重复 JSON clone 移除。
+  - 审计依据：已核对本记录对应的优化已在 route、live runtime、artifact producer 和 OrbitReferenceStyles 相关代码中落地；它仍是历史快照，新的性能判断要重新测量。
   - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/agent-system.zh.md`
 
@@ -124,8 +126,8 @@
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **orbit-ai Feature 设计**（`repos/orbits/features/orbit-ai/DESIGN.md`）
   - 中文阅读版：`knowledge/docs/zh/feature-orbit-ai-design.zh.md`
-  - 简介：记录 Orbit AI 的 live runtime、planner 工具白名单、人脉推荐方法选择和产品/trace 共用执行链边界。
-  - 审计依据：已核对 live-agent-runtime、live-conversation-service、live-conversation-trace、contact-recommendation artifact service 和相关 capability tests；产品 chat、full-chain trace、planner-only trace 共用同一 runtime。
+  - 简介：Orbit AI 的当前权威设计入口：解释 command center、live conversation、artifact producer、planner 工具白名单、人脉推荐方法和产品/trace 共用执行链。
+  - 审计依据：已核对 artifact-contract、service-factory、live-agent-runtime、live-conversation-service、live-conversation-trace、contact-recommendation artifact service 和相关 capability tests；产品 chat、full-chain trace、planner-only trace 共用同一 runtime。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:orbit-ai`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **permissions Feature 设计**（`repos/orbits/features/permissions/DESIGN.md`）
@@ -718,115 +720,115 @@
 
 - **account 模块架构**（`repos/orbits/docs/architecture/modules/account.md`）
   - 中文阅读版：`knowledge/docs/zh/module-account.zh.md`
-  - 简介：说明 account 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 account 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/account/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:account`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **acquisition 模块架构**（`repos/orbits/docs/architecture/modules/acquisition.md`）
   - 中文阅读版：`knowledge/docs/zh/module-acquisition.zh.md`
-  - 简介：说明 acquisition 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 acquisition 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/acquisition/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:acquisition`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **agent 模块架构**（`repos/orbits/docs/architecture/modules/agent.md`）
   - 中文阅读版：`knowledge/docs/zh/module-agent.zh.md`
-  - 简介：说明 agent 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 agent 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/agent/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:agent`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **ai-provider 模块架构**（`repos/orbits/docs/architecture/modules/ai-provider.md`）
   - 中文阅读版：`knowledge/docs/zh/module-ai-provider.zh.md`
-  - 简介：说明 ai-provider 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 ai-provider 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/shared/ai/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:ai-provider`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **analysis 模块架构**（`repos/orbits/docs/architecture/modules/analysis.md`）
   - 中文阅读版：`knowledge/docs/zh/module-analysis.zh.md`
-  - 简介：说明 analysis 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 analysis 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/analysis/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:analysis`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **audit 模块架构**（`repos/orbits/docs/architecture/modules/audit.md`）
   - 中文阅读版：`knowledge/docs/zh/module-audit.zh.md`
-  - 简介：说明 audit 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 audit 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/audit/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:audit`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **bootstrap 模块架构**（`repos/orbits/docs/architecture/modules/bootstrap.md`）
   - 中文阅读版：`knowledge/docs/zh/module-bootstrap.zh.md`
-  - 简介：说明 bootstrap 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 bootstrap 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/bootstrap/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:bootstrap`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **chat 模块架构**（`repos/orbits/docs/architecture/modules/chat.md`）
   - 中文阅读版：`knowledge/docs/zh/module-chat.zh.md`
-  - 简介：说明 chat 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 chat 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/chat/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:chat`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **connections 模块架构**（`repos/orbits/docs/architecture/modules/connections.md`）
   - 中文阅读版：`knowledge/docs/zh/module-connections.zh.md`
-  - 简介：说明 connections 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 connections 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/connections/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:connections`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **contacts 模块架构**（`repos/orbits/docs/architecture/modules/contacts.md`）
   - 中文阅读版：`knowledge/docs/zh/module-contacts.zh.md`
-  - 简介：说明 contacts 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 contacts 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/contacts/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:contacts`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **dashboard 模块架构**（`repos/orbits/docs/architecture/modules/dashboard.md`）
   - 中文阅读版：`knowledge/docs/zh/module-dashboard.zh.md`
-  - 简介：说明 dashboard 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 dashboard 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/dashboard/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:dashboard`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **events 模块架构**（`repos/orbits/docs/architecture/modules/events.md`）
   - 中文阅读版：`knowledge/docs/zh/module-events.zh.md`
-  - 简介：说明 events 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 events 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/events/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:events`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **followups 模块架构**（`repos/orbits/docs/architecture/modules/followups.md`）
   - 中文阅读版：`knowledge/docs/zh/module-followups.zh.md`
-  - 简介：说明 followups 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 followups 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/followups/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:followups`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **notifications 模块架构**（`repos/orbits/docs/architecture/modules/notifications.md`）
   - 中文阅读版：`knowledge/docs/zh/module-notifications.zh.md`
-  - 简介：说明 notifications 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 notifications 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/notifications/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:notifications`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **orbit-ai 模块架构**（`repos/orbits/docs/architecture/modules/orbit-ai.md`）
   - 中文阅读版：`knowledge/docs/zh/module-orbit-ai.zh.md`
-  - 简介：说明 orbit-ai 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
-  - 审计依据：已登记关联代码路径：repos/orbits/features/orbit-ai/service-factory.ts。
+  - 简介：说明 Orbit AI command、conversation、artifact task 三个 capability 的职责差异，以及产品 chat、dev trace 和 planner-only 诊断共用 live runtime 的边界。
+  - 审计依据：已核对 service-factory 暴露 command/conversation/artifact-task 三个服务；live-agent-runtime、live-conversation-trace 和 trace-contract 共同描述当前执行链与调试数据。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:orbit-ai`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **permissions 模块架构**（`repos/orbits/docs/architecture/modules/permissions.md`）
   - 中文阅读版：`knowledge/docs/zh/module-permissions.zh.md`
-  - 简介：说明 permissions 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 permissions 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/permissions/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:permissions`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **profile 模块架构**（`repos/orbits/docs/architecture/modules/profile.md`）
   - 中文阅读版：`knowledge/docs/zh/module-profile.zh.md`
-  - 简介：说明 profile 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 profile 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/profile/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:profile`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **recommendations 模块架构**（`repos/orbits/docs/architecture/modules/recommendations.md`）
   - 中文阅读版：`knowledge/docs/zh/module-recommendations.zh.md`
-  - 简介：说明 recommendations 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 recommendations 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/recommendations/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:recommendations`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **search 模块架构**（`repos/orbits/docs/architecture/modules/search.md`）
   - 中文阅读版：`knowledge/docs/zh/module-search.zh.md`
-  - 简介：说明 search 模块的定位、期望行为、Mock 行为和热拔插边界。字段和状态仍以对应 contract 文件为准。
+  - 简介：说明 search 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/search/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:search`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
@@ -904,8 +906,8 @@
   - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`
 - **Orbit AI Trace Debug 设计**（`repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.zh.md`）
   - 中文阅读版：`knowledge/docs/zh/trace-debug-design.zh.md`
-  - 简介：设计 /dev/orbit-ai/trace 调试页面，并记录 full-chain trace、planner-only 兼容入口、共享 runtime 和 contacts.recommend 人脉推荐方法。
-  - 审计依据：已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。
+  - 简介：说明 /dev/orbit-ai/trace 如何展示 full-chain trace、planner-only 对比、runtimeSnapshot、artifact producers、tool calls、数据来源和安全边界。
+  - 审计依据：已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；trace-contract 暴露 artifactProducers，contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/agent-system.zh.md`
 

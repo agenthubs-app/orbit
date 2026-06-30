@@ -1,6 +1,6 @@
 # Wiki 中文镜像实施计划
 
-本页是 Orbit Wiki 的中文阅读版。它保留原始文档的路径、代码块、命令和接口标识，用中文说明阅读目的、审计依据和结构入口。
+本页是 Orbit Wiki 的中文阅读版，也是中文阅读入口。它不是新的权威副本；权威内容仍以原始来源、关联代码和测试为准。
 
 ## 页面元信息
 
@@ -13,6 +13,14 @@
 | 新鲜度 | `verified-current` |
 | 负责人域 | `knowledge` |
 
+## 怎么读
+
+这页是当前阅读入口。具体字段、函数签名和运行行为仍以原始来源、相关代码路径和测试为准。
+
+已和代码或测试做过明确核对。
+
+下方“结构化阅读入口”按原文标题列出阅读顺序。
+
 ## 中文摘要
 
 定义每个 catalog 文档如何保留原始来源，同时生成中文阅读版供 /dev/knowledge 默认展示。
@@ -24,13 +32,13 @@
 ## 结构化阅读入口
 
 - 第 1 节：知识 Wiki Chinese Mirrors 实现 计划
-- 第 2 节：源文档第 2 个标题
+- 第 2 节：源标题：Global Constraints
 - 第 3 节：任务 1: Lock the Chinese Mirror 契约 in 测试
 - 第 4 节：任务 2: Generate Chinese Mirror Documents
-- 第 5 节：任务 3: Add localizedSourcePath to Catalog and Manifest
-- 第 6 节：任务 4: Render Chinese Mirrors in dev 知识
-- 第 7 节：任务 5: Document and Verify
-- 第 8 节：源文档第 8 个标题
+- 第 5 节：任务 3: Add localizedSourcePath Catalog 和 Manifest
+- 第 6 节：任务 4: 渲染 Chinese Mirrors in dev 知识
+- 第 7 节：任务 5: 文档 和 Verify
+- 第 8 节：源标题：Self Review
 
 ## 保留的代码与命令证据
 

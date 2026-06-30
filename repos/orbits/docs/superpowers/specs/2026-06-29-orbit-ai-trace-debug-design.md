@@ -4,6 +4,27 @@ Date: 2026-06-29
 Status: implemented; updated 2026-06-30 for shared runtime and contact matching
 Chosen approach: full-chain debug view with planner-only comparison
 
+## How To Read This Document
+
+This document now has two jobs: it preserves the original Trace Debug design
+rationale, and it records the runtime boundary the current implementation must
+respect. For current code, read "Current Context" and "Trace Contract" first.
+Use the later page design and test sections for historical implementation
+intent and acceptance criteria.
+
+Current authoritative code paths:
+
+- `features/orbit-ai/live-agent-runtime.ts`: shared execution chain for
+  product chat, full-chain trace, and planner-only diagnostics.
+- `features/orbit-ai/live-conversation-trace.ts`: adapts runtime results into
+  the trace payload.
+- `features/orbit-ai/trace-contract.ts`: contract for trace payload,
+  runtimeSnapshot, artifact producers, tools, render hints, and graph data.
+- `app/api/dev/orbit-ai/trace/route.ts`: full-chain trace API.
+- `app/api/dev/orbit-agent/trace/route.ts`: compatibility entry for the old
+  planner-only API.
+- `app/dev/orbit-ai/trace/orbit-ai-trace-debugger.tsx`: debugger UI.
+
 ## Goal
 
 Build a development-only visual debug page for Orbit AI that accepts a user
@@ -191,8 +212,8 @@ from `runtimeSnapshot` and each stage `renderHint`.
 
 Detection rules:
 
-- New artifact producers or tools must appear in `runtimeSnapshot`, `toolCalls`, and the
-  related stage when they participate in a trace.
+- New artifact producers or tools must appear in `runtimeSnapshot`, `toolCalls`,
+  graph data, and the related stage when they participate in a trace.
 - If a new tool uses an existing `renderHint`, the page should render it with
   the existing renderer without code changes.
 - If a tool has no known renderer, the page should show an `unknown tool` or

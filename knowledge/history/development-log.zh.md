@@ -95,3 +95,12 @@
 - 知识库更新：更新 catalog 生成脚本的 Orbit AI/trace 文档摘要、审计依据和关联代码路径；重新生成 catalog、中文镜像和 app-local knowledge manifest。
 - 架构边界：产品 chat、`/dev/orbit-ai/trace` full-chain trace 和 `/api/dev/orbit-agent/trace` planner-only route 都应复用 `features/orbit-ai/live-agent-runtime.ts`；人脉推荐只使用已有关系证据，不做开放式陌生人发现。
 - 验证方式：运行知识库生成脚本、root catalog tests、app knowledge manifest test 和 Orbit AI targeted capability tests。
+
+## [2026-06-30] maintenance | 文档可读性与代码一致性扫描
+
+- 用户目标：整体扫描代码和文档，确认文档反映真实代码功能，并提升中文文档可读性。
+- 扫描范围：检查 `knowledge/docs` catalog、中文镜像生成脚本、app-local knowledge manifest、知识库主题页，以及 Orbit AI 的 module doc、feature design、trace design、performance audit 和相关 runtime/contract/service factory 代码路径。
+- 发现问题：catalog 和中文镜像有大量模板化说明，读者需要自己判断状态和权威性；Orbit AI 的模块说明没有清楚区分 command、conversation、artifact task 三个 capability；Trace 和 performance 文档没有在开头说明哪些内容是当前实现、哪些是历史审计记录。
+- 修改摘要：更新中文镜像生成结构，加入“怎么读”、状态/新鲜度解释和更清楚的非中文源文档说明；重写 Orbit AI module/feature 文档；补充 trace 英中文设计的当前代码入口；补充 performance audit 的阅读提示；更新知识库首页、Agent 主题页和模块地图。
+- 知识库更新：更新 catalog 中 Orbit AI、trace 和 performance 条目的摘要、审计依据与关联代码路径；重新生成 catalog、中文镜像和 app-local knowledge manifest。
+- 验证方式：运行知识库生成脚本、root knowledge tests、app knowledge tests、app lint、`git diff --check` 和 GitNexus detect changes。
