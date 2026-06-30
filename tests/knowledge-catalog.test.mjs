@@ -44,6 +44,35 @@ test("knowledge document catalog has valid Chinese entries", () => {
       true,
       `${doc.sourcePath} must exist`,
     );
+    assert.equal(
+      typeof doc.localizedSourcePath,
+      "string",
+      `${doc.id} must declare localizedSourcePath`,
+    );
+    assert.match(
+      doc.localizedSourcePath,
+      /^knowledge\/docs\/zh\/.+\.zh\.md$/,
+      `${doc.id} localizedSourcePath must point to knowledge/docs/zh`,
+    );
+    assert.equal(
+      existsSync(join(projectRoot, doc.localizedSourcePath)),
+      true,
+      `${doc.localizedSourcePath} must exist`,
+    );
+    const localizedBody = readFileSync(
+      join(projectRoot, doc.localizedSourcePath),
+      "utf8",
+    );
+    assert.match(
+      localizedBody,
+      /中文阅读版/,
+      `${doc.localizedSourcePath} must identify itself as a Chinese reading page`,
+    );
+    assert.match(
+      localizedBody,
+      new RegExp(doc.sourcePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      `${doc.localizedSourcePath} must preserve the original source path`,
+    );
     assert.doesNotMatch(doc.sourcePath, /^harness-state\/runs\//);
     assert.ok(
       ["current", "historical", "superseded", "needs-review", "generated-evidence"].includes(
@@ -111,4 +140,20 @@ test("Chinese catalog and freshness report are readable entry points", () => {
   assert.match(freshness, /# Orbit 文档新鲜度报告/);
   assert.match(freshness, /需要代码核对（needs-code-check）：0 个文档/);
   assert.match(freshness, /扫描范围内未纳入目录：0 个 Markdown/);
+});
+
+test("Chinese mirrors preserve full Chinese source document bodies", () => {
+  const localizedBody = readFileSync(
+    join(projectRoot, "knowledge/docs/zh/feature-bootstrap-design.zh.md"),
+    "utf8",
+  );
+
+  assert.match(
+    localizedBody,
+    /Bootstrap 负责启动产品工作台时的一次性聚合/,
+  );
+  assert.match(
+    localizedBody,
+    /Bootstrap 团队只负责组合，不负责修其他模块的业务结果/,
+  );
 });

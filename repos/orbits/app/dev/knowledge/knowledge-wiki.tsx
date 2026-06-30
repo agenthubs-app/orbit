@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ORBIT_KNOWLEDGE_MANIFEST } from "../../../shared/knowledge/knowledge-manifest";
 
 const catalogEntryPath = ["knowledge", "docs", "catalog.zh.md"].join("/");
@@ -8,10 +10,10 @@ const allFilter = "all";
 
 type KnowledgeManifest = typeof ORBIT_KNOWLEDGE_MANIFEST;
 type DocumentEntry = KnowledgeManifest["documents"][number];
-type TopicEntry = KnowledgeManifest["topicPages"][number];
 type HistoryEntry = KnowledgeManifest["recentHistory"][number];
 type LearningEntry = KnowledgeManifest["learnings"][number];
-type DocumentContentState =
+type TopicEntry = KnowledgeManifest["topicPages"][number];
+export type DocumentContentState =
   | { status: "idle" }
   | { status: "loading" }
   | {
@@ -32,13 +34,21 @@ type DocumentFreshness =
   | "likely-current"
   | "needs-code-check"
   | "known-stale";
-type WikiPage =
+export type WikiPage =
   | { kind: "main" }
   | { kind: "index" }
   | { kind: "topic"; id: string }
   | { kind: "document"; id: string }
   | { kind: "history"; id: string }
   | { kind: "learning"; id: string };
+type OrbitKnowledgeWikiProps = {
+  initialDocumentContent?: {
+    content: DocumentContentState;
+    documentId: string;
+  };
+  initialCategory?: string;
+  initialPage?: WikiPage;
+};
 
 const categoryLabels: Record<string, string> = {
   architecture: "架构",
@@ -68,6 +78,15 @@ const freshnessLabels: Record<DocumentFreshness, string> = {
   "likely-current": "基本当前",
   "needs-code-check": "需代码核对",
   "known-stale": "已知过期",
+};
+
+const topicDocumentCategories: Record<string, readonly string[]> = {
+  "agent-system": ["feature-design", "harness", "implementation-plan"],
+  architecture: ["architecture", "module-architecture", "technical-design"],
+  "data-and-mockdata": ["architecture", "mockdata", "technical-design"],
+  harness: ["harness", "implementation-plan", "sprint-spec"],
+  modules: ["implementation-handoff", "module-architecture"],
+  "project-overview": ["developer-guide", "product-design", "technical-design"],
 };
 
 function classNames(...names: Array<string | false | undefined>) {
@@ -118,50 +137,40 @@ function matchesQuery(document: DocumentEntry, query: string) {
 
 function readActiveDocument(
   page: WikiPage,
-  selectedDocumentId: string,
-  filteredDocuments: readonly DocumentEntry[],
 ) {
   if (page.kind === "document") {
     return ORBIT_KNOWLEDGE_MANIFEST.documents.find((item) => item.id === page.id);
   }
 
-  return (
-    filteredDocuments.find((item) => item.id === selectedDocumentId) ??
-    filteredDocuments[0] ??
-    ORBIT_KNOWLEDGE_MANIFEST.documents[0]
-  );
+  return undefined;
 }
 
-function articleTitle(page: WikiPage, activeDocument?: DocumentEntry) {
-  if (page.kind === "document" && activeDocument) return activeDocument.titleZh;
-  if (page.kind === "index") return "文档索引";
-  if (page.kind === "topic") {
-    return (
-      ORBIT_KNOWLEDGE_MANIFEST.topicPages.find((topic) => topic.id === page.id)?.titleZh ??
-      "知识主题"
-    );
-  }
-  if (page.kind === "history") return "开发历史";
-  if (page.kind === "learning") return "经验库";
-  return "Orbit Wiki: 项目主页";
+function readTopicPage(page: WikiPage) {
+  return page.kind === "topic"
+    ? ORBIT_KNOWLEDGE_MANIFEST.topicPages.find((item) => item.id === page.id)
+    : undefined;
 }
 
-function articleLead(
-  page: WikiPage,
-  activeDocument?: DocumentEntry,
-  activeTopic?: TopicEntry,
-  activeLearning?: LearningEntry,
+function readHistoryPage(page: WikiPage) {
+  return page.kind === "history"
+    ? ORBIT_KNOWLEDGE_MANIFEST.recentHistory.find((item) => item.id === page.id)
+    : undefined;
+}
+
+function readLearningPage(page: WikiPage) {
+  return page.kind === "learning"
+    ? ORBIT_KNOWLEDGE_MANIFEST.learnings.find((item) => item.id === page.id)
+    : undefined;
+}
+
+function documentsForTopic(
+  topic: TopicEntry,
+  documents: readonly DocumentEntry[],
 ) {
-  if (page.kind === "document" && activeDocument) return activeDocument.summaryZh;
-  if (page.kind === "topic" && activeTopic) return activeTopic.summaryZh;
-  if (page.kind === "learning" && activeLearning) return activeLearning.summaryZh;
-  if (page.kind === "history") {
-    return "这里记录知识库和 Orbit 实现的近期重要变更，按时间倒序查看每次修改为什么发生。";
-  }
-  if (page.kind === "index") {
-    return "这里是 Orbit 文档库的完整索引，可以按标题、路径、分类、状态和审计依据查找文档。";
-  }
-  return ORBIT_KNOWLEDGE_MANIFEST.summaryZh;
+  const categories = topicDocumentCategories[topic.id] ?? [];
+  if (!categories.length) return documents;
+
+  return documents.filter((document) => categories.includes(document.category));
 }
 
 function Badge({
@@ -316,21 +325,23 @@ function WikiStyles() {
         justify-content: end;
       }
 
-      .wiki-page-tabs button {
+      .wiki-page-tabs a {
         background: #f8f9fa;
         border: 1px solid var(--wiki-border-soft);
         border-bottom-color: var(--wiki-border);
         border-radius: 2px 2px 0 0;
         color: var(--wiki-blue-dark);
-        cursor: pointer;
+        display: inline-flex;
         font: inherit;
         font-size: 0.82rem;
+        justify-content: center;
         min-height: 34px;
         min-width: 0;
         padding: 6px 10px;
+        text-decoration: none;
       }
 
-      .wiki-page-tabs button[aria-pressed="true"] {
+      .wiki-page-tabs a[aria-current="page"] {
         background: var(--wiki-paper);
         border-bottom-color: var(--wiki-paper);
         color: var(--wiki-ink);
@@ -407,15 +418,18 @@ function WikiStyles() {
       }
 
       .wiki-nav-button[aria-pressed="true"],
+      .wiki-nav-button[aria-current="page"],
       .wiki-nav-link:focus-visible,
       .wiki-nav-button:focus-visible,
       .wiki-toc-link:focus-visible,
+      .wiki-index-table a:focus-visible,
       .wiki-index-table button:focus-visible {
         outline: 2px solid var(--wiki-blue);
         outline-offset: 1px;
       }
 
-      .wiki-nav-button[aria-pressed="true"] {
+      .wiki-nav-button[aria-pressed="true"],
+      .wiki-nav-button[aria-current="page"] {
         background: #eaecf0;
         color: var(--wiki-ink);
       }
@@ -503,6 +517,46 @@ function WikiStyles() {
         padding-top: 6px;
       }
 
+      .wiki-document-metadata {
+        background: #f8f9fa;
+        border: 1px solid var(--wiki-border-soft);
+        display: grid;
+        gap: 10px;
+        margin: 18px 0 20px;
+        padding: 12px;
+      }
+
+      .wiki-document-metadata h2 {
+        border-bottom: 0;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        font-size: 0.95rem;
+        font-weight: 750;
+        margin: 0;
+        padding: 0;
+      }
+
+      .wiki-document-metadata dl {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+      }
+
+      .wiki-document-metadata div {
+        display: grid;
+        gap: 4px;
+      }
+
+      .wiki-document-metadata dt {
+        color: var(--wiki-muted);
+        font-size: 0.76rem;
+        font-weight: 750;
+      }
+
+      .wiki-document-metadata dd {
+        line-height: 1.55;
+        margin: 0;
+      }
+
       .wiki-document-status {
         background: #f8f9fa;
         border: 1px solid var(--wiki-border-soft);
@@ -519,6 +573,15 @@ function WikiStyles() {
 
       .wiki-document-markdown {
         margin-top: 8px;
+      }
+
+      .wiki-document-markdown h1 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.55rem;
+        font-weight: 500;
+        letter-spacing: 0;
+        line-height: 1.25;
+        margin: 28px 0 12px;
       }
 
       .wiki-document-markdown blockquote {
@@ -558,6 +621,12 @@ function WikiStyles() {
         width: 100%;
       }
 
+      .wiki-document-table-scroll {
+        margin: 12px 0;
+        overflow-x: auto;
+        width: 100%;
+      }
+
       .wiki-document-markdown th,
       .wiki-document-markdown td {
         border: 1px solid var(--wiki-border-soft);
@@ -582,17 +651,22 @@ function WikiStyles() {
         padding: 10px 12px;
       }
 
-      .wiki-portal button {
+      .wiki-portal a {
         background: transparent;
         border: 0;
         color: var(--wiki-blue-dark);
-        cursor: pointer;
+        display: inline-block;
         font: inherit;
         font-weight: 700;
         min-height: 0;
         min-width: 0;
         padding: 0;
         text-align: left;
+        text-decoration: none;
+      }
+
+      .wiki-portal a:hover {
+        text-decoration: underline;
       }
 
       .wiki-search-row {
@@ -651,6 +725,7 @@ function WikiStyles() {
         background: #f8f9fa;
       }
 
+      .wiki-index-table a,
       .wiki-index-table button {
         background: transparent;
         border: 0;
@@ -662,6 +737,11 @@ function WikiStyles() {
         min-width: 0;
         padding: 0;
         text-align: left;
+        text-decoration: none;
+      }
+
+      .wiki-index-table a:hover {
+        text-decoration: underline;
       }
 
       .wiki-badge-row {
@@ -803,82 +883,71 @@ function GlobalNav({
   activePage,
   category,
   categoryCounts,
-  setActivePage,
-  setCategory,
 }: {
   activePage: WikiPage;
   category: string;
   categoryCounts: ReadonlyArray<readonly [string, number]>;
-  setActivePage: (page: WikiPage) => void;
-  setCategory: (category: string) => void;
 }) {
   return (
     <nav className="wiki-global-nav" aria-label="Orbit Wiki navigation">
       <section className="wiki-nav-block">
         <h2 className="wiki-nav-heading">导航</h2>
-        <button
-          aria-pressed={activePage.kind === "main"}
+        <a
+          aria-current={activePage.kind === "main" ? "page" : undefined}
           className="wiki-nav-button"
-          onClick={() => setActivePage({ kind: "main" })}
-          type="button"
+          href={knowledgeHomeHref}
         >
           主页面
-        </button>
-        <button
-          aria-pressed={activePage.kind === "index"}
+        </a>
+        <a
+          aria-current={activePage.kind === "index" ? "page" : undefined}
           className="wiki-nav-button"
-          onClick={() => setActivePage({ kind: "index" })}
-          type="button"
+          href={indexPageHref}
         >
           文档索引
-        </button>
-        <a className="wiki-nav-link" href="#recent-changes">最近更改</a>
-        <a className="wiki-nav-link" href="#learning-index">经验库</a>
+        </a>
+        <a className="wiki-nav-link" href={homeSectionHref("recent-changes")}>最近更改</a>
+        <a className="wiki-nav-link" href={homeSectionHref("learning-index")}>经验库</a>
       </section>
 
       <section className="wiki-nav-block">
         <h2 className="wiki-nav-heading">知识主题</h2>
         {ORBIT_KNOWLEDGE_MANIFEST.topicPages.map((topic) => (
-          <button
-            aria-pressed={activePage.kind === "topic" && activePage.id === topic.id}
+          <a
+            aria-current={
+              activePage.kind === "topic" && activePage.id === topic.id
+                ? "page"
+                : undefined
+            }
             className="wiki-nav-button"
+            href={topicHref(topic.id)}
             key={topic.id}
-            onClick={() => setActivePage({ kind: "topic", id: topic.id })}
-            type="button"
           >
             {topic.titleZh}
-          </button>
+          </a>
         ))}
       </section>
 
       <section className="wiki-nav-block">
         <h2 className="wiki-nav-heading">分类目录</h2>
-        <button
-          aria-pressed={category === allFilter}
+        <a
+          aria-current={activePage.kind === "index" && category === allFilter ? "page" : undefined}
           className="wiki-nav-button wiki-category-row"
-          onClick={() => {
-            setCategory(allFilter);
-            setActivePage({ kind: "index" });
-          }}
-          type="button"
+          href={categoryHref(allFilter)}
         >
           <span>全部文档</span>
           <small>{ORBIT_KNOWLEDGE_MANIFEST.documents.length}</small>
-        </button>
+        </a>
         {categoryCounts.map(([item, count]) => (
-          <button
-            aria-pressed={category === item}
+          <a
+            aria-current={activePage.kind === "index" && category === item ? "page" : undefined}
             className="wiki-nav-button wiki-category-row"
+            href={categoryHref(item)}
             key={item}
-            onClick={() => {
-              setCategory(item);
-              setActivePage({ kind: "index" });
-            }}
-            type="button"
           >
             <span>{categoryLabel(item)}</span>
             <small>{count}</small>
-          </button>
+          </a>
         ))}
       </section>
     </nav>
@@ -888,12 +957,10 @@ function GlobalNav({
 function Masthead({
   activePage,
   query,
-  setActivePage,
   setQuery,
 }: {
   activePage: WikiPage;
   query: string;
-  setActivePage: (page: WikiPage) => void;
   setQuery: (query: string) => void;
 }) {
   return (
@@ -915,37 +982,37 @@ function Masthead({
         />
       </label>
       <div className="wiki-page-tabs" role="tablist" aria-label="页面视图">
-        <button
-          aria-pressed={activePage.kind !== "index"}
-          onClick={() => setActivePage({ kind: "main" })}
-          type="button"
+        <a
+          aria-current={activePage.kind !== "index" ? "page" : undefined}
+          href={knowledgeHomeHref}
         >
           阅读
-        </button>
-        <button
-          aria-pressed={activePage.kind === "index"}
-          onClick={() => setActivePage({ kind: "index" })}
-          type="button"
+        </a>
+        <a
+          aria-current={activePage.kind === "index" ? "page" : undefined}
+          href={indexPageHref}
         >
           索引
-        </button>
-        <a className="wiki-nav-link" href="#recent-changes">历史</a>
+        </a>
+        <a
+          aria-current={activePage.kind === "history" ? "page" : undefined}
+          href={homeSectionHref("recent-changes")}
+        >
+          历史
+        </a>
       </div>
     </header>
   );
 }
 
-function PortalGrid({ setActivePage }: { setActivePage: (page: WikiPage) => void }) {
+function PortalGrid() {
   return (
     <div className="wiki-portal-grid">
       {ORBIT_KNOWLEDGE_MANIFEST.topicPages.map((topic) => (
         <section className="wiki-portal" key={topic.id}>
-          <button
-            onClick={() => setActivePage({ kind: "topic", id: topic.id })}
-            type="button"
-          >
+          <a href={topicHref(topic.id)}>
             {topic.titleZh}
-          </button>
+          </a>
           <p>{topic.summaryZh}</p>
           <code>{topic.path}</code>
         </section>
@@ -975,17 +1042,6 @@ function StatusBadges({ document }: { document: DocumentEntry }) {
   );
 }
 
-function startsMarkdownBlock(line: string) {
-  return (
-    /^#{1,6}\s+/.test(line) ||
-    /^```/.test(line) ||
-    /^>\s?/.test(line) ||
-    /^[-*]\s+/.test(line) ||
-    /^\d+\.\s+/.test(line) ||
-    /^\|.*\|$/.test(line)
-  );
-}
-
 function safeLinkTarget(href: string) {
   if (
     href.startsWith("#") ||
@@ -999,240 +1055,72 @@ function safeLinkTarget(href: string) {
   return undefined;
 }
 
-function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
-  const nodes: ReactNode[] = [];
-  const pattern = /(`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+const knowledgeHomeHref = "/dev/knowledge";
+const indexPageHref = `${knowledgeHomeHref}?page=index`;
 
-  while ((match = pattern.exec(text))) {
-    if (match.index > lastIndex) {
-      nodes.push(text.slice(lastIndex, match.index));
-    }
-
-    const token = match[0];
-    const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-
-    if (token.startsWith("`") && token.endsWith("`")) {
-      nodes.push(<code key={`${keyPrefix}-code-${match.index}`}>{token.slice(1, -1)}</code>);
-    } else if (linkMatch) {
-      const href = safeLinkTarget(linkMatch[2].trim());
-      nodes.push(
-        href ? (
-          <a href={href} key={`${keyPrefix}-link-${match.index}`}>
-            {linkMatch[1]}
-          </a>
-        ) : (
-          linkMatch[1]
-        ),
-      );
-    } else {
-      nodes.push(token);
-    }
-
-    lastIndex = match.index + token.length;
-  }
-
-  if (lastIndex < text.length) {
-    nodes.push(text.slice(lastIndex));
-  }
-
-  return nodes;
+function documentHref(documentId: string) {
+  return `/dev/knowledge?document=${encodeURIComponent(documentId)}`;
 }
 
-function parseTableCells(line: string) {
-  return line
-    .trim()
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
+function topicHref(topicId: string) {
+  return `${knowledgeHomeHref}?topic=${encodeURIComponent(topicId)}`;
 }
 
-function isTableSeparator(line: string) {
-  return /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(line.trim());
+function historyHref(historyId: string) {
+  return `${knowledgeHomeHref}?history=${encodeURIComponent(historyId)}`;
 }
 
-function MarkdownDocument({ markdown }: { markdown: string }) {
-  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
-  const blocks: ReactNode[] = [];
-  let index = 0;
+function learningHref(learningId: string) {
+  return `${knowledgeHomeHref}?learning=${encodeURIComponent(learningId)}`;
+}
 
-  while (index < lines.length) {
-    const line = lines[index];
-    const trimmed = line.trim();
+function categoryHref(category: string) {
+  if (category === allFilter) return indexPageHref;
 
-    if (!trimmed) {
-      index += 1;
-      continue;
-    }
+  return `${indexPageHref}&category=${encodeURIComponent(category)}`;
+}
 
-    const fence = trimmed.match(/^```(.*)$/);
-    if (fence) {
-      const codeLines: string[] = [];
-      index += 1;
+function homeSectionHref(sectionId: string) {
+  return `${knowledgeHomeHref}#${sectionId}`;
+}
 
-      while (index < lines.length && !lines[index].trim().startsWith("```")) {
-        codeLines.push(lines[index]);
-        index += 1;
-      }
+function markdownWithoutDocumentTitle(markdown: string) {
+  return markdown.replace(/^#\s+.+\n+/, "");
+}
 
-      if (index < lines.length) index += 1;
+function RenderedMarkdown({ markdown }: { markdown: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        a({ children, href }) {
+          const safeHref = href ? safeLinkTarget(href) : undefined;
 
-      blocks.push(
-        <pre key={`code-${index}`}>
-          <code>{codeLines.join("\n")}</code>
-        </pre>,
-      );
-      continue;
-    }
-
-    const heading = trimmed.match(/^(#{1,6})\s+(.+)$/);
-    if (heading) {
-      const level = Math.min(heading[1].length + 1, 4);
-      const headingChildren = renderInlineMarkdown(heading[2], `heading-${index}`);
-
-      if (level === 2) {
-        blocks.push(<h2 key={`h2-${index}`}>{headingChildren}</h2>);
-      } else if (level === 3) {
-        blocks.push(<h3 key={`h3-${index}`}>{headingChildren}</h3>);
-      } else {
-        blocks.push(<h4 key={`h4-${index}`}>{headingChildren}</h4>);
-      }
-      index += 1;
-      continue;
-    }
-
-    if (/^>\s?/.test(trimmed)) {
-      const quoteLines: string[] = [];
-
-      while (index < lines.length && /^>\s?/.test(lines[index].trim())) {
-        quoteLines.push(lines[index].trim().replace(/^>\s?/, ""));
-        index += 1;
-      }
-
-      blocks.push(
-        <blockquote key={`quote-${index}`}>
-          <p>{renderInlineMarkdown(quoteLines.join(" "), `quote-${index}`)}</p>
-        </blockquote>,
-      );
-      continue;
-    }
-
-    if (/^[-*]\s+/.test(trimmed)) {
-      const items: string[] = [];
-
-      while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
-        items.push(lines[index].trim().replace(/^[-*]\s+/, ""));
-        index += 1;
-      }
-
-      blocks.push(
-        <ul key={`ul-${index}`}>
-          {items.map((item, itemIndex) => (
-            <li key={`${index}-ul-${itemIndex}`}>
-              {renderInlineMarkdown(item, `${index}-ul-${itemIndex}`)}
-            </li>
-          ))}
-        </ul>,
-      );
-      continue;
-    }
-
-    if (/^\d+\.\s+/.test(trimmed)) {
-      const items: string[] = [];
-
-      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
-        items.push(lines[index].trim().replace(/^\d+\.\s+/, ""));
-        index += 1;
-      }
-
-      blocks.push(
-        <ol key={`ol-${index}`}>
-          {items.map((item, itemIndex) => (
-            <li key={`${index}-ol-${itemIndex}`}>
-              {renderInlineMarkdown(item, `${index}-ol-${itemIndex}`)}
-            </li>
-          ))}
-        </ol>,
-      );
-      continue;
-    }
-
-    if (
-      trimmed.includes("|") &&
-      index + 1 < lines.length &&
-      isTableSeparator(lines[index + 1])
-    ) {
-      const headers = parseTableCells(trimmed);
-      const rows: string[][] = [];
-      index += 2;
-
-      while (index < lines.length && lines[index].trim().includes("|")) {
-        rows.push(parseTableCells(lines[index]));
-        index += 1;
-      }
-
-      blocks.push(
-        <table key={`table-${index}`}>
-          <thead>
-            <tr>
-              {headers.map((header, headerIndex) => (
-                <th key={`${index}-th-${headerIndex}`}>
-                  {renderInlineMarkdown(header, `${index}-th-${headerIndex}`)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr key={`${index}-tr-${rowIndex}`}>
-                {row.map((cell, cellIndex) => (
-                  <td key={`${index}-td-${rowIndex}-${cellIndex}`}>
-                    {renderInlineMarkdown(cell, `${index}-td-${rowIndex}-${cellIndex}`)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>,
-      );
-      continue;
-    }
-
-    const paragraphLines: string[] = [trimmed];
-    index += 1;
-
-    while (
-      index < lines.length &&
-      lines[index].trim() &&
-      !startsMarkdownBlock(lines[index].trim())
-    ) {
-      paragraphLines.push(lines[index].trim());
-      index += 1;
-    }
-
-    blocks.push(
-      <p key={`p-${index}`}>
-        {renderInlineMarkdown(paragraphLines.join(" "), `p-${index}`)}
-      </p>,
-    );
-  }
-
-  return <div className="wiki-document-markdown">{blocks}</div>;
+          return safeHref ? <a href={safeHref}>{children}</a> : <span>{children}</span>;
+        },
+        table({ children }) {
+          return (
+            <div className="wiki-document-table-scroll">
+              <table>{children}</table>
+            </div>
+          );
+        },
+      }}
+      remarkPlugins={[remarkGfm]}
+    >
+      {markdownWithoutDocumentTitle(markdown)}
+    </ReactMarkdown>
+  );
 }
 
 function DocumentIndex({
   documents,
   query,
   category,
-  setActivePage,
   setCategory,
 }: {
   documents: readonly DocumentEntry[];
   query: string;
   category: string;
-  setActivePage: (page: WikiPage) => void;
   setCategory: (category: string) => void;
 }) {
   const categoryCounts = countBy(ORBIT_KNOWLEDGE_MANIFEST.documents, (document) => document.category);
@@ -1277,12 +1165,9 @@ function DocumentIndex({
             {documents.map((document) => (
               <tr key={document.id}>
                 <td>
-                  <button
-                    onClick={() => setActivePage({ kind: "document", id: document.id })}
-                    type="button"
-                  >
+                  <a href={documentHref(document.id)}>
                     {document.titleZh}
-                  </button>
+                  </a>
                   <br />
                   <code>{document.sourcePath}</code>
                 </td>
@@ -1310,9 +1195,11 @@ function DocumentContentSection({
       <section className="wiki-document-body" id="document-body">
         <h3>正文内容</h3>
         <p className="wiki-muted">
-          已从 <code>{content.sourcePath}</code> 读取 Markdown 原文。
+          已从 <code>{content.sourcePath}</code> 读取中文 Markdown 阅读版。
         </p>
-        <MarkdownDocument markdown={content.markdown} />
+        <div className="wiki-document-markdown">
+          <RenderedMarkdown markdown={content.markdown} />
+        </div>
       </section>
     );
   }
@@ -1334,29 +1221,7 @@ function DocumentContentSection({
   );
 }
 
-function DocumentArticle({
-  content,
-  document,
-}: {
-  content: DocumentContentState | undefined;
-  document: DocumentEntry;
-}) {
-  return (
-    <section id="selected-page">
-      <h2>当前条目</h2>
-      <p>{document.summaryZh}</p>
-      <h3>来源路径</h3>
-      <p><code>{document.sourcePath}</code></p>
-      <h3>审计依据</h3>
-      <p>{document.reviewEvidenceZh}</p>
-      <h3>页面状态</h3>
-      <p><StatusBadges document={document} /></p>
-      <DocumentContentSection content={content} />
-    </section>
-  );
-}
-
-function RecentChanges({ setActivePage }: { setActivePage: (page: WikiPage) => void }) {
+function RecentChanges() {
   return (
     <section id="recent-changes">
       <h2>最近更改</h2>
@@ -1365,13 +1230,12 @@ function RecentChanges({ setActivePage }: { setActivePage: (page: WikiPage) => v
           <div key={entry.id}>
             <dt>{entry.date}</dt>
             <dd>
-              <button
+              <a
                 className="wiki-nav-button"
-                onClick={() => setActivePage({ kind: "history", id: entry.id })}
-                type="button"
+                href={historyHref(entry.id)}
               >
                 {entry.titleZh}
-              </button>
+              </a>
               {entry.summaryZh} <code>{entry.sourcePath}</code>
             </dd>
           </div>
@@ -1381,7 +1245,7 @@ function RecentChanges({ setActivePage }: { setActivePage: (page: WikiPage) => v
   );
 }
 
-function Learnings({ setActivePage }: { setActivePage: (page: WikiPage) => void }) {
+function Learnings() {
   return (
     <section id="learning-index">
       <h2>经验库</h2>
@@ -1389,13 +1253,12 @@ function Learnings({ setActivePage }: { setActivePage: (page: WikiPage) => void 
         {ORBIT_KNOWLEDGE_MANIFEST.learnings.map((entry) => (
           <div key={entry.id}>
             <dt>
-              <button
+              <a
                 className="wiki-nav-button"
-                onClick={() => setActivePage({ kind: "learning", id: entry.id })}
-                type="button"
+                href={learningHref(entry.id)}
               >
                 {entry.titleZh}
-              </button>
+              </a>
             </dt>
             <dd>{entry.summaryZh} <code>{entry.sourcePath}</code></dd>
           </div>
@@ -1453,66 +1316,236 @@ function WikiInfobox({
 
 function PageToc({
   activeDocument,
+  activePage,
   filteredCount,
 }: {
   activeDocument?: DocumentEntry;
+  activePage: WikiPage;
   filteredCount: number;
 }) {
+  const tocLinks =
+    activePage.kind === "document"
+      ? [
+          ["#document-metadata", "页面信息"],
+          ["#document-body", "正文内容"],
+        ]
+      : activePage.kind === "topic"
+        ? [
+            ["#overview", "主题概览"],
+            ["#topic-source", "来源页面"],
+            ["#document-index", "相关文档"],
+          ]
+        : activePage.kind === "index"
+          ? [["#document-index", "文档索引"]]
+          : activePage.kind === "history" || activePage.kind === "learning"
+            ? [["#selected-page", "页面信息"]]
+            : [
+                ["#overview", "概览"],
+                ["#topic-portals", "知识主题"],
+                ["#document-index", "文档索引"],
+                ["#recent-changes", "最近更改"],
+                ["#learning-index", "经验库"],
+              ];
+  const toolLinks =
+    activePage.kind === "document"
+      ? [
+          ["#document-metadata", "查看文档元信息"],
+          ["#document-body", "返回正文顶部"],
+        ]
+      : activePage.kind === "main"
+        ? [
+            ["#document-index", "查看全部文档"],
+            ["#recent-changes", "查看开发历史"],
+            ["#learning-index", "查看排障经验"],
+          ]
+        : [["/dev/knowledge", "返回 Wiki 主页面"]];
+
   return (
     <aside className="wiki-page-toc" aria-label="页面目录">
       <WikiInfobox activeDocument={activeDocument} filteredCount={filteredCount} />
       <h2>页面目录</h2>
       <ol>
-        <li><a className="wiki-toc-link" href="#overview">概览</a></li>
-        <li><a className="wiki-toc-link" href="#topic-portals">知识主题</a></li>
-        <li><a className="wiki-toc-link" href="#document-index">文档索引</a></li>
-        <li><a className="wiki-toc-link" href="#selected-page">当前条目</a></li>
-        <li><a className="wiki-toc-link" href="#document-body">正文内容</a></li>
-        <li><a className="wiki-toc-link" href="#recent-changes">最近更改</a></li>
-        <li><a className="wiki-toc-link" href="#learning-index">经验库</a></li>
+        {tocLinks.map(([href, label]) => (
+          <li key={href}><a className="wiki-toc-link" href={href}>{label}</a></li>
+        ))}
       </ol>
       <h2>页面工具</h2>
       <ol>
-        <li><a className="wiki-toc-link" href="#document-index">查看全部文档</a></li>
-        <li><a className="wiki-toc-link" href="#recent-changes">查看开发历史</a></li>
-        <li><a className="wiki-toc-link" href="#learning-index">查看排障经验</a></li>
+        {toolLinks.map(([href, label]) => (
+          <li key={href}><a className="wiki-toc-link" href={href}>{label}</a></li>
+        ))}
       </ol>
     </aside>
   );
 }
 
-function WikiArticle({
-  activeDocument,
+function DocumentPageArticle({
   activeDocumentContent,
-  activeLearning,
-  activePage,
-  activeTopic,
+  document,
+}: {
+  activeDocumentContent?: DocumentContentState;
+  document: DocumentEntry;
+}) {
+  return (
+    <article className="wiki-article wiki-document-article">
+      <div className="wiki-breadcrumbs">Orbit Wiki / 文档 / {document.titleZh}</div>
+      <h1>{document.titleZh}</h1>
+      <p className="wiki-lead">{document.summaryZh}</p>
+      <section className="wiki-document-metadata" id="document-metadata">
+        <h2>页面信息</h2>
+        <dl>
+          <div>
+            <dt>来源路径</dt>
+            <dd><code>{document.sourcePath}</code></dd>
+          </div>
+          <div>
+            <dt>审计依据</dt>
+            <dd>{document.reviewEvidenceZh}</dd>
+          </div>
+          <div>
+            <dt>状态</dt>
+            <dd><StatusBadges document={document} /></dd>
+          </div>
+        </dl>
+      </section>
+      <DocumentContentSection content={activeDocumentContent} />
+    </article>
+  );
+}
+
+function TopicPageArticle({
   category,
   filteredDocuments,
   query,
-  setActivePage,
   setCategory,
+  topic,
 }: {
-  activeDocument?: DocumentEntry;
-  activeDocumentContent?: DocumentContentState;
-  activeLearning?: LearningEntry;
-  activePage: WikiPage;
-  activeTopic?: TopicEntry;
   category: string;
   filteredDocuments: readonly DocumentEntry[];
   query: string;
-  setActivePage: (page: WikiPage) => void;
+  setCategory: (category: string) => void;
+  topic: TopicEntry;
+}) {
+  const relatedDocuments = documentsForTopic(topic, filteredDocuments);
+
+  return (
+    <article className="wiki-article wiki-topic-article">
+      <div className="wiki-breadcrumbs">Orbit Wiki / 知识主题 / {topic.titleZh}</div>
+      <h1>{topic.titleZh}</h1>
+      <section id="overview">
+        <h2>主题概览</h2>
+        <p className="wiki-lead">{topic.summaryZh}</p>
+      </section>
+      <section id="topic-source">
+        <h2>来源页面</h2>
+        <p>
+          主题页来源为 <code>{topic.path}</code>。主题页用于组织阅读路径，具体事实仍以关联文档和代码为准。
+        </p>
+      </section>
+      <DocumentIndex
+        category={category}
+        documents={relatedDocuments}
+        query={query}
+        setCategory={setCategory}
+      />
+    </article>
+  );
+}
+
+function IndexArticle({
+  category,
+  filteredDocuments,
+  query,
+  setCategory,
+}: {
+  category: string;
+  filteredDocuments: readonly DocumentEntry[];
+  query: string;
   setCategory: (category: string) => void;
 }) {
   return (
-    <article className="wiki-article">
-      <div className="wiki-breadcrumbs">
-        Orbit Wiki / {activePage.kind === "main" ? "主页面" : articleTitle(activePage, activeDocument)}
-      </div>
-      <h1>{articleTitle(activePage, activeDocument)}</h1>
+    <article className="wiki-article wiki-index-article">
+      <div className="wiki-breadcrumbs">Orbit Wiki / 文档索引</div>
+      <h1>文档索引</h1>
       <p className="wiki-lead">
-        {articleLead(activePage, activeDocument, activeTopic, activeLearning)}
+        这里列出当前 catalog 中的全部文档入口。分类筛选和搜索可以缩小阅读范围，文档标题会打开独立正文页。
       </p>
+      <DocumentIndex
+        category={category}
+        documents={filteredDocuments}
+        query={query}
+        setCategory={setCategory}
+      />
+    </article>
+  );
+}
+
+function HistoryPageArticle({ entry }: { entry: HistoryEntry }) {
+  return (
+    <article className="wiki-article wiki-history-article">
+      <div className="wiki-breadcrumbs">Orbit Wiki / 最近更改 / {entry.titleZh}</div>
+      <h1>{entry.titleZh}</h1>
+      <p className="wiki-lead">{entry.summaryZh}</p>
+      <section className="wiki-document-metadata" id="selected-page">
+        <h2>页面信息</h2>
+        <dl>
+          <div>
+            <dt>日期</dt>
+            <dd>{entry.date}</dd>
+          </div>
+          <div>
+            <dt>来源路径</dt>
+            <dd><code>{entry.sourcePath}</code></dd>
+          </div>
+          <div>
+            <dt>返回入口</dt>
+            <dd><a href={homeSectionHref("recent-changes")}>最近更改</a></dd>
+          </div>
+        </dl>
+      </section>
+    </article>
+  );
+}
+
+function LearningPageArticle({ entry }: { entry: LearningEntry }) {
+  return (
+    <article className="wiki-article wiki-learning-article">
+      <div className="wiki-breadcrumbs">Orbit Wiki / 经验库 / {entry.titleZh}</div>
+      <h1>{entry.titleZh}</h1>
+      <p className="wiki-lead">{entry.summaryZh}</p>
+      <section className="wiki-document-metadata" id="selected-page">
+        <h2>页面信息</h2>
+        <dl>
+          <div>
+            <dt>来源路径</dt>
+            <dd><code>{entry.sourcePath}</code></dd>
+          </div>
+          <div>
+            <dt>返回入口</dt>
+            <dd><a href={homeSectionHref("learning-index")}>经验库</a></dd>
+          </div>
+        </dl>
+      </section>
+    </article>
+  );
+}
+
+function HomeArticle({
+  category,
+  filteredDocuments,
+  query,
+  setCategory,
+}: {
+  category: string;
+  filteredDocuments: readonly DocumentEntry[];
+  query: string;
+  setCategory: (category: string) => void;
+}) {
+  return (
+    <article className="wiki-article wiki-home-article">
+      <div className="wiki-breadcrumbs">Orbit Wiki / 主页面</div>
+      <h1>Orbit Wiki: 项目主页</h1>
+      <p className="wiki-lead">{ORBIT_KNOWLEDGE_MANIFEST.summaryZh}</p>
       <section id="overview">
         <h2>概览</h2>
         <p>
@@ -1531,36 +1564,109 @@ function WikiArticle({
 
       <section id="topic-portals">
         <h2>知识主题</h2>
-        <PortalGrid setActivePage={setActivePage} />
+        <PortalGrid />
       </section>
-
-      {activeDocument ? (
-        <DocumentArticle content={activeDocumentContent} document={activeDocument} />
-      ) : null}
 
       <DocumentIndex
         category={category}
         documents={filteredDocuments}
         query={query}
-        setActivePage={setActivePage}
         setCategory={setCategory}
       />
 
-      <RecentChanges setActivePage={setActivePage} />
-      <Learnings setActivePage={setActivePage} />
+      <RecentChanges />
+      <Learnings />
     </article>
   );
 }
 
-export function OrbitKnowledgeWiki() {
-  const [activePage, setActivePage] = useState<WikiPage>({ kind: "main" });
+function WikiArticle({
+  activeDocument,
+  activeDocumentContent,
+  activePage,
+  category,
+  filteredDocuments,
+  historyPage,
+  learningPage,
+  query,
+  setCategory,
+  topicPage,
+}: {
+  activeDocument?: DocumentEntry;
+  activeDocumentContent?: DocumentContentState;
+  activePage: WikiPage;
+  category: string;
+  filteredDocuments: readonly DocumentEntry[];
+  historyPage?: HistoryEntry;
+  learningPage?: LearningEntry;
+  query: string;
+  setCategory: (category: string) => void;
+  topicPage?: TopicEntry;
+}) {
+  if (activePage.kind === "document" && activeDocument) {
+    return (
+      <DocumentPageArticle
+        activeDocumentContent={activeDocumentContent}
+        document={activeDocument}
+      />
+    );
+  }
+
+  if (activePage.kind === "topic" && topicPage) {
+    return (
+      <TopicPageArticle
+        category={category}
+        filteredDocuments={filteredDocuments}
+        query={query}
+        setCategory={setCategory}
+        topic={topicPage}
+      />
+    );
+  }
+
+  if (activePage.kind === "index") {
+    return (
+      <IndexArticle
+        category={category}
+        filteredDocuments={filteredDocuments}
+        query={query}
+        setCategory={setCategory}
+      />
+    );
+  }
+
+  if (activePage.kind === "history" && historyPage) {
+    return <HistoryPageArticle entry={historyPage} />;
+  }
+
+  if (activePage.kind === "learning" && learningPage) {
+    return <LearningPageArticle entry={learningPage} />;
+  }
+
+  return (
+    <HomeArticle
+      category={category}
+      filteredDocuments={filteredDocuments}
+      query={query}
+      setCategory={setCategory}
+    />
+  );
+}
+
+export function OrbitKnowledgeWiki({
+  initialDocumentContent,
+  initialCategory,
+  initialPage = { kind: "main" },
+}: OrbitKnowledgeWikiProps = {}) {
+  const activePage = initialPage;
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState(allFilter);
+  const [category, setCategory] = useState(initialCategory ?? allFilter);
   const [documentContents, setDocumentContents] = useState<
     Record<string, DocumentContentState>
-  >({});
-  const [selectedDocumentId, setSelectedDocumentId] = useState(
-    ORBIT_KNOWLEDGE_MANIFEST.documents[0]?.id ?? "",
+  >(() =>
+    initialDocumentContent
+      ? { [initialDocumentContent.documentId]: initialDocumentContent.content }
+      : {},
   );
 
   const categoryCounts = useMemo(
@@ -1576,15 +1682,10 @@ export function OrbitKnowledgeWiki() {
       ),
     [category, query],
   );
-  const activeDocument = readActiveDocument(activePage, selectedDocumentId, filteredDocuments);
-  const activeTopic =
-    activePage.kind === "topic"
-      ? ORBIT_KNOWLEDGE_MANIFEST.topicPages.find((topic) => topic.id === activePage.id)
-      : undefined;
-  const activeLearning =
-    activePage.kind === "learning"
-      ? ORBIT_KNOWLEDGE_MANIFEST.learnings.find((entry) => entry.id === activePage.id)
-      : undefined;
+  const activeDocument = readActiveDocument(activePage);
+  const topicPage = readTopicPage(activePage);
+  const historyPage = readHistoryPage(activePage);
+  const learningPage = readLearningPage(activePage);
   const activeDocumentContent = activeDocument
     ? (documentContents[activeDocument.id] ?? { status: "idle" })
     : undefined;
@@ -1594,6 +1695,7 @@ export function OrbitKnowledgeWiki() {
 
     const controller = new AbortController();
     const documentId = activeDocument.id;
+    if (documentContents[documentId]?.status === "loaded") return;
 
     setDocumentContents((current) => ({
       ...current,
@@ -1640,13 +1742,13 @@ export function OrbitKnowledgeWiki() {
     <main
       className="wiki-frame"
       data-orbit-knowledge-wiki="true"
+      data-wiki-page-kind={activePage.kind}
       data-wiki-shell="true"
     >
       <WikiStyles />
       <Masthead
         activePage={activePage}
         query={query}
-        setActivePage={setActivePage}
         setQuery={setQuery}
       />
       <div className="wiki-layout">
@@ -1654,25 +1756,24 @@ export function OrbitKnowledgeWiki() {
           activePage={activePage}
           category={category}
           categoryCounts={categoryCounts}
-          setActivePage={setActivePage}
-          setCategory={setCategory}
         />
         <WikiArticle
           activeDocument={activeDocument}
           activeDocumentContent={activeDocumentContent}
-          activeLearning={activeLearning}
           activePage={activePage}
-          activeTopic={activeTopic}
           category={category}
           filteredDocuments={filteredDocuments}
+          historyPage={historyPage}
+          learningPage={learningPage}
           query={query}
-          setActivePage={(page) => {
-            if (page.kind === "document") setSelectedDocumentId(page.id);
-            setActivePage(page);
-          }}
           setCategory={setCategory}
+          topicPage={topicPage}
         />
-        <PageToc activeDocument={activeDocument} filteredCount={filteredDocuments.length} />
+        <PageToc
+          activeDocument={activePage.kind === "document" ? activeDocument : undefined}
+          activePage={activePage}
+          filteredCount={filteredDocuments.length}
+        />
       </div>
     </main>
   );

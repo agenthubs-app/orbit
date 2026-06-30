@@ -59,3 +59,39 @@
 - 修改摘要：新增 `/api/dev/knowledge/documents/[id]` dev-only 读取端点，按 app-local manifest 白名单 id 读取对应 Markdown 原文；`/dev/knowledge` 点击文档后在文章区显示“正文内容”，支持加载、错误和常见 Markdown 块渲染。
 - 架构边界：客户端页面仍不直接使用 `node:fs` 或任意路径读取；API 只接受 manifest 中已登记的 document id，生产环境返回 404，并使用 no-store developer-admin headers。
 - 验证方式：新增 API route 测试覆盖成功读取、未知 id 和 production 隐藏；更新 page test 锁定正文区域和 API 请求边界；运行 app page/API tests、lint、单独 TypeScript 检查和后续完整测试。
+
+## [2026-06-30] implementation | Wiki 文档页独立化与 Markdown 渲染修正
+
+- 用户反馈：点击文档后正文只占页面一小部分，不像 Wikipedia 那样打开整页文章；同时当前 Markdown 渲染存在兼容问题。
+- 修改摘要：将 `/dev/knowledge` 拆成主页导航页和文档独立文章页；文档页只保留文档元信息与正文内容，不再混入知识主题、文档索引、最近更改和经验库区块；用 `react-markdown` 与 `remark-gfm` 替换手写 Markdown block parser。
+- 架构边界：读取边界不变，客户端仍通过 dev-only 文档内容 API 按 manifest 白名单 id 获取 Markdown；主页继续作为全站导航和索引入口。
+- 验证方式：新增 page test 覆盖 `initialPage` 文档独立页、主页不预渲染正文区、GFM 渲染依赖和手写 parser 移除。
+
+## [2026-06-30] implementation | Wiki 文档中文镜像层
+
+- 用户目标：Wiki 中打开的所有 catalog 文档正文都应是中文，不再把英文原文作为默认阅读内容。
+- 修改摘要：新增 `knowledge/docs/zh/*.zh.md` 中文阅读版镜像，共覆盖当前 147 个 catalog 文档；catalog 和 app manifest 为每个条目增加 `localizedSourcePath`；`/dev/knowledge` 的 dev-only 文档内容读取改为中文镜像优先且不静默回退英文；新增 `scripts/knowledge/generate-chinese-doc-mirrors.mjs` 维护镜像。
+- 架构边界：原始 `sourcePath` 文档保留不改，中文镜像承载 Wiki 阅读体验；代码块、命令、路径、API 名和配置片段作为证据保留原样。
+- 验证方式：root catalog test 要求每个条目存在中文镜像；app manifest/API/page tests 要求文档 URL 首屏读取 `knowledge/docs/zh/*.zh.md`；后续完整验证覆盖 root knowledge tests、app tests、lint 和 `git diff --check`。
+
+## [2026-06-30] implementation | Wiki 导航链接 URL 化
+
+- 用户反馈：Wiki 页面很多链接点不动，尤其是索引、主题、最近更改和经验库入口依赖客户端状态切换；在 hydration 不稳定或文档独立页中会表现为无效点击或空锚点。
+- 修改摘要：将 `/dev/knowledge` 的主要导航从 button 状态切换改为真实 URL 链接；服务端支持 `?page=index`、`?topic=...`、`?history=...`、`?learning=...` 和 `?category=...` 首屏渲染；主题、历史和经验条目新增独立文章页。
+- 架构边界：搜索和筛选下拉仍作为客户端增强保留；主导航、主题入口、分类入口、历史入口和经验入口都能在无客户端状态的情况下通过 URL 打开。
+- 验证方式：更新 page test 覆盖 URL-addressable 导航、文档页绝对锚点和死锚点禁止；用浏览器实际点击验证索引、主题、历史条目和文档页锚点。
+
+## [2026-06-30] implementation | 中文 Wiki 镜像保留中文源正文
+
+- 用户反馈：部分文档页打开后只有标题或摘要，看不到真正文章内容，例如 `/dev/knowledge?document=feature-bootstrap-design`。
+- 根因分析：中文镜像生成脚本只写入页面元信息、中文摘要、审计依据、结构化标题目录和代码块证据，没有把已经是中文的源文档正文追加进镜像。
+- 修改摘要：更新 `scripts/knowledge/generate-chinese-doc-mirrors.mjs`，当源文档主体已经包含中文内容时，在镜像中追加“源文档正文”并保留完整 Markdown 正文；重新生成 147 个中文镜像。
+- 验证方式：新增 root catalog test 锁定 `feature-bootstrap-design` 镜像必须包含源正文段落；新增 page test 锁定对应 document URL 首屏渲染完整中文正文。
+
+## [2026-06-30] implementation | Orbit AI 共享 runtime 与人脉匹配文档同步
+
+- 用户目标：确认 Orbit AI tool 能根据 chat 上下文匹配已有真实链接人脉，并让产品 chat、trace 页面和 planner-only 诊断使用同一逻辑，同时补齐文档和文档库。
+- 修改摘要：补充 Orbit AI trace 英中设计文档，说明 `/api/dev/orbit-agent/trace` 仍是 planner-only 兼容入口但通过 `runLiveOrbitAgentRuntime` 以 `maxLoopSteps=1` 执行；补充 `contacts.recommend`、`contact_recommendations`、`ORBIT_CONTACT_RECOMMENDATION_METHOD` 和 `rules_v1`/未来 RAG 方法边界；更新 `features/orbit-ai/DESIGN.md`，把共享 runtime 和人脉推荐方法选择写入模块设计。
+- 知识库更新：更新 catalog 生成脚本的 Orbit AI/trace 文档摘要、审计依据和关联代码路径；重新生成 catalog、中文镜像和 app-local knowledge manifest。
+- 架构边界：产品 chat、`/dev/orbit-ai/trace` full-chain trace 和 `/api/dev/orbit-agent/trace` planner-only route 都应复用 `features/orbit-ai/live-agent-runtime.ts`；人脉推荐只使用已有关系证据，不做开放式陌生人发现。
+- 验证方式：运行知识库生成脚本、root catalog tests、app knowledge manifest test 和 Orbit AI targeted capability tests。

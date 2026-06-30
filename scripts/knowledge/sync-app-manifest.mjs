@@ -31,6 +31,7 @@ const manifest = {
     summaryZh: entry.summaryZh,
     reviewEvidenceZh: entry.reviewEvidenceZh,
     sourcePath: entry.sourcePath,
+    localizedSourcePath: entry.localizedSourcePath,
     category: entry.category,
     status: entry.status,
     freshness: entry.freshness,
@@ -93,6 +94,38 @@ const manifest = {
     },
   ],
   recentHistory: [
+    {
+      id: "knowledge-chinese-source-body-mirrors",
+      date: "2026-06-30",
+      titleZh: "中文 Wiki 镜像保留中文源正文",
+      summaryZh:
+        "中文源文档生成 Wiki 镜像时追加完整源正文，修复部分文档页只有摘要、缺少文章内容的问题。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
+    {
+      id: "knowledge-url-addressable-links",
+      date: "2026-06-30",
+      titleZh: "Wiki 导航链接 URL 化",
+      summaryZh:
+        "将 /dev/knowledge 的主要导航改为真实 URL 链接，并支持索引、主题、历史和经验条目首屏打开。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
+    {
+      id: "knowledge-chinese-document-mirrors",
+      date: "2026-06-30",
+      titleZh: "Wiki 文档中文镜像层",
+      summaryZh:
+        "为所有 catalog 文档生成 knowledge/docs/zh 中文阅读版，并让 /dev/knowledge 默认读取中文镜像正文。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
+    {
+      id: "knowledge-wikipedia-document-pages",
+      date: "2026-06-30",
+      titleZh: "Wiki 文档页独立化与 Markdown 渲染修正",
+      summaryZh:
+        "将 /dev/knowledge 的文档打开模式改为独立文章页，并用 react-markdown/remark-gfm 替换手写 Markdown parser。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
     {
       id: "knowledge-markdown-document-reader",
       date: "2026-06-30",

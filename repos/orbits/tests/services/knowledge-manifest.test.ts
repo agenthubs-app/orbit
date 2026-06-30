@@ -19,6 +19,7 @@ test("app knowledge manifest exposes Chinese project knowledge without parent-di
     assert.match(doc.titleZh, /[\u4e00-\u9fff]/);
     assert.match(doc.summaryZh, /[\u4e00-\u9fff]/);
     assert.match(doc.reviewEvidenceZh, /[\u4e00-\u9fff]/);
+    assert.match(doc.localizedSourcePath, /^knowledge\/docs\/zh\/.+\.zh\.md$/);
     assert.doesNotMatch(doc.sourcePath, /^harness-state\/runs\//);
   }
 

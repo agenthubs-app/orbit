@@ -4,7 +4,7 @@
 
 ## 摘要
 
-- 已纳入 catalog：146 个文档。
+- 已纳入 catalog：147 个文档。
 - 需要代码核对（needs-code-check）：0 个文档。
 - 已知过期（known-stale）：1 个文档。
 - 扫描范围内未纳入目录：0 个 Markdown。

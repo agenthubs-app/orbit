@@ -51,3 +51,33 @@
 - 为 `/dev/knowledge` 增加点击文档后读取并渲染 Markdown 原文的能力。
 - 新增 dev-only 文档内容 API，只按 manifest 白名单 id 读取文件，生产环境隐藏。
 - 页面继续保持 app-local manifest 边界，不在客户端直接读父目录文件。
+
+## [2026-06-30] implementation | Wiki 文档页独立化与 Markdown 渲染修正
+
+- 将 `/dev/knowledge` 的文档打开模式改为独立文章页，主页保留为导航和索引。
+- 文档页只显示文档元信息和 Markdown 正文，避免正文被夹在主页多个区块中。
+- 用 `react-markdown` 和 `remark-gfm` 替换手写 Markdown parser。
+
+## [2026-06-30] implementation | Wiki 文档中文镜像层
+
+- 为当前 147 个 catalog 文档生成 `knowledge/docs/zh/*.zh.md` 中文阅读版。
+- catalog 和 app manifest 增加 `localizedSourcePath`。
+- `/dev/knowledge` 打开文档时默认读取中文镜像，不再展示英文原文作为正文。
+
+## [2026-06-30] implementation | Wiki 导航链接 URL 化
+
+- 将 `/dev/knowledge` 主要导航从客户端状态按钮改为真实 URL 链接。
+- 支持索引、主题、历史和经验条目通过 query 参数首屏打开。
+- 修正文档独立页上的最近更改和经验库空锚点。
+
+## [2026-06-30] implementation | 中文 Wiki 镜像保留中文源正文
+
+- 修复部分文档页只有摘要、看不到完整文章正文的问题。
+- 中文源文档生成镜像时追加完整“源文档正文”。
+- 以 `feature-bootstrap-design` 增加回归测试，确保 Wiki 页面首屏渲染源正文段落。
+
+## [2026-06-30] implementation | Orbit AI 共享 runtime 文档入库
+
+- 补充 Orbit AI trace 英中设计，记录 shared live runtime、planner-only 兼容入口和人脉推荐方法选择。
+- 补充 `features/orbit-ai/DESIGN.md`，把 `ORBIT_CONTACT_RECOMMENDATION_METHOD`、`contacts.recommend` 和 graph-gated RAG 边界写入模块文档。
+- 更新 catalog 元数据，重新生成中文镜像和 app-local knowledge manifest。

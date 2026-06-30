@@ -27,6 +27,7 @@ function doc({
   summaryZh,
   reviewEvidenceZh,
   sourcePath,
+  localizedSourcePath,
   category,
   status = "current",
   freshness = "likely-current",
@@ -44,6 +45,7 @@ function doc({
         ? `已登记关联代码路径：${relatedCodePaths.join("、")}。`
         : "已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。"),
     sourcePath,
+    localizedSourcePath: localizedSourcePath ?? `knowledge/docs/zh/${id}.zh.md`,
     category,
     status,
     freshness,
@@ -232,14 +234,26 @@ const featureDesignDocs = [
   doc({
     id: `feature-${moduleId}-design`,
     titleZh: `${moduleId} Feature 设计`,
-    summaryZh: `记录 ${moduleId} feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。`,
+    summaryZh:
+      moduleId === "orbit-ai"
+        ? "记录 Orbit AI 的 live runtime、planner 工具白名单、人脉推荐方法选择和产品/trace 共用执行链边界。"
+        : `记录 ${moduleId} feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。`,
     reviewEvidenceZh:
-      `已核对 repos/orbits/features/${moduleId} 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。`,
+      moduleId === "orbit-ai"
+        ? "已核对 live-agent-runtime、live-conversation-service、live-conversation-trace、contact-recommendation artifact service 和相关 capability tests；产品 chat、full-chain trace、planner-only trace 共用同一 runtime。"
+        : `已核对 repos/orbits/features/${moduleId} 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。`,
     sourcePath: `repos/orbits/features/${moduleId}/DESIGN.md`,
     category: "feature-design",
     freshness: "likely-current",
     ownerArea: `feature:${moduleId}`,
-    relatedCodePaths: [`repos/orbits/features/${moduleId}`, `repos/orbits/features/${moduleId}/service-factory.ts`],
+    relatedCodePaths:
+      moduleId === "orbit-ai"
+        ? [
+            "repos/orbits/features/orbit-ai/live-agent-runtime.ts",
+            "repos/orbits/features/orbit-ai/contact-recommendation-artifact-service.ts",
+            "repos/orbits/features/orbit-ai/contact-recommendation-matching.ts",
+          ]
+        : [`repos/orbits/features/${moduleId}`, `repos/orbits/features/${moduleId}/service-factory.ts`],
     relatedKnowledgePages: ["knowledge/wiki/modules.zh.md"],
   }),
 );
@@ -328,15 +342,21 @@ const additionalOrbitDocs = [
   doc({
     id: "trace-debug-design-en",
     titleZh: "Orbit AI Trace Debug 英文设计源",
-    summaryZh: "Orbit AI trace debug 设计的英文源文件；中文 companion 已在同目录保留，二者共同说明调试页面边界。",
+    summaryZh: "Orbit AI trace debug 设计的英文源文件；当前说明 full-chain trace、planner-only 兼容入口、共享 runtime 和人脉推荐方法选择。",
     reviewEvidenceZh:
-      "已核对同目录存在中文 companion 和 /dev/orbit-ai/trace 页面；英文源保留为历史来源。",
+      "已核对 live-agent-runtime、live-conversation-service、live-conversation-trace、/api/dev/orbit-agent/trace route 和 contact recommendation tests；英文源与中文 companion 同步更新。",
     sourcePath: "repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.md",
     category: "sprint-spec",
-    status: "historical",
-    freshness: "likely-current",
+    status: "current",
+    freshness: "verified-current",
     ownerArea: "orbit-ai",
-    relatedCodePaths: ["repos/orbits/app/dev/orbit-ai/trace"],
+    relatedCodePaths: [
+      "repos/orbits/features/orbit-ai/live-agent-runtime.ts",
+      "repos/orbits/features/orbit-ai/live-conversation-trace.ts",
+      "repos/orbits/features/orbit-ai/contact-recommendation-artifact-service.ts",
+      "repos/orbits/app/dev/orbit-ai/trace",
+      "repos/orbits/app/api/dev/orbit-agent/trace/route.ts",
+    ],
     relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
   }),
   doc({
@@ -542,6 +562,16 @@ const documents = [
     relatedKnowledgePages: ["knowledge/index.zh.md"],
   }),
   doc({
+    id: "knowledge-wiki-chinese-mirrors-plan",
+    titleZh: "Wiki 中文镜像实施计划",
+    summaryZh: "定义每个 catalog 文档如何保留原始来源，同时生成中文阅读版供 /dev/knowledge 默认展示。",
+    sourcePath: "docs/superpowers/plans/2026-06-30-knowledge-wiki-chinese-mirrors.md",
+    category: "implementation-plan",
+    freshness: "verified-current",
+    ownerArea: "knowledge",
+    relatedKnowledgePages: ["knowledge/index.zh.md"],
+  }),
+  doc({
     id: "hybrid-mockdata-handoff-design",
     titleZh: "Hybrid Mockdata Handoff 设计",
     summaryZh: "定义 relationship mockdata 如何生成 TypeScript fixture 并接入 hybrid local-remote database。",
@@ -653,12 +683,20 @@ const documents = [
   doc({
     id: "trace-debug-design",
     titleZh: "Orbit AI Trace Debug 设计",
-    summaryZh: "设计 /dev/orbit-ai/trace 调试页面，用于观察 pipeline、trace、工具调用和运行快照。",
+    summaryZh: "设计 /dev/orbit-ai/trace 调试页面，并记录 full-chain trace、planner-only 兼容入口、共享 runtime 和 contacts.recommend 人脉推荐方法。",
+    reviewEvidenceZh:
+      "已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。",
     sourcePath: "repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.zh.md",
     category: "sprint-spec",
-    freshness: "likely-current",
+    freshness: "verified-current",
     ownerArea: "orbit-ai",
-    relatedCodePaths: ["repos/orbits/app/dev/orbit-ai/trace"],
+    relatedCodePaths: [
+      "repos/orbits/features/orbit-ai/live-agent-runtime.ts",
+      "repos/orbits/features/orbit-ai/live-conversation-trace.ts",
+      "repos/orbits/features/orbit-ai/contact-recommendation-artifact-service.ts",
+      "repos/orbits/app/dev/orbit-ai/trace",
+      "repos/orbits/app/api/dev/orbit-agent/trace/route.ts",
+    ],
     relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
   }),
   doc({
@@ -769,6 +807,9 @@ function validateDocuments() {
       invalid.push(`${entry.id} missing Chinese review evidence`);
     }
     if (!existsSync(join(projectRoot, entry.sourcePath))) missing.push(entry.sourcePath);
+    if (!entry.localizedSourcePath?.startsWith("knowledge/docs/zh/")) {
+      invalid.push(`${entry.id} invalid localizedSourcePath`);
+    }
     if (entry.sourcePath.startsWith("harness-state/runs/")) invalid.push(`${entry.id} uses run snapshot`);
     if (!statuses.has(entry.status)) invalid.push(`${entry.id} invalid status`);
     if (!freshnessValues.has(entry.freshness)) invalid.push(`${entry.id} invalid freshness`);
@@ -811,6 +852,7 @@ function renderCatalogMarkdown() {
     for (const entry of entries) {
       lines.push(
         `- **${entry.titleZh}**（\`${entry.sourcePath}\`）`,
+        `  - 中文阅读版：\`${entry.localizedSourcePath}\``,
         `  - 简介：${entry.summaryZh}`,
         `  - 审计依据：${entry.reviewEvidenceZh}`,
         `  - 状态：\`${entry.status}\`；新鲜度：\`${entry.freshness}\`；负责人域：\`${entry.ownerArea}\``,

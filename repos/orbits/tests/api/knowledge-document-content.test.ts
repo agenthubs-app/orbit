@@ -44,9 +44,11 @@ test("dev knowledge document route returns markdown for whitelisted document ids
   assert.equal(body.success, true);
   assert.equal(body.data.id, "technical-design");
   assert.equal(body.data.titleZh, "Orbit 技术设计");
-  assert.equal(body.data.sourcePath, "docs/designs/orbit_technical_design.md");
-  assert.match(body.data.markdown, /# Orbit 技术设计文档/);
-  assert.match(body.data.markdown, /## 1\. 文档目标/);
+  assert.equal(body.data.originalSourcePath, "docs/designs/orbit_technical_design.md");
+  assert.equal(body.data.sourcePath, "knowledge/docs/zh/technical-design.zh.md");
+  assert.match(body.data.markdown, /# Orbit 技术设计/);
+  assert.match(body.data.markdown, /中文阅读版/);
+  assert.match(body.data.markdown, /## 中文摘要/);
   assert.match(body.data.markdown, /```json/);
 });
 
