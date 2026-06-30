@@ -38,3 +38,10 @@
 - 用户目标：知识库构建参考 Karpathy LLM Wiki 的最新模式，同时保持 Orbit 项目自身可审计、中文优先、无需 RAG 的实现边界。
 - 修改摘要：在 `knowledge/schema.zh.md` 增加参考模式说明，记录 raw sources、LLM-maintained wiki、schema/AGENTS、ingest/query/lint/index/log 等概念如何映射到 Orbit 的文档 catalog、主题 wiki、开发历史、learnings 和 app-local manifest。
 - 验证方式：运行 root knowledge tests、`git diff --check`。
+
+## [2026-06-30] implementation | 可浏览知识库 Wiki Explorer
+
+- 用户目标：`/dev/knowledge` 不应只是总结性静态页面，而要能查看所有文档和知识库内容。
+- 修改摘要：将 `/dev/knowledge` 升级为可交互 Wiki Explorer，支持查看全部 146 个 catalog 文档、搜索、按类型/状态/新鲜度筛选、选择条目查看来源路径/摘要/审计依据，并在同页浏览知识主题、开发历史和经验库入口。
+- 架构边界：页面仍只消费 `repos/orbits/shared/knowledge/knowledge-manifest.ts`，不在 app runtime 读取父目录 Markdown；原始全文仍保留在来源路径，Explorer 展示编译后的中文元数据和知识库入口。
+- 验证方式：新增 page test 断言全量浏览器、筛选控件、详情面板和后段文档可见；运行 app page test、manifest test、lint、app full test、HTTP 页面检查和 `git diff --check`。

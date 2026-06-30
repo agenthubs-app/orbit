@@ -31,3 +31,10 @@
 
 - 在 `knowledge/schema.zh.md` 记录 Karpathy LLM Wiki 参考来源和 Orbit 映射。
 - 明确 Orbit 知识库采用可审计 Markdown/catalog/manifest 层，不引入 RAG、embedding 或向量数据库。
+
+## [2026-06-30] implementation | 可浏览知识库 Wiki Explorer
+
+- 将 `/dev/knowledge` 从摘要页升级为可交互 Wiki Explorer。
+- 页面可查看全部 146 个文档条目，并提供搜索、筛选和详情面板。
+- 知识主题、开发历史和经验库在同一页面保留入口。
+- 运行时仍只读取 app-local manifest，不读取父目录知识库文件。

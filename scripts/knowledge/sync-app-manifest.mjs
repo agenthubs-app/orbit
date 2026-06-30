@@ -94,6 +94,14 @@ const manifest = {
   ],
   recentHistory: [
     {
+      id: "knowledge-wiki-explorer",
+      date: "2026-06-30",
+      titleZh: "可浏览知识库 Wiki Explorer",
+      summaryZh:
+        "将 /dev/knowledge 从摘要页升级为可查看全部文档、搜索筛选和查看详情的 Wiki Explorer。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
+    {
       id: "knowledge-llm-wiki-reference",
       date: "2026-06-30",
       titleZh: "记录 LLM Wiki 参考模式",

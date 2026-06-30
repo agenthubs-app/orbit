@@ -28,8 +28,21 @@ test("/dev/knowledge renders the Orbit knowledge wiki", async () => {
 
   assert.match(html, /Orbit 知识库/);
   assert.match(html, /data-orbit-knowledge-wiki="true"/);
-  assert.match(html, /文档库入口/);
+  assert.match(html, /data-knowledge-explorer="true"/);
+  assert.match(html, /文档浏览器/);
+  assert.match(html, /搜索文档和知识/);
+  assert.match(html, /按类型筛选/);
+  assert.match(html, /按状态筛选/);
+  assert.match(html, /按新鲜度筛选/);
+  assert.match(html, /条目详情/);
+  assert.match(html, /全部 146 个文档/);
   assert.match(html, /审计依据|关联代码路径/);
+  assert.match(
+    html,
+    /repos\/orbits\/features\/search\/relationship-natural-search-mock\/LIVE_IMPLEMENTATION\.md/,
+  );
+  assert.match(html, /Shared Runtime 交接：ui/);
+  assert.match(html, /知识主题/);
   assert.match(html, /开发历史/);
   assert.match(html, /排障经验/);
   assert.match(html, /需要代码核对/);
