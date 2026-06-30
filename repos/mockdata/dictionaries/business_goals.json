@@ -1,0 +1,42 @@
+[
+  {
+    "id": "goal_01",
+    "label": "bilingual Xiaohongshu inbound campaign partner"
+  },
+  {
+    "id": "goal_02",
+    "label": "AI workflow PoC buyer in Japanese SMB manufacturing"
+  },
+  {
+    "id": "goal_03",
+    "label": "Japan market entry advisor for China SaaS sales"
+  },
+  {
+    "id": "goal_04",
+    "label": "restaurant reservation CRM integration pilot"
+  },
+  {
+    "id": "goal_05",
+    "label": "investor warm intro for seed fundraising"
+  },
+  {
+    "id": "goal_06",
+    "label": "event sponsor with Chinese business-community reach"
+  },
+  {
+    "id": "goal_07",
+    "label": "post-event follow-up workflow operator"
+  },
+  {
+    "id": "goal_08",
+    "label": "duplicate contact cleanup and provenance review"
+  },
+  {
+    "id": "goal_09",
+    "label": "retail live-commerce distribution partner"
+  },
+  {
+    "id": "goal_10",
+    "label": "trusted tax and incorporation advisor for Japan entry"
+  }
+]

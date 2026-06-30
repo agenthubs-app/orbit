@@ -1,0 +1,4322 @@
+[
+  {
+    "id": "ai_analysis_0001",
+    "target_type": "event_participant",
+    "target_id": "participant_002",
+    "confidence": 0.46,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0001"
+    ]
+  },
+  {
+    "id": "ai_analysis_0002",
+    "target_type": "connection",
+    "target_id": "connection_0003",
+    "confidence": 0.47,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0002"
+    ]
+  },
+  {
+    "id": "ai_analysis_0003",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0004",
+    "confidence": 0.48,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0003"
+    ]
+  },
+  {
+    "id": "ai_analysis_0004",
+    "target_type": "user",
+    "target_id": "user_005",
+    "confidence": 0.49,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0004"
+    ]
+  },
+  {
+    "id": "ai_analysis_0005",
+    "target_type": "event_participant",
+    "target_id": "participant_006",
+    "confidence": 0.5,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0005"
+    ]
+  },
+  {
+    "id": "ai_analysis_0006",
+    "target_type": "connection",
+    "target_id": "connection_0007",
+    "confidence": 0.51,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0006"
+    ]
+  },
+  {
+    "id": "ai_analysis_0007",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0008",
+    "confidence": 0.52,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0007"
+    ]
+  },
+  {
+    "id": "ai_analysis_0008",
+    "target_type": "user",
+    "target_id": "user_009",
+    "confidence": 0.53,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0008"
+    ]
+  },
+  {
+    "id": "ai_analysis_0009",
+    "target_type": "event_participant",
+    "target_id": "participant_010",
+    "confidence": 0.54,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0009"
+    ]
+  },
+  {
+    "id": "ai_analysis_0010",
+    "target_type": "connection",
+    "target_id": "connection_0011",
+    "confidence": 0.55,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0010"
+    ]
+  },
+  {
+    "id": "ai_analysis_0011",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0012",
+    "confidence": 0.56,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0011"
+    ]
+  },
+  {
+    "id": "ai_analysis_0012",
+    "target_type": "user",
+    "target_id": "user_013",
+    "confidence": 0.57,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0012"
+    ]
+  },
+  {
+    "id": "ai_analysis_0013",
+    "target_type": "event_participant",
+    "target_id": "participant_014",
+    "confidence": 0.58,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0013"
+    ]
+  },
+  {
+    "id": "ai_analysis_0014",
+    "target_type": "connection",
+    "target_id": "connection_0015",
+    "confidence": 0.59,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0014"
+    ]
+  },
+  {
+    "id": "ai_analysis_0015",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0016",
+    "confidence": 0.6,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0015"
+    ]
+  },
+  {
+    "id": "ai_analysis_0016",
+    "target_type": "user",
+    "target_id": "user_017",
+    "confidence": 0.61,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0016"
+    ]
+  },
+  {
+    "id": "ai_analysis_0017",
+    "target_type": "event_participant",
+    "target_id": "participant_018",
+    "confidence": 0.62,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0017"
+    ]
+  },
+  {
+    "id": "ai_analysis_0018",
+    "target_type": "connection",
+    "target_id": "connection_0019",
+    "confidence": 0.63,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0018"
+    ]
+  },
+  {
+    "id": "ai_analysis_0019",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0020",
+    "confidence": 0.64,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0019"
+    ]
+  },
+  {
+    "id": "ai_analysis_0020",
+    "target_type": "user",
+    "target_id": "user_021",
+    "confidence": 0.65,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0020"
+    ]
+  },
+  {
+    "id": "ai_analysis_0021",
+    "target_type": "event_participant",
+    "target_id": "participant_022",
+    "confidence": 0.66,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0021"
+    ]
+  },
+  {
+    "id": "ai_analysis_0022",
+    "target_type": "connection",
+    "target_id": "connection_0023",
+    "confidence": 0.67,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0022"
+    ]
+  },
+  {
+    "id": "ai_analysis_0023",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0024",
+    "confidence": 0.68,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0023"
+    ]
+  },
+  {
+    "id": "ai_analysis_0024",
+    "target_type": "user",
+    "target_id": "user_025",
+    "confidence": 0.69,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0024"
+    ]
+  },
+  {
+    "id": "ai_analysis_0025",
+    "target_type": "event_participant",
+    "target_id": "participant_026",
+    "confidence": 0.7,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0025"
+    ]
+  },
+  {
+    "id": "ai_analysis_0026",
+    "target_type": "connection",
+    "target_id": "connection_0027",
+    "confidence": 0.71,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0026"
+    ]
+  },
+  {
+    "id": "ai_analysis_0027",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0028",
+    "confidence": 0.72,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0027"
+    ]
+  },
+  {
+    "id": "ai_analysis_0028",
+    "target_type": "user",
+    "target_id": "user_029",
+    "confidence": 0.73,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0028"
+    ]
+  },
+  {
+    "id": "ai_analysis_0029",
+    "target_type": "event_participant",
+    "target_id": "participant_030",
+    "confidence": 0.74,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0029"
+    ]
+  },
+  {
+    "id": "ai_analysis_0030",
+    "target_type": "connection",
+    "target_id": "connection_0031",
+    "confidence": 0.75,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0030"
+    ]
+  },
+  {
+    "id": "ai_analysis_0031",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0032",
+    "confidence": 0.76,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0031"
+    ]
+  },
+  {
+    "id": "ai_analysis_0032",
+    "target_type": "user",
+    "target_id": "user_033",
+    "confidence": 0.77,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0032"
+    ]
+  },
+  {
+    "id": "ai_analysis_0033",
+    "target_type": "event_participant",
+    "target_id": "participant_034",
+    "confidence": 0.78,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0033"
+    ]
+  },
+  {
+    "id": "ai_analysis_0034",
+    "target_type": "connection",
+    "target_id": "connection_0035",
+    "confidence": 0.79,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0034"
+    ]
+  },
+  {
+    "id": "ai_analysis_0035",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0036",
+    "confidence": 0.8,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0035"
+    ]
+  },
+  {
+    "id": "ai_analysis_0036",
+    "target_type": "user",
+    "target_id": "user_037",
+    "confidence": 0.81,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0036"
+    ]
+  },
+  {
+    "id": "ai_analysis_0037",
+    "target_type": "event_participant",
+    "target_id": "participant_038",
+    "confidence": 0.82,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0037"
+    ]
+  },
+  {
+    "id": "ai_analysis_0038",
+    "target_type": "connection",
+    "target_id": "connection_0039",
+    "confidence": 0.83,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0038"
+    ]
+  },
+  {
+    "id": "ai_analysis_0039",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0040",
+    "confidence": 0.84,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0039"
+    ]
+  },
+  {
+    "id": "ai_analysis_0040",
+    "target_type": "user",
+    "target_id": "user_041",
+    "confidence": 0.85,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0040"
+    ]
+  },
+  {
+    "id": "ai_analysis_0041",
+    "target_type": "event_participant",
+    "target_id": "participant_042",
+    "confidence": 0.86,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0041"
+    ]
+  },
+  {
+    "id": "ai_analysis_0042",
+    "target_type": "connection",
+    "target_id": "connection_0043",
+    "confidence": 0.87,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0042"
+    ]
+  },
+  {
+    "id": "ai_analysis_0043",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0044",
+    "confidence": 0.88,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0043"
+    ]
+  },
+  {
+    "id": "ai_analysis_0044",
+    "target_type": "user",
+    "target_id": "user_045",
+    "confidence": 0.89,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0044"
+    ]
+  },
+  {
+    "id": "ai_analysis_0045",
+    "target_type": "event_participant",
+    "target_id": "participant_046",
+    "confidence": 0.9,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0045"
+    ]
+  },
+  {
+    "id": "ai_analysis_0046",
+    "target_type": "connection",
+    "target_id": "connection_0047",
+    "confidence": 0.91,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0046"
+    ]
+  },
+  {
+    "id": "ai_analysis_0047",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0048",
+    "confidence": 0.92,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0047"
+    ]
+  },
+  {
+    "id": "ai_analysis_0048",
+    "target_type": "user",
+    "target_id": "user_049",
+    "confidence": 0.93,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0048"
+    ]
+  },
+  {
+    "id": "ai_analysis_0049",
+    "target_type": "event_participant",
+    "target_id": "participant_050",
+    "confidence": 0.94,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0049"
+    ]
+  },
+  {
+    "id": "ai_analysis_0050",
+    "target_type": "connection",
+    "target_id": "connection_0051",
+    "confidence": 0.45,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0050"
+    ]
+  },
+  {
+    "id": "ai_analysis_0051",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0052",
+    "confidence": 0.46,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0051"
+    ]
+  },
+  {
+    "id": "ai_analysis_0052",
+    "target_type": "user",
+    "target_id": "user_053",
+    "confidence": 0.47,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0052"
+    ]
+  },
+  {
+    "id": "ai_analysis_0053",
+    "target_type": "event_participant",
+    "target_id": "participant_054",
+    "confidence": 0.48,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0053"
+    ]
+  },
+  {
+    "id": "ai_analysis_0054",
+    "target_type": "connection",
+    "target_id": "connection_0055",
+    "confidence": 0.49,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0054"
+    ]
+  },
+  {
+    "id": "ai_analysis_0055",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0056",
+    "confidence": 0.5,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0055"
+    ]
+  },
+  {
+    "id": "ai_analysis_0056",
+    "target_type": "user",
+    "target_id": "user_057",
+    "confidence": 0.51,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0056"
+    ]
+  },
+  {
+    "id": "ai_analysis_0057",
+    "target_type": "event_participant",
+    "target_id": "participant_058",
+    "confidence": 0.52,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0057"
+    ]
+  },
+  {
+    "id": "ai_analysis_0058",
+    "target_type": "connection",
+    "target_id": "connection_0059",
+    "confidence": 0.53,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0058"
+    ]
+  },
+  {
+    "id": "ai_analysis_0059",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0060",
+    "confidence": 0.54,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0059"
+    ]
+  },
+  {
+    "id": "ai_analysis_0060",
+    "target_type": "user",
+    "target_id": "user_061",
+    "confidence": 0.55,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0060"
+    ]
+  },
+  {
+    "id": "ai_analysis_0061",
+    "target_type": "event_participant",
+    "target_id": "participant_062",
+    "confidence": 0.56,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0061"
+    ]
+  },
+  {
+    "id": "ai_analysis_0062",
+    "target_type": "connection",
+    "target_id": "connection_0063",
+    "confidence": 0.57,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0062"
+    ]
+  },
+  {
+    "id": "ai_analysis_0063",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0064",
+    "confidence": 0.58,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0063"
+    ]
+  },
+  {
+    "id": "ai_analysis_0064",
+    "target_type": "user",
+    "target_id": "user_065",
+    "confidence": 0.59,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0064"
+    ]
+  },
+  {
+    "id": "ai_analysis_0065",
+    "target_type": "event_participant",
+    "target_id": "participant_066",
+    "confidence": 0.6,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0065"
+    ]
+  },
+  {
+    "id": "ai_analysis_0066",
+    "target_type": "connection",
+    "target_id": "connection_0067",
+    "confidence": 0.61,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0066"
+    ]
+  },
+  {
+    "id": "ai_analysis_0067",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0068",
+    "confidence": 0.62,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0067"
+    ]
+  },
+  {
+    "id": "ai_analysis_0068",
+    "target_type": "user",
+    "target_id": "user_069",
+    "confidence": 0.63,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0068"
+    ]
+  },
+  {
+    "id": "ai_analysis_0069",
+    "target_type": "event_participant",
+    "target_id": "participant_070",
+    "confidence": 0.64,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0069"
+    ]
+  },
+  {
+    "id": "ai_analysis_0070",
+    "target_type": "connection",
+    "target_id": "connection_0071",
+    "confidence": 0.65,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0070"
+    ]
+  },
+  {
+    "id": "ai_analysis_0071",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0072",
+    "confidence": 0.66,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0071"
+    ]
+  },
+  {
+    "id": "ai_analysis_0072",
+    "target_type": "user",
+    "target_id": "user_073",
+    "confidence": 0.67,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0072"
+    ]
+  },
+  {
+    "id": "ai_analysis_0073",
+    "target_type": "event_participant",
+    "target_id": "participant_074",
+    "confidence": 0.68,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0073"
+    ]
+  },
+  {
+    "id": "ai_analysis_0074",
+    "target_type": "connection",
+    "target_id": "connection_0075",
+    "confidence": 0.69,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0074"
+    ]
+  },
+  {
+    "id": "ai_analysis_0075",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0076",
+    "confidence": 0.7,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0075"
+    ]
+  },
+  {
+    "id": "ai_analysis_0076",
+    "target_type": "user",
+    "target_id": "user_077",
+    "confidence": 0.71,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0076"
+    ]
+  },
+  {
+    "id": "ai_analysis_0077",
+    "target_type": "event_participant",
+    "target_id": "participant_078",
+    "confidence": 0.72,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0077"
+    ]
+  },
+  {
+    "id": "ai_analysis_0078",
+    "target_type": "connection",
+    "target_id": "connection_0079",
+    "confidence": 0.73,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0078"
+    ]
+  },
+  {
+    "id": "ai_analysis_0079",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0080",
+    "confidence": 0.74,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0079"
+    ]
+  },
+  {
+    "id": "ai_analysis_0080",
+    "target_type": "user",
+    "target_id": "user_081",
+    "confidence": 0.75,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0080"
+    ]
+  },
+  {
+    "id": "ai_analysis_0081",
+    "target_type": "event_participant",
+    "target_id": "participant_082",
+    "confidence": 0.76,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0081"
+    ]
+  },
+  {
+    "id": "ai_analysis_0082",
+    "target_type": "connection",
+    "target_id": "connection_0083",
+    "confidence": 0.77,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0082"
+    ]
+  },
+  {
+    "id": "ai_analysis_0083",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0084",
+    "confidence": 0.78,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0083"
+    ]
+  },
+  {
+    "id": "ai_analysis_0084",
+    "target_type": "user",
+    "target_id": "user_085",
+    "confidence": 0.79,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0084"
+    ]
+  },
+  {
+    "id": "ai_analysis_0085",
+    "target_type": "event_participant",
+    "target_id": "participant_086",
+    "confidence": 0.8,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0085"
+    ]
+  },
+  {
+    "id": "ai_analysis_0086",
+    "target_type": "connection",
+    "target_id": "connection_0087",
+    "confidence": 0.81,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0086"
+    ]
+  },
+  {
+    "id": "ai_analysis_0087",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0088",
+    "confidence": 0.82,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0087"
+    ]
+  },
+  {
+    "id": "ai_analysis_0088",
+    "target_type": "user",
+    "target_id": "user_089",
+    "confidence": 0.83,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0088"
+    ]
+  },
+  {
+    "id": "ai_analysis_0089",
+    "target_type": "event_participant",
+    "target_id": "participant_090",
+    "confidence": 0.84,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0089"
+    ]
+  },
+  {
+    "id": "ai_analysis_0090",
+    "target_type": "connection",
+    "target_id": "connection_0091",
+    "confidence": 0.85,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0090"
+    ]
+  },
+  {
+    "id": "ai_analysis_0091",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0092",
+    "confidence": 0.86,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0091"
+    ]
+  },
+  {
+    "id": "ai_analysis_0092",
+    "target_type": "user",
+    "target_id": "user_093",
+    "confidence": 0.87,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0092"
+    ]
+  },
+  {
+    "id": "ai_analysis_0093",
+    "target_type": "event_participant",
+    "target_id": "participant_094",
+    "confidence": 0.88,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0093"
+    ]
+  },
+  {
+    "id": "ai_analysis_0094",
+    "target_type": "connection",
+    "target_id": "connection_0095",
+    "confidence": 0.89,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0094"
+    ]
+  },
+  {
+    "id": "ai_analysis_0095",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0096",
+    "confidence": 0.9,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0095"
+    ]
+  },
+  {
+    "id": "ai_analysis_0096",
+    "target_type": "user",
+    "target_id": "user_097",
+    "confidence": 0.91,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0096"
+    ]
+  },
+  {
+    "id": "ai_analysis_0097",
+    "target_type": "event_participant",
+    "target_id": "participant_098",
+    "confidence": 0.92,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0097"
+    ]
+  },
+  {
+    "id": "ai_analysis_0098",
+    "target_type": "connection",
+    "target_id": "connection_0099",
+    "confidence": 0.93,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0098"
+    ]
+  },
+  {
+    "id": "ai_analysis_0099",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0100",
+    "confidence": 0.94,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0099"
+    ]
+  },
+  {
+    "id": "ai_analysis_0100",
+    "target_type": "user",
+    "target_id": "user_101",
+    "confidence": 0.45,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0100"
+    ]
+  },
+  {
+    "id": "ai_analysis_0101",
+    "target_type": "event_participant",
+    "target_id": "participant_102",
+    "confidence": 0.46,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0101"
+    ]
+  },
+  {
+    "id": "ai_analysis_0102",
+    "target_type": "connection",
+    "target_id": "connection_0103",
+    "confidence": 0.47,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0102"
+    ]
+  },
+  {
+    "id": "ai_analysis_0103",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0104",
+    "confidence": 0.48,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0103"
+    ]
+  },
+  {
+    "id": "ai_analysis_0104",
+    "target_type": "user",
+    "target_id": "user_105",
+    "confidence": 0.49,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0104"
+    ]
+  },
+  {
+    "id": "ai_analysis_0105",
+    "target_type": "event_participant",
+    "target_id": "participant_106",
+    "confidence": 0.5,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0105"
+    ]
+  },
+  {
+    "id": "ai_analysis_0106",
+    "target_type": "connection",
+    "target_id": "connection_0107",
+    "confidence": 0.51,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0106"
+    ]
+  },
+  {
+    "id": "ai_analysis_0107",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0108",
+    "confidence": 0.52,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0107"
+    ]
+  },
+  {
+    "id": "ai_analysis_0108",
+    "target_type": "user",
+    "target_id": "user_109",
+    "confidence": 0.53,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0108"
+    ]
+  },
+  {
+    "id": "ai_analysis_0109",
+    "target_type": "event_participant",
+    "target_id": "participant_110",
+    "confidence": 0.54,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0109"
+    ]
+  },
+  {
+    "id": "ai_analysis_0110",
+    "target_type": "connection",
+    "target_id": "connection_0111",
+    "confidence": 0.55,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0110"
+    ]
+  },
+  {
+    "id": "ai_analysis_0111",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0112",
+    "confidence": 0.56,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0111"
+    ]
+  },
+  {
+    "id": "ai_analysis_0112",
+    "target_type": "user",
+    "target_id": "user_113",
+    "confidence": 0.57,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0112"
+    ]
+  },
+  {
+    "id": "ai_analysis_0113",
+    "target_type": "event_participant",
+    "target_id": "participant_114",
+    "confidence": 0.58,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0113"
+    ]
+  },
+  {
+    "id": "ai_analysis_0114",
+    "target_type": "connection",
+    "target_id": "connection_0115",
+    "confidence": 0.59,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0114"
+    ]
+  },
+  {
+    "id": "ai_analysis_0115",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0116",
+    "confidence": 0.6,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0115"
+    ]
+  },
+  {
+    "id": "ai_analysis_0116",
+    "target_type": "user",
+    "target_id": "user_117",
+    "confidence": 0.61,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0116"
+    ]
+  },
+  {
+    "id": "ai_analysis_0117",
+    "target_type": "event_participant",
+    "target_id": "participant_118",
+    "confidence": 0.62,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0117"
+    ]
+  },
+  {
+    "id": "ai_analysis_0118",
+    "target_type": "connection",
+    "target_id": "connection_0119",
+    "confidence": 0.63,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0118"
+    ]
+  },
+  {
+    "id": "ai_analysis_0119",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0120",
+    "confidence": 0.64,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0119"
+    ]
+  },
+  {
+    "id": "ai_analysis_0120",
+    "target_type": "user",
+    "target_id": "user_121",
+    "confidence": 0.65,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0120"
+    ]
+  },
+  {
+    "id": "ai_analysis_0121",
+    "target_type": "event_participant",
+    "target_id": "participant_122",
+    "confidence": 0.66,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0121"
+    ]
+  },
+  {
+    "id": "ai_analysis_0122",
+    "target_type": "connection",
+    "target_id": "connection_0123",
+    "confidence": 0.67,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0122"
+    ]
+  },
+  {
+    "id": "ai_analysis_0123",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0124",
+    "confidence": 0.68,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0123"
+    ]
+  },
+  {
+    "id": "ai_analysis_0124",
+    "target_type": "user",
+    "target_id": "user_125",
+    "confidence": 0.69,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0124"
+    ]
+  },
+  {
+    "id": "ai_analysis_0125",
+    "target_type": "event_participant",
+    "target_id": "participant_126",
+    "confidence": 0.7,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0125"
+    ]
+  },
+  {
+    "id": "ai_analysis_0126",
+    "target_type": "connection",
+    "target_id": "connection_0127",
+    "confidence": 0.71,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0126"
+    ]
+  },
+  {
+    "id": "ai_analysis_0127",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0128",
+    "confidence": 0.72,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0127"
+    ]
+  },
+  {
+    "id": "ai_analysis_0128",
+    "target_type": "user",
+    "target_id": "user_129",
+    "confidence": 0.73,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0128"
+    ]
+  },
+  {
+    "id": "ai_analysis_0129",
+    "target_type": "event_participant",
+    "target_id": "participant_130",
+    "confidence": 0.74,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0129"
+    ]
+  },
+  {
+    "id": "ai_analysis_0130",
+    "target_type": "connection",
+    "target_id": "connection_0131",
+    "confidence": 0.75,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0130"
+    ]
+  },
+  {
+    "id": "ai_analysis_0131",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0132",
+    "confidence": 0.76,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0131"
+    ]
+  },
+  {
+    "id": "ai_analysis_0132",
+    "target_type": "user",
+    "target_id": "user_001",
+    "confidence": 0.77,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0132"
+    ]
+  },
+  {
+    "id": "ai_analysis_0133",
+    "target_type": "event_participant",
+    "target_id": "participant_134",
+    "confidence": 0.78,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0133"
+    ]
+  },
+  {
+    "id": "ai_analysis_0134",
+    "target_type": "connection",
+    "target_id": "connection_0135",
+    "confidence": 0.79,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0134"
+    ]
+  },
+  {
+    "id": "ai_analysis_0135",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0136",
+    "confidence": 0.8,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0135"
+    ]
+  },
+  {
+    "id": "ai_analysis_0136",
+    "target_type": "user",
+    "target_id": "user_005",
+    "confidence": 0.81,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0136"
+    ]
+  },
+  {
+    "id": "ai_analysis_0137",
+    "target_type": "event_participant",
+    "target_id": "participant_138",
+    "confidence": 0.82,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0137"
+    ]
+  },
+  {
+    "id": "ai_analysis_0138",
+    "target_type": "connection",
+    "target_id": "connection_0139",
+    "confidence": 0.83,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0138"
+    ]
+  },
+  {
+    "id": "ai_analysis_0139",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0140",
+    "confidence": 0.84,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0139"
+    ]
+  },
+  {
+    "id": "ai_analysis_0140",
+    "target_type": "user",
+    "target_id": "user_009",
+    "confidence": 0.85,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0140"
+    ]
+  },
+  {
+    "id": "ai_analysis_0141",
+    "target_type": "event_participant",
+    "target_id": "participant_142",
+    "confidence": 0.86,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0141"
+    ]
+  },
+  {
+    "id": "ai_analysis_0142",
+    "target_type": "connection",
+    "target_id": "connection_0143",
+    "confidence": 0.87,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0142"
+    ]
+  },
+  {
+    "id": "ai_analysis_0143",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0144",
+    "confidence": 0.88,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0143"
+    ]
+  },
+  {
+    "id": "ai_analysis_0144",
+    "target_type": "user",
+    "target_id": "user_013",
+    "confidence": 0.89,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0144"
+    ]
+  },
+  {
+    "id": "ai_analysis_0145",
+    "target_type": "event_participant",
+    "target_id": "participant_146",
+    "confidence": 0.9,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0145"
+    ]
+  },
+  {
+    "id": "ai_analysis_0146",
+    "target_type": "connection",
+    "target_id": "connection_0147",
+    "confidence": 0.91,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0146"
+    ]
+  },
+  {
+    "id": "ai_analysis_0147",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0148",
+    "confidence": 0.92,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0147"
+    ]
+  },
+  {
+    "id": "ai_analysis_0148",
+    "target_type": "user",
+    "target_id": "user_017",
+    "confidence": 0.93,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0148"
+    ]
+  },
+  {
+    "id": "ai_analysis_0149",
+    "target_type": "event_participant",
+    "target_id": "participant_150",
+    "confidence": 0.94,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0149"
+    ]
+  },
+  {
+    "id": "ai_analysis_0150",
+    "target_type": "connection",
+    "target_id": "connection_0151",
+    "confidence": 0.45,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0150"
+    ]
+  },
+  {
+    "id": "ai_analysis_0151",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0152",
+    "confidence": 0.46,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0151"
+    ]
+  },
+  {
+    "id": "ai_analysis_0152",
+    "target_type": "user",
+    "target_id": "user_021",
+    "confidence": 0.47,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0152"
+    ]
+  },
+  {
+    "id": "ai_analysis_0153",
+    "target_type": "event_participant",
+    "target_id": "participant_154",
+    "confidence": 0.48,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0153"
+    ]
+  },
+  {
+    "id": "ai_analysis_0154",
+    "target_type": "connection",
+    "target_id": "connection_0155",
+    "confidence": 0.49,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0154"
+    ]
+  },
+  {
+    "id": "ai_analysis_0155",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0156",
+    "confidence": 0.5,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0155"
+    ]
+  },
+  {
+    "id": "ai_analysis_0156",
+    "target_type": "user",
+    "target_id": "user_025",
+    "confidence": 0.51,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0156"
+    ]
+  },
+  {
+    "id": "ai_analysis_0157",
+    "target_type": "event_participant",
+    "target_id": "participant_158",
+    "confidence": 0.52,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0157"
+    ]
+  },
+  {
+    "id": "ai_analysis_0158",
+    "target_type": "connection",
+    "target_id": "connection_0159",
+    "confidence": 0.53,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0158"
+    ]
+  },
+  {
+    "id": "ai_analysis_0159",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0160",
+    "confidence": 0.54,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0159"
+    ]
+  },
+  {
+    "id": "ai_analysis_0160",
+    "target_type": "user",
+    "target_id": "user_029",
+    "confidence": 0.55,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0160"
+    ]
+  },
+  {
+    "id": "ai_analysis_0161",
+    "target_type": "event_participant",
+    "target_id": "participant_162",
+    "confidence": 0.56,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0161"
+    ]
+  },
+  {
+    "id": "ai_analysis_0162",
+    "target_type": "connection",
+    "target_id": "connection_0163",
+    "confidence": 0.57,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0162"
+    ]
+  },
+  {
+    "id": "ai_analysis_0163",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0164",
+    "confidence": 0.58,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0163"
+    ]
+  },
+  {
+    "id": "ai_analysis_0164",
+    "target_type": "user",
+    "target_id": "user_033",
+    "confidence": 0.59,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0164"
+    ]
+  },
+  {
+    "id": "ai_analysis_0165",
+    "target_type": "event_participant",
+    "target_id": "participant_166",
+    "confidence": 0.6,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0165"
+    ]
+  },
+  {
+    "id": "ai_analysis_0166",
+    "target_type": "connection",
+    "target_id": "connection_0167",
+    "confidence": 0.61,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0166"
+    ]
+  },
+  {
+    "id": "ai_analysis_0167",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0168",
+    "confidence": 0.62,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0167"
+    ]
+  },
+  {
+    "id": "ai_analysis_0168",
+    "target_type": "user",
+    "target_id": "user_037",
+    "confidence": 0.63,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0168"
+    ]
+  },
+  {
+    "id": "ai_analysis_0169",
+    "target_type": "event_participant",
+    "target_id": "participant_170",
+    "confidence": 0.64,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0169"
+    ]
+  },
+  {
+    "id": "ai_analysis_0170",
+    "target_type": "connection",
+    "target_id": "connection_0171",
+    "confidence": 0.65,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0170"
+    ]
+  },
+  {
+    "id": "ai_analysis_0171",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0172",
+    "confidence": 0.66,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0171"
+    ]
+  },
+  {
+    "id": "ai_analysis_0172",
+    "target_type": "user",
+    "target_id": "user_041",
+    "confidence": 0.67,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0172"
+    ]
+  },
+  {
+    "id": "ai_analysis_0173",
+    "target_type": "event_participant",
+    "target_id": "participant_174",
+    "confidence": 0.68,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0173"
+    ]
+  },
+  {
+    "id": "ai_analysis_0174",
+    "target_type": "connection",
+    "target_id": "connection_0175",
+    "confidence": 0.69,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0174"
+    ]
+  },
+  {
+    "id": "ai_analysis_0175",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0176",
+    "confidence": 0.7,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0175"
+    ]
+  },
+  {
+    "id": "ai_analysis_0176",
+    "target_type": "user",
+    "target_id": "user_045",
+    "confidence": 0.71,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0176"
+    ]
+  },
+  {
+    "id": "ai_analysis_0177",
+    "target_type": "event_participant",
+    "target_id": "participant_178",
+    "confidence": 0.72,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0177"
+    ]
+  },
+  {
+    "id": "ai_analysis_0178",
+    "target_type": "connection",
+    "target_id": "connection_0179",
+    "confidence": 0.73,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0178"
+    ]
+  },
+  {
+    "id": "ai_analysis_0179",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0180",
+    "confidence": 0.74,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0179"
+    ]
+  },
+  {
+    "id": "ai_analysis_0180",
+    "target_type": "user",
+    "target_id": "user_049",
+    "confidence": 0.75,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0180"
+    ]
+  },
+  {
+    "id": "ai_analysis_0181",
+    "target_type": "event_participant",
+    "target_id": "participant_182",
+    "confidence": 0.76,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0181"
+    ]
+  },
+  {
+    "id": "ai_analysis_0182",
+    "target_type": "connection",
+    "target_id": "connection_0183",
+    "confidence": 0.77,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0182"
+    ]
+  },
+  {
+    "id": "ai_analysis_0183",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0184",
+    "confidence": 0.78,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0183"
+    ]
+  },
+  {
+    "id": "ai_analysis_0184",
+    "target_type": "user",
+    "target_id": "user_053",
+    "confidence": 0.79,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0184"
+    ]
+  },
+  {
+    "id": "ai_analysis_0185",
+    "target_type": "event_participant",
+    "target_id": "participant_186",
+    "confidence": 0.8,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0185"
+    ]
+  },
+  {
+    "id": "ai_analysis_0186",
+    "target_type": "connection",
+    "target_id": "connection_0187",
+    "confidence": 0.81,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0186"
+    ]
+  },
+  {
+    "id": "ai_analysis_0187",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0188",
+    "confidence": 0.82,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0187"
+    ]
+  },
+  {
+    "id": "ai_analysis_0188",
+    "target_type": "user",
+    "target_id": "user_057",
+    "confidence": 0.83,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0188"
+    ]
+  },
+  {
+    "id": "ai_analysis_0189",
+    "target_type": "event_participant",
+    "target_id": "participant_190",
+    "confidence": 0.84,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0189"
+    ]
+  },
+  {
+    "id": "ai_analysis_0190",
+    "target_type": "connection",
+    "target_id": "connection_0191",
+    "confidence": 0.85,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0190"
+    ]
+  },
+  {
+    "id": "ai_analysis_0191",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0192",
+    "confidence": 0.86,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0191"
+    ]
+  },
+  {
+    "id": "ai_analysis_0192",
+    "target_type": "user",
+    "target_id": "user_061",
+    "confidence": 0.87,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0192"
+    ]
+  },
+  {
+    "id": "ai_analysis_0193",
+    "target_type": "event_participant",
+    "target_id": "participant_194",
+    "confidence": 0.88,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0193"
+    ]
+  },
+  {
+    "id": "ai_analysis_0194",
+    "target_type": "connection",
+    "target_id": "connection_0195",
+    "confidence": 0.89,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0194"
+    ]
+  },
+  {
+    "id": "ai_analysis_0195",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0196",
+    "confidence": 0.9,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0195"
+    ]
+  },
+  {
+    "id": "ai_analysis_0196",
+    "target_type": "user",
+    "target_id": "user_065",
+    "confidence": 0.91,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0196"
+    ]
+  },
+  {
+    "id": "ai_analysis_0197",
+    "target_type": "event_participant",
+    "target_id": "participant_198",
+    "confidence": 0.92,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0197"
+    ]
+  },
+  {
+    "id": "ai_analysis_0198",
+    "target_type": "connection",
+    "target_id": "connection_0199",
+    "confidence": 0.93,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0198"
+    ]
+  },
+  {
+    "id": "ai_analysis_0199",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0200",
+    "confidence": 0.94,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0199"
+    ]
+  },
+  {
+    "id": "ai_analysis_0200",
+    "target_type": "user",
+    "target_id": "user_069",
+    "confidence": 0.45,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0200"
+    ]
+  },
+  {
+    "id": "ai_analysis_0201",
+    "target_type": "event_participant",
+    "target_id": "participant_202",
+    "confidence": 0.46,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0201"
+    ]
+  },
+  {
+    "id": "ai_analysis_0202",
+    "target_type": "connection",
+    "target_id": "connection_0203",
+    "confidence": 0.47,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0202"
+    ]
+  },
+  {
+    "id": "ai_analysis_0203",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0204",
+    "confidence": 0.48,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0203"
+    ]
+  },
+  {
+    "id": "ai_analysis_0204",
+    "target_type": "user",
+    "target_id": "user_073",
+    "confidence": 0.49,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0204"
+    ]
+  },
+  {
+    "id": "ai_analysis_0205",
+    "target_type": "event_participant",
+    "target_id": "participant_206",
+    "confidence": 0.5,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0205"
+    ]
+  },
+  {
+    "id": "ai_analysis_0206",
+    "target_type": "connection",
+    "target_id": "connection_0207",
+    "confidence": 0.51,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0206"
+    ]
+  },
+  {
+    "id": "ai_analysis_0207",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0208",
+    "confidence": 0.52,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0207"
+    ]
+  },
+  {
+    "id": "ai_analysis_0208",
+    "target_type": "user",
+    "target_id": "user_077",
+    "confidence": 0.53,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0208"
+    ]
+  },
+  {
+    "id": "ai_analysis_0209",
+    "target_type": "event_participant",
+    "target_id": "participant_210",
+    "confidence": 0.54,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0209"
+    ]
+  },
+  {
+    "id": "ai_analysis_0210",
+    "target_type": "connection",
+    "target_id": "connection_0211",
+    "confidence": 0.55,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0210"
+    ]
+  },
+  {
+    "id": "ai_analysis_0211",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0212",
+    "confidence": 0.56,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0211"
+    ]
+  },
+  {
+    "id": "ai_analysis_0212",
+    "target_type": "user",
+    "target_id": "user_081",
+    "confidence": 0.57,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0212"
+    ]
+  },
+  {
+    "id": "ai_analysis_0213",
+    "target_type": "event_participant",
+    "target_id": "participant_214",
+    "confidence": 0.58,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0213"
+    ]
+  },
+  {
+    "id": "ai_analysis_0214",
+    "target_type": "connection",
+    "target_id": "connection_0215",
+    "confidence": 0.59,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0214"
+    ]
+  },
+  {
+    "id": "ai_analysis_0215",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0216",
+    "confidence": 0.6,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0215"
+    ]
+  },
+  {
+    "id": "ai_analysis_0216",
+    "target_type": "user",
+    "target_id": "user_085",
+    "confidence": 0.61,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0216"
+    ]
+  },
+  {
+    "id": "ai_analysis_0217",
+    "target_type": "event_participant",
+    "target_id": "participant_218",
+    "confidence": 0.62,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0217"
+    ]
+  },
+  {
+    "id": "ai_analysis_0218",
+    "target_type": "connection",
+    "target_id": "connection_0219",
+    "confidence": 0.63,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0218"
+    ]
+  },
+  {
+    "id": "ai_analysis_0219",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0220",
+    "confidence": 0.64,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0219"
+    ]
+  },
+  {
+    "id": "ai_analysis_0220",
+    "target_type": "user",
+    "target_id": "user_089",
+    "confidence": 0.65,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0220"
+    ]
+  },
+  {
+    "id": "ai_analysis_0221",
+    "target_type": "event_participant",
+    "target_id": "participant_222",
+    "confidence": 0.66,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0221"
+    ]
+  },
+  {
+    "id": "ai_analysis_0222",
+    "target_type": "connection",
+    "target_id": "connection_0223",
+    "confidence": 0.67,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0222"
+    ]
+  },
+  {
+    "id": "ai_analysis_0223",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0224",
+    "confidence": 0.68,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0223"
+    ]
+  },
+  {
+    "id": "ai_analysis_0224",
+    "target_type": "user",
+    "target_id": "user_093",
+    "confidence": 0.69,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0224"
+    ]
+  },
+  {
+    "id": "ai_analysis_0225",
+    "target_type": "event_participant",
+    "target_id": "participant_226",
+    "confidence": 0.7,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0225"
+    ]
+  },
+  {
+    "id": "ai_analysis_0226",
+    "target_type": "connection",
+    "target_id": "connection_0227",
+    "confidence": 0.71,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0226"
+    ]
+  },
+  {
+    "id": "ai_analysis_0227",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0228",
+    "confidence": 0.72,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0227"
+    ]
+  },
+  {
+    "id": "ai_analysis_0228",
+    "target_type": "user",
+    "target_id": "user_097",
+    "confidence": 0.73,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0228"
+    ]
+  },
+  {
+    "id": "ai_analysis_0229",
+    "target_type": "event_participant",
+    "target_id": "participant_230",
+    "confidence": 0.74,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0229"
+    ]
+  },
+  {
+    "id": "ai_analysis_0230",
+    "target_type": "connection",
+    "target_id": "connection_0231",
+    "confidence": 0.75,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0230"
+    ]
+  },
+  {
+    "id": "ai_analysis_0231",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0232",
+    "confidence": 0.76,
+    "result_json": {
+      "confirmed_facts": [
+        "AI workflow PoC buyer in Japanese SMB manufacturing"
+      ],
+      "inferred_traits": [
+        "Mandarin Japanese community marketing channel"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0231"
+    ]
+  },
+  {
+    "id": "ai_analysis_0232",
+    "target_type": "user",
+    "target_id": "user_101",
+    "confidence": 0.77,
+    "result_json": {
+      "confirmed_facts": [
+        "Japan market entry advisor for China SaaS sales"
+      ],
+      "inferred_traits": [
+        "manufacturing DX requirements and buyer feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0232"
+    ]
+  },
+  {
+    "id": "ai_analysis_0233",
+    "target_type": "event_participant",
+    "target_id": "participant_234",
+    "confidence": 0.78,
+    "result_json": {
+      "confirmed_facts": [
+        "restaurant reservation CRM integration pilot"
+      ],
+      "inferred_traits": [
+        "seed investor screening and founder feedback"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0233"
+    ]
+  },
+  {
+    "id": "ai_analysis_0234",
+    "target_type": "connection",
+    "target_id": "connection_0235",
+    "confidence": 0.79,
+    "result_json": {
+      "confirmed_facts": [
+        "investor warm intro for seed fundraising"
+      ],
+      "inferred_traits": [
+        "event table matching and sponsor visibility"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0234"
+    ]
+  },
+  {
+    "id": "ai_analysis_0235",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0236",
+    "confidence": 0.8,
+    "result_json": {
+      "confirmed_facts": [
+        "event sponsor with Chinese business-community reach"
+      ],
+      "inferred_traits": [
+        "cross-border ecommerce launch playbook"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0235"
+    ]
+  },
+  {
+    "id": "ai_analysis_0236",
+    "target_type": "user",
+    "target_id": "user_105",
+    "confidence": 0.81,
+    "result_json": {
+      "confirmed_facts": [
+        "post-event follow-up workflow operator"
+      ],
+      "inferred_traits": [
+        "bilingual sales deck review"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0236"
+    ]
+  },
+  {
+    "id": "ai_analysis_0237",
+    "target_type": "event_participant",
+    "target_id": "participant_238",
+    "confidence": 0.82,
+    "result_json": {
+      "confirmed_facts": [
+        "duplicate contact cleanup and provenance review"
+      ],
+      "inferred_traits": [
+        "privacy-safe contact provenance audit"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0237"
+    ]
+  },
+  {
+    "id": "ai_analysis_0238",
+    "target_type": "connection",
+    "target_id": "connection_0239",
+    "confidence": 0.83,
+    "result_json": {
+      "confirmed_facts": [
+        "retail live-commerce distribution partner"
+      ],
+      "inferred_traits": [
+        "follow-up message localization"
+      ],
+      "low_confidence": true
+    },
+    "evidence_ids": [
+      "evidence:ai:0238"
+    ]
+  },
+  {
+    "id": "ai_analysis_0239",
+    "target_type": "recommendation",
+    "target_id": "recommendation_0240",
+    "confidence": 0.84,
+    "result_json": {
+      "confirmed_facts": [
+        "trusted tax and incorporation advisor for Japan entry"
+      ],
+      "inferred_traits": [
+        "partner channel introductions in Kansai"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0239"
+    ]
+  },
+  {
+    "id": "ai_analysis_0240",
+    "target_type": "user",
+    "target_id": "user_109",
+    "confidence": 0.85,
+    "result_json": {
+      "confirmed_facts": [
+        "bilingual Xiaohongshu inbound campaign partner"
+      ],
+      "inferred_traits": [
+        "Tokyo restaurant operator test site"
+      ],
+      "low_confidence": false
+    },
+    "evidence_ids": [
+      "evidence:ai:0240"
+    ]
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "id": "scenario_05_organizer_table_matching",
+  "event_id": "event_05",
+  "primary_need": "event sponsor with Chinese business-community reach",
+  "primary_offer": "cross-border ecommerce launch playbook",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 2
+  }
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "industry_01",
+    "label": "restaurant_inbound"
+  },
+  {
+    "id": "industry_02",
+    "label": "ai_saas"
+  },
+  {
+    "id": "industry_03",
+    "label": "manufacturing_dx"
+  },
+  {
+    "id": "industry_04",
+    "label": "cross_border_ecommerce"
+  },
+  {
+    "id": "industry_05",
+    "label": "venture_capital"
+  },
+  {
+    "id": "industry_06",
+    "label": "community_events"
+  },
+  {
+    "id": "industry_07",
+    "label": "retail_omnichannel"
+  },
+  {
+    "id": "industry_08",
+    "label": "legal_accounting"
+  },
+  {
+    "id": "industry_09",
+    "label": "tourism_hospitality"
+  },
+  {
+    "id": "industry_10",
+    "label": "education_training"
+  }
+]

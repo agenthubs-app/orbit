@@ -1,0 +1,11 @@
+{
+  "id": "scenario_02_cn_ai_founder_japan_poc",
+  "event_id": "event_02",
+  "primary_need": "Japan market entry advisor for China SaaS sales",
+  "primary_offer": "manufacturing DX requirements and buyer feedback",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 2
+  }
+}

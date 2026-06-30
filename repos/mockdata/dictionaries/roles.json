@@ -1,0 +1,34 @@
+[
+  {
+    "id": "founder_ceo",
+    "label": "Founder Ceo"
+  },
+  {
+    "id": "store_owner",
+    "label": "Store Owner"
+  },
+  {
+    "id": "community_organizer",
+    "label": "Community Organizer"
+  },
+  {
+    "id": "investor_partner",
+    "label": "Investor Partner"
+  },
+  {
+    "id": "dx_consultant",
+    "label": "Dx Consultant"
+  },
+  {
+    "id": "marketing_lead",
+    "label": "Marketing Lead"
+  },
+  {
+    "id": "product_manager",
+    "label": "Product Manager"
+  },
+  {
+    "id": "sales_director",
+    "label": "Sales Director"
+  }
+]

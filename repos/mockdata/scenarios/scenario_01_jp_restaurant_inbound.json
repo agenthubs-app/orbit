@@ -1,0 +1,11 @@
+{
+  "id": "scenario_01_jp_restaurant_inbound",
+  "event_id": "event_01",
+  "primary_need": "AI workflow PoC buyer in Japanese SMB manufacturing",
+  "primary_offer": "Mandarin Japanese community marketing channel",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 2
+  }
+}

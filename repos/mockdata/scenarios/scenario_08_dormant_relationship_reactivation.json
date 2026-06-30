@@ -1,0 +1,11 @@
+{
+  "id": "scenario_08_dormant_relationship_reactivation",
+  "event_id": "event_08",
+  "primary_need": "retail live-commerce distribution partner",
+  "primary_offer": "follow-up message localization",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 3
+  }
+}

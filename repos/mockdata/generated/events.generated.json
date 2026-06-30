@@ -1,0 +1,162 @@
+[
+  {
+    "id": "event_01",
+    "title": "東京インバウンド飲食店成長会",
+    "title_ja": "東京インバウンド飲食店成長会",
+    "title_zh": "东京餐饮入境客增长会",
+    "title_en": "Tokyo Inbound Restaurant Growth Forum",
+    "description_ja": "飲食店オーナーと華人マーケターが、予約導線、口コミ、リピート施策を具体案件で相談する少人数会。",
+    "description_zh": "面向餐饮店主和华人营销人的小型交流会，围绕预约转化、口碑传播和复购方案讨论真实项目。",
+    "description_en": "A small forum for restaurant operators and Chinese-community marketers to discuss booking flows, reviews, and repeat-visit growth.",
+    "event_type": "conference",
+    "city": "Osaka",
+    "starts_at": "2026-02-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:01"
+    ]
+  },
+  {
+    "id": "event_02",
+    "title": "日中AI業務自動化PoCラウンドテーブル",
+    "title_ja": "日中AI業務自動化PoCラウンドテーブル",
+    "title_zh": "日中 AI 业务自动化 PoC 圆桌",
+    "title_en": "Japan-China AI Workflow PoC Roundtable",
+    "description_ja": "中小企業の業務課題とAI SaaSのPoC条件を、導入責任者と創業者がすり合わせる実務型イベント。",
+    "description_zh": "让中小企业导入负责人和 AI SaaS 创业者对齐 PoC 条件、业务痛点与评估指标的务实圆桌。",
+    "description_en": "A practical roundtable where SMB operators and AI SaaS founders align on PoC scope, metrics, and adoption blockers.",
+    "event_type": "roundtable",
+    "city": "Shanghai",
+    "starts_at": "2026-03-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:02"
+    ]
+  },
+  {
+    "id": "event_03",
+    "title": "越境ECチャネル開拓ミートアップ",
+    "title_ja": "越境ECチャネル開拓ミートアップ",
+    "title_zh": "跨境电商渠道拓展交流会",
+    "title_en": "Cross-Border Ecommerce Channel Meetup",
+    "description_ja": "日本ブランド、物流、ライブコマース、代理店候補が販売チャネルと初回検証を設計する会。",
+    "description_zh": "日本品牌、物流伙伴、直播电商团队和代理商候选人共同设计销售渠道与首轮验证。",
+    "description_en": "A meetup for Japanese brands, logistics partners, live-commerce teams, and channel agents to plan first-market tests.",
+    "event_type": "demo_day",
+    "city": "Taipei",
+    "starts_at": "2026-04-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:03"
+    ]
+  },
+  {
+    "id": "event_04",
+    "title": "投資家・創業者シード面談会",
+    "title_ja": "投資家・創業者シード面談会",
+    "title_zh": "投资人与创业者种子轮会谈",
+    "title_en": "Seed Investor and Founder Matching Salon",
+    "description_ja": "投資家と創業者が、紹介文脈、顧客検証、次回面談条件を短時間で確認するマッチング会。",
+    "description_zh": "投资人与创业者快速确认介绍背景、客户验证进展和下一次会谈条件的配对活动。",
+    "description_en": "A matching salon where investors and founders review context, customer proof, and next-meeting criteria.",
+    "event_type": "private_dinner",
+    "city": "Tokyo",
+    "starts_at": "2026-05-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:04"
+    ]
+  },
+  {
+    "id": "event_05",
+    "title": "在日華人ビジネスコミュニティスポンサー会",
+    "title_ja": "在日華人ビジネスコミュニティスポンサー会",
+    "title_zh": "在日华人商业社群赞助合作会",
+    "title_en": "Chinese Business Community Sponsorship Salon",
+    "description_ja": "コミュニティ主催者、スポンサー候補、店舗経営者が参加者価値と協賛導線を詰める会。",
+    "description_zh": "社群主理人、潜在赞助商和门店经营者一起打磨参与者价值与赞助转化路径。",
+    "description_en": "A sponsorship salon for community hosts, sponsors, and local operators to design participant value and sponsor paths.",
+    "event_type": "meetup",
+    "city": "Osaka",
+    "starts_at": "2026-06-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:05"
+    ]
+  },
+  {
+    "id": "event_06",
+    "title": "名刺プロフィール生成ワークショップ",
+    "title_ja": "名刺プロフィール生成ワークショップ",
+    "title_zh": "名片资料生成工作坊",
+    "title_en": "Business Card Profile Generation Workshop",
+    "description_ja": "名刺、会話メモ、公開プロフィールから、信頼できる連絡先情報とフォローアップ文脈を作る実践会。",
+    "description_zh": "用名片、会话笔记和公开资料生成可信联系人信息与后续跟进语境的实操工作坊。",
+    "description_en": "A workshop for turning business cards, conversation notes, and public profiles into trusted contact context.",
+    "event_type": "conference",
+    "city": "Shanghai",
+    "starts_at": "2026-01-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:06"
+    ]
+  },
+  {
+    "id": "event_07",
+    "title": "イベント後フォローアップ作戦会議",
+    "title_ja": "イベント後フォローアップ作戦会議",
+    "title_zh": "会后跟进策略会",
+    "title_en": "Post-Event Follow-Up Strategy Session",
+    "description_ja": "会った相手への優先順位、紹介文、次回アクションを多言語で整理するフォローアップ会。",
+    "description_zh": "围绕会后联系人优先级、介绍文案和下一步行动进行多语言整理的策略会。",
+    "description_en": "A multilingual session for prioritizing event contacts, drafting introductions, and setting concrete next actions.",
+    "event_type": "roundtable",
+    "city": "Taipei",
+    "starts_at": "2026-02-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:07"
+    ]
+  },
+  {
+    "id": "event_08",
+    "title": "休眠関係リカバリー会",
+    "title_ja": "休眠関係リカバリー会",
+    "title_zh": "沉睡关系重新激活会",
+    "title_en": "Dormant Relationship Reactivation Lab",
+    "description_ja": "過去の接点を安全に見直し、再連絡する価値がある相手と理由を整理する実験会。",
+    "description_zh": "安全回顾过往触点，筛选值得重新联系的人和具体理由的实验型活动。",
+    "description_en": "A lab for safely reviewing past touchpoints and identifying which dormant relationships deserve reactivation.",
+    "event_type": "demo_day",
+    "city": "Tokyo",
+    "starts_at": "2026-03-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:08"
+    ]
+  },
+  {
+    "id": "event_09",
+    "title": "重複コンタクト整理クリニック",
+    "title_ja": "重複コンタクト整理クリニック",
+    "title_zh": "重复联系人合并诊断会",
+    "title_en": "Duplicate Contact Merge Clinic",
+    "description_ja": "複数ソースから入った連絡先を、証跡と本人確認を残しながら整理する運用相談会。",
+    "description_zh": "针对多来源联系人，保留证据与确认记录的合并整理运营诊断会。",
+    "description_en": "An operations clinic for merging multi-source contacts while preserving evidence and confirmation history.",
+    "event_type": "private_dinner",
+    "city": "Osaka",
+    "starts_at": "2026-04-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:09"
+    ]
+  },
+  {
+    "id": "event_10",
+    "title": "低品質マッチ排除レビュー",
+    "title_ja": "低品質マッチ排除レビュー",
+    "title_zh": "低质量匹配过滤复盘会",
+    "title_en": "Bad Match Filtering Review",
+    "description_ja": "AI推薦の低信頼ケースを見直し、なぜ薦めないかを説明できるルールに落とすレビュー会。",
+    "description_zh": "复盘低置信 AI 推荐案例，把“不推荐”的原因整理成可解释规则的评审会。",
+    "description_en": "A review for low-confidence AI recommendations, converting weak matches into explainable filtering rules.",
+    "event_type": "meetup",
+    "city": "Shanghai",
+    "starts_at": "2026-05-15T10:00:00+09:00",
+    "evidence_ids": [
+      "evidence:event:10"
+    ]
+  }
+]

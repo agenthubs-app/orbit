@@ -1,0 +1,11 @@
+{
+  "id": "scenario_10_bad_match_filtering",
+  "event_id": "event_10",
+  "primary_need": "bilingual Xiaohongshu inbound campaign partner",
+  "primary_offer": "Tokyo restaurant operator test site",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 3
+  }
+}

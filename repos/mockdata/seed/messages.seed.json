@@ -1,0 +1,3602 @@
+[
+  {
+    "id": "message_0001",
+    "connection_id": "connection_0002",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0001"
+    ]
+  },
+  {
+    "id": "message_0002",
+    "connection_id": "connection_0003",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0002"
+    ]
+  },
+  {
+    "id": "message_0003",
+    "connection_id": "connection_0004",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0003"
+    ]
+  },
+  {
+    "id": "message_0004",
+    "connection_id": "connection_0005",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0004"
+    ]
+  },
+  {
+    "id": "message_0005",
+    "connection_id": "connection_0006",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0005"
+    ]
+  },
+  {
+    "id": "message_0006",
+    "connection_id": "connection_0007",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0006"
+    ]
+  },
+  {
+    "id": "message_0007",
+    "connection_id": "connection_0008",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0007"
+    ]
+  },
+  {
+    "id": "message_0008",
+    "connection_id": "connection_0009",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0008"
+    ]
+  },
+  {
+    "id": "message_0009",
+    "connection_id": "connection_0010",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0009"
+    ]
+  },
+  {
+    "id": "message_0010",
+    "connection_id": "connection_0011",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0010"
+    ]
+  },
+  {
+    "id": "message_0011",
+    "connection_id": "connection_0012",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0011"
+    ]
+  },
+  {
+    "id": "message_0012",
+    "connection_id": "connection_0013",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0012"
+    ]
+  },
+  {
+    "id": "message_0013",
+    "connection_id": "connection_0014",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0013"
+    ]
+  },
+  {
+    "id": "message_0014",
+    "connection_id": "connection_0015",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0014"
+    ]
+  },
+  {
+    "id": "message_0015",
+    "connection_id": "connection_0016",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0015"
+    ]
+  },
+  {
+    "id": "message_0016",
+    "connection_id": "connection_0017",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0016"
+    ]
+  },
+  {
+    "id": "message_0017",
+    "connection_id": "connection_0018",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0017"
+    ]
+  },
+  {
+    "id": "message_0018",
+    "connection_id": "connection_0019",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0018"
+    ]
+  },
+  {
+    "id": "message_0019",
+    "connection_id": "connection_0020",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0019"
+    ]
+  },
+  {
+    "id": "message_0020",
+    "connection_id": "connection_0021",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0020"
+    ]
+  },
+  {
+    "id": "message_0021",
+    "connection_id": "connection_0022",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0021"
+    ]
+  },
+  {
+    "id": "message_0022",
+    "connection_id": "connection_0023",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0022"
+    ]
+  },
+  {
+    "id": "message_0023",
+    "connection_id": "connection_0024",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0023"
+    ]
+  },
+  {
+    "id": "message_0024",
+    "connection_id": "connection_0025",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0024"
+    ]
+  },
+  {
+    "id": "message_0025",
+    "connection_id": "connection_0026",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0025"
+    ]
+  },
+  {
+    "id": "message_0026",
+    "connection_id": "connection_0027",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0026"
+    ]
+  },
+  {
+    "id": "message_0027",
+    "connection_id": "connection_0028",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0027"
+    ]
+  },
+  {
+    "id": "message_0028",
+    "connection_id": "connection_0029",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0028"
+    ]
+  },
+  {
+    "id": "message_0029",
+    "connection_id": "connection_0030",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0029"
+    ]
+  },
+  {
+    "id": "message_0030",
+    "connection_id": "connection_0031",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0030"
+    ]
+  },
+  {
+    "id": "message_0031",
+    "connection_id": "connection_0032",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0031"
+    ]
+  },
+  {
+    "id": "message_0032",
+    "connection_id": "connection_0033",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0032"
+    ]
+  },
+  {
+    "id": "message_0033",
+    "connection_id": "connection_0034",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0033"
+    ]
+  },
+  {
+    "id": "message_0034",
+    "connection_id": "connection_0035",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0034"
+    ]
+  },
+  {
+    "id": "message_0035",
+    "connection_id": "connection_0036",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0035"
+    ]
+  },
+  {
+    "id": "message_0036",
+    "connection_id": "connection_0037",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0036"
+    ]
+  },
+  {
+    "id": "message_0037",
+    "connection_id": "connection_0038",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0037"
+    ]
+  },
+  {
+    "id": "message_0038",
+    "connection_id": "connection_0039",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0038"
+    ]
+  },
+  {
+    "id": "message_0039",
+    "connection_id": "connection_0040",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0039"
+    ]
+  },
+  {
+    "id": "message_0040",
+    "connection_id": "connection_0041",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0040"
+    ]
+  },
+  {
+    "id": "message_0041",
+    "connection_id": "connection_0042",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0041"
+    ]
+  },
+  {
+    "id": "message_0042",
+    "connection_id": "connection_0043",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0042"
+    ]
+  },
+  {
+    "id": "message_0043",
+    "connection_id": "connection_0044",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0043"
+    ]
+  },
+  {
+    "id": "message_0044",
+    "connection_id": "connection_0045",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0044"
+    ]
+  },
+  {
+    "id": "message_0045",
+    "connection_id": "connection_0046",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0045"
+    ]
+  },
+  {
+    "id": "message_0046",
+    "connection_id": "connection_0047",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0046"
+    ]
+  },
+  {
+    "id": "message_0047",
+    "connection_id": "connection_0048",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0047"
+    ]
+  },
+  {
+    "id": "message_0048",
+    "connection_id": "connection_0049",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0048"
+    ]
+  },
+  {
+    "id": "message_0049",
+    "connection_id": "connection_0050",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0049"
+    ]
+  },
+  {
+    "id": "message_0050",
+    "connection_id": "connection_0051",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0050"
+    ]
+  },
+  {
+    "id": "message_0051",
+    "connection_id": "connection_0052",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0051"
+    ]
+  },
+  {
+    "id": "message_0052",
+    "connection_id": "connection_0053",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0052"
+    ]
+  },
+  {
+    "id": "message_0053",
+    "connection_id": "connection_0054",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0053"
+    ]
+  },
+  {
+    "id": "message_0054",
+    "connection_id": "connection_0055",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0054"
+    ]
+  },
+  {
+    "id": "message_0055",
+    "connection_id": "connection_0056",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0055"
+    ]
+  },
+  {
+    "id": "message_0056",
+    "connection_id": "connection_0057",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0056"
+    ]
+  },
+  {
+    "id": "message_0057",
+    "connection_id": "connection_0058",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0057"
+    ]
+  },
+  {
+    "id": "message_0058",
+    "connection_id": "connection_0059",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0058"
+    ]
+  },
+  {
+    "id": "message_0059",
+    "connection_id": "connection_0060",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0059"
+    ]
+  },
+  {
+    "id": "message_0060",
+    "connection_id": "connection_0061",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0060"
+    ]
+  },
+  {
+    "id": "message_0061",
+    "connection_id": "connection_0062",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0061"
+    ]
+  },
+  {
+    "id": "message_0062",
+    "connection_id": "connection_0063",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0062"
+    ]
+  },
+  {
+    "id": "message_0063",
+    "connection_id": "connection_0064",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0063"
+    ]
+  },
+  {
+    "id": "message_0064",
+    "connection_id": "connection_0065",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0064"
+    ]
+  },
+  {
+    "id": "message_0065",
+    "connection_id": "connection_0066",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0065"
+    ]
+  },
+  {
+    "id": "message_0066",
+    "connection_id": "connection_0067",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0066"
+    ]
+  },
+  {
+    "id": "message_0067",
+    "connection_id": "connection_0068",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0067"
+    ]
+  },
+  {
+    "id": "message_0068",
+    "connection_id": "connection_0069",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0068"
+    ]
+  },
+  {
+    "id": "message_0069",
+    "connection_id": "connection_0070",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0069"
+    ]
+  },
+  {
+    "id": "message_0070",
+    "connection_id": "connection_0071",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0070"
+    ]
+  },
+  {
+    "id": "message_0071",
+    "connection_id": "connection_0072",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0071"
+    ]
+  },
+  {
+    "id": "message_0072",
+    "connection_id": "connection_0073",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0072"
+    ]
+  },
+  {
+    "id": "message_0073",
+    "connection_id": "connection_0074",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0073"
+    ]
+  },
+  {
+    "id": "message_0074",
+    "connection_id": "connection_0075",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0074"
+    ]
+  },
+  {
+    "id": "message_0075",
+    "connection_id": "connection_0076",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0075"
+    ]
+  },
+  {
+    "id": "message_0076",
+    "connection_id": "connection_0077",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0076"
+    ]
+  },
+  {
+    "id": "message_0077",
+    "connection_id": "connection_0078",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0077"
+    ]
+  },
+  {
+    "id": "message_0078",
+    "connection_id": "connection_0079",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0078"
+    ]
+  },
+  {
+    "id": "message_0079",
+    "connection_id": "connection_0080",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0079"
+    ]
+  },
+  {
+    "id": "message_0080",
+    "connection_id": "connection_0081",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0080"
+    ]
+  },
+  {
+    "id": "message_0081",
+    "connection_id": "connection_0082",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0081"
+    ]
+  },
+  {
+    "id": "message_0082",
+    "connection_id": "connection_0083",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0082"
+    ]
+  },
+  {
+    "id": "message_0083",
+    "connection_id": "connection_0084",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0083"
+    ]
+  },
+  {
+    "id": "message_0084",
+    "connection_id": "connection_0085",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0084"
+    ]
+  },
+  {
+    "id": "message_0085",
+    "connection_id": "connection_0086",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0085"
+    ]
+  },
+  {
+    "id": "message_0086",
+    "connection_id": "connection_0087",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0086"
+    ]
+  },
+  {
+    "id": "message_0087",
+    "connection_id": "connection_0088",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0087"
+    ]
+  },
+  {
+    "id": "message_0088",
+    "connection_id": "connection_0089",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0088"
+    ]
+  },
+  {
+    "id": "message_0089",
+    "connection_id": "connection_0090",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0089"
+    ]
+  },
+  {
+    "id": "message_0090",
+    "connection_id": "connection_0091",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0090"
+    ]
+  },
+  {
+    "id": "message_0091",
+    "connection_id": "connection_0092",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0091"
+    ]
+  },
+  {
+    "id": "message_0092",
+    "connection_id": "connection_0093",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0092"
+    ]
+  },
+  {
+    "id": "message_0093",
+    "connection_id": "connection_0094",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0093"
+    ]
+  },
+  {
+    "id": "message_0094",
+    "connection_id": "connection_0095",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0094"
+    ]
+  },
+  {
+    "id": "message_0095",
+    "connection_id": "connection_0096",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0095"
+    ]
+  },
+  {
+    "id": "message_0096",
+    "connection_id": "connection_0097",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0096"
+    ]
+  },
+  {
+    "id": "message_0097",
+    "connection_id": "connection_0098",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0097"
+    ]
+  },
+  {
+    "id": "message_0098",
+    "connection_id": "connection_0099",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0098"
+    ]
+  },
+  {
+    "id": "message_0099",
+    "connection_id": "connection_0100",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0099"
+    ]
+  },
+  {
+    "id": "message_0100",
+    "connection_id": "connection_0101",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0100"
+    ]
+  },
+  {
+    "id": "message_0101",
+    "connection_id": "connection_0102",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0101"
+    ]
+  },
+  {
+    "id": "message_0102",
+    "connection_id": "connection_0103",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0102"
+    ]
+  },
+  {
+    "id": "message_0103",
+    "connection_id": "connection_0104",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0103"
+    ]
+  },
+  {
+    "id": "message_0104",
+    "connection_id": "connection_0105",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0104"
+    ]
+  },
+  {
+    "id": "message_0105",
+    "connection_id": "connection_0106",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0105"
+    ]
+  },
+  {
+    "id": "message_0106",
+    "connection_id": "connection_0107",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0106"
+    ]
+  },
+  {
+    "id": "message_0107",
+    "connection_id": "connection_0108",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0107"
+    ]
+  },
+  {
+    "id": "message_0108",
+    "connection_id": "connection_0109",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0108"
+    ]
+  },
+  {
+    "id": "message_0109",
+    "connection_id": "connection_0110",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0109"
+    ]
+  },
+  {
+    "id": "message_0110",
+    "connection_id": "connection_0111",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0110"
+    ]
+  },
+  {
+    "id": "message_0111",
+    "connection_id": "connection_0112",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0111"
+    ]
+  },
+  {
+    "id": "message_0112",
+    "connection_id": "connection_0113",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0112"
+    ]
+  },
+  {
+    "id": "message_0113",
+    "connection_id": "connection_0114",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0113"
+    ]
+  },
+  {
+    "id": "message_0114",
+    "connection_id": "connection_0115",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0114"
+    ]
+  },
+  {
+    "id": "message_0115",
+    "connection_id": "connection_0116",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0115"
+    ]
+  },
+  {
+    "id": "message_0116",
+    "connection_id": "connection_0117",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0116"
+    ]
+  },
+  {
+    "id": "message_0117",
+    "connection_id": "connection_0118",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0117"
+    ]
+  },
+  {
+    "id": "message_0118",
+    "connection_id": "connection_0119",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0118"
+    ]
+  },
+  {
+    "id": "message_0119",
+    "connection_id": "connection_0120",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0119"
+    ]
+  },
+  {
+    "id": "message_0120",
+    "connection_id": "connection_0121",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0120"
+    ]
+  },
+  {
+    "id": "message_0121",
+    "connection_id": "connection_0122",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0121"
+    ]
+  },
+  {
+    "id": "message_0122",
+    "connection_id": "connection_0123",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0122"
+    ]
+  },
+  {
+    "id": "message_0123",
+    "connection_id": "connection_0124",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0123"
+    ]
+  },
+  {
+    "id": "message_0124",
+    "connection_id": "connection_0125",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0124"
+    ]
+  },
+  {
+    "id": "message_0125",
+    "connection_id": "connection_0126",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0125"
+    ]
+  },
+  {
+    "id": "message_0126",
+    "connection_id": "connection_0127",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0126"
+    ]
+  },
+  {
+    "id": "message_0127",
+    "connection_id": "connection_0128",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0127"
+    ]
+  },
+  {
+    "id": "message_0128",
+    "connection_id": "connection_0129",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0128"
+    ]
+  },
+  {
+    "id": "message_0129",
+    "connection_id": "connection_0130",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0129"
+    ]
+  },
+  {
+    "id": "message_0130",
+    "connection_id": "connection_0131",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0130"
+    ]
+  },
+  {
+    "id": "message_0131",
+    "connection_id": "connection_0132",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0131"
+    ]
+  },
+  {
+    "id": "message_0132",
+    "connection_id": "connection_0133",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0132"
+    ]
+  },
+  {
+    "id": "message_0133",
+    "connection_id": "connection_0134",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0133"
+    ]
+  },
+  {
+    "id": "message_0134",
+    "connection_id": "connection_0135",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0134"
+    ]
+  },
+  {
+    "id": "message_0135",
+    "connection_id": "connection_0136",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0135"
+    ]
+  },
+  {
+    "id": "message_0136",
+    "connection_id": "connection_0137",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0136"
+    ]
+  },
+  {
+    "id": "message_0137",
+    "connection_id": "connection_0138",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0137"
+    ]
+  },
+  {
+    "id": "message_0138",
+    "connection_id": "connection_0139",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0138"
+    ]
+  },
+  {
+    "id": "message_0139",
+    "connection_id": "connection_0140",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0139"
+    ]
+  },
+  {
+    "id": "message_0140",
+    "connection_id": "connection_0141",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0140"
+    ]
+  },
+  {
+    "id": "message_0141",
+    "connection_id": "connection_0142",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0141"
+    ]
+  },
+  {
+    "id": "message_0142",
+    "connection_id": "connection_0143",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0142"
+    ]
+  },
+  {
+    "id": "message_0143",
+    "connection_id": "connection_0144",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0143"
+    ]
+  },
+  {
+    "id": "message_0144",
+    "connection_id": "connection_0145",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0144"
+    ]
+  },
+  {
+    "id": "message_0145",
+    "connection_id": "connection_0146",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0145"
+    ]
+  },
+  {
+    "id": "message_0146",
+    "connection_id": "connection_0147",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0146"
+    ]
+  },
+  {
+    "id": "message_0147",
+    "connection_id": "connection_0148",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0147"
+    ]
+  },
+  {
+    "id": "message_0148",
+    "connection_id": "connection_0149",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0148"
+    ]
+  },
+  {
+    "id": "message_0149",
+    "connection_id": "connection_0150",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0149"
+    ]
+  },
+  {
+    "id": "message_0150",
+    "connection_id": "connection_0151",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0150"
+    ]
+  },
+  {
+    "id": "message_0151",
+    "connection_id": "connection_0152",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0151"
+    ]
+  },
+  {
+    "id": "message_0152",
+    "connection_id": "connection_0153",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0152"
+    ]
+  },
+  {
+    "id": "message_0153",
+    "connection_id": "connection_0154",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0153"
+    ]
+  },
+  {
+    "id": "message_0154",
+    "connection_id": "connection_0155",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0154"
+    ]
+  },
+  {
+    "id": "message_0155",
+    "connection_id": "connection_0156",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0155"
+    ]
+  },
+  {
+    "id": "message_0156",
+    "connection_id": "connection_0157",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0156"
+    ]
+  },
+  {
+    "id": "message_0157",
+    "connection_id": "connection_0158",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0157"
+    ]
+  },
+  {
+    "id": "message_0158",
+    "connection_id": "connection_0159",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0158"
+    ]
+  },
+  {
+    "id": "message_0159",
+    "connection_id": "connection_0160",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0159"
+    ]
+  },
+  {
+    "id": "message_0160",
+    "connection_id": "connection_0161",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0160"
+    ]
+  },
+  {
+    "id": "message_0161",
+    "connection_id": "connection_0162",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0161"
+    ]
+  },
+  {
+    "id": "message_0162",
+    "connection_id": "connection_0163",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0162"
+    ]
+  },
+  {
+    "id": "message_0163",
+    "connection_id": "connection_0164",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0163"
+    ]
+  },
+  {
+    "id": "message_0164",
+    "connection_id": "connection_0165",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0164"
+    ]
+  },
+  {
+    "id": "message_0165",
+    "connection_id": "connection_0166",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0165"
+    ]
+  },
+  {
+    "id": "message_0166",
+    "connection_id": "connection_0167",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0166"
+    ]
+  },
+  {
+    "id": "message_0167",
+    "connection_id": "connection_0168",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0167"
+    ]
+  },
+  {
+    "id": "message_0168",
+    "connection_id": "connection_0169",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0168"
+    ]
+  },
+  {
+    "id": "message_0169",
+    "connection_id": "connection_0170",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0169"
+    ]
+  },
+  {
+    "id": "message_0170",
+    "connection_id": "connection_0171",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0170"
+    ]
+  },
+  {
+    "id": "message_0171",
+    "connection_id": "connection_0172",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0171"
+    ]
+  },
+  {
+    "id": "message_0172",
+    "connection_id": "connection_0173",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0172"
+    ]
+  },
+  {
+    "id": "message_0173",
+    "connection_id": "connection_0174",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0173"
+    ]
+  },
+  {
+    "id": "message_0174",
+    "connection_id": "connection_0175",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0174"
+    ]
+  },
+  {
+    "id": "message_0175",
+    "connection_id": "connection_0176",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0175"
+    ]
+  },
+  {
+    "id": "message_0176",
+    "connection_id": "connection_0177",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0176"
+    ]
+  },
+  {
+    "id": "message_0177",
+    "connection_id": "connection_0178",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0177"
+    ]
+  },
+  {
+    "id": "message_0178",
+    "connection_id": "connection_0179",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0178"
+    ]
+  },
+  {
+    "id": "message_0179",
+    "connection_id": "connection_0180",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0179"
+    ]
+  },
+  {
+    "id": "message_0180",
+    "connection_id": "connection_0181",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0180"
+    ]
+  },
+  {
+    "id": "message_0181",
+    "connection_id": "connection_0182",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0181"
+    ]
+  },
+  {
+    "id": "message_0182",
+    "connection_id": "connection_0183",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0182"
+    ]
+  },
+  {
+    "id": "message_0183",
+    "connection_id": "connection_0184",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0183"
+    ]
+  },
+  {
+    "id": "message_0184",
+    "connection_id": "connection_0185",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0184"
+    ]
+  },
+  {
+    "id": "message_0185",
+    "connection_id": "connection_0186",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0185"
+    ]
+  },
+  {
+    "id": "message_0186",
+    "connection_id": "connection_0187",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0186"
+    ]
+  },
+  {
+    "id": "message_0187",
+    "connection_id": "connection_0188",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0187"
+    ]
+  },
+  {
+    "id": "message_0188",
+    "connection_id": "connection_0189",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0188"
+    ]
+  },
+  {
+    "id": "message_0189",
+    "connection_id": "connection_0190",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0189"
+    ]
+  },
+  {
+    "id": "message_0190",
+    "connection_id": "connection_0191",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0190"
+    ]
+  },
+  {
+    "id": "message_0191",
+    "connection_id": "connection_0192",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0191"
+    ]
+  },
+  {
+    "id": "message_0192",
+    "connection_id": "connection_0193",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0192"
+    ]
+  },
+  {
+    "id": "message_0193",
+    "connection_id": "connection_0194",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0193"
+    ]
+  },
+  {
+    "id": "message_0194",
+    "connection_id": "connection_0195",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0194"
+    ]
+  },
+  {
+    "id": "message_0195",
+    "connection_id": "connection_0196",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0195"
+    ]
+  },
+  {
+    "id": "message_0196",
+    "connection_id": "connection_0197",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0196"
+    ]
+  },
+  {
+    "id": "message_0197",
+    "connection_id": "connection_0198",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0197"
+    ]
+  },
+  {
+    "id": "message_0198",
+    "connection_id": "connection_0199",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0198"
+    ]
+  },
+  {
+    "id": "message_0199",
+    "connection_id": "connection_0200",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0199"
+    ]
+  },
+  {
+    "id": "message_0200",
+    "connection_id": "connection_0201",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0200"
+    ]
+  },
+  {
+    "id": "message_0201",
+    "connection_id": "connection_0202",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0201"
+    ]
+  },
+  {
+    "id": "message_0202",
+    "connection_id": "connection_0203",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0202"
+    ]
+  },
+  {
+    "id": "message_0203",
+    "connection_id": "connection_0204",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0203"
+    ]
+  },
+  {
+    "id": "message_0204",
+    "connection_id": "connection_0205",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0204"
+    ]
+  },
+  {
+    "id": "message_0205",
+    "connection_id": "connection_0206",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0205"
+    ]
+  },
+  {
+    "id": "message_0206",
+    "connection_id": "connection_0207",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0206"
+    ]
+  },
+  {
+    "id": "message_0207",
+    "connection_id": "connection_0208",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0207"
+    ]
+  },
+  {
+    "id": "message_0208",
+    "connection_id": "connection_0209",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0208"
+    ]
+  },
+  {
+    "id": "message_0209",
+    "connection_id": "connection_0210",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0209"
+    ]
+  },
+  {
+    "id": "message_0210",
+    "connection_id": "connection_0211",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0210"
+    ]
+  },
+  {
+    "id": "message_0211",
+    "connection_id": "connection_0212",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0211"
+    ]
+  },
+  {
+    "id": "message_0212",
+    "connection_id": "connection_0213",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0212"
+    ]
+  },
+  {
+    "id": "message_0213",
+    "connection_id": "connection_0214",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0213"
+    ]
+  },
+  {
+    "id": "message_0214",
+    "connection_id": "connection_0215",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0214"
+    ]
+  },
+  {
+    "id": "message_0215",
+    "connection_id": "connection_0216",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0215"
+    ]
+  },
+  {
+    "id": "message_0216",
+    "connection_id": "connection_0217",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0216"
+    ]
+  },
+  {
+    "id": "message_0217",
+    "connection_id": "connection_0218",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0217"
+    ]
+  },
+  {
+    "id": "message_0218",
+    "connection_id": "connection_0219",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0218"
+    ]
+  },
+  {
+    "id": "message_0219",
+    "connection_id": "connection_0220",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0219"
+    ]
+  },
+  {
+    "id": "message_0220",
+    "connection_id": "connection_0221",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0220"
+    ]
+  },
+  {
+    "id": "message_0221",
+    "connection_id": "connection_0222",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0221"
+    ]
+  },
+  {
+    "id": "message_0222",
+    "connection_id": "connection_0223",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0222"
+    ]
+  },
+  {
+    "id": "message_0223",
+    "connection_id": "connection_0224",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0223"
+    ]
+  },
+  {
+    "id": "message_0224",
+    "connection_id": "connection_0225",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0224"
+    ]
+  },
+  {
+    "id": "message_0225",
+    "connection_id": "connection_0226",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0225"
+    ]
+  },
+  {
+    "id": "message_0226",
+    "connection_id": "connection_0227",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0226"
+    ]
+  },
+  {
+    "id": "message_0227",
+    "connection_id": "connection_0228",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0227"
+    ]
+  },
+  {
+    "id": "message_0228",
+    "connection_id": "connection_0229",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0228"
+    ]
+  },
+  {
+    "id": "message_0229",
+    "connection_id": "connection_0230",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0229"
+    ]
+  },
+  {
+    "id": "message_0230",
+    "connection_id": "connection_0231",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0230"
+    ]
+  },
+  {
+    "id": "message_0231",
+    "connection_id": "connection_0232",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0231"
+    ]
+  },
+  {
+    "id": "message_0232",
+    "connection_id": "connection_0233",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0232"
+    ]
+  },
+  {
+    "id": "message_0233",
+    "connection_id": "connection_0234",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0233"
+    ]
+  },
+  {
+    "id": "message_0234",
+    "connection_id": "connection_0235",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0234"
+    ]
+  },
+  {
+    "id": "message_0235",
+    "connection_id": "connection_0236",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0235"
+    ]
+  },
+  {
+    "id": "message_0236",
+    "connection_id": "connection_0237",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0236"
+    ]
+  },
+  {
+    "id": "message_0237",
+    "connection_id": "connection_0238",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0237"
+    ]
+  },
+  {
+    "id": "message_0238",
+    "connection_id": "connection_0239",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0238"
+    ]
+  },
+  {
+    "id": "message_0239",
+    "connection_id": "connection_0240",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0239"
+    ]
+  },
+  {
+    "id": "message_0240",
+    "connection_id": "connection_0241",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0240"
+    ]
+  },
+  {
+    "id": "message_0241",
+    "connection_id": "connection_0242",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0241"
+    ]
+  },
+  {
+    "id": "message_0242",
+    "connection_id": "connection_0243",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0242"
+    ]
+  },
+  {
+    "id": "message_0243",
+    "connection_id": "connection_0244",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0243"
+    ]
+  },
+  {
+    "id": "message_0244",
+    "connection_id": "connection_0245",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0244"
+    ]
+  },
+  {
+    "id": "message_0245",
+    "connection_id": "connection_0246",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0245"
+    ]
+  },
+  {
+    "id": "message_0246",
+    "connection_id": "connection_0247",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0246"
+    ]
+  },
+  {
+    "id": "message_0247",
+    "connection_id": "connection_0248",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0247"
+    ]
+  },
+  {
+    "id": "message_0248",
+    "connection_id": "connection_0249",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0248"
+    ]
+  },
+  {
+    "id": "message_0249",
+    "connection_id": "connection_0250",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0249"
+    ]
+  },
+  {
+    "id": "message_0250",
+    "connection_id": "connection_0251",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0250"
+    ]
+  },
+  {
+    "id": "message_0251",
+    "connection_id": "connection_0252",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0251"
+    ]
+  },
+  {
+    "id": "message_0252",
+    "connection_id": "connection_0253",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0252"
+    ]
+  },
+  {
+    "id": "message_0253",
+    "connection_id": "connection_0254",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0253"
+    ]
+  },
+  {
+    "id": "message_0254",
+    "connection_id": "connection_0255",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0254"
+    ]
+  },
+  {
+    "id": "message_0255",
+    "connection_id": "connection_0256",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0255"
+    ]
+  },
+  {
+    "id": "message_0256",
+    "connection_id": "connection_0257",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0256"
+    ]
+  },
+  {
+    "id": "message_0257",
+    "connection_id": "connection_0258",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0257"
+    ]
+  },
+  {
+    "id": "message_0258",
+    "connection_id": "connection_0259",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0258"
+    ]
+  },
+  {
+    "id": "message_0259",
+    "connection_id": "connection_0260",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0259"
+    ]
+  },
+  {
+    "id": "message_0260",
+    "connection_id": "connection_0261",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0260"
+    ]
+  },
+  {
+    "id": "message_0261",
+    "connection_id": "connection_0262",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0261"
+    ]
+  },
+  {
+    "id": "message_0262",
+    "connection_id": "connection_0263",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0262"
+    ]
+  },
+  {
+    "id": "message_0263",
+    "connection_id": "connection_0264",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0263"
+    ]
+  },
+  {
+    "id": "message_0264",
+    "connection_id": "connection_0265",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0264"
+    ]
+  },
+  {
+    "id": "message_0265",
+    "connection_id": "connection_0266",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0265"
+    ]
+  },
+  {
+    "id": "message_0266",
+    "connection_id": "connection_0267",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0266"
+    ]
+  },
+  {
+    "id": "message_0267",
+    "connection_id": "connection_0268",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0267"
+    ]
+  },
+  {
+    "id": "message_0268",
+    "connection_id": "connection_0269",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0268"
+    ]
+  },
+  {
+    "id": "message_0269",
+    "connection_id": "connection_0270",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0269"
+    ]
+  },
+  {
+    "id": "message_0270",
+    "connection_id": "connection_0271",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0270"
+    ]
+  },
+  {
+    "id": "message_0271",
+    "connection_id": "connection_0272",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0271"
+    ]
+  },
+  {
+    "id": "message_0272",
+    "connection_id": "connection_0273",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0272"
+    ]
+  },
+  {
+    "id": "message_0273",
+    "connection_id": "connection_0274",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0273"
+    ]
+  },
+  {
+    "id": "message_0274",
+    "connection_id": "connection_0275",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0274"
+    ]
+  },
+  {
+    "id": "message_0275",
+    "connection_id": "connection_0276",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0275"
+    ]
+  },
+  {
+    "id": "message_0276",
+    "connection_id": "connection_0277",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0276"
+    ]
+  },
+  {
+    "id": "message_0277",
+    "connection_id": "connection_0278",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0277"
+    ]
+  },
+  {
+    "id": "message_0278",
+    "connection_id": "connection_0279",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0278"
+    ]
+  },
+  {
+    "id": "message_0279",
+    "connection_id": "connection_0280",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0279"
+    ]
+  },
+  {
+    "id": "message_0280",
+    "connection_id": "connection_0281",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0280"
+    ]
+  },
+  {
+    "id": "message_0281",
+    "connection_id": "connection_0282",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0281"
+    ]
+  },
+  {
+    "id": "message_0282",
+    "connection_id": "connection_0283",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0282"
+    ]
+  },
+  {
+    "id": "message_0283",
+    "connection_id": "connection_0284",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0283"
+    ]
+  },
+  {
+    "id": "message_0284",
+    "connection_id": "connection_0285",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0284"
+    ]
+  },
+  {
+    "id": "message_0285",
+    "connection_id": "connection_0286",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0285"
+    ]
+  },
+  {
+    "id": "message_0286",
+    "connection_id": "connection_0287",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0286"
+    ]
+  },
+  {
+    "id": "message_0287",
+    "connection_id": "connection_0288",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0287"
+    ]
+  },
+  {
+    "id": "message_0288",
+    "connection_id": "connection_0289",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0288"
+    ]
+  },
+  {
+    "id": "message_0289",
+    "connection_id": "connection_0290",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0289"
+    ]
+  },
+  {
+    "id": "message_0290",
+    "connection_id": "connection_0291",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0290"
+    ]
+  },
+  {
+    "id": "message_0291",
+    "connection_id": "connection_0292",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0291"
+    ]
+  },
+  {
+    "id": "message_0292",
+    "connection_id": "connection_0293",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0292"
+    ]
+  },
+  {
+    "id": "message_0293",
+    "connection_id": "connection_0294",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0293"
+    ]
+  },
+  {
+    "id": "message_0294",
+    "connection_id": "connection_0295",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0294"
+    ]
+  },
+  {
+    "id": "message_0295",
+    "connection_id": "connection_0296",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0295"
+    ]
+  },
+  {
+    "id": "message_0296",
+    "connection_id": "connection_0297",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0296"
+    ]
+  },
+  {
+    "id": "message_0297",
+    "connection_id": "connection_0298",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0297"
+    ]
+  },
+  {
+    "id": "message_0298",
+    "connection_id": "connection_0299",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0298"
+    ]
+  },
+  {
+    "id": "message_0299",
+    "connection_id": "connection_0300",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0299"
+    ]
+  },
+  {
+    "id": "message_0300",
+    "connection_id": "connection_0301",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0300"
+    ]
+  },
+  {
+    "id": "message_0301",
+    "connection_id": "connection_0302",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0301"
+    ]
+  },
+  {
+    "id": "message_0302",
+    "connection_id": "connection_0303",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0302"
+    ]
+  },
+  {
+    "id": "message_0303",
+    "connection_id": "connection_0304",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0303"
+    ]
+  },
+  {
+    "id": "message_0304",
+    "connection_id": "connection_0305",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0304"
+    ]
+  },
+  {
+    "id": "message_0305",
+    "connection_id": "connection_0306",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0305"
+    ]
+  },
+  {
+    "id": "message_0306",
+    "connection_id": "connection_0307",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0306"
+    ]
+  },
+  {
+    "id": "message_0307",
+    "connection_id": "connection_0308",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0307"
+    ]
+  },
+  {
+    "id": "message_0308",
+    "connection_id": "connection_0309",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0308"
+    ]
+  },
+  {
+    "id": "message_0309",
+    "connection_id": "connection_0310",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0309"
+    ]
+  },
+  {
+    "id": "message_0310",
+    "connection_id": "connection_0311",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0310"
+    ]
+  },
+  {
+    "id": "message_0311",
+    "connection_id": "connection_0312",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0311"
+    ]
+  },
+  {
+    "id": "message_0312",
+    "connection_id": "connection_0313",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0312"
+    ]
+  },
+  {
+    "id": "message_0313",
+    "connection_id": "connection_0314",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0313"
+    ]
+  },
+  {
+    "id": "message_0314",
+    "connection_id": "connection_0315",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0314"
+    ]
+  },
+  {
+    "id": "message_0315",
+    "connection_id": "connection_0316",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0315"
+    ]
+  },
+  {
+    "id": "message_0316",
+    "connection_id": "connection_0317",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0316"
+    ]
+  },
+  {
+    "id": "message_0317",
+    "connection_id": "connection_0318",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0317"
+    ]
+  },
+  {
+    "id": "message_0318",
+    "connection_id": "connection_0319",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0318"
+    ]
+  },
+  {
+    "id": "message_0319",
+    "connection_id": "connection_0320",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0319"
+    ]
+  },
+  {
+    "id": "message_0320",
+    "connection_id": "connection_0321",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0320"
+    ]
+  },
+  {
+    "id": "message_0321",
+    "connection_id": "connection_0322",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0321"
+    ]
+  },
+  {
+    "id": "message_0322",
+    "connection_id": "connection_0323",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0322"
+    ]
+  },
+  {
+    "id": "message_0323",
+    "connection_id": "connection_0324",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0323"
+    ]
+  },
+  {
+    "id": "message_0324",
+    "connection_id": "connection_0325",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0324"
+    ]
+  },
+  {
+    "id": "message_0325",
+    "connection_id": "connection_0326",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0325"
+    ]
+  },
+  {
+    "id": "message_0326",
+    "connection_id": "connection_0327",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0326"
+    ]
+  },
+  {
+    "id": "message_0327",
+    "connection_id": "connection_0328",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0327"
+    ]
+  },
+  {
+    "id": "message_0328",
+    "connection_id": "connection_0329",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0328"
+    ]
+  },
+  {
+    "id": "message_0329",
+    "connection_id": "connection_0330",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0329"
+    ]
+  },
+  {
+    "id": "message_0330",
+    "connection_id": "connection_0331",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0330"
+    ]
+  },
+  {
+    "id": "message_0331",
+    "connection_id": "connection_0332",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0331"
+    ]
+  },
+  {
+    "id": "message_0332",
+    "connection_id": "connection_0333",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0332"
+    ]
+  },
+  {
+    "id": "message_0333",
+    "connection_id": "connection_0334",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0333"
+    ]
+  },
+  {
+    "id": "message_0334",
+    "connection_id": "connection_0335",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0334"
+    ]
+  },
+  {
+    "id": "message_0335",
+    "connection_id": "connection_0336",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0335"
+    ]
+  },
+  {
+    "id": "message_0336",
+    "connection_id": "connection_0337",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0336"
+    ]
+  },
+  {
+    "id": "message_0337",
+    "connection_id": "connection_0338",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0337"
+    ]
+  },
+  {
+    "id": "message_0338",
+    "connection_id": "connection_0339",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0338"
+    ]
+  },
+  {
+    "id": "message_0339",
+    "connection_id": "connection_0340",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0339"
+    ]
+  },
+  {
+    "id": "message_0340",
+    "connection_id": "connection_0341",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0340"
+    ]
+  },
+  {
+    "id": "message_0341",
+    "connection_id": "connection_0342",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0341"
+    ]
+  },
+  {
+    "id": "message_0342",
+    "connection_id": "connection_0343",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0342"
+    ]
+  },
+  {
+    "id": "message_0343",
+    "connection_id": "connection_0344",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0343"
+    ]
+  },
+  {
+    "id": "message_0344",
+    "connection_id": "connection_0345",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0344"
+    ]
+  },
+  {
+    "id": "message_0345",
+    "connection_id": "connection_0346",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0345"
+    ]
+  },
+  {
+    "id": "message_0346",
+    "connection_id": "connection_0347",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0346"
+    ]
+  },
+  {
+    "id": "message_0347",
+    "connection_id": "connection_0348",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0347"
+    ]
+  },
+  {
+    "id": "message_0348",
+    "connection_id": "connection_0349",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0348"
+    ]
+  },
+  {
+    "id": "message_0349",
+    "connection_id": "connection_0350",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0349"
+    ]
+  },
+  {
+    "id": "message_0350",
+    "connection_id": "connection_0351",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0350"
+    ]
+  },
+  {
+    "id": "message_0351",
+    "connection_id": "connection_0352",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0351"
+    ]
+  },
+  {
+    "id": "message_0352",
+    "connection_id": "connection_0353",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0352"
+    ]
+  },
+  {
+    "id": "message_0353",
+    "connection_id": "connection_0354",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0353"
+    ]
+  },
+  {
+    "id": "message_0354",
+    "connection_id": "connection_0355",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0354"
+    ]
+  },
+  {
+    "id": "message_0355",
+    "connection_id": "connection_0356",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0355"
+    ]
+  },
+  {
+    "id": "message_0356",
+    "connection_id": "connection_0357",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0356"
+    ]
+  },
+  {
+    "id": "message_0357",
+    "connection_id": "connection_0358",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0357"
+    ]
+  },
+  {
+    "id": "message_0358",
+    "connection_id": "connection_0359",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0358"
+    ]
+  },
+  {
+    "id": "message_0359",
+    "connection_id": "connection_0360",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0359"
+    ]
+  },
+  {
+    "id": "message_0360",
+    "connection_id": "connection_0361",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0360"
+    ]
+  },
+  {
+    "id": "message_0361",
+    "connection_id": "connection_0362",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0361"
+    ]
+  },
+  {
+    "id": "message_0362",
+    "connection_id": "connection_0363",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0362"
+    ]
+  },
+  {
+    "id": "message_0363",
+    "connection_id": "connection_0364",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0363"
+    ]
+  },
+  {
+    "id": "message_0364",
+    "connection_id": "connection_0365",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0364"
+    ]
+  },
+  {
+    "id": "message_0365",
+    "connection_id": "connection_0366",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0365"
+    ]
+  },
+  {
+    "id": "message_0366",
+    "connection_id": "connection_0367",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0366"
+    ]
+  },
+  {
+    "id": "message_0367",
+    "connection_id": "connection_0368",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0367"
+    ]
+  },
+  {
+    "id": "message_0368",
+    "connection_id": "connection_0369",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0368"
+    ]
+  },
+  {
+    "id": "message_0369",
+    "connection_id": "connection_0370",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0369"
+    ]
+  },
+  {
+    "id": "message_0370",
+    "connection_id": "connection_0371",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0370"
+    ]
+  },
+  {
+    "id": "message_0371",
+    "connection_id": "connection_0372",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0371"
+    ]
+  },
+  {
+    "id": "message_0372",
+    "connection_id": "connection_0373",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0372"
+    ]
+  },
+  {
+    "id": "message_0373",
+    "connection_id": "connection_0374",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0373"
+    ]
+  },
+  {
+    "id": "message_0374",
+    "connection_id": "connection_0375",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0374"
+    ]
+  },
+  {
+    "id": "message_0375",
+    "connection_id": "connection_0376",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0375"
+    ]
+  },
+  {
+    "id": "message_0376",
+    "connection_id": "connection_0377",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0376"
+    ]
+  },
+  {
+    "id": "message_0377",
+    "connection_id": "connection_0378",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0377"
+    ]
+  },
+  {
+    "id": "message_0378",
+    "connection_id": "connection_0379",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0378"
+    ]
+  },
+  {
+    "id": "message_0379",
+    "connection_id": "connection_0380",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0379"
+    ]
+  },
+  {
+    "id": "message_0380",
+    "connection_id": "connection_0381",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0380"
+    ]
+  },
+  {
+    "id": "message_0381",
+    "connection_id": "connection_0382",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0381"
+    ]
+  },
+  {
+    "id": "message_0382",
+    "connection_id": "connection_0383",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0382"
+    ]
+  },
+  {
+    "id": "message_0383",
+    "connection_id": "connection_0384",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0383"
+    ]
+  },
+  {
+    "id": "message_0384",
+    "connection_id": "connection_0385",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0384"
+    ]
+  },
+  {
+    "id": "message_0385",
+    "connection_id": "connection_0386",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0385"
+    ]
+  },
+  {
+    "id": "message_0386",
+    "connection_id": "connection_0387",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0386"
+    ]
+  },
+  {
+    "id": "message_0387",
+    "connection_id": "connection_0388",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0387"
+    ]
+  },
+  {
+    "id": "message_0388",
+    "connection_id": "connection_0389",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0388"
+    ]
+  },
+  {
+    "id": "message_0389",
+    "connection_id": "connection_0390",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0389"
+    ]
+  },
+  {
+    "id": "message_0390",
+    "connection_id": "connection_0391",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0390"
+    ]
+  },
+  {
+    "id": "message_0391",
+    "connection_id": "connection_0392",
+    "body": "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0391"
+    ]
+  },
+  {
+    "id": "message_0392",
+    "connection_id": "connection_0393",
+    "body": "Follow up about Japan market entry advisor for China SaaS sales with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0392"
+    ]
+  },
+  {
+    "id": "message_0393",
+    "connection_id": "connection_0394",
+    "body": "Follow up about restaurant reservation CRM integration pilot with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0393"
+    ]
+  },
+  {
+    "id": "message_0394",
+    "connection_id": "connection_0395",
+    "body": "Follow up about investor warm intro for seed fundraising with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0394"
+    ]
+  },
+  {
+    "id": "message_0395",
+    "connection_id": "connection_0396",
+    "body": "Follow up about event sponsor with Chinese business-community reach with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0395"
+    ]
+  },
+  {
+    "id": "message_0396",
+    "connection_id": "connection_0397",
+    "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0396"
+    ]
+  },
+  {
+    "id": "message_0397",
+    "connection_id": "connection_0398",
+    "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0397"
+    ]
+  },
+  {
+    "id": "message_0398",
+    "connection_id": "connection_0399",
+    "body": "Follow up about retail live-commerce distribution partner with a concrete next step.",
+    "language": "en",
+    "evidence_ids": [
+      "evidence:message:0398"
+    ]
+  },
+  {
+    "id": "message_0399",
+    "connection_id": "connection_0400",
+    "body": "Follow up about trusted tax and incorporation advisor for Japan entry with a concrete next step.",
+    "language": "ja",
+    "evidence_ids": [
+      "evidence:message:0399"
+    ]
+  },
+  {
+    "id": "message_0400",
+    "connection_id": "connection_0401",
+    "body": "Follow up about bilingual Xiaohongshu inbound campaign partner with a concrete next step.",
+    "language": "zh-Hans",
+    "evidence_ids": [
+      "evidence:message:0400"
+    ]
+  }
+]

@@ -1,0 +1,662 @@
+[
+  {
+    "id": "negative_case_001",
+    "event_id": "event_02",
+    "user_id": "user_003",
+    "recommended_user_id": "user_056",
+    "score": 0.06,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:001"
+    ]
+  },
+  {
+    "id": "negative_case_002",
+    "event_id": "event_03",
+    "user_id": "user_005",
+    "recommended_user_id": "user_058",
+    "score": 0.07,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:002"
+    ]
+  },
+  {
+    "id": "negative_case_003",
+    "event_id": "event_04",
+    "user_id": "user_007",
+    "recommended_user_id": "user_060",
+    "score": 0.08,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:003"
+    ]
+  },
+  {
+    "id": "negative_case_004",
+    "event_id": "event_05",
+    "user_id": "user_009",
+    "recommended_user_id": "user_062",
+    "score": 0.09,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:004"
+    ]
+  },
+  {
+    "id": "negative_case_005",
+    "event_id": "event_06",
+    "user_id": "user_011",
+    "recommended_user_id": "user_064",
+    "score": 0.1,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:005"
+    ]
+  },
+  {
+    "id": "negative_case_006",
+    "event_id": "event_07",
+    "user_id": "user_013",
+    "recommended_user_id": "user_066",
+    "score": 0.11,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:006"
+    ]
+  },
+  {
+    "id": "negative_case_007",
+    "event_id": "event_08",
+    "user_id": "user_015",
+    "recommended_user_id": "user_068",
+    "score": 0.12,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:007"
+    ]
+  },
+  {
+    "id": "negative_case_008",
+    "event_id": "event_09",
+    "user_id": "user_017",
+    "recommended_user_id": "user_070",
+    "score": 0.13,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:008"
+    ]
+  },
+  {
+    "id": "negative_case_009",
+    "event_id": "event_10",
+    "user_id": "user_019",
+    "recommended_user_id": "user_072",
+    "score": 0.14,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:009"
+    ]
+  },
+  {
+    "id": "negative_case_010",
+    "event_id": "event_01",
+    "user_id": "user_021",
+    "recommended_user_id": "user_074",
+    "score": 0.15,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:010"
+    ]
+  },
+  {
+    "id": "negative_case_011",
+    "event_id": "event_02",
+    "user_id": "user_023",
+    "recommended_user_id": "user_076",
+    "score": 0.16,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:011"
+    ]
+  },
+  {
+    "id": "negative_case_012",
+    "event_id": "event_03",
+    "user_id": "user_025",
+    "recommended_user_id": "user_078",
+    "score": 0.17,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:012"
+    ]
+  },
+  {
+    "id": "negative_case_013",
+    "event_id": "event_04",
+    "user_id": "user_027",
+    "recommended_user_id": "user_080",
+    "score": 0.18,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:013"
+    ]
+  },
+  {
+    "id": "negative_case_014",
+    "event_id": "event_05",
+    "user_id": "user_029",
+    "recommended_user_id": "user_082",
+    "score": 0.19,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:014"
+    ]
+  },
+  {
+    "id": "negative_case_015",
+    "event_id": "event_06",
+    "user_id": "user_031",
+    "recommended_user_id": "user_084",
+    "score": 0.2,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:015"
+    ]
+  },
+  {
+    "id": "negative_case_016",
+    "event_id": "event_07",
+    "user_id": "user_033",
+    "recommended_user_id": "user_086",
+    "score": 0.21,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:016"
+    ]
+  },
+  {
+    "id": "negative_case_017",
+    "event_id": "event_08",
+    "user_id": "user_035",
+    "recommended_user_id": "user_088",
+    "score": 0.22,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:017"
+    ]
+  },
+  {
+    "id": "negative_case_018",
+    "event_id": "event_09",
+    "user_id": "user_037",
+    "recommended_user_id": "user_090",
+    "score": 0.23,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:018"
+    ]
+  },
+  {
+    "id": "negative_case_019",
+    "event_id": "event_10",
+    "user_id": "user_039",
+    "recommended_user_id": "user_092",
+    "score": 0.24,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:019"
+    ]
+  },
+  {
+    "id": "negative_case_020",
+    "event_id": "event_01",
+    "user_id": "user_041",
+    "recommended_user_id": "user_094",
+    "score": 0.05,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:020"
+    ]
+  },
+  {
+    "id": "negative_case_021",
+    "event_id": "event_02",
+    "user_id": "user_043",
+    "recommended_user_id": "user_096",
+    "score": 0.06,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:021"
+    ]
+  },
+  {
+    "id": "negative_case_022",
+    "event_id": "event_03",
+    "user_id": "user_045",
+    "recommended_user_id": "user_098",
+    "score": 0.07,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:022"
+    ]
+  },
+  {
+    "id": "negative_case_023",
+    "event_id": "event_04",
+    "user_id": "user_047",
+    "recommended_user_id": "user_100",
+    "score": 0.08,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:023"
+    ]
+  },
+  {
+    "id": "negative_case_024",
+    "event_id": "event_05",
+    "user_id": "user_049",
+    "recommended_user_id": "user_102",
+    "score": 0.09,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:024"
+    ]
+  },
+  {
+    "id": "negative_case_025",
+    "event_id": "event_06",
+    "user_id": "user_051",
+    "recommended_user_id": "user_104",
+    "score": 0.1,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:025"
+    ]
+  },
+  {
+    "id": "negative_case_026",
+    "event_id": "event_07",
+    "user_id": "user_053",
+    "recommended_user_id": "user_106",
+    "score": 0.11,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:026"
+    ]
+  },
+  {
+    "id": "negative_case_027",
+    "event_id": "event_08",
+    "user_id": "user_055",
+    "recommended_user_id": "user_108",
+    "score": 0.12,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:027"
+    ]
+  },
+  {
+    "id": "negative_case_028",
+    "event_id": "event_09",
+    "user_id": "user_057",
+    "recommended_user_id": "user_110",
+    "score": 0.13,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:028"
+    ]
+  },
+  {
+    "id": "negative_case_029",
+    "event_id": "event_10",
+    "user_id": "user_059",
+    "recommended_user_id": "user_112",
+    "score": 0.14,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:029"
+    ]
+  },
+  {
+    "id": "negative_case_030",
+    "event_id": "event_01",
+    "user_id": "user_061",
+    "recommended_user_id": "user_114",
+    "score": 0.15,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:030"
+    ]
+  },
+  {
+    "id": "negative_case_031",
+    "event_id": "event_02",
+    "user_id": "user_063",
+    "recommended_user_id": "user_116",
+    "score": 0.16,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:031"
+    ]
+  },
+  {
+    "id": "negative_case_032",
+    "event_id": "event_03",
+    "user_id": "user_065",
+    "recommended_user_id": "user_118",
+    "score": 0.17,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:032"
+    ]
+  },
+  {
+    "id": "negative_case_033",
+    "event_id": "event_04",
+    "user_id": "user_067",
+    "recommended_user_id": "user_120",
+    "score": 0.18,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:033"
+    ]
+  },
+  {
+    "id": "negative_case_034",
+    "event_id": "event_05",
+    "user_id": "user_069",
+    "recommended_user_id": "user_122",
+    "score": 0.19,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:034"
+    ]
+  },
+  {
+    "id": "negative_case_035",
+    "event_id": "event_06",
+    "user_id": "user_071",
+    "recommended_user_id": "user_124",
+    "score": 0.2,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:035"
+    ]
+  },
+  {
+    "id": "negative_case_036",
+    "event_id": "event_07",
+    "user_id": "user_073",
+    "recommended_user_id": "user_126",
+    "score": 0.21,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:036"
+    ]
+  },
+  {
+    "id": "negative_case_037",
+    "event_id": "event_08",
+    "user_id": "user_075",
+    "recommended_user_id": "user_128",
+    "score": 0.22,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:037"
+    ]
+  },
+  {
+    "id": "negative_case_038",
+    "event_id": "event_09",
+    "user_id": "user_077",
+    "recommended_user_id": "user_130",
+    "score": 0.23,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:038"
+    ]
+  },
+  {
+    "id": "negative_case_039",
+    "event_id": "event_10",
+    "user_id": "user_079",
+    "recommended_user_id": "user_132",
+    "score": 0.24,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:039"
+    ]
+  },
+  {
+    "id": "negative_case_040",
+    "event_id": "event_01",
+    "user_id": "user_081",
+    "recommended_user_id": "user_002",
+    "score": 0.05,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:040"
+    ]
+  },
+  {
+    "id": "negative_case_041",
+    "event_id": "event_02",
+    "user_id": "user_083",
+    "recommended_user_id": "user_004",
+    "score": 0.06,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:041"
+    ]
+  },
+  {
+    "id": "negative_case_042",
+    "event_id": "event_03",
+    "user_id": "user_085",
+    "recommended_user_id": "user_006",
+    "score": 0.07,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:042"
+    ]
+  },
+  {
+    "id": "negative_case_043",
+    "event_id": "event_04",
+    "user_id": "user_087",
+    "recommended_user_id": "user_008",
+    "score": 0.08,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:043"
+    ]
+  },
+  {
+    "id": "negative_case_044",
+    "event_id": "event_05",
+    "user_id": "user_089",
+    "recommended_user_id": "user_010",
+    "score": 0.09,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:044"
+    ]
+  },
+  {
+    "id": "negative_case_045",
+    "event_id": "event_06",
+    "user_id": "user_091",
+    "recommended_user_id": "user_012",
+    "score": 0.1,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:045"
+    ]
+  },
+  {
+    "id": "negative_case_046",
+    "event_id": "event_07",
+    "user_id": "user_093",
+    "recommended_user_id": "user_014",
+    "score": 0.11,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:046"
+    ]
+  },
+  {
+    "id": "negative_case_047",
+    "event_id": "event_08",
+    "user_id": "user_095",
+    "recommended_user_id": "user_016",
+    "score": 0.12,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:047"
+    ]
+  },
+  {
+    "id": "negative_case_048",
+    "event_id": "event_09",
+    "user_id": "user_097",
+    "recommended_user_id": "user_018",
+    "score": 0.13,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:048"
+    ]
+  },
+  {
+    "id": "negative_case_049",
+    "event_id": "event_10",
+    "user_id": "user_099",
+    "recommended_user_id": "user_020",
+    "score": 0.14,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:049"
+    ]
+  },
+  {
+    "id": "negative_case_050",
+    "event_id": "event_01",
+    "user_id": "user_101",
+    "recommended_user_id": "user_022",
+    "score": 0.15,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:050"
+    ]
+  },
+  {
+    "id": "negative_case_051",
+    "event_id": "event_02",
+    "user_id": "user_103",
+    "recommended_user_id": "user_024",
+    "score": 0.16,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:051"
+    ]
+  },
+  {
+    "id": "negative_case_052",
+    "event_id": "event_03",
+    "user_id": "user_105",
+    "recommended_user_id": "user_026",
+    "score": 0.17,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:052"
+    ]
+  },
+  {
+    "id": "negative_case_053",
+    "event_id": "event_04",
+    "user_id": "user_107",
+    "recommended_user_id": "user_028",
+    "score": 0.18,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:053"
+    ]
+  },
+  {
+    "id": "negative_case_054",
+    "event_id": "event_05",
+    "user_id": "user_109",
+    "recommended_user_id": "user_030",
+    "score": 0.19,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:054"
+    ]
+  },
+  {
+    "id": "negative_case_055",
+    "event_id": "event_06",
+    "user_id": "user_111",
+    "recommended_user_id": "user_032",
+    "score": 0.2,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:055"
+    ]
+  },
+  {
+    "id": "negative_case_056",
+    "event_id": "event_07",
+    "user_id": "user_113",
+    "recommended_user_id": "user_034",
+    "score": 0.21,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:056"
+    ]
+  },
+  {
+    "id": "negative_case_057",
+    "event_id": "event_08",
+    "user_id": "user_115",
+    "recommended_user_id": "user_036",
+    "score": 0.22,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:057"
+    ]
+  },
+  {
+    "id": "negative_case_058",
+    "event_id": "event_09",
+    "user_id": "user_117",
+    "recommended_user_id": "user_038",
+    "score": 0.23,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:058"
+    ]
+  },
+  {
+    "id": "negative_case_059",
+    "event_id": "event_10",
+    "user_id": "user_119",
+    "recommended_user_id": "user_040",
+    "score": 0.24,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:059"
+    ]
+  },
+  {
+    "id": "negative_case_060",
+    "event_id": "event_01",
+    "user_id": "user_121",
+    "recommended_user_id": "user_042",
+    "score": 0.05,
+    "reason": "Low-context or conflicting event intent; should be filtered.",
+    "evidence_ids": [
+      "evidence:negative:060"
+    ]
+  }
+]

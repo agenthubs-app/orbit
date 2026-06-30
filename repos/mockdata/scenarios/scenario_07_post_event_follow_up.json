@@ -1,0 +1,11 @@
+{
+  "id": "scenario_07_post_event_follow_up",
+  "event_id": "event_07",
+  "primary_need": "duplicate contact cleanup and provenance review",
+  "primary_offer": "privacy-safe contact provenance audit",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 3
+  }
+}

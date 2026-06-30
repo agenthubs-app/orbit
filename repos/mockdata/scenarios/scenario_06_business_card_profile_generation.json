@@ -1,0 +1,11 @@
+{
+  "id": "scenario_06_business_card_profile_generation",
+  "event_id": "event_06",
+  "primary_need": "post-event follow-up workflow operator",
+  "primary_offer": "bilingual sales deck review",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 3
+  }
+}

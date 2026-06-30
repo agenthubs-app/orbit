@@ -1,0 +1,11 @@
+{
+  "id": "scenario_03_jp_company_china_market_entry",
+  "event_id": "event_03",
+  "primary_need": "restaurant reservation CRM integration pilot",
+  "primary_offer": "seed investor screening and founder feedback",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 2
+  }
+}

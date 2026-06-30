@@ -1,0 +1,17 @@
+[
+  {
+    "id": "template_intro",
+    "channel": "chat",
+    "body": "Share the event context, concrete overlap, and one next step."
+  },
+  {
+    "id": "template_poc",
+    "channel": "email",
+    "body": "Confirm the PoC owner, target metric, and follow-up date."
+  },
+  {
+    "id": "template_reactivate",
+    "channel": "chat",
+    "body": "Reference the last interaction and propose a narrow reconnection reason."
+  }
+]

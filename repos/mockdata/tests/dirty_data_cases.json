@@ -1,0 +1,227 @@
+[
+  {
+    "id": "dirty_case_001",
+    "case_type": "missing_language",
+    "value": "人脈を広げたい",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:001"
+    ]
+  },
+  {
+    "id": "dirty_case_002",
+    "case_type": "duplicate_contact",
+    "value": "",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:002"
+    ]
+  },
+  {
+    "id": "dirty_case_003",
+    "case_type": "low_confidence_ai",
+    "value": "ai score below review threshold",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:003"
+    ]
+  },
+  {
+    "id": "dirty_case_004",
+    "case_type": "generic_goal",
+    "value": "meet interesting people",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:004"
+    ]
+  },
+  {
+    "id": "dirty_case_005",
+    "case_type": "missing_language",
+    "value": "人脈を広げたい",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:005"
+    ]
+  },
+  {
+    "id": "dirty_case_006",
+    "case_type": "duplicate_contact",
+    "value": "",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:006"
+    ]
+  },
+  {
+    "id": "dirty_case_007",
+    "case_type": "low_confidence_ai",
+    "value": "ai score below review threshold",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:007"
+    ]
+  },
+  {
+    "id": "dirty_case_008",
+    "case_type": "generic_goal",
+    "value": "meet interesting people",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:008"
+    ]
+  },
+  {
+    "id": "dirty_case_009",
+    "case_type": "missing_language",
+    "value": "人脈を広げたい",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:009"
+    ]
+  },
+  {
+    "id": "dirty_case_010",
+    "case_type": "duplicate_contact",
+    "value": "",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:010"
+    ]
+  },
+  {
+    "id": "dirty_case_011",
+    "case_type": "low_confidence_ai",
+    "value": "ai score below review threshold",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:011"
+    ]
+  },
+  {
+    "id": "dirty_case_012",
+    "case_type": "generic_goal",
+    "value": "meet interesting people",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:012"
+    ]
+  },
+  {
+    "id": "dirty_case_013",
+    "case_type": "missing_language",
+    "value": "人脈を広げたい",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:013"
+    ]
+  },
+  {
+    "id": "dirty_case_014",
+    "case_type": "duplicate_contact",
+    "value": "",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:014"
+    ]
+  },
+  {
+    "id": "dirty_case_015",
+    "case_type": "low_confidence_ai",
+    "value": "ai score below review threshold",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:015"
+    ]
+  },
+  {
+    "id": "dirty_case_016",
+    "case_type": "generic_goal",
+    "value": "meet interesting people",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:016"
+    ]
+  },
+  {
+    "id": "dirty_case_017",
+    "case_type": "missing_language",
+    "value": "人脈を広げたい",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:017"
+    ]
+  },
+  {
+    "id": "dirty_case_018",
+    "case_type": "duplicate_contact",
+    "value": "",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:018"
+    ]
+  },
+  {
+    "id": "dirty_case_019",
+    "case_type": "low_confidence_ai",
+    "value": "ai score below review threshold",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:019"
+    ]
+  },
+  {
+    "id": "dirty_case_020",
+    "case_type": "generic_goal",
+    "value": "meet interesting people",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:020"
+    ]
+  },
+  {
+    "id": "dirty_case_021",
+    "case_type": "missing_language",
+    "value": "人脈を広げたい",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:021"
+    ]
+  },
+  {
+    "id": "dirty_case_022",
+    "case_type": "duplicate_contact",
+    "value": "",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:022"
+    ]
+  },
+  {
+    "id": "dirty_case_023",
+    "case_type": "low_confidence_ai",
+    "value": "ai score below review threshold",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:023"
+    ]
+  },
+  {
+    "id": "dirty_case_024",
+    "case_type": "generic_goal",
+    "value": "meet interesting people",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:024"
+    ]
+  },
+  {
+    "id": "dirty_case_025",
+    "case_type": "missing_language",
+    "value": "人脈を広げたい",
+    "expected_handling": "flag_for_review",
+    "evidence_ids": [
+      "evidence:dirty:025"
+    ]
+  }
+]

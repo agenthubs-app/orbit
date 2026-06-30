@@ -1,0 +1,3852 @@
+[
+  {
+    "id": "recommendation_0001",
+    "event_id": "event_02",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.51,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0001"
+    ]
+  },
+  {
+    "id": "recommendation_0002",
+    "event_id": "event_03",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.52,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0002"
+    ]
+  },
+  {
+    "id": "recommendation_0003",
+    "event_id": "event_04",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.53,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0003"
+    ]
+  },
+  {
+    "id": "recommendation_0004",
+    "event_id": "event_05",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.54,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0004"
+    ]
+  },
+  {
+    "id": "recommendation_0005",
+    "event_id": "event_06",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.55,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0005"
+    ]
+  },
+  {
+    "id": "recommendation_0006",
+    "event_id": "event_07",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.56,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0006"
+    ]
+  },
+  {
+    "id": "recommendation_0007",
+    "event_id": "event_08",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.57,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0007"
+    ]
+  },
+  {
+    "id": "recommendation_0008",
+    "event_id": "event_09",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.58,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0008"
+    ]
+  },
+  {
+    "id": "recommendation_0009",
+    "event_id": "event_10",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.59,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0009"
+    ]
+  },
+  {
+    "id": "recommendation_0010",
+    "event_id": "event_01",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.6,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0010"
+    ]
+  },
+  {
+    "id": "recommendation_0011",
+    "event_id": "event_02",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.61,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0011"
+    ]
+  },
+  {
+    "id": "recommendation_0012",
+    "event_id": "event_03",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.62,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0012"
+    ]
+  },
+  {
+    "id": "recommendation_0013",
+    "event_id": "event_04",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.63,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0013"
+    ]
+  },
+  {
+    "id": "recommendation_0014",
+    "event_id": "event_05",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.64,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0014"
+    ]
+  },
+  {
+    "id": "recommendation_0015",
+    "event_id": "event_06",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.65,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0015"
+    ]
+  },
+  {
+    "id": "recommendation_0016",
+    "event_id": "event_07",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.66,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0016"
+    ]
+  },
+  {
+    "id": "recommendation_0017",
+    "event_id": "event_08",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.67,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0017"
+    ]
+  },
+  {
+    "id": "recommendation_0018",
+    "event_id": "event_09",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.68,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0018"
+    ]
+  },
+  {
+    "id": "recommendation_0019",
+    "event_id": "event_10",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.69,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0019"
+    ]
+  },
+  {
+    "id": "recommendation_0020",
+    "event_id": "event_01",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.7,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0020"
+    ]
+  },
+  {
+    "id": "recommendation_0021",
+    "event_id": "event_02",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.71,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0021"
+    ]
+  },
+  {
+    "id": "recommendation_0022",
+    "event_id": "event_03",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.72,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0022"
+    ]
+  },
+  {
+    "id": "recommendation_0023",
+    "event_id": "event_04",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.73,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0023"
+    ]
+  },
+  {
+    "id": "recommendation_0024",
+    "event_id": "event_05",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.74,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0024"
+    ]
+  },
+  {
+    "id": "recommendation_0025",
+    "event_id": "event_06",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.75,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0025"
+    ]
+  },
+  {
+    "id": "recommendation_0026",
+    "event_id": "event_07",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.76,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0026"
+    ]
+  },
+  {
+    "id": "recommendation_0027",
+    "event_id": "event_08",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.77,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0027"
+    ]
+  },
+  {
+    "id": "recommendation_0028",
+    "event_id": "event_09",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.78,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0028"
+    ]
+  },
+  {
+    "id": "recommendation_0029",
+    "event_id": "event_10",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.79,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0029"
+    ]
+  },
+  {
+    "id": "recommendation_0030",
+    "event_id": "event_01",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.8,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0030"
+    ]
+  },
+  {
+    "id": "recommendation_0031",
+    "event_id": "event_02",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.81,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0031"
+    ]
+  },
+  {
+    "id": "recommendation_0032",
+    "event_id": "event_03",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.82,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0032"
+    ]
+  },
+  {
+    "id": "recommendation_0033",
+    "event_id": "event_04",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.83,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0033"
+    ]
+  },
+  {
+    "id": "recommendation_0034",
+    "event_id": "event_05",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.84,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0034"
+    ]
+  },
+  {
+    "id": "recommendation_0035",
+    "event_id": "event_06",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.85,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0035"
+    ]
+  },
+  {
+    "id": "recommendation_0036",
+    "event_id": "event_07",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.86,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0036"
+    ]
+  },
+  {
+    "id": "recommendation_0037",
+    "event_id": "event_08",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.87,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0037"
+    ]
+  },
+  {
+    "id": "recommendation_0038",
+    "event_id": "event_09",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.88,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0038"
+    ]
+  },
+  {
+    "id": "recommendation_0039",
+    "event_id": "event_10",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.89,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0039"
+    ]
+  },
+  {
+    "id": "recommendation_0040",
+    "event_id": "event_01",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.9,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0040"
+    ]
+  },
+  {
+    "id": "recommendation_0041",
+    "event_id": "event_02",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.91,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0041"
+    ]
+  },
+  {
+    "id": "recommendation_0042",
+    "event_id": "event_03",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.92,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0042"
+    ]
+  },
+  {
+    "id": "recommendation_0043",
+    "event_id": "event_04",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.93,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0043"
+    ]
+  },
+  {
+    "id": "recommendation_0044",
+    "event_id": "event_05",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.94,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0044"
+    ]
+  },
+  {
+    "id": "recommendation_0045",
+    "event_id": "event_06",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.5,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0045"
+    ]
+  },
+  {
+    "id": "recommendation_0046",
+    "event_id": "event_07",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.51,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0046"
+    ]
+  },
+  {
+    "id": "recommendation_0047",
+    "event_id": "event_08",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.52,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0047"
+    ]
+  },
+  {
+    "id": "recommendation_0048",
+    "event_id": "event_09",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.53,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0048"
+    ]
+  },
+  {
+    "id": "recommendation_0049",
+    "event_id": "event_10",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.54,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0049"
+    ]
+  },
+  {
+    "id": "recommendation_0050",
+    "event_id": "event_01",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.55,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0050"
+    ]
+  },
+  {
+    "id": "recommendation_0051",
+    "event_id": "event_02",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.56,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0051"
+    ]
+  },
+  {
+    "id": "recommendation_0052",
+    "event_id": "event_03",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.57,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0052"
+    ]
+  },
+  {
+    "id": "recommendation_0053",
+    "event_id": "event_04",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.58,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0053"
+    ]
+  },
+  {
+    "id": "recommendation_0054",
+    "event_id": "event_05",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.59,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0054"
+    ]
+  },
+  {
+    "id": "recommendation_0055",
+    "event_id": "event_06",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.6,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0055"
+    ]
+  },
+  {
+    "id": "recommendation_0056",
+    "event_id": "event_07",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.61,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0056"
+    ]
+  },
+  {
+    "id": "recommendation_0057",
+    "event_id": "event_08",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.62,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0057"
+    ]
+  },
+  {
+    "id": "recommendation_0058",
+    "event_id": "event_09",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.63,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0058"
+    ]
+  },
+  {
+    "id": "recommendation_0059",
+    "event_id": "event_10",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.64,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0059"
+    ]
+  },
+  {
+    "id": "recommendation_0060",
+    "event_id": "event_01",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.65,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0060"
+    ]
+  },
+  {
+    "id": "recommendation_0061",
+    "event_id": "event_02",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.66,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0061"
+    ]
+  },
+  {
+    "id": "recommendation_0062",
+    "event_id": "event_03",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.67,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0062"
+    ]
+  },
+  {
+    "id": "recommendation_0063",
+    "event_id": "event_04",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.68,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0063"
+    ]
+  },
+  {
+    "id": "recommendation_0064",
+    "event_id": "event_05",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.69,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0064"
+    ]
+  },
+  {
+    "id": "recommendation_0065",
+    "event_id": "event_06",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.7,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0065"
+    ]
+  },
+  {
+    "id": "recommendation_0066",
+    "event_id": "event_07",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.71,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0066"
+    ]
+  },
+  {
+    "id": "recommendation_0067",
+    "event_id": "event_08",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.72,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0067"
+    ]
+  },
+  {
+    "id": "recommendation_0068",
+    "event_id": "event_09",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.73,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0068"
+    ]
+  },
+  {
+    "id": "recommendation_0069",
+    "event_id": "event_10",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.74,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0069"
+    ]
+  },
+  {
+    "id": "recommendation_0070",
+    "event_id": "event_01",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.75,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0070"
+    ]
+  },
+  {
+    "id": "recommendation_0071",
+    "event_id": "event_02",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.76,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0071"
+    ]
+  },
+  {
+    "id": "recommendation_0072",
+    "event_id": "event_03",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.77,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0072"
+    ]
+  },
+  {
+    "id": "recommendation_0073",
+    "event_id": "event_04",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.78,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0073"
+    ]
+  },
+  {
+    "id": "recommendation_0074",
+    "event_id": "event_05",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.79,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0074"
+    ]
+  },
+  {
+    "id": "recommendation_0075",
+    "event_id": "event_06",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.8,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0075"
+    ]
+  },
+  {
+    "id": "recommendation_0076",
+    "event_id": "event_07",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.81,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0076"
+    ]
+  },
+  {
+    "id": "recommendation_0077",
+    "event_id": "event_08",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.82,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0077"
+    ]
+  },
+  {
+    "id": "recommendation_0078",
+    "event_id": "event_09",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.83,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0078"
+    ]
+  },
+  {
+    "id": "recommendation_0079",
+    "event_id": "event_10",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.84,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0079"
+    ]
+  },
+  {
+    "id": "recommendation_0080",
+    "event_id": "event_01",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.85,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0080"
+    ]
+  },
+  {
+    "id": "recommendation_0081",
+    "event_id": "event_02",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.86,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0081"
+    ]
+  },
+  {
+    "id": "recommendation_0082",
+    "event_id": "event_03",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.87,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0082"
+    ]
+  },
+  {
+    "id": "recommendation_0083",
+    "event_id": "event_04",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.88,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0083"
+    ]
+  },
+  {
+    "id": "recommendation_0084",
+    "event_id": "event_05",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.89,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0084"
+    ]
+  },
+  {
+    "id": "recommendation_0085",
+    "event_id": "event_06",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.9,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0085"
+    ]
+  },
+  {
+    "id": "recommendation_0086",
+    "event_id": "event_07",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.91,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0086"
+    ]
+  },
+  {
+    "id": "recommendation_0087",
+    "event_id": "event_08",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.92,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0087"
+    ]
+  },
+  {
+    "id": "recommendation_0088",
+    "event_id": "event_09",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.93,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0088"
+    ]
+  },
+  {
+    "id": "recommendation_0089",
+    "event_id": "event_10",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.94,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0089"
+    ]
+  },
+  {
+    "id": "recommendation_0090",
+    "event_id": "event_01",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.5,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0090"
+    ]
+  },
+  {
+    "id": "recommendation_0091",
+    "event_id": "event_02",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.51,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0091"
+    ]
+  },
+  {
+    "id": "recommendation_0092",
+    "event_id": "event_03",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.52,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0092"
+    ]
+  },
+  {
+    "id": "recommendation_0093",
+    "event_id": "event_04",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.53,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0093"
+    ]
+  },
+  {
+    "id": "recommendation_0094",
+    "event_id": "event_05",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.54,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0094"
+    ]
+  },
+  {
+    "id": "recommendation_0095",
+    "event_id": "event_06",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.55,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0095"
+    ]
+  },
+  {
+    "id": "recommendation_0096",
+    "event_id": "event_07",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.56,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0096"
+    ]
+  },
+  {
+    "id": "recommendation_0097",
+    "event_id": "event_08",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.57,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0097"
+    ]
+  },
+  {
+    "id": "recommendation_0098",
+    "event_id": "event_09",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.58,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0098"
+    ]
+  },
+  {
+    "id": "recommendation_0099",
+    "event_id": "event_10",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.59,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0099"
+    ]
+  },
+  {
+    "id": "recommendation_0100",
+    "event_id": "event_01",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.6,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0100"
+    ]
+  },
+  {
+    "id": "recommendation_0101",
+    "event_id": "event_02",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.61,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0101"
+    ]
+  },
+  {
+    "id": "recommendation_0102",
+    "event_id": "event_03",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.62,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0102"
+    ]
+  },
+  {
+    "id": "recommendation_0103",
+    "event_id": "event_04",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.63,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0103"
+    ]
+  },
+  {
+    "id": "recommendation_0104",
+    "event_id": "event_05",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.64,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0104"
+    ]
+  },
+  {
+    "id": "recommendation_0105",
+    "event_id": "event_06",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.65,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0105"
+    ]
+  },
+  {
+    "id": "recommendation_0106",
+    "event_id": "event_07",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.66,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0106"
+    ]
+  },
+  {
+    "id": "recommendation_0107",
+    "event_id": "event_08",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.67,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0107"
+    ]
+  },
+  {
+    "id": "recommendation_0108",
+    "event_id": "event_09",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.68,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0108"
+    ]
+  },
+  {
+    "id": "recommendation_0109",
+    "event_id": "event_10",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.69,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0109"
+    ]
+  },
+  {
+    "id": "recommendation_0110",
+    "event_id": "event_01",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.7,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0110"
+    ]
+  },
+  {
+    "id": "recommendation_0111",
+    "event_id": "event_02",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.71,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0111"
+    ]
+  },
+  {
+    "id": "recommendation_0112",
+    "event_id": "event_03",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.72,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0112"
+    ]
+  },
+  {
+    "id": "recommendation_0113",
+    "event_id": "event_04",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.73,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0113"
+    ]
+  },
+  {
+    "id": "recommendation_0114",
+    "event_id": "event_05",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.74,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0114"
+    ]
+  },
+  {
+    "id": "recommendation_0115",
+    "event_id": "event_06",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.75,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0115"
+    ]
+  },
+  {
+    "id": "recommendation_0116",
+    "event_id": "event_07",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.76,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0116"
+    ]
+  },
+  {
+    "id": "recommendation_0117",
+    "event_id": "event_08",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.77,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0117"
+    ]
+  },
+  {
+    "id": "recommendation_0118",
+    "event_id": "event_09",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.78,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0118"
+    ]
+  },
+  {
+    "id": "recommendation_0119",
+    "event_id": "event_10",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.79,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0119"
+    ]
+  },
+  {
+    "id": "recommendation_0120",
+    "event_id": "event_01",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.8,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0120"
+    ]
+  },
+  {
+    "id": "recommendation_0121",
+    "event_id": "event_02",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.81,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0121"
+    ]
+  },
+  {
+    "id": "recommendation_0122",
+    "event_id": "event_03",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.82,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0122"
+    ]
+  },
+  {
+    "id": "recommendation_0123",
+    "event_id": "event_04",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.83,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0123"
+    ]
+  },
+  {
+    "id": "recommendation_0124",
+    "event_id": "event_05",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.84,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0124"
+    ]
+  },
+  {
+    "id": "recommendation_0125",
+    "event_id": "event_06",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.85,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0125"
+    ]
+  },
+  {
+    "id": "recommendation_0126",
+    "event_id": "event_07",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.86,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0126"
+    ]
+  },
+  {
+    "id": "recommendation_0127",
+    "event_id": "event_08",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.87,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0127"
+    ]
+  },
+  {
+    "id": "recommendation_0128",
+    "event_id": "event_09",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.88,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0128"
+    ]
+  },
+  {
+    "id": "recommendation_0129",
+    "event_id": "event_10",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.89,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0129"
+    ]
+  },
+  {
+    "id": "recommendation_0130",
+    "event_id": "event_01",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.9,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0130"
+    ]
+  },
+  {
+    "id": "recommendation_0131",
+    "event_id": "event_02",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.91,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0131"
+    ]
+  },
+  {
+    "id": "recommendation_0132",
+    "event_id": "event_03",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.92,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0132"
+    ]
+  },
+  {
+    "id": "recommendation_0133",
+    "event_id": "event_04",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.93,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0133"
+    ]
+  },
+  {
+    "id": "recommendation_0134",
+    "event_id": "event_05",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.94,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0134"
+    ]
+  },
+  {
+    "id": "recommendation_0135",
+    "event_id": "event_06",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.5,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0135"
+    ]
+  },
+  {
+    "id": "recommendation_0136",
+    "event_id": "event_07",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.51,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0136"
+    ]
+  },
+  {
+    "id": "recommendation_0137",
+    "event_id": "event_08",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.52,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0137"
+    ]
+  },
+  {
+    "id": "recommendation_0138",
+    "event_id": "event_09",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.53,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0138"
+    ]
+  },
+  {
+    "id": "recommendation_0139",
+    "event_id": "event_10",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.54,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0139"
+    ]
+  },
+  {
+    "id": "recommendation_0140",
+    "event_id": "event_01",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.55,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0140"
+    ]
+  },
+  {
+    "id": "recommendation_0141",
+    "event_id": "event_02",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.56,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0141"
+    ]
+  },
+  {
+    "id": "recommendation_0142",
+    "event_id": "event_03",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.57,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0142"
+    ]
+  },
+  {
+    "id": "recommendation_0143",
+    "event_id": "event_04",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.58,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0143"
+    ]
+  },
+  {
+    "id": "recommendation_0144",
+    "event_id": "event_05",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.59,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0144"
+    ]
+  },
+  {
+    "id": "recommendation_0145",
+    "event_id": "event_06",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.6,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0145"
+    ]
+  },
+  {
+    "id": "recommendation_0146",
+    "event_id": "event_07",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.61,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0146"
+    ]
+  },
+  {
+    "id": "recommendation_0147",
+    "event_id": "event_08",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.62,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0147"
+    ]
+  },
+  {
+    "id": "recommendation_0148",
+    "event_id": "event_09",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.63,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0148"
+    ]
+  },
+  {
+    "id": "recommendation_0149",
+    "event_id": "event_10",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.64,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0149"
+    ]
+  },
+  {
+    "id": "recommendation_0150",
+    "event_id": "event_01",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.65,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0150"
+    ]
+  },
+  {
+    "id": "recommendation_0151",
+    "event_id": "event_02",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.66,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0151"
+    ]
+  },
+  {
+    "id": "recommendation_0152",
+    "event_id": "event_03",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.67,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0152"
+    ]
+  },
+  {
+    "id": "recommendation_0153",
+    "event_id": "event_04",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.68,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0153"
+    ]
+  },
+  {
+    "id": "recommendation_0154",
+    "event_id": "event_05",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.69,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0154"
+    ]
+  },
+  {
+    "id": "recommendation_0155",
+    "event_id": "event_06",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.7,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0155"
+    ]
+  },
+  {
+    "id": "recommendation_0156",
+    "event_id": "event_07",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.71,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0156"
+    ]
+  },
+  {
+    "id": "recommendation_0157",
+    "event_id": "event_08",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.72,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0157"
+    ]
+  },
+  {
+    "id": "recommendation_0158",
+    "event_id": "event_09",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.73,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0158"
+    ]
+  },
+  {
+    "id": "recommendation_0159",
+    "event_id": "event_10",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.74,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0159"
+    ]
+  },
+  {
+    "id": "recommendation_0160",
+    "event_id": "event_01",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.75,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0160"
+    ]
+  },
+  {
+    "id": "recommendation_0161",
+    "event_id": "event_02",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.76,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0161"
+    ]
+  },
+  {
+    "id": "recommendation_0162",
+    "event_id": "event_03",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.77,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0162"
+    ]
+  },
+  {
+    "id": "recommendation_0163",
+    "event_id": "event_04",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.78,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0163"
+    ]
+  },
+  {
+    "id": "recommendation_0164",
+    "event_id": "event_05",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.79,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0164"
+    ]
+  },
+  {
+    "id": "recommendation_0165",
+    "event_id": "event_06",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.8,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0165"
+    ]
+  },
+  {
+    "id": "recommendation_0166",
+    "event_id": "event_07",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.81,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0166"
+    ]
+  },
+  {
+    "id": "recommendation_0167",
+    "event_id": "event_08",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.82,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0167"
+    ]
+  },
+  {
+    "id": "recommendation_0168",
+    "event_id": "event_09",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.83,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0168"
+    ]
+  },
+  {
+    "id": "recommendation_0169",
+    "event_id": "event_10",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.84,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0169"
+    ]
+  },
+  {
+    "id": "recommendation_0170",
+    "event_id": "event_01",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.85,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0170"
+    ]
+  },
+  {
+    "id": "recommendation_0171",
+    "event_id": "event_02",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.86,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0171"
+    ]
+  },
+  {
+    "id": "recommendation_0172",
+    "event_id": "event_03",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.87,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0172"
+    ]
+  },
+  {
+    "id": "recommendation_0173",
+    "event_id": "event_04",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.88,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0173"
+    ]
+  },
+  {
+    "id": "recommendation_0174",
+    "event_id": "event_05",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.89,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0174"
+    ]
+  },
+  {
+    "id": "recommendation_0175",
+    "event_id": "event_06",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.9,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0175"
+    ]
+  },
+  {
+    "id": "recommendation_0176",
+    "event_id": "event_07",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.91,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0176"
+    ]
+  },
+  {
+    "id": "recommendation_0177",
+    "event_id": "event_08",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.92,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0177"
+    ]
+  },
+  {
+    "id": "recommendation_0178",
+    "event_id": "event_09",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.93,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0178"
+    ]
+  },
+  {
+    "id": "recommendation_0179",
+    "event_id": "event_10",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.94,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0179"
+    ]
+  },
+  {
+    "id": "recommendation_0180",
+    "event_id": "event_01",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.5,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0180"
+    ]
+  },
+  {
+    "id": "recommendation_0181",
+    "event_id": "event_02",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.51,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0181"
+    ]
+  },
+  {
+    "id": "recommendation_0182",
+    "event_id": "event_03",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.52,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0182"
+    ]
+  },
+  {
+    "id": "recommendation_0183",
+    "event_id": "event_04",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.53,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0183"
+    ]
+  },
+  {
+    "id": "recommendation_0184",
+    "event_id": "event_05",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.54,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0184"
+    ]
+  },
+  {
+    "id": "recommendation_0185",
+    "event_id": "event_06",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.55,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0185"
+    ]
+  },
+  {
+    "id": "recommendation_0186",
+    "event_id": "event_07",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.56,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0186"
+    ]
+  },
+  {
+    "id": "recommendation_0187",
+    "event_id": "event_08",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.57,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0187"
+    ]
+  },
+  {
+    "id": "recommendation_0188",
+    "event_id": "event_09",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.58,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0188"
+    ]
+  },
+  {
+    "id": "recommendation_0189",
+    "event_id": "event_10",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.59,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0189"
+    ]
+  },
+  {
+    "id": "recommendation_0190",
+    "event_id": "event_01",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.6,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0190"
+    ]
+  },
+  {
+    "id": "recommendation_0191",
+    "event_id": "event_02",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.61,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0191"
+    ]
+  },
+  {
+    "id": "recommendation_0192",
+    "event_id": "event_03",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.62,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0192"
+    ]
+  },
+  {
+    "id": "recommendation_0193",
+    "event_id": "event_04",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.63,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0193"
+    ]
+  },
+  {
+    "id": "recommendation_0194",
+    "event_id": "event_05",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.64,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0194"
+    ]
+  },
+  {
+    "id": "recommendation_0195",
+    "event_id": "event_06",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.65,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0195"
+    ]
+  },
+  {
+    "id": "recommendation_0196",
+    "event_id": "event_07",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.66,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0196"
+    ]
+  },
+  {
+    "id": "recommendation_0197",
+    "event_id": "event_08",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.67,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0197"
+    ]
+  },
+  {
+    "id": "recommendation_0198",
+    "event_id": "event_09",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.68,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0198"
+    ]
+  },
+  {
+    "id": "recommendation_0199",
+    "event_id": "event_10",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.69,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0199"
+    ]
+  },
+  {
+    "id": "recommendation_0200",
+    "event_id": "event_01",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.7,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0200"
+    ]
+  },
+  {
+    "id": "recommendation_0201",
+    "event_id": "event_02",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.71,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0201"
+    ]
+  },
+  {
+    "id": "recommendation_0202",
+    "event_id": "event_03",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.72,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0202"
+    ]
+  },
+  {
+    "id": "recommendation_0203",
+    "event_id": "event_04",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.73,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0203"
+    ]
+  },
+  {
+    "id": "recommendation_0204",
+    "event_id": "event_05",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.74,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0204"
+    ]
+  },
+  {
+    "id": "recommendation_0205",
+    "event_id": "event_06",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.75,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0205"
+    ]
+  },
+  {
+    "id": "recommendation_0206",
+    "event_id": "event_07",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.76,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0206"
+    ]
+  },
+  {
+    "id": "recommendation_0207",
+    "event_id": "event_08",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.77,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0207"
+    ]
+  },
+  {
+    "id": "recommendation_0208",
+    "event_id": "event_09",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.78,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0208"
+    ]
+  },
+  {
+    "id": "recommendation_0209",
+    "event_id": "event_10",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.79,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0209"
+    ]
+  },
+  {
+    "id": "recommendation_0210",
+    "event_id": "event_01",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.8,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0210"
+    ]
+  },
+  {
+    "id": "recommendation_0211",
+    "event_id": "event_02",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.81,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0211"
+    ]
+  },
+  {
+    "id": "recommendation_0212",
+    "event_id": "event_03",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.82,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0212"
+    ]
+  },
+  {
+    "id": "recommendation_0213",
+    "event_id": "event_04",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.83,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0213"
+    ]
+  },
+  {
+    "id": "recommendation_0214",
+    "event_id": "event_05",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.84,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0214"
+    ]
+  },
+  {
+    "id": "recommendation_0215",
+    "event_id": "event_06",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.85,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0215"
+    ]
+  },
+  {
+    "id": "recommendation_0216",
+    "event_id": "event_07",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.86,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0216"
+    ]
+  },
+  {
+    "id": "recommendation_0217",
+    "event_id": "event_08",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.87,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0217"
+    ]
+  },
+  {
+    "id": "recommendation_0218",
+    "event_id": "event_09",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.88,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0218"
+    ]
+  },
+  {
+    "id": "recommendation_0219",
+    "event_id": "event_10",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.89,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0219"
+    ]
+  },
+  {
+    "id": "recommendation_0220",
+    "event_id": "event_01",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.9,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0220"
+    ]
+  },
+  {
+    "id": "recommendation_0221",
+    "event_id": "event_02",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.91,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0221"
+    ]
+  },
+  {
+    "id": "recommendation_0222",
+    "event_id": "event_03",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.92,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0222"
+    ]
+  },
+  {
+    "id": "recommendation_0223",
+    "event_id": "event_04",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.93,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0223"
+    ]
+  },
+  {
+    "id": "recommendation_0224",
+    "event_id": "event_05",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.94,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0224"
+    ]
+  },
+  {
+    "id": "recommendation_0225",
+    "event_id": "event_06",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.5,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0225"
+    ]
+  },
+  {
+    "id": "recommendation_0226",
+    "event_id": "event_07",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.51,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0226"
+    ]
+  },
+  {
+    "id": "recommendation_0227",
+    "event_id": "event_08",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.52,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0227"
+    ]
+  },
+  {
+    "id": "recommendation_0228",
+    "event_id": "event_09",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.53,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0228"
+    ]
+  },
+  {
+    "id": "recommendation_0229",
+    "event_id": "event_10",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.54,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0229"
+    ]
+  },
+  {
+    "id": "recommendation_0230",
+    "event_id": "event_01",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.55,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0230"
+    ]
+  },
+  {
+    "id": "recommendation_0231",
+    "event_id": "event_02",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.56,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0231"
+    ]
+  },
+  {
+    "id": "recommendation_0232",
+    "event_id": "event_03",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.57,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0232"
+    ]
+  },
+  {
+    "id": "recommendation_0233",
+    "event_id": "event_04",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.58,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0233"
+    ]
+  },
+  {
+    "id": "recommendation_0234",
+    "event_id": "event_05",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.59,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0234"
+    ]
+  },
+  {
+    "id": "recommendation_0235",
+    "event_id": "event_06",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.6,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0235"
+    ]
+  },
+  {
+    "id": "recommendation_0236",
+    "event_id": "event_07",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.61,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0236"
+    ]
+  },
+  {
+    "id": "recommendation_0237",
+    "event_id": "event_08",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.62,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0237"
+    ]
+  },
+  {
+    "id": "recommendation_0238",
+    "event_id": "event_09",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.63,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0238"
+    ]
+  },
+  {
+    "id": "recommendation_0239",
+    "event_id": "event_10",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.64,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0239"
+    ]
+  },
+  {
+    "id": "recommendation_0240",
+    "event_id": "event_01",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.65,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0240"
+    ]
+  },
+  {
+    "id": "recommendation_0241",
+    "event_id": "event_02",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.66,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0241"
+    ]
+  },
+  {
+    "id": "recommendation_0242",
+    "event_id": "event_03",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.67,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0242"
+    ]
+  },
+  {
+    "id": "recommendation_0243",
+    "event_id": "event_04",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.68,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0243"
+    ]
+  },
+  {
+    "id": "recommendation_0244",
+    "event_id": "event_05",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.69,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0244"
+    ]
+  },
+  {
+    "id": "recommendation_0245",
+    "event_id": "event_06",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.7,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0245"
+    ]
+  },
+  {
+    "id": "recommendation_0246",
+    "event_id": "event_07",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.71,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0246"
+    ]
+  },
+  {
+    "id": "recommendation_0247",
+    "event_id": "event_08",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.72,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0247"
+    ]
+  },
+  {
+    "id": "recommendation_0248",
+    "event_id": "event_09",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.73,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0248"
+    ]
+  },
+  {
+    "id": "recommendation_0249",
+    "event_id": "event_10",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.74,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0249"
+    ]
+  },
+  {
+    "id": "recommendation_0250",
+    "event_id": "event_01",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.75,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0250"
+    ]
+  },
+  {
+    "id": "recommendation_0251",
+    "event_id": "event_02",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.76,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0251"
+    ]
+  },
+  {
+    "id": "recommendation_0252",
+    "event_id": "event_03",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.77,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0252"
+    ]
+  },
+  {
+    "id": "recommendation_0253",
+    "event_id": "event_04",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.78,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0253"
+    ]
+  },
+  {
+    "id": "recommendation_0254",
+    "event_id": "event_05",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.79,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0254"
+    ]
+  },
+  {
+    "id": "recommendation_0255",
+    "event_id": "event_06",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.8,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0255"
+    ]
+  },
+  {
+    "id": "recommendation_0256",
+    "event_id": "event_07",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.81,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0256"
+    ]
+  },
+  {
+    "id": "recommendation_0257",
+    "event_id": "event_08",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.82,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0257"
+    ]
+  },
+  {
+    "id": "recommendation_0258",
+    "event_id": "event_09",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.83,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0258"
+    ]
+  },
+  {
+    "id": "recommendation_0259",
+    "event_id": "event_10",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.84,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0259"
+    ]
+  },
+  {
+    "id": "recommendation_0260",
+    "event_id": "event_01",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.85,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0260"
+    ]
+  },
+  {
+    "id": "recommendation_0261",
+    "event_id": "event_02",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.86,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0261"
+    ]
+  },
+  {
+    "id": "recommendation_0262",
+    "event_id": "event_03",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.87,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0262"
+    ]
+  },
+  {
+    "id": "recommendation_0263",
+    "event_id": "event_04",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.88,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0263"
+    ]
+  },
+  {
+    "id": "recommendation_0264",
+    "event_id": "event_05",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.89,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0264"
+    ]
+  },
+  {
+    "id": "recommendation_0265",
+    "event_id": "event_06",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.9,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0265"
+    ]
+  },
+  {
+    "id": "recommendation_0266",
+    "event_id": "event_07",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.91,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0266"
+    ]
+  },
+  {
+    "id": "recommendation_0267",
+    "event_id": "event_08",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.92,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0267"
+    ]
+  },
+  {
+    "id": "recommendation_0268",
+    "event_id": "event_09",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.93,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0268"
+    ]
+  },
+  {
+    "id": "recommendation_0269",
+    "event_id": "event_10",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.94,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0269"
+    ]
+  },
+  {
+    "id": "recommendation_0270",
+    "event_id": "event_01",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.5,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0270"
+    ]
+  },
+  {
+    "id": "recommendation_0271",
+    "event_id": "event_02",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.51,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0271"
+    ]
+  },
+  {
+    "id": "recommendation_0272",
+    "event_id": "event_03",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.52,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0272"
+    ]
+  },
+  {
+    "id": "recommendation_0273",
+    "event_id": "event_04",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.53,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0273"
+    ]
+  },
+  {
+    "id": "recommendation_0274",
+    "event_id": "event_05",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.54,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0274"
+    ]
+  },
+  {
+    "id": "recommendation_0275",
+    "event_id": "event_06",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.55,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0275"
+    ]
+  },
+  {
+    "id": "recommendation_0276",
+    "event_id": "event_07",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.56,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0276"
+    ]
+  },
+  {
+    "id": "recommendation_0277",
+    "event_id": "event_08",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.57,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0277"
+    ]
+  },
+  {
+    "id": "recommendation_0278",
+    "event_id": "event_09",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.58,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0278"
+    ]
+  },
+  {
+    "id": "recommendation_0279",
+    "event_id": "event_10",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.59,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0279"
+    ]
+  },
+  {
+    "id": "recommendation_0280",
+    "event_id": "event_01",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.6,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0280"
+    ]
+  },
+  {
+    "id": "recommendation_0281",
+    "event_id": "event_02",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.61,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0281"
+    ]
+  },
+  {
+    "id": "recommendation_0282",
+    "event_id": "event_03",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.62,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0282"
+    ]
+  },
+  {
+    "id": "recommendation_0283",
+    "event_id": "event_04",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.63,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0283"
+    ]
+  },
+  {
+    "id": "recommendation_0284",
+    "event_id": "event_05",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.64,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0284"
+    ]
+  },
+  {
+    "id": "recommendation_0285",
+    "event_id": "event_06",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.65,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0285"
+    ]
+  },
+  {
+    "id": "recommendation_0286",
+    "event_id": "event_07",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.66,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0286"
+    ]
+  },
+  {
+    "id": "recommendation_0287",
+    "event_id": "event_08",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.67,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0287"
+    ]
+  },
+  {
+    "id": "recommendation_0288",
+    "event_id": "event_09",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.68,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0288"
+    ]
+  },
+  {
+    "id": "recommendation_0289",
+    "event_id": "event_10",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.69,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0289"
+    ]
+  },
+  {
+    "id": "recommendation_0290",
+    "event_id": "event_01",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.7,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0290"
+    ]
+  },
+  {
+    "id": "recommendation_0291",
+    "event_id": "event_02",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.71,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0291"
+    ]
+  },
+  {
+    "id": "recommendation_0292",
+    "event_id": "event_03",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.72,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0292"
+    ]
+  },
+  {
+    "id": "recommendation_0293",
+    "event_id": "event_04",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.73,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0293"
+    ]
+  },
+  {
+    "id": "recommendation_0294",
+    "event_id": "event_05",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.74,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0294"
+    ]
+  },
+  {
+    "id": "recommendation_0295",
+    "event_id": "event_06",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.75,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0295"
+    ]
+  },
+  {
+    "id": "recommendation_0296",
+    "event_id": "event_07",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.76,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0296"
+    ]
+  },
+  {
+    "id": "recommendation_0297",
+    "event_id": "event_08",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.77,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0297"
+    ]
+  },
+  {
+    "id": "recommendation_0298",
+    "event_id": "event_09",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.78,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0298"
+    ]
+  },
+  {
+    "id": "recommendation_0299",
+    "event_id": "event_10",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.79,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0299"
+    ]
+  },
+  {
+    "id": "recommendation_0300",
+    "event_id": "event_01",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.8,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0300"
+    ]
+  },
+  {
+    "id": "recommendation_0301",
+    "event_id": "event_02",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.81,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0301"
+    ]
+  },
+  {
+    "id": "recommendation_0302",
+    "event_id": "event_03",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.82,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0302"
+    ]
+  },
+  {
+    "id": "recommendation_0303",
+    "event_id": "event_04",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.83,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0303"
+    ]
+  },
+  {
+    "id": "recommendation_0304",
+    "event_id": "event_05",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.84,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0304"
+    ]
+  },
+  {
+    "id": "recommendation_0305",
+    "event_id": "event_06",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.85,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0305"
+    ]
+  },
+  {
+    "id": "recommendation_0306",
+    "event_id": "event_07",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.86,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0306"
+    ]
+  },
+  {
+    "id": "recommendation_0307",
+    "event_id": "event_08",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.87,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0307"
+    ]
+  },
+  {
+    "id": "recommendation_0308",
+    "event_id": "event_09",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.88,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0308"
+    ]
+  },
+  {
+    "id": "recommendation_0309",
+    "event_id": "event_10",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.89,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0309"
+    ]
+  },
+  {
+    "id": "recommendation_0310",
+    "event_id": "event_01",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.9,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0310"
+    ]
+  },
+  {
+    "id": "recommendation_0311",
+    "event_id": "event_02",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.91,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0311"
+    ]
+  },
+  {
+    "id": "recommendation_0312",
+    "event_id": "event_03",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.92,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0312"
+    ]
+  },
+  {
+    "id": "recommendation_0313",
+    "event_id": "event_04",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.93,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0313"
+    ]
+  },
+  {
+    "id": "recommendation_0314",
+    "event_id": "event_05",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.94,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0314"
+    ]
+  },
+  {
+    "id": "recommendation_0315",
+    "event_id": "event_06",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.5,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0315"
+    ]
+  },
+  {
+    "id": "recommendation_0316",
+    "event_id": "event_07",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.51,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0316"
+    ]
+  },
+  {
+    "id": "recommendation_0317",
+    "event_id": "event_08",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.52,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0317"
+    ]
+  },
+  {
+    "id": "recommendation_0318",
+    "event_id": "event_09",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.53,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0318"
+    ]
+  },
+  {
+    "id": "recommendation_0319",
+    "event_id": "event_10",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.54,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0319"
+    ]
+  },
+  {
+    "id": "recommendation_0320",
+    "event_id": "event_01",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.55,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0320"
+    ]
+  },
+  {
+    "id": "recommendation_0321",
+    "event_id": "event_02",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.56,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0321"
+    ]
+  },
+  {
+    "id": "recommendation_0322",
+    "event_id": "event_03",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.57,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0322"
+    ]
+  },
+  {
+    "id": "recommendation_0323",
+    "event_id": "event_04",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.58,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0323"
+    ]
+  },
+  {
+    "id": "recommendation_0324",
+    "event_id": "event_05",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.59,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0324"
+    ]
+  },
+  {
+    "id": "recommendation_0325",
+    "event_id": "event_06",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.6,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0325"
+    ]
+  },
+  {
+    "id": "recommendation_0326",
+    "event_id": "event_07",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.61,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0326"
+    ]
+  },
+  {
+    "id": "recommendation_0327",
+    "event_id": "event_08",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.62,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0327"
+    ]
+  },
+  {
+    "id": "recommendation_0328",
+    "event_id": "event_09",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.63,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0328"
+    ]
+  },
+  {
+    "id": "recommendation_0329",
+    "event_id": "event_10",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.64,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0329"
+    ]
+  },
+  {
+    "id": "recommendation_0330",
+    "event_id": "event_01",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.65,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0330"
+    ]
+  },
+  {
+    "id": "recommendation_0331",
+    "event_id": "event_02",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.66,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0331"
+    ]
+  },
+  {
+    "id": "recommendation_0332",
+    "event_id": "event_03",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.67,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0332"
+    ]
+  },
+  {
+    "id": "recommendation_0333",
+    "event_id": "event_04",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.68,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0333"
+    ]
+  },
+  {
+    "id": "recommendation_0334",
+    "event_id": "event_05",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.69,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0334"
+    ]
+  },
+  {
+    "id": "recommendation_0335",
+    "event_id": "event_06",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.7,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0335"
+    ]
+  },
+  {
+    "id": "recommendation_0336",
+    "event_id": "event_07",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.71,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0336"
+    ]
+  },
+  {
+    "id": "recommendation_0337",
+    "event_id": "event_08",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.72,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0337"
+    ]
+  },
+  {
+    "id": "recommendation_0338",
+    "event_id": "event_09",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.73,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0338"
+    ]
+  },
+  {
+    "id": "recommendation_0339",
+    "event_id": "event_10",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.74,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0339"
+    ]
+  },
+  {
+    "id": "recommendation_0340",
+    "event_id": "event_01",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.75,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0340"
+    ]
+  },
+  {
+    "id": "recommendation_0341",
+    "event_id": "event_02",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.76,
+    "reason": "Need/offer fit: AI workflow PoC buyer in Japanese SMB manufacturing ↔ bilingual sales deck review.",
+    "evidence_ids": [
+      "evidence:recommendation:0341"
+    ]
+  },
+  {
+    "id": "recommendation_0342",
+    "event_id": "event_03",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.77,
+    "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+    "evidence_ids": [
+      "evidence:recommendation:0342"
+    ]
+  },
+  {
+    "id": "recommendation_0343",
+    "event_id": "event_04",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.78,
+    "reason": "Need/offer fit: restaurant reservation CRM integration pilot ↔ follow-up message localization.",
+    "evidence_ids": [
+      "evidence:recommendation:0343"
+    ]
+  },
+  {
+    "id": "recommendation_0344",
+    "event_id": "event_05",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.79,
+    "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
+    "evidence_ids": [
+      "evidence:recommendation:0344"
+    ]
+  },
+  {
+    "id": "recommendation_0345",
+    "event_id": "event_06",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.8,
+    "reason": "Need/offer fit: event sponsor with Chinese business-community reach ↔ Tokyo restaurant operator test site.",
+    "evidence_ids": [
+      "evidence:recommendation:0345"
+    ]
+  },
+  {
+    "id": "recommendation_0346",
+    "event_id": "event_07",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.81,
+    "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+    "evidence_ids": [
+      "evidence:recommendation:0346"
+    ]
+  },
+  {
+    "id": "recommendation_0347",
+    "event_id": "event_08",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.82,
+    "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0347"
+    ]
+  },
+  {
+    "id": "recommendation_0348",
+    "event_id": "event_09",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.83,
+    "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
+    "evidence_ids": [
+      "evidence:recommendation:0348"
+    ]
+  },
+  {
+    "id": "recommendation_0349",
+    "event_id": "event_10",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.84,
+    "reason": "Need/offer fit: trusted tax and incorporation advisor for Japan entry ↔ event table matching and sponsor visibility.",
+    "evidence_ids": [
+      "evidence:recommendation:0349"
+    ]
+  },
+  {
+    "id": "recommendation_0350",
+    "event_id": "event_01",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.85,
+    "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
+    "evidence_ids": [
+      "evidence:recommendation:0350"
+    ]
+  }
+]

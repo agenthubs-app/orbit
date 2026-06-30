@@ -1,0 +1,3500 @@
+[
+  {
+    "id": "user_001",
+    "display_name": "佐藤 健一",
+    "name_ja": "佐藤 健一",
+    "name_zh": "佐藤健一",
+    "name_en": "Kenichi Sato",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_001",
+    "company_name_ja": "北星フーズ",
+    "company_name_zh": "北星餐饮",
+    "company_name_en": "North Star Foods",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "北星フーズの店舗オーナー。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "北星餐饮的门店经营者。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Store Owner at North Star Foods. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:001"
+    ]
+  },
+  {
+    "id": "user_002",
+    "display_name": "鈴木 真理",
+    "name_ja": "鈴木 真理",
+    "name_zh": "鈴木真理",
+    "name_en": "Mari Suzuki",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_002",
+    "company_name_ja": "桜橋フーズ",
+    "company_name_zh": "樱桥餐饮",
+    "company_name_en": "Sakura Bridge Foods",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "桜橋フーズのコミュニティ主催者。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "樱桥餐饮的社群组织者。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Community Organizer at Sakura Bridge Foods. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:002"
+    ]
+  },
+  {
+    "id": "user_003",
+    "display_name": "高橋 智子",
+    "name_ja": "高橋 智子",
+    "name_zh": "高橋智子",
+    "name_en": "Tomoko Takahashi",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_003",
+    "company_name_ja": "青葉フーズ",
+    "company_name_zh": "青叶餐饮",
+    "company_name_en": "Aoba Foods",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "青葉フーズの投資パートナー。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "青叶餐饮的投资合伙人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Investor Partner at Aoba Foods. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:003"
+    ]
+  },
+  {
+    "id": "user_004",
+    "display_name": "田中 健太",
+    "name_ja": "田中 健太",
+    "name_zh": "田中健太",
+    "name_en": "Kenta Tanaka",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_004",
+    "company_name_ja": "神田フーズ",
+    "company_name_zh": "神田餐饮",
+    "company_name_en": "Kanda Foods",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "神田フーズのDXコンサルタント。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "神田餐饮的DX 顾问。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "DX Consultant at Kanda Foods. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:004"
+    ]
+  },
+  {
+    "id": "user_005",
+    "display_name": "伊藤 香織",
+    "name_ja": "伊藤 香織",
+    "name_zh": "伊藤香織",
+    "name_en": "Kaori Ito",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_005",
+    "company_name_ja": "横浜フーズ",
+    "company_name_zh": "横滨餐饮",
+    "company_name_en": "Yokohama Foods",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "横浜フーズのマーケティング責任者。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "横滨餐饮的市场负责人。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Marketing Lead at Yokohama Foods. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:005"
+    ]
+  },
+  {
+    "id": "user_006",
+    "display_name": "渡辺 颯太",
+    "name_ja": "渡辺 颯太",
+    "name_zh": "渡辺颯太",
+    "name_en": "Sota Watanabe",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_006",
+    "company_name_ja": "関西フーズ",
+    "company_name_zh": "关西餐饮",
+    "company_name_en": "Kansai Foods",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "関西フーズのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "关西餐饮的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Product Manager at Kansai Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:006"
+    ]
+  },
+  {
+    "id": "user_007",
+    "display_name": "山本 浩",
+    "name_ja": "山本 浩",
+    "name_zh": "山本浩",
+    "name_en": "Hiroshi Yamamoto",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_007",
+    "company_name_ja": "銀座フーズ",
+    "company_name_zh": "银座餐饮",
+    "company_name_en": "Ginza Foods",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "銀座フーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "银座餐饮的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Sales Director at Ginza Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:007"
+    ]
+  },
+  {
+    "id": "user_008",
+    "display_name": "中村 沙也香",
+    "name_ja": "中村 沙也香",
+    "name_zh": "中村沙也香",
+    "name_en": "Sayaka Nakamura",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_008",
+    "company_name_ja": "浅草フーズ",
+    "company_name_zh": "浅草餐饮",
+    "company_name_en": "Asakusa Foods",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "浅草フーズの創業者CEO。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "浅草餐饮的创始人 CEO。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Founder CEO at Asakusa Foods. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:008"
+    ]
+  },
+  {
+    "id": "user_009",
+    "display_name": "小林 浩二",
+    "name_ja": "小林 浩二",
+    "name_zh": "小林浩二",
+    "name_en": "Koji Kobayashi",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_009",
+    "company_name_ja": "梅田フーズ",
+    "company_name_zh": "梅田餐饮",
+    "company_name_en": "Umeda Foods",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "梅田フーズの店舗オーナー。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "梅田餐饮的门店经营者。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Store Owner at Umeda Foods. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:009"
+    ]
+  },
+  {
+    "id": "user_010",
+    "display_name": "加藤 翔太",
+    "name_ja": "加藤 翔太",
+    "name_zh": "加藤翔太",
+    "name_en": "Shota Kato",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_010",
+    "company_name_ja": "福岡フーズ",
+    "company_name_zh": "福冈餐饮",
+    "company_name_en": "Fukuoka Foods",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "福岡フーズのコミュニティ主催者。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "福冈餐饮的社群组织者。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Community Organizer at Fukuoka Foods. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:010"
+    ]
+  },
+  {
+    "id": "user_011",
+    "display_name": "吉田 裕太",
+    "name_ja": "吉田 裕太",
+    "name_zh": "吉田裕太",
+    "name_en": "Yuta Yoshida",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_011",
+    "company_name_ja": "紅橋フーズ",
+    "company_name_zh": "红桥餐饮",
+    "company_name_en": "Red Bridge Foods",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "紅橋フーズの投資パートナー。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "红桥餐饮的投资合伙人。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Investor Partner at Red Bridge Foods. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:011"
+    ]
+  },
+  {
+    "id": "user_012",
+    "display_name": "山田 千尋",
+    "name_ja": "山田 千尋",
+    "name_zh": "山田千尋",
+    "name_en": "Chihiro Yamada",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_012",
+    "company_name_ja": "晨光フーズ",
+    "company_name_zh": "晨光餐饮",
+    "company_name_en": "Morning Light Foods",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "晨光フーズのDXコンサルタント。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "晨光餐饮的DX 顾问。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "DX Consultant at Morning Light Foods. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:012"
+    ]
+  },
+  {
+    "id": "user_013",
+    "display_name": "佐々木 豪",
+    "name_ja": "佐々木 豪",
+    "name_zh": "佐々木豪",
+    "name_en": "Go Sasaki",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_013",
+    "company_name_ja": "雲杉フーズ",
+    "company_name_zh": "云杉餐饮",
+    "company_name_en": "Cedar Foods",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "雲杉フーズのマーケティング責任者。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "云杉餐饮的市场负责人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Marketing Lead at Cedar Foods. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:013"
+    ]
+  },
+  {
+    "id": "user_014",
+    "display_name": "山口 航平",
+    "name_ja": "山口 航平",
+    "name_zh": "山口航平",
+    "name_en": "Kohei Yamaguchi",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_014",
+    "company_name_ja": "明岸フーズ",
+    "company_name_zh": "明岸餐饮",
+    "company_name_en": "Bright Shore Foods",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "明岸フーズのプロダクトマネージャー。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "明岸餐饮的产品经理。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Product Manager at Bright Shore Foods. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:014"
+    ]
+  },
+  {
+    "id": "user_015",
+    "display_name": "松本 恵子",
+    "name_ja": "松本 恵子",
+    "name_zh": "松本恵子",
+    "name_en": "Keiko Matsumoto",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_015",
+    "company_name_ja": "藍海フーズ",
+    "company_name_zh": "蓝海餐饮",
+    "company_name_en": "Blue Harbor Foods",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "藍海フーズの営業責任者。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "蓝海餐饮的销售总监。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Sales Director at Blue Harbor Foods. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:015"
+    ]
+  },
+  {
+    "id": "user_016",
+    "display_name": "井上 誠",
+    "name_ja": "井上 誠",
+    "name_zh": "井上誠",
+    "name_en": "Makoto Inoue",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_016",
+    "company_name_ja": "星野フーズ",
+    "company_name_zh": "星野餐饮",
+    "company_name_en": "Hoshino Foods",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "星野フーズの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "星野餐饮的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Founder CEO at Hoshino Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:016"
+    ]
+  },
+  {
+    "id": "user_017",
+    "display_name": "木村 桜",
+    "name_ja": "木村 桜",
+    "name_zh": "木村桜",
+    "name_en": "Sakura Kimura",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_017",
+    "company_name_ja": "竹林フーズ",
+    "company_name_zh": "竹林餐饮",
+    "company_name_en": "Bamboo Grove Foods",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "竹林フーズの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "竹林餐饮的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Store Owner at Bamboo Grove Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:017"
+    ]
+  },
+  {
+    "id": "user_018",
+    "display_name": "林 恵",
+    "name_ja": "林 恵",
+    "name_zh": "林恵",
+    "name_en": "Megumi Hayashi",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_018",
+    "company_name_ja": "南山フーズ",
+    "company_name_zh": "南山餐饮",
+    "company_name_en": "Nanshan Foods",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "南山フーズのコミュニティ主催者。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "南山餐饮的社群组织者。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Community Organizer at Nanshan Foods. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:018"
+    ]
+  },
+  {
+    "id": "user_019",
+    "display_name": "斎藤 彩",
+    "name_ja": "斎藤 彩",
+    "name_zh": "斎藤彩",
+    "name_en": "Aya Saito",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_019",
+    "company_name_ja": "北星テクノロジー",
+    "company_name_zh": "北星科技",
+    "company_name_en": "North Star Technologies",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "北星テクノロジーの投資パートナー。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "北星科技的投资合伙人。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Investor Partner at North Star Technologies. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:019"
+    ]
+  },
+  {
+    "id": "user_020",
+    "display_name": "清水 修平",
+    "name_ja": "清水 修平",
+    "name_zh": "清水修平",
+    "name_en": "Shuhei Shimizu",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_020",
+    "company_name_ja": "桜橋テクノロジー",
+    "company_name_zh": "樱桥科技",
+    "company_name_en": "Sakura Bridge Technologies",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "桜橋テクノロジーのDXコンサルタント。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "樱桥科技的DX 顾问。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "DX Consultant at Sakura Bridge Technologies. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:020"
+    ]
+  },
+  {
+    "id": "user_021",
+    "display_name": "山崎 美穂",
+    "name_ja": "山崎 美穂",
+    "name_zh": "山崎美穂",
+    "name_en": "Miho Yamazaki",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_021",
+    "company_name_ja": "青葉テクノロジー",
+    "company_name_zh": "青叶科技",
+    "company_name_en": "Aoba Technologies",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "青葉テクノロジーのマーケティング責任者。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "青叶科技的市场负责人。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Marketing Lead at Aoba Technologies. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:021"
+    ]
+  },
+  {
+    "id": "user_022",
+    "display_name": "森 明日香",
+    "name_ja": "森 明日香",
+    "name_zh": "森明日香",
+    "name_en": "Asuka Mori",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_022",
+    "company_name_ja": "神田テクノロジー",
+    "company_name_zh": "神田科技",
+    "company_name_en": "Kanda Technologies",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "神田テクノロジーのプロダクトマネージャー。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "神田科技的产品经理。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Product Manager at Kanda Technologies. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:022"
+    ]
+  },
+  {
+    "id": "user_023",
+    "display_name": "池田 学",
+    "name_ja": "池田 学",
+    "name_zh": "池田学",
+    "name_en": "Manabu Ikeda",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_023",
+    "company_name_ja": "横浜テクノロジー",
+    "company_name_zh": "横滨科技",
+    "company_name_en": "Yokohama Technologies",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "横浜テクノロジーの営業責任者。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "横滨科技的销售总监。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Sales Director at Yokohama Technologies. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:023"
+    ]
+  },
+  {
+    "id": "user_024",
+    "display_name": "橋本 夏美",
+    "name_ja": "橋本 夏美",
+    "name_zh": "橋本夏美",
+    "name_en": "Natsumi Hashimoto",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_024",
+    "company_name_ja": "関西テクノロジー",
+    "company_name_zh": "关西科技",
+    "company_name_en": "Kansai Technologies",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "関西テクノロジーの創業者CEO。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "关西科技的创始人 CEO。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Founder CEO at Kansai Technologies. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:024"
+    ]
+  },
+  {
+    "id": "user_025",
+    "display_name": "阿部 美咲",
+    "name_ja": "阿部 美咲",
+    "name_zh": "阿部美咲",
+    "name_en": "Misaki Abe",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_025",
+    "company_name_ja": "銀座テクノロジー",
+    "company_name_zh": "银座科技",
+    "company_name_en": "Ginza Technologies",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "銀座テクノロジーの店舗オーナー。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "银座科技的门店经营者。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Store Owner at Ginza Technologies. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:025"
+    ]
+  },
+  {
+    "id": "user_026",
+    "display_name": "石川 亮",
+    "name_ja": "石川 亮",
+    "name_zh": "石川亮",
+    "name_en": "Ryo Ishikawa",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_026",
+    "company_name_ja": "浅草テクノロジー",
+    "company_name_zh": "浅草科技",
+    "company_name_en": "Asakusa Technologies",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "浅草テクノロジーのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "浅草科技的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Community Organizer at Asakusa Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:026"
+    ]
+  },
+  {
+    "id": "user_027",
+    "display_name": "前田 祐介",
+    "name_ja": "前田 祐介",
+    "name_zh": "前田祐介",
+    "name_en": "Yusuke Maeda",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_027",
+    "company_name_ja": "梅田テクノロジー",
+    "company_name_zh": "梅田科技",
+    "company_name_en": "Umeda Technologies",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "梅田テクノロジーの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "梅田科技的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Investor Partner at Umeda Technologies. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:027"
+    ]
+  },
+  {
+    "id": "user_028",
+    "display_name": "藤田 愛",
+    "name_ja": "藤田 愛",
+    "name_zh": "藤田愛",
+    "name_en": "Ai Fujita",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_028",
+    "company_name_ja": "福岡テクノロジー",
+    "company_name_zh": "福冈科技",
+    "company_name_en": "Fukuoka Technologies",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "福岡テクノロジーのDXコンサルタント。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "福冈科技的DX 顾问。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "DX Consultant at Fukuoka Technologies. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:028"
+    ]
+  },
+  {
+    "id": "user_029",
+    "display_name": "岡田 隼人",
+    "name_ja": "岡田 隼人",
+    "name_zh": "岡田隼人",
+    "name_en": "Hayato Okada",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_029",
+    "company_name_ja": "紅橋テクノロジー",
+    "company_name_zh": "红桥科技",
+    "company_name_en": "Red Bridge Technologies",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "紅橋テクノロジーのマーケティング責任者。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "红桥科技的市场负责人。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Marketing Lead at Red Bridge Technologies. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:029"
+    ]
+  },
+  {
+    "id": "user_030",
+    "display_name": "後藤 信也",
+    "name_ja": "後藤 信也",
+    "name_zh": "後藤信也",
+    "name_en": "Shinya Goto",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_030",
+    "company_name_ja": "晨光テクノロジー",
+    "company_name_zh": "晨光科技",
+    "company_name_en": "Morning Light Technologies",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "晨光テクノロジーのプロダクトマネージャー。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "晨光科技的产品经理。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Product Manager at Morning Light Technologies. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:030"
+    ]
+  },
+  {
+    "id": "user_031",
+    "display_name": "長谷川 絵美",
+    "name_ja": "長谷川 絵美",
+    "name_zh": "長谷川絵美",
+    "name_en": "Emi Hasegawa",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_031",
+    "company_name_ja": "雲杉テクノロジー",
+    "company_name_zh": "云杉科技",
+    "company_name_en": "Cedar Technologies",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "雲杉テクノロジーの営業責任者。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "云杉科技的销售总监。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Sales Director at Cedar Technologies. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:031"
+    ]
+  },
+  {
+    "id": "user_032",
+    "display_name": "村上 雄二",
+    "name_ja": "村上 雄二",
+    "name_zh": "村上雄二",
+    "name_en": "Yuji Murakami",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_032",
+    "company_name_ja": "明岸テクノロジー",
+    "company_name_zh": "明岸科技",
+    "company_name_en": "Bright Shore Technologies",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "明岸テクノロジーの創業者CEO。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "明岸科技的创始人 CEO。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Founder CEO at Bright Shore Technologies. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:032"
+    ]
+  },
+  {
+    "id": "user_033",
+    "display_name": "近藤 大輔",
+    "name_ja": "近藤 大輔",
+    "name_zh": "近藤大輔",
+    "name_en": "Daisuke Kondo",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_033",
+    "company_name_ja": "藍海テクノロジー",
+    "company_name_zh": "蓝海科技",
+    "company_name_en": "Blue Harbor Technologies",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "藍海テクノロジーの店舗オーナー。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "蓝海科技的门店经营者。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Store Owner at Blue Harbor Technologies. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:033"
+    ]
+  },
+  {
+    "id": "user_034",
+    "display_name": "石井 陽子",
+    "name_ja": "石井 陽子",
+    "name_zh": "石井陽子",
+    "name_en": "Yoko Ishii",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_034",
+    "company_name_ja": "星野テクノロジー",
+    "company_name_zh": "星野科技",
+    "company_name_en": "Hoshino Technologies",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "星野テクノロジーのコミュニティ主催者。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "星野科技的社群组织者。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Community Organizer at Hoshino Technologies. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:034"
+    ]
+  },
+  {
+    "id": "user_035",
+    "display_name": "坂本 麻衣",
+    "name_ja": "坂本 麻衣",
+    "name_zh": "坂本麻衣",
+    "name_en": "Mai Sakamoto",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_035",
+    "company_name_ja": "竹林テクノロジー",
+    "company_name_zh": "竹林科技",
+    "company_name_en": "Bamboo Grove Technologies",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "竹林テクノロジーの投資パートナー。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "竹林科技的投资合伙人。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Investor Partner at Bamboo Grove Technologies. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:035"
+    ]
+  },
+  {
+    "id": "user_036",
+    "display_name": "遠藤 悠斗",
+    "name_ja": "遠藤 悠斗",
+    "name_zh": "遠藤悠斗",
+    "name_en": "Haruto Endo",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_036",
+    "company_name_ja": "南山テクノロジー",
+    "company_name_zh": "南山科技",
+    "company_name_en": "Nanshan Technologies",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "南山テクノロジーのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "南山科技的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "DX Consultant at Nanshan Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:036"
+    ]
+  },
+  {
+    "id": "user_037",
+    "display_name": "青木 瑞希",
+    "name_ja": "青木 瑞希",
+    "name_zh": "青木瑞希",
+    "name_en": "Mizuki Aoki",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_037",
+    "company_name_ja": "北星パートナーズ",
+    "company_name_zh": "北星伙伴",
+    "company_name_en": "North Star Partners",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "北星パートナーズのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "北星伙伴的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Marketing Lead at North Star Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:037"
+    ]
+  },
+  {
+    "id": "user_038",
+    "display_name": "藤井 佳奈",
+    "name_ja": "藤井 佳奈",
+    "name_zh": "藤井佳奈",
+    "name_en": "Kana Fujii",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_038",
+    "company_name_ja": "桜橋パートナーズ",
+    "company_name_zh": "樱桥伙伴",
+    "company_name_en": "Sakura Bridge Partners",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "桜橋パートナーズのプロダクトマネージャー。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "樱桥伙伴的产品经理。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Product Manager at Sakura Bridge Partners. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:038"
+    ]
+  },
+  {
+    "id": "user_039",
+    "display_name": "西村 大地",
+    "name_ja": "西村 大地",
+    "name_zh": "西村大地",
+    "name_en": "Daichi Nishimura",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_039",
+    "company_name_ja": "青葉パートナーズ",
+    "company_name_zh": "青叶伙伴",
+    "company_name_en": "Aoba Partners",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "青葉パートナーズの営業責任者。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "青叶伙伴的销售总监。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Sales Director at Aoba Partners. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:039"
+    ]
+  },
+  {
+    "id": "user_040",
+    "display_name": "福田 明子",
+    "name_ja": "福田 明子",
+    "name_zh": "福田明子",
+    "name_en": "Akiko Fukuda",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_040",
+    "company_name_ja": "神田パートナーズ",
+    "company_name_zh": "神田伙伴",
+    "company_name_en": "Kanda Partners",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "神田パートナーズの創業者CEO。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "神田伙伴的创始人 CEO。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Founder CEO at Kanda Partners. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:040"
+    ]
+  },
+  {
+    "id": "user_041",
+    "display_name": "太田 直子",
+    "name_ja": "太田 直子",
+    "name_zh": "太田直子",
+    "name_en": "Naoko Ota",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_041",
+    "company_name_ja": "横浜パートナーズ",
+    "company_name_zh": "横滨伙伴",
+    "company_name_en": "Yokohama Partners",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "横浜パートナーズの店舗オーナー。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "横滨伙伴的门店经营者。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Store Owner at Yokohama Partners. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:041"
+    ]
+  },
+  {
+    "id": "user_042",
+    "display_name": "三浦 達也",
+    "name_ja": "三浦 達也",
+    "name_zh": "三浦達也",
+    "name_en": "Tatsuya Miura",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_042",
+    "company_name_ja": "関西パートナーズ",
+    "company_name_zh": "关西伙伴",
+    "company_name_en": "Kansai Partners",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "関西パートナーズのコミュニティ主催者。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "关西伙伴的社群组织者。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Community Organizer at Kansai Partners. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:042"
+    ]
+  },
+  {
+    "id": "user_043",
+    "display_name": "藤原 翼",
+    "name_ja": "藤原 翼",
+    "name_zh": "藤原翼",
+    "name_en": "Tsubasa Fujiwara",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_043",
+    "company_name_ja": "銀座パートナーズ",
+    "company_name_zh": "银座伙伴",
+    "company_name_en": "Ginza Partners",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "銀座パートナーズの投資パートナー。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "银座伙伴的投资合伙人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Investor Partner at Ginza Partners. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:043"
+    ]
+  },
+  {
+    "id": "user_044",
+    "display_name": "岡本 奈々子",
+    "name_ja": "岡本 奈々子",
+    "name_zh": "岡本奈々子",
+    "name_en": "Nanako Okamoto",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_044",
+    "company_name_ja": "浅草パートナーズ",
+    "company_name_zh": "浅草伙伴",
+    "company_name_en": "Asakusa Partners",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "浅草パートナーズのDXコンサルタント。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "浅草伙伴的DX 顾问。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "DX Consultant at Asakusa Partners. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:044"
+    ]
+  },
+  {
+    "id": "user_045",
+    "display_name": "松田 翔",
+    "name_ja": "松田 翔",
+    "name_zh": "松田翔",
+    "name_en": "Sho Matsuda",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_045",
+    "company_name_ja": "梅田パートナーズ",
+    "company_name_zh": "梅田伙伴",
+    "company_name_en": "Umeda Partners",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "梅田パートナーズのマーケティング責任者。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "梅田伙伴的市场负责人。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Marketing Lead at Umeda Partners. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:045"
+    ]
+  },
+  {
+    "id": "user_046",
+    "display_name": "中島 蓮",
+    "name_ja": "中島 蓮",
+    "name_zh": "中島蓮",
+    "name_en": "Ren Nakajima",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_046",
+    "company_name_ja": "福岡パートナーズ",
+    "company_name_zh": "福冈伙伴",
+    "company_name_en": "Fukuoka Partners",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "福岡パートナーズのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "福冈伙伴的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Product Manager at Fukuoka Partners. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:046"
+    ]
+  },
+  {
+    "id": "user_047",
+    "display_name": "中川 遥",
+    "name_ja": "中川 遥",
+    "name_zh": "中川遥",
+    "name_en": "Haruka Nakagawa",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_047",
+    "company_name_ja": "紅橋パートナーズ",
+    "company_name_zh": "红桥伙伴",
+    "company_name_en": "Red Bridge Partners",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "紅橋パートナーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "红桥伙伴的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Sales Director at Red Bridge Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:047"
+    ]
+  },
+  {
+    "id": "user_048",
+    "display_name": "原田 信明",
+    "name_ja": "原田 信明",
+    "name_zh": "原田信明",
+    "name_en": "Nobuaki Harada",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_048",
+    "company_name_ja": "晨光パートナーズ",
+    "company_name_zh": "晨光伙伴",
+    "company_name_en": "Morning Light Partners",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "晨光パートナーズの創業者CEO。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "晨光伙伴的创始人 CEO。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Founder CEO at Morning Light Partners. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:048"
+    ]
+  },
+  {
+    "id": "user_049",
+    "display_name": "小川 拓也",
+    "name_ja": "小川 拓也",
+    "name_zh": "小川拓也",
+    "name_en": "Takuya Ogawa",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_049",
+    "company_name_ja": "雲杉パートナーズ",
+    "company_name_zh": "云杉伙伴",
+    "company_name_en": "Cedar Partners",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "雲杉パートナーズの店舗オーナー。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "云杉伙伴的门店经营者。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Store Owner at Cedar Partners. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:049"
+    ]
+  },
+  {
+    "id": "user_050",
+    "display_name": "竹内 優子",
+    "name_ja": "竹内 優子",
+    "name_zh": "竹内優子",
+    "name_en": "Yuko Takeuchi",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_050",
+    "company_name_ja": "明岸パートナーズ",
+    "company_name_zh": "明岸伙伴",
+    "company_name_en": "Bright Shore Partners",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "明岸パートナーズのコミュニティ主催者。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "明岸伙伴的社群组织者。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Community Organizer at Bright Shore Partners. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:050"
+    ]
+  },
+  {
+    "id": "user_051",
+    "display_name": "田村 莉奈",
+    "name_ja": "田村 莉奈",
+    "name_zh": "田村莉奈",
+    "name_en": "Rina Tamura",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_051",
+    "company_name_ja": "藍海パートナーズ",
+    "company_name_zh": "蓝海伙伴",
+    "company_name_en": "Blue Harbor Partners",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "藍海パートナーズの投資パートナー。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "蓝海伙伴的投资合伙人。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Investor Partner at Blue Harbor Partners. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:051"
+    ]
+  },
+  {
+    "id": "user_052",
+    "display_name": "金子 聡",
+    "name_ja": "金子 聡",
+    "name_zh": "金子聡",
+    "name_en": "Satoshi Kaneko",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_052",
+    "company_name_ja": "星野パートナーズ",
+    "company_name_zh": "星野伙伴",
+    "company_name_en": "Hoshino Partners",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "星野パートナーズのDXコンサルタント。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "星野伙伴的DX 顾问。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "DX Consultant at Hoshino Partners. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:052"
+    ]
+  },
+  {
+    "id": "user_053",
+    "display_name": "和田 由美",
+    "name_ja": "和田 由美",
+    "name_zh": "和田由美",
+    "name_en": "Yumi Wada",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_053",
+    "company_name_ja": "竹林パートナーズ",
+    "company_name_zh": "竹林伙伴",
+    "company_name_en": "Bamboo Grove Partners",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "竹林パートナーズのマーケティング責任者。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "竹林伙伴的市场负责人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Marketing Lead at Bamboo Grove Partners. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:053"
+    ]
+  },
+  {
+    "id": "user_054",
+    "display_name": "中野 葵",
+    "name_ja": "中野 葵",
+    "name_zh": "中野葵",
+    "name_en": "Aoi Nakano",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_054",
+    "company_name_ja": "南山パートナーズ",
+    "company_name_zh": "南山伙伴",
+    "company_name_en": "Nanshan Partners",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "南山パートナーズのプロダクトマネージャー。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "南山伙伴的产品经理。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Product Manager at Nanshan Partners. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:054"
+    ]
+  },
+  {
+    "id": "user_055",
+    "display_name": "石田 和也",
+    "name_ja": "石田 和也",
+    "name_zh": "石田和也",
+    "name_en": "Kazuya Ishida",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_055",
+    "company_name_ja": "北星キャピタル",
+    "company_name_zh": "北星资本",
+    "company_name_en": "North Star Capital",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "北星キャピタルの営業責任者。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "北星资本的销售总监。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Sales Director at North Star Capital. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:055"
+    ]
+  },
+  {
+    "id": "user_056",
+    "display_name": "佐藤 浩二",
+    "name_ja": "佐藤 浩二",
+    "name_zh": "佐藤浩二",
+    "name_en": "Koji Sato",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_056",
+    "company_name_ja": "桜橋キャピタル",
+    "company_name_zh": "樱桥资本",
+    "company_name_en": "Sakura Bridge Capital",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "桜橋キャピタルの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "樱桥资本的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Founder CEO at Sakura Bridge Capital. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:056"
+    ]
+  },
+  {
+    "id": "user_057",
+    "display_name": "鈴木 翔太",
+    "name_ja": "鈴木 翔太",
+    "name_zh": "鈴木翔太",
+    "name_en": "Shota Suzuki",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_057",
+    "company_name_ja": "青葉キャピタル",
+    "company_name_zh": "青叶资本",
+    "company_name_en": "Aoba Capital",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "青葉キャピタルの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "青叶资本的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Store Owner at Aoba Capital. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:057"
+    ]
+  },
+  {
+    "id": "user_058",
+    "display_name": "高橋 裕太",
+    "name_ja": "高橋 裕太",
+    "name_zh": "高橋裕太",
+    "name_en": "Yuta Takahashi",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_058",
+    "company_name_ja": "神田キャピタル",
+    "company_name_zh": "神田资本",
+    "company_name_en": "Kanda Capital",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "神田キャピタルのコミュニティ主催者。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "神田资本的社群组织者。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Community Organizer at Kanda Capital. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:058"
+    ]
+  },
+  {
+    "id": "user_059",
+    "display_name": "田中 千尋",
+    "name_ja": "田中 千尋",
+    "name_zh": "田中千尋",
+    "name_en": "Chihiro Tanaka",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_059",
+    "company_name_ja": "横浜キャピタル",
+    "company_name_zh": "横滨资本",
+    "company_name_en": "Yokohama Capital",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "横浜キャピタルの投資パートナー。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "横滨资本的投资合伙人。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Investor Partner at Yokohama Capital. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:059"
+    ]
+  },
+  {
+    "id": "user_060",
+    "display_name": "伊藤 豪",
+    "name_ja": "伊藤 豪",
+    "name_zh": "伊藤豪",
+    "name_en": "Go Ito",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_060",
+    "company_name_ja": "関西キャピタル",
+    "company_name_zh": "关西资本",
+    "company_name_en": "Kansai Capital",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "関西キャピタルのDXコンサルタント。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "关西资本的DX 顾问。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "DX Consultant at Kansai Capital. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:060"
+    ]
+  },
+  {
+    "id": "user_061",
+    "display_name": "渡辺 航平",
+    "name_ja": "渡辺 航平",
+    "name_zh": "渡辺航平",
+    "name_en": "Kohei Watanabe",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_061",
+    "company_name_ja": "銀座キャピタル",
+    "company_name_zh": "银座资本",
+    "company_name_en": "Ginza Capital",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "銀座キャピタルのマーケティング責任者。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "银座资本的市场负责人。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Marketing Lead at Ginza Capital. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:061"
+    ]
+  },
+  {
+    "id": "user_062",
+    "display_name": "山本 恵子",
+    "name_ja": "山本 恵子",
+    "name_zh": "山本恵子",
+    "name_en": "Keiko Yamamoto",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_062",
+    "company_name_ja": "浅草キャピタル",
+    "company_name_zh": "浅草资本",
+    "company_name_en": "Asakusa Capital",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "浅草キャピタルのプロダクトマネージャー。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "浅草资本的产品经理。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Product Manager at Asakusa Capital. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:062"
+    ]
+  },
+  {
+    "id": "user_063",
+    "display_name": "中村 誠",
+    "name_ja": "中村 誠",
+    "name_zh": "中村誠",
+    "name_en": "Makoto Nakamura",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_063",
+    "company_name_ja": "梅田キャピタル",
+    "company_name_zh": "梅田资本",
+    "company_name_en": "Umeda Capital",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "梅田キャピタルの営業責任者。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "梅田资本的销售总监。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Sales Director at Umeda Capital. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:063"
+    ]
+  },
+  {
+    "id": "user_064",
+    "display_name": "小林 桜",
+    "name_ja": "小林 桜",
+    "name_zh": "小林桜",
+    "name_en": "Sakura Kobayashi",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_064",
+    "company_name_ja": "福岡キャピタル",
+    "company_name_zh": "福冈资本",
+    "company_name_en": "Fukuoka Capital",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "福岡キャピタルの創業者CEO。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "福冈资本的创始人 CEO。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Founder CEO at Fukuoka Capital. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:064"
+    ]
+  },
+  {
+    "id": "user_065",
+    "display_name": "加藤 恵",
+    "name_ja": "加藤 恵",
+    "name_zh": "加藤恵",
+    "name_en": "Megumi Kato",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_065",
+    "company_name_ja": "紅橋キャピタル",
+    "company_name_zh": "红桥资本",
+    "company_name_en": "Red Bridge Capital",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "紅橋キャピタルの店舗オーナー。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "红桥资本的门店经营者。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Store Owner at Red Bridge Capital. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:065"
+    ]
+  },
+  {
+    "id": "user_066",
+    "display_name": "吉田 彩",
+    "name_ja": "吉田 彩",
+    "name_zh": "吉田彩",
+    "name_en": "Aya Yoshida",
+    "segment": "jp_local_business",
+    "preferred_languages": [
+      "ja"
+    ],
+    "company_id": "company_066",
+    "company_name_ja": "晨光キャピタル",
+    "company_name_zh": "晨光资本",
+    "company_name_en": "Morning Light Capital",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "晨光キャピタルのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "晨光资本的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Community Organizer at Morning Light Capital. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:066"
+    ]
+  },
+  {
+    "id": "user_067",
+    "display_name": "罗皓宇",
+    "name_ja": "罗 皓宇",
+    "name_zh": "罗皓宇",
+    "name_en": "Haoyu Luo",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_067",
+    "company_name_ja": "雲杉キャピタル",
+    "company_name_zh": "云杉资本",
+    "company_name_en": "Cedar Capital",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "雲杉キャピタルの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "云杉资本的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Investor Partner at Cedar Capital. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:067"
+    ]
+  },
+  {
+    "id": "user_068",
+    "display_name": "郑晨",
+    "name_ja": "郑 晨",
+    "name_zh": "郑晨",
+    "name_en": "Chen Zheng",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_068",
+    "company_name_ja": "明岸キャピタル",
+    "company_name_zh": "明岸资本",
+    "company_name_en": "Bright Shore Capital",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "明岸キャピタルのDXコンサルタント。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "明岸资本的DX 顾问。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "DX Consultant at Bright Shore Capital. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:068"
+    ]
+  },
+  {
+    "id": "user_069",
+    "display_name": "梁佳怡",
+    "name_ja": "梁 佳怡",
+    "name_zh": "梁佳怡",
+    "name_en": "Jiayi Liang",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_069",
+    "company_name_ja": "藍海キャピタル",
+    "company_name_zh": "蓝海资本",
+    "company_name_en": "Blue Harbor Capital",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "藍海キャピタルのマーケティング責任者。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "蓝海资本的市场负责人。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Marketing Lead at Blue Harbor Capital. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:069"
+    ]
+  },
+  {
+    "id": "user_070",
+    "display_name": "谢子涵",
+    "name_ja": "谢 子涵",
+    "name_zh": "谢子涵",
+    "name_en": "Zihan Xie",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_070",
+    "company_name_ja": "星野キャピタル",
+    "company_name_zh": "星野资本",
+    "company_name_en": "Hoshino Capital",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "星野キャピタルのプロダクトマネージャー。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "星野资本的产品经理。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Product Manager at Hoshino Capital. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:070"
+    ]
+  },
+  {
+    "id": "user_071",
+    "display_name": "宋欣怡",
+    "name_ja": "宋 欣怡",
+    "name_zh": "宋欣怡",
+    "name_en": "Xinyi Song",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_071",
+    "company_name_ja": "竹林キャピタル",
+    "company_name_zh": "竹林资本",
+    "company_name_en": "Bamboo Grove Capital",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "竹林キャピタルの営業責任者。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "竹林资本的销售总监。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Sales Director at Bamboo Grove Capital. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:071"
+    ]
+  },
+  {
+    "id": "user_072",
+    "display_name": "唐天宇",
+    "name_ja": "唐 天宇",
+    "name_zh": "唐天宇",
+    "name_en": "Tianyu Tang",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_072",
+    "company_name_ja": "南山キャピタル",
+    "company_name_zh": "南山资本",
+    "company_name_en": "Nanshan Capital",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "南山キャピタルの創業者CEO。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "南山资本的创始人 CEO。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Founder CEO at Nanshan Capital. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:072"
+    ]
+  },
+  {
+    "id": "user_073",
+    "display_name": "许怡然",
+    "name_ja": "许 怡然",
+    "name_zh": "许怡然",
+    "name_en": "Yiran Hsu",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_073",
+    "company_name_ja": "北星コミュニティ",
+    "company_name_zh": "北星社群",
+    "company_name_en": "North Star Community",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "北星コミュニティの店舗オーナー。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "北星社群的门店经营者。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Store Owner at North Star Community. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:073"
+    ]
+  },
+  {
+    "id": "user_074",
+    "display_name": "邓静怡",
+    "name_ja": "邓 静怡",
+    "name_zh": "邓静怡",
+    "name_en": "Jingyi Deng",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_074",
+    "company_name_ja": "桜橋コミュニティ",
+    "company_name_zh": "樱桥社群",
+    "company_name_en": "Sakura Bridge Community",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "桜橋コミュニティのコミュニティ主催者。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "樱桥社群的社群组织者。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Community Organizer at Sakura Bridge Community. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:074"
+    ]
+  },
+  {
+    "id": "user_075",
+    "display_name": "韩梓豪",
+    "name_ja": "韩 梓豪",
+    "name_zh": "韩梓豪",
+    "name_en": "Zihao Han",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_075",
+    "company_name_ja": "青葉コミュニティ",
+    "company_name_zh": "青叶社群",
+    "company_name_en": "Aoba Community",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "青葉コミュニティの投資パートナー。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "青叶社群的投资合伙人。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Investor Partner at Aoba Community. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:075"
+    ]
+  },
+  {
+    "id": "user_076",
+    "display_name": "冯佳琪",
+    "name_ja": "冯 佳琪",
+    "name_zh": "冯佳琪",
+    "name_en": "Jiaqi Feng",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_076",
+    "company_name_ja": "神田コミュニティ",
+    "company_name_zh": "神田社群",
+    "company_name_en": "Kanda Community",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "神田コミュニティのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "神田社群的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "DX Consultant at Kanda Community. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:076"
+    ]
+  },
+  {
+    "id": "user_077",
+    "display_name": "曹子睿",
+    "name_ja": "曹 子睿",
+    "name_zh": "曹子睿",
+    "name_en": "Zirui Cao",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_077",
+    "company_name_ja": "横浜コミュニティ",
+    "company_name_zh": "横滨社群",
+    "company_name_en": "Yokohama Community",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "横浜コミュニティのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "横滨社群的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Marketing Lead at Yokohama Community. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:077"
+    ]
+  },
+  {
+    "id": "user_078",
+    "display_name": "曾伟",
+    "name_ja": "曾 伟",
+    "name_zh": "曾伟",
+    "name_en": "Wei Zeng",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_078",
+    "company_name_ja": "関西コミュニティ",
+    "company_name_zh": "关西社群",
+    "company_name_en": "Kansai Community",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "関西コミュニティのプロダクトマネージャー。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "关西社群的产品经理。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Product Manager at Kansai Community. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:078"
+    ]
+  },
+  {
+    "id": "user_079",
+    "display_name": "彭雅婷",
+    "name_ja": "彭 雅婷",
+    "name_zh": "彭雅婷",
+    "name_en": "Yating Peng",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_079",
+    "company_name_ja": "銀座コミュニティ",
+    "company_name_zh": "银座社群",
+    "company_name_en": "Ginza Community",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "銀座コミュニティの営業責任者。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "银座社群的销售总监。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Sales Director at Ginza Community. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:079"
+    ]
+  },
+  {
+    "id": "user_080",
+    "display_name": "萧一凡",
+    "name_ja": "萧 一凡",
+    "name_zh": "萧一凡",
+    "name_en": "Yifan Xiao",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_080",
+    "company_name_ja": "浅草コミュニティ",
+    "company_name_zh": "浅草社群",
+    "company_name_en": "Asakusa Community",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "浅草コミュニティの創業者CEO。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "浅草社群的创始人 CEO。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Founder CEO at Asakusa Community. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:080"
+    ]
+  },
+  {
+    "id": "user_081",
+    "display_name": "蔡嘉豪",
+    "name_ja": "蔡 嘉豪",
+    "name_zh": "蔡嘉豪",
+    "name_en": "Jiahao Cai",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_081",
+    "company_name_ja": "梅田コミュニティ",
+    "company_name_zh": "梅田社群",
+    "company_name_en": "Umeda Community",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "梅田コミュニティの店舗オーナー。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "梅田社群的门店经营者。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Store Owner at Umeda Community. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:081"
+    ]
+  },
+  {
+    "id": "user_082",
+    "display_name": "潘博文",
+    "name_ja": "潘 博文",
+    "name_zh": "潘博文",
+    "name_en": "Bowen Pan",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_082",
+    "company_name_ja": "福岡コミュニティ",
+    "company_name_zh": "福冈社群",
+    "company_name_en": "Fukuoka Community",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "福岡コミュニティのコミュニティ主催者。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "福冈社群的社群组织者。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Community Organizer at Fukuoka Community. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:082"
+    ]
+  },
+  {
+    "id": "user_083",
+    "display_name": "田雨薇",
+    "name_ja": "田 雨薇",
+    "name_zh": "田雨薇",
+    "name_en": "Yuwei Tian",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_083",
+    "company_name_ja": "紅橋コミュニティ",
+    "company_name_zh": "红桥社群",
+    "company_name_en": "Red Bridge Community",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "紅橋コミュニティの投資パートナー。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "红桥社群的投资合伙人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Investor Partner at Red Bridge Community. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:083"
+    ]
+  },
+  {
+    "id": "user_084",
+    "display_name": "董安琪",
+    "name_ja": "董 安琪",
+    "name_zh": "董安琪",
+    "name_en": "Anqi Dong",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_084",
+    "company_name_ja": "晨光コミュニティ",
+    "company_name_zh": "晨光社群",
+    "company_name_en": "Morning Light Community",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "晨光コミュニティのDXコンサルタント。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "晨光社群的DX 顾问。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "DX Consultant at Morning Light Community. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:084"
+    ]
+  },
+  {
+    "id": "user_085",
+    "display_name": "袁子墨",
+    "name_ja": "袁 子墨",
+    "name_zh": "袁子墨",
+    "name_en": "Zimo Yuan",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_085",
+    "company_name_ja": "雲杉コミュニティ",
+    "company_name_zh": "云杉社群",
+    "company_name_en": "Cedar Community",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "雲杉コミュニティのマーケティング責任者。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "云杉社群的市场负责人。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Marketing Lead at Cedar Community. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:085"
+    ]
+  },
+  {
+    "id": "user_086",
+    "display_name": "于思琪",
+    "name_ja": "于 思琪",
+    "name_zh": "于思琪",
+    "name_en": "Siqi Yu",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_086",
+    "company_name_ja": "明岸コミュニティ",
+    "company_name_zh": "明岸社群",
+    "company_name_en": "Bright Shore Community",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "明岸コミュニティのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "明岸社群的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Product Manager at Bright Shore Community. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:086"
+    ]
+  },
+  {
+    "id": "user_087",
+    "display_name": "蒋思雨",
+    "name_ja": "蒋 思雨",
+    "name_zh": "蒋思雨",
+    "name_en": "Siyu Jiang",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_087",
+    "company_name_ja": "藍海コミュニティ",
+    "company_name_zh": "蓝海社群",
+    "company_name_en": "Blue Harbor Community",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "藍海コミュニティの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "蓝海社群的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Sales Director at Blue Harbor Community. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:087"
+    ]
+  },
+  {
+    "id": "user_088",
+    "display_name": "叶明轩",
+    "name_ja": "叶 明轩",
+    "name_zh": "叶明轩",
+    "name_en": "Mingxuan Ye",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_088",
+    "company_name_ja": "星野コミュニティ",
+    "company_name_zh": "星野社群",
+    "company_name_en": "Hoshino Community",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "星野コミュニティの創業者CEO。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "星野社群的创始人 CEO。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Founder CEO at Hoshino Community. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:088"
+    ]
+  },
+  {
+    "id": "user_089",
+    "display_name": "程可欣",
+    "name_ja": "程 可欣",
+    "name_zh": "程可欣",
+    "name_en": "Kexin Cheng",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_089",
+    "company_name_ja": "竹林コミュニティ",
+    "company_name_zh": "竹林社群",
+    "company_name_en": "Bamboo Grove Community",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "竹林コミュニティの店舗オーナー。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "竹林社群的门店经营者。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Store Owner at Bamboo Grove Community. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:089"
+    ]
+  },
+  {
+    "id": "user_090",
+    "display_name": "魏宇航",
+    "name_ja": "魏 宇航",
+    "name_zh": "魏宇航",
+    "name_en": "Yuhang Wei",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_090",
+    "company_name_ja": "南山コミュニティ",
+    "company_name_zh": "南山社群",
+    "company_name_en": "Nanshan Community",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "南山コミュニティのコミュニティ主催者。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "南山社群的社群组织者。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Community Organizer at Nanshan Community. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:090"
+    ]
+  },
+  {
+    "id": "user_091",
+    "display_name": "苏立新",
+    "name_ja": "苏 立新",
+    "name_zh": "苏立新",
+    "name_en": "Lixin Su",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_001",
+    "company_name_ja": "北星フーズ",
+    "company_name_zh": "北星餐饮",
+    "company_name_en": "North Star Foods",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "北星フーズの投資パートナー。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "北星餐饮的投资合伙人。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Investor Partner at North Star Foods. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:091"
+    ]
+  },
+  {
+    "id": "user_092",
+    "display_name": "杜家明",
+    "name_ja": "杜 家明",
+    "name_zh": "杜家明",
+    "name_en": "Jiaming Du",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_002",
+    "company_name_ja": "桜橋フーズ",
+    "company_name_zh": "樱桥餐饮",
+    "company_name_en": "Sakura Bridge Foods",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "桜橋フーズのDXコンサルタント。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "樱桥餐饮的DX 顾问。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "DX Consultant at Sakura Bridge Foods. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:092"
+    ]
+  },
+  {
+    "id": "user_093",
+    "display_name": "方欣然",
+    "name_ja": "方 欣然",
+    "name_zh": "方欣然",
+    "name_en": "Xinran Fang",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_003",
+    "company_name_ja": "青葉フーズ",
+    "company_name_zh": "青叶餐饮",
+    "company_name_en": "Aoba Foods",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "青葉フーズのマーケティング責任者。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "青叶餐饮的市场负责人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Marketing Lead at Aoba Foods. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:093"
+    ]
+  },
+  {
+    "id": "user_094",
+    "display_name": "沈佩珊",
+    "name_ja": "沈 佩珊",
+    "name_zh": "沈佩珊",
+    "name_en": "Peishan Shen",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_004",
+    "company_name_ja": "神田フーズ",
+    "company_name_zh": "神田餐饮",
+    "company_name_en": "Kanda Foods",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "神田フーズのプロダクトマネージャー。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "神田餐饮的产品经理。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Product Manager at Kanda Foods. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:094"
+    ]
+  },
+  {
+    "id": "user_095",
+    "display_name": "任亦辰",
+    "name_ja": "任 亦辰",
+    "name_zh": "任亦辰",
+    "name_en": "Yichen Ren",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_005",
+    "company_name_ja": "横浜フーズ",
+    "company_name_zh": "横滨餐饮",
+    "company_name_en": "Yokohama Foods",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "横浜フーズの営業責任者。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "横滨餐饮的销售总监。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Sales Director at Yokohama Foods. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:095"
+    ]
+  },
+  {
+    "id": "user_096",
+    "display_name": "廖依娜",
+    "name_ja": "廖 依娜",
+    "name_zh": "廖依娜",
+    "name_en": "Yina Liao",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_006",
+    "company_name_ja": "関西フーズ",
+    "company_name_zh": "关西餐饮",
+    "company_name_en": "Kansai Foods",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "関西フーズの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "关西餐饮的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Founder CEO at Kansai Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:096"
+    ]
+  },
+  {
+    "id": "user_097",
+    "display_name": "姚晓琳",
+    "name_ja": "姚 晓琳",
+    "name_zh": "姚晓琳",
+    "name_en": "Xiaolin Yao",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_007",
+    "company_name_ja": "銀座フーズ",
+    "company_name_zh": "银座餐饮",
+    "company_name_en": "Ginza Foods",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "銀座フーズの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "银座餐饮的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Store Owner at Ginza Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:097"
+    ]
+  },
+  {
+    "id": "user_098",
+    "display_name": "龙思远",
+    "name_ja": "龙 思远",
+    "name_zh": "龙思远",
+    "name_en": "Siyuan Long",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_008",
+    "company_name_ja": "浅草フーズ",
+    "company_name_zh": "浅草餐饮",
+    "company_name_en": "Asakusa Foods",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "浅草フーズのコミュニティ主催者。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "浅草餐饮的社群组织者。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Community Organizer at Asakusa Foods. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:098"
+    ]
+  },
+  {
+    "id": "user_099",
+    "display_name": "王一凡",
+    "name_ja": "王 一凡",
+    "name_zh": "王一凡",
+    "name_en": "Yifan Wang",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_009",
+    "company_name_ja": "梅田フーズ",
+    "company_name_zh": "梅田餐饮",
+    "company_name_en": "Umeda Foods",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "梅田フーズの投資パートナー。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "梅田餐饮的投资合伙人。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Investor Partner at Umeda Foods. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:099"
+    ]
+  },
+  {
+    "id": "user_100",
+    "display_name": "李嘉豪",
+    "name_ja": "李 嘉豪",
+    "name_zh": "李嘉豪",
+    "name_en": "Jiahao Li",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_010",
+    "company_name_ja": "福岡フーズ",
+    "company_name_zh": "福冈餐饮",
+    "company_name_en": "Fukuoka Foods",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "福岡フーズのDXコンサルタント。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "福冈餐饮的DX 顾问。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "DX Consultant at Fukuoka Foods. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:100"
+    ]
+  },
+  {
+    "id": "user_101",
+    "display_name": "张博文",
+    "name_ja": "张 博文",
+    "name_zh": "张博文",
+    "name_en": "Bowen Zhang",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_011",
+    "company_name_ja": "紅橋フーズ",
+    "company_name_zh": "红桥餐饮",
+    "company_name_en": "Red Bridge Foods",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "紅橋フーズのマーケティング責任者。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "红桥餐饮的市场负责人。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Marketing Lead at Red Bridge Foods. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:101"
+    ]
+  },
+  {
+    "id": "user_102",
+    "display_name": "刘雨薇",
+    "name_ja": "刘 雨薇",
+    "name_zh": "刘雨薇",
+    "name_en": "Yuwei Liu",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_012",
+    "company_name_ja": "晨光フーズ",
+    "company_name_zh": "晨光餐饮",
+    "company_name_en": "Morning Light Foods",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "晨光フーズのプロダクトマネージャー。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "晨光餐饮的产品经理。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Product Manager at Morning Light Foods. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:102"
+    ]
+  },
+  {
+    "id": "user_103",
+    "display_name": "陈安琪",
+    "name_ja": "陈 安琪",
+    "name_zh": "陈安琪",
+    "name_en": "Anqi Chen",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_013",
+    "company_name_ja": "雲杉フーズ",
+    "company_name_zh": "云杉餐饮",
+    "company_name_en": "Cedar Foods",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "雲杉フーズの営業責任者。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "云杉餐饮的销售总监。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Sales Director at Cedar Foods. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:103"
+    ]
+  },
+  {
+    "id": "user_104",
+    "display_name": "林子墨",
+    "name_ja": "林 子墨",
+    "name_zh": "林子墨",
+    "name_en": "Zimo Lin",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_014",
+    "company_name_ja": "明岸フーズ",
+    "company_name_zh": "明岸餐饮",
+    "company_name_en": "Bright Shore Foods",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "明岸フーズの創業者CEO。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "明岸餐饮的创始人 CEO。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Founder CEO at Bright Shore Foods. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:104"
+    ]
+  },
+  {
+    "id": "user_105",
+    "display_name": "赵思琪",
+    "name_ja": "赵 思琪",
+    "name_zh": "赵思琪",
+    "name_en": "Siqi Zhao",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_015",
+    "company_name_ja": "藍海フーズ",
+    "company_name_zh": "蓝海餐饮",
+    "company_name_en": "Blue Harbor Foods",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "藍海フーズの店舗オーナー。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "蓝海餐饮的门店经营者。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Store Owner at Blue Harbor Foods. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:105"
+    ]
+  },
+  {
+    "id": "user_106",
+    "display_name": "黄思雨",
+    "name_ja": "黄 思雨",
+    "name_zh": "黄思雨",
+    "name_en": "Siyu Huang",
+    "segment": "jp_chinese_business",
+    "preferred_languages": [
+      "ja",
+      "zh-Hans"
+    ],
+    "company_id": "company_016",
+    "company_name_ja": "星野フーズ",
+    "company_name_zh": "星野餐饮",
+    "company_name_en": "Hoshino Foods",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "星野フーズのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "星野餐饮的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Community Organizer at Hoshino Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:106"
+    ]
+  },
+  {
+    "id": "user_107",
+    "display_name": "周明轩",
+    "name_ja": "周 明轩",
+    "name_zh": "周明轩",
+    "name_en": "Mingxuan Zhou",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_017",
+    "company_name_ja": "竹林フーズ",
+    "company_name_zh": "竹林餐饮",
+    "company_name_en": "Bamboo Grove Foods",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "竹林フーズの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "竹林餐饮的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Investor Partner at Bamboo Grove Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:107"
+    ]
+  },
+  {
+    "id": "user_108",
+    "display_name": "吴可欣",
+    "name_ja": "吴 可欣",
+    "name_zh": "吴可欣",
+    "name_en": "Kexin Wu",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_018",
+    "company_name_ja": "南山フーズ",
+    "company_name_zh": "南山餐饮",
+    "company_name_en": "Nanshan Foods",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "南山フーズのDXコンサルタント。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "南山餐饮的DX 顾问。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "DX Consultant at Nanshan Foods. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:108"
+    ]
+  },
+  {
+    "id": "user_109",
+    "display_name": "徐宇航",
+    "name_ja": "徐 宇航",
+    "name_zh": "徐宇航",
+    "name_en": "Yuhang Xu",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_019",
+    "company_name_ja": "北星テクノロジー",
+    "company_name_zh": "北星科技",
+    "company_name_en": "North Star Technologies",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "北星テクノロジーのマーケティング責任者。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "北星科技的市场负责人。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Marketing Lead at North Star Technologies. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:109"
+    ]
+  },
+  {
+    "id": "user_110",
+    "display_name": "孙立新",
+    "name_ja": "孙 立新",
+    "name_zh": "孙立新",
+    "name_en": "Lixin Sun",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_020",
+    "company_name_ja": "桜橋テクノロジー",
+    "company_name_zh": "樱桥科技",
+    "company_name_en": "Sakura Bridge Technologies",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "桜橋テクノロジーのプロダクトマネージャー。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "樱桥科技的产品经理。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Product Manager at Sakura Bridge Technologies. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:110"
+    ]
+  },
+  {
+    "id": "user_111",
+    "display_name": "胡家明",
+    "name_ja": "胡 家明",
+    "name_zh": "胡家明",
+    "name_en": "Jiaming Hu",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_021",
+    "company_name_ja": "青葉テクノロジー",
+    "company_name_zh": "青叶科技",
+    "company_name_en": "Aoba Technologies",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "青葉テクノロジーの営業責任者。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "青叶科技的销售总监。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Sales Director at Aoba Technologies. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:111"
+    ]
+  },
+  {
+    "id": "user_112",
+    "display_name": "朱欣然",
+    "name_ja": "朱 欣然",
+    "name_zh": "朱欣然",
+    "name_en": "Xinran Zhu",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_022",
+    "company_name_ja": "神田テクノロジー",
+    "company_name_zh": "神田科技",
+    "company_name_en": "Kanda Technologies",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "神田テクノロジーの創業者CEO。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "神田科技的创始人 CEO。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Founder CEO at Kanda Technologies. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:112"
+    ]
+  },
+  {
+    "id": "user_113",
+    "display_name": "高佩珊",
+    "name_ja": "高 佩珊",
+    "name_zh": "高佩珊",
+    "name_en": "Peishan Gao",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_023",
+    "company_name_ja": "横浜テクノロジー",
+    "company_name_zh": "横滨科技",
+    "company_name_en": "Yokohama Technologies",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "横浜テクノロジーの店舗オーナー。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "横滨科技的门店经营者。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Store Owner at Yokohama Technologies. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:113"
+    ]
+  },
+  {
+    "id": "user_114",
+    "display_name": "郭亦辰",
+    "name_ja": "郭 亦辰",
+    "name_zh": "郭亦辰",
+    "name_en": "Yichen Guo",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_024",
+    "company_name_ja": "関西テクノロジー",
+    "company_name_zh": "关西科技",
+    "company_name_en": "Kansai Technologies",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "関西テクノロジーのコミュニティ主催者。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "关西科技的社群组织者。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "Community Organizer at Kansai Technologies. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:114"
+    ]
+  },
+  {
+    "id": "user_115",
+    "display_name": "何依娜",
+    "name_ja": "何 依娜",
+    "name_zh": "何依娜",
+    "name_en": "Yina He",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_025",
+    "company_name_ja": "銀座テクノロジー",
+    "company_name_zh": "银座科技",
+    "company_name_en": "Ginza Technologies",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "銀座テクノロジーの投資パートナー。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "银座科技的投资合伙人。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Investor Partner at Ginza Technologies. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:115"
+    ]
+  },
+  {
+    "id": "user_116",
+    "display_name": "罗晓琳",
+    "name_ja": "罗 晓琳",
+    "name_zh": "罗晓琳",
+    "name_en": "Xiaolin Luo",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_026",
+    "company_name_ja": "浅草テクノロジー",
+    "company_name_zh": "浅草科技",
+    "company_name_en": "Asakusa Technologies",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "浅草テクノロジーのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "浅草科技的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "DX Consultant at Asakusa Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:116"
+    ]
+  },
+  {
+    "id": "user_117",
+    "display_name": "郑思远",
+    "name_ja": "郑 思远",
+    "name_zh": "郑思远",
+    "name_en": "Siyuan Zheng",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_027",
+    "company_name_ja": "梅田テクノロジー",
+    "company_name_zh": "梅田科技",
+    "company_name_en": "Umeda Technologies",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "梅田テクノロジーのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "梅田科技的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Marketing Lead at Umeda Technologies. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:117"
+    ]
+  },
+  {
+    "id": "user_118",
+    "display_name": "梁海宁",
+    "name_ja": "梁 海宁",
+    "name_zh": "梁海宁",
+    "name_en": "Haining Liang",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_028",
+    "company_name_ja": "福岡テクノロジー",
+    "company_name_zh": "福冈科技",
+    "company_name_en": "Fukuoka Technologies",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "福岡テクノロジーのプロダクトマネージャー。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "福冈科技的产品经理。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Product Manager at Fukuoka Technologies. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:118"
+    ]
+  },
+  {
+    "id": "user_119",
+    "display_name": "谢睿",
+    "name_ja": "谢 睿",
+    "name_zh": "谢睿",
+    "name_en": "Rui Xie",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_029",
+    "company_name_ja": "紅橋テクノロジー",
+    "company_name_zh": "红桥科技",
+    "company_name_en": "Red Bridge Technologies",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "紅橋テクノロジーの営業責任者。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "红桥科技的销售总监。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Sales Director at Red Bridge Technologies. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:119"
+    ]
+  },
+  {
+    "id": "user_120",
+    "display_name": "宋梦琪",
+    "name_ja": "宋 梦琪",
+    "name_zh": "宋梦琪",
+    "name_en": "Mengqi Song",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_030",
+    "company_name_ja": "晨光テクノロジー",
+    "company_name_zh": "晨光科技",
+    "company_name_en": "Morning Light Technologies",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "晨光テクノロジーの創業者CEO。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "晨光科技的创始人 CEO。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Founder CEO at Morning Light Technologies. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:120"
+    ]
+  },
+  {
+    "id": "user_121",
+    "display_name": "唐嘉诚",
+    "name_ja": "唐 嘉诚",
+    "name_zh": "唐嘉诚",
+    "name_en": "Jiacheng Tang",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_031",
+    "company_name_ja": "雲杉テクノロジー",
+    "company_name_zh": "云杉科技",
+    "company_name_en": "Cedar Technologies",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "雲杉テクノロジーの店舗オーナー。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "云杉科技的门店经营者。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Store Owner at Cedar Technologies. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:121"
+    ]
+  },
+  {
+    "id": "user_122",
+    "display_name": "许凯文",
+    "name_ja": "许 凯文",
+    "name_zh": "许凯文",
+    "name_en": "Kaiwen Hsu",
+    "segment": "greater_china_business",
+    "preferred_languages": [
+      "zh-Hans",
+      "en"
+    ],
+    "company_id": "company_032",
+    "company_name_ja": "明岸テクノロジー",
+    "company_name_zh": "明岸科技",
+    "company_name_en": "Bright Shore Technologies",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "明岸テクノロジーのコミュニティ主催者。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "明岸科技的社群组织者。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "Community Organizer at Bright Shore Technologies. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:122"
+    ]
+  },
+  {
+    "id": "user_123",
+    "display_name": "Sofia Martinez",
+    "name_ja": "マルティネス ソフィア",
+    "name_zh": "马丁内斯索菲亚",
+    "name_en": "Sofia Martinez",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_033",
+    "company_name_ja": "藍海テクノロジー",
+    "company_name_zh": "蓝海科技",
+    "company_name_en": "Blue Harbor Technologies",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "藍海テクノロジーの投資パートナー。今回の関心は「飲食店予約CRM連携の実証先」で、提供できる強みは「シード投資家の目線での選考と創業者フィードバック」。",
+    "profile_zh": "蓝海科技的投资合伙人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+    "profile_en": "Investor Partner at Blue Harbor Technologies. Looking for restaurant reservation CRM integration pilot; can offer seed investor screening and founder feedback.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:123"
+    ]
+  },
+  {
+    "id": "user_124",
+    "display_name": "Daniel Ahmed",
+    "name_ja": "アフメド ダニエル",
+    "name_zh": "艾哈迈德丹尼尔",
+    "name_en": "Daniel Ahmed",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_034",
+    "company_name_ja": "星野テクノロジー",
+    "company_name_zh": "星野科技",
+    "company_name_en": "Hoshino Technologies",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "星野テクノロジーのDXコンサルタント。今回の関心は「シード調達に向けた投資家紹介」で、提供できる強みは「イベント卓マッチングとスポンサー露出」。",
+    "profile_zh": "星野科技的DX 顾问。本次关注「种子轮融资的投资人暖介绍」，可提供「活动桌次匹配与赞助曝光」。",
+    "profile_en": "DX Consultant at Hoshino Technologies. Looking for investor warm intro for seed fundraising; can offer event table matching and sponsor visibility.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:124"
+    ]
+  },
+  {
+    "id": "user_125",
+    "display_name": "Olivia Andersson",
+    "name_ja": "アンダーソン オリビア",
+    "name_zh": "安德松奥利维亚",
+    "name_en": "Olivia Andersson",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_035",
+    "company_name_ja": "竹林テクノロジー",
+    "company_name_zh": "竹林科技",
+    "company_name_en": "Bamboo Grove Technologies",
+    "role": "marketing_lead",
+    "role_ja": "マーケティング責任者",
+    "role_zh": "市场负责人",
+    "role_en": "Marketing Lead",
+    "profile_ja": "竹林テクノロジーのマーケティング責任者。今回の関心は「華人ビジネスコミュニティに届くイベントスポンサー」で、提供できる強みは「越境EC立ち上げの実務プレイブック」。",
+    "profile_zh": "竹林科技的市场负责人。本次关注「触达华人商业社群的活动赞助商」，可提供「跨境电商启动实务手册」。",
+    "profile_en": "Marketing Lead at Bamboo Grove Technologies. Looking for event sponsor with Chinese business-community reach; can offer cross-border ecommerce launch playbook.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:125"
+    ]
+  },
+  {
+    "id": "user_126",
+    "display_name": "Lucas Duarte",
+    "name_ja": "ドゥアルテ ルーカス",
+    "name_zh": "杜阿尔特卢卡斯",
+    "name_en": "Lucas Duarte",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_036",
+    "company_name_ja": "南山テクノロジー",
+    "company_name_zh": "南山科技",
+    "company_name_en": "Nanshan Technologies",
+    "role": "product_manager",
+    "role_ja": "プロダクトマネージャー",
+    "role_zh": "产品经理",
+    "role_en": "Product Manager",
+    "profile_ja": "南山テクノロジーのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。",
+    "profile_zh": "南山科技的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。",
+    "profile_en": "Product Manager at Nanshan Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:126"
+    ]
+  },
+  {
+    "id": "user_127",
+    "display_name": "Maya Parker",
+    "name_ja": "パーカー マヤ",
+    "name_zh": "帕克玛雅",
+    "name_en": "Maya Parker",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_037",
+    "company_name_ja": "北星パートナーズ",
+    "company_name_zh": "北星伙伴",
+    "company_name_en": "North Star Partners",
+    "role": "sales_director",
+    "role_ja": "営業責任者",
+    "role_zh": "销售总监",
+    "role_en": "Sales Director",
+    "profile_ja": "北星パートナーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。",
+    "profile_zh": "北星伙伴的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。",
+    "profile_en": "Sales Director at North Star Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+    "city": "Osaka",
+    "evidence_ids": [
+      "evidence:user:127"
+    ]
+  },
+  {
+    "id": "user_128",
+    "display_name": "Noah Garcia",
+    "name_ja": "ガルシア ノア",
+    "name_zh": "加西亚诺亚",
+    "name_en": "Noah Garcia",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_038",
+    "company_name_ja": "桜橋パートナーズ",
+    "company_name_zh": "樱桥伙伴",
+    "company_name_en": "Sakura Bridge Partners",
+    "role": "founder_ceo",
+    "role_ja": "創業者CEO",
+    "role_zh": "创始人 CEO",
+    "role_en": "Founder CEO",
+    "profile_ja": "桜橋パートナーズの創業者CEO。今回の関心は「小売ライブコマースの販売パートナー」で、提供できる強みは「フォローアップ文面の多言語ローカライズ」。",
+    "profile_zh": "樱桥伙伴的创始人 CEO。本次关注「零售直播电商分销伙伴」，可提供「跟进消息多语言本地化」。",
+    "profile_en": "Founder CEO at Sakura Bridge Partners. Looking for retail live-commerce distribution partner; can offer follow-up message localization.",
+    "city": "Shanghai",
+    "evidence_ids": [
+      "evidence:user:128"
+    ]
+  },
+  {
+    "id": "user_129",
+    "display_name": "Aisha Brown",
+    "name_ja": "ブラウン アイシャ",
+    "name_zh": "布朗艾莎",
+    "name_en": "Aisha Brown",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_039",
+    "company_name_ja": "青葉パートナーズ",
+    "company_name_zh": "青叶伙伴",
+    "company_name_en": "Aoba Partners",
+    "role": "store_owner",
+    "role_ja": "店舗オーナー",
+    "role_zh": "门店经营者",
+    "role_en": "Store Owner",
+    "profile_ja": "青葉パートナーズの店舗オーナー。今回の関心は「日本進出に信頼できる税務・設立アドバイザー」で、提供できる強みは「関西の提携チャネル紹介」。",
+    "profile_zh": "青叶伙伴的门店经营者。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
+    "profile_en": "Store Owner at Aoba Partners. Looking for trusted tax and incorporation advisor for Japan entry; can offer partner channel introductions in Kansai.",
+    "city": "Shenzhen",
+    "evidence_ids": [
+      "evidence:user:129"
+    ]
+  },
+  {
+    "id": "user_130",
+    "display_name": "Ethan Khan",
+    "name_ja": "カーン イーサン",
+    "name_zh": "汗伊森",
+    "name_en": "Ethan Khan",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_040",
+    "company_name_ja": "神田パートナーズ",
+    "company_name_zh": "神田伙伴",
+    "company_name_en": "Kanda Partners",
+    "role": "community_organizer",
+    "role_ja": "コミュニティ主催者",
+    "role_zh": "社群组织者",
+    "role_en": "Community Organizer",
+    "profile_ja": "神田パートナーズのコミュニティ主催者。今回の関心は「小紅書と訪日客向けの二言語集客パートナー」で、提供できる強みは「東京の飲食店での実証場所」。",
+    "profile_zh": "神田伙伴的社群组织者。本次关注「小红书与入境客双语获客伙伴」，可提供「东京餐饮门店试点场景」。",
+    "profile_en": "Community Organizer at Kanda Partners. Looking for bilingual Xiaohongshu inbound campaign partner; can offer Tokyo restaurant operator test site.",
+    "city": "Taipei",
+    "evidence_ids": [
+      "evidence:user:130"
+    ]
+  },
+  {
+    "id": "user_131",
+    "display_name": "Priya Martinez",
+    "name_ja": "マルティネス プリヤ",
+    "name_zh": "马丁内斯普丽雅",
+    "name_en": "Priya Martinez",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_041",
+    "company_name_ja": "横浜パートナーズ",
+    "company_name_zh": "横滨伙伴",
+    "company_name_en": "Yokohama Partners",
+    "role": "investor_partner",
+    "role_ja": "投資パートナー",
+    "role_zh": "投资合伙人",
+    "role_en": "Investor Partner",
+    "profile_ja": "横浜パートナーズの投資パートナー。今回の関心は「日本の中小製造業でAI業務自動化PoCを試せる買い手」で、提供できる強みは「日中二言語のコミュニティ集客チャネル」。",
+    "profile_zh": "横滨伙伴的投资合伙人。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。",
+    "profile_en": "Investor Partner at Yokohama Partners. Looking for AI workflow PoC buyer in Japanese SMB manufacturing; can offer Mandarin Japanese community marketing channel.",
+    "city": "Singapore",
+    "evidence_ids": [
+      "evidence:user:131"
+    ]
+  },
+  {
+    "id": "user_132",
+    "display_name": "Mateo Ahmed",
+    "name_ja": "アフメド マテオ",
+    "name_zh": "艾哈迈德马特奥",
+    "name_en": "Mateo Ahmed",
+    "segment": "international",
+    "preferred_languages": [
+      "en",
+      "ja"
+    ],
+    "company_id": "company_042",
+    "company_name_ja": "関西パートナーズ",
+    "company_name_zh": "关西伙伴",
+    "company_name_en": "Kansai Partners",
+    "role": "dx_consultant",
+    "role_ja": "DXコンサルタント",
+    "role_zh": "DX 顾问",
+    "role_en": "DX Consultant",
+    "profile_ja": "関西パートナーズのDXコンサルタント。今回の関心は「中国SaaS営業の日本市場参入アドバイザー」で、提供できる強みは「製造業DXの要件整理と買い手フィードバック」。",
+    "profile_zh": "关西伙伴的DX 顾问。本次关注「中国 SaaS 销售进入日本市场的顾问」，可提供「制造业 DX 需求梳理与买方反馈」。",
+    "profile_en": "DX Consultant at Kansai Partners. Looking for Japan market entry advisor for China SaaS sales; can offer manufacturing DX requirements and buyer feedback.",
+    "city": "Tokyo",
+    "evidence_ids": [
+      "evidence:user:132"
+    ]
+  }
+]

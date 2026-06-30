@@ -1,0 +1,11 @@
+{
+  "id": "scenario_09_duplicate_contact_merge",
+  "event_id": "event_09",
+  "primary_need": "trusted tax and incorporation advisor for Japan entry",
+  "primary_offer": "partner channel introductions in Kansai",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 3
+  }
+}

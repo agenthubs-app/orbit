@@ -1,0 +1,11 @@
+{
+  "id": "scenario_04_investor_founder_matching",
+  "event_id": "event_04",
+  "primary_need": "investor warm intro for seed fundraising",
+  "primary_offer": "event table matching and sponsor visibility",
+  "expected_records": {
+    "participants": 50,
+    "recommendations": 35,
+    "dirty_cases": 2
+  }
+}

@@ -1,0 +1,1652 @@
+[
+  {
+    "id": "golden_match_001",
+    "event_id": "event_03",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:001"
+    ]
+  },
+  {
+    "id": "golden_match_002",
+    "event_id": "event_04",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:002"
+    ]
+  },
+  {
+    "id": "golden_match_003",
+    "event_id": "event_05",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:003"
+    ]
+  },
+  {
+    "id": "golden_match_004",
+    "event_id": "event_06",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:004"
+    ]
+  },
+  {
+    "id": "golden_match_005",
+    "event_id": "event_07",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:005"
+    ]
+  },
+  {
+    "id": "golden_match_006",
+    "event_id": "event_08",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:006"
+    ]
+  },
+  {
+    "id": "golden_match_007",
+    "event_id": "event_09",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:007"
+    ]
+  },
+  {
+    "id": "golden_match_008",
+    "event_id": "event_10",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:008"
+    ]
+  },
+  {
+    "id": "golden_match_009",
+    "event_id": "event_01",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:009"
+    ]
+  },
+  {
+    "id": "golden_match_010",
+    "event_id": "event_02",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:010"
+    ]
+  },
+  {
+    "id": "golden_match_011",
+    "event_id": "event_03",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:011"
+    ]
+  },
+  {
+    "id": "golden_match_012",
+    "event_id": "event_04",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:012"
+    ]
+  },
+  {
+    "id": "golden_match_013",
+    "event_id": "event_05",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:013"
+    ]
+  },
+  {
+    "id": "golden_match_014",
+    "event_id": "event_06",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:014"
+    ]
+  },
+  {
+    "id": "golden_match_015",
+    "event_id": "event_07",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:015"
+    ]
+  },
+  {
+    "id": "golden_match_016",
+    "event_id": "event_08",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:016"
+    ]
+  },
+  {
+    "id": "golden_match_017",
+    "event_id": "event_09",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:017"
+    ]
+  },
+  {
+    "id": "golden_match_018",
+    "event_id": "event_10",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:018"
+    ]
+  },
+  {
+    "id": "golden_match_019",
+    "event_id": "event_01",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:019"
+    ]
+  },
+  {
+    "id": "golden_match_020",
+    "event_id": "event_02",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:020"
+    ]
+  },
+  {
+    "id": "golden_match_021",
+    "event_id": "event_03",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:021"
+    ]
+  },
+  {
+    "id": "golden_match_022",
+    "event_id": "event_04",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:022"
+    ]
+  },
+  {
+    "id": "golden_match_023",
+    "event_id": "event_05",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:023"
+    ]
+  },
+  {
+    "id": "golden_match_024",
+    "event_id": "event_06",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:024"
+    ]
+  },
+  {
+    "id": "golden_match_025",
+    "event_id": "event_07",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:025"
+    ]
+  },
+  {
+    "id": "golden_match_026",
+    "event_id": "event_08",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:026"
+    ]
+  },
+  {
+    "id": "golden_match_027",
+    "event_id": "event_09",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:027"
+    ]
+  },
+  {
+    "id": "golden_match_028",
+    "event_id": "event_10",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:028"
+    ]
+  },
+  {
+    "id": "golden_match_029",
+    "event_id": "event_01",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:029"
+    ]
+  },
+  {
+    "id": "golden_match_030",
+    "event_id": "event_02",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:030"
+    ]
+  },
+  {
+    "id": "golden_match_031",
+    "event_id": "event_03",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:031"
+    ]
+  },
+  {
+    "id": "golden_match_032",
+    "event_id": "event_04",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:032"
+    ]
+  },
+  {
+    "id": "golden_match_033",
+    "event_id": "event_05",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:033"
+    ]
+  },
+  {
+    "id": "golden_match_034",
+    "event_id": "event_06",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:034"
+    ]
+  },
+  {
+    "id": "golden_match_035",
+    "event_id": "event_07",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:035"
+    ]
+  },
+  {
+    "id": "golden_match_036",
+    "event_id": "event_08",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:036"
+    ]
+  },
+  {
+    "id": "golden_match_037",
+    "event_id": "event_09",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:037"
+    ]
+  },
+  {
+    "id": "golden_match_038",
+    "event_id": "event_10",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:038"
+    ]
+  },
+  {
+    "id": "golden_match_039",
+    "event_id": "event_01",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:039"
+    ]
+  },
+  {
+    "id": "golden_match_040",
+    "event_id": "event_02",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:040"
+    ]
+  },
+  {
+    "id": "golden_match_041",
+    "event_id": "event_03",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:041"
+    ]
+  },
+  {
+    "id": "golden_match_042",
+    "event_id": "event_04",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:042"
+    ]
+  },
+  {
+    "id": "golden_match_043",
+    "event_id": "event_05",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:043"
+    ]
+  },
+  {
+    "id": "golden_match_044",
+    "event_id": "event_06",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:044"
+    ]
+  },
+  {
+    "id": "golden_match_045",
+    "event_id": "event_07",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:045"
+    ]
+  },
+  {
+    "id": "golden_match_046",
+    "event_id": "event_08",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:046"
+    ]
+  },
+  {
+    "id": "golden_match_047",
+    "event_id": "event_09",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:047"
+    ]
+  },
+  {
+    "id": "golden_match_048",
+    "event_id": "event_10",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:048"
+    ]
+  },
+  {
+    "id": "golden_match_049",
+    "event_id": "event_01",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:049"
+    ]
+  },
+  {
+    "id": "golden_match_050",
+    "event_id": "event_02",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:050"
+    ]
+  },
+  {
+    "id": "golden_match_051",
+    "event_id": "event_03",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:051"
+    ]
+  },
+  {
+    "id": "golden_match_052",
+    "event_id": "event_04",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:052"
+    ]
+  },
+  {
+    "id": "golden_match_053",
+    "event_id": "event_05",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:053"
+    ]
+  },
+  {
+    "id": "golden_match_054",
+    "event_id": "event_06",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:054"
+    ]
+  },
+  {
+    "id": "golden_match_055",
+    "event_id": "event_07",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:055"
+    ]
+  },
+  {
+    "id": "golden_match_056",
+    "event_id": "event_08",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:056"
+    ]
+  },
+  {
+    "id": "golden_match_057",
+    "event_id": "event_09",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:057"
+    ]
+  },
+  {
+    "id": "golden_match_058",
+    "event_id": "event_10",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:058"
+    ]
+  },
+  {
+    "id": "golden_match_059",
+    "event_id": "event_01",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:059"
+    ]
+  },
+  {
+    "id": "golden_match_060",
+    "event_id": "event_02",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:060"
+    ]
+  },
+  {
+    "id": "golden_match_061",
+    "event_id": "event_03",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:061"
+    ]
+  },
+  {
+    "id": "golden_match_062",
+    "event_id": "event_04",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:062"
+    ]
+  },
+  {
+    "id": "golden_match_063",
+    "event_id": "event_05",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:063"
+    ]
+  },
+  {
+    "id": "golden_match_064",
+    "event_id": "event_06",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:064"
+    ]
+  },
+  {
+    "id": "golden_match_065",
+    "event_id": "event_07",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:065"
+    ]
+  },
+  {
+    "id": "golden_match_066",
+    "event_id": "event_08",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:066"
+    ]
+  },
+  {
+    "id": "golden_match_067",
+    "event_id": "event_09",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:067"
+    ]
+  },
+  {
+    "id": "golden_match_068",
+    "event_id": "event_10",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:068"
+    ]
+  },
+  {
+    "id": "golden_match_069",
+    "event_id": "event_01",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:069"
+    ]
+  },
+  {
+    "id": "golden_match_070",
+    "event_id": "event_02",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:070"
+    ]
+  },
+  {
+    "id": "golden_match_071",
+    "event_id": "event_03",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:071"
+    ]
+  },
+  {
+    "id": "golden_match_072",
+    "event_id": "event_04",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:072"
+    ]
+  },
+  {
+    "id": "golden_match_073",
+    "event_id": "event_05",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:073"
+    ]
+  },
+  {
+    "id": "golden_match_074",
+    "event_id": "event_06",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:074"
+    ]
+  },
+  {
+    "id": "golden_match_075",
+    "event_id": "event_07",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:075"
+    ]
+  },
+  {
+    "id": "golden_match_076",
+    "event_id": "event_08",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:076"
+    ]
+  },
+  {
+    "id": "golden_match_077",
+    "event_id": "event_09",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:077"
+    ]
+  },
+  {
+    "id": "golden_match_078",
+    "event_id": "event_10",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:078"
+    ]
+  },
+  {
+    "id": "golden_match_079",
+    "event_id": "event_01",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:079"
+    ]
+  },
+  {
+    "id": "golden_match_080",
+    "event_id": "event_02",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:080"
+    ]
+  },
+  {
+    "id": "golden_match_081",
+    "event_id": "event_03",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:081"
+    ]
+  },
+  {
+    "id": "golden_match_082",
+    "event_id": "event_04",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:082"
+    ]
+  },
+  {
+    "id": "golden_match_083",
+    "event_id": "event_05",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:083"
+    ]
+  },
+  {
+    "id": "golden_match_084",
+    "event_id": "event_06",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:084"
+    ]
+  },
+  {
+    "id": "golden_match_085",
+    "event_id": "event_07",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:085"
+    ]
+  },
+  {
+    "id": "golden_match_086",
+    "event_id": "event_08",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:086"
+    ]
+  },
+  {
+    "id": "golden_match_087",
+    "event_id": "event_09",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:087"
+    ]
+  },
+  {
+    "id": "golden_match_088",
+    "event_id": "event_10",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:088"
+    ]
+  },
+  {
+    "id": "golden_match_089",
+    "event_id": "event_01",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:089"
+    ]
+  },
+  {
+    "id": "golden_match_090",
+    "event_id": "event_02",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:090"
+    ]
+  },
+  {
+    "id": "golden_match_091",
+    "event_id": "event_03",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:091"
+    ]
+  },
+  {
+    "id": "golden_match_092",
+    "event_id": "event_04",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:092"
+    ]
+  },
+  {
+    "id": "golden_match_093",
+    "event_id": "event_05",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:093"
+    ]
+  },
+  {
+    "id": "golden_match_094",
+    "event_id": "event_06",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:094"
+    ]
+  },
+  {
+    "id": "golden_match_095",
+    "event_id": "event_07",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:095"
+    ]
+  },
+  {
+    "id": "golden_match_096",
+    "event_id": "event_08",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:096"
+    ]
+  },
+  {
+    "id": "golden_match_097",
+    "event_id": "event_09",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:097"
+    ]
+  },
+  {
+    "id": "golden_match_098",
+    "event_id": "event_10",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:098"
+    ]
+  },
+  {
+    "id": "golden_match_099",
+    "event_id": "event_01",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:099"
+    ]
+  },
+  {
+    "id": "golden_match_100",
+    "event_id": "event_02",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:100"
+    ]
+  },
+  {
+    "id": "golden_match_101",
+    "event_id": "event_03",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:101"
+    ]
+  },
+  {
+    "id": "golden_match_102",
+    "event_id": "event_04",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:102"
+    ]
+  },
+  {
+    "id": "golden_match_103",
+    "event_id": "event_05",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:103"
+    ]
+  },
+  {
+    "id": "golden_match_104",
+    "event_id": "event_06",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:104"
+    ]
+  },
+  {
+    "id": "golden_match_105",
+    "event_id": "event_07",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:105"
+    ]
+  },
+  {
+    "id": "golden_match_106",
+    "event_id": "event_08",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:106"
+    ]
+  },
+  {
+    "id": "golden_match_107",
+    "event_id": "event_09",
+    "user_id": "user_061",
+    "recommended_user_id": "user_078",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:107"
+    ]
+  },
+  {
+    "id": "golden_match_108",
+    "event_id": "event_10",
+    "user_id": "user_064",
+    "recommended_user_id": "user_081",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:108"
+    ]
+  },
+  {
+    "id": "golden_match_109",
+    "event_id": "event_01",
+    "user_id": "user_067",
+    "recommended_user_id": "user_084",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:109"
+    ]
+  },
+  {
+    "id": "golden_match_110",
+    "event_id": "event_02",
+    "user_id": "user_070",
+    "recommended_user_id": "user_087",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:110"
+    ]
+  },
+  {
+    "id": "golden_match_111",
+    "event_id": "event_03",
+    "user_id": "user_073",
+    "recommended_user_id": "user_090",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:111"
+    ]
+  },
+  {
+    "id": "golden_match_112",
+    "event_id": "event_04",
+    "user_id": "user_076",
+    "recommended_user_id": "user_093",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:112"
+    ]
+  },
+  {
+    "id": "golden_match_113",
+    "event_id": "event_05",
+    "user_id": "user_079",
+    "recommended_user_id": "user_096",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:113"
+    ]
+  },
+  {
+    "id": "golden_match_114",
+    "event_id": "event_06",
+    "user_id": "user_082",
+    "recommended_user_id": "user_099",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:114"
+    ]
+  },
+  {
+    "id": "golden_match_115",
+    "event_id": "event_07",
+    "user_id": "user_085",
+    "recommended_user_id": "user_102",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:115"
+    ]
+  },
+  {
+    "id": "golden_match_116",
+    "event_id": "event_08",
+    "user_id": "user_088",
+    "recommended_user_id": "user_105",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:116"
+    ]
+  },
+  {
+    "id": "golden_match_117",
+    "event_id": "event_09",
+    "user_id": "user_091",
+    "recommended_user_id": "user_108",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:117"
+    ]
+  },
+  {
+    "id": "golden_match_118",
+    "event_id": "event_10",
+    "user_id": "user_094",
+    "recommended_user_id": "user_111",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:118"
+    ]
+  },
+  {
+    "id": "golden_match_119",
+    "event_id": "event_01",
+    "user_id": "user_097",
+    "recommended_user_id": "user_114",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:119"
+    ]
+  },
+  {
+    "id": "golden_match_120",
+    "event_id": "event_02",
+    "user_id": "user_100",
+    "recommended_user_id": "user_117",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:120"
+    ]
+  },
+  {
+    "id": "golden_match_121",
+    "event_id": "event_03",
+    "user_id": "user_103",
+    "recommended_user_id": "user_120",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:121"
+    ]
+  },
+  {
+    "id": "golden_match_122",
+    "event_id": "event_04",
+    "user_id": "user_106",
+    "recommended_user_id": "user_123",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:122"
+    ]
+  },
+  {
+    "id": "golden_match_123",
+    "event_id": "event_05",
+    "user_id": "user_109",
+    "recommended_user_id": "user_126",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:123"
+    ]
+  },
+  {
+    "id": "golden_match_124",
+    "event_id": "event_06",
+    "user_id": "user_112",
+    "recommended_user_id": "user_129",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:124"
+    ]
+  },
+  {
+    "id": "golden_match_125",
+    "event_id": "event_07",
+    "user_id": "user_115",
+    "recommended_user_id": "user_132",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:125"
+    ]
+  },
+  {
+    "id": "golden_match_126",
+    "event_id": "event_08",
+    "user_id": "user_118",
+    "recommended_user_id": "user_003",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:126"
+    ]
+  },
+  {
+    "id": "golden_match_127",
+    "event_id": "event_09",
+    "user_id": "user_121",
+    "recommended_user_id": "user_006",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:127"
+    ]
+  },
+  {
+    "id": "golden_match_128",
+    "event_id": "event_10",
+    "user_id": "user_124",
+    "recommended_user_id": "user_009",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:128"
+    ]
+  },
+  {
+    "id": "golden_match_129",
+    "event_id": "event_01",
+    "user_id": "user_127",
+    "recommended_user_id": "user_012",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:129"
+    ]
+  },
+  {
+    "id": "golden_match_130",
+    "event_id": "event_02",
+    "user_id": "user_130",
+    "recommended_user_id": "user_015",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:130"
+    ]
+  },
+  {
+    "id": "golden_match_131",
+    "event_id": "event_03",
+    "user_id": "user_001",
+    "recommended_user_id": "user_018",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:131"
+    ]
+  },
+  {
+    "id": "golden_match_132",
+    "event_id": "event_04",
+    "user_id": "user_004",
+    "recommended_user_id": "user_021",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:132"
+    ]
+  },
+  {
+    "id": "golden_match_133",
+    "event_id": "event_05",
+    "user_id": "user_007",
+    "recommended_user_id": "user_024",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:133"
+    ]
+  },
+  {
+    "id": "golden_match_134",
+    "event_id": "event_06",
+    "user_id": "user_010",
+    "recommended_user_id": "user_027",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:134"
+    ]
+  },
+  {
+    "id": "golden_match_135",
+    "event_id": "event_07",
+    "user_id": "user_013",
+    "recommended_user_id": "user_030",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:135"
+    ]
+  },
+  {
+    "id": "golden_match_136",
+    "event_id": "event_08",
+    "user_id": "user_016",
+    "recommended_user_id": "user_033",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:136"
+    ]
+  },
+  {
+    "id": "golden_match_137",
+    "event_id": "event_09",
+    "user_id": "user_019",
+    "recommended_user_id": "user_036",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:137"
+    ]
+  },
+  {
+    "id": "golden_match_138",
+    "event_id": "event_10",
+    "user_id": "user_022",
+    "recommended_user_id": "user_039",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:138"
+    ]
+  },
+  {
+    "id": "golden_match_139",
+    "event_id": "event_01",
+    "user_id": "user_025",
+    "recommended_user_id": "user_042",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:139"
+    ]
+  },
+  {
+    "id": "golden_match_140",
+    "event_id": "event_02",
+    "user_id": "user_028",
+    "recommended_user_id": "user_045",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:140"
+    ]
+  },
+  {
+    "id": "golden_match_141",
+    "event_id": "event_03",
+    "user_id": "user_031",
+    "recommended_user_id": "user_048",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:141"
+    ]
+  },
+  {
+    "id": "golden_match_142",
+    "event_id": "event_04",
+    "user_id": "user_034",
+    "recommended_user_id": "user_051",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:142"
+    ]
+  },
+  {
+    "id": "golden_match_143",
+    "event_id": "event_05",
+    "user_id": "user_037",
+    "recommended_user_id": "user_054",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:143"
+    ]
+  },
+  {
+    "id": "golden_match_144",
+    "event_id": "event_06",
+    "user_id": "user_040",
+    "recommended_user_id": "user_057",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:144"
+    ]
+  },
+  {
+    "id": "golden_match_145",
+    "event_id": "event_07",
+    "user_id": "user_043",
+    "recommended_user_id": "user_060",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:145"
+    ]
+  },
+  {
+    "id": "golden_match_146",
+    "event_id": "event_08",
+    "user_id": "user_046",
+    "recommended_user_id": "user_063",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:146"
+    ]
+  },
+  {
+    "id": "golden_match_147",
+    "event_id": "event_09",
+    "user_id": "user_049",
+    "recommended_user_id": "user_066",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:147"
+    ]
+  },
+  {
+    "id": "golden_match_148",
+    "event_id": "event_10",
+    "user_id": "user_052",
+    "recommended_user_id": "user_069",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:148"
+    ]
+  },
+  {
+    "id": "golden_match_149",
+    "event_id": "event_01",
+    "user_id": "user_055",
+    "recommended_user_id": "user_072",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:149"
+    ]
+  },
+  {
+    "id": "golden_match_150",
+    "event_id": "event_02",
+    "user_id": "user_058",
+    "recommended_user_id": "user_075",
+    "score": 0.9,
+    "label": "golden_positive",
+    "evidence_ids": [
+      "evidence:golden:150"
+    ]
+  }
+]
