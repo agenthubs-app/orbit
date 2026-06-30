@@ -153,6 +153,173 @@ test("method A matches finance collaboration requests to evidence-backed existin
   assert.match(result.candidates[0]?.matchReasons.join(" ") ?? "", /fintech/i);
 });
 
+test("contacts recommendation search adapter owns candidate retrieval policy above Search", async () => {
+  const contactsModule = await importProjectModule<{
+    createContactsRecommendationSearchTool: () => {
+      recommend: (input: {
+        contextMessages?: readonly { content: string; role: string }[];
+        query: string;
+        toolArguments?: Record<string, unknown> | null;
+      }) => {
+        candidates: readonly {
+          contactId: string;
+          displayName: string;
+          evidenceIds: readonly string[];
+          matchScore: number;
+          relationshipPath: string;
+          sourceLabel: string;
+        }[];
+        criteria: {
+          industries: readonly string[];
+          relationshipPolicy: string;
+          searchQuery: string;
+          valueTypes: readonly string[];
+        };
+        method: string;
+        state: string;
+      };
+    };
+  }>("features/contacts/contact-recommendation-search.ts");
+
+  const tool = contactsModule.createContactsRecommendationSearchTool();
+  const result = tool.recommend({
+    contextMessages: [
+      {
+        content: "我们需要找 climate storage 方向、有证据链的人做引荐。",
+        role: "user",
+      },
+    ],
+    query: "谁能介绍 climate storage pilot operator？",
+    toolArguments: { query: "climate storage intro" },
+  });
+
+  assert.equal(result.method, "rules_v1");
+  assert.equal(result.state, "success");
+  assert.equal(result.criteria.relationshipPolicy, "existing_links_only");
+  assert.equal(result.criteria.searchQuery, "climate intro");
+  assert.deepEqual(result.criteria.industries, ["climate"]);
+  assert.deepEqual(result.criteria.valueTypes, [
+    "strategic_intro",
+    "commercial_opportunity",
+  ]);
+  assert.equal(result.candidates[0]?.displayName, "Kenji Watanabe");
+  assert.ok(
+    result.candidates[0]?.evidenceIds.includes(
+      "evidence:relationship-search-kenji",
+    ),
+  );
+  assert.match(
+    result.candidates[0]?.relationshipPath ?? "",
+    /climate founders dinner/i,
+  );
+  assert.match(result.candidates[0]?.sourceLabel ?? "", /Manual climate/i);
+});
+
+test("Orbit AI contact recommendation matcher delegates candidate policy to feature-owned Contacts adapter", async () => {
+  const module = await importProjectModule<{
+    createRuleBasedContactRecommendationMatcher: (input: {
+      recommendationSearchTool: {
+        recommend: (request: {
+          contextMessages?: readonly { content: string; role: string }[];
+          locale?: string | null;
+          query: string;
+          toolArguments?: Record<string, unknown> | null;
+        }) => {
+          candidates: readonly {
+            contactId: string;
+            displayName: string;
+            evidenceIds: readonly string[];
+            matchReasons: readonly string[];
+            matchScore: number;
+            organization: string;
+            recommendedAction: string;
+            relationshipPath: string;
+            role: string;
+            sourceLabel: string;
+          }[];
+          criteria: {
+            industries: readonly string[];
+            relationshipPolicy: string;
+            searchQuery: string;
+          };
+          method: string;
+          state: string;
+          summary: string;
+        };
+      };
+    }) => {
+      recommend: (input: {
+        contextMessages?: readonly { content: string; role: string }[];
+        locale?: string | null;
+        query: string;
+        toolArguments?: Record<string, unknown> | null;
+      }) => {
+        candidates: readonly { displayName: string }[];
+        criteria: { searchQuery: string };
+        method: string;
+        state: string;
+      };
+    };
+  }>("features/orbit-ai/contact-recommendation-matching.ts");
+  const delegatedRequests: {
+    query: string;
+    toolArguments?: Record<string, unknown> | null;
+  }[] = [];
+  const matcher = module.createRuleBasedContactRecommendationMatcher({
+    recommendationSearchTool: {
+      recommend(request) {
+        delegatedRequests.push({
+          query: request.query,
+          toolArguments: request.toolArguments,
+        });
+
+        return {
+          candidates: [
+            {
+              contactId: "contact:feature-owned",
+              displayName: "Feature Owned Candidate",
+              evidenceIds: ["evidence:feature-owned"],
+              matchReasons: ["Feature adapter ranked this candidate."],
+              matchScore: 91,
+              organization: "Contacts Feature",
+              recommendedAction: "Review via Contacts.",
+              relationshipPath: "Feature-owned adapter path.",
+              role: "Adapter",
+              sourceLabel: "Contacts adapter",
+            },
+          ],
+          criteria: {
+            industries: ["fintech"],
+            relationshipPolicy: "existing_links_only",
+            searchQuery: "fintech referral",
+          },
+          method: "rules_v1",
+          state: "success",
+          summary: "Feature-owned adapter handled contact recommendation.",
+        };
+      },
+    },
+  });
+
+  const result = matcher.recommend({
+    query: "我想找金融合作伙伴",
+    toolArguments: { query: "fintech partner" },
+  });
+
+  assert.deepEqual(delegatedRequests, [
+    {
+      query: "我想找金融合作伙伴",
+      toolArguments: { query: "fintech partner" },
+    },
+  ]);
+  assert.equal(result.method, "rules_v1");
+  assert.equal(result.state, "success");
+  assert.equal(result.criteria.searchQuery, "fintech referral");
+  assert.deepEqual(result.candidates.map((item) => item.displayName), [
+    "Feature Owned Candidate",
+  ]);
+});
+
 test("env selects unimplemented methods without silently falling back to rules", async () => {
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config: {

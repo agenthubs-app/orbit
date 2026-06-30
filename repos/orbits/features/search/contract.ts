@@ -58,10 +58,12 @@ export type RelationshipNaturalSearchFollowUpStatus =
   (typeof RELATIONSHIP_NATURAL_SEARCH_FOLLOW_UP_STATUSES)[number];
 
 export const RELATIONSHIP_NATURAL_SEARCH_ERROR_CODES = [
+  "RELATIONSHIP_NATURAL_SEARCH_BACKEND_NOT_SUPPORTED",
   "RELATIONSHIP_NATURAL_SEARCH_FILTER_NOT_SUPPORTED",
   "RELATIONSHIP_NATURAL_SEARCH_INVALID_BODY",
   "RELATIONSHIP_NATURAL_SEARCH_PENDING",
   "RELATIONSHIP_NATURAL_SEARCH_MOCK_FAILED",
+  "RELATIONSHIP_NATURAL_SEARCH_STORE_NOT_SUPPORTED",
 ] as const;
 
 export type RelationshipNaturalSearchErrorCode =
@@ -84,6 +86,14 @@ export interface RelationshipNaturalSearchErrorDefinition {
 }
 
 export const RELATIONSHIP_NATURAL_SEARCH_ERROR_DEFINITIONS = {
+  RELATIONSHIP_NATURAL_SEARCH_BACKEND_NOT_SUPPORTED: {
+    code: "RELATIONSHIP_NATURAL_SEARCH_BACKEND_NOT_SUPPORTED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The configured relationship search backend is not supported.",
+    recovery:
+      "Set ORBIT_RELATIONSHIP_SEARCH_BACKEND to a declared backend before running relationship search.",
+  },
   RELATIONSHIP_NATURAL_SEARCH_FILTER_NOT_SUPPORTED: {
     code: "RELATIONSHIP_NATURAL_SEARCH_FILTER_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",
@@ -115,6 +125,14 @@ export const RELATIONSHIP_NATURAL_SEARCH_ERROR_DEFINITIONS = {
       "The mock relationship natural search boundary is pinned to a controlled failure scenario.",
     recovery:
       "Render the controlled failure state and do not retry external search, database, AI, calendar, email, device, or notification work.",
+  },
+  RELATIONSHIP_NATURAL_SEARCH_STORE_NOT_SUPPORTED: {
+    code: "RELATIONSHIP_NATURAL_SEARCH_STORE_NOT_SUPPORTED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The configured relationship search store is not supported.",
+    recovery:
+      "Set ORBIT_RELATIONSHIP_SEARCH_STORE to a declared store before running relationship search.",
   },
 } as const satisfies Record<
   RelationshipNaturalSearchErrorCode,

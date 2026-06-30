@@ -23,7 +23,7 @@
 
 ## 中文摘要
 
-说明 Orbit AI command、conversation、artifact task 三个 capability 的职责差异，以及产品 chat、dev trace 和 planner-only 诊断共用 live runtime 的边界。
+说明 Orbit AI command、conversation、artifact task 三个 capability 的职责差异、内部工具所有权，以及产品 chat、dev trace 和 planner-only 诊断共用 live runtime 的边界。
 
 ## 审计依据
 
@@ -38,7 +38,8 @@
 - 第 5 节：Mock 行为
 - 第 6 节：Live 行为
 - 第 7 节：热拔插边界
-- 第 8 节：阅读代码顺序
+- 第 8 节：工具所有权
+- 第 9 节：阅读代码顺序
 
 ## 保留的代码与命令证据
 

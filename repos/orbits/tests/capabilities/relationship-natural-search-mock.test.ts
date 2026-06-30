@@ -12,6 +12,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+const backendEnvName = "ORBIT_RELATIONSHIP_SEARCH_BACKEND";
+const storeEnvName = "ORBIT_RELATIONSHIP_SEARCH_STORE";
 
 async function importProjectModule<TModule>(
   pathFromRoot: string,
@@ -25,6 +27,45 @@ async function importProjectModule<TModule>(
   );
 
   return (await import(pathToFileURL(absolutePath).href)) as TModule;
+}
+
+async function withRelationshipSearchEnv<TValue>(
+  values: {
+    backend?: string | undefined;
+    store?: string | undefined;
+  },
+  run: () => Promise<TValue>,
+): Promise<TValue> {
+  const previousBackend = process.env[backendEnvName];
+  const previousStore = process.env[storeEnvName];
+
+  if (values.backend === undefined) {
+    delete process.env[backendEnvName];
+  } else {
+    process.env[backendEnvName] = values.backend;
+  }
+
+  if (values.store === undefined) {
+    delete process.env[storeEnvName];
+  } else {
+    process.env[storeEnvName] = values.store;
+  }
+
+  try {
+    return await run();
+  } finally {
+    if (previousBackend === undefined) {
+      delete process.env[backendEnvName];
+    } else {
+      process.env[backendEnvName] = previousBackend;
+    }
+
+    if (previousStore === undefined) {
+      delete process.env[storeEnvName];
+    } else {
+      process.env[storeEnvName] = previousStore;
+    }
+  }
 }
 
 test("relationship natural search contract exposes typed filters fixtures service and errors", async () => {
@@ -101,10 +142,12 @@ test("relationship natural search contract exposes typed filters fixtures servic
     "dormant",
   ]);
   assert.deepEqual(contract.RELATIONSHIP_NATURAL_SEARCH_ERROR_CODES, [
+    "RELATIONSHIP_NATURAL_SEARCH_BACKEND_NOT_SUPPORTED",
     "RELATIONSHIP_NATURAL_SEARCH_FILTER_NOT_SUPPORTED",
     "RELATIONSHIP_NATURAL_SEARCH_INVALID_BODY",
     "RELATIONSHIP_NATURAL_SEARCH_PENDING",
     "RELATIONSHIP_NATURAL_SEARCH_MOCK_FAILED",
+    "RELATIONSHIP_NATURAL_SEARCH_STORE_NOT_SUPPORTED",
   ]);
   assert.equal(
     contract.RELATIONSHIP_NATURAL_SEARCH_ERROR_DEFINITIONS
@@ -282,9 +325,13 @@ test("mock relationship natural search is deterministic and has no external prov
 
   for (const filePath of [
     "features/search/contract.ts",
+    "features/search/backend.ts",
+    "features/search/backend-factory.ts",
+    "features/search/backends/basic-rules-backend.ts",
     "features/search/fixtures.ts",
     "features/search/service.ts",
     "features/search/mock-service.ts",
+    "features/search/stores/fixture-store.ts",
     "app/api/search/relationships/route.ts",
     "app/api/search/suggestions/route.ts",
     "features/search/relationship-natural-search-mock/debug-view.tsx",
@@ -306,6 +353,89 @@ test("mock relationship natural search is deterministic and has no external prov
       /embedding provider|semantic search provider|vector database|pinecone|weaviate|qdrant/i,
     );
   }
+});
+
+test("relationship search backend and store abstractions resolve from env and keep fixture behavior", async () => {
+  const backendFactory = await importProjectModule<
+    typeof import("../../features/search/backend-factory")
+  >("features/search/backend-factory.ts");
+  const serviceFactory = await importProjectModule<
+    typeof import("../../features/search/service-factory")
+  >("features/search/service-factory.ts");
+
+  assert.deepEqual(backendFactory.RELATIONSHIP_SEARCH_BACKENDS, [
+    "basic_rules",
+  ]);
+  assert.deepEqual(backendFactory.RELATIONSHIP_SEARCH_STORES, ["fixture"]);
+  assert.equal(
+    backendFactory.RELATIONSHIP_SEARCH_BACKEND_ENV,
+    backendEnvName,
+  );
+  assert.equal(backendFactory.RELATIONSHIP_SEARCH_STORE_ENV, storeEnvName);
+  assert.deepEqual(
+    backendFactory.resolveRelationshipSearchBackendKind(undefined),
+    {
+      kind: "basic_rules",
+      success: true,
+    },
+  );
+  assert.deepEqual(
+    backendFactory.resolveRelationshipSearchStoreKind(undefined),
+    {
+      kind: "fixture",
+      success: true,
+    },
+  );
+
+  await withRelationshipSearchEnv(
+    { backend: "basic_rules", store: "fixture" },
+    async () => {
+      const service = serviceFactory.createRelationshipNaturalSearchService();
+      const result = service.queryRelationships({
+        businessIntent: "find_warm_intro",
+        industryFilters: ["climate"],
+        query: "pilot operator intro",
+      });
+
+      assert.equal(result.success, true);
+      assert.deepEqual(
+        result.data.results.map((item) => item.displayName),
+        ["Kenji Watanabe"],
+      );
+      assert.equal(result.data.provenance.semanticSearchExecuted, false);
+      assert.equal(result.data.provenance.databaseQueryExecuted, false);
+    },
+  );
+
+  await withRelationshipSearchEnv(
+    { backend: "vector_live", store: "fixture" },
+    async () => {
+      const service = serviceFactory.createRelationshipNaturalSearchService();
+      const result = service.queryRelationships({ query: "climate" });
+
+      assert.equal(result.success, false);
+      assert.equal(
+        result.error.code,
+        "RELATIONSHIP_NATURAL_SEARCH_BACKEND_NOT_SUPPORTED",
+      );
+      assert.equal(result.error.appCode, "SERVICE_UNAVAILABLE");
+    },
+  );
+
+  await withRelationshipSearchEnv(
+    { backend: "basic_rules", store: "postgres" },
+    async () => {
+      const service = serviceFactory.createRelationshipNaturalSearchService();
+      const result = service.getSearchSuggestions();
+
+      assert.equal(result.success, false);
+      assert.equal(
+        result.error.code,
+        "RELATIONSHIP_NATURAL_SEARCH_STORE_NOT_SUPPORTED",
+      );
+      assert.equal(result.error.appCode, "SERVICE_UNAVAILABLE");
+    },
+  );
 });
 
 test("relationship natural search API routes return stable envelopes with empty and failure paths", async () => {
