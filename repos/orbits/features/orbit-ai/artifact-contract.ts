@@ -6,7 +6,7 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // Artifact contract 描述 Chat Agent 计划出的“可复核结果”。
 // 它不是外部动作执行结果，而是展示给用户确认的面板数据。
 
-// kind 决定使用哪类内部子 agent/结果视图。
+// kind 决定使用哪类内部 artifact producer / 结果视图。
 // live conversation service 会从模型 tool name 映射到这些 kind。
 export const ORBIT_AGENT_ARTIFACT_KINDS = [
   "event_recommendations",
@@ -29,11 +29,11 @@ export const ORBIT_AGENT_ARTIFACT_SURFACES = [
   "full_page",
 ] as const;
 
-export const ORBIT_AGENT_ARTIFACT_SUB_AGENTS = [
-  "event_recommendation_agent",
-  "contact_recommendation_agent",
-  "followup_review_agent",
-  "relationship_chat_review_agent",
+export const ORBIT_AGENT_ARTIFACT_PRODUCERS = [
+  "event_recommendation_producer",
+  "contact_recommendation_producer",
+  "followup_review_producer",
+  "relationship_chat_review_producer",
 ] as const;
 
 export const ORBIT_AGENT_ARTIFACT_ERROR_CODES = [
@@ -59,8 +59,8 @@ export type OrbitAgentArtifactStatus =
 export type OrbitAgentArtifactSurface =
   (typeof ORBIT_AGENT_ARTIFACT_SURFACES)[number];
 
-export type OrbitAgentArtifactSubAgent =
-  (typeof ORBIT_AGENT_ARTIFACT_SUB_AGENTS)[number];
+export type OrbitAgentArtifactProducer =
+  (typeof ORBIT_AGENT_ARTIFACT_PRODUCERS)[number];
 
 export type OrbitAgentArtifactErrorCode =
   (typeof ORBIT_AGENT_ARTIFACT_ERROR_CODES)[number];
@@ -99,7 +99,7 @@ export interface OrbitAgentArtifactTaskRequest {
   locale?: "zh" | "en" | string | null;
   presentation?: Partial<OrbitAgentArtifactPresentation>;
   scenario?: OrbitAgentArtifactScenario | string | null;
-  subAgent?: OrbitAgentArtifactSubAgent;
+  artifactProducer?: OrbitAgentArtifactProducer;
   toolArguments?: Record<string, unknown> | null;
 }
 
@@ -115,7 +115,7 @@ export interface OrbitAgentArtifactTask {
   kind: OrbitAgentArtifactKind;
   status: OrbitAgentArtifactStatus;
   query: string;
-  subAgent: OrbitAgentArtifactSubAgent;
+  artifactProducer: OrbitAgentArtifactProducer;
   presentation: OrbitAgentArtifactPresentation;
   createdAt: string;
   updatedAt: string;
@@ -175,7 +175,7 @@ export interface OrbitAgentArtifactProvenance {
   generationMethod:
     | "fixture"
     | "rule-based-artifact-task"
-    | "sub-agent-generated-view";
+    | "artifact-producer-generated-view";
 }
 
 // Artifact safety 明确限制当前 artifact 层：
@@ -205,7 +205,7 @@ export interface OrbitAgentArtifactResult {
   nextAction: string;
 }
 
-// Payload 拆成 task/result，方便 UI 同时展示“用户请求了什么”和“子 agent 产出了什么”。
+// Payload 拆成 task/result，方便 UI 同时展示“用户请求了什么”和“artifact producer 产出了什么”。
 export interface OrbitAgentArtifactPayload {
   task: OrbitAgentArtifactTask;
   result: OrbitAgentArtifactResult;
@@ -241,7 +241,7 @@ export const ORBIT_AGENT_ARTIFACT_ERROR_DEFINITIONS = {
   ORBIT_AGENT_ARTIFACT_QUERY_REQUIRED: {
     code: "ORBIT_AGENT_ARTIFACT_QUERY_REQUIRED",
     appCode: "VALIDATION_ERROR",
-    message: "A non-empty artifact query is required before a sub-agent task can start.",
+    message: "A non-empty artifact query is required before an artifact producer task can start.",
     recovery:
       "Ask the user for the recommendation or review goal before creating an artifact task.",
   },
@@ -255,7 +255,7 @@ export const ORBIT_AGENT_ARTIFACT_ERROR_DEFINITIONS = {
   ORBIT_AGENT_ARTIFACT_UNSUPPORTED_KIND: {
     code: "ORBIT_AGENT_ARTIFACT_UNSUPPORTED_KIND",
     appCode: "VALIDATION_ERROR",
-    message: "The requested Orbit Agent artifact kind is not supported by the mock sub-agent boundary.",
+    message: "The requested Orbit Agent artifact kind is not supported by the mock artifact producer boundary.",
     recovery:
       "Use a supported artifact kind or render the generic artifact fallback.",
   },

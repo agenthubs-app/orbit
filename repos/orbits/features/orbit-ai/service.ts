@@ -35,7 +35,7 @@ export interface OrbitAgentConversationService {
 }
 
 // Artifact task 能力：把模型计划出的内部工具请求转成可复核 UI 面板。
-// 当前实现仍是 mock，后续真实子 agent 可以在不改 UI contract 的前提下替换。
+// 当前实现仍是 mock，后续真实 artifact producer 可以在不改 UI contract 的前提下替换。
 export interface OrbitAgentArtifactTaskService {
   createArtifactTask: (
     input: OrbitAgentArtifactTaskRequest,

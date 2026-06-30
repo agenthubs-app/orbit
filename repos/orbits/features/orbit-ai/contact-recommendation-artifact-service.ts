@@ -294,7 +294,7 @@ function provenanceFor(
   return {
     evidenceIds: evidenceIdsFor(result),
     generatedAt,
-    generationMethod: "sub-agent-generated-view",
+    generationMethod: "artifact-producer-generated-view",
     source: ORBIT_AGENT_CONTACT_RECOMMENDATION_ARTIFACT_SOURCE,
     sourceModules,
     toolCalls: toolTraceFor(result, locale),
@@ -318,7 +318,7 @@ function taskFor(input: {
     presentation: input.presentation,
     query: input.query,
     status: "ready",
-    subAgent: "contact_recommendation_agent",
+    artifactProducer: "contact_recommendation_producer",
     taskId:
       input.method === "rules_v1"
         ? taskIdFor()

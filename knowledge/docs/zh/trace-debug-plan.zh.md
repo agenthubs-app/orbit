@@ -135,7 +135,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
                   toolCalls: readonly { toolName: string; status: string }[];
                 };
               };
-              task: { kind: string; subAgent: string };
+              task: { kind: string; artifactProducer: string };
             }[];
           };
           dataSources: readonly {
@@ -144,7 +144,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
           }[];
           runtimeSnapshot: {
             renderers: readonly { hint: string; renderer: string }[];
-            subAgents: readonly { subAgent: string }[];
+            artifactProducers: readonly { artifactProducer: string }[];
             tools: readonly { toolName: string; renderHint: string }[];
           };
           stages: readonly {
@@ -205,8 +205,8 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
       "artifact_panel",
     );
     assert.equal(
-      body.data?.fullChain.runtimeSnapshot.subAgents[0]?.subAgent,
-      "event_recommendation_agent",
+      body.data?.fullChain.runtimeSnapshot.artifactProducers[0]?.artifactProducer,
+      "event_recommendation_producer",
     );
     assert.equal(body.data?.fullChain.dataSources[0]?.sourceModule, "events");
     assert.equal(body.data?.fullChain.toolCalls[0]?.toolName, "events.recommend");

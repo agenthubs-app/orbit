@@ -32,7 +32,7 @@ import {
   type OrbitAiTraceLane,
   type OrbitAiTraceLoopSummary,
   type OrbitAiTracePayload,
-  type OrbitAiTraceRuntimeSubAgent,
+  type OrbitAiTraceRuntimeArtifactProducer,
   type OrbitAiTraceResult,
   type OrbitAiTraceRuntimeSnapshot,
   type OrbitAiTraceStage,
@@ -299,20 +299,20 @@ function sourceModulesForArtifactKind(
   return ["orbit-ai"];
 }
 
-function subAgentForArtifactKind(kind: OrbitAgentArtifactKind): string {
+function artifactProducerForArtifactKind(kind: OrbitAgentArtifactKind): string {
   if (kind === "event_recommendations") {
-    return "event_recommendation_agent";
+    return "event_recommendation_producer";
   }
 
   if (kind === "contact_recommendations") {
-    return "contact_recommendation_agent";
+    return "contact_recommendation_producer";
   }
 
   if (kind === "followup_queue") {
-    return "followup_review_agent";
+    return "followup_review_producer";
   }
 
-  return "relationship_chat_review_agent";
+  return "relationship_chat_review_producer";
 }
 
 function plannerOnlyTrace(input: {
@@ -362,7 +362,7 @@ function runtimeSnapshot(input: {
   plannerResult?: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }): OrbitAiTraceRuntimeSnapshot {
-  // runtimeSnapshot 告诉可视化页面：有哪些工具、sub-agent、renderer 和数据来源参与了本次链路。
+  // runtimeSnapshot 告诉可视化页面：有哪些工具、artifact producer、renderer 和数据来源参与了本次链路。
   const artifactsByKind = new Map<OrbitAgentArtifactKind, OrbitAgentArtifactPayload>();
 
   for (const artifact of input.artifacts) {
@@ -393,30 +393,30 @@ function runtimeSnapshot(input: {
       toolName: tool.toolName,
     };
   });
-  const subAgents: OrbitAiTraceRuntimeSubAgent[] = Array.from(
+  const artifactProducers: OrbitAiTraceRuntimeArtifactProducer[] = Array.from(
     new Map(
       input.artifacts.map((artifact) => [
-        artifact.task.subAgent,
+        artifact.task.artifactProducer,
         {
           artifactKinds: [artifact.task.kind],
           renderHints: ["artifact_panel"],
           sourceModules: artifact.result.provenance.sourceModules,
-          subAgent: artifact.task.subAgent,
+          artifactProducer: artifact.task.artifactProducer,
         },
       ]),
     ).values(),
   );
 
-  if (subAgents.length === 0) {
+  if (artifactProducers.length === 0) {
     for (const request of input.toolRequests) {
       const artifactKind = artifactKindForTool(request.toolName);
-      const subAgent = subAgentForArtifactKind(artifactKind);
+      const artifactProducer = artifactProducerForArtifactKind(artifactKind);
 
-      subAgents.push({
+      artifactProducers.push({
         artifactKinds: [artifactKind],
         renderHints: ["artifact_panel"],
         sourceModules: sourceModulesForArtifactKind(artifactKind),
-        subAgent,
+        artifactProducer,
       });
     }
   }
@@ -433,7 +433,7 @@ function runtimeSnapshot(input: {
       { hint: "source_json", renderer: "source-json" },
       { hint: "raw_text", renderer: "raw-text" },
     ],
-    subAgents,
+    artifactProducers,
     tools,
     unknownRenderers: [],
   };
@@ -572,9 +572,11 @@ function graphForTrace(input: {
     const artifact = input.artifacts.find(
       (candidate) => candidate.task.kind === artifactKind,
     );
-    const subAgent = artifact?.task.subAgent ?? subAgentForArtifactKind(artifactKind);
+    const artifactProducer =
+      artifact?.task.artifactProducer ??
+      artifactProducerForArtifactKind(artifactKind);
     const toolNodeId = `loop:${loopIndex}:tool:${request.toolName}`;
-    const subAgentNodeId = `loop:${loopIndex}:subagent:${subAgent}`;
+    const artifactProducerNodeId = `loop:${loopIndex}:artifact-producer:${artifactProducer}`;
 
     nodes.push({
       id: toolNodeId,
@@ -588,17 +590,17 @@ function graphForTrace(input: {
       summary: `Planner selected ${request.toolName}.`,
     });
     nodes.push({
-      id: subAgentNodeId,
-      kind: "subagent",
-      label: subAgent,
+      id: artifactProducerNodeId,
+      kind: "artifact-producer",
+      label: artifactProducer,
       lane: "agent",
       loopIndex,
       stageId: "artifact_generation",
       status: artifact ? "completed" : "skipped",
       durationMs: 0,
       summary: artifact
-        ? `Sub-agent prepared ${artifact.task.kind}.`
-        : "Sub-agent would run if the trace budget reaches artifact generation.",
+        ? `Artifact producer prepared ${artifact.task.kind}.`
+        : "Artifact producer would run if the trace budget reaches artifact generation.",
     });
     edges.push({
       from: `loop:${loopIndex}:stage:tool_mapping`,
@@ -612,11 +614,11 @@ function graphForTrace(input: {
     });
     edges.push({
       from: toolNodeId,
-      kind: "subagent",
-      to: subAgentNodeId,
+      kind: "artifact-producer",
+      to: artifactProducerNodeId,
     });
     edges.push({
-      from: subAgentNodeId,
+      from: artifactProducerNodeId,
       kind: "artifact",
       to: `loop:${loopIndex}:stage:artifact_generation`,
     });
@@ -766,7 +768,7 @@ function boundaryTrace(input: {
       renderHint: "artifact_panel",
       skipReason: reason,
       status: "skipped",
-      summary: "No sub-agent artifact was generated.",
+      summary: "No artifact producer output was generated.",
     }),
     stage(6, {
       durationMs: 0,
@@ -980,8 +982,8 @@ export function createLiveOrbitAgentTrace(
               : "skipped",
           summary:
             artifacts.length > 0
-              ? `Generated ${artifacts.length} reviewable sub-agent artifact.`
-              : "No sub-agent artifact was generated.",
+              ? `Generated ${artifacts.length} reviewable artifact producer output.`
+              : "No artifact producer output was generated.",
         }),
         stage(6, {
           durationMs: durationForPhase(runtimeResult.timings, "synthesis"),

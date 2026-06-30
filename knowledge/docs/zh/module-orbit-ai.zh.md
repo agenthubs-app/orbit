@@ -54,6 +54,6 @@ Mock conversation service 接受自由文本，不要求每句话都绑定工具
 
 ## 热拔插边界
 
-调用方必须通过 `features/orbit-ai/service-factory.ts` 获取 `OrbitAiCommandService`、`OrbitAgentConversationService` 和 `OrbitAgentArtifactTaskService`。未来可替换为真实 LLM 编排器、多步 sub-agent 或 live provider，但仍需要通过各业务模块 factory 获取能力。
+调用方必须通过 `features/orbit-ai/service-factory.ts` 获取 `OrbitAiCommandService`、`OrbitAgentConversationService` 和 `OrbitAgentArtifactTaskService`。未来可替换为真实 LLM 编排器、多步 artifact producer 或 live provider，但仍需要通过各业务模块 factory 获取能力。
 
 产品页面不能直接导入 Orbit AI mock、live provider 或 raw contract 作为 presenter props。页面应在本路由的 `*-route-view-model.ts` 中调用 service factory，并把 conversation turn、tool intent、artifact surface 和 provenance 映射成页面自有 view model。

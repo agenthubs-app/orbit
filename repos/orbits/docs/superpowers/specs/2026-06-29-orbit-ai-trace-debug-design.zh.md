@@ -87,7 +87,7 @@
 
 - `traceSchemaVersion`：trace payload 的 schema 版本，用来在 agent 架构升级后做兼容判断。
 - `input`：归一化后的 prompt、locale、max loop steps、provider 和当前 conversation mode。
-- `runtimeSnapshot`：本次执行看到的 agent 架构快照。至少包含 planner provider、sub-agent 列表、tool registry、每个 tool 的 family、artifact kind、source modules、renderer hint 和 output schema 名称。
+- `runtimeSnapshot`：本次执行看到的 agent 架构快照。至少包含 planner provider、artifact producer 列表、tool registry、每个 tool 的 family、artifact kind、source modules、renderer hint 和 output schema 名称。
 - `stages`：有序 stage 列表。每个 stage 包含 `id`、`label`、`status`、`summary`、`startedAt`、`completedAt`、`inputs`、`outputs`、`evidenceIds`、`safety`，可选 `skipReason`。
 - `stages[].outputSource`：该 stage 输出的源码视图数据。页面默认不展开；展开后按 JSON pretty print 展示。非 JSON 文本保留为 monospaced source block。
 - `stages[].renderHint`：页面渲染提示，例如 `summary_card`、`tool_call_table`、`database_table`、`artifact_panel`、`source_json`、`raw_text`。页面按 hint 选择 renderer；不认识的 hint 走通用 source renderer。
@@ -122,11 +122,11 @@ Stage status 固定为：
 
 ## 架构变更检测和渲染扩展
 
-当前设计不能假设 agent 架构永远只有固定几类工具。页面要从 `runtimeSnapshot` 和每个 stage 的 `renderHint` 里检测本次实际参与的 planner、sub-agent、tool 和 artifact kind。
+当前设计不能假设 agent 架构永远只有固定几类工具。页面要从 `runtimeSnapshot` 和每个 stage 的 `renderHint` 里检测本次实际参与的 planner、artifact producer、tool 和 artifact kind。
 
 检测规则：
 
-- 新 sub-agent 或新 tool 只要进入 trace payload，就必须出现在 `runtimeSnapshot`、`toolCalls` 和相关 stage 里。
+- 新 artifact producer 或新 tool 只要进入 trace payload，就必须出现在 `runtimeSnapshot`、`toolCalls` 和相关 stage 里。
 - 如果新 tool 使用已有 `renderHint`，页面不需要改代码，直接用现有 renderer 展示。
 - 如果新 tool 没有专属 renderer，页面必须显示 `unknown tool` 或 `unregistered renderer` badge，同时保留完整 metadata、sourceModules、toolCalls、evidenceIds 和折叠源码。
 - 如果新增的是全新 agent phase，比如 planner 之前多了 retrieval 或 memory phase，trace runner 可以增加新的 stage；页面 timeline 按返回顺序渲染，不依赖硬编码顺序。已有八个 stage 仍作为 baseline，不作为上限。
@@ -145,7 +145,7 @@ Route：`/dev/orbit-ai/trace`
 - timeline 和来源面板要区分 agent lane 与 data lane。planner、tool mapping、artifact 和 synthesis 使用 agent 色；`database_context`、database interactions 和 data sources 使用 data 色。
 - 右侧详情面板：当前选中 stage 的 inputs、outputs、evidence ids、source modules、safety ledger 和相关 raw JSON。每个输出源码面板默认折叠，标题显示输出类型和大小；展开后用 pretty print code block 展示。
 - 底部或右侧次级区域：planner-only comparison，展示 raw planner text、parsed intent、planner-selected tools，以及 full-chain 是否 fallback 或提前停止。
-- 架构快照区：显示本次 trace 检测到的 sub-agents、tools、render hints 和 unknown renderer warnings。这个区域默认收起，出错或出现 unknown tool 时自动展开。
+- 架构快照区：显示本次 trace 检测到的 artifact producers、tools、render hints 和 unknown renderer warnings。这个区域默认收起，出错或出现 unknown tool 时自动展开。
 
 主流程：
 
@@ -195,7 +195,7 @@ RED 测试覆盖：
 
 - `POST /api/dev/orbit-ai/trace` 对 event recommendation prompt 返回 full-chain payload，包含有序 stages、tool calls、data sources、safety metadata 和 planner-only comparison。
 - 有输出的 stage 返回 `outputSource`；页面默认折叠源码面板，展开后显示 pretty printed JSON。
-- 新增工具或 sub-agent 的 trace payload 会出现在 `runtimeSnapshot`、timeline 和 source 面板里；未知 renderer 不丢数据，走通用 fallback。
+- 新增工具或 artifact producer 的 trace payload 会出现在 `runtimeSnapshot`、timeline 和 source 面板里；未知 renderer 不丢数据，走通用 fallback。
 - 本地 guardrail prompt 会在 planner 和工具执行前停止，后续 stage 标记为 skipped。
 - production runtime 返回 404。
 - 现有 `/api/dev/orbit-agent/trace` planner-only contract 继续通过。
@@ -225,7 +225,7 @@ RED 测试覆盖：
 - full-chain 视图能显示链路在哪里继续、跳过、失败或停止。
 - 页面能看到 tool name、artifact kind、source modules、tool call traces、evidence ids、generated artifact summaries 和 safety metadata。
 - 页面能展开查看每个 stage 的输出源码；源码默认折叠，展开后是 pretty print，不是压缩 JSON。
-- 新增 sub-agent 或工具后，页面能从 trace payload 检测到它；有已知 `renderHint` 时使用对应 renderer，未知时显示 warning 并用通用源码面板展示。
+- 新增 artifact producer 或工具后，页面能从 trace payload 检测到它；有已知 `renderHint` 时使用对应 renderer，未知时显示 warning 并用通用源码面板展示。
 - 本地 guardrail 作为一等 stage 展示。
 - 现有 planner-only trace 行为保持兼容。
 - 页面和 API 在 production 中不可用。

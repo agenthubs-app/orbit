@@ -16,7 +16,7 @@
 - Existing `/api/dev/orbit-agent/trace` planner-only contract must remain compatible.
 - The full-chain trace must include `traceSchemaVersion`, `runtimeSnapshot`, ordered `stages`, `outputSource`, `renderHint`, `toolCalls`, `databaseInteractions`, `dataSources`, final conversation, and planner-only comparison.
 - Stage source panels must be collapsed by default in UI and pretty print JSON when expanded.
-- Unknown sub-agents/tools/renderers must be detected and shown through a generic source fallback instead of dropping data.
+- Unknown artifact producers/tools/renderers must be detected and shown through a generic source fallback instead of dropping data.
 - Do not execute email, calendar, notification, database writes, live storage mutations, or external side effects.
 - The only external network calls allowed are the existing model provider planner/synthesis calls used by Orbit Agent.
 - Work in `/Users/xzhao/Projects/orbit/repos/orbits`.
@@ -164,7 +164,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
                   toolCalls: readonly { toolName: string; status: string }[];
                 };
               };
-              task: { kind: string; subAgent: string };
+              task: { kind: string; artifactProducer: string };
             }[];
           };
           dataSources: readonly {
@@ -173,7 +173,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
           }[];
           runtimeSnapshot: {
             renderers: readonly { hint: string; renderer: string }[];
-            subAgents: readonly { subAgent: string }[];
+            artifactProducers: readonly { artifactProducer: string }[];
             tools: readonly { toolName: string; renderHint: string }[];
           };
           stages: readonly {
@@ -234,8 +234,8 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
       "artifact_panel",
     );
     assert.equal(
-      body.data?.fullChain.runtimeSnapshot.subAgents[0]?.subAgent,
-      "event_recommendation_agent",
+      body.data?.fullChain.runtimeSnapshot.artifactProducers[0]?.artifactProducer,
+      "event_recommendation_producer",
     );
     assert.equal(body.data?.fullChain.dataSources[0]?.sourceModule, "events");
     assert.equal(body.data?.fullChain.toolCalls[0]?.toolName, "events.recommend");
@@ -763,7 +763,7 @@ Verify:
 - Planner-only comparison is visible.
 - Stage output source panels start collapsed.
 - Expanding a source panel shows indented JSON.
-- Runtime snapshot shows detected tool and sub-agent.
+- Runtime snapshot shows detected tool and artifact producer.
 - No text overlaps on desktop and mobile viewport.
 
 - [ ] **Step 7: Commit verification coverage**
@@ -779,7 +779,7 @@ Spec coverage:
 
 - Full-chain trace and planner-only comparison: Tasks 1-3.
 - Source panels default collapsed and pretty printed: Tasks 1 and 4.
-- Runtime detection for new tools/sub-agents and fallback renderer: Tasks 1, 2, and 4.
+- Runtime detection for new tools/artifact producers and fallback renderer: Tasks 1, 2, and 4.
 - Development-only API and production 404: Task 3.
 - Existing planner-only endpoint compatibility: Task 3.
 - Visual debug page with prompt input and timeline: Task 4.

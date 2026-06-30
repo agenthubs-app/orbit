@@ -87,12 +87,13 @@ const statusLabels: Record<TraceLanguage, Record<string, string>> = {
 const traceCopy = {
   en: {
     architectureEmpty:
-      "Run a trace to detect tools, sub-agents, and renderers.",
+      "Run a trace to detect tools, artifact producers, and renderers.",
     architectureEyebrow: "Runtime",
     architectureSummary: "Runtime snapshot",
     architectureTitle: "Detected architecture",
     chainAria: "Orbit AI trace debugger",
-    dataSourceEmpty: "Source modules appear when a sub-agent artifact is generated.",
+    dataSourceEmpty:
+      "Source modules appear when an artifact producer output is generated.",
     dataSourceEmptyTitle: "No data source yet",
     databaseEmpty: "Local database context appears after a trace run.",
     databaseEmptyTitle: "No database context yet",
@@ -152,12 +153,12 @@ const traceCopy = {
     waitingDuration: "waiting",
   },
   zh: {
-    architectureEmpty: "运行一次 trace 后检测工具、子 agent 和 renderer。",
+    architectureEmpty: "运行一次 trace 后检测工具、artifact producer 和 renderer。",
     architectureEyebrow: "运行时",
     architectureSummary: "运行时快照",
     architectureTitle: "架构检测",
     chainAria: "Orbit AI trace 调试器",
-    dataSourceEmpty: "生成 sub-agent artifact 后会显示来源模块。",
+    dataSourceEmpty: "生成 artifact producer 输出后会显示来源模块。",
     dataSourceEmptyTitle: "暂无数据来源",
     databaseEmpty: "运行 trace 后会显示本地数据库上下文。",
     databaseEmptyTitle: "暂无数据库上下文",
@@ -1131,7 +1132,7 @@ function RuntimeSnapshotPanel({
       >
         <summary>
           {runtimeSnapshot
-            ? `${runtimeSnapshot.tools.length} tools, ${runtimeSnapshot.subAgents.length} sub-agents`
+            ? `${runtimeSnapshot.tools.length} tools, ${runtimeSnapshot.artifactProducers.length} artifact producers`
             : copy.architectureSummary}
         </summary>
         <div className="trace-runtime-grid">
@@ -1173,11 +1174,11 @@ function RuntimeSnapshotPanel({
               </div>
             ))}
           </div>
-          {(runtimeSnapshot?.subAgents ?? []).map((subAgent) => (
-            <div className="trace-runtime-card" key={subAgent.subAgent}>
-              <strong>{subAgent.subAgent}</strong>
-              <p>{subAgent.artifactKinds.join(", ")}</p>
-              <code>{subAgent.renderHints.join(", ")}</code>
+          {(runtimeSnapshot?.artifactProducers ?? []).map((artifactProducer) => (
+            <div className="trace-runtime-card" key={artifactProducer.artifactProducer}>
+              <strong>{artifactProducer.artifactProducer}</strong>
+              <p>{artifactProducer.artifactKinds.join(", ")}</p>
+              <code>{artifactProducer.renderHints.join(", ")}</code>
             </div>
           ))}
           {(runtimeSnapshot?.renderers ?? []).map((renderer) => (

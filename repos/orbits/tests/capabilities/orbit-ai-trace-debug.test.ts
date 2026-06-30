@@ -95,7 +95,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
                   toolCalls: readonly { toolName: string; status: string }[];
                 };
               };
-              task: { kind: string; subAgent: string };
+              task: { kind: string; artifactProducer: string };
             }[];
           };
           databaseInteractions: readonly {
@@ -126,7 +126,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
           };
           runtimeSnapshot: {
             renderers: readonly { hint: string; renderer: string }[];
-            subAgents: readonly { subAgent: string }[];
+            artifactProducers: readonly { artifactProducer: string }[];
             tools: readonly {
               descriptionZh: string;
               inputSpecZh: string;
@@ -259,17 +259,17 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
       body.data?.fullChain.graph.nodes.some(
         (node) =>
           node.loopIndex === 1 &&
-          node.kind === "subagent" &&
-          node.id.includes("event_recommendation_agent"),
+          node.kind === "artifact-producer" &&
+          node.id.includes("event_recommendation_producer"),
       ),
       true,
     );
     assert.equal(
       body.data?.fullChain.graph.edges.some(
         (edge) =>
-          edge.kind === "subagent" &&
+          edge.kind === "artifact-producer" &&
           edge.from.includes("events.recommend") &&
-          edge.to.includes("event_recommendation_agent"),
+          edge.to.includes("event_recommendation_producer"),
       ),
       true,
     );
@@ -324,8 +324,8 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
     assert.match(eventTool?.inputSpecZh ?? "", /query/);
     assert.match(eventTool?.outputSpecZh ?? "", /artifact/);
     assert.equal(
-      body.data?.fullChain.runtimeSnapshot.subAgents[0]?.subAgent,
-      "event_recommendation_agent",
+      body.data?.fullChain.runtimeSnapshot.artifactProducers[0]?.artifactProducer,
+      "event_recommendation_producer",
     );
     assert.equal(body.data?.fullChain.dataSources[0]?.sourceModule, "events");
     assert.equal(body.data?.fullChain.toolCalls[0]?.toolName, "events.recommend");

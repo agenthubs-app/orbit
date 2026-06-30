@@ -123,7 +123,7 @@ test("mock artifact task creates a traceable ready event recommendation view", a
             conversationId: string | null;
             kind: string;
             status: string;
-            subAgent: string;
+            artifactProducer: string;
           };
         };
       };
@@ -144,12 +144,12 @@ test("mock artifact task creates a traceable ready event recommendation view", a
   assert.equal(result.success, true);
   assert.equal(result.data?.task.status, "ready");
   assert.equal(result.data?.task.kind, "event_recommendations");
-  assert.equal(result.data?.task.subAgent, "event_recommendation_agent");
+  assert.equal(result.data?.task.artifactProducer, "event_recommendation_producer");
   assert.equal(result.data?.result.status, "ready");
   assert.equal(result.data?.result.generatedView?.sections[0]?.items[0]?.actions[0]?.requiresConfirmation, true);
   assert.equal(result.data?.result.presentation.preferredSurface, "side_panel");
   assert.equal(result.data?.result.presentation.title, "Events for Maya");
-  assert.equal(result.data?.result.provenance.generationMethod, "sub-agent-generated-view");
+  assert.equal(result.data?.result.provenance.generationMethod, "artifact-producer-generated-view");
   assert.equal(result.data?.result.provenance.sourceModules.includes("events"), true);
   assert.equal(result.data?.result.provenance.toolCalls[0]?.toolName, "events.recommend");
   assert.equal(result.data?.result.provenance.toolCalls[0]?.status, "completed");
@@ -198,7 +198,7 @@ test("mock artifact task supports contact chat and follow-up generated views", a
               toolCalls: readonly { toolName: string }[];
             };
           };
-          task: { subAgent: string };
+          task: { artifactProducer: string };
         };
       };
     };
@@ -219,17 +219,17 @@ test("mock artifact task supports contact chat and follow-up generated views", a
   });
 
   assert.equal(contactResult.success, true);
-  assert.equal(contactResult.data?.task.subAgent, "contact_recommendation_agent");
+  assert.equal(contactResult.data?.task.artifactProducer, "contact_recommendation_producer");
   assert.equal(contactResult.data?.result.provenance.sourceModules.includes("contacts"), true);
   assert.equal(contactResult.data?.result.provenance.toolCalls[0]?.toolName, "contacts.recommend");
 
   assert.equal(chatResult.success, true);
-  assert.equal(chatResult.data?.task.subAgent, "relationship_chat_review_agent");
+  assert.equal(chatResult.data?.task.artifactProducer, "relationship_chat_review_producer");
   assert.equal(chatResult.data?.result.provenance.sourceModules.includes("chat"), true);
   assert.equal(chatResult.data?.result.provenance.toolCalls[0]?.toolName, "chat.context");
 
   assert.equal(followupResult.success, true);
-  assert.equal(followupResult.data?.task.subAgent, "followup_review_agent");
+  assert.equal(followupResult.data?.task.artifactProducer, "followup_review_producer");
   assert.equal(followupResult.data?.result.provenance.sourceModules.includes("followups"), true);
   assert.equal(followupResult.data?.result.provenance.toolCalls[0]?.toolName, "followups.reviewQueue");
 });

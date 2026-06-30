@@ -534,7 +534,7 @@ test("live contacts.recommend artifact uses method A instead of preview copy", a
   assert.ok(item?.evidenceIds.includes("evidence:relationship-search-omar"));
   assert.equal(
     artifact?.result.provenance.generationMethod,
-    "sub-agent-generated-view",
+    "artifact-producer-generated-view",
   );
   assert.equal(
     artifact?.result.provenance.toolCalls[0]?.toolName,

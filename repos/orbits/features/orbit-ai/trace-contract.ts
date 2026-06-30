@@ -1,7 +1,7 @@
 import type {
   OrbitAgentArtifactKind,
   OrbitAgentArtifactSourceModule,
-  OrbitAgentArtifactSubAgent,
+  OrbitAgentArtifactProducer,
 } from "./artifact-contract";
 import type {
   OrbitAgentConversationPayload,
@@ -126,11 +126,11 @@ export interface OrbitAiTraceRuntimeTool {
   toolName: GeminiOrbitAgentToolName | string;
 }
 
-export interface OrbitAiTraceRuntimeSubAgent {
+export interface OrbitAiTraceRuntimeArtifactProducer {
   artifactKinds: readonly OrbitAgentArtifactKind[];
   renderHints: readonly (OrbitAiTraceRenderHint | string)[];
   sourceModules: readonly OrbitAgentArtifactSourceModule[];
-  subAgent: OrbitAgentArtifactSubAgent | string;
+  artifactProducer: OrbitAgentArtifactProducer | string;
 }
 
 export interface OrbitAiTraceRuntimeRenderer {
@@ -138,13 +138,13 @@ export interface OrbitAiTraceRuntimeRenderer {
   renderer: string;
 }
 
-// RuntimeSnapshot 描述当前 agent 架构暴露出的工具、子 agent 和 renderer。
+// RuntimeSnapshot 描述当前 agent 架构暴露出的工具、artifact producer 和 renderer。
 export interface OrbitAiTraceRuntimeSnapshot {
   model?: string;
   provider?: OrbitAgentModelProvider | string;
   providerSource?: OrbitAgentProviderSource;
   renderers: readonly OrbitAiTraceRuntimeRenderer[];
-  subAgents: readonly OrbitAiTraceRuntimeSubAgent[];
+  artifactProducers: readonly OrbitAiTraceRuntimeArtifactProducer[];
   tools: readonly OrbitAiTraceRuntimeTool[];
   unknownRenderers: readonly string[];
 }
@@ -174,14 +174,14 @@ export type OrbitAiTraceGraphNodeKind =
   | "model"
   | "response"
   | "stage"
-  | "subagent"
+  | "artifact-producer"
   | "tool";
 
 export type OrbitAiTraceGraphEdgeKind =
   | "artifact"
   | "control"
   | "data"
-  | "subagent"
+  | "artifact-producer"
   | "synthesis"
   | "tool";
 

@@ -784,7 +784,7 @@ Manager Agent
 - 对 Orbit 当前阶段过早。
 - 不利于 mock-first contract 逐步替换。
 
-结论：暂不推荐作为主架构。未来可以在 artifact 生成器内部引入局部 sub-agent，但不让多个 agent 自由写状态。
+结论：暂不推荐作为主架构。未来可以在 artifact 生成器内部引入局部 artifact producer，但不让多个 agent 自由写状态。
 
 ### 5.3 方案 C：单一关系工作管理器 + 有边界的能力工具
 
@@ -1859,7 +1859,7 @@ Agent 不能只看模型指标，也要看产品指标：
 ### Loop 2：架构审查
 
 发现：如果直接写“多个 agent 分工”，会和当前 mock-first/service-factory 结构冲突。  
-改进：改为“单一关系工作管理器 + 有边界工具”，保留未来局部 sub-agent 可能性。
+改进：改为“单一关系工作管理器 + 有边界工具”，保留未来局部 artifact producer 可能性。
 
 ### Loop 3：安全审查
 

@@ -330,13 +330,13 @@ function assistantReplyFor(input: {
 
   switch (input.artifactKind) {
     case "event_recommendations":
-      return "我理解你需要活动推荐。我已经让活动推荐子 agent 整理了一个可在侧边栏查看的结果；任何报名、日历或外部联系动作仍需要你确认。";
+      return "我理解你需要活动推荐。我已经让活动推荐生成器整理了一个可在侧边栏查看的结果；任何报名、日历或外部联系动作仍需要你确认。";
     case "contact_recommendations":
-      return "我理解你需要人脉推荐。我已经让人脉推荐子 agent 生成了一个可查看的推荐结果；任何联系或记录写入动作仍需要你确认。";
+      return "我理解你需要人脉推荐。我已经让人脉推荐生成器生成了一个可查看的推荐结果；任何联系或记录写入动作仍需要你确认。";
     case "followup_queue":
-      return "我理解你想查看跟进事项。我已经让跟进子 agent 整理了一个队列结果；任何发送消息或更新任务的动作仍需要你确认。";
+      return "我理解你想查看跟进事项。我已经让跟进生成器整理了一个队列结果；任何发送消息或更新任务的动作仍需要你确认。";
     case "relationship_chat_context":
-      return "我理解你需要聊天上下文。我已经让关系聊天子 agent 整理了可查看的回复上下文；我不会自动发送任何消息。";
+      return "我理解你需要聊天上下文。我已经让关系聊天生成器整理了可查看的回复上下文；我不会自动发送任何消息。";
     case "email_context":
     case "generic":
     default:

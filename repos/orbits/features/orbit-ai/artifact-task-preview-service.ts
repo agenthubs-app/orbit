@@ -11,7 +11,7 @@ import {
   type OrbitAgentArtifactResult,
   type OrbitAgentArtifactResultEnvelope,
   type OrbitAgentArtifactSourceModule,
-  type OrbitAgentArtifactSubAgent,
+  type OrbitAgentArtifactProducer,
   type OrbitAgentArtifactSuccess,
   type OrbitAgentArtifactTask,
   type OrbitAgentArtifactTaskRequest,
@@ -72,21 +72,21 @@ function taskIdFor(kind: OrbitAgentArtifactKind): string {
   return `task:${slugFor(kind)}:preview`;
 }
 
-function defaultSubAgentFor(
+function defaultArtifactProducerFor(
   kind: OrbitAgentArtifactKind,
-): OrbitAgentArtifactSubAgent {
+): OrbitAgentArtifactProducer {
   switch (kind) {
     case "event_recommendations":
-      return "event_recommendation_agent";
+      return "event_recommendation_producer";
     case "contact_recommendations":
-      return "contact_recommendation_agent";
+      return "contact_recommendation_producer";
     case "followup_queue":
-      return "followup_review_agent";
+      return "followup_review_producer";
     case "email_context":
     case "generic":
     case "relationship_chat_context":
     default:
-      return "relationship_chat_review_agent";
+      return "relationship_chat_review_producer";
   }
 }
 
@@ -339,7 +339,7 @@ function taskFor(input: {
   kind: OrbitAgentArtifactKind;
   presentation: OrbitAgentArtifactPresentation;
   query: string;
-  subAgent?: OrbitAgentArtifactSubAgent;
+  artifactProducer?: OrbitAgentArtifactProducer;
 }): OrbitAgentArtifactTask {
   return {
     artifactId: artifactIdFor(input.kind),
@@ -349,7 +349,7 @@ function taskFor(input: {
     presentation: input.presentation,
     query: input.query,
     status: "ready",
-    subAgent: input.subAgent ?? defaultSubAgentFor(input.kind),
+    artifactProducer: input.artifactProducer ?? defaultArtifactProducerFor(input.kind),
     taskId: taskIdFor(input.kind),
     updatedAt: previewNow,
   };
@@ -405,7 +405,7 @@ function payloadFor(input: {
   locale?: string | null;
   presentation?: Partial<OrbitAgentArtifactPresentation>;
   query: string;
-  subAgent?: OrbitAgentArtifactSubAgent;
+  artifactProducer?: OrbitAgentArtifactProducer;
 }): OrbitAgentArtifactPayload {
   const locale = normalizeLocale(input.locale);
   const presentation = presentationFor(input.kind, locale, input.presentation);
@@ -414,7 +414,7 @@ function payloadFor(input: {
     kind: input.kind,
     presentation,
     query: input.query,
-    subAgent: input.subAgent,
+    artifactProducer: input.artifactProducer,
   });
 
   return {
@@ -445,7 +445,7 @@ export function createOrbitAgentArtifactPreviewService(): OrbitAgentArtifactTask
           locale: input.locale,
           presentation: input.presentation,
           query,
-          subAgent: input.subAgent,
+          artifactProducer: input.artifactProducer,
         }),
       );
     },

@@ -132,7 +132,7 @@ runtime or its artifact services, not separately in a dev route or UI component.
 - `input`: normalized prompt, locale, max loop steps, selected provider, and
   current conversation mode.
 - `runtimeSnapshot`: agent architecture observed during this run. It should
-  include the planner provider, sub-agents, tool registry, each tool family,
+  include the planner provider, artifact producers, tool registry, each tool family,
   artifact kind, source modules, renderer hint, and output schema name.
 - `stages`: ordered stages with `id`, `label`, `status`, `summary`,
   `startedAt`, `completedAt`, `inputs`, `outputs`, `evidenceIds`, `safety`,
@@ -186,12 +186,12 @@ shown as-is inside the source block.
 ## Architecture Detection And Render Extensibility
 
 The debug page must not assume the agent architecture will always have the same
-tool set. It should detect the planner, sub-agents, tools, and artifact kinds
+tool set. It should detect the planner, artifact producers, tools, and artifact kinds
 from `runtimeSnapshot` and each stage `renderHint`.
 
 Detection rules:
 
-- New sub-agents or tools must appear in `runtimeSnapshot`, `toolCalls`, and the
+- New artifact producers or tools must appear in `runtimeSnapshot`, `toolCalls`, and the
   related stage when they participate in a trace.
 - If a new tool uses an existing `renderHint`, the page should render it with
   the existing renderer without code changes.
@@ -234,7 +234,7 @@ debugger layout:
 - Bottom or secondary column: planner-only comparison, including raw planner
   text, parsed intent, planner-selected tools, and a diff-like note when the
   full chain executed a fallback or stopped before tools.
-- Architecture snapshot area: detected sub-agents, tools, render hints, and
+- Architecture snapshot area: detected artifact producers, tools, render hints, and
   unknown renderer warnings for the current trace. It starts collapsed and opens
   automatically when an unknown tool or renderer appears.
 
@@ -298,7 +298,7 @@ RED tests should cover:
   planner-only comparison for an event recommendation prompt.
 - Stages with output return `outputSource`; the page renders source panels
   collapsed by default and shows pretty printed JSON when expanded.
-- New tools or sub-agents in the trace payload appear in `runtimeSnapshot`, the
+- New tools or artifact producers in the trace payload appear in `runtimeSnapshot`, the
   timeline, and source panels. Unknown renderers do not drop data; they use the
   generic fallback.
 - A local guardrail prompt stops before planner/tool execution and marks later
@@ -338,7 +338,7 @@ Verification after implementation:
   data-colored UI that differs from the agent/tool lane.
 - Each stage output source can be expanded; source panels are collapsed by
   default and show pretty printed output instead of minified JSON.
-- New sub-agents or tools are detected from the trace payload. Known
+- New artifact producers or tools are detected from the trace payload. Known
   `renderHint` values use the matching renderer; unknown values show a warning
   and use the generic source panel.
 - Local guardrails are visible as first-class stages.

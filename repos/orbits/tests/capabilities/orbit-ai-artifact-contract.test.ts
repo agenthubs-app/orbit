@@ -25,12 +25,12 @@ async function importProjectModule<TModule>(
   return (await import(pathToFileURL(absolutePath).href)) as TModule;
 }
 
-test("Orbit AI artifact contract exports supported kinds statuses surfaces and sub-agents", async () => {
+test("Orbit AI artifact contract exports supported kinds statuses surfaces and artifact producers", async () => {
   const contract = await importProjectModule<{
     ORBIT_AGENT_ARTIFACT_ERROR_CODES: readonly string[];
     ORBIT_AGENT_ARTIFACT_KINDS: readonly string[];
     ORBIT_AGENT_ARTIFACT_STATUSES: readonly string[];
-    ORBIT_AGENT_ARTIFACT_SUB_AGENTS: readonly string[];
+    ORBIT_AGENT_ARTIFACT_PRODUCERS: readonly string[];
     ORBIT_AGENT_ARTIFACT_SURFACES: readonly string[];
   }>("features/orbit-ai/artifact-contract.ts");
 
@@ -52,11 +52,11 @@ test("Orbit AI artifact contract exports supported kinds statuses surfaces and s
     "inline_card",
     "full_page",
   ]);
-  assert.deepEqual(contract.ORBIT_AGENT_ARTIFACT_SUB_AGENTS, [
-    "event_recommendation_agent",
-    "contact_recommendation_agent",
-    "followup_review_agent",
-    "relationship_chat_review_agent",
+  assert.deepEqual(contract.ORBIT_AGENT_ARTIFACT_PRODUCERS, [
+    "event_recommendation_producer",
+    "contact_recommendation_producer",
+    "followup_review_producer",
+    "relationship_chat_review_producer",
   ]);
   assert.deepEqual(contract.ORBIT_AGENT_ARTIFACT_ERROR_CODES, [
     "ORBIT_AGENT_ARTIFACT_QUERY_REQUIRED",
@@ -100,7 +100,7 @@ test("Orbit AI artifact contract supports traceable generated views and safe act
           },
         ],
         summary:
-          "The event recommendation sub-agent generated a compact side-panel view.",
+          "The event recommendation artifact producer generated a compact side-panel view.",
       },
       kind: "event_recommendations",
       nextAction: "Ask the user to confirm before taking any event action.",
@@ -112,7 +112,7 @@ test("Orbit AI artifact contract supports traceable generated views and safe act
       provenance: {
         evidenceIds: ["evidence:event:demo"],
         generatedAt: "2026-06-27T00:00:00.000Z",
-        generationMethod: "sub-agent-generated-view",
+        generationMethod: "artifact-producer-generated-view",
         source: "test:orbit-ai-artifact-contract",
         sourceModules: ["orbit-ai", "events"],
         toolCalls: [
@@ -152,7 +152,7 @@ test("Orbit AI artifact contract supports traceable generated views and safe act
       },
       query: "Recommend events for next week",
       status: "ready",
-      subAgent: "event_recommendation_agent",
+      artifactProducer: "event_recommendation_producer",
       taskId: "task:event-recommendations:demo",
       updatedAt: "2026-06-27T00:00:01.000Z",
     },

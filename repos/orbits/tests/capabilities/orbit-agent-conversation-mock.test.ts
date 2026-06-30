@@ -184,7 +184,7 @@ test("mock Orbit Agent conversation can orchestrate an artifact for event recomm
             task: {
               kind: string;
               status: string;
-              subAgent: string;
+              artifactProducer: string;
             };
           }[];
           assistantMessage: string;
@@ -216,8 +216,8 @@ test("mock Orbit Agent conversation can orchestrate an artifact for event recomm
   assert.equal(result.data?.artifacts.length, 1);
   assert.equal(result.data?.artifacts[0]?.task.kind, "event_recommendations");
   assert.equal(
-    result.data?.artifacts[0]?.task.subAgent,
-    "event_recommendation_agent",
+    result.data?.artifacts[0]?.task.artifactProducer,
+    "event_recommendation_producer",
   );
   assert.equal(result.data?.artifacts[0]?.result.status, "ready");
   assert.equal(
@@ -272,7 +272,7 @@ test("mock Orbit Agent conversation routes contact and follow-up intents into ar
                 toolCalls: readonly { toolName: string }[];
               };
             };
-            task: { kind: string; subAgent: string };
+            task: { kind: string; artifactProducer: string };
           }[];
         };
       };
@@ -290,8 +290,8 @@ test("mock Orbit Agent conversation routes contact and follow-up intents into ar
   assert.equal(contactResult.success, true);
   assert.equal(contactResult.data?.artifacts[0]?.task.kind, "contact_recommendations");
   assert.equal(
-    contactResult.data?.artifacts[0]?.task.subAgent,
-    "contact_recommendation_agent",
+    contactResult.data?.artifacts[0]?.task.artifactProducer,
+    "contact_recommendation_producer",
   );
   assert.equal(
     contactResult.data?.artifacts[0]?.result.provenance.sourceModules.includes("contacts"),
@@ -305,8 +305,8 @@ test("mock Orbit Agent conversation routes contact and follow-up intents into ar
   assert.equal(followupResult.success, true);
   assert.equal(followupResult.data?.artifacts[0]?.task.kind, "followup_queue");
   assert.equal(
-    followupResult.data?.artifacts[0]?.task.subAgent,
-    "followup_review_agent",
+    followupResult.data?.artifacts[0]?.task.artifactProducer,
+    "followup_review_producer",
   );
   assert.equal(
     followupResult.data?.artifacts[0]?.result.provenance.sourceModules.includes("followups"),
