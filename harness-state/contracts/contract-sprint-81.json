@@ -1,0 +1,101 @@
+{
+  "sprint_number": 81,
+  "goal": "Optimize the Orbits local-remote relationship database schema against the advisory AI relationship design without blindly copying it or preserving inefficient current gaps.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "The implementation documents a concrete field-by-field schema decision for event intent, AI analyses, relationship profiles, interaction memory, recommendations, golden matches, negative cases, and dirty cases: keep existing product fields, promote frequently queried values to top-level fields, keep volatile AI output in resultJson-style semantic records, and reject redundant or low-value fields with stated reasons.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "The local-remote database schema version is advanced and the seeded runtime state exposes typed collections or fields for event participant intent, AI analyses, match recommendations, interaction memories, and recommendation-test records while preserving the existing accounts, profiles, events, attendees, contacts, connections, evidence, tasks, conversations, messages, dashboards, agent actions, permissions, and notifications collections.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Event-specific looking-for and can-offer intent, preferred language, relationship strength, trust level, business relevance score, shared topics, and suggested actions are queryable without parsing AI result JSON; tests prove these fields exist on the right records and remain source/evidence backed.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "AI analysis, match recommendation, interaction memory, golden match, negative case, and dirty data records include stable ids, target references, source/evidence references, confidence or scoring where relevant, and tests prove cross-record references resolve to seeded events, contacts, attendees, connections, evidence, or profiles.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The mock-to-live replacement document explains future remote tables, indexes, JSON fields, privacy/provenance constraints, migration/version behavior, and replacement tests; the focused relationship schema test command and npm run lint pass after the schema update.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Replacing the local-remote store with Supabase, Postgres, Prisma, IndexedDB, or a live provider",
+    "Adding authentication, network sync, vector search, embeddings, or live AI calls to the Orbits app",
+    "Changing product routes, app shell, feature page UI, API behavior, or external side-effect boundaries",
+    "Generating the large v1 demo data files under repos/mockdata; that belongs to Sprint 82",
+    "Editing repos/tokyo-business-connect"
+  ],
+  "evidence": {
+    "routes": [],
+    "commands": [
+      {
+        "name": "relationship-tests",
+        "cmd": [
+          "npm",
+          "run",
+          "test:relationship-schema"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      }
+    ],
+    "source_files": [
+      "shared/domain/contracts.ts",
+      "shared/domain/source-types.ts",
+      "shared/mock/fixtures.ts",
+      "shared/local-remote-store/orbit-database.ts",
+      "shared/local-remote-store/RELATIONSHIP_SCHEMA_LIVE_IMPLEMENTATION.md",
+      "docs/architecture/local-remote-database.md",
+      "tests/services/local-remote-store.test.ts",
+      "tests/services/local-remote-relationship-schema.test.ts",
+      "package.json"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "shared/local-remote-store",
+    "owned_paths": [
+      "shared/domain/contracts.ts",
+      "shared/domain/source-types.ts",
+      "shared/mock/fixtures.ts",
+      "shared/local-remote-store/**",
+      "docs/architecture/local-remote-database.md",
+      "tests/services/local-remote-store.test.ts",
+      "tests/services/local-remote-relationship-schema.test.ts",
+      "package.json"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/**",
+      "features/**",
+      "public/**",
+      "scripts/**",
+      "tests/pages/**",
+      "tests/capabilities/**",
+      "tests/mock/**"
+    ],
+    "mock_to_live_doc": "shared/local-remote-store/RELATIONSHIP_SCHEMA_LIVE_IMPLEMENTATION.md",
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

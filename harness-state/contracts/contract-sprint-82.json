@@ -1,0 +1,117 @@
+{
+  "sprint_number": 82,
+  "goal": "Generate v1 demo-scale Orbit relationship mockdata under repos/mockdata using a MiniMax Claude SDK-backed AI agent and deterministic validators.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "The MiniMax-backed generation run creates the documented mockdata directory structure under repos/mockdata: dictionaries, seed, tests, scenarios, generated, exports, validators, and generation reports.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "The v1 demo dataset reaches the design-document scale: 120-150 users, 10-12 events, 80-100 companies or organizations, 400-600 event participant records, 800-1200 relationship/connection records, at least 1000 interaction records, 300-500 recommendation records, and 100-200 golden matches.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "The data respects the required Japanese business / Chinese business-community ratios, language distribution, persona templates, ten demo scenarios, negative cases, dirty data cases, and conservative low-confidence AI behavior from the design document.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Every generated recommendation, golden match, negative case, AI analysis, interaction, event participant, contact, and connection uses stable ids and resolvable references; the validator rejects dangling references, duplicate ids, score values outside 0-1, and empty generic goals such as 'meet interesting people' unless the record is explicitly a dirty-data case.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "Generation reports prove the run used MiniMax Claude SDK environment variables without logging secrets, records prompts and validation summaries under harness-state/runs, and exports a local_seed.json plus demo_seed.json that can be consumed by a future Orbits database importer.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Manually hand-designing individual mock records outside the AI agent workflow",
+    "Writing generated data into repos/orbits/shared/mock/fixtures.ts in this sprint",
+    "Adding live database writes, external CRM sync, email/calendar sends, embeddings, or vector indexes",
+    "Logging real MiniMax API keys, Anthropic tokens, OAuth tokens, cookies, or credentials",
+    "Editing repos/tokyo-business-connect"
+  ],
+  "evidence": {
+    "routes": [],
+    "commands": [],
+    "source_files": [],
+    "project_source_files": [
+      "repos/mockdata/dictionaries/industries.json",
+      "repos/mockdata/dictionaries/roles.json",
+      "repos/mockdata/dictionaries/company_types.json",
+      "repos/mockdata/dictionaries/languages.json",
+      "repos/mockdata/dictionaries/relationship_types.json",
+      "repos/mockdata/dictionaries/event_types.json",
+      "repos/mockdata/dictionaries/business_goals.json",
+      "repos/mockdata/dictionaries/offer_need_pairs.json",
+      "repos/mockdata/dictionaries/follow_up_templates.json",
+      "repos/mockdata/seed/users.seed.json",
+      "repos/mockdata/seed/events.seed.json",
+      "repos/mockdata/seed/event_participants.seed.json",
+      "repos/mockdata/seed/contacts.seed.json",
+      "repos/mockdata/seed/connections.seed.json",
+      "repos/mockdata/seed/interactions.seed.json",
+      "repos/mockdata/seed/messages.seed.json",
+      "repos/mockdata/seed/ai_analyses.seed.json",
+      "repos/mockdata/seed/match_recommendations.seed.json",
+      "repos/mockdata/tests/golden_matches.json",
+      "repos/mockdata/tests/negative_cases.json",
+      "repos/mockdata/tests/dirty_data_cases.json",
+      "repos/mockdata/scenarios/scenario_01_jp_restaurant_inbound.json",
+      "repos/mockdata/scenarios/scenario_02_cn_ai_founder_japan_poc.json",
+      "repos/mockdata/scenarios/scenario_03_jp_company_china_market_entry.json",
+      "repos/mockdata/scenarios/scenario_04_investor_founder_matching.json",
+      "repos/mockdata/scenarios/scenario_05_organizer_table_matching.json",
+      "repos/mockdata/scenarios/scenario_06_business_card_profile_generation.json",
+      "repos/mockdata/scenarios/scenario_07_post_event_follow_up.json",
+      "repos/mockdata/scenarios/scenario_08_dormant_relationship_reactivation.json",
+      "repos/mockdata/scenarios/scenario_09_duplicate_contact_merge.json",
+      "repos/mockdata/scenarios/scenario_10_bad_match_filtering.json",
+      "repos/mockdata/generated/users.generated.json",
+      "repos/mockdata/generated/events.generated.json",
+      "repos/mockdata/generated/event_participants.generated.json",
+      "repos/mockdata/generated/contacts.generated.json",
+      "repos/mockdata/generated/connections.generated.json",
+      "repos/mockdata/generated/interactions.generated.json",
+      "repos/mockdata/generated/match_recommendations.generated.json",
+      "repos/mockdata/exports/local_seed.json",
+      "repos/mockdata/exports/demo_seed.json",
+      "repos/mockdata/validators/validate_relationship_mockdata.mjs",
+      "repos/mockdata/generation/README.md"
+    ],
+    "validation_report": "harness-state/runs/<run-id>/sprint-82/iter-*/artifacts/mockdata-validation.json"
+  },
+  "file_boundary": {
+    "project_owned_paths": [
+      "repos/mockdata/**"
+    ],
+    "project_forbidden_paths": [
+      "repos/orbits/**",
+      "repos/tokyo-business-connect/**",
+      "harness/**",
+      "harness-state/**",
+      "harness-logs/**",
+      ".git/**",
+      ".env*"
+    ],
+    "shared_change_policy": "project_root_custom_runner_only"
+  },
+  "runner": {
+    "type": "project-root-minimax-claude-sdk",
+    "cwd": ".",
+    "model": "MiniMax-M3",
+    "base_url": "https://api.minimaxi.com/anthropic",
+    "auth_token_env": "MINIMAX_API_KEY",
+    "max_iterations": 6
+  },
+  "confirmed": true
+}
