@@ -14,6 +14,10 @@ workspace root for implementation work.
   verification JSON, temp manifests, or logs in this app repo.
 - If a requested change appears to require harness code or sprint contract
   changes, stop and report that boundary instead of editing outside this repo.
+- When the user sets a thread goal that requires code changes, commit the
+  relevant completed changes after the goal is verified. The commit message
+  must explain what changed and why so the work is traceable. Do not include
+  unrelated user or generated changes in that commit.
 
 ## Dev Capability Surfaces
 
