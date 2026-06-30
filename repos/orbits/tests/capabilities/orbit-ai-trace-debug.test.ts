@@ -207,7 +207,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
     );
     assert.equal(
       body.data?.fullChain.databaseInteractions[0]?.storageKey,
-      "orbit.local-remote-database.v2",
+      "orbit.local-remote-database.v3",
     );
     assert.equal(
       body.data?.fullChain.databaseInteractions[0]?.operation,

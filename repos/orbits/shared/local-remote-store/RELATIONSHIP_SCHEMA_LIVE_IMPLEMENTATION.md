@@ -14,8 +14,8 @@ changing product routes or feature contracts.
 - Live provider files remain future work in `live-service.ts`, `provider.ts`,
   `mappers.ts`, and `validators.ts`; Sprint 81 only defines the replaceable
   boundary.
-- Remote storage must preserve the existing product tables, add the five
-  semantic relationship tables, and index query fields before live mode is
+- Remote storage must preserve the existing product tables, add the seven
+  relationship-aware tables, and index query fields before live mode is
   enabled.
 - Volatile AI interpretation belongs in `ai_analyses.result_json`; intent,
   language, scores, topics, trust, and suggested actions remain first-class
@@ -23,8 +23,8 @@ changing product routes or feature contracts.
 - Privacy/provenance requires stable target references, `source`, non-empty
   `evidenceIds`, and no raw prompts, tokens, secrets, chain-of-thought, or
   unrelated user data in product rows.
-- Migration/version behavior maps local schema `2` to
-  `relationship_schema_v2`, rejects stale local payloads, and fails closed for
+- Migration/version behavior maps local schema `3` to
+  `relationship_schema_v3`, rejects stale local payloads, and fails closed for
   unknown live provider modes.
 - Replacement tests must prove live rows map to the mock DTO shapes and resolve
   event, attendee, contact, connection, conversation, message, profile, and
@@ -62,6 +62,8 @@ Preserve existing product tables:
 
 Add relationship schema tables:
 
+- `network_people`
+- `person_relationship_edges`
 - `event_participant_intents`
 - `ai_analyses`
 - `match_recommendations`
@@ -74,6 +76,9 @@ Future live mappers should use `shared/domain/source-types.ts` as the runtime
 source of truth for semantic discriminator values:
 
 - `ai_analyses.analysis_type` -> `AI_ANALYSIS_TYPE_VALUES`
+- `network_people.person_kind` -> `"platform_user" | "external_contact"`
+- `person_relationship_edges.connection_method` ->
+  `"offline_meeting" | "business_card" | "qr_scan" | "referral" | "shared_event"`
 - `match_recommendations.recommendation_type` ->
   `MATCH_RECOMMENDATION_TYPE_VALUES`
 - `interaction_memories.memory_type` -> `INTERACTION_MEMORY_TYPE_VALUES`
@@ -86,8 +91,14 @@ fixtures or being stored only in JSON.
 
 ## Indexes
 
+- `network_people(person_kind)`
+- `network_people(platform_user_id)`
+- `person_relationship_edges(from_person_id, relationship_strength)`
+- `person_relationship_edges(to_person_id)`
+- `person_relationship_edges(introduced_by_person_id)`
 - `event_participant_intents(event_id, attendee_id)`
 - `event_participant_intents(contact_id)`
+- `event_participant_intents(person_id)`
 - `connections(account_id, business_relevance_score)`
 - `connections(account_id, relationship_strength)`
 - `connections(contact_id)`
@@ -95,6 +106,8 @@ fixtures or being stored only in JSON.
 - `match_recommendations(event_id, score)`
 - `match_recommendations(contact_id)`
 - `match_recommendations(connection_id)`
+- `match_recommendations(target_person_id)`
+- `match_recommendations(introduced_by_person_id)`
 - `interaction_memories(contact_id, occurred_at)`
 - `interaction_memories(connection_id, occurred_at)`
 - `recommendation_tests(case_type, event_id)`
@@ -134,6 +147,14 @@ Required permissions:
 
 - Every semantic record must keep stable target references plus `source` and
   non-empty `evidenceIds`.
+- A `contacts` row represents the active user's explicit address book, not a
+  generic person row. It must reference `network_people.id` and evidence from a
+  concrete relationship action such as manual entry, business card OCR, QR scan,
+  or referral.
+- `network_people.person_kind = "external_contact"` means the person has no
+  platform account but may still belong to the active user's personal contacts.
+  `person_relationship_edges` must only connect platform people unless a future
+  privacy review allows external graph edges.
 - AI analyses must not store raw private messages beyond the minimal source
   references and summarized `result_json`.
 - Provider payloads must not include API keys, auth tokens, full prompts,
@@ -145,9 +166,9 @@ Required permissions:
 
 ## Migration And Version Behavior
 
-- Local schema version `2` maps to remote migration `relationship_schema_v2`.
-- The local key `orbit.local-remote-database.v2` intentionally avoids reading
-  stale v1 localStorage payloads.
+- Local schema version `3` maps to remote migration `relationship_schema_v3`.
+- The local key `orbit.local-remote-database.v3` intentionally avoids reading
+  stale v1/v2 localStorage payloads.
 - A live migration should add nullable columns first, backfill from existing
   evidence-backed rows where possible, then tighten non-null constraints only
   after replacement tests pass.
@@ -161,24 +182,27 @@ Required permissions:
 Before switching to live mode, add tests that prove:
 
 - Remote rows map to the same DTO shapes as `MockRuntimeFixtures`.
+- Platform users, external non-platform contacts, current-user contacts, and
+  platform-to-platform relationship edges remain separate rows and references.
 - Event intent can be queried by `eventId`, `attendeeId`, `contactId`,
-  `lookingFor`, `canOffer`, and `preferredLanguage` without parsing JSON.
+  `personId`, `lookingFor`, `canOffer`, and `preferredLanguage` without parsing
+  JSON.
 - Relationship profile queries can sort/filter by `relationshipStrength`,
   `trustLevel`, `businessRelevanceScore`, `sharedTopics`, and
   `suggestedActions`.
 - AI analysis records preserve `resultJson` while target/source/evidence
   references resolve to remote product rows.
 - Match recommendations, interaction memories, golden matches, negative cases,
-  and dirty data cases resolve all declared event, attendee, contact,
+  and dirty data cases resolve all declared event, attendee, person, contact,
   connection, conversation, message, profile, and evidence references.
 - Missing live credentials fail closed and do not fall back to undeclared mock
   providers.
 
 ## Sprint 81 Live Replacement Audit
 
-- Remote table ownership: preserve product tables and add only `event_participant_intents`, `ai_analyses`, `match_recommendations`, `interaction_memories`, and `recommendation_tests` for Sprint 81 semantic data.
-- Query indexes required before live switch: `event_participant_intents(event_id, attendee_id)`, `connections(account_id, business_relevance_score)`, `match_recommendations(event_id, score)`, `interaction_memories(contact_id, occurred_at)`, and `recommendation_tests(case_type, event_id)`.
+- Remote table ownership: preserve product tables and add only `network_people`, `person_relationship_edges`, `event_participant_intents`, `ai_analyses`, `match_recommendations`, `interaction_memories`, and `recommendation_tests` for Sprint 81 relationship data.
+- Query indexes required before live switch: `network_people(person_kind)`, `person_relationship_edges(from_person_id, relationship_strength)`, `event_participant_intents(event_id, attendee_id)`, `connections(account_id, business_relevance_score)`, `match_recommendations(event_id, score)`, `match_recommendations(target_person_id)`, `interaction_memories(contact_id, occurred_at)`, and `recommendation_tests(case_type, event_id)`.
 - JSON boundary: only volatile provider interpretation belongs in `ai_analyses.result_json`; event intent, language, relationship strength, trust, relevance, topics, scores, and actions must remain queryable fields.
 - Privacy/provenance gate: every semantic row must carry stable target references, `source`, and non-empty `evidenceIds`; raw prompts, API keys, auth tokens, chain-of-thought, and unrelated user data stay out of product rows.
-- Migration gate: local schema `2` maps to remote migration `relationship_schema_v2`; unknown live modes fail closed instead of falling back to mock data.
-- Replacement tests must prove remote rows resolve event, attendee, contact, connection, conversation, message, profile, and evidence references before live mode is enabled.
+- Migration gate: local schema `3` maps to remote migration `relationship_schema_v3`; unknown live modes fail closed instead of falling back to mock data.
+- Replacement tests must prove remote rows resolve event, attendee, person, contact, connection, conversation, message, profile, and evidence references before live mode is enabled.

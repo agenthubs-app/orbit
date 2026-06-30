@@ -93,6 +93,8 @@ test("orbit local remote database seeds the future remote-shaped relationship co
   assert.equal(state.id, defaultMockFixtures.id);
   assert.ok(state.accounts.length > 0);
   assert.ok(state.profiles.length > 0);
+  assert.ok(state.networkPeople.length > 0);
+  assert.ok(state.personRelationshipEdges.length > 0);
   assert.ok(state.contacts.length > 0);
   assert.ok(state.events.length > 0);
   assert.ok(state.attendees.length > 0);

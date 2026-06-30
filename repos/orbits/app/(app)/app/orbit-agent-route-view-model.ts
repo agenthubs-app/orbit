@@ -1,4 +1,9 @@
-import type { ContactDTO, EventDTO, MatchRecommendationDTO } from "../../../shared/domain/contracts";
+import type {
+  ContactDTO,
+  EventDTO,
+  MatchRecommendationDTO,
+  NetworkPersonDTO,
+} from "../../../shared/domain/contracts";
 import {
   connectionsByContactId,
   contactCompany,
@@ -10,6 +15,7 @@ import {
   getOrbitHybridRouteData,
   gradientFor,
   initialFor,
+  networkPeopleById,
   sortedContacts,
   sortedEvents,
   type OrbitHybridRouteData,
@@ -101,19 +107,45 @@ function connectionView(
   };
 }
 
+function personConnectionView(
+  person: NetworkPersonDTO,
+  index: number,
+): OrbitAgentConnectionView {
+  return {
+    company: person.organization ?? "Platform network",
+    displayName: person.displayName,
+    g: gradientFor(person.id, index),
+    id: person.id,
+    industry: person.profileSnippet ?? "Recommended through the platform graph",
+    initial: initialFor(person.displayName),
+    pipelineStatus: "to_contact",
+    title: person.role ?? "Recommended person",
+  };
+}
+
 function peopleResult(
   data: OrbitHybridRouteData,
   recommendation: MatchRecommendationDTO,
   index: number,
 ): OrbitAgentPeopleResultView | null {
-  const contact = data.contacts.find((item) => item.id === recommendation.contactId);
+  const contact = recommendation.contactId
+    ? data.contacts.find((item) => item.id === recommendation.contactId)
+    : null;
+  const person = recommendation.targetPersonId
+    ? networkPeopleById(data).get(recommendation.targetPersonId)
+    : null;
+  const connection = contact
+    ? connectionView(data, contact, index)
+    : person
+      ? personConnectionView(person, index)
+      : null;
 
-  if (!contact) {
+  if (!connection) {
     return null;
   }
 
   return {
-    connection: connectionView(data, contact, index),
+    connection,
     match: recommendation.score,
     opener:
       recommendation.suggestedActions[0] ??

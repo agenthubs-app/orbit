@@ -33,6 +33,8 @@ const projectRoot = join(
 const requiredContractExports = [
   "AccountDTO",
   "UserProfileDTO",
+  "NetworkPersonDTO",
+  "PersonRelationshipEdgeDTO",
   "ContactDTO",
   "ConnectionDTO",
   "RelationshipEvidenceDTO",

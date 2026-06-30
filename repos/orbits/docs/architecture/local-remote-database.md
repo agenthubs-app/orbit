@@ -13,7 +13,7 @@ Feature service
 ```
 
 The storage payload is versioned and table-shaped. Sprint 81 advances the schema
-to version `2` and the localStorage key to `orbit.local-remote-database.v2`.
+to version `3` and the localStorage key to `orbit.local-remote-database.v3`.
 The envelope still rejects stale payloads by `schemaVersion` and `storageKind`.
 
 ## Collections
@@ -23,6 +23,8 @@ The database keeps the existing product collections:
 - `accounts`
 - `profiles`
 - `events`
+- `networkPeople`
+- `personRelationshipEdges`
 - `attendees`
 - `contacts`
 - `connections`
@@ -53,11 +55,13 @@ stage, value, target, trust, and permission values.
 
 | Area | Schema decision | Reason |
 | --- | --- | --- |
+| People graph | Add `networkPeople` records with `personKind`, optional `platformUserId`, identity fields, source, and evidence. Add `personRelationshipEdges` for platform-to-platform relationship edges with connection method, optional introducer, strength, trust, topics, source, and evidence. | The test graph must represent people who exist in the wider platform network separately from the main user's contacts. Platform graph traversal should not require pretending every person is already the current user's contact. |
+| Contact boundary | Keep `contacts` as the main user's explicit address book subset. A contact must reference `personId` and come from concrete evidence such as manual entry, business card OCR, QR scan, or referral; event import alone is not enough. External people who are not platform users can still be contacts through this table. | Product behavior should not show "contacts" the user does not actually know. External personal contacts also need a durable identity row even when they do not have a platform account. |
 | Event intent | Add `eventParticipantIntents` records with top-level `eventId`, `attendeeId`, optional `contactId`, `lookingFor`, `canOffer`, `preferredLanguage`, `confidence`, `source`, and `evidenceIds`. | Intent is event-specific and repeatedly queried by roster/recommendation flows. Keeping it separate avoids overwriting the attendee import record while remaining queryable without parsing AI JSON. |
 | AI analyses | Add `aiAnalyses` with stable `id`, `analysisType`, `target`, `confidence`, `source`, `evidenceIds`, and volatile `resultJson`. | AI explanations and extracted signals change often. Only target/provenance/confidence are promoted; model-shaped details stay in JSON. |
 | Relationship profiles | Keep `contacts` and `connections`; promote `relationshipStrength`, `trustLevel`, `businessRelevanceScore`, `sharedTopics`, and `suggestedActions` onto connection records. | These values support sorting, filtering, and action planning across the relationship graph. They belong on the relationship, not on contact identity. |
 | Interaction memory | Add `interactionMemories` with contact/connection/conversation/message references, `memoryType`, summary, occurrence time, confidence, source, and evidence. | Memories are durable relationship facts derived from interactions, separate from raw messages and AI analysis payloads. |
-| Recommendations | Add `matchRecommendations` with event/contact/attendee/connection references, top-level score, business relevance, shared topics, suggested actions, reason, source, and evidence. | Recommendation lists need deterministic ranking and filtering without reading analysis JSON. |
+| Recommendations | Add `matchRecommendations` with event/contact/attendee/connection references when a target is already a contact, plus `targetPersonId` and optional `introducedByPersonId` when the recommendation is a non-contact platform person. Keep score, business relevance, shared topics, suggested actions, reason, source, and evidence top-level. | Recommendation lists need deterministic ranking and filtering without reading analysis JSON, and should support referral paths to people the user does not yet know. |
 | Golden matches | Store as `recommendationTests` with `caseType: "golden_match"`, `expectedOutcome: "recommend"`, target references, confidence, source, and evidence. | Golden cases are regression artifacts, not production recommendations. Keeping them in test records prevents demo fixtures from pretending to be product data. |
 | Negative cases | Store as `recommendationTests` with `caseType: "negative_case"`, `expectedOutcome: "suppress"`, and the same provenance/reference fields. | Suppression behavior is test data; it should not pollute contacts, connections, or live recommendation tables. |
 | Dirty cases | Store as `recommendationTests` with `caseType: "dirty_data"`, `expectedOutcome: "manual_review"`, and source/evidence for the bad input. | Dirty data belongs to regression coverage and later mockdata exports, not core domain rows. |
@@ -66,6 +70,10 @@ Rejected fields:
 
 - Global contact `lookingFor` and `canOffer`: rejected because intent changes per
   event and would become stale or misleading on the identity record.
+- Event attendee import as an automatic contact: rejected because attending the
+  same event does not prove the main user met the person.
+- Platform user identity as an automatic contact: rejected because being in the
+  software does not prove a current-user relationship.
 - Raw prompt text, chain-of-thought, model name, and provider token usage on
   product rows: rejected because these are volatile provider details. Store
   future run metadata beside provider audit records, not in contacts or
@@ -79,9 +87,11 @@ Rejected fields:
 
 - Event intent: promote event-specific `lookingFor`, `canOffer`, and `preferredLanguage` on `eventParticipantIntents`; keep attendee import facts on `attendees`; reject global contact intent fields because intent changes by event.
 - AI analyses: promote `analysisType`, `target`, `confidence`, `source`, and `evidenceIds`; keep volatile interpretation, rejected fields, and scoring rationale in `resultJson`; reject raw prompts, chain-of-thought, model names, and provider token usage on product rows.
+- People graph: promote `networkPeople` and `personRelationshipEdges`; keep platform users, external non-platform contacts, current-user contacts, and platform-to-platform relationship edges as separate concepts.
+- Contact boundary: require current-user `contacts` to reference `personId` and concrete relationship evidence; reject event attendance or platform membership as automatic contact creation.
 - Relationship profiles: keep identity on `contacts` and relationship state on `connections`; promote `relationshipStrength`, `trustLevel`, `businessRelevanceScore`, `sharedTopics`, and `suggestedActions` on `connections`; reject personality, chemistry, and likability labels.
 - Interaction memory: keep raw interaction history in `conversations` and `messages`; add `interactionMemories` for durable contact/connection/conversation/message summaries; reject storing memories only inside AI analysis JSON.
-- Recommendations: add `matchRecommendations` with top-level event/contact/attendee/connection references, `score`, `businessRelevanceScore`, `sharedTopics`, and `suggestedActions`; reject recommendation ranking that requires parsing AI JSON.
+- Recommendations: add `matchRecommendations` with top-level event/contact/attendee/connection or `targetPersonId` references, `score`, `businessRelevanceScore`, `sharedTopics`, and `suggestedActions`; reject recommendation ranking that requires parsing AI JSON.
 - Golden matches, negative cases, and dirty cases: keep these regression artifacts in `recommendationTests` with `caseType`, `expectedOutcome`, confidence, source, and evidence; reject mixing them into production contacts, connections, or recommendation feeds.
 
 ## Mode
@@ -137,7 +147,7 @@ database through a provider, maps contact, connection, and evidence records into
 the existing contacts contract, and marks provenance with:
 
 ```text
-source: local-remote-store:orbit.local-remote-database.v2
+source: local-remote-store:orbit.local-remote-database.v3
 generationMethod: local-remote-store-query
 databaseQueryExecuted: true
 searchIndexReadExecuted: false
@@ -165,7 +175,7 @@ local remote database:
 These services use the same source marker:
 
 ```text
-source: local-remote-store:orbit.local-remote-database.v2
+source: local-remote-store:orbit.local-remote-database.v3
 generationMethod: local-remote-store-query
 ```
 

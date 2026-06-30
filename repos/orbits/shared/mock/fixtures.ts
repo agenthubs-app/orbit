@@ -19,8 +19,10 @@ import type {
   IsoDateTimeString,
   MatchRecommendationDTO,
   MessageDTO,
+  NetworkPersonDTO,
   NotificationDTO,
   OrbitId,
+  PersonRelationshipEdgeDTO,
   PermissionStateDTO,
   RecommendationTestRecordDTO,
   RelationshipEvidenceDTO,
@@ -35,6 +37,8 @@ export const MOCK_FIXTURE_COLLECTION_NAMES = [
   "accounts",
   "profiles",
   "events",
+  "networkPeople",
+  "personRelationshipEdges",
   "attendees",
   "contacts",
   "connections",
@@ -59,6 +63,7 @@ export type MockFixtureCollectionName =
 export interface EventAttendeeDTO {
   id: OrbitId;
   eventId: OrbitId;
+  personId?: OrbitId;
   contactId?: OrbitId;
   displayName: string;
   organization?: string;
@@ -78,6 +83,8 @@ export interface MockRuntimeFixtures {
   accounts: AccountDTO[];
   profiles: UserProfileDTO[];
   events: EventDTO[];
+  networkPeople: NetworkPersonDTO[];
+  personRelationshipEdges: PersonRelationshipEdgeDTO[];
   attendees: EventAttendeeDTO[];
   eventParticipantIntents: EventParticipantIntentDTO[];
   contacts: ContactDTO[];
@@ -101,6 +108,8 @@ const profileId = "profile_ari_kato";
 const eventId = "event_orbit_summit_2026";
 const attendeeMinaId = "attendee_mina_tanaka";
 const attendeeNiaId = "attendee_nia_patel";
+const personMinaId = "person_mina_tanaka";
+const personNiaId = "person_nia_patel";
 const contactMinaId = "contact_mina_tanaka";
 const contactNiaId = "contact_nia_patel";
 const connectionMinaId = "connection_mina_tanaka";
@@ -248,10 +257,69 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       evidenceIds: ["evidence_event_roster"],
     },
   ],
+  networkPeople: [
+    {
+      id: personMinaId,
+      personKind: "platform_user",
+      platformUserId: "user_mina_tanaka",
+      displayName: "Mina Tanaka",
+      organization: "Northstar Labs",
+      role: "Founder",
+      profileSnippet:
+        "Marketplace founder with hiring and Japan go-to-market context.",
+      source: {
+        type: "qr_scan",
+        id: `${eventId}/${attendeeMinaId}/badge`,
+        label: "Orbit Summit badge scan",
+      },
+      evidenceIds: ["evidence_mina_badge"],
+      createdAt: "2026-06-24T10:16:00.000Z",
+      updatedAt: generatedAt,
+    },
+    {
+      id: personNiaId,
+      personKind: "external_contact",
+      displayName: "Nia Patel",
+      organization: "Civic Operators Guild",
+      role: "Community lead",
+      profileSnippet:
+        "External community operator recorded from a referral note.",
+      source: {
+        type: "referral",
+        id: `${eventId}/${attendeeNiaId}/intro`,
+        label: "Orbit Summit referral note",
+      },
+      evidenceIds: ["evidence_nia_referral"],
+      createdAt: "2026-06-24T10:33:00.000Z",
+      updatedAt: generatedAt,
+    },
+  ],
+  personRelationshipEdges: [
+    {
+      id: "person_edge_mina_to_nia",
+      fromPersonId: personMinaId,
+      toPersonId: personNiaId,
+      relationshipType: "referral_path",
+      connectionMethod: "referral",
+      introducedByPersonId: personMinaId,
+      relationshipStrength: 72,
+      trustLevel: "warm",
+      sharedTopics: ["community referrals", "operator introductions"],
+      source: {
+        type: "referral",
+        id: `${eventId}/${attendeeNiaId}/intro`,
+        label: "Orbit Summit referral path",
+      },
+      evidenceIds: ["evidence_nia_referral"],
+      createdAt: "2026-06-24T10:33:00.000Z",
+      updatedAt: generatedAt,
+    },
+  ],
   attendees: [
     {
       id: attendeeMinaId,
       eventId,
+      personId: personMinaId,
       contactId: contactMinaId,
       displayName: "Mina Tanaka",
       organization: "Northstar Labs",
@@ -265,6 +333,7 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
     {
       id: attendeeNiaId,
       eventId,
+      personId: personNiaId,
       contactId: contactNiaId,
       displayName: "Nia Patel",
       organization: "Civic Operators Guild",
@@ -281,6 +350,7 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       id: "event_intent_mina_tanaka_orbit_summit",
       eventId,
       attendeeId: attendeeMinaId,
+      personId: personMinaId,
       contactId: contactMinaId,
       lookingFor: [
         "operator intros for hiring marketplaces",
@@ -305,6 +375,7 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       id: "event_intent_nia_patel_orbit_summit",
       eventId,
       attendeeId: attendeeNiaId,
+      personId: personNiaId,
       contactId: contactNiaId,
       lookingFor: ["operator community signal exchange"],
       canOffer: [
@@ -326,6 +397,7 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
   contacts: [
     {
       id: contactMinaId,
+      personId: personMinaId,
       displayName: "Mina Tanaka",
       organization: "Northstar Labs",
       role: "Founder",
@@ -342,6 +414,7 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
     },
     {
       id: contactNiaId,
+      personId: personNiaId,
       displayName: "Nia Patel",
       organization: "Civic Operators Guild",
       role: "Community lead",
@@ -475,6 +548,7 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       id: matchRecommendationMinaId,
       eventId,
       attendeeId: attendeeMinaId,
+      targetPersonId: personMinaId,
       contactId: contactMinaId,
       connectionId: connectionMinaId,
       recommendationType: "warm_intro",

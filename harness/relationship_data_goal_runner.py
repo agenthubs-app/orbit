@@ -1068,6 +1068,337 @@ def _build_hybrid_runtime_fixture(
         confidence=1,
     )
 
+    def contact_index(contact_id: str | None) -> int:
+        if not contact_id:
+            return 0
+        try:
+            return int(contact_id.rsplit("_", 1)[1])
+        except (IndexError, ValueError):
+            return 0
+
+    def person_id_for_contact_id(contact_id: str | None) -> str | None:
+        index = contact_index(contact_id)
+        return f"person_{index:03d}" if index else None
+
+    def contact_id_for_person_id(person_id: str | None) -> str | None:
+        if not person_id:
+            return None
+        try:
+            return f"contact_{int(person_id.rsplit('_', 1)[1]):03d}"
+        except (IndexError, ValueError):
+            return None
+
+    concrete_contact_sources = ["business_card_ocr", "qr_scan", "referral", "manual"]
+    connection_methods = ["offline_meeting", "business_card", "qr_scan", "referral", "shared_event"]
+    relationship_types = ["buyer", "seller", "partner", "investor", "mentor", "organizer", "service_provider"]
+    value_types = ["strategic_fit", "commercial_opportunity", "knowledge_exchange", "referral_path", "community_context"]
+
+    def source_type_for_method(method: str) -> str:
+        if method == "business_card":
+            return "business_card_ocr"
+        if method == "shared_event":
+            return "event_import"
+        if method == "offline_meeting":
+            return "manual"
+        return method
+
+    def contact_source_label(source_type: str) -> str:
+        return {
+            "business_card_ocr": "Business card exchange",
+            "qr_scan": "Direct QR scan",
+            "referral": "Warm referral",
+            "manual": "Confirmed offline meeting note",
+        }.get(source_type, "Confirmed relationship source")
+
+    network_people = []
+    platform_person_ids: list[str] = []
+    current_user_contact_person_ids: set[str] = set()
+    person_by_id: dict[str, dict[str, Any]] = {}
+    for contact in runtime_contacts:
+        index = contact_index(contact["id"])
+        person_id = person_id_for_contact_id(contact["id"])
+        if not person_id:
+            continue
+        is_external = index % 3 == 0
+        person = {
+            "id": person_id,
+            "personKind": "external_contact" if is_external else "platform_user",
+            **({} if is_external else {"platformUserId": f"user_{index:03d}"}),
+            "displayName": contact["displayName"],
+            "organization": contact.get("organization"),
+            "role": contact.get("role"),
+            "location": contact.get("location"),
+            **({"primaryEmail": contact.get("primaryEmail")} if is_external and contact.get("primaryEmail") else {}),
+            "profileSnippet": contact.get("profileSnippet"),
+            "source": (
+                {
+                    "type": "manual",
+                    "id": f"source:external-person:{person_id}",
+                    "label": "Current-user external contact record",
+                }
+                if is_external
+                else {
+                    "type": "system",
+                    "id": f"source:platform-user:{person_id}",
+                    "label": "Generated platform user profile",
+                }
+            ),
+            "evidenceIds": contact["evidenceIds"],
+            "createdAt": contact["createdAt"],
+            "updatedAt": contact["updatedAt"],
+        }
+        network_people.append({key: value for key, value in person.items() if value is not None})
+        person_by_id[person_id] = person
+        if is_external:
+            current_user_contact_person_ids.add(person_id)
+        else:
+            platform_person_ids.append(person_id)
+            if index % 4 == 1:
+                current_user_contact_person_ids.add(person_id)
+
+    current_contact_ids = {
+        contact_id
+        for contact_id in (contact_id_for_person_id(person_id) for person_id in current_user_contact_person_ids)
+        if contact_id
+    }
+
+    runtime_contacts = [
+        {
+            **contact,
+            "personId": person_id_for_contact_id(contact["id"]),
+            "source": {
+                "type": source_type,
+                "id": f"source:{source_type}:{contact['id']}",
+                "label": f"{contact_source_label(source_type)} for {contact['displayName']}",
+            },
+        }
+        for contact in runtime_contacts
+        if contact["id"] in current_contact_ids
+        for source_type in [concrete_contact_sources[contact_index(contact["id"]) % len(concrete_contact_sources)]]
+    ]
+    contact_ids = {contact["id"] for contact in runtime_contacts}
+
+    def narrow_contact_ref(record: dict[str, Any]) -> dict[str, Any]:
+        contact_id = record.get("contactId")
+        person_id = person_id_for_contact_id(contact_id)
+        next_record = {**record}
+        if person_id:
+            next_record["personId"] = person_id
+        if contact_id not in contact_ids:
+            next_record.pop("contactId", None)
+        return next_record
+
+    runtime_attendees = [narrow_contact_ref(attendee) for attendee in runtime_attendees]
+    runtime_event_intents = [narrow_contact_ref(intent) for intent in runtime_event_intents]
+
+    person_relationship_edges = []
+    for source_index, from_person_id in enumerate(platform_person_ids):
+        for offset_index, offset in enumerate([3, 7, 11, 17, 23]):
+            to_person_id = platform_person_ids[(source_index + offset) % len(platform_person_ids)]
+            if from_person_id == to_person_id:
+                continue
+            edge_number = len(person_relationship_edges) + 1
+            method = connection_methods[(source_index + offset_index) % len(connection_methods)]
+            evidence_id = f"evidence:person_edge:{edge_number:04d}"
+            from_person = person_by_id[from_person_id]
+            to_person = person_by_id[to_person_id]
+            add_evidence(
+                evidence_id,
+                source_type=source_type_for_method(method),
+                source_id=f"person_edge_{edge_number:04d}",
+                summary=(
+                    f"{from_person['displayName']} has a {method.replace('_', ' ')} "
+                    f"relationship path to {to_person['displayName']}."
+                ),
+                confidence=0.78,
+            )
+            person_relationship_edges.append(
+                {
+                    "id": f"person_edge_{edge_number:04d}",
+                    "fromPersonId": from_person_id,
+                    "toPersonId": to_person_id,
+                    "relationshipType": relationship_types[edge_number % len(relationship_types)],
+                    "connectionMethod": method,
+                    **(
+                        {"introducedByPersonId": platform_person_ids[(source_index + 1) % len(platform_person_ids)]}
+                        if method == "referral"
+                        else {}
+                    ),
+                    "relationshipStrength": min(95, 45 + ((source_index + offset_index) % 45)),
+                    "trustLevel": ["emerging", "warm", "trusted"][(source_index + offset_index) % 3],
+                    "sharedTopics": [
+                        from_person.get("organization") or "platform community",
+                        to_person.get("organization") or "relationship graph",
+                    ],
+                    "source": {
+                        "type": source_type_for_method(method),
+                        "id": f"source:person_edge_{edge_number:04d}",
+                        "label": "Generated platform person relationship edge",
+                    },
+                    "evidenceIds": [evidence_id],
+                    "createdAt": generated_at,
+                    "updatedAt": generated_at,
+                }
+            )
+
+    runtime_connections = [
+        {**connection, "accountId": account_id}
+        for connection in runtime_connections
+        if connection["contactId"] in contact_ids
+    ]
+    first_connection_by_contact_id = {}
+    for connection in runtime_connections:
+        first_connection_by_contact_id.setdefault(connection["contactId"], connection["id"])
+    for contact in runtime_contacts:
+        if contact["id"] in first_connection_by_contact_id:
+            continue
+        evidence_id = f"evidence:connection:{contact['id']}:current-user"
+        connection_id = f"connection_for_{contact['id']}"
+        add_evidence(
+            evidence_id,
+            source_type=contact["source"]["type"],
+            source_id=connection_id,
+            summary=(
+                f"{contact['displayName']} is a current-user contact backed by "
+                f"{contact['source'].get('label') or contact['source']['type']}."
+            ),
+            confidence=0.82,
+            occurred_at=contact["updatedAt"],
+        )
+        runtime_connections.append(
+            {
+                "id": connection_id,
+                "accountId": account_id,
+                "contactId": contact["id"],
+                "stage": contact["stage"],
+                "valueTypes": [value_types[contact_index(contact["id"]) % len(value_types)]],
+                "summary": (
+                    f"{contact['displayName']} has a concrete current-user relationship record "
+                    f"from {contact['source'].get('label') or contact['source']['type']}."
+                ),
+                "relationshipStrength": 58 + (contact_index(contact["id"]) % 35),
+                "trustLevel": ["emerging", "warm", "trusted"][contact_index(contact["id"]) % 3],
+                "businessRelevanceScore": 55 + (contact_index(contact["id"]) % 40),
+                "sharedTopics": [contact.get("organization") or "relationship context", contact.get("role") or "business context"],
+                "suggestedActions": ["review evidence before follow-up"],
+                "source": contact["source"],
+                "evidenceIds": [evidence_id],
+                "createdAt": contact["createdAt"],
+                "updatedAt": generated_at,
+            }
+        )
+        first_connection_by_contact_id[contact["id"]] = connection_id
+    connection_ids = {connection["id"] for connection in runtime_connections}
+
+    runtime_tasks = [
+        {
+            **task,
+            **(
+                {"connectionId": first_connection_by_contact_id[task["contactId"]]}
+                if task.get("contactId") in first_connection_by_contact_id
+                else {}
+            ),
+        }
+        for task in runtime_tasks
+        if not task.get("contactId") or task["contactId"] in contact_ids
+    ]
+    runtime_conversations = [
+        conversation
+        for conversation in runtime_conversations
+        if all(contact_id in contact_ids for contact_id in conversation["participantContactIds"])
+    ]
+    conversation_ids = {conversation["id"] for conversation in runtime_conversations}
+    runtime_messages = [
+        message for message in runtime_messages if message["conversationId"] in conversation_ids
+    ]
+    message_ids = {message["id"] for message in runtime_messages}
+
+    runtime_interaction_memories = [
+        {
+            **{
+                key: value
+                for key, value in memory.items()
+                if key not in {"connectionId", "conversationId", "messageId"}
+            },
+            **(
+                {"connectionId": first_connection_by_contact_id[memory["contactId"]]}
+                if memory.get("contactId") in first_connection_by_contact_id
+                else {}
+            ),
+            **(
+                {"conversationId": memory["conversationId"]}
+                if memory.get("conversationId") in conversation_ids
+                else {}
+            ),
+            **({"messageId": memory["messageId"]} if memory.get("messageId") in message_ids else {}),
+        }
+        for memory in runtime_interaction_memories
+        if memory["contactId"] in contact_ids
+    ]
+
+    non_contact_platform_person_ids = [
+        person_id for person_id in platform_person_ids if person_id not in current_user_contact_person_ids
+    ]
+    platform_contact_person_ids = [
+        person_id for person_id in platform_person_ids if person_id in current_user_contact_person_ids
+    ]
+    for index, recommendation in enumerate(runtime_recommendations):
+        target_person_id = person_id_for_contact_id(recommendation.get("contactId"))
+        if target_person_id:
+            recommendation["targetPersonId"] = target_person_id
+        if index % 4 == 0 and non_contact_platform_person_ids:
+            recommendation["targetPersonId"] = non_contact_platform_person_ids[index % len(non_contact_platform_person_ids)]
+            recommendation.pop("contactId", None)
+            recommendation.pop("connectionId", None)
+            if platform_contact_person_ids:
+                recommendation["introducedByPersonId"] = platform_contact_person_ids[index % len(platform_contact_person_ids)]
+            recommendation["recommendationType"] = "warm_intro"
+            recommendation["reason"] = (
+                f"{recommendation['reason']} This target is not yet a current-user contact; "
+                "create contact only after a warm introduction or direct exchange."
+            )
+            recommendation["suggestedActions"] = [
+                "ask the introducer for permission before creating a contact",
+                *recommendation["suggestedActions"],
+            ][:3]
+        elif recommendation.get("contactId") not in contact_ids:
+            recommendation.pop("contactId", None)
+            recommendation.pop("connectionId", None)
+        else:
+            connection_id = first_connection_by_contact_id.get(recommendation["contactId"])
+            if connection_id:
+                recommendation["connectionId"] = connection_id
+
+    for record in runtime_recommendation_tests:
+        target_person_id = person_id_for_contact_id(record.get("contactId"))
+        if target_person_id:
+            record["targetPersonId"] = target_person_id
+        if record.get("contactId") not in contact_ids:
+            record.pop("contactId", None)
+            record.pop("connectionId", None)
+        else:
+            connection_id = first_connection_by_contact_id.get(record["contactId"])
+            if connection_id:
+                record["connectionId"] = connection_id
+
+    valid_targets = {
+        "contact": [contact["id"] for contact in runtime_contacts],
+        "connection": [connection["id"] for connection in runtime_connections],
+        "attendee": [attendee["id"] for attendee in runtime_attendees],
+        "event": [event["id"] for event in runtime_events],
+    }
+    fallback_target_types = ["contact", "attendee", "connection", "event"]
+    for index, analysis in enumerate(runtime_ai_analyses):
+        target = analysis["target"]
+        if target["id"] in valid_targets.get(target["type"], []):
+            continue
+        fallback_type = fallback_target_types[index % len(fallback_target_types)]
+        fallback_ids = valid_targets[fallback_type]
+        analysis["target"] = {
+            "type": fallback_type,
+            "id": fallback_ids[index % len(fallback_ids)],
+        }
+
     return {
         "id": "mock_fixture_generated_relationship",
         "label": "Generated Orbit relationship graph",
@@ -1085,7 +1416,7 @@ def _build_hybrid_runtime_fixture(
             {
                 "id": profile_id,
                 "accountId": account_id,
-                "displayName": "Orbit Generated Operator",
+                "displayName": "結城 航太郎",
                 "role": "Relationship Operations Lead",
                 "timezone": "Asia/Tokyo",
                 "createdAt": generated_at,
@@ -1093,6 +1424,8 @@ def _build_hybrid_runtime_fixture(
             }
         ],
         "events": runtime_events,
+        "networkPeople": network_people,
+        "personRelationshipEdges": person_relationship_edges,
         "attendees": runtime_attendees,
         "eventParticipantIntents": runtime_event_intents,
         "contacts": runtime_contacts,

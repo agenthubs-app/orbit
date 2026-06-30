@@ -38,6 +38,47 @@ export interface UserProfileDTO {
   updatedAt: IsoDateTimeString;
 }
 
+export type NetworkPersonKind = "platform_user" | "external_contact";
+
+export type PersonRelationshipConnectionMethod =
+  | "offline_meeting"
+  | "business_card"
+  | "qr_scan"
+  | "referral"
+  | "shared_event";
+
+export interface NetworkPersonDTO {
+  id: OrbitId;
+  personKind: NetworkPersonKind;
+  platformUserId?: OrbitId;
+  displayName: string;
+  organization?: string;
+  role?: string;
+  location?: string;
+  primaryEmail?: string;
+  profileSnippet?: string;
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
+  updatedAt: IsoDateTimeString;
+}
+
+export interface PersonRelationshipEdgeDTO {
+  id: OrbitId;
+  fromPersonId: OrbitId;
+  toPersonId: OrbitId;
+  relationshipType: string;
+  connectionMethod: PersonRelationshipConnectionMethod;
+  introducedByPersonId?: OrbitId;
+  relationshipStrength: number;
+  trustLevel?: RelationshipTrustLevel;
+  sharedTopics: readonly string[];
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
+  updatedAt: IsoDateTimeString;
+}
+
 export interface RelationshipEvidenceDTO {
   id: OrbitId;
   sourceType: SourceType;
@@ -50,6 +91,7 @@ export interface RelationshipEvidenceDTO {
 
 export interface ContactDTO {
   id: OrbitId;
+  personId?: OrbitId;
   displayName: string;
   organization?: string;
   role?: string;
@@ -101,6 +143,7 @@ export interface EventParticipantIntentDTO {
   id: OrbitId;
   eventId: OrbitId;
   attendeeId: OrbitId;
+  personId?: OrbitId;
   contactId?: OrbitId;
   lookingFor: readonly string[];
   canOffer: readonly string[];
@@ -127,8 +170,10 @@ export interface MatchRecommendationDTO {
   id: OrbitId;
   eventId: OrbitId;
   attendeeId?: OrbitId;
-  contactId: OrbitId;
+  targetPersonId?: OrbitId;
+  contactId?: OrbitId;
   connectionId?: OrbitId;
+  introducedByPersonId?: OrbitId;
   recommendationType: MatchRecommendationType;
   score: number;
   businessRelevanceScore: number;
@@ -161,6 +206,7 @@ export interface RecommendationTestRecordDTO {
   caseType: RecommendationTestCaseType;
   eventId: OrbitId;
   attendeeId?: OrbitId;
+  targetPersonId?: OrbitId;
   contactId?: OrbitId;
   connectionId?: OrbitId;
   recommendationId?: OrbitId;

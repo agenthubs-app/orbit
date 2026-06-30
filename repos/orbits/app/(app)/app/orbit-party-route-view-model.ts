@@ -1,4 +1,8 @@
-import type { ContactDTO, MatchRecommendationDTO } from "../../../shared/domain/contracts";
+import type {
+  ContactDTO,
+  MatchRecommendationDTO,
+  NetworkPersonDTO,
+} from "../../../shared/domain/contracts";
 import {
   attendeesForEvent,
   connectionsByContactId,
@@ -14,6 +18,7 @@ import {
   getOrbitHybridRouteData,
   gradientFor,
   initialFor,
+  networkPeopleById,
   passCodeForEvent,
   sortedContacts,
   sortedEvents,
@@ -140,13 +145,54 @@ function personFromContact(
   };
 }
 
+function personFromNetworkPerson(
+  person: NetworkPersonDTO,
+  index: number,
+  recommendation: MatchRecommendationDTO,
+): OrbitPartyPersonView {
+  const topics = recommendation.sharedTopics.length
+    ? Array.from(recommendation.sharedTopics).slice(0, 4)
+    : ["platform graph", "warm introduction"];
+
+  return {
+    company: person.organization ?? "Platform network",
+    g: gradientFor(person.id, index),
+    groupNumber: (index % 4) + 1,
+    icebreakers: recommendation.suggestedActions.length
+      ? Array.from(recommendation.suggestedActions).slice(0, 2)
+      : ["Who can introduce us?", "What context should I mention?"],
+    id: person.id,
+    industry: topics[0] ?? "Platform network",
+    initial: initialFor(person.displayName),
+    name: person.displayName,
+    offering: person.profileSnippet ?? "Recommended through the platform graph.",
+    reason: recommendation.reason,
+    score: recommendation.score,
+    seat: `${String.fromCharCode(65 + (index % 6))}${index + 1}`,
+    seeking: "Warm introduction or shared event context required before contact creation.",
+    summary: `${person.role ?? "Recommended person"} @ ${person.organization ?? "Platform network"}.`,
+    title: person.role ?? "Recommended person",
+    topics,
+  };
+}
+
 function recommendationPeople(data: OrbitHybridRouteData): OrbitPartyPersonView[] {
   const contacts = new Map(data.contacts.map((contact) => [contact.id, contact]));
+  const people = networkPeopleById(data);
   const peopleFromMatches = data.matchRecommendations
     .map((recommendation, index) => {
-      const contact = contacts.get(recommendation.contactId);
+      const contact = recommendation.contactId
+        ? contacts.get(recommendation.contactId)
+        : null;
+      const person = recommendation.targetPersonId
+        ? people.get(recommendation.targetPersonId)
+        : null;
 
-      return contact ? personFromContact(data, contact, index, recommendation) : null;
+      if (contact) {
+        return personFromContact(data, contact, index, recommendation);
+      }
+
+      return person ? personFromNetworkPerson(person, index, recommendation) : null;
     })
     .filter((person): person is OrbitPartyPersonView => person !== null);
 

@@ -16,6 +16,7 @@ import {
   gradientFor,
   initialFor,
   intentForContact,
+  networkPeopleById,
   sortedContacts,
   sortedEvents,
   type OrbitHybridRouteData,
@@ -178,16 +179,26 @@ function contactView(
 
 function introViews(data: OrbitHybridRouteData): OrbitIntroView[] {
   const contacts = new Map(data.contacts.map((contact) => [contact.id, contact]));
+  const people = networkPeopleById(data);
 
   return data.matchRecommendations.slice(0, 6).map((recommendation) => {
-    const contact = contacts.get(recommendation.contactId);
+    const contact = recommendation.contactId
+      ? contacts.get(recommendation.contactId)
+      : null;
+    const person = recommendation.targetPersonId
+      ? people.get(recommendation.targetPersonId)
+      : null;
     const targetEvent = data.events.find((event) => event.id === recommendation.eventId);
 
     return {
       blurb: recommendation.reason,
       id: recommendation.id,
       labelA: data.profile.displayName,
-      labelB: contact?.displayName ?? targetEvent?.name ?? "Recommended relationship",
+      labelB:
+        contact?.displayName ??
+        person?.displayName ??
+        targetEvent?.name ??
+        "Recommended relationship",
       statusBadge: recommendation.recommendationType === "warm_intro" ? "sent" : "draft",
     };
   });

@@ -11,10 +11,10 @@ import {
 // Orbit local remote database 是对通用 versioned store 的业务封装。
 // 它把 shared mock runtime fixtures 当作“未来远程数据库”的本地表集合来读写。
 export const ORBIT_LOCAL_REMOTE_DATABASE_KEY =
-  "orbit.local-remote-database.v2" as const;
+  "orbit.local-remote-database.v3" as const;
 
 // 改变 MockRuntimeFixtures 结构或迁移策略时必须提升 schemaVersion。
-export const ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION = 2 as const;
+export const ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION = 3 as const;
 
 export type OrbitLocalRemoteDatabase =
   VersionedLocalRemoteStore<MockRuntimeFixtures>;

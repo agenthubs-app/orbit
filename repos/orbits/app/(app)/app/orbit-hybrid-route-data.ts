@@ -5,6 +5,8 @@ import type {
   EventDTO,
   EventParticipantIntentDTO,
   MatchRecommendationDTO,
+  NetworkPersonDTO,
+  PersonRelationshipEdgeDTO,
   RelationshipEvidenceDTO,
   TaskDTO,
   UserProfileDTO,
@@ -42,6 +44,8 @@ export interface OrbitHybridRouteData {
   evidence: RelationshipEvidenceDTO[];
   generatedAt: string;
   matchRecommendations: MatchRecommendationDTO[];
+  networkPeople: NetworkPersonDTO[];
+  personRelationshipEdges: PersonRelationshipEdgeDTO[];
   profile: UserProfileDTO;
   tasks: TaskDTO[];
 }
@@ -91,6 +95,8 @@ export function getOrbitHybridRouteData(
     evidence: state.evidence,
     generatedAt,
     matchRecommendations: state.matchRecommendations,
+    networkPeople: state.networkPeople ?? [],
+    personRelationshipEdges: state.personRelationshipEdges ?? [],
     profile,
     tasks: state.tasks,
   };
@@ -217,6 +223,12 @@ export function evidenceSummaryFor(
 
 export function contactsById(data: OrbitHybridRouteData): Map<string, ContactDTO> {
   return new Map(data.contacts.map((contact) => [contact.id, contact]));
+}
+
+export function networkPeopleById(
+  data: OrbitHybridRouteData,
+): Map<string, NetworkPersonDTO> {
+  return new Map(data.networkPeople.map((person) => [person.id, person]));
 }
 
 export function connectionsByContactId(
