@@ -4,6 +4,8 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
+// Agent Action Queue contract 描述 AI 建议动作的审核队列。
+// 队列项只是“建议”，接受/忽略不会自动执行邮件、日历、通知或数据库写入。
 export const AGENT_ACTION_QUEUE_FIXTURE_SOURCE =
   "fixture:features/agent/fixtures.ts" as const;
 
@@ -41,6 +43,7 @@ export type AgentActionDecision = "accepted" | "dismissed";
 
 export type AgentActionPriority = "high" | "medium" | "low";
 
+// list 输入用于筛选建议动作；decision 输入必须指定 actionId 和操作者。
 export interface AgentActionQueueListInput {
   scenario?: AgentActionQueueScenario | string | null;
   actionType?: AgentActionType | string | null;
@@ -59,6 +62,7 @@ export interface AgentActionQueueErrorDefinition {
   recovery: string;
 }
 
+// 队列失败都停在 mock 边界，避免失败重试误触发 autonomous execution。
 export const AGENT_ACTION_QUEUE_ERROR_DEFINITIONS = {
   AGENT_ACTION_QUEUE_ACTION_ID_REQUIRED: {
     code: "AGENT_ACTION_QUEUE_ACTION_ID_REQUIRED",
@@ -117,8 +121,9 @@ export type AgentActionSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-agent-action-rules";
 };
 
+// provenance 是建议动作队列的安全账本，所有外部副作用都固定为 false。
 export interface AgentActionQueueProvenance {
-  source: typeof AGENT_ACTION_QUEUE_FIXTURE_SOURCE;
+  source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
@@ -127,7 +132,8 @@ export interface AgentActionQueueProvenance {
     | "fixture"
     | "rule-based-agent-action"
     | "rule-based-user-decision"
-    | "rule-based-state";
+    | "rule-based-state"
+    | "local-remote-store-query";
   autonomousExecutionStarted: false;
   externalSideEffectExecuted: false;
   externalNetworkRequested: false;
@@ -141,6 +147,7 @@ export interface AgentActionQueueProvenance {
   deviceRequested: false;
 }
 
+// QueueItem 是 UI 展示的待审核动作，不是已经执行的任务。
 export interface AgentActionQueueItem {
   actionId: string;
   actionType: AgentActionType;
@@ -169,6 +176,7 @@ export interface AgentActionQueuePayload {
   nextAction: string;
 }
 
+// DecisionPayload 记录用户对建议的接受/忽略结果，仍不代表外部动作执行。
 export interface AgentActionDecisionPayload {
   state: AgentActionQueueState;
   actionId: string;

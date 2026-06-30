@@ -1,3 +1,9 @@
+import {
+  connectionsByContactId,
+  getOrbitHybridRouteData,
+  sortedContacts,
+} from "./orbit-hybrid-route-data";
+
 export interface OrbitProfileView {
   bio: string;
   company: string;
@@ -22,55 +28,61 @@ export interface OrbitProfileViewModel {
   topics: string[];
 }
 
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
 export function getOrbitProfileViewModel(): OrbitProfileViewModel {
+  const data = getOrbitHybridRouteData();
+  const contacts = sortedContacts(data);
+  const connections = connectionsByContactId(data);
+  const connectionTopics = unique(
+    contacts.flatMap((contact) => connections.get(contact.id)?.sharedTopics ?? []),
+  );
+  const valueTypes = unique(
+    data.connections.flatMap((connection) =>
+      connection.valueTypes.map((value) => value.replace(/_/g, " ")),
+    ),
+  );
+  const intentOffers = unique(
+    data.eventParticipantIntents.flatMap((intent) => intent.canOffer),
+  );
+  const intentNeeds = unique(
+    data.eventParticipantIntents.flatMap((intent) => intent.lookingFor),
+  );
+  const title = data.profile.role ?? "Relationship Operator";
+  const company = data.account.name;
+
   return {
-    industries: [
-      "AI / 机器学习",
-      "金融 / FinTech",
-      "硬科技 / 半导体",
-      "消费 / 电商",
-      "SaaS / 企业服务",
-      "医疗 / 生命科学",
-      "综合商社",
-      "风险投资",
-      "其他",
-    ],
-    offeringTags: [
-      "日本本地化",
-      "渠道资源",
-      "供应链",
-      "技术合作",
-      "投融资",
-      "PR / 品牌",
-      "法务 / 合规",
-      "招聘 / 人才",
-      "海外拓展",
-    ],
+    industries: unique([
+      ...valueTypes,
+      ...contacts.map((contact) => contact.location ?? ""),
+      "Relationship operations",
+      "Community",
+      "Investment",
+      "Commerce",
+    ]).slice(0, 12),
+    offeringTags: unique([
+      ...intentOffers,
+      ...data.connections.flatMap((connection) => connection.suggestedActions ?? []),
+      "relationship context",
+    ]).slice(0, 12),
     profile: {
-      bio: "连续创业者，专注 AI 基础设施与出海工程团队搭建。",
-      company: "东京科技有限公司",
-      email: "ming.li@tokyo-tech.jp",
-      fullName: "李明",
-      headline: "把对的工程文化带到出海团队",
-      industry: "AI / 机器学习",
-      intro: "想认识在日做 GTM 与本地化的朋友，也乐意分享工程团队从 0 到 50 的经验。",
-      lineId: "ming.li",
-      offering: ["技术合作", "海外拓展", "招聘 / 人才"],
-      seeking: ["A 轮融资", "日本客户", "出海打法"],
-      title: "CTO",
-      topics: ["出海", "AI 应用", "硬件创业"],
-      wechatName: "mingli_tech",
+      bio: `${title} working from ${company}.`,
+      company,
+      email: "",
+      fullName: data.profile.displayName,
+      headline: `${title} · ${company}`,
+      industry: valueTypes[0] ?? "Relationship operations",
+      intro: "Use source-backed relationship data to decide who to meet, follow up with, and introduce.",
+      lineId: "",
+      offering: intentOffers.slice(0, 3),
+      seeking: intentNeeds.slice(0, 3),
+      title,
+      topics: connectionTopics.slice(0, 5),
+      wechatName: "",
     },
-    seekingTags: [
-      "种子轮",
-      "A 轮融资",
-      "日本客户",
-      "技术合伙人",
-      "出海打法",
-      "并购标的",
-      "代理 / 经销",
-      "联合营销",
-    ],
-    topics: ["出海", "跨境", "AI 应用", "硬件创业", "Web3", "ESG", "组织管理", "增长", "定价"],
+    seekingTags: unique([...intentNeeds, ...connectionTopics, "relevant introductions"]).slice(0, 12),
+    topics: unique([...connectionTopics, ...valueTypes, "follow-up", "warm introductions"]).slice(0, 12),
   };
 }

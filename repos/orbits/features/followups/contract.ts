@@ -4,6 +4,8 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
+// Followups contract 描述关系跟进任务的生成和展示模型。
+// 当前只生成可复核任务建议，不调用调度器、不写任务库、不发送通知。
 export const FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE =
   "fixture:features/followups/fixtures.ts" as const;
 
@@ -34,12 +36,14 @@ export type FollowupTaskTriggerKind =
 
 export type FollowupTaskPriority = "today" | "this_week" | "nurture";
 
+// list 输入用于读取队列；triggerKind/limit 只影响本地 fixture 过滤。
 export interface FollowupTaskGenerationListInput {
   scenario?: FollowupTaskGenerationScenario | string | null;
   triggerKind?: FollowupTaskTriggerKind | string | null;
   limit?: number | null;
 }
 
+// generate 输入用于从特定触发器或 connection 生成建议任务。
 export interface FollowupTaskGenerationGenerateInput {
   scenario?: FollowupTaskGenerationScenario | string | null;
   triggerKinds?: readonly (FollowupTaskTriggerKind | string)[] | null;
@@ -47,6 +51,7 @@ export interface FollowupTaskGenerationGenerateInput {
   limit?: number | null;
 }
 
+// 错误定义区分缺少 task、无 eligible trigger、pending guard 和 mock failure。
 export interface FollowupTaskGenerationErrorDefinition {
   code: FollowupTaskGenerationErrorCode;
   appCode: AppErrorCode;
@@ -105,6 +110,7 @@ export type FollowupTaskGenerationSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-followup-rules";
 };
 
+// Trigger 是任务建议的原因；false 标记说明没有读取真实 scheduler/数据库/provider。
 export interface FollowupTaskTrigger {
   triggerId: string;
   kind: FollowupTaskTriggerKind;
@@ -125,12 +131,14 @@ export interface FollowupTaskTrigger {
   externalNetworkRequested: false;
 }
 
+// audit 是给 UI/调试页展示的复核提示，提醒任务仍需人工验证证据。
 export interface FollowupTaskAudit {
   sourceLabel: string;
   providerBoundary: "scheduler false, AI false, persistence false";
   verificationAction: "Verify evidence";
 }
 
+// FollowupTask 是最终建议任务 DTO；它不是已经创建的真实 reminder。
 export interface FollowupTask {
   taskId: string;
   title: string;
@@ -157,8 +165,9 @@ export interface FollowupTask {
   externalNetworkRequested: false;
 }
 
+// provenance 汇总任务生成方式和所有未触发的外部能力。
 export interface FollowupTaskGenerationProvenance {
-  source: typeof FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE;
+  source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
@@ -166,7 +175,8 @@ export interface FollowupTaskGenerationProvenance {
   generationMethod:
     | "fixture"
     | "rule-based-task-generation"
-    | "rule-based-state";
+    | "rule-based-state"
+    | "local-remote-store-query";
   backgroundSchedulerRequested: false;
   liveTaskPersistenceRequested: false;
   liveDatabaseReadExecuted: false;
@@ -180,6 +190,7 @@ export interface FollowupTaskGenerationProvenance {
   notificationDelivered: false;
 }
 
+// payload 同时返回 triggers 和 tasks，便于 UI 解释每个建议任务从何而来。
 export interface FollowupTaskGenerationPayload {
   state: FollowupTaskGenerationState;
   triggers: readonly FollowupTaskTrigger[];

@@ -1,3 +1,5 @@
+// Connections service factory 管理关系证据和关系阶段/画像能力。
+// mock 实现把来源证据转成可解释的关系状态，不读取真实 CRM 或通讯录。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createMockRelationshipStageAndProfileService } from "./mock-profile-service";
 import { createMockConnectionEvidenceService } from "./mock-service";

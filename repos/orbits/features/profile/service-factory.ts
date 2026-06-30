@@ -1,3 +1,5 @@
+// Profile service factory 管理用户画像、文档抽取和信号复核队列。
+// 当前 mock 不读取真实文档或外部账号，抽取结果来自 fixture 边界。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createMockProfileDocumentExtractionService } from "./mock-extraction-service";
 import { createMockProfileService } from "./mock-service";

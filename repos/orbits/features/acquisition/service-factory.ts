@@ -1,3 +1,6 @@
+// Acquisition service factory 管理“联系人获取”相关的一组入口：
+// 手动创建、名片 OCR、二维码、活动导入、外部联系人导入、邮件/日历信号、推荐和去重合并。
+// 当前全部是 mock-first 实现，页面和 API route 通过这里统一取服务，避免直接依赖 fixture。
 import {
   createModuleServiceFactory,
   type ModuleMode,
@@ -24,6 +27,8 @@ import type { QrScanConnectService } from "./qr-contract";
 import type { ReferralRecommendationService } from "./referral-contract";
 import type { ContactAcquisitionDraftService } from "./service";
 
+// 聚合类型用于需要一次性拿到 acquisition 全家桶的页面/view model。
+// 每个字段仍然是独立 capability，未来可以逐个替换成 live 实现。
 export interface ContactAcquisitionServices {
   draftService: ContactAcquisitionDraftService;
   manualService: ManualContactCreationService;

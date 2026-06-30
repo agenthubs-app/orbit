@@ -1,4 +1,7 @@
+// Agent service factory 管理自主 agent 的动作队列、自治设置和外部动作沙箱。
+// 当前 mock 边界强调“预览和确认”，不会发送邮件、创建日程或执行真实外部动作。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createHybridAgentActionQueueService } from "./agent-action-queue-mock/hybrid-service";
 import { createMockExternalActionSandboxService } from "./mock-external-action-sandbox";
 import { createMockAgentActionQueueService } from "./mock-service";
 import { createMockAgentAutonomySettingsService } from "./mock-settings-service";
@@ -15,6 +18,7 @@ export const agentActionQueueServiceFactory =
   createModuleServiceFactory<AgentActionQueueService>({
     capabilityId: "agent-action-queue",
     implementations: {
+      hybrid: () => createHybridAgentActionQueueService(),
       mock: () => createMockAgentActionQueueService(),
     },
   });

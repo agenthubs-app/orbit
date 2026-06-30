@@ -1,3 +1,8 @@
+/**
+ * 共享 domain contract 测试。
+ *
+ * 验证 source type、关系阶段、价值类型、权限状态和 DTO 基础结构。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

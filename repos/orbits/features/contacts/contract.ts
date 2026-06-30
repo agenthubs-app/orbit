@@ -5,9 +5,13 @@ import type {
   SourceType,
 } from "../../shared/domain/source-types";
 
+// Contacts list contract 描述联系人列表、搜索和过滤能力。
+// 当前实现是 mock-first：所有数据来自 fixture，不读真实数据库或搜索索引。
 export const CONTACTS_LIST_SEARCH_FILTER_FIXTURE_SOURCE =
   "fixture:features/contacts/fixtures.ts" as const;
 
+// 这些过滤枚举既是 UI 可展示的选项，也是 mock service 的白名单。
+// 传入不在白名单内的 filter 会被当作 validation error。
 export const CONTACT_TAG_FILTERS = [
   "event:climate-founders-dinner",
   "topic:storage-pilots",
@@ -127,7 +131,7 @@ export interface ContactEvidence {
   source: ContactSourceReference;
   excerpt: string;
   capturedAt: string;
-  createdBy: "mock-contacts-list-search-and-filter-service";
+  createdBy: string;
 }
 
 export interface ContactRelationshipValue {
@@ -137,12 +141,15 @@ export interface ContactRelationshipValue {
   evidenceIds: readonly string[];
 }
 
+// ContactListItem 是列表页卡片的最小完整数据。
+// 安全标记字段必须保留在每条联系人上，方便 UI 证明没有调用真实外部服务。
 export interface ContactListItem {
   id: string;
   displayName: string;
   role: string;
   organization: string;
   location: string;
+  profileSnippet: string;
   relationshipContext: string;
   lastInteractionAt: string;
   nextAction: string;
@@ -151,8 +158,8 @@ export interface ContactListItem {
   tags: readonly ContactTagFilter[];
   value: ContactRelationshipValue;
   status: ContactStatusFilter;
-  databaseQueryExecuted: false;
-  searchIndexReadExecuted: false;
+  databaseQueryExecuted: boolean;
+  searchIndexReadExecuted: boolean;
   externalNetworkRequested: false;
   aiProviderRequested: false;
   calendarProviderRequested: false;
@@ -182,15 +189,20 @@ export interface ContactsAppliedFilters {
   valueFilters: readonly ContactValueFilter[];
 }
 
+// provenance 聚合整个列表请求的来源和副作用审计。
+// 即使未来替换成 live search，也应继续明确记录搜索索引、数据库和外部 provider 是否被访问。
 export interface ContactsListSearchProvenance {
   source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
   privacy: "demo-contacts-list-search-filter-only";
-  generationMethod: "fixture" | "rule-based-contacts-list-search-filter";
-  searchIndexReadExecuted: false;
-  databaseQueryExecuted: false;
+  generationMethod:
+    | "fixture"
+    | "local-remote-store-query"
+    | "rule-based-contacts-list-search-filter";
+  searchIndexReadExecuted: boolean;
+  databaseQueryExecuted: boolean;
   externalNetworkRequested: false;
   deviceRequested: false;
   aiProviderRequested: false;
@@ -199,6 +211,8 @@ export interface ContactsListSearchProvenance {
   notificationDelivered: false;
 }
 
+// Payload 是 contacts page 的服务端 view model 输入。
+// appliedFilters/availableFilters 支撑筛选 UI，contacts 渲染列表，nextAction 指导安全下一步。
 export interface ContactsListSearchPayload {
   state: ContactsListSearchFilterState;
   query: string;

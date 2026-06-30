@@ -1,3 +1,5 @@
+// Notifications service factory 管理提醒排程/通知能力。
+// 当前 mock 只生成可复核的通知计划，不投递真实通知。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createMockReminderScheduleNotificationService } from "./mock-service";
 import type { ReminderScheduleNotificationService } from "./service";

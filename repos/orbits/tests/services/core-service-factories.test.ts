@@ -1,3 +1,8 @@
+/**
+ * 核心 service factory 测试。
+ *
+ * 锁住各 feature 默认走 mock、live 未实现时受控失败、以及 Orbit AI service 解析。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

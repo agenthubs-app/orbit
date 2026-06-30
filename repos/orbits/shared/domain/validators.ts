@@ -5,6 +5,8 @@ import {
   isSourceType,
 } from "./source-types";
 
+// validators 是轻量 DTO 边界检查，不做业务推断。
+// 它们用于测试和 route/service 入口确认 payload 是否保留 source/evidence 基础字段。
 export interface ContractValidationResult {
   valid: boolean;
   errors: string[];
@@ -32,6 +34,7 @@ function validateSourceReference(
   label: string,
   errors: string[],
 ): void {
+  // source 是 provenance 链路的最小单元；缺失 source 会让调试和审计失去上下文。
   if (!isRecord(value)) {
     errors.push(`${label} is required`);
     return;
@@ -51,6 +54,7 @@ function requireEvidenceIds(
   label: string,
   errors: string[],
 ): void {
+  // evidenceIds 必须非空，确保 UI 展示的关系判断都能回溯到来源证据。
   if (!Array.isArray(record.evidenceIds) || record.evidenceIds.length === 0) {
     errors.push(`${label}.evidenceIds must contain at least one evidence id`);
     return;

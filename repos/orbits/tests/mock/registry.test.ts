@@ -1,3 +1,8 @@
+/**
+ * 共享 mock registry/state store 测试。
+ *
+ * 锁住 fixture variant 注册、reset、clone-on-read 和状态更新语义。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

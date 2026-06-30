@@ -261,7 +261,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
           {t({ en: "Good evening, ", zh: "晚上好，" })}
           {viewModel.me.initial}
         </h1>
-        <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>{`Tokyo Business Connect · ${t({ en: "Tokyo Midtown Hall B", zh: "东京中城 Hall B" })}`}</div>
+        <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>{`${viewModel.eventName} · ${viewModel.eventVenue}`}</div>
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button className="btn btn-primary" onClick={() => navigateTo("/app/party/checkin")} style={{ flex: "1 1 0%" }}>
             <Icon color="var(--on-dark)" name="ticket" size={16} />
@@ -569,7 +569,7 @@ function PartyAgenda({ t, viewModel }: { t: Translate; viewModel: OrbitPartyView
         <div>
           <div className="eyebrow">AGENDA</div>
           <h1 className="h-display orbit-party-network-title">{t({ en: "Agenda", zh: "流程议程" })}</h1>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{`Tokyo Business Connect · ${t({ en: "Tonight's agenda", zh: "今晚流程" })}`}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{`${viewModel.eventName} · ${t({ en: "Agenda", zh: "流程" })}`}</div>
         </div>
         <span className="badge badge-ended">{t({ en: "Ended", zh: "已结束" })}</span>
       </div>
@@ -727,6 +727,7 @@ function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; pers
 
 export function OrbitRealPartyCheckin() {
   const { t } = useOrbitLanguage();
+  const viewModel = getOrbitPartyViewModel();
   const [checkedIn, setCheckedIn] = useState(false);
   const [redirectIn, setRedirectIn] = useState(3);
   const [returnedToParty, setReturnedToParty] = useState(false);
@@ -760,7 +761,7 @@ export function OrbitRealPartyCheckin() {
   }
 
   if (returnedToParty) {
-    return <OrbitRealParty viewModel={getOrbitPartyViewModel()} />;
+    return <OrbitRealParty viewModel={viewModel} />;
   }
 
   if (checkedIn) {
@@ -779,7 +780,7 @@ export function OrbitRealPartyCheckin() {
             </div>
             <div className="eyebrow">CHECK-IN COMPLETE</div>
             <h1 className="h-title">{t({ en: "Check-in complete", zh: "签到完毕" })}</h1>
-            <p className="orbit-party-done-event">Tokyo Business Connect</p>
+            <p className="orbit-party-done-event">{viewModel.eventName}</p>
             <div className="orbit-party-done-meta">
               <span className="badge badge-live">
                 <Icon name="check" size={13} />

@@ -1,4 +1,7 @@
+// Dashboard service factory 管理仪表盘聚合、网络分布分析和机会提醒分析。
+// 当前所有数据来自 mock analytics，便于页面稳定展示指标和来源解释。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createHybridDashboardAggregateService } from "./dashboard-aggregate-mock/hybrid-service";
 import { createMockNetworkDistributionAnalyticsService } from "./mock-distribution-service";
 import { createMockOpportunityReminderAnalyticsService } from "./mock-opportunity-service";
 import { createMockDashboardAggregateService } from "./mock-service";
@@ -10,6 +13,7 @@ export const dashboardAggregateServiceFactory =
   createModuleServiceFactory<DashboardAggregateService>({
     capabilityId: "dashboard-aggregate",
     implementations: {
+      hybrid: () => createHybridDashboardAggregateService(),
       mock: () => createMockDashboardAggregateService(),
     },
   });

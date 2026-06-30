@@ -4,6 +4,8 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
+// Dashboard contract 是首页跨模块聚合的只读 DTO。
+// 它汇总联系人、关系价值、跟进、沉睡联系人和近期活动，不执行 live analytics。
 export const DASHBOARD_AGGREGATE_FIXTURE_SOURCE =
   "fixture:features/dashboard/contract.ts" as const;
 
@@ -28,6 +30,7 @@ export type DashboardRecentActivityType =
   | "followup_due"
   | "dormant";
 
+// aggregate input 允许限制近期活动数量；summary input 用于轻量概览。
 export interface DashboardAggregateInput {
   scenario?: DashboardAggregateScenario | string | null;
   activityLimit?: number | null;
@@ -37,6 +40,7 @@ export interface DashboardAggregateSummaryInput {
   scenario?: DashboardAggregateScenario | string | null;
 }
 
+// Dashboard 目前只有 controlled failure，一旦失败也必须停在 mock 边界。
 export interface DashboardAggregateErrorDefinition {
   code: DashboardAggregateErrorCode;
   appCode: AppErrorCode;
@@ -71,6 +75,7 @@ export type DashboardAggregateSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-dashboard-aggregate-rules";
 };
 
+// 以下 aggregate 类型对应首页区块，按 UI 信息架构组织而不是按底层表组织。
 export interface DashboardRelationshipAssetTotals {
   contacts: number;
   connections: number;
@@ -139,8 +144,9 @@ export interface DashboardRecentActivity {
   evidenceIds: readonly string[];
 }
 
+// provenance 是 dashboard 聚合的安全账本；当前没有真实分析查询或数据库读写。
 export interface DashboardAggregateProvenance {
-  source: typeof DASHBOARD_AGGREGATE_FIXTURE_SOURCE;
+  source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
@@ -149,11 +155,12 @@ export interface DashboardAggregateProvenance {
     | "fixture"
     | "rule-based-summary"
     | "rule-based-state"
-    | "rule-based-activity-limit";
+    | "rule-based-activity-limit"
+    | "local-remote-store-query";
   liveAnalyticsQueryExecuted: false;
   productionAggregateReadExecuted: false;
   externalNetworkRequested: false;
-  databaseReadExecuted: false;
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   aiProviderRequested: false;
   calendarProviderRequested: false;
@@ -162,6 +169,7 @@ export interface DashboardAggregateProvenance {
   deviceRequested: false;
 }
 
+// 完整聚合 payload 供首页主视图使用。
 export interface DashboardAggregatePayload {
   state: DashboardAggregateState;
   relationshipAssetTotals: DashboardRelationshipAssetTotals;
@@ -176,6 +184,7 @@ export interface DashboardAggregatePayload {
   nextAction: string;
 }
 
+// summary metric 是更小的读模型，适合顶部指标或导航摘要。
 export interface DashboardSummaryMetric {
   id:
     | "relationship-assets"
@@ -188,6 +197,7 @@ export interface DashboardSummaryMetric {
   evidenceIds: readonly string[];
 }
 
+// summary payload 只保留指标和近期活动，避免轻量 UI 依赖完整 aggregate。
 export interface DashboardAggregateSummaryPayload {
   state: DashboardAggregateState;
   metrics: readonly DashboardSummaryMetric[];

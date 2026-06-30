@@ -1,4 +1,7 @@
+// Contacts service factory 管理联系人列表搜索/过滤和单个联系人详情编辑预览。
+// 当前实现保持 mock-only：列表不读真实搜索索引，详情更新不写真实联系人存储。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createHybridContactsListSearchAndFilterService } from "./contacts-list-search-and-filter-mock/hybrid-service";
 import { createMockContactDetailTagStatusService } from "./mock-detail-service";
 import { createMockContactsListSearchAndFilterService } from "./mock-service";
 import type { ContactDetailTagStatusService } from "./detail-contract";
@@ -8,6 +11,7 @@ export const contactsListSearchAndFilterServiceFactory =
   createModuleServiceFactory<ContactsListSearchAndFilterService>({
     capabilityId: "contacts-list-search-filter",
     implementations: {
+      hybrid: () => createHybridContactsListSearchAndFilterService(),
       mock: () => createMockContactsListSearchAndFilterService(),
     },
   });

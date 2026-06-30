@@ -1,3 +1,5 @@
+// Recommendations service factory 管理活动推荐和活动价值推荐。
+// 当前 mock 根据 fixture 和解释性规则返回推荐，不调用真实推荐模型。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createMockEventValueRecommendationService } from "./mock-event-value-service";
 import { createMockEventRecommendationService } from "./mock-service";

@@ -1,4 +1,8 @@
+// Events service factory 管理活动相关的一组能力：
+// 活动 CRUD/导入、参会者名册、目标准备、遇见记录、想认识和会后联系人复盘。
+// 当前 mock 服务只生成可复核页面数据，不访问真实日历、活动平台或联系人库。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createHybridEventCrudAndImportService } from "./event-crud-and-import-mock/hybrid-service";
 import { createMockEventAttendeeRosterService } from "./mock-attendee-service";
 import { createMockEventEncounterNoteService } from "./mock-encounter-service";
 import { createMockEventGoalAndReadinessService } from "./mock-goal-service";
@@ -16,6 +20,7 @@ export const eventCrudAndImportServiceFactory =
   createModuleServiceFactory<EventCrudAndImportService>({
     capabilityId: "event-crud-import",
     implementations: {
+      hybrid: () => createHybridEventCrudAndImportService(),
       mock: () => createMockEventCrudAndImportService(),
     },
   });

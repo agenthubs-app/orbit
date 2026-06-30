@@ -1,5 +1,6 @@
 import { getOrbitContactsViewModel } from "./orbit-contacts-route-view-model";
 import { getOrbitLandingViewModel, type OrbitLandingEventView } from "./orbit-landing-route-view-model";
+import { getOrbitProfileViewModel } from "./orbit-profile-route-view-model";
 
 export interface OrbitHomeAccountView {
   fullName: string;
@@ -22,13 +23,14 @@ export interface OrbitHomeViewModel {
 export function getOrbitHomeViewModel(): OrbitHomeViewModel {
   const landing = getOrbitLandingViewModel();
   const contacts = getOrbitContactsViewModel();
+  const profile = getOrbitProfileViewModel();
   const events = landing.events.filter((event) => event.stats.youRsvped);
 
   return {
     account: {
       fullName: landing.account.fullName,
-      headline: "CTO · 东京科技",
-      initial: landing.account.fullName.slice(0, 1) || "李",
+      headline: profile.profile.headline,
+      initial: landing.account.fullName.slice(0, 1) || "O",
     },
     events,
     stats: {

@@ -1,23 +1,37 @@
+/**
+ * 全局 mock fixture 注册表。
+ *
+ * 这里把账户、profile、活动、联系人、证据、任务、Agent 动作和权限等 seed 数据
+ * 汇总为一个 `MockRuntimeFixtures`。共享 mock runtime 会基于它 clone 状态，
+ * 让各 capability 在没有 live provider 时也能使用同一组 source-backed 数据。
+ */
 import type {
   AccountDTO,
   AgentActionDTO,
+  AiAnalysisDTO,
   ConnectionDTO,
   ContactDTO,
   ConversationDTO,
   DashboardDTO,
+  EventParticipantIntentDTO,
   EventDTO,
+  InteractionMemoryDTO,
   IsoDateTimeString,
+  MatchRecommendationDTO,
   MessageDTO,
   NotificationDTO,
   OrbitId,
   PermissionStateDTO,
+  RecommendationTestRecordDTO,
   RelationshipEvidenceDTO,
   TaskDTO,
   UserProfileDTO,
 } from "../domain/contracts";
 import type { SourceReferenceDTO } from "../domain/source-types";
+import { generatedRelationshipFixtures } from "./generated-relationship-fixtures";
 
 export const MOCK_FIXTURE_COLLECTION_NAMES = [
+  // collection 名称同时用于 reset/registry 展示和 state store 的统一遍历。
   "accounts",
   "profiles",
   "events",
@@ -32,6 +46,11 @@ export const MOCK_FIXTURE_COLLECTION_NAMES = [
   "agentActions",
   "permissions",
   "notifications",
+  "eventParticipantIntents",
+  "aiAnalyses",
+  "matchRecommendations",
+  "interactionMemories",
+  "recommendationTests",
 ] as const;
 
 export type MockFixtureCollectionName =
@@ -60,8 +79,13 @@ export interface MockRuntimeFixtures {
   profiles: UserProfileDTO[];
   events: EventDTO[];
   attendees: EventAttendeeDTO[];
+  eventParticipantIntents: EventParticipantIntentDTO[];
   contacts: ContactDTO[];
   connections: ConnectionDTO[];
+  aiAnalyses: AiAnalysisDTO[];
+  matchRecommendations: MatchRecommendationDTO[];
+  interactionMemories: InteractionMemoryDTO[];
+  recommendationTests: RecommendationTestRecordDTO[];
   evidence: RelationshipEvidenceDTO[];
   tasks: TaskDTO[];
   conversations: ConversationDTO[];
@@ -82,6 +106,7 @@ const contactNiaId = "contact_nia_patel";
 const connectionMinaId = "connection_mina_tanaka";
 const connectionNiaId = "connection_nia_patel";
 const conversationMinaId = "conversation_mina_followup";
+const matchRecommendationMinaId = "match_recommendation_mina_operator_intro";
 
 const generatedAt = "2026-06-24T12:00:00.000Z";
 const eventSource: SourceReferenceDTO = {
@@ -100,7 +125,8 @@ const systemSource: SourceReferenceDTO = {
   label: "Sprint 6 mock runtime seed",
 };
 
-export const defaultMockFixtures: MockRuntimeFixtures = {
+export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
+  // 默认 fixture 描述一套完整关系图：活动导入 -> 参会者 -> 联系人 -> 证据 -> Agent 建议。
   id: "mock_fixture_default",
   label: "Default Orbit relationship graph",
   description:
@@ -163,6 +189,36 @@ export const defaultMockFixtures: MockRuntimeFixtures = {
       createdBy: profileId,
     },
     {
+      id: "evidence_mina_roundtable_note",
+      sourceType: "manual",
+      sourceId: `${eventId}/${attendeeMinaId}/roundtable-note`,
+      summary:
+        "Roundtable note: Mina can share marketplace hiring lessons and prefers Japanese follow-up.",
+      occurredAt: "2026-06-24T10:28:00.000Z",
+      confidence: 0.84,
+      createdBy: profileId,
+    },
+    {
+      id: "evidence_nia_community_note",
+      sourceType: "manual",
+      sourceId: `${eventId}/${attendeeNiaId}/community-note`,
+      summary:
+        "Event note: Nia offered community context but should not receive a sales intro recommendation.",
+      occurredAt: "2026-06-24T10:38:00.000Z",
+      confidence: 0.8,
+      createdBy: profileId,
+    },
+    {
+      id: "evidence_dirty_roster_duplicate",
+      sourceType: "event_import",
+      sourceId: `${eventId}/dirty-row/duplicate-mina`,
+      summary:
+        "Recommendation test fixture for a duplicate attendee row with partial organization text.",
+      occurredAt: "2026-06-24T09:05:00.000Z",
+      confidence: 0.74,
+      createdBy: profileId,
+    },
+    {
       id: "evidence_agent_recommendation",
       sourceType: "agent_action",
       sourceId: "agent_action_draft_mina_intro",
@@ -220,6 +276,53 @@ export const defaultMockFixtures: MockRuntimeFixtures = {
       updatedAt: generatedAt,
     },
   ],
+  eventParticipantIntents: [
+    {
+      id: "event_intent_mina_tanaka_orbit_summit",
+      eventId,
+      attendeeId: attendeeMinaId,
+      contactId: contactMinaId,
+      lookingFor: [
+        "operator intros for hiring marketplaces",
+        "Japan go-to-market context",
+      ],
+      canOffer: [
+        "marketplace product lessons",
+        "founder hiring experiments",
+      ],
+      preferredLanguage: "ja",
+      confidence: 0.86,
+      source: {
+        type: "manual",
+        id: `${eventId}/${attendeeMinaId}/roundtable-note`,
+        label: "Orbit Summit roundtable note",
+      },
+      evidenceIds: ["evidence_mina_roundtable_note", "evidence_mina_email"],
+      createdAt: "2026-06-24T10:30:00.000Z",
+      updatedAt: generatedAt,
+    },
+    {
+      id: "event_intent_nia_patel_orbit_summit",
+      eventId,
+      attendeeId: attendeeNiaId,
+      contactId: contactNiaId,
+      lookingFor: ["operator community signal exchange"],
+      canOffer: [
+        "community-led referral context",
+        "warm introductions to civic operators",
+      ],
+      preferredLanguage: "en",
+      confidence: 0.81,
+      source: {
+        type: "manual",
+        id: `${eventId}/${attendeeNiaId}/community-note`,
+        label: "Orbit Summit community note",
+      },
+      evidenceIds: ["evidence_nia_referral", "evidence_nia_community_note"],
+      createdAt: "2026-06-24T10:39:00.000Z",
+      updatedAt: generatedAt,
+    },
+  ],
   contacts: [
     {
       id: contactMinaId,
@@ -263,6 +366,18 @@ export const defaultMockFixtures: MockRuntimeFixtures = {
       valueTypes: ["commercial_opportunity", "knowledge_exchange"],
       summary:
         "Mina is exploring hiring-market operator intros after the Orbit Summit roundtable.",
+      relationshipStrength: 78,
+      trustLevel: "warm",
+      businessRelevanceScore: 84,
+      sharedTopics: [
+        "hiring marketplaces",
+        "operator introductions",
+        "Tokyo founder community",
+      ],
+      suggestedActions: [
+        "draft warm intro to marketplace operator",
+        "schedule post-event follow-up within 24 hours",
+      ],
       source: {
         type: "email_signal",
         id: "email_thread_mina_followup",
@@ -280,6 +395,18 @@ export const defaultMockFixtures: MockRuntimeFixtures = {
       valueTypes: ["referral_path", "community_context"],
       summary:
         "Nia can provide community context and warm introductions for operator referrals.",
+      relationshipStrength: 64,
+      trustLevel: "emerging",
+      businessRelevanceScore: 72,
+      sharedTopics: [
+        "operator communities",
+        "referral paths",
+        "civic technology",
+      ],
+      suggestedActions: [
+        "capture community context",
+        "ask permission before requesting a sales introduction",
+      ],
       source: {
         type: "referral",
         id: `${eventId}/${attendeeNiaId}/intro`,
@@ -288,6 +415,158 @@ export const defaultMockFixtures: MockRuntimeFixtures = {
       evidenceIds: ["evidence_nia_referral"],
       createdAt: "2026-06-24T10:45:00.000Z",
       updatedAt: generatedAt,
+    },
+  ],
+  aiAnalyses: [
+    {
+      id: "ai_analysis_mina_event_intent",
+      analysisType: "event_intent",
+      target: {
+        type: "attendee",
+        id: attendeeMinaId,
+      },
+      resultJson: {
+        extractedSignals: [
+          "operator intros for hiring marketplaces",
+          "Japan go-to-market context",
+          "prefers Japanese follow-up",
+        ],
+        rejectedFields: {
+          personalityLabel: "Too subjective for a top-level query field.",
+        },
+      },
+      confidence: 0.86,
+      source: {
+        type: "agent_action",
+        id: "agent_action_draft_mina_intro",
+        label: "Mock semantic intent extraction",
+      },
+      evidenceIds: ["evidence_mina_roundtable_note", "evidence_mina_email"],
+      createdAt: "2026-06-24T11:34:00.000Z",
+    },
+    {
+      id: "ai_analysis_mina_relationship_profile",
+      analysisType: "relationship_profile",
+      target: {
+        type: "connection",
+        id: connectionMinaId,
+      },
+      resultJson: {
+        rationale:
+          "Mina's explicit follow-up request plus badge context justify a warm but not trusted relationship.",
+        scoringInputs: {
+          recency: "same-day",
+          evidenceCount: 3,
+          directAsk: true,
+        },
+      },
+      confidence: 0.82,
+      source: agentSource,
+      evidenceIds: [
+        "evidence_mina_badge",
+        "evidence_mina_roundtable_note",
+        "evidence_mina_email",
+      ],
+      createdAt: "2026-06-24T11:35:00.000Z",
+    },
+  ],
+  matchRecommendations: [
+    {
+      id: matchRecommendationMinaId,
+      eventId,
+      attendeeId: attendeeMinaId,
+      contactId: contactMinaId,
+      connectionId: connectionMinaId,
+      recommendationType: "warm_intro",
+      score: 91,
+      businessRelevanceScore: 84,
+      sharedTopics: [
+        "hiring marketplaces",
+        "operator introductions",
+        "Tokyo founder community",
+      ],
+      suggestedActions: [
+        "draft warm intro to marketplace operator",
+        "schedule post-event follow-up within 24 hours",
+      ],
+      reason:
+        "Mina made a direct operator-intro ask and has enough evidence to justify a confirmation-gated draft.",
+      source: agentSource,
+      evidenceIds: ["evidence_mina_email", "evidence_agent_recommendation"],
+      createdAt: "2026-06-24T11:36:00.000Z",
+      updatedAt: generatedAt,
+    },
+  ],
+  interactionMemories: [
+    {
+      id: "interaction_memory_mina_intro_request",
+      contactId: contactMinaId,
+      connectionId: connectionMinaId,
+      conversationId: conversationMinaId,
+      messageId: "message_mina_intro_request",
+      memoryType: "follow_up_request",
+      summary:
+        "Mina asked for an operator intro related to hiring marketplaces after the summit.",
+      occurredAt: "2026-06-24T11:20:00.000Z",
+      confidence: 0.88,
+      source: {
+        type: "email_signal",
+        id: "email_thread_mina_followup/message_1",
+        label: "Mock email signal message",
+      },
+      evidenceIds: ["evidence_mina_email"],
+      createdAt: "2026-06-24T11:21:00.000Z",
+    },
+  ],
+  recommendationTests: [
+    {
+      id: "recommendation_test_golden_mina_intro",
+      caseType: "golden_match",
+      eventId,
+      attendeeId: attendeeMinaId,
+      contactId: contactMinaId,
+      connectionId: connectionMinaId,
+      recommendationId: matchRecommendationMinaId,
+      expectedOutcome: "recommend",
+      reason:
+        "Direct ask, warm relationship strength, and source-backed business relevance should produce a recommendation.",
+      confidence: 0.93,
+      source: systemSource,
+      evidenceIds: ["evidence_mina_email", "evidence_agent_recommendation"],
+      createdAt: generatedAt,
+    },
+    {
+      id: "recommendation_test_negative_nia_sales_intro",
+      caseType: "negative_case",
+      eventId,
+      attendeeId: attendeeNiaId,
+      contactId: contactNiaId,
+      connectionId: connectionNiaId,
+      expectedOutcome: "suppress",
+      reason:
+        "Nia offered community context, not a sales-path ask, so an immediate sales intro should be suppressed.",
+      confidence: 0.79,
+      source: systemSource,
+      evidenceIds: ["evidence_nia_referral", "evidence_nia_community_note"],
+      createdAt: generatedAt,
+    },
+    {
+      id: "recommendation_test_dirty_duplicate_mina_row",
+      caseType: "dirty_data",
+      eventId,
+      attendeeId: attendeeMinaId,
+      contactId: contactMinaId,
+      expectedOutcome: "manual_review",
+      reason:
+        "Duplicate attendee-like input should be reviewed instead of creating a second recommendation target.",
+      confidence: 0.74,
+      source: {
+        type: "event_import",
+        id: `${eventId}/dirty-row/duplicate-mina`,
+        label: "Dirty roster row fixture",
+      },
+      evidenceIds: ["evidence_dirty_roster_duplicate"],
+      createdAt: generatedAt,
     },
   ],
   tasks: [
@@ -403,3 +682,70 @@ export const defaultMockFixtures: MockRuntimeFixtures = {
     },
   ],
 };
+
+function withGeneratedTaskConnectionIds(
+  fixtures: MockRuntimeFixtures,
+): MockRuntimeFixtures {
+  const fallbackAccountId = fixtures.accounts[0]?.id ?? "account_orbit_generated";
+  const contactsById = new Map(
+    fixtures.contacts.map((contact) => [contact.id, contact]),
+  );
+  const connectionsByContactId = new Map(
+    fixtures.connections.map((connection) => [
+      connection.contactId,
+      connection.id,
+    ]),
+  );
+  const synthesizedConnections: ConnectionDTO[] = [];
+
+  // Generated follow-up tasks are task-first records; keep the exported graph
+  // source-consistent by materializing the relationship edge they depend on.
+  const tasks = fixtures.tasks.map((task) => {
+    if (task.connectionId || !task.contactId) {
+      return task;
+    }
+
+    const connectionId =
+      connectionsByContactId.get(task.contactId) ??
+      `connection_for_${task.id}`;
+
+    if (!connectionsByContactId.has(task.contactId)) {
+      const contact = contactsById.get(task.contactId);
+
+      synthesizedConnections.push({
+        id: connectionId,
+        accountId: fallbackAccountId,
+        contactId: task.contactId,
+        stage: task.status === "completed" ? "active" : "needs_follow_up",
+        valueTypes: ["commercial_opportunity"],
+        summary: contact
+          ? `Generated follow-up task relationship for ${contact.displayName}.`
+          : `Generated follow-up task relationship for ${task.contactId}.`,
+        relationshipStrength: 50,
+        trustLevel: "emerging",
+        businessRelevanceScore: 50,
+        sharedTopics: ["generated follow-up"],
+        suggestedActions: [task.title],
+        source: task.source,
+        evidenceIds: task.evidenceIds,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      });
+      connectionsByContactId.set(task.contactId, connectionId);
+    }
+
+    return { ...task, connectionId };
+  });
+
+  return {
+    ...fixtures,
+    connections: [
+      ...fixtures.connections,
+      ...synthesizedConnections,
+    ],
+    tasks,
+  };
+}
+
+export const defaultMockFixtures: MockRuntimeFixtures =
+  withGeneratedTaskConnectionIds(generatedRelationshipFixtures);

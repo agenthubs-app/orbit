@@ -1,3 +1,8 @@
+/**
+ * Capability registry 与 module mode 测试。
+ *
+ * 验证 mock/hybrid/live mode 解析、service factory 和 capability registration。
+ */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -106,6 +111,39 @@ test("module mode service factories honor ORBIT_MODULE_MODE when mode is omitted
     } else {
       process.env.ORBIT_MODULE_MODE = previousMode;
     }
+  }
+});
+
+test("module mode service factories fall back to mock for hybrid while keeping live closed", () => {
+  const serviceFactory = createModuleServiceFactory({
+    capabilityId: "mock-only-capability",
+    defaultMode: "mock",
+    implementations: {
+      mock: ({ capabilityId, requestedMode }) => ({
+        capabilityId,
+        requestedMode,
+        serviceName: "mock-only",
+      }),
+    },
+  });
+
+  assert.deepEqual(serviceFactory.create("hybrid"), {
+    success: true,
+    mode: "hybrid",
+    service: {
+      capabilityId: "mock-only-capability",
+      requestedMode: "hybrid",
+      serviceName: "mock-only",
+    },
+  });
+
+  const live = serviceFactory.create("live");
+
+  assert.equal(live.success, false);
+  if (!live.success) {
+    assert.equal(live.error.code, "NOT_IMPLEMENTED");
+    assert.equal(live.error.requestedMode, "live");
+    assert.deepEqual(live.error.availableModes, ["mock"]);
   }
 });
 

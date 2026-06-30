@@ -4,6 +4,8 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
+// Chat contract 描述传统聊天页的 mock-first 会话模型。
+// 它不是 live Orbit Agent：这里不调用模型、不走 websocket、不写生产消息存储。
 export const CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE =
   "fixture:features/chat/fixtures.ts" as const;
 
@@ -54,6 +56,8 @@ export type ChatMessageDeliveryState =
   | "mock_recorded_locally"
   | "not_sent";
 
+// 三类输入分别对应侧栏列表、消息线程、发送消息。
+// scenario 用于测试 empty/pending/failure；conversationId/body 先做本地校验。
 export interface ChatConversationListInput {
   scenario?: ChatConversationMockScenario | string | null;
 }
@@ -69,6 +73,7 @@ export interface ChatSendMessageInput {
   scenario?: ChatConversationMockScenario | string | null;
 }
 
+// 这里保留 service interface 是为了让 contract 和 service.ts 使用同一能力形状。
 export interface ChatConversationMessageService {
   listConversations: (
     input?: ChatConversationListInput,
@@ -79,6 +84,7 @@ export interface ChatConversationMessageService {
   sendMessage: (input: ChatSendMessageInput) => ChatSendMessageResult;
 }
 
+// 聊天错误定义显式列出恢复方式，防止调用方在失败时误触发真实传输层。
 export interface ChatConversationMockErrorDefinition {
   code: ChatConversationMockErrorCode;
   appCode: AppErrorCode;
@@ -152,6 +158,8 @@ export type ChatSourceReference = SourceReferenceDTO & {
   generatedBy: "mock-chat-conversation-rules";
 };
 
+// one-to-one context 是聊天页和关系图之间的桥梁：
+// 每个会话都附带联系人、关系阶段、推荐跟进和证据来源。
 export interface ChatOneToOneContext {
   contactId: string;
   participantName: string;
@@ -164,6 +172,7 @@ export interface ChatOneToOneContext {
   evidenceIds: readonly string[];
 }
 
+// 会话摘要包含大量 false 标记，表示 mock 聊天没有打开实时传输或外部 provider。
 export interface ChatConversationSummary {
   conversationId: string;
   status: ChatConversationStatus;
@@ -190,6 +199,7 @@ export interface ChatConversationSummary {
   deviceRequested: false;
 }
 
+// ChatMessage 是线程里的单条消息 DTO；deliveryState 只描述 mock 层接收/记录状态。
 export interface ChatMessage {
   messageId: string;
   conversationId: string;
@@ -213,6 +223,7 @@ export interface ChatMessage {
   deviceRequested: false;
 }
 
+// 发送状态用于控制 UI 按钮：pending/blocked 时不应该允许“真实发送”。
 export interface ChatSendMessageState {
   status: SendMessageStatus;
   canSendInMock: boolean;
@@ -225,7 +236,7 @@ export interface ChatSendMessageState {
 }
 
 export interface ChatConversationMockProvenance {
-  source: typeof CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE;
+  source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
@@ -235,7 +246,8 @@ export interface ChatConversationMockProvenance {
     | "rule-based-list"
     | "rule-based-thread"
     | "rule-based-send"
-    | "rule-based-state";
+    | "rule-based-state"
+    | "local-remote-store-query";
   realtimeTransportRequested: false;
   websocketSubscriptionRequested: false;
   productionMessageStorageRequested: false;

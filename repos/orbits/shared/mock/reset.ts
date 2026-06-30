@@ -13,6 +13,8 @@ import {
 
 export const MOCK_RESET_FIXTURE_SOURCE = "fixture:shared/mock/reset.ts";
 
+// reset 服务是开发/测试控制面，不是生产数据重置。
+// 它只把当前 mock scenario 恢复到确定性 fixture，并通过 provenance 证明没有外部副作用。
 export const MOCK_RESET_ERROR_CODES = [
   "MOCK_RESET_SCENARIO_NOT_FOUND",
   "MOCK_RESET_CONTROLLED_FAILURE",
@@ -100,6 +102,7 @@ export interface MockDataResetService {
 }
 
 function createResetProvenance(evidenceIds: readonly string[]): MockResetProvenance {
+  // reset provenance 和 scenario provenance 分开，方便 API 响应说明“重置动作”和“被选场景”来源。
   return {
     source: MOCK_RESET_FIXTURE_SOURCE,
     scenarioSource: MOCK_SCENARIO_FIXTURE_SOURCE,
@@ -119,6 +122,7 @@ function createResetProvenance(evidenceIds: readonly string[]): MockResetProvena
 }
 
 function success(data: MockResetPayload): MockResetResult {
+  // 成功 payload clone 后返回，避免 route 或测试修改 selectedScenario 引用。
   return {
     success: true,
     data: cloneMockState(data),
@@ -159,10 +163,12 @@ export function mockResetFailureContext(
 }
 
 function requestedScenarioId(input?: MockResetInput): string {
+  // 没传 scenario 时回到默认 active-event demo，保证 reset API 有稳定默认行为。
   return input?.scenarioId?.trim() || DEFAULT_MOCK_SCENARIO_ID;
 }
 
 export function createMockDataResetService(): MockDataResetService {
+  // failure scenario 是专门用来测试错误 envelope 的，不允许被 reset 当作成功状态激活。
   return {
     resetMockData(input = {}) {
       const scenario = getMockScenarioFixture(requestedScenarioId(input));

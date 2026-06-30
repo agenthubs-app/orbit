@@ -1,7 +1,11 @@
+// 模块模式是整个代码库的运行时切换约定：
+// mock 用于可重复的本地/测试数据，live 用于真实 provider，
+// hybrid 预留给“部分真实、部分 mock”的迁移状态。
 export const MODULE_MODES = ["mock", "hybrid", "live"] as const;
 
 export type ModuleMode = (typeof MODULE_MODES)[number];
 
+// 默认必须保守地停在 mock，避免缺环境变量时意外调用真实服务。
 export const DEFAULT_MODULE_MODE: ModuleMode = "mock";
 
 export const NOT_IMPLEMENTED_ERROR_CODE = "NOT_IMPLEMENTED" as const;
@@ -49,6 +53,7 @@ export interface ModuleServiceFactory<TService> {
   create: (mode?: ModuleMode | string) => ServiceResolution<TService>;
 }
 
+// mode 可以来自 URL、测试入参或环境变量，所以统一做 trim/lowercase 和白名单校验。
 function isModuleMode(value: string): value is ModuleMode {
   return MODULE_MODES.includes(value as ModuleMode);
 }
@@ -69,6 +74,8 @@ export function resolveModuleMode(
   return DEFAULT_MODULE_MODE;
 }
 
+// 缺少某个实现时返回结构化失败，而不是直接 throw。
+// API route 可以把这个失败转成稳定的错误响应，测试也能断言缺口。
 export function createNotImplementedFailure(
   capabilityId: string,
   requestedMode: ModuleMode,
@@ -86,6 +93,8 @@ export function createNotImplementedFailure(
   };
 }
 
+// 每个 feature 的 service-factory 都通过这里注册实现。
+// 调用方只依赖 capability interface，不直接 import mock/live 具体类。
 export function createModuleServiceFactory<TService>({
   capabilityId,
   defaultMode = DEFAULT_MODULE_MODE,
@@ -109,8 +118,13 @@ export function createModuleServiceFactory<TService>({
             )
           : resolveModuleMode(mode);
       const constructor = implementations[requestedMode];
+      // hybrid 是迁移态：未替换成 hybrid provider 的 capability 继续走 mock，
+      // 但 live 仍必须显式注册，避免误触真实外部系统。
+      const hybridFallbackConstructor =
+        requestedMode === "hybrid" ? implementations.mock : undefined;
+      const resolvedConstructor = constructor ?? hybridFallbackConstructor;
 
-      if (!constructor) {
+      if (!resolvedConstructor) {
         return createNotImplementedFailure(
           capabilityId,
           requestedMode,
@@ -121,7 +135,7 @@ export function createModuleServiceFactory<TService>({
       return {
         success: true,
         mode: requestedMode,
-        service: constructor({
+        service: resolvedConstructor({
           capabilityId,
           requestedMode,
         }),

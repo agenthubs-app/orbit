@@ -4,6 +4,8 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
+// Events contract 描述活动 CRUD/import 的 mock-first 数据模型。
+// 当前 contract 用于活动页和推荐链路；它不会同步真实日历或写生产活动库。
 export const EVENT_CRUD_IMPORT_FIXTURE_SOURCE =
   "fixture:features/events/fixtures.ts" as const;
 
@@ -47,12 +49,14 @@ export type EventCrudImportScenario =
 
 export type EventCrudImportState = "success" | "empty" | "pending";
 
+// 列表输入支持按活动状态和来源方式过滤。
 export interface EventCrudImportInput {
   scenario?: EventCrudImportScenario | string | null;
   statusFilter?: EventStatus | string | null;
   sourceCaptureMethod?: EventCaptureMethod | string | null;
 }
 
+// 手动创建输入只用于 staged/mock event 生成；sourceNote 记录为什么纳入 Orbit。
 export interface ManualEventCreationInput {
   title?: string | null;
   description?: string | null;
@@ -63,11 +67,13 @@ export interface ManualEventCreationInput {
   scenario?: EventCrudImportScenario | string | null;
 }
 
+// 详情输入要求 eventId；scenario 仍允许测试固定状态。
 export interface EventDetailInput {
   eventId?: string | null;
   scenario?: EventCrudImportScenario | string | null;
 }
 
+// 活动错误定义把校验失败、not found、pending 和 controlled failure 分开。
 export interface EventCrudImportErrorDefinition {
   code: EventCrudImportErrorCode;
   appCode: AppErrorCode;
@@ -134,6 +140,7 @@ export const EVENT_CRUD_AND_IMPORT_ERROR_DEFINITIONS = {
   EventCrudImportErrorDefinition
 >;
 
+// EventOriginMetadata 是活动来源元数据；false 字段用于证明未触碰外部系统。
 export interface EventOriginMetadata extends SourceReferenceDTO {
   label: string;
   captureMethod: EventCaptureMethod;
@@ -146,14 +153,16 @@ export interface EventOriginMetadata extends SourceReferenceDTO {
   externalNetworkRequested: false;
 }
 
+// EventEvidence 保存活动被纳入 Orbit 的证据片段。
 export interface EventEvidence {
   evidenceId: string;
   source: EventOriginMetadata;
   excerpt: string;
   capturedAt: string;
-  createdBy: "mock-event-crud-and-import-service";
+  createdBy: string;
 }
 
+// EventRecord 是活动页和推荐页共享的核心活动 DTO。
 export interface EventRecord {
   id: string;
   title: string;
@@ -177,6 +186,7 @@ export interface EventRecord {
   notificationDelivered: false;
 }
 
+// ImportedEventRecord 描述外部来源记录如何映射到 Orbit 活动字段。
 export interface ImportedEventRecord {
   id: string;
   eventId: string;
@@ -191,6 +201,7 @@ export interface ImportedEventRecord {
   liveDatabaseWriteExecuted: false;
 }
 
+// provenance 汇总这次活动数据的生成方式和所有 provider 安全标记。
 export interface EventCrudImportProvenance {
   source: string;
   sourceLabel: string;
@@ -200,7 +211,8 @@ export interface EventCrudImportProvenance {
   generationMethod:
     | "fixture"
     | "rule-based-event-filter"
-    | "rule-based-manual-event-creation";
+    | "rule-based-manual-event-creation"
+    | "local-remote-store-query";
   calendarSyncRequested: false;
   organizerFeedRequested: false;
   liveDatabaseWriteExecuted: false;
@@ -210,6 +222,7 @@ export interface EventCrudImportProvenance {
   notificationDelivered: false;
 }
 
+// 三类 payload 分别服务列表、手动创建和详情；都带 summary/nextAction 供 UI 呈现。
 export interface EventListPayload {
   state: EventCrudImportState;
   events: readonly EventRecord[];

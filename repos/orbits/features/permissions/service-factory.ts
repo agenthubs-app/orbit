@@ -1,3 +1,5 @@
+// Permissions service factory 管理权限状态和敏感动作确认。
+// 任何可能产生外部副作用的流程都应先经过这里的确认 contract。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createMockSensitiveActionConfirmationService } from "./mock-confirmation-service";
 import { createMockPermissionStateService } from "./mock-service";

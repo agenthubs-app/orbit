@@ -1,3 +1,5 @@
+// shared AI provider factory 管理旧 AI mock provider。
+// 新 Orbit Agent live provider 不走这里，而是走 features/orbit-ai/gemini-provider.ts。
 import { createModuleServiceFactory, type ModuleMode } from "../services/module-mode";
 import { createMockAiProviderService } from "./mock-provider";
 import type { AiProviderService } from "./provider";

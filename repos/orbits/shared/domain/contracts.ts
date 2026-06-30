@@ -1,13 +1,24 @@
 import type {
+  AiAnalysisType,
+  InteractionMemoryType,
+  MatchRecommendationType,
   PermissionState,
+  PreferredLanguage,
+  RecommendationTestCaseType,
+  RecommendationTestExpectedOutcome,
   RelationshipStage,
+  RelationshipTargetType,
+  RelationshipTrustLevel,
   RelationshipValueType,
   SourceReferenceDTO,
   SourceType,
 } from "./source-types";
 
+// shared/domain/contracts 放核心 DTO，表示 Orbit 领域对象的最小稳定形状。
+// feature mock payload 可以更丰富，但跨模块共享时应能落回这些 DTO 概念。
 export type OrbitId = string;
 export type IsoDateTimeString = string;
+// EvidenceIdList 至少包含一个 evidence id，强制关键对象可追溯来源。
 export type EvidenceIdList = readonly [OrbitId, ...OrbitId[]];
 
 export interface AccountDTO {
@@ -42,8 +53,10 @@ export interface ContactDTO {
   displayName: string;
   organization?: string;
   role?: string;
+  location?: string;
   primaryEmail?: string;
   primaryPhone?: string;
+  profileSnippet?: string;
   stage: RelationshipStage;
   source: SourceReferenceDTO;
   evidenceIds: EvidenceIdList;
@@ -58,6 +71,11 @@ export interface ConnectionDTO {
   stage: RelationshipStage;
   valueTypes: readonly RelationshipValueType[];
   summary: string;
+  relationshipStrength?: number;
+  trustLevel?: RelationshipTrustLevel;
+  businessRelevanceScore?: number;
+  sharedTopics?: readonly string[];
+  suggestedActions?: readonly string[];
   source: SourceReferenceDTO;
   evidenceIds: EvidenceIdList;
   createdAt: IsoDateTimeString;
@@ -72,6 +90,86 @@ export interface EventDTO {
   endsAt?: IsoDateTimeString;
   source: SourceReferenceDTO;
   evidenceIds: EvidenceIdList;
+}
+
+export interface RelationshipTargetReferenceDTO {
+  type: RelationshipTargetType;
+  id: OrbitId;
+}
+
+export interface EventParticipantIntentDTO {
+  id: OrbitId;
+  eventId: OrbitId;
+  attendeeId: OrbitId;
+  contactId?: OrbitId;
+  lookingFor: readonly string[];
+  canOffer: readonly string[];
+  preferredLanguage: PreferredLanguage;
+  confidence: number;
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
+  updatedAt: IsoDateTimeString;
+}
+
+export interface AiAnalysisDTO {
+  id: OrbitId;
+  analysisType: AiAnalysisType;
+  target: RelationshipTargetReferenceDTO;
+  resultJson: Readonly<Record<string, unknown>>;
+  confidence: number;
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
+}
+
+export interface MatchRecommendationDTO {
+  id: OrbitId;
+  eventId: OrbitId;
+  attendeeId?: OrbitId;
+  contactId: OrbitId;
+  connectionId?: OrbitId;
+  recommendationType: MatchRecommendationType;
+  score: number;
+  businessRelevanceScore: number;
+  sharedTopics: readonly string[];
+  suggestedActions: readonly string[];
+  reason: string;
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
+  updatedAt: IsoDateTimeString;
+}
+
+export interface InteractionMemoryDTO {
+  id: OrbitId;
+  contactId: OrbitId;
+  connectionId?: OrbitId;
+  conversationId?: OrbitId;
+  messageId?: OrbitId;
+  memoryType: InteractionMemoryType;
+  summary: string;
+  occurredAt: IsoDateTimeString;
+  confidence: number;
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
+}
+
+export interface RecommendationTestRecordDTO {
+  id: OrbitId;
+  caseType: RecommendationTestCaseType;
+  eventId: OrbitId;
+  attendeeId?: OrbitId;
+  contactId?: OrbitId;
+  connectionId?: OrbitId;
+  recommendationId?: OrbitId;
+  expectedOutcome: RecommendationTestExpectedOutcome;
+  reason: string;
+  confidence: number;
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
 }
 
 export interface TaskDTO {

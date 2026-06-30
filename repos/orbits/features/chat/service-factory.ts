@@ -1,4 +1,8 @@
+// Chat service factory 管理传统聊天模块的四类能力：
+// 会话/消息、写作辅助、摘要提取和隐私控制。
+// 它和 Orbit Agent conversation 是不同 capability，避免旧 chat mock 与新 agent live 路径混在一起。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createHybridChatConversationMessageService } from "./chat-conversation-and-message-mock/hybrid-service";
 import { createMockChatWritingAssistService } from "./mock-assist-service";
 import { createMockChatPrivacyControlsService } from "./mock-privacy-service";
 import { createMockChatConversationMessageService } from "./mock-service";
@@ -12,6 +16,7 @@ export const chatConversationMessageServiceFactory =
   createModuleServiceFactory<ChatConversationMessageService>({
     capabilityId: "chat-conversation-message",
     implementations: {
+      hybrid: () => createHybridChatConversationMessageService(),
       mock: () => createMockChatConversationMessageService(),
     },
   });

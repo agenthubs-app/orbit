@@ -209,7 +209,7 @@ function PassTicket({
             <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.9 }}>{event.name}</span>
             <span style={{ fontSize: 11, opacity: 0.8 }}>{event.theme}</span>
           </div>
-          <div style={{ color: "var(--on-dark)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 700 }}>{profile.name || t({ en: "Alex Lee", zh: "李明" })}</div>
+          <div style={{ color: "var(--on-dark)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 700 }}>{profile.name || t({ en: "Guest", zh: "访客" })}</div>
         </div>
       </Cover>
       <div style={{ alignItems: "center", display: "flex", gap: 14, padding: 16 }}>
@@ -226,18 +226,12 @@ function PassTicket({
   );
 }
 
-function buildExtractedProfile(t: Translate): OrbitRegisterProfileForm {
+function buildExtractedProfile(
+  profilePreview: OrbitRegisterProfileForm,
+): OrbitRegisterProfileForm {
   return {
     ...orbitRegisterEmptyProfile,
-    bio: t({ en: "Serial founder focused on AI infrastructure and building global engineering teams.", zh: "连续创业者，专注 AI 基础设施与出海工程团队搭建。" }),
-    company: t({ en: "Tokyo Tech Co., Ltd.", zh: "东京科技有限公司" }),
-    industry: t({ en: "AI / Machine Learning", zh: "AI / 机器学习" }),
-    intro: t({ en: "Looking to meet people doing GTM and localization in Japan.", zh: "想认识在日做 GTM 与本地化的朋友。" }),
-    name: t({ en: "Alex Lee", zh: "李明" }),
-    offering: [t({ en: "Japan localization", zh: "日本本地化" }), t({ en: "Channel resources", zh: "渠道资源" }), t({ en: "Supply chain", zh: "供应链" })],
-    seeking: [t({ en: "Seed round", zh: "种子轮" }), t({ en: "Series A funding", zh: "A 轮融资" })],
-    title: t({ en: "CTO", zh: "CTO" }),
-    topics: [t({ en: "Going global", zh: "出海" }), t({ en: "Cross-border", zh: "跨境" }), t({ en: "AI applications", zh: "AI 应用" })],
+    ...profilePreview,
   };
 }
 
@@ -251,7 +245,7 @@ export function OrbitRealRegister({ viewModel }: { viewModel: OrbitRegisterViewM
   const [sourceMode, setSourceMode] = useState<RegisterSourceMode>("card");
   const [extracting, setExtracting] = useState(false);
   const [step, setStepN] = useState(-1);
-  const code = `TBC-${(viewModel.event.code || "X").slice(0, 3).toUpperCase()}-4821`;
+  const code = `${(viewModel.event.code || "ORBT").slice(0, 4).toUpperCase()}-4821`;
 
   function upd(key: keyof OrbitRegisterProfileForm, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -279,7 +273,7 @@ export function OrbitRealRegister({ viewModel }: { viewModel: OrbitRegisterViewM
     window.setTimeout(() => {
       setExtracting(false);
       setStepN(-1);
-      setForm(buildExtractedProfile(t));
+      setForm(buildExtractedProfile(viewModel.profilePreview));
       setScreen("confirm");
     }, 1800);
   }
@@ -417,7 +411,7 @@ export function OrbitRealRegister({ viewModel }: { viewModel: OrbitRegisterViewM
             <div style={{ height: 8 }} />
             <div style={{ alignItems: "center", alignSelf: "flex-start", background: "var(--live-soft)", borderRadius: 999, color: "var(--live)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 7, height: 30, padding: "0 12px" }}><Icon name="checkCircle" size={16} />{t({ en: "Registration complete", zh: "报名完成" })}</div>
             <div><h1 className="h-display" style={regStyles.heroTitle}>{t({ en: "Keep your", zh: "收好你的" })}<span style={regStyles.accent}> {t({ en: "pass code", zh: "通行码" })}</span></h1><div style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.5, marginTop: 8 }}>{t({ en: "Show this on the day of the event for faster check-in and sign-in later.", zh: "活动当天出示这张图，签到和之后登录都会更快。" })}</div></div>
-            <PassTicket code={code} event={viewModel.event} profile={form.name ? form : { ...form, company: t({ en: "Tokyo Tech Co., Ltd.", zh: "东京科技有限公司" }), name: t({ en: "Alex Lee", zh: "李明" }), title: "CTO" }} t={t} />
+            <PassTicket code={code} event={viewModel.event} profile={form.name ? form : { ...viewModel.profilePreview, ...form }} t={t} />
             <div style={{ ...regStyles.banner, background: "var(--accent-softer)" }}>
               <div style={{ color: "var(--ink)", fontWeight: 600, marginBottom: 4 }}>{t({ en: "We recommend taking a screenshot of this pass code right now.", zh: "建议现在直接截图保存这张通行码。" })}</div>
               {t({ en: "Your pass code and direct link have been sent to your email.", zh: "已向你的邮箱发送通行码和直达链接。" })}

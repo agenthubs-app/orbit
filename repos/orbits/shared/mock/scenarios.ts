@@ -9,6 +9,8 @@ export const DEFAULT_MOCK_SCENARIO_ID = "active-event-demo";
 export const MOCK_DATA_SCENARIO_SERVICE =
   "mock-data-mutation-reset-and-scenario-switcher";
 
+// scenario 是开发/测试用的“关系世界状态”切换，不代表真实用户数据。
+// 它让 UI 能稳定覆盖新用户、活动中、活动后、空账号和受控失败等状态。
 export const MOCK_SCENARIO_IDS = [
   "new-user-demo",
   "active-event-demo",
@@ -148,6 +150,8 @@ const evidencePrefix = "evidence_mock_scenario";
 function createProvenance(
   evidenceIds: readonly string[],
 ): MockScenarioProvenance {
+  // provenance 明确声明没有触碰真实数据库、外部 provider 或设备能力。
+  // 这些字段是 mock scenario 替换成真实 seed 管理前的安全账本。
   return {
     source: MOCK_SCENARIO_FIXTURE_SOURCE,
     generationMethod: "fixture",
@@ -166,6 +170,7 @@ function createProvenance(
 }
 
 export const mockScenarioFixtures: readonly MockScenarioFixture[] = [
+  // 每个 fixture 都包含一个简短 relationshipContext，供页面状态和 debug 面板展示。
   {
     id: "new-user-demo",
     label: "New user",
@@ -289,6 +294,7 @@ export const mockScenarioFixtures: readonly MockScenarioFixture[] = [
 ];
 
 function isMockScenarioId(value: string): value is MockScenarioId {
+  // 外部输入必须先收敛到白名单 id；不允许任意字符串落入 fixture 查询。
   return MOCK_SCENARIO_IDS.includes(value as MockScenarioId);
 }
 
@@ -306,6 +312,8 @@ function scenarioWithSelection(
   scenario: MockScenarioFixture,
   activeScenarioId: MockScenarioId,
 ): MockScenarioFixture {
+  // selected 是派生字段，不直接信任 fixture 里的默认 selected。
+  // 这样 list/activate 可以用同一份 fixtures 生成不同当前状态。
   return {
     ...scenario,
     selected: scenario.id === activeScenarioId,
@@ -315,6 +323,7 @@ function scenarioWithSelection(
 function stateCounts(
   scenarios: readonly MockScenarioFixture[],
 ): Record<MockScenarioState, number> {
+  // stateCounts 给 UI 快速展示 scenario 覆盖矩阵，不需要前端重复 reduce。
   return scenarios.reduce(
     (counts, scenario) => ({
       ...counts,
@@ -374,6 +383,7 @@ export function mockScenarioFailureContext(
 export function scenarioPayloadFor(
   activeScenarioId = DEFAULT_MOCK_SCENARIO_ID,
 ): MockScenarioListPayload {
+  // 无效 activeScenarioId 会回落到 default，保证列表 API 始终可渲染。
   const activeId = isMockScenarioId(activeScenarioId)
     ? activeScenarioId
     : DEFAULT_MOCK_SCENARIO_ID;
@@ -390,6 +400,7 @@ export function scenarioPayloadFor(
 }
 
 export function createMockScenarioService(): MockScenarioService {
+  // activateScenario 只返回本次请求的选择结果，不把选择持久写入浏览器或数据库。
   return {
     listScenarios() {
       return success(scenarioPayloadFor());

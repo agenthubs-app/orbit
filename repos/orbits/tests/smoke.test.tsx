@@ -93,8 +93,7 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
   assert.doesNotMatch(html, /scaffold|Sprint 1|Framework ready/i);
   assert.doesNotMatch(html, /Relationship context starter/);
   assert.doesNotMatch(html, /Mika Tanaka|Tokyo Founder Demo Night|Kenji Sato/);
-  assert.doesNotMatch(html, /<details/);
-  assert.doesNotMatch(html, /<form/);
-  assert.doesNotMatch(html, /<input/);
+  assert.doesNotMatch(html, /<details(?:\s|>)/i);
+  assert.match(html, /data-orbit-agent-hero-submit="true"/);
   assert.doesNotMatch(html, /ready for your review|follow-up draft/i);
 });

@@ -23,7 +23,7 @@ export function getOrbitOrganizerPublicViewModel(slug: string): OrbitOrganizerPu
 
   return {
     events,
-    handle: "已举办 12 场 · 4,200+ 参会者",
+    handle: `已记录 ${events.length} 场 · ${events.reduce((sum, item) => sum + item.participantCount, 0)} 参会者`,
     initial: (name || "O").slice(0, 1),
     name,
   };

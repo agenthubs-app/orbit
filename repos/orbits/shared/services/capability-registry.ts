@@ -6,6 +6,9 @@ import {
   createModuleServiceFactory,
 } from "./module-mode";
 
+// capability registry 是开发面板和架构检查用的目录。
+// 它不实现业务逻辑，只描述每个 capability 的 API envelope、debug 入口、
+// 当前 mock/hybrid service 状态，以及是否需要敏感操作确认。
 export const CAPABILITY_IDS = [
   "account-profile",
   "permissions",
@@ -92,6 +95,8 @@ function createServiceConstructor(
   status: CapabilityServiceStatus,
   sensitiveActionsRequireConfirmation: boolean,
 ) {
+  // registry 里的 service 是元数据 service，用来展示某个 capability 在当前 mode 下是否可用。
+  // 真正的 feature service 仍由各 features/*/service-factory.ts 提供。
   return ({
     capabilityId,
   }: {
@@ -113,6 +118,7 @@ function createServiceConstructor(
 function createRegistration(
   definition: CapabilityDefinition,
 ): CapabilityRegistration {
+  // 每个 capability 都默认注册 mock/hybrid；live 未注册时会通过 module-mode 返回 not implemented。
   const defaultMode = DEFAULT_MODULE_MODE;
 
   return {
@@ -151,6 +157,8 @@ function createRegistration(
 }
 
 const definitions: readonly CapabilityDefinition[] = [
+  // definitions 是 capability map 的唯一维护点。
+  // 新增 capability 时，应在这里补 label/API/debug 元数据，并在对应 feature 下实现服务。
   {
     id: "account-profile",
     label: "Account and profile",
@@ -386,6 +394,7 @@ const registry = new Map<CapabilityId, CapabilityRegistration>(
 );
 
 export function listCapabilityRegistrations(): CapabilityRegistration[] {
+  // 返回浅拷贝，避免调用方直接修改 registrations 数组。
   return [...registrations];
 }
 
@@ -407,6 +416,7 @@ export function createCapabilityService(
     mode?: ModuleMode | string;
   } = {},
 ): ServiceResolution<CapabilityService> {
+  // mode 解析和 not-implemented 失败都交给 ModuleServiceFactory，保持所有 capability 一致。
   return getCapabilityRegistration(id).factory.create(options.mode);
 }
 
@@ -415,6 +425,7 @@ export function listCapabilitySummaries(
     mode?: ModuleMode | string;
   } = {},
 ): CapabilitySummary[] {
+  // summaries 是 UI/debug 面板消费的轻量视图，不暴露 factory 实例。
   return registrations.map((registration) => {
     const resolution = registration.factory.create(options.mode);
     const resolutionHasService = "service" in resolution;
