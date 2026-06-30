@@ -37,6 +37,8 @@ test("/dev/knowledge renders the Orbit knowledge wiki", async () => {
   assert.match(html, /页面目录/);
   assert.match(html, /最近更改/);
   assert.match(html, /搜索 Orbit Wiki/);
+  assert.match(html, /正文内容/);
+  assert.match(html, /class="wiki-document-body/);
   assert.match(html, /146 个文档/);
   assert.match(html, /审计依据|关联代码路径/);
   assert.match(
@@ -60,6 +62,7 @@ test("knowledge wiki page consumes the app-local manifest only", () => {
   );
 
   assert.match(pageSource, /shared\/knowledge\/knowledge-manifest/);
+  assert.match(pageSource, /\/api\/dev\/knowledge\/documents\//);
   assert.doesNotMatch(
     pageSource,
     /node:fs|readFileSync|process\.cwd|knowledge\/docs|knowledge\/index/,

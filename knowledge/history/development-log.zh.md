@@ -52,3 +52,10 @@
 - 修改摘要：参考真实 Wiki 的组织方式重做 `/dev/knowledge`：新增顶栏搜索与页面标签、左侧全站导航树、中间文章阅读区、右侧页面目录和 infobox、Wiki 风格文档索引表；移除 workbench card/grid 结构，让页面以“文章 + 索引 + 最近更改 + 经验库”的方式组织。
 - 架构边界：继续只消费 app-local manifest，不在运行时读取父目录 Markdown；文档索引表仍覆盖 146 个 catalog 文档，并保留审计依据、新鲜度和来源路径。
 - 验证方式：更新 page test 要求 `data-wiki-shell`、`wiki-global-nav`、`wiki-article`、`wiki-page-toc`、`wiki-infobox`、`wiki-index-table`，并禁止 `workbench-surface`/`workbench-grid`/`relationship-record` 结构回退。
+
+## [2026-06-30] implementation | Wiki 支持打开 Markdown 正文
+
+- 用户反馈：真实 Wiki 页面仍只能看索引、摘要、路径和审计依据，不能打开具体文档内容。
+- 修改摘要：新增 `/api/dev/knowledge/documents/[id]` dev-only 读取端点，按 app-local manifest 白名单 id 读取对应 Markdown 原文；`/dev/knowledge` 点击文档后在文章区显示“正文内容”，支持加载、错误和常见 Markdown 块渲染。
+- 架构边界：客户端页面仍不直接使用 `node:fs` 或任意路径读取；API 只接受 manifest 中已登记的 document id，生产环境返回 404，并使用 no-store developer-admin headers。
+- 验证方式：新增 API route 测试覆盖成功读取、未知 id 和 production 隐藏；更新 page test 锁定正文区域和 API 请求边界；运行 app page/API tests、lint、单独 TypeScript 检查和后续完整测试。

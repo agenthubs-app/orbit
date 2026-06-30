@@ -45,3 +45,9 @@
 - 将 `/dev/knowledge` 改为 wiki shell：顶栏、左侧全站导航、中心文章、右侧目录和 infobox。
 - 文档库改为 Wiki 风格索引表，并继续覆盖 146 个文档。
 - 页面测试防止回退到 workbench card/grid 结构。
+
+## [2026-06-30] implementation | Wiki 支持打开 Markdown 正文
+
+- 为 `/dev/knowledge` 增加点击文档后读取并渲染 Markdown 原文的能力。
+- 新增 dev-only 文档内容 API，只按 manifest 白名单 id 读取文件，生产环境隐藏。
+- 页面继续保持 app-local manifest 边界，不在客户端直接读父目录文件。

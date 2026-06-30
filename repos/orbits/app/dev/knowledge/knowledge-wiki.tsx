@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ORBIT_KNOWLEDGE_MANIFEST } from "../../../shared/knowledge/knowledge-manifest";
 
 const catalogEntryPath = ["knowledge", "docs", "catalog.zh.md"].join("/");
@@ -11,6 +11,16 @@ type DocumentEntry = KnowledgeManifest["documents"][number];
 type TopicEntry = KnowledgeManifest["topicPages"][number];
 type HistoryEntry = KnowledgeManifest["recentHistory"][number];
 type LearningEntry = KnowledgeManifest["learnings"][number];
+type DocumentContentState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | {
+      markdown: string;
+      sourcePath: string;
+      status: "loaded";
+      titleZh: string;
+    }
+  | { message: string; status: "error" };
 type DocumentStatus =
   | "current"
   | "historical"
@@ -158,10 +168,53 @@ function Badge({
   children,
   tone = "neutral",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   tone?: "neutral" | "success" | "warning" | "evidence";
 }) {
   return <span className={classNames("wiki-badge", `wiki-badge-${tone}`)}>{children}</span>;
+}
+
+function isDocumentContentLoaded(
+  content: DocumentContentState | undefined,
+): content is Extract<DocumentContentState, { status: "loaded" }> {
+  return content?.status === "loaded";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readApiErrorMessage(body: unknown) {
+  if (!isRecord(body) || !isRecord(body.error)) return "无法读取文档正文。";
+
+  return typeof body.error.message === "string" && body.error.message.trim()
+    ? body.error.message
+    : "无法读取文档正文。";
+}
+
+function readDocumentContent(body: unknown): Extract<DocumentContentState, { status: "loaded" }> {
+  if (!isRecord(body) || body.success !== true || !isRecord(body.data)) {
+    throw new Error(readApiErrorMessage(body));
+  }
+
+  const markdown = body.data.markdown;
+  const sourcePath = body.data.sourcePath;
+  const titleZh = body.data.titleZh;
+
+  if (
+    typeof markdown !== "string" ||
+    typeof sourcePath !== "string" ||
+    typeof titleZh !== "string"
+  ) {
+    throw new Error("文档正文响应格式不完整。");
+  }
+
+  return {
+    markdown,
+    sourcePath,
+    status: "loaded",
+    titleZh,
+  };
 }
 
 function WikiStyles() {
@@ -442,6 +495,79 @@ function WikiStyles() {
         font-size: 0.86em;
         overflow-wrap: anywhere;
         padding: 1px 4px;
+      }
+
+      .wiki-document-body {
+        border-top: 1px solid var(--wiki-border-soft);
+        margin-top: 18px;
+        padding-top: 6px;
+      }
+
+      .wiki-document-status {
+        background: #f8f9fa;
+        border: 1px solid var(--wiki-border-soft);
+        color: var(--wiki-muted);
+        line-height: 1.55;
+        margin-top: 10px;
+        padding: 12px;
+      }
+
+      .wiki-document-status-error {
+        border-color: rgba(163, 58, 42, 0.32);
+        color: var(--wiki-red);
+      }
+
+      .wiki-document-markdown {
+        margin-top: 8px;
+      }
+
+      .wiki-document-markdown blockquote {
+        border-left: 3px solid var(--wiki-border);
+        color: var(--wiki-muted);
+        margin: 12px 0;
+        padding: 4px 0 4px 12px;
+      }
+
+      .wiki-document-markdown pre {
+        background: #f1f3f5;
+        border: 1px solid var(--wiki-border-soft);
+        font-size: 0.86rem;
+        line-height: 1.55;
+        margin: 12px 0;
+        overflow-x: auto;
+        padding: 12px;
+      }
+
+      .wiki-document-markdown pre code {
+        background: transparent;
+        border: 0;
+        padding: 0;
+      }
+
+      .wiki-document-markdown ul,
+      .wiki-document-markdown ol {
+        line-height: 1.68;
+        margin: 0 0 12px 22px;
+        padding: 0;
+      }
+
+      .wiki-document-markdown table {
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        margin: 12px 0;
+        width: 100%;
+      }
+
+      .wiki-document-markdown th,
+      .wiki-document-markdown td {
+        border: 1px solid var(--wiki-border-soft);
+        padding: 7px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .wiki-document-markdown th {
+        background: #eaecf0;
       }
 
       .wiki-portal-grid {
@@ -849,6 +975,253 @@ function StatusBadges({ document }: { document: DocumentEntry }) {
   );
 }
 
+function startsMarkdownBlock(line: string) {
+  return (
+    /^#{1,6}\s+/.test(line) ||
+    /^```/.test(line) ||
+    /^>\s?/.test(line) ||
+    /^[-*]\s+/.test(line) ||
+    /^\d+\.\s+/.test(line) ||
+    /^\|.*\|$/.test(line)
+  );
+}
+
+function safeLinkTarget(href: string) {
+  if (
+    href.startsWith("#") ||
+    href.startsWith("/") ||
+    href.startsWith("http://") ||
+    href.startsWith("https://")
+  ) {
+    return href;
+  }
+
+  return undefined;
+}
+
+function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const pattern = /(`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text))) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+    const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+
+    if (token.startsWith("`") && token.endsWith("`")) {
+      nodes.push(<code key={`${keyPrefix}-code-${match.index}`}>{token.slice(1, -1)}</code>);
+    } else if (linkMatch) {
+      const href = safeLinkTarget(linkMatch[2].trim());
+      nodes.push(
+        href ? (
+          <a href={href} key={`${keyPrefix}-link-${match.index}`}>
+            {linkMatch[1]}
+          </a>
+        ) : (
+          linkMatch[1]
+        ),
+      );
+    } else {
+      nodes.push(token);
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
+function parseTableCells(line: string) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function isTableSeparator(line: string) {
+  return /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(line.trim());
+}
+
+function MarkdownDocument({ markdown }: { markdown: string }) {
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  const blocks: ReactNode[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      index += 1;
+      continue;
+    }
+
+    const fence = trimmed.match(/^```(.*)$/);
+    if (fence) {
+      const codeLines: string[] = [];
+      index += 1;
+
+      while (index < lines.length && !lines[index].trim().startsWith("```")) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+
+      if (index < lines.length) index += 1;
+
+      blocks.push(
+        <pre key={`code-${index}`}>
+          <code>{codeLines.join("\n")}</code>
+        </pre>,
+      );
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      const level = Math.min(heading[1].length + 1, 4);
+      const headingChildren = renderInlineMarkdown(heading[2], `heading-${index}`);
+
+      if (level === 2) {
+        blocks.push(<h2 key={`h2-${index}`}>{headingChildren}</h2>);
+      } else if (level === 3) {
+        blocks.push(<h3 key={`h3-${index}`}>{headingChildren}</h3>);
+      } else {
+        blocks.push(<h4 key={`h4-${index}`}>{headingChildren}</h4>);
+      }
+      index += 1;
+      continue;
+    }
+
+    if (/^>\s?/.test(trimmed)) {
+      const quoteLines: string[] = [];
+
+      while (index < lines.length && /^>\s?/.test(lines[index].trim())) {
+        quoteLines.push(lines[index].trim().replace(/^>\s?/, ""));
+        index += 1;
+      }
+
+      blocks.push(
+        <blockquote key={`quote-${index}`}>
+          <p>{renderInlineMarkdown(quoteLines.join(" "), `quote-${index}`)}</p>
+        </blockquote>,
+      );
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(trimmed)) {
+      const items: string[] = [];
+
+      while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^[-*]\s+/, ""));
+        index += 1;
+      }
+
+      blocks.push(
+        <ul key={`ul-${index}`}>
+          {items.map((item, itemIndex) => (
+            <li key={`${index}-ul-${itemIndex}`}>
+              {renderInlineMarkdown(item, `${index}-ul-${itemIndex}`)}
+            </li>
+          ))}
+        </ul>,
+      );
+      continue;
+    }
+
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const items: string[] = [];
+
+      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^\d+\.\s+/, ""));
+        index += 1;
+      }
+
+      blocks.push(
+        <ol key={`ol-${index}`}>
+          {items.map((item, itemIndex) => (
+            <li key={`${index}-ol-${itemIndex}`}>
+              {renderInlineMarkdown(item, `${index}-ol-${itemIndex}`)}
+            </li>
+          ))}
+        </ol>,
+      );
+      continue;
+    }
+
+    if (
+      trimmed.includes("|") &&
+      index + 1 < lines.length &&
+      isTableSeparator(lines[index + 1])
+    ) {
+      const headers = parseTableCells(trimmed);
+      const rows: string[][] = [];
+      index += 2;
+
+      while (index < lines.length && lines[index].trim().includes("|")) {
+        rows.push(parseTableCells(lines[index]));
+        index += 1;
+      }
+
+      blocks.push(
+        <table key={`table-${index}`}>
+          <thead>
+            <tr>
+              {headers.map((header, headerIndex) => (
+                <th key={`${index}-th-${headerIndex}`}>
+                  {renderInlineMarkdown(header, `${index}-th-${headerIndex}`)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={`${index}-tr-${rowIndex}`}>
+                {row.map((cell, cellIndex) => (
+                  <td key={`${index}-td-${rowIndex}-${cellIndex}`}>
+                    {renderInlineMarkdown(cell, `${index}-td-${rowIndex}-${cellIndex}`)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>,
+      );
+      continue;
+    }
+
+    const paragraphLines: string[] = [trimmed];
+    index += 1;
+
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !startsMarkdownBlock(lines[index].trim())
+    ) {
+      paragraphLines.push(lines[index].trim());
+      index += 1;
+    }
+
+    blocks.push(
+      <p key={`p-${index}`}>
+        {renderInlineMarkdown(paragraphLines.join(" "), `p-${index}`)}
+      </p>,
+    );
+  }
+
+  return <div className="wiki-document-markdown">{blocks}</div>;
+}
+
 function DocumentIndex({
   documents,
   query,
@@ -927,7 +1300,47 @@ function DocumentIndex({
   );
 }
 
-function DocumentArticle({ document }: { document: DocumentEntry }) {
+function DocumentContentSection({
+  content,
+}: {
+  content: DocumentContentState | undefined;
+}) {
+  if (isDocumentContentLoaded(content)) {
+    return (
+      <section className="wiki-document-body" id="document-body">
+        <h3>正文内容</h3>
+        <p className="wiki-muted">
+          已从 <code>{content.sourcePath}</code> 读取 Markdown 原文。
+        </p>
+        <MarkdownDocument markdown={content.markdown} />
+      </section>
+    );
+  }
+
+  if (content?.status === "error") {
+    return (
+      <section className="wiki-document-body" id="document-body">
+        <h3>正文内容</h3>
+        <p className="wiki-document-status wiki-document-status-error">{content.message}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="wiki-document-body" id="document-body">
+      <h3>正文内容</h3>
+      <p className="wiki-document-status">正在载入 Markdown 原文...</p>
+    </section>
+  );
+}
+
+function DocumentArticle({
+  content,
+  document,
+}: {
+  content: DocumentContentState | undefined;
+  document: DocumentEntry;
+}) {
   return (
     <section id="selected-page">
       <h2>当前条目</h2>
@@ -938,6 +1351,7 @@ function DocumentArticle({ document }: { document: DocumentEntry }) {
       <p>{document.reviewEvidenceZh}</p>
       <h3>页面状态</h3>
       <p><StatusBadges document={document} /></p>
+      <DocumentContentSection content={content} />
     </section>
   );
 }
@@ -1053,6 +1467,7 @@ function PageToc({
         <li><a className="wiki-toc-link" href="#topic-portals">知识主题</a></li>
         <li><a className="wiki-toc-link" href="#document-index">文档索引</a></li>
         <li><a className="wiki-toc-link" href="#selected-page">当前条目</a></li>
+        <li><a className="wiki-toc-link" href="#document-body">正文内容</a></li>
         <li><a className="wiki-toc-link" href="#recent-changes">最近更改</a></li>
         <li><a className="wiki-toc-link" href="#learning-index">经验库</a></li>
       </ol>
@@ -1068,6 +1483,7 @@ function PageToc({
 
 function WikiArticle({
   activeDocument,
+  activeDocumentContent,
   activeLearning,
   activePage,
   activeTopic,
@@ -1078,6 +1494,7 @@ function WikiArticle({
   setCategory,
 }: {
   activeDocument?: DocumentEntry;
+  activeDocumentContent?: DocumentContentState;
   activeLearning?: LearningEntry;
   activePage: WikiPage;
   activeTopic?: TopicEntry;
@@ -1117,7 +1534,9 @@ function WikiArticle({
         <PortalGrid setActivePage={setActivePage} />
       </section>
 
-      {activeDocument ? <DocumentArticle document={activeDocument} /> : null}
+      {activeDocument ? (
+        <DocumentArticle content={activeDocumentContent} document={activeDocument} />
+      ) : null}
 
       <DocumentIndex
         category={category}
@@ -1137,6 +1556,9 @@ export function OrbitKnowledgeWiki() {
   const [activePage, setActivePage] = useState<WikiPage>({ kind: "main" });
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(allFilter);
+  const [documentContents, setDocumentContents] = useState<
+    Record<string, DocumentContentState>
+  >({});
   const [selectedDocumentId, setSelectedDocumentId] = useState(
     ORBIT_KNOWLEDGE_MANIFEST.documents[0]?.id ?? "",
   );
@@ -1163,6 +1585,56 @@ export function OrbitKnowledgeWiki() {
     activePage.kind === "learning"
       ? ORBIT_KNOWLEDGE_MANIFEST.learnings.find((entry) => entry.id === activePage.id)
       : undefined;
+  const activeDocumentContent = activeDocument
+    ? (documentContents[activeDocument.id] ?? { status: "idle" })
+    : undefined;
+
+  useEffect(() => {
+    if (!activeDocument) return;
+
+    const controller = new AbortController();
+    const documentId = activeDocument.id;
+
+    setDocumentContents((current) => ({
+      ...current,
+      [documentId]: { status: "loading" },
+    }));
+
+    void fetch(`/api/dev/knowledge/documents/${encodeURIComponent(documentId)}`, {
+      headers: {
+        accept: "application/json",
+      },
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = (await response.json()) as unknown;
+
+        if (!response.ok) {
+          throw new Error(readApiErrorMessage(body));
+        }
+
+        return readDocumentContent(body);
+      })
+      .then((content) => {
+        setDocumentContents((current) => ({
+          ...current,
+          [documentId]: content,
+        }));
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+
+        setDocumentContents((current) => ({
+          ...current,
+          [documentId]: {
+            message: error instanceof Error ? error.message : "无法读取文档正文。",
+            status: "error",
+          },
+        }));
+      });
+
+    return () => controller.abort();
+  }, [activeDocument?.id]);
 
   return (
     <main
@@ -1187,6 +1659,7 @@ export function OrbitKnowledgeWiki() {
         />
         <WikiArticle
           activeDocument={activeDocument}
+          activeDocumentContent={activeDocumentContent}
           activeLearning={activeLearning}
           activePage={activePage}
           activeTopic={activeTopic}

@@ -1651,6 +1651,13 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
   ],
   "recentHistory": [
     {
+      "id": "knowledge-markdown-document-reader",
+      "date": "2026-06-30",
+      "titleZh": "Wiki 支持打开 Markdown 正文",
+      "summaryZh": "为 /dev/knowledge 增加 manifest 白名单文档正文 API，点击文档后可在 wiki 文章区读取并渲染 Markdown 原文。",
+      "sourcePath": "knowledge/history/development-log.zh.md"
+    },
+    {
       "id": "knowledge-real-wiki-ui",
       "date": "2026-06-30",
       "titleZh": "真实 Wiki 风格浏览工具",
