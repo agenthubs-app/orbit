@@ -64,9 +64,10 @@
 - `runtimeSnapshot`：本次执行看到的 agent 架构快照。至少包含 planner provider、sub-agent 列表、tool registry、每个 tool 的 family、artifact kind、source modules、renderer hint 和 output schema 名称。
 - `stages`：有序 stage 列表。每个 stage 包含 `id`、`label`、`status`、`summary`、`startedAt`、`completedAt`、`inputs`、`outputs`、`evidenceIds`、`safety`，可选 `skipReason`。
 - `stages[].outputSource`：该 stage 输出的源码视图数据。页面默认不展开；展开后按 JSON pretty print 展示。非 JSON 文本保留为 monospaced source block。
-- `stages[].renderHint`：页面渲染提示，例如 `summary_card`、`tool_call_table`、`artifact_panel`、`source_json`、`raw_text`。页面按 hint 选择 renderer；不认识的 hint 走通用 source renderer。
+- `stages[].renderHint`：页面渲染提示，例如 `summary_card`、`tool_call_table`、`database_table`、`artifact_panel`、`source_json`、`raw_text`。页面按 hint 选择 renderer；不认识的 hint 走通用 source renderer。
 - `chain`：给时间线使用的精简顺序摘要。
 - `toolCalls`：扁平化后的 planner tool 和 artifact tool call trace。
+- `databaseInteractions`：trace 期间读取到的本地 local-remote database 摘要，包括 storage key、schema version、operation、相关 collection 和记录数量。这个字段只描述本地数据上下文，不代表 live database 写入。
 - `dataSources`：从 artifact provenance 里抽取的 source modules、artifact source、evidence ids 和 generated view sections。
 - `conversation`：最终 `OrbitAgentConversationPayload`，或者失败摘要。
 - `raw`：可用时记录 raw planner output 和 raw synthesis output。
@@ -77,9 +78,10 @@ Stage 顺序固定：
 2. `local_guardrails`
 3. `planner`
 4. `tool_mapping`
-5. `artifact_generation`
-6. `synthesis`
-7. `final_response`
+5. `database_context`
+6. `artifact_generation`
+7. `synthesis`
+8. `final_response`
 
 Stage status 固定为：
 
@@ -101,7 +103,7 @@ Stage status 固定为：
 - 新 sub-agent 或新 tool 只要进入 trace payload，就必须出现在 `runtimeSnapshot`、`toolCalls` 和相关 stage 里。
 - 如果新 tool 使用已有 `renderHint`，页面不需要改代码，直接用现有 renderer 展示。
 - 如果新 tool 没有专属 renderer，页面必须显示 `unknown tool` 或 `unregistered renderer` badge，同时保留完整 metadata、sourceModules、toolCalls、evidenceIds 和折叠源码。
-- 如果新增的是全新 agent phase，比如 planner 之前多了 retrieval 或 memory phase，trace runner 可以增加新的 stage；页面 timeline 按返回顺序渲染，不依赖硬编码顺序。已有七个 stage 仍作为 baseline，不作为上限。
+- 如果新增的是全新 agent phase，比如 planner 之前多了 retrieval 或 memory phase，trace runner 可以增加新的 stage；页面 timeline 按返回顺序渲染，不依赖硬编码顺序。已有八个 stage 仍作为 baseline，不作为上限。
 - 只有当新工具需要全新的可视化形态时，才需要添加新的 renderer。即使没有新 renderer，debug 页面也不能丢输出。
 
 这条设计让页面具备两层能力：已知 render hint 走结构化渲染，未知工具走通用源码渲染。它不能自动发明新 UI，但能自动发现并展示新 agent、工具和输出。
@@ -114,6 +116,7 @@ Route：`/dev/orbit-ai/trace`
 
 - 左侧 rail：prompt textarea、locale selector、max loop steps、run button、安全和 runtime badge。
 - 中间主面板：full-chain timeline。每个 stage 一行，展示 status、短摘要、tool 数量、source 数量，以及链路是否停在这里。
+- timeline 和来源面板要区分 agent lane 与 data lane。planner、tool mapping、artifact 和 synthesis 使用 agent 色；`database_context`、database interactions 和 data sources 使用 data 色。
 - 右侧详情面板：当前选中 stage 的 inputs、outputs、evidence ids、source modules、safety ledger 和相关 raw JSON。每个输出源码面板默认折叠，标题显示输出类型和大小；展开后用 pretty print code block 展示。
 - 底部或右侧次级区域：planner-only comparison，展示 raw planner text、parsed intent、planner-selected tools，以及 full-chain 是否 fallback 或提前停止。
 - 架构快照区：显示本次 trace 检测到的 sub-agents、tools、render hints 和 unknown renderer warnings。这个区域默认收起，出错或出现 unknown tool 时自动展开。
@@ -139,7 +142,7 @@ Trace API 只能在开发环境使用：
 - 不暴露 API key、环境变量值或 secret。
 - `outputSource` 必须先脱敏再返回给页面。
 - 不执行外部 side effect。
-- 不写数据库。
+- 不写 live database。trace 只允许读取本地 local-remote database 的表级摘要，用于说明数据上下文。
 - 不发送 email，不创建 calendar event，不投递 notification，不修改 live storage。
 - 唯一允许的外部网络请求，是现有 live Orbit Agent planner/synthesis 路径已经会调用的模型 provider。
 
@@ -186,7 +189,7 @@ RED 测试覆盖：
 - 生产环境 admin observability。
 - 持久化 trace run。
 - streaming trace。
-- 真实数据库读写。
+- 真实数据库写入或生产数据库读写。
 - email、calendar、notification 或外部动作执行。
 - 替换正常 chat UI。
 

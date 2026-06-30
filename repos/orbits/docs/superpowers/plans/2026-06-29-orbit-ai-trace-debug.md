@@ -14,7 +14,7 @@
 - Do not expose `.env`, API keys, provider credentials, or secret-like values in trace payloads or UI.
 - `NODE_ENV=production` must return 404 for `/api/dev/orbit-ai/trace`.
 - Existing `/api/dev/orbit-agent/trace` planner-only contract must remain compatible.
-- The full-chain trace must include `traceSchemaVersion`, `runtimeSnapshot`, ordered `stages`, `outputSource`, `renderHint`, `toolCalls`, `dataSources`, final conversation, and planner-only comparison.
+- The full-chain trace must include `traceSchemaVersion`, `runtimeSnapshot`, ordered `stages`, `outputSource`, `renderHint`, `toolCalls`, `databaseInteractions`, `dataSources`, final conversation, and planner-only comparison.
 - Stage source panels must be collapsed by default in UI and pretty print JSON when expanded.
 - Unknown sub-agents/tools/renderers must be detected and shown through a generic source fallback instead of dropping data.
 - Do not execute email, calendar, notification, database writes, live storage mutations, or external side effects.
@@ -29,8 +29,8 @@
   - Owns serializable trace payload types, stage ids/statuses, render hints, runtime snapshot, source view, tool call summary, and data source summary.
 - Create `features/orbit-ai/live-conversation-trace.ts`
   - Runs the Orbit Agent chain in trace mode and returns `OrbitAiTracePayload`.
-  - Mirrors the live conversation service decision order: scenario, message validation, local guardrails, planner, tool mapping, artifact generation, synthesis, final response.
-  - Builds stage `outputSource`, `runtimeSnapshot`, `toolCalls`, `dataSources`, and planner-only comparison from the same run.
+  - Mirrors the live conversation service decision order: scenario, message validation, local guardrails, planner, tool mapping, local-remote database context, artifact generation, synthesis, final response.
+  - Builds stage `outputSource`, `runtimeSnapshot`, `toolCalls`, `databaseInteractions`, `dataSources`, and planner-only comparison from the same run.
 - Create `app/api/dev/orbit-ai/trace/route.ts`
   - Development-only API envelope for GET/POST.
   - Parses `message`/`prompt`, `locale`, and `maxLoopSteps`.

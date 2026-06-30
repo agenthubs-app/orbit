@@ -89,11 +89,15 @@ Target modules:
   The UI keeps it collapsed by default and pretty prints JSON when expanded.
   Non-JSON text stays in a monospaced source block.
 - `stages[].renderHint`: render instruction such as `summary_card`,
-  `tool_call_table`, `artifact_panel`, `source_json`, or `raw_text`. Unknown
-  hints fall back to the generic source renderer.
+  `tool_call_table`, `database_table`, `artifact_panel`, `source_json`, or
+  `raw_text`. Unknown hints fall back to the generic source renderer.
 - `chain`: compact ordered summary for rendering a timeline.
 - `toolCalls`: flattened list of selected planner tools and artifact tool
   call traces.
+- `databaseInteractions`: local-remote database context observed during the
+  trace, including storage key, schema version, operation, selected
+  collections, and row counts. This describes local data context only; it does
+  not represent a live database write.
 - `dataSources`: flattened list derived from artifact provenance
   `sourceModules`, artifact source, evidence ids, and generated view sections.
 - `conversation`: final `OrbitAgentConversationPayload` or a failure summary.
@@ -105,9 +109,10 @@ Stage ids:
 2. `local_guardrails`
 3. `planner`
 4. `tool_mapping`
-5. `artifact_generation`
-6. `synthesis`
-7. `final_response`
+5. `database_context`
+6. `artifact_generation`
+7. `synthesis`
+8. `final_response`
 
 Each stage must be marked as one of:
 
@@ -143,7 +148,7 @@ Detection rules:
   calls, evidence ids, and collapsed output source.
 - If the architecture adds a new agent phase, such as retrieval or memory before
   planning, the trace runner may return a new stage. The timeline renders stages
-  in returned order. The seven baseline stages are defaults, not a limit.
+  in returned order. The eight baseline stages are defaults, not a limit.
 - A new renderer is only required when a new tool needs a new visual form. The
   page must still show the output through the generic source renderer before
   that renderer exists.
@@ -166,6 +171,10 @@ debugger layout:
 - Center panel: full-chain timeline with one row per stage. Rows show status,
   short summary, selected tool count, source count, and whether the chain
   stopped there.
+- Timeline and source panels should visually separate the agent lane from the
+  data lane. Planner, tool mapping, artifact generation, and synthesis use the
+  agent color; `database_context`, database interactions, and data sources use
+  the data color.
 - Right panel: details for the selected full-chain stage, including inputs,
   outputs, evidence ids, source modules, safety ledger, and related raw JSON.
   Each output source panel is collapsed by default, shows output type and size
@@ -200,8 +209,11 @@ The trace API is development-only:
   `X-Orbit-Privacy: developer-debug-prompt-visible`.
 - Never expose API keys or environment variable values.
 - Redact `outputSource` before returning it to the page.
-- Never execute external side effects, database writes, email, calendar,
+- Never execute external side effects, live database writes, email, calendar,
   notifications, or live storage mutations.
+- The trace runner may read table-level summaries from the local-remote
+  database to show data context. It must not write live data or expose raw
+  production records.
 - The only external network request allowed is the selected model provider
   call already used by the live Orbit Agent planner/synthesis path.
 
@@ -230,8 +242,8 @@ Use TDD before implementation.
 RED tests should cover:
 
 - `POST /api/dev/orbit-ai/trace` returns a full-chain payload with ordered
-  stages, tool calls, data sources, safety metadata, and planner-only
-  comparison for an event recommendation prompt.
+  stages, tool calls, database interactions, data sources, safety metadata, and
+  planner-only comparison for an event recommendation prompt.
 - Stages with output return `outputSource`; the page renders source panels
   collapsed by default and shows pretty printed JSON when expanded.
 - New tools or sub-agents in the trace payload appear in `runtimeSnapshot`, the
@@ -259,7 +271,7 @@ Verification after implementation:
 - Production admin observability.
 - Persisting trace runs.
 - Streaming traces.
-- Real database reads or writes.
+- Real database writes or production database reads.
 - Executing email, calendar, notification, or external actions.
 - Replacing the normal chat UI.
 
@@ -270,6 +282,8 @@ Verification after implementation:
 - The full-chain view shows where processing stopped or continued.
 - Tool names, artifact kinds, source modules, tool call traces, evidence ids,
   generated artifact summaries, and safety metadata are visible.
+- Database context is visible as its own stage and as a data-source panel, with
+  data-colored UI that differs from the agent/tool lane.
 - Each stage output source can be expanded; source panels are collapsed by
   default and show pretty printed output instead of minified JSON.
 - New sub-agents or tools are detected from the trace payload. Known
