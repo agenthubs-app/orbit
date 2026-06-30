@@ -47,6 +47,7 @@ export interface AppContactListItemViewModel {
   needsAttention: boolean;
   nextAction: string;
   organization: string;
+  profileSnippet: string;
   relationshipContextCopy: string;
   relationshipValueLabels: readonly string[];
   relationshipValueSummary: string;
@@ -300,6 +301,7 @@ function contactViewModel(contact: ContactListItem): AppContactListItemViewModel
     needsAttention: contact.status === "needs_follow_up",
     nextAction: contact.nextAction,
     organization: contact.organization,
+    profileSnippet: contact.profileSnippet,
     relationshipContextCopy: relationshipContextCopy(contact),
     relationshipValueLabels,
     relationshipValueSummary: `${humanList(relationshipValueLabels)}. ${

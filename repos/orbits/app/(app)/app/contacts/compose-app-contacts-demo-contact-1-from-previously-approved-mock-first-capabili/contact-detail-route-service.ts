@@ -265,9 +265,9 @@ function collectRouteEvidenceIds(
 
 function buildLocalActionResult(
   connectionEvidence: ConnectionEvidenceService,
+): AppContactDetailLocalActionResult | null {
   // 本地 action 只向 mock connection evidence 追加一条可复核证据。
   // 返回的 actionResult 明确标记无数据库查询、无写入、无通知、无消息发送。
-): AppContactDetailLocalActionResult | null {
   const result = connectionEvidence.addEvidence({
     connectionId: APP_CONTACT_DETAIL_CONNECTION_ID,
     contribution: "follow_up_signal",
@@ -338,9 +338,9 @@ export function loadAppContactDetailRoute({
   contactId,
   mode,
   scenario,
+}: AppContactDetailRouteInput): AppContactDetailRouteModel {
   // 主入口：解析服务 -> 拉取三个 capability payload -> 合并失败/空/pending 状态 ->
   // 成功时返回详情、证据时间线、关系价值和可选本地 actionResult。
-}: AppContactDetailRouteInput): AppContactDetailRouteModel {
   const services = resolveRouteServices(mode);
 
   if (isBoundaryModel(services)) {

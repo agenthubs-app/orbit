@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 
 import { useOrbitLanguage } from "./orbit-language-context";
 import { Icon } from "./orbit-reference-primitives";
@@ -206,7 +207,12 @@ export function OrbitAgentHero() {
   const { t } = useOrbitLanguage();
   const [text, setText] = useState("");
   const suggests = buildSuggests(t);
+  const isBlank = !text.trim();
 
+  function submitToAgent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    sendToAgent(text);
+  }
 
   return (
     <section
@@ -264,7 +270,8 @@ export function OrbitAgentHero() {
         <p style={{ color: "var(--text-2)", fontSize: "clamp(14px, 1.5vw, 17px)", lineHeight: 1.65, margin: "16px auto 24px", maxWidth: 500 }}>
           {t({ en: "Tell Orbit what you want to do, and it finds the right people in your network, the right events to join, and how to start the conversation.", zh: "说出你想做的事，Orbit 帮你从人脉里找对的人、从活动里找对的局，并告诉你该怎么开口。" })}
         </p>
-        <div
+        <form
+          onSubmit={submitToAgent}
           style={{
             background: "var(--surface)",
             border: "1px solid var(--border-2)",
@@ -320,29 +327,29 @@ export function OrbitAgentHero() {
               <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
             </div>
             <button
+              aria-disabled={isBlank}
               aria-label={t({ en: "Send", zh: "发送" })}
               className="hit-44"
-              disabled={!text.trim()}
-              onClick={() => sendToAgent(text)}
+              data-orbit-agent-hero-submit="true"
               style={{
                 alignItems: "center",
-                background: text.trim() ? "var(--accent-grad)" : "var(--surface-3)",
+                background: isBlank ? "var(--surface-3)" : "var(--accent-grad)",
                 border: "none",
                 borderRadius: 12,
-                boxShadow: text.trim() ? "0 8px 18px rgba(99,76,226,0.28)" : "none",
-                color: text.trim() ? "var(--on-dark)" : "var(--text-4)",
-                cursor: text.trim() ? "pointer" : "default",
+                boxShadow: isBlank ? "none" : "0 8px 18px rgba(99,76,226,0.28)",
+                color: isBlank ? "var(--text-4)" : "var(--on-dark)",
+                cursor: "pointer",
                 display: "flex",
                 height: 40,
                 justifyContent: "center",
                 width: 40,
               }}
-              type="button"
+              type="submit"
             >
               <Icon name="arrow" size={19} style={{ transform: "rotate(-90deg)" }} />
             </button>
           </div>
-        </div>
+        </form>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 9, justifyContent: "center", marginTop: 16 }}>
           {suggests.map((suggest) => (
             <button

@@ -621,9 +621,9 @@ export function loadAppEventDetailRoute({
   mode,
   scenario,
   targetContactId,
+}: AppEventDetailRouteInput): AppEventDetailRouteModel {
   // 主入口：加载七个 capability payload，统一处理失败/空/pending，
   // 再生成 opening line、canonical event、一致性摘要和可选 no-op action result。
-}: AppEventDetailRouteInput): AppEventDetailRouteModel {
   const services = resolveRouteServices(mode);
 
   if (isBoundaryModel(services)) {

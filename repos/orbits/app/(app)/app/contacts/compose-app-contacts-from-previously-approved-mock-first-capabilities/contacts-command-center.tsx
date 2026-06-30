@@ -403,6 +403,7 @@ function ContactCard({ contact }: { contact: AppContactListItemViewModel }) {
           {bilingualText("打开关系工作区", "Open relationship workspace")}
         </a>
       </header>
+      <p className="type-body">{contact.profileSnippet}</p>
       <p className="type-body">{contact.relationshipContextCopy}</p>
       <dl className="relationship-meta">
         <div>
