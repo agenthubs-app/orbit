@@ -146,12 +146,16 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
             reason: string;
           };
           stages: readonly {
+            completedAt: string;
+            durationMs: number;
             id: string;
             outputSource?: { kind: string; value: unknown };
             renderHint: string;
+            startedAt: string;
             status: string;
           }[];
           toolCalls: readonly { toolName: string; status: string }[];
+          totalDurationMs: number;
           traceSchemaVersion: string;
         };
         plannerOnly: {
@@ -184,6 +188,39 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
         "synthesis",
         "final_response",
       ],
+    );
+    assert.equal(
+      typeof body.data?.fullChain.totalDurationMs,
+      "number",
+      "trace must report the end-to-end runtime duration",
+    );
+    assert.ok(
+      (body.data?.fullChain.totalDurationMs ?? 0) >= 0,
+      "trace total duration must be non-negative",
+    );
+    assert.deepEqual(
+      body.data?.fullChain.stages.map((stage) => ({
+        hasCompletedAt: typeof stage.completedAt === "string" && stage.completedAt.length > 0,
+        hasDuration: typeof stage.durationMs === "number" && stage.durationMs >= 0,
+        hasStartedAt: typeof stage.startedAt === "string" && stage.startedAt.length > 0,
+        id: stage.id,
+      })),
+      [
+        "input_received",
+        "local_guardrails",
+        "planner",
+        "tool_mapping",
+        "database_context",
+        "artifact_generation",
+        "synthesis",
+        "final_response",
+      ].map((id) => ({
+        hasCompletedAt: true,
+        hasDuration: true,
+        hasStartedAt: true,
+        id,
+      })),
+      "each pipeline stage must expose timing metadata",
     );
     assert.equal(
       body.data?.fullChain.stages.find((stage) => stage.id === "planner")
@@ -349,7 +386,13 @@ test("development Orbit AI trace stops local guardrail prompts before planner an
       data?: {
         fullChain: {
           conversation: { provenance: { source: string } };
-          stages: readonly { id: string; skipReason?: string; status: string }[];
+          stages: readonly {
+            durationMs: number;
+            id: string;
+            skipReason?: string;
+            status: string;
+          }[];
+          totalDurationMs: number;
         };
         plannerOnly: { skippedReason?: string; status: string };
       };
@@ -358,6 +401,17 @@ test("development Orbit AI trace stops local guardrail prompts before planner an
 
     assert.equal(response.status, 200);
     assert.equal(body.success, true);
+    assert.ok(
+      (body.data?.fullChain.totalDurationMs ?? 0) >= 0,
+      "local guardrail trace must report a total duration",
+    );
+    assert.equal(
+      body.data?.fullChain.stages.every(
+        (stage) => typeof stage.durationMs === "number" && stage.durationMs >= 0,
+      ),
+      true,
+      "local guardrail trace must time every pipeline stage, including skipped stages",
+    );
     assert.equal(
       body.data?.fullChain.conversation.provenance.source,
       "local:orbit-agent-privacy-boundary",

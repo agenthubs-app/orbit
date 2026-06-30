@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
 import { success } from "../../../../../shared/api/envelope";
 import {
-  createGeminiOrbitAgentPlanner,
-  type GeminiOrbitAgentPlannerInput,
-  type GeminiOrbitAgentToolName,
-} from "../../../../../features/orbit-ai/gemini-provider";
+  createLiveOrbitAgentRuntime,
+  readMaxLoopSteps,
+  runLiveOrbitAgentRuntime,
+  toolFamilyForToolName,
+} from "../../../../../features/orbit-ai/live-agent-runtime";
 
 export const dynamic = "force-dynamic";
 
 type JsonRecord = Record<string, unknown>;
+type PlannerTraceInput = {
+  locale?: string | null;
+  message: string;
+};
 
-// dev Orbit Agent planner trace 只调 Gemini planner，不执行 Orbit domain tools。
+// dev Orbit Agent planner trace 只走共享 runtime 的 planner phase，不执行 Orbit domain tools。
 // 该入口会显示 prompt/raw output，只允许 development runtime 使用。
 const defaultMaxLoopSteps = 3;
-const maxSupportedLoopSteps = 3;
-const minSupportedLoopSteps = 1;
 
 // dev trace header 明确标记“开发调试、prompt 可见、禁止缓存”的边界。
 const DEV_TRACE_HEADERS = {
@@ -34,23 +37,9 @@ function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function readMaxLoopSteps(value: unknown): number {
+function readPlannerTraceMaxLoopSteps(value: unknown): number {
   // maxLoopSteps 用于展示后续阶段是否可运行，不会让此 endpoint 执行 domain tools。
-  const parsed =
-    typeof value === "number"
-      ? value
-      : typeof value === "string" && value.trim()
-        ? Number(value)
-        : defaultMaxLoopSteps;
-
-  if (!Number.isFinite(parsed)) {
-    return defaultMaxLoopSteps;
-  }
-
-  return Math.min(
-    maxSupportedLoopSteps,
-    Math.max(minSupportedLoopSteps, Math.floor(parsed)),
-  );
+  return readMaxLoopSteps(value, defaultMaxLoopSteps);
 }
 
 function isProductionRuntime() {
@@ -117,11 +106,6 @@ function plannerFailureResponse(error: {
   );
 }
 
-function toolFamilyForToolName(toolName: GeminiOrbitAgentToolName): string {
-  // tool family 只取命名前缀，用于 trace UI 分组展示。
-  return toolName.split(".")[0] ?? toolName;
-}
-
 async function readJsonBody(request: Request): Promise<JsonRecord> {
   // POST body 非对象或非法 JSON 时回落为空对象，由后续 validationResponse 报缺 message。
   try {
@@ -133,7 +117,7 @@ async function readJsonBody(request: Request): Promise<JsonRecord> {
   }
 }
 
-function inputFromSearchParams(request: Request): GeminiOrbitAgentPlannerInput {
+function inputFromSearchParams(request: Request): PlannerTraceInput {
   const searchParams = new URL(request.url).searchParams;
 
   // GET 支持 message 和 prompt 两个别名，便于浏览器地址栏直接调试。
@@ -147,14 +131,14 @@ function maxLoopStepsFromSearchParams(request: Request): number {
   const searchParams = new URL(request.url).searchParams;
 
   // query maxLoopSteps 优先，否则读取环境变量。
-  return readMaxLoopSteps(
+  return readPlannerTraceMaxLoopSteps(
     searchParams.get("maxLoopSteps") ?? process.env.ORBIT_AGENT_MAX_LOOP_STEPS,
   );
 }
 
 async function inputFromBody(
   body: JsonRecord,
-): Promise<GeminiOrbitAgentPlannerInput> {
+): Promise<PlannerTraceInput> {
   // POST 使用 JSON body，字段别名与 GET 保持一致。
   return {
     locale: readString(body.locale),
@@ -164,37 +148,81 @@ async function inputFromBody(
 
 function maxLoopStepsFromBody(body: JsonRecord): number {
   // body maxLoopSteps 优先，否则读取环境变量。
-  return readMaxLoopSteps(
+  return readPlannerTraceMaxLoopSteps(
     body.maxLoopSteps ?? process.env.ORBIT_AGENT_MAX_LOOP_STEPS,
   );
 }
 
 async function tracePlanner(input: {
   maxLoopSteps: number;
-  plannerInput: GeminiOrbitAgentPlannerInput;
+  plannerInput: PlannerTraceInput;
 }): Promise<Response> {
   const plannerInput = input.plannerInput;
-  const message = readString(plannerInput.message);
+  const runtime = createLiveOrbitAgentRuntime({
+    defaultMaxLoopSteps: 1,
+    maxLoopSteps: 1,
+  });
+  const runtimeResult = await runLiveOrbitAgentRuntime(runtime, {
+    locale: plannerInput.locale,
+    message: plannerInput.message,
+  });
 
-  // planner trace 必须有 prompt；空 prompt 不调用 provider。
-  if (!message) {
+  if (runtimeResult.state === "message_required") {
     return validationResponse("message or prompt is required.");
   }
 
-  // 这里只调用 planner.plan，不执行 artifact mapping，也不触发外部 side effect。
-  const planner = createGeminiOrbitAgentPlanner();
-  const result = await planner.plan({
-    locale: plannerInput.locale,
-    message,
-  });
-
-  if (result.success === false) {
+  if (runtimeResult.state === "planner_failure") {
     // planner 失败不伪装成业务 success。
-    return plannerFailureResponse(result.error);
+    return plannerFailureResponse(runtimeResult.plannerResult.error);
   }
 
+  if (runtimeResult.state === "local_boundary") {
+    return NextResponse.json(
+      success({
+        input: {
+          locale: plannerInput.locale ?? "zh",
+          message: runtimeResult.message,
+        },
+        loop: {
+          maxSteps: input.maxLoopSteps,
+          phaseLimit: {
+            domainToolsCanRun: input.maxLoopSteps >= 2,
+            plannerCanRun: false,
+            synthesisCanRun: input.maxLoopSteps >= 3,
+          },
+          phaseSemantics: [
+            "1 = planner only",
+            "2 = planner + Orbit tool/artifact mapping",
+            "3 = planner + Orbit tool/artifact mapping + Gemini synthesis",
+          ],
+        },
+        planner: {
+          parsed: null,
+          rawOutputText: "",
+        },
+        safety: {
+          debugEndpoint: true,
+          domainToolCallsExecuted: false,
+          externalSideEffectsExecuted: false,
+          localBoundary: runtimeResult.boundaryPayload.provenance.source,
+          note:
+            "Shared Orbit Agent runtime stopped this prompt before planner, tools, or synthesis.",
+        },
+        toolTrace: {
+          domainToolCallsWouldExecute: false,
+          toolRequests: [],
+        },
+      }),
+      {
+        headers: DEV_TRACE_HEADERS,
+        status: 200,
+      },
+    );
+  }
+
+  const result = runtimeResult.plannerResult;
   // toolRequests 只展示“模型建议调用什么”，不是已经执行的工具调用。
-  const toolRequests = result.data.toolRequests.map((request) => ({
+  const toolRequests = runtimeResult.toolRequests.map((request) => ({
     arguments: request.arguments,
     requiresUserConfirmation: request.requiresUserConfirmation,
     toolFamily: toolFamilyForToolName(request.toolName),
@@ -205,7 +233,7 @@ async function tracePlanner(input: {
     success({
       input: {
         locale: plannerInput.locale ?? "zh",
-        message,
+        message: runtimeResult.message,
       },
       planner: {
         parsed: {

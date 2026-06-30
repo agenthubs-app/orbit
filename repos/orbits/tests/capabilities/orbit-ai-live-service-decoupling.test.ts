@@ -81,6 +81,31 @@ test("Orbit AI live runtime files do not depend directly on mock implementations
   );
 });
 
+test("live conversation and trace share the same AI Agent runtime", () => {
+  const liveService = readProjectFile(
+    "features/orbit-ai/live-conversation-service.ts",
+  );
+  const liveTrace = readProjectFile("features/orbit-ai/live-conversation-trace.ts");
+  const plannerTraceRoute = readProjectFile("app/api/dev/orbit-agent/trace/route.ts");
+
+  for (const [label, source] of [
+    ["live conversation service", liveService],
+    ["live trace", liveTrace],
+    ["planner trace route", plannerTraceRoute],
+  ] as const) {
+    assert.match(
+      source,
+      /runLiveOrbitAgentRuntime/,
+      `${label} should delegate planner/tool/artifact/synthesis execution to the shared runtime`,
+    );
+    assert.doesNotMatch(
+      source,
+      /createGeminiOrbitAgentPlanner|planner\.plan|planner\.synthesize|function artifactForRequest|function toolRequestsForPlannerResult|function conversationForSuccess|function toolFamilyForToolName|createOrbitAgentLiveArtifactTaskService/,
+      `${label} should not duplicate the shared AI Agent runtime execution path`,
+    );
+  }
+});
+
 test("Shared AI provider contract does not carry mock fixture records", () => {
   const providerContract = readProjectFile("shared/ai/provider.ts");
 

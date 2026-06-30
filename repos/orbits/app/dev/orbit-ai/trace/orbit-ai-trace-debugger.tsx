@@ -96,6 +96,7 @@ const traceCopy = {
     dataSourceEmptyTitle: "No data source yet",
     databaseEmpty: "Local database context appears after a trace run.",
     databaseEmptyTitle: "No database context yet",
+    durationLabel: "Duration",
     evidence: "evidence",
     graphEmpty: "Trace graph appears after a run.",
     graphMaxLoops: "supports up to",
@@ -120,6 +121,7 @@ const traceCopy = {
     plannerRawOutputEmpty: "No raw planner output yet.",
     plannerTitle: "Planner comparison",
     promptLabel: "Prompt",
+    requestDurationLabel: "Request elapsed",
     runButton: "Run trace",
     runningButton: "Tracing",
     safetyLedger: "Safety ledger",
@@ -147,6 +149,7 @@ const traceCopy = {
     traceInputTitle: "Run a prompt",
     traceFailed: "Trace failed",
     waitingSummary: "Waiting for trace data.",
+    waitingDuration: "waiting",
   },
   zh: {
     architectureEmpty: "运行一次 trace 后检测工具、子 agent 和 renderer。",
@@ -158,6 +161,7 @@ const traceCopy = {
     dataSourceEmptyTitle: "暂无数据来源",
     databaseEmpty: "运行 trace 后会显示本地数据库上下文。",
     databaseEmptyTitle: "暂无数据库上下文",
+    durationLabel: "耗时",
     evidence: "条证据",
     graphEmpty: "运行后会显示 trace 图。",
     graphMaxLoops: "最多支持",
@@ -181,6 +185,7 @@ const traceCopy = {
     plannerRawOutputEmpty: "暂无 planner 原始输出。",
     plannerTitle: "Planner 对照",
     promptLabel: "Prompt",
+    requestDurationLabel: "请求总耗时",
     runButton: "运行 trace",
     runningButton: "Tracing",
     safetyLedger: "安全账本",
@@ -207,6 +212,7 @@ const traceCopy = {
     traceInputTitle: "运行 Prompt",
     traceFailed: "Trace 失败",
     waitingSummary: "等待 trace 数据。",
+    waitingDuration: "等待耗时",
   },
 } satisfies Record<TraceLanguage, Record<string, string>>;
 
@@ -396,6 +402,14 @@ const traceDebuggerStyles = `
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.trace-duration {
+  color: var(--trace-guard);
+  font-family: var(--orbit-font-mono);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.25;
 }
 
 .trace-graph-node strong {
@@ -711,6 +725,21 @@ function statusLabel(status: string, language: TraceLanguage): string {
   return statusLabels[language][status] ?? status;
 }
 
+function formatDuration(
+  durationMs: number | null | undefined,
+  copy: (typeof traceCopy)[TraceLanguage],
+) {
+  if (typeof durationMs !== "number" || !Number.isFinite(durationMs)) {
+    return copy.waitingDuration;
+  }
+
+  if (durationMs > 0 && durationMs < 1) {
+    return "<1 ms";
+  }
+
+  return `${durationMs >= 10 ? durationMs.toFixed(0) : durationMs.toFixed(1)} ms`;
+}
+
 function statusTone(status: string): "evidence" | "privacy" | "warning" {
   if (status === "completed") {
     return "evidence";
@@ -729,6 +758,7 @@ function laneForStage(stage: Pick<OrbitAiTraceStage, "id" | "lane">) {
 
 function stageCounts(stage: OrbitAiTraceStage | null) {
   return {
+    durationMs: stage?.durationMs,
     evidence: stage?.evidenceIds.length ?? 0,
     hasSource: Boolean(stage?.outputSource),
     status: stage?.status ?? "waiting",
@@ -883,6 +913,7 @@ function TraceGraph({
       mode: "single_live_loop",
       reason: copy.graphEmpty,
     } satisfies OrbitAiTracePayload["fullChain"]["loopSummary"]);
+  const totalDurationMs = payload?.fullChain.totalDurationMs;
   const loopIndexes = Array.from(
     new Set(graph.nodes.map((node) => node.loopIndex)),
   ).sort((left, right) => left - right);
@@ -919,6 +950,9 @@ function TraceGraph({
                 <Chip tone="confirmation">
                   {copy.graphMaxLoops} {loopSummary.maxSupportedLoops}
                 </Chip>
+                <Chip tone="evidence">
+                  {copy.requestDurationLabel}: {formatDuration(totalDurationMs, copy)}
+                </Chip>
               </div>
             </header>
             <div className="trace-graph-node-grid">
@@ -928,6 +962,7 @@ function TraceGraph({
                   className="trace-graph-node"
                   data-graph-node={node.id}
                   data-pipeline-stage={node.stageId}
+                  data-stage-duration-ms={node.durationMs}
                   data-status={node.status}
                   data-terminal={index === loopNodes.length - 1}
                   data-trace-lane={node.lane}
@@ -945,6 +980,9 @@ function TraceGraph({
                   <strong>
                     {node.stageId ? stageLabel(node.stageId, language) : node.label}
                   </strong>
+                  <span className="trace-duration">
+                    {copy.durationLabel}: {formatDuration(node.durationMs, copy)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -994,6 +1032,9 @@ function StageDetail({
           <Chip tone="evidence">{stage?.renderHint ?? "summary_card"}</Chip>
           <Chip tone="confirmation">
             {counts.evidence} {copy.evidence}
+          </Chip>
+          <Chip tone="evidence">
+            {copy.durationLabel}: {formatDuration(counts.durationMs, copy)}
           </Chip>
           <Chip tone={counts.hasSource ? "success" : "privacy"}>
             {counts.hasSource ? copy.sourceAttached : copy.sourcePending}
@@ -1242,6 +1283,7 @@ export function OrbitAiTraceDebugger() {
   const [uiLanguage, setUiLanguage] = useState<TraceLanguage>("zh");
   const [maxLoopSteps, setMaxLoopSteps] = useState("3");
   const [payload, setPayload] = useState<OrbitAiTracePayload | null>(null);
+  const [requestDurationMs, setRequestDurationMs] = useState<number | null>(null);
   const [requestStatus, setRequestStatus] = useState<RequestStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
@@ -1265,6 +1307,8 @@ export function OrbitAiTraceDebugger() {
 
     setRequestStatus("loading");
     setErrorMessage("");
+    setRequestDurationMs(null);
+    const requestStartedAt = performance.now();
 
     try {
       const response = await fetch("/api/dev/orbit-ai/trace", {
@@ -1287,6 +1331,9 @@ export function OrbitAiTraceDebugger() {
       }
 
       setPayload(body.data);
+      setRequestDurationMs(
+        Math.max(0, Number((performance.now() - requestStartedAt).toFixed(3))),
+      );
       setSelectedStageId(body.data.fullChain.stages[0]?.id ?? null);
       setRequestStatus("success");
     } catch (error) {
@@ -1371,6 +1418,12 @@ export function OrbitAiTraceDebugger() {
               {requestStatus === "loading" ? copy.runningButton : copy.runButton}
             </PrimaryButton>
           </form>
+          <div className="trace-pill-row">
+            <Chip tone="evidence">
+              {copy.requestDurationLabel}:{" "}
+              {formatDuration(requestDurationMs ?? payload?.fullChain.totalDurationMs, copy)}
+            </Chip>
+          </div>
           {requestStatus === "error" && (
             <div className="trace-panel trace-error" role="alert">
               <strong>{copy.traceFailed}</strong>

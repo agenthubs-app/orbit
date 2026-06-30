@@ -56,6 +56,7 @@ test("/dev/orbit-ai/trace renders the Orbit AI trace debugger shell", async () =
   assert.match(html, />English</);
   assert.match(html, /Agent 执行管线/);
   assert.match(html, /管线检查台/);
+  assert.match(html, /等待耗时/);
   assert.match(html, /developer-debug-prompt-visible/);
 });
 
@@ -94,6 +95,10 @@ test("Orbit AI trace debugger posts prompts to the full-chain trace API", () => 
   assert.match(source, /loopSummary/);
   assert.match(source, /graph/);
   assert.match(source, /databaseInteractions/);
+  assert.match(source, /requestDurationMs/);
+  assert.match(source, /formatDuration/);
+  assert.match(source, /data-stage-duration-ms/);
+  assert.match(source, /durationLabel/);
   assert.match(source, /--trace-data/);
   assert.match(source, /--trace-agent/);
   assert.match(source, /ORBIT_AGENT_TOOL_CATALOG/);

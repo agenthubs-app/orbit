@@ -66,6 +66,7 @@ export interface OrbitAiTraceSourceView {
 // TraceStage 是单个执行阶段，包含输入、输出、summary、状态、安全账本和渲染提示。
 export interface OrbitAiTraceStage {
   completedAt: string;
+  durationMs: number;
   evidenceIds: readonly string[];
   id: OrbitAiTraceStageId | string;
   inputs?: unknown;
@@ -102,6 +103,7 @@ export interface OrbitAiTraceDatabaseInteraction {
 }
 
 export interface OrbitAiTraceChainItem {
+  durationMs: number;
   lane?: OrbitAiTraceLane;
   stageId: OrbitAiTraceStage["id"];
   status: OrbitAiTraceStageStatus;
@@ -184,6 +186,7 @@ export type OrbitAiTraceGraphEdgeKind =
   | "tool";
 
 export interface OrbitAiTraceGraphNode {
+  durationMs?: number;
   id: string;
   kind: OrbitAiTraceGraphNodeKind | string;
   label: string;
@@ -273,6 +276,7 @@ export interface OrbitAiTraceFullChain {
   runtimeSnapshot: OrbitAiTraceRuntimeSnapshot;
   stages: readonly OrbitAiTraceStage[];
   toolCalls: readonly OrbitAiTraceToolCall[];
+  totalDurationMs: number;
   traceSchemaVersion: OrbitAiTraceSchemaVersion;
 }
 

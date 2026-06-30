@@ -84,16 +84,23 @@ export interface OrbitAgentArtifactPresentation {
   widthHint?: OrbitAgentArtifactWidthHint;
 }
 
+export interface OrbitAgentArtifactTaskContextMessage {
+  role: "user" | "assistant" | "system" | string;
+  content: string;
+}
+
 // TaskRequest 是创建 artifact 的输入，来自 Chat Agent 的 tool request。
 // query 保留用户意图，presentation 只影响 UI 展示，不代表真实动作已执行。
 export interface OrbitAgentArtifactTaskRequest {
   kind: OrbitAgentArtifactKind;
   query: string;
+  contextMessages?: readonly OrbitAgentArtifactTaskContextMessage[];
   conversationId?: string | null;
   locale?: "zh" | "en" | string | null;
   presentation?: Partial<OrbitAgentArtifactPresentation>;
   scenario?: OrbitAgentArtifactScenario | string | null;
   subAgent?: OrbitAgentArtifactSubAgent;
+  toolArguments?: Record<string, unknown> | null;
 }
 
 export interface OrbitAgentArtifactLookupInput {

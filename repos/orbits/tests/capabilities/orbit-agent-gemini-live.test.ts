@@ -1720,7 +1720,14 @@ test("live Orbit Agent defaults interactive turns to artifact generation without
   assert.equal(result.data?.diagnostics?.model, "gemini-test-model");
   assert.deepEqual(
     result.data?.diagnostics?.timings.map((timing) => timing.phase),
-    ["local_boundary", "planner", "artifact_generation", "synthesis"],
+    [
+      "local_boundary",
+      "planner",
+      "tool_mapping",
+      "artifact_generation",
+      "synthesis",
+      "final_response",
+    ],
   );
   assert.equal(
     result.data?.diagnostics?.timings.find(

@@ -1,7 +1,7 @@
 # Orbit AI Trace Debug Page Design
 
 Date: 2026-06-29
-Status: approved direction, pending implementation plan
+Status: implemented; updated 2026-06-30 for shared runtime and contact matching
 Chosen approach: full-chain debug view with planner-only comparison
 
 ## Goal
@@ -21,16 +21,24 @@ tool/data/source visibility.
 
 ## Current Context
 
-The app already has:
+The app now has:
 
-- `/api/dev/orbit-agent/trace`, which calls only the configured planner and
-  returns raw planner output. It intentionally does not execute Orbit artifact
-  mapping.
+- `/api/dev/orbit-agent/trace`, which remains a planner-only compatibility
+  diagnostic. It now delegates to the shared live runtime with `maxLoopSteps=1`,
+  so it exercises the same guardrail and planner path while still skipping
+  domain tools, artifact generation, and synthesis.
 - `/api/ai/conversations`, which calls the Orbit Agent conversation service.
   In live mode, that service runs local guardrails, planner routing, Orbit
   artifact mapping, optional synthesis, and final response construction.
-- `features/orbit-ai/live-conversation-service.ts`, which contains the real
-  chain but currently returns only the final conversation payload.
+- `features/orbit-ai/live-agent-runtime.ts`, which owns the shared live chain:
+  local guardrails, provider planner, allowed tool mapping, artifact request
+  execution, optional synthesis, and final conversation payload construction.
+- `features/orbit-ai/live-conversation-service.ts`, which is a thin wrapper
+  around the shared runtime for the product chat API.
+- `features/orbit-ai/live-conversation-trace.ts`, which adapts the shared
+  runtime result into the full-chain trace shape for `/dev/orbit-ai/trace`.
+- `features/orbit-ai/contact-recommendation-artifact-service.ts`, which handles
+  `contact_recommendations` artifacts from the `contacts.recommend` tool.
 - `features/orbit-ai/mock-artifact-task-service.ts`, whose artifacts already
   include `sourceModules`, `toolCalls`, `generatedView`, `evidenceIds`, and
   safety metadata.
@@ -52,24 +60,68 @@ This endpoint returns an envelope with two diagnostic lanes:
   subset, so model routing can be compared against the executed full-chain
   result.
 
-The existing `/api/dev/orbit-agent/trace` endpoint should remain compatible.
-If practical, it can delegate to shared planner trace helpers, but its current
-headers and planner-only behavior must not regress.
+The existing `/api/dev/orbit-agent/trace` endpoint remains compatible, but it
+must not own a separate planner path. It should call `runLiveOrbitAgentRuntime`
+with `maxLoopSteps=1` and render the same planner-only response shape and
+headers as before.
 
-Add a shared trace runner under `features/orbit-ai/` so the API does not
-reverse-engineer a final conversation payload. The runner should execute the
-same ordered decisions as `createLiveOrbitAgentConversationService` and record
-each stage while producing the same final conversation result.
+The shared runtime under `features/orbit-ai/` is the ownership boundary for
+agent execution. Product chat, full-chain trace, and planner-only diagnostics
+must all call it instead of duplicating guardrails, planner calls, tool mapping,
+artifact execution, or synthesis. Trace code may adapt and render runtime
+outputs, but it should not implement agent decisions itself.
 
 Target modules:
 
 - `features/orbit-ai/trace-contract.ts`: stage and payload types.
+- `features/orbit-ai/live-agent-runtime.ts`: shared Orbit Agent execution
+  runtime used by product chat, full-chain trace, and planner-only diagnostics.
+- `features/orbit-ai/live-artifact-task-service.ts`: composition boundary for
+  live artifact task services.
 - `features/orbit-ai/live-conversation-trace.ts`: full-chain trace runner and
   conversion helpers.
+- `features/orbit-ai/contact-recommendation-matching.ts`: method resolution and
+  current evidence-backed contact matcher.
+- `features/orbit-ai/contact-recommendation-artifact-service.ts`: artifact
+  adapter for `contact_recommendations`.
 - `app/api/dev/orbit-ai/trace/route.ts`: development-only API route.
+- `app/api/dev/orbit-agent/trace/route.ts`: planner-only compatibility route
+  backed by the shared runtime.
 - `app/dev/orbit-ai/trace/page.tsx`: server page shell.
 - `app/dev/orbit-ai/trace/orbit-ai-trace-debugger.tsx`: client component for
   prompt input, run state, stage selection, comparison, and raw JSON panels.
+
+## Contact Recommendations And Method Selection
+
+`contacts.recommend` is the model-facing tool name for contact recommendation
+requests. It is not a static display field. The planner may select it for the
+`contact_recommendations` intent, then the shared runtime maps that tool into a
+`contact_recommendations` artifact request with the user message, conversation
+context, and planner tool arguments.
+
+Contact recommendation method selection is controlled by the server environment
+variable `ORBIT_CONTACT_RECOMMENDATION_METHOD`:
+
+- unset or `rules_v1`: current implemented matcher.
+- `structured_extraction_v1`: declared option, returns visible
+  unimplemented state until a matcher is registered.
+- `semantic_index_v1`: declared option, returns visible unimplemented state.
+- `graph_gated_rag_v1`: declared option for future RAG, but still gated by the
+  relationship graph and source evidence. It is not broad unknown-person
+  discovery.
+- any other value: returns a configuration error artifact and failed tool call
+  trace instead of silently falling back.
+
+The current `rules_v1` implementation reads the latest query, planner tool
+arguments, and conversation context, extracts a narrow set of criteria, then
+queries the relationship natural search service. Only contacts with existing
+relationship evidence and evidence ids can appear in the artifact. The product
+principle is existing trusted links first: no open-web discovery, no external
+side effects, and no recommendation without reviewable relationship evidence.
+
+Because product chat, full-chain trace, and planner-only diagnostics share
+`live-agent-runtime.ts`, a contact recommendation behavior change belongs in the
+runtime or its artifact services, not separately in a dev route or UI component.
 
 ## Trace Contract
 

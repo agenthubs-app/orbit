@@ -1,7 +1,7 @@
 # Orbit AI 可视化 Trace Debug 页面设计
 
 日期：2026-06-29
-状态：设计方向已确认，等待实现计划
+状态：已实现；2026-06-30 补充共享 runtime 和人脉匹配方法说明
 选定方案：完整链路 debug 视图，并展示 planner-only 对比
 
 ## 目标
@@ -22,11 +22,14 @@
 
 ## 当前状态
 
-代码里已经有几块可以复用：
+代码里现在有几块需要共同维护：
 
-- `/api/dev/orbit-agent/trace`：只调用 planner，返回 raw planner output。它不会执行 Orbit artifact mapping。
+- `/api/dev/orbit-agent/trace`：保留为 planner-only 兼容诊断入口。它现在通过共享 live runtime 以 `maxLoopSteps=1` 执行同一套本地 guardrail 和 planner 路径，但仍跳过 domain tool、artifact generation 和 synthesis。
 - `/api/ai/conversations`：调用 Orbit Agent conversation service。在 live mode 下，这条路径会跑本地 guardrail、planner routing、Orbit artifact mapping、可选 synthesis 和最终回复组装。
-- `features/orbit-ai/live-conversation-service.ts`：里面已有真实链路，但现在只返回最终 conversation payload，没有把中间步骤暴露出来。
+- `features/orbit-ai/live-agent-runtime.ts`：拥有共享 live 链路，包括本地 guardrail、provider planner、允许工具映射、artifact request 执行、可选 synthesis 和最终 conversation payload 组装。
+- `features/orbit-ai/live-conversation-service.ts`：产品 chat API 的薄 wrapper，调用共享 runtime。
+- `features/orbit-ai/live-conversation-trace.ts`：把共享 runtime 的结果转换成 `/dev/orbit-ai/trace` 使用的 full-chain trace。
+- `features/orbit-ai/contact-recommendation-artifact-service.ts`：处理 `contacts.recommend` 工具产出的 `contact_recommendations` artifact。
 - `features/orbit-ai/mock-artifact-task-service.ts`：artifact payload 已经带有 `sourceModules`、`toolCalls`、`generatedView`、`evidenceIds` 和 safety metadata。
 
 新的 debug 页不要重新发明一套 agent 流程。它要把现有流程结构化地暴露出来。
@@ -43,17 +46,40 @@
 - `fullChain`：完整 Orbit Agent 路径的结构化 trace。
 - `plannerOnly`：现有 planner-only trace 的兼容形态，用来和 full-chain 结果对比。
 
-现有 `/api/dev/orbit-agent/trace` 必须保持兼容。可以把 planner trace 抽成共享 helper，但不能改变它现在的 header、返回结构和 planner-only 行为。
+现有 `/api/dev/orbit-agent/trace` 必须保持兼容，但不能再拥有独立 planner 路径。它应该调用 `runLiveOrbitAgentRuntime`，用 `maxLoopSteps=1` 执行，并继续返回原来的 planner-only 形态和 headers。
 
-新增一个共享 trace runner，放在 `features/orbit-ai/` 下。API 不应该从最终 conversation payload 里倒推链路，而是由 trace runner 按和 `createLiveOrbitAgentConversationService` 相同的顺序执行决策，并记录每一步。
+共享 runtime 是 agent 执行链的所有权边界。产品 chat、完整链路 trace 和 planner-only 诊断都必须调用它，不能各自复制 guardrail、planner、tool mapping、artifact execution 或 synthesis。Trace 代码可以适配和渲染 runtime 输出，但不应该自己实现 agent 决策。
 
 目标文件：
 
 - `features/orbit-ai/trace-contract.ts`：trace stage 和 payload 类型。
+- `features/orbit-ai/live-agent-runtime.ts`：产品 chat、full-chain trace 和 planner-only 诊断共用的 Orbit Agent 执行 runtime。
+- `features/orbit-ai/live-artifact-task-service.ts`：live artifact task service 的组合边界。
 - `features/orbit-ai/live-conversation-trace.ts`：完整链路 trace runner 和转换 helper。
+- `features/orbit-ai/contact-recommendation-matching.ts`：人脉推荐方法选择和当前基于关系证据的 matcher。
+- `features/orbit-ai/contact-recommendation-artifact-service.ts`：`contact_recommendations` artifact 适配器。
 - `app/api/dev/orbit-ai/trace/route.ts`：开发环境 trace API route。
+- `app/api/dev/orbit-agent/trace/route.ts`：通过共享 runtime 实现的 planner-only 兼容 route。
 - `app/dev/orbit-ai/trace/page.tsx`：debug 页 server shell。
 - `app/dev/orbit-ai/trace/orbit-ai-trace-debugger.tsx`：client component，负责输入、运行状态、stage 选择、对比视图和 raw JSON 面板。
+
+## 人脉推荐和方法选择
+
+`contacts.recommend` 是模型可选择的工具名，不是一个静态展示字段。Planner 在判断用户意图是 `contact_recommendations` 后，可以选择这个工具；共享 runtime 会把它映射成 `contact_recommendations` artifact request，并把用户消息、对话上下文和 planner tool arguments 一起传给 artifact service。
+
+人脉推荐方法由服务端环境变量 `ORBIT_CONTACT_RECOMMENDATION_METHOD` 控制：
+
+- 未设置或 `rules_v1`：当前已实现的 matcher。
+- `structured_extraction_v1`：已声明，但 matcher 未注册前会返回可见的 unimplemented 状态。
+- `semantic_index_v1`：已声明，但当前返回可见的 unimplemented 状态。
+- `graph_gated_rag_v1`：为未来 RAG 预留，但必须被关系图和来源证据约束；它不是广泛推荐陌生人。
+- 其它值：返回 configuration error artifact 和 failed tool call trace，不会静默 fallback。
+
+当前 `rules_v1` 会读取最新 query、planner tool arguments 和 conversation context，抽取有限的业务意图、行业、帮助类型和价值类型，再调用 relationship natural search service。只有带有已有关系证据和 evidence ids 的联系人会进入 artifact。
+
+产品原则是优先挖掘现有真实链接人脉：不做开放网络发现，不执行外部副作用，也不展示没有可复核关系证据的人脉推荐。未来如果引入 RAG，也应是 graph-gated RAG：先用结构化上下文和关系图约束候选，再用检索或语义索引提高匹配质量，而不是绕过已有关系网络。
+
+因为产品 chat、full-chain trace 和 planner-only 诊断都共用 `live-agent-runtime.ts`，人脉推荐行为变更应该落在 runtime 或 artifact service 中，而不是分别写在 dev route 或 UI component 里。
 
 ## Trace Contract
 

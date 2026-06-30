@@ -41,6 +41,7 @@ Live agent 使用 server-side model provider API。必需环境变量：
 - `ORBIT_DEEPSEEK_MODEL=deepseek-v4-flash`
 - `ORBIT_OPENAI_MODEL=gpt-4.1`
 - `ORBIT_AGENT_MAX_LOOP_STEPS=3`
+- `ORBIT_CONTACT_RECOMMENDATION_METHOD=rules_v1 | structured_extraction_v1 | semantic_index_v1 | graph_gated_rag_v1`
 
 `ORBIT_AGENT_CONVERSATION_MODE` 只切换 Chat Agent conversation provider，不切换 `/app` 首页 command center 或其他模块。缺少所选 provider 的 API key 时，live conversation service 必须 fail closed，返回可恢复错误，不回退到 mock、不执行工具、不请求外部网络。Model provider planner 输出必须通过白名单 schema，只有 `events.recommend`、`contacts.recommend`、`followups.reviewQueue` 和 `chat.context` 可以进入内部工具适配层。
 
@@ -51,6 +52,32 @@ Provider API 映射：
 - `openai` 使用 OpenAI Responses API；`gpt` 是 `openai` 的别名。
 
 Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限制在 1 到 3 之间：`1` 表示只做 model provider planner；`2` 表示 planner 后允许 Orbit 内部 tool/artifact mapping；`3` 表示 tool/artifact 返回后再调用 model provider synthesis 生成最终自然语言回复。默认值是 `3`，不允许开放式无限循环。
+
+## Live Runtime 共享边界
+
+Live agent 的执行链归 `features/orbit-ai/live-agent-runtime.ts` 所有。产品 chat service、`/dev/orbit-ai/trace` full-chain trace 和 `/api/dev/orbit-agent/trace` planner-only 兼容入口都必须调用同一个 runtime。Route 和 UI 只能负责参数适配、trace 展示和错误 envelope，不能各自复制 guardrail、planner、tool mapping、artifact execution 或 synthesis。
+
+当前三个入口的差异只在运行深度和展示形态：
+
+- `/api/ai/conversations`：产品 chat API，默认允许 planner、tool/artifact mapping 和 synthesis。
+- `/api/dev/orbit-ai/trace`：开发 trace API，展示完整 runtime 阶段、数据来源、tool calls 和 planner-only comparison。
+- `/api/dev/orbit-agent/trace`：旧 planner-only 诊断 API，仍走共享 runtime，但固定 `maxLoopSteps=1`，不执行 artifact 或 synthesis。
+
+新增 AI Agent 行为时，先改 runtime 或 artifact service，再让产品 API 和 dev trace 读取同一结果。不能只在 trace 页面或某个 dev route 内补业务逻辑。
+
+## 人脉推荐工具
+
+`contacts.recommend` 是 provider planner 可选择的白名单工具名；它会被 runtime 映射为 `contact_recommendations` artifact。它不是静态字段，也不是 UI-only 标签。Runtime 会把用户最新消息、conversation context 和 planner tool arguments 传给 artifact service，用同一套逻辑服务产品 chat 和 trace 页面。
+
+人脉推荐只推荐已有真实关系证据支持的人，不广泛推荐陌生人。当前已实现的 `rules_v1` 会从 query、tool arguments 和上下文里抽取行业、合作意图、引荐意图等条件，再调用 relationship natural search service；候选必须带有 evidence ids 和 relationship path。
+
+`ORBIT_CONTACT_RECOMMENDATION_METHOD` 控制匹配方法：
+
+- `rules_v1`：默认且当前已实现。
+- `structured_extraction_v1`、`semantic_index_v1`、`graph_gated_rag_v1`：已声明的未来方法，当前返回可见的未实现状态，不静默 fallback。
+- 非法值：返回 configuration error artifact 和 failed tool call trace。
+
+RAG 方向保留在 `graph_gated_rag_v1`。它必须先被关系图、来源证据和现有链接约束，再做语义检索或生成排序；不能绕过 Orbit 的真实关系网络，变成开放式陌生人推荐。
 
 ## API 与页面使用
 
