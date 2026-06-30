@@ -386,6 +386,10 @@ test("Orbit Agent conversation API routes return traceable envelopes", async () 
   const promptEnvelope = await promptResponse.json();
 
   assert.equal(promptResponse.status, 200);
+  assert.match(promptResponse.headers.get("Server-Timing") ?? "", /orbit-total;dur=/);
+  assert.match(promptResponse.headers.get("Server-Timing") ?? "", /orbit-read-body;dur=/);
+  assert.match(promptResponse.headers.get("Server-Timing") ?? "", /orbit-service;dur=/);
+  assert.match(promptResponse.headers.get("Server-Timing") ?? "", /orbit-serialize;dur=/);
   assert.equal(promptEnvelope.success, true);
   assert.equal(promptEnvelope.data.artifacts[0].task.kind, "event_recommendations");
   assert.equal(

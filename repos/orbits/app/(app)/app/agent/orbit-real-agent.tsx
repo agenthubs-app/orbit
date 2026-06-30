@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
 
 import type {
   OrbitAgentEventResultView,
@@ -14,6 +15,9 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, gradientFromString } from "../orbit-reference-primitives";
 
+// OrbitRealAgent 是 `/app/agent` 和 `/app/chat` 共享的真实聊天界面。
+// 初始欢迎页/历史建议来自静态 viewModel；用户真正发送消息后，
+// 会通过 `/api/ai/conversations` 进入服务端 Chat Agent。
 interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
 }
@@ -126,6 +130,8 @@ function parseDate(value: string) {
   return date && Number.isFinite(date.getTime()) ? date : null;
 }
 
+// API envelope 来自 fetch JSON，前端必须把它当 unknown 防御解析。
+// 这些 read* helper 让 UI 遇到缺字段或未来 schema 扩展时降级显示，而不是崩溃。
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -151,6 +157,7 @@ function currentAgentQuery() {
   return new URLSearchParams(window.location.search).get("q") ?? "";
 }
 
+// artifactKindLabel 把服务端 artifact kind 转成用户可读标签。
 function artifactKindLabel(kind: string, t: Translate) {
   const labels: Record<string, Copy> = {
     contact_recommendations: { en: "Contact recommendations", zh: "人脉推荐" },
@@ -164,6 +171,8 @@ function artifactKindLabel(kind: string, t: Translate) {
   return t(labels[kind] ?? labels.generic);
 }
 
+// 以下 read*Preview 函数把服务端 conversation payload 收窄成右侧结果面板可渲染的结构。
+// 它们只读取白名单字段；未知字段会被忽略。
 function readActionPreview(value: unknown, index: number): AgentArtifactActionPreview | null {
   if (!isRecord(value)) return null;
   const label = readString(value.label);
@@ -261,6 +270,9 @@ function readToolIntentPreview(value: unknown, index: number): AgentToolIntentPr
   };
 }
 
+// API panel 只消费 conversation payload 里的 artifacts/proposedToolIntents。
+// 如果 live agent 只是普通聊天、没有 artifact 或计划工具，这里返回 null，
+// UI 就只渲染 assistant 气泡，不打开右侧结果面板。
 function panelFromApiData(data: OrbitAgentApiData, t: Translate): ApiAgentPanel | null {
   const artifacts = readArray(data.artifacts)
     .map((artifact, index) => readArtifactPreview(artifact, index, t))
@@ -283,6 +295,8 @@ function panelFromApiData(data: OrbitAgentApiData, t: Translate): ApiAgentPanel 
   };
 }
 
+// 浏览器端唯一的真实 Chat Agent 请求入口。
+// mock/live 的选择不在前端决定，而是在服务端 service factory 根据环境变量解析。
 async function sendOrbitAgentMessage(message: string, locale: "en" | "zh", t: Translate) {
   const response = await fetch("/api/ai/conversations", {
     body: JSON.stringify({ locale, message }),
@@ -387,6 +401,7 @@ function agentSuggestLabel(label: string, language: "en" | "zh") {
   return labels[label] ?? label;
 }
 
+// AgentWelcome 是空会话状态，建议按钮会直接提交预置 query。
 function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; viewModel: OrbitAgentViewModel }) {
   const { language, t } = useOrbitLanguage();
 
@@ -516,6 +531,7 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
   );
 }
 
+// reference panel 渲染来自静态 viewModel 的人脉/活动卡片。
 function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: ReferenceAgentPanel; t: Translate }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -530,6 +546,7 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
   );
 }
 
+// live/API panel 渲染 Chat Agent 返回的 artifact 和 proposed tool intents。
 function LiveAgentPanelCards({ panel, t }: { panel: ApiAgentPanel; t: Translate }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -598,6 +615,7 @@ function LiveAgentPanelCards({ panel, t }: { panel: ApiAgentPanel; t: Translate 
   );
 }
 
+// AgentPanelContent 根据 panel.source 在静态参考结果和 live API 结果之间切换。
 function AgentPanelContent({
   language,
   navigate,
@@ -631,11 +649,32 @@ function agentPanelHint(panel: AgentPanel, t: Translate) {
     : t({ en: "Click a card to open the event page.", zh: "点卡片可直接跳转到对应活动页" });
 }
 
-function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (value: string) => void; onSend: () => void; value: string }) {
+// ChatBox 只负责收集输入和触发 onSend。
+// 空输入由 onSend 守卫，按钮保持可命中，避免响应式重复 DOM 被误判为不可点击。
+function ChatBox({
+  big,
+  busy,
+  onChange,
+  onSend,
+  value,
+}: {
+  big?: boolean;
+  busy?: boolean;
+  onChange: (value: string) => void;
+  onSend: () => void;
+  value: string;
+}) {
   const { t } = useOrbitLanguage();
+  const isBlank = !value.trim();
+  const requestState = busy ? "provider-thinking" : "idle";
+
+  function submitChat(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSend();
+  }
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, boxShadow: "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)", padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
+    <form aria-busy={busy} onSubmit={submitChat} style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, boxShadow: "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)", padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -655,19 +694,23 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
             <Icon name="sparkle" size={14} />
             iOrbit
           </span>
-          <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
+          <span data-orbit-agent-request-state={requestState} style={{ color: "var(--text-4)", fontSize: 12 }}>
+            {busy
+              ? t({ en: "Orbit is thinking", zh: "Orbit 正在生成" })
+              : t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}
+          </span>
         </div>
         <button
-          type="button"
-          onClick={onSend}
-          disabled={!value.trim()}
+          type="submit"
+          aria-disabled={isBlank}
           aria-label={t({ en: "Send", zh: "发送" })}
-          style={{ alignItems: "center", background: value.trim() ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: 12, boxShadow: value.trim() ? "0 8px 18px rgba(99,76,226,0.28)" : "none", color: value.trim() ? "var(--on-dark)" : "var(--text-4)", cursor: value.trim() ? "pointer" : "default", display: "flex", height: 40, justifyContent: "center", width: 40 }}
+          data-orbit-agent-submit="true"
+          style={{ alignItems: "center", background: isBlank ? "var(--surface-3)" : "var(--accent-grad)", border: "none", borderRadius: 12, boxShadow: isBlank ? "none" : "0 8px 18px rgba(99,76,226,0.28)", color: isBlank ? "var(--text-4)" : "var(--on-dark)", cursor: "pointer", display: "flex", height: 40, justifyContent: "center", width: 40 }}
         >
           <Icon name="arrow" size={19} style={{ transform: "rotate(-90deg)" }} />
         </button>
       </div>
-    </div>
+    </form>
   );
 }
 
@@ -688,10 +731,13 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   const [panel, setPanel] = useState<AgentPanel | null>(null);
   const [thinking, setThinking] = useState(false);
   const [histOpen, setHistOpen] = useState(false);
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [activeQ, setActiveQ] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const requestSeqRef = useRef(0);
 
+  // navigate 负责在 prototype 路由和真实详情页之间切换。
+  // agent 内部 query 只更新 history state，其它页面则交给浏览器跳转。
   const navigate = useCallback((prototypeHref: string) => {
     const href = preserveHref(productHref(prototypeHref));
     if (typeof window === "undefined") return;
@@ -705,6 +751,9 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     window.location.href = href;
   }, [preserveHref]);
 
+  // ask 是一次完整前端 turn：
+  // 先乐观追加 user 气泡，再等待 API 返回 assistant 文本和可选结果面板。
+  // requestSeqRef 用来丢弃较旧请求，避免连续点击时旧响应覆盖新响应。
   const ask = useCallback(async (query: string) => {
     const requestSeq = requestSeqRef.current + 1;
     requestSeqRef.current = requestSeq;
@@ -771,6 +820,18 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [histOpen]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const media = window.matchMedia("(max-width: 760px)");
+    const syncLayout = () => setIsMobileLayout(media.matches);
+
+    syncLayout();
+    media.addEventListener("change", syncLayout);
+
+    return () => media.removeEventListener("change", syncLayout);
+  }, []);
+
   const send = () => {
     const value = text.trim();
     if (!value) return;
@@ -797,6 +858,15 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     setActiveQ("");
     navigate("/agent");
   };
+
+  const chatBox = (
+    <ChatBox
+      busy={thinking}
+      value={text}
+      onChange={setText}
+      onSend={send}
+    />
+  );
 
   const renderBubbles = (inlinePanel: boolean) => (
     <>
@@ -843,7 +913,8 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
   return (
     <div data-orbit-real-page="agent" style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}>
-      <div className="orbit-desktop-only">
+      {!isMobileLayout ? (
+        <div className="orbit-desktop-only">
         <AccountTopNav
           active="agent"
           rightExtra={(
@@ -852,8 +923,10 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             </button>
           )}
         />
-      </div>
-      <div className="orbit-mobile-only" style={{ flexShrink: 0 }}>
+        </div>
+      ) : null}
+      {isMobileLayout ? (
+        <div className="orbit-mobile-only" style={{ flexShrink: 0 }}>
         <AccountTopNav
           active="agent"
           rightExtra={(
@@ -862,9 +935,11 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             </button>
           )}
         />
-      </div>
+        </div>
+      ) : null}
 
-      <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      {!isMobileLayout ? (
+        <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <aside style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, width: 248 }}>
           <div style={{ padding: 14 }}>
             <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 7, height: 40, justifyContent: "center", width: "100%" }}>
@@ -887,7 +962,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           </div>
           <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "12px 28px 18px" }}>
             <div style={{ margin: "0 auto", maxWidth: 720 }}>
-              <ChatBox value={text} onChange={setText} onSend={send} />
+              {chatBox}
             </div>
           </div>
         </div>
@@ -909,18 +984,21 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             </div>
           </aside>
         ) : null}
-      </div>
+        </div>
+      ) : null}
 
-      <div className="orbit-mobile-only" style={{ flex: 1, flexDirection: "column", minHeight: 0 }}>
+      {isMobileLayout ? (
+        <div className="orbit-mobile-only" style={{ flex: 1, flexDirection: "column", minHeight: 0 }}>
         <div ref={scrollRef} className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "18px 16px 12px" }}>
           {!messages.length && !thinking ? <AgentWelcome onPick={ask} viewModel={viewModel} /> : renderBubbles(true)}
         </div>
         <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "10px 16px 18px" }}>
-          <ChatBox value={text} onChange={setText} onSend={send} />
+          {chatBox}
         </div>
-      </div>
+        </div>
+      ) : null}
 
-      {histOpen ? (
+      {isMobileLayout && histOpen ? (
         <div className="orbit-mobile-only" style={{ inset: 0, position: "fixed", zIndex: 90 }}>
           <div onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
           <div style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}>

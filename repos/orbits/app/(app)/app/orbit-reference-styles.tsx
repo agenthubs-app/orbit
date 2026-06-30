@@ -7,9 +7,12 @@ const prototypeHtmlPath = path.join(
   "public/orbit-reference/orbit-reference.html",
 );
 
+// reference styles 从旧 prototype HTML 中抽取，用来让 React 页面复用同一套视觉基线。
+// 这里做了进程内缓存，避免每次渲染都重复读取和解包完整 HTML。
 let cachedStyleText: string | undefined;
 const cachedScriptText = new Map<string, string>();
 
+// React 页面需要少量隔离样式，避免 prototype 的按钮/input/reset 规则和 React 组件互相污染。
 const reactReferenceIsolationStyles = `
 [data-orbit-real-page] button,
 [data-orbit-real-page] input,
@@ -1109,6 +1112,7 @@ interface BundledAsset {
 }
 
 function decodeHtmlAttribute(value: string): string {
+  // iframe srcdoc 在 HTML attribute 中被实体转义；解包前先还原成真实 HTML。
   return value
     .replace(/&quot;/g, "\"")
     .replace(/&#39;/g, "'")
@@ -1119,11 +1123,13 @@ function decodeHtmlAttribute(value: string): string {
 }
 
 function extractBundlerScript(srcDoc: string, type: string): string | undefined {
+  // prototype bundle 把 manifest/template 等资产藏在特定 type 的 script 标签中。
   const escapedType = type.replace("/", "\\/");
   return srcDoc.match(new RegExp(`<script type="${escapedType}">([\\s\\S]*?)<\\/script>`))?.[1];
 }
 
 function unpackTemplate(srcDoc: string) {
+  // 如果没有 bundler manifest，就把 srcdoc 当作普通 HTML 处理。
   const manifestText = extractBundlerScript(srcDoc, "__bundler/manifest");
   const templateText = extractBundlerScript(srcDoc, "__bundler/template");
 
@@ -1133,6 +1139,7 @@ function unpackTemplate(srcDoc: string) {
   let template = JSON.parse(templateText) as string;
 
   for (const [uuid, entry] of Object.entries(manifest)) {
+    // manifest 中的资产可能被 gzip 压缩；解包后以内联 data URL 替换 template 里的 uuid。
     const compressed = Buffer.from(entry.data, "base64");
     const bytes = entry.compressed ? zlib.gunzipSync(compressed) : compressed;
     const dataUrl = `data:${entry.mime};base64,${bytes.toString("base64")}`;
@@ -1143,6 +1150,7 @@ function unpackTemplate(srcDoc: string) {
 }
 
 function readReferenceStyles() {
+  // 样式只需要读取一次；后续请求复用 cachedStyleText。
   if (cachedStyleText) return cachedStyleText;
 
   const html = fs.readFileSync(prototypeHtmlPath, "utf8");
@@ -1153,6 +1161,7 @@ function readReferenceStyles() {
   }
 
   const template = unpackTemplate(decodeHtmlAttribute(srcDoc));
+  // 只抽取 style 标签内容，脚本资产通过 readPrototypeScriptAsset 单独读取。
   cachedStyleText = [...template.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
     .map((match) => match[1])
     .join("\n");
@@ -1161,6 +1170,7 @@ function readReferenceStyles() {
 }
 
 export function readPrototypeScriptAsset(uuid: string) {
+  // prototype script 按 uuid 读取并缓存，供 Three/i18n 等 runtime 单独注入。
   const cached = cachedScriptText.get(uuid);
   if (cached) return cached;
 
@@ -1184,6 +1194,7 @@ export function readPrototypeScriptAsset(uuid: string) {
     throw new Error(`Orbit reference script asset ${uuid} was not found.`);
   }
 
+  // script 资产同样可能 gzip 压缩，解包后以纯文本注入到 React script 标签。
   const compressed = Buffer.from(entry.data, "base64");
   const bytes = entry.compressed ? zlib.gunzipSync(compressed) : compressed;
   const script = bytes.toString("utf8");
@@ -1193,10 +1204,16 @@ export function readPrototypeScriptAsset(uuid: string) {
 }
 
 function scriptContent(value: string) {
+  // 避免内联脚本文本中出现 </script> 提前结束 script 标签。
   return value.replace(/<\/script/gi, "<\\/script");
 }
 
+export function readReferenceStyleSheet() {
+  return `${readReferenceStyles()}\n${reactReferenceIsolationStyles}`;
+}
+
 export function OrbitReferenceThreeRuntime() {
+  // 旧 prototype 的 Three runtime 仍从 bundle 中读取，避免重写 3D 依赖装配。
   const threeScript = readPrototypeScriptAsset("4636af91-bda9-4959-bb19-8ab1c003d4e6");
 
   return (
@@ -1208,5 +1225,7 @@ export function OrbitReferenceThreeRuntime() {
 }
 
 export function OrbitReferenceStyles() {
-  return <style dangerouslySetInnerHTML={{ __html: `${readReferenceStyles()}\n${reactReferenceIsolationStyles}` }} />;
+  // React 页面通过外部 stylesheet 复用 prototype 原始样式和 React 隔离补丁，
+  // 避免把多 MB CSS 直接内联进每个 SSR HTML 响应。
+  return <link rel="stylesheet" href="/api/orbit-reference/styles" />;
 }
