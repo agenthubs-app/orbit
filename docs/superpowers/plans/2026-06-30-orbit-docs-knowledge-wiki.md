@@ -76,6 +76,12 @@ Modify app checks:
 - Create: `knowledge/index.zh.md`
 - Create: `knowledge/schema.zh.md`
 - Create: `knowledge/log.zh.md`
+- Create: `knowledge/wiki/project-overview.zh.md`
+- Create: `knowledge/wiki/architecture.zh.md`
+- Create: `knowledge/wiki/agent-system.zh.md`
+- Create: `knowledge/wiki/data-and-mockdata.zh.md`
+- Create: `knowledge/wiki/harness.zh.md`
+- Create: `knowledge/wiki/modules.zh.md`
 - Create: `knowledge/history/development-log.zh.md`
 - Create: `knowledge/learnings/index.zh.md`
 - Create: `knowledge/learnings/troubleshooting.zh.md`
@@ -115,6 +121,12 @@ test("root knowledge base has Chinese entry points and maintenance rules", () =>
     "knowledge/index.zh.md",
     "knowledge/schema.zh.md",
     "knowledge/log.zh.md",
+    "knowledge/wiki/project-overview.zh.md",
+    "knowledge/wiki/architecture.zh.md",
+    "knowledge/wiki/agent-system.zh.md",
+    "knowledge/wiki/data-and-mockdata.zh.md",
+    "knowledge/wiki/harness.zh.md",
+    "knowledge/wiki/modules.zh.md",
     "knowledge/history/development-log.zh.md",
     "knowledge/learnings/index.zh.md",
     "knowledge/learnings/troubleshooting.zh.md",
@@ -133,6 +145,12 @@ test("root knowledge base has Chinese entry points and maintenance rules", () =>
   assert.match(index, /排障/);
   assert.match(index, /架构/);
   assert.match(index, /knowledge\/docs\/catalog\.zh\.md/);
+  assert.match(index, /knowledge\/wiki\/project-overview\.zh\.md/);
+  assert.match(index, /knowledge\/wiki\/architecture\.zh\.md/);
+  assert.match(index, /knowledge\/wiki\/agent-system\.zh\.md/);
+  assert.match(index, /knowledge\/wiki\/data-and-mockdata\.zh\.md/);
+  assert.match(index, /knowledge\/wiki\/harness\.zh\.md/);
+  assert.match(index, /knowledge\/wiki\/modules\.zh\.md/);
 });
 
 test("agent instructions require documentation and development history updates", () => {
@@ -168,6 +186,12 @@ Create the files listed above. Minimum content requirements:
 
 - `knowledge/index.zh.md` must link `knowledge/docs/catalog.zh.md`, `knowledge/history/development-log.zh.md`, `knowledge/learnings/index.zh.md`, and every page under `knowledge/wiki/`.
 - `knowledge/schema.zh.md` must define raw sources, wiki pages, catalog, log, development history, and freshness rules.
+- `knowledge/wiki/project-overview.zh.md` must summarize Orbit's product intent and source documents.
+- `knowledge/wiki/architecture.zh.md` must summarize app, feature, service factory, mock/hybrid/live, and route view-model boundaries.
+- `knowledge/wiki/agent-system.zh.md` must summarize Orbit AI, Agent, bounded ReAct design, tools, safety ledger, and confirmation boundaries.
+- `knowledge/wiki/data-and-mockdata.zh.md` must summarize local-remote database, generated relationship fixture, mockdata source, and freshness risks.
+- `knowledge/wiki/harness.zh.md` must summarize harness execution, sprint contracts, evidence, and protected directories.
+- `knowledge/wiki/modules.zh.md` must summarize module groups and link to module architecture docs.
 - `knowledge/log.zh.md` must start with `## [2026-06-30] design | 建立 Orbit 文档库与知识库结构`.
 - `knowledge/history/development-log.zh.md` must include the initial design commit `9ff7d3f docs: design orbit knowledge wiki` and explain why the knowledge work began.
 - `knowledge/learnings/index.zh.md` must link both `.learnings/` and `repos/orbits/.learnings/`.
