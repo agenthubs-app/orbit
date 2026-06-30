@@ -7,6 +7,7 @@ import type {
   OrbitAiTraceRuntimeSnapshot,
   OrbitAiTraceStage,
 } from "../../../../features/orbit-ai/trace-contract";
+import { ORBIT_AGENT_TOOL_CATALOG } from "../../../../features/orbit-ai/agent-tools/registry";
 import {
   Chip,
   PrimaryButton,
@@ -131,6 +132,17 @@ const traceCopy = {
     title: "Orbit AI trace debugger",
     toolCallEmpty: "Tool call traces appear after a full-chain trace run.",
     toolCallEmptyTitle: "No tool call yet",
+    toolCatalogEmpty:
+      "The registered tool catalog is available before a trace run.",
+    toolCatalogSelected: "selected in current run",
+    toolCatalogStandby: "available",
+    toolCatalogTitle: "Registered tools",
+    toolConfirmationRequired: "confirmation required",
+    toolDescription: "Description",
+    toolInputSpec: "Input",
+    toolOutputSpec: "Output",
+    toolRisk: "Risk",
+    toolSpec: "Spec",
     traceInputEyebrow: "Trace input",
     traceInputTitle: "Run a prompt",
     traceFailed: "Trace failed",
@@ -181,6 +193,16 @@ const traceCopy = {
     title: "Orbit AI trace debugger",
     toolCallEmpty: "完整执行链运行后会显示工具调用 trace。",
     toolCallEmptyTitle: "暂无工具调用",
+    toolCatalogEmpty: "工具目录会在 trace 运行前显示，运行后会标记本轮选中的工具。",
+    toolCatalogSelected: "本轮已选择",
+    toolCatalogStandby: "可用",
+    toolCatalogTitle: "已注册工具",
+    toolConfirmationRequired: "需要确认",
+    toolDescription: "说明",
+    toolInputSpec: "输入规格",
+    toolOutputSpec: "输出规格",
+    toolRisk: "风险",
+    toolSpec: "规格",
     traceInputEyebrow: "Trace 输入",
     traceInputTitle: "运行 Prompt",
     traceFailed: "Trace 失败",
@@ -216,6 +238,7 @@ const traceDebuggerStyles = `
 .trace-detail-grid,
 .trace-metric-row,
 .trace-pill-row,
+.trace-tool-catalog,
 .trace-runtime-grid {
   display: grid;
   gap: var(--orbit-space-sm);
@@ -535,6 +558,10 @@ const traceDebuggerStyles = `
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
 }
 
+.trace-tool-catalog {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
 .trace-pill-row {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), max-content));
 }
@@ -589,6 +616,40 @@ const traceDebuggerStyles = `
 
 .trace-runtime-card {
   border-left: 3px solid var(--trace-guard);
+}
+
+.trace-tool-card {
+  display: grid;
+  gap: 10px;
+}
+
+.trace-tool-card header {
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.trace-tool-card strong {
+  font-family: var(--orbit-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.trace-tool-spec {
+  display: grid;
+  gap: 6px;
+}
+
+.trace-tool-spec span {
+  color: var(--orbit-color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.trace-tool-card[data-selected-tool="true"] {
+  border-color: var(--trace-agent);
+  box-shadow: inset 0 4px 0 var(--trace-agent);
 }
 
 @media (max-width: 1080px) {
@@ -1011,6 +1072,12 @@ function RuntimeSnapshotPanel({
   runtimeSnapshot: OrbitAiTraceRuntimeSnapshot | null;
 }) {
   const unknownRenderers = runtimeSnapshot?.unknownRenderers ?? [];
+  const tools =
+    runtimeSnapshot?.tools ??
+    ORBIT_AGENT_TOOL_CATALOG.map((tool) => ({
+      ...tool,
+      selectedInCurrentRun: false,
+    }));
 
   return (
     <WorkbenchSurface
@@ -1027,13 +1094,44 @@ function RuntimeSnapshotPanel({
             : copy.architectureSummary}
         </summary>
         <div className="trace-runtime-grid">
-          {(runtimeSnapshot?.tools ?? []).map((tool) => (
-            <div className="trace-runtime-card" key={tool.toolName}>
-              <strong>{tool.toolName}</strong>
-              <p>{tool.toolFamily}</p>
-              <code>{tool.renderHint}</code>
-            </div>
-          ))}
+          <div className="trace-tool-catalog" data-trace-tool-catalog="true">
+            {tools.map((tool) => (
+              <div
+                className="trace-runtime-card trace-tool-card"
+                data-selected-tool={tool.selectedInCurrentRun ? "true" : "false"}
+                data-trace-tool-name={tool.toolName}
+                key={tool.toolName}
+              >
+                <header>
+                  <strong>{tool.toolName}</strong>
+                  <span className="trace-status">
+                    {tool.selectedInCurrentRun
+                      ? copy.toolCatalogSelected
+                      : copy.toolCatalogStandby}
+                  </span>
+                </header>
+                <p>{tool.descriptionZh}</p>
+                <div className="trace-tool-spec">
+                  <span>{copy.toolSpec}</span>
+                  <p>{tool.specificationZh}</p>
+                </div>
+                <div className="trace-tool-spec">
+                  <span>{copy.toolInputSpec}</span>
+                  <p>{tool.inputSpecZh}</p>
+                </div>
+                <div className="trace-tool-spec">
+                  <span>{copy.toolOutputSpec}</span>
+                  <p>{tool.outputSpecZh}</p>
+                </div>
+                <code>
+                  {copy.toolRisk}: {tool.riskLevel} ·{" "}
+                  {tool.requiresConfirmation
+                    ? copy.toolConfirmationRequired
+                    : "no confirmation"}
+                </code>
+              </div>
+            ))}
+          </div>
           {(runtimeSnapshot?.subAgents ?? []).map((subAgent) => (
             <div className="trace-runtime-card" key={subAgent.subAgent}>
               <strong>{subAgent.subAgent}</strong>
@@ -1049,8 +1147,8 @@ function RuntimeSnapshotPanel({
           ))}
           {runtimeSnapshot ? null : (
             <div className="trace-runtime-card">
-              <strong>{copy.architectureSummary}</strong>
-              <p>{copy.architectureEmpty}</p>
+              <strong>{copy.toolCatalogTitle}</strong>
+              <p>{copy.toolCatalogEmpty}</p>
             </div>
           )}
         </div>

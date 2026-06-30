@@ -46,6 +46,11 @@ test("/dev/orbit-ai/trace renders the Orbit AI trace debugger shell", async () =
   assert.match(html, /data-trace-lane="data"/);
   assert.match(html, /data-planner-only-comparison="true"/);
   assert.match(html, /data-runtime-snapshot="true"/);
+  assert.match(html, /data-trace-tool-catalog="true"/);
+  assert.match(html, /data-trace-tool-name="events\.recommend"/);
+  assert.match(html, /根据活动上下文推荐值得复核的活动/);
+  assert.match(html, /输入：query 用户请求/);
+  assert.match(html, /只读取活动和关系上下文并生成推荐视图/);
   assert.match(html, /aria-label="切换 trace 界面语言"/);
   assert.match(html, />中文</);
   assert.match(html, />English</);
@@ -91,4 +96,9 @@ test("Orbit AI trace debugger posts prompts to the full-chain trace API", () => 
   assert.match(source, /databaseInteractions/);
   assert.match(source, /--trace-data/);
   assert.match(source, /--trace-agent/);
+  assert.match(source, /ORBIT_AGENT_TOOL_CATALOG/);
+  assert.match(source, /descriptionZh/);
+  assert.match(source, /specificationZh/);
+  assert.match(source, /selectedInCurrentRun/);
+  assert.match(source, /data-trace-tool-catalog/);
 });
