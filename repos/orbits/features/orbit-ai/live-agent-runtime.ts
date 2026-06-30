@@ -222,7 +222,7 @@ export function success(
   payload: OrbitAgentConversationPayload,
 ): OrbitAgentConversationResult {
   return {
-    data: JSON.parse(JSON.stringify(payload)) as OrbitAgentConversationPayload,
+    data: payload,
     success: true,
   };
 }

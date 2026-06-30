@@ -42,7 +42,7 @@ test("Orbit reference styles render as an external stylesheet link", async () =>
 
 test("Orbit reference stylesheet route serves extracted prototype CSS", async () => {
   const route = await importProjectModule<{
-    GET: () => Response;
+    GET: (request?: Request) => Response;
   }>("app/api/orbit-reference/styles/route.ts");
 
   const response = route.GET();
@@ -51,10 +51,35 @@ test("Orbit reference stylesheet route serves extracted prototype CSS", async ()
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /text\/css/);
   assert.match(response.headers.get("cache-control") ?? "", /max-age/);
+  assert.match(response.headers.get("etag") ?? "", /^"orbit-reference-styles-/);
   assert.match(css, /data-orbit-real-page/);
   assert.match(css, /Orbit landing/);
   assert.ok(
     css.length > 1_000_000,
     "external stylesheet should still contain the extracted prototype CSS",
   );
+});
+
+test("Orbit reference stylesheet route short-circuits matching cache validators", async () => {
+  const route = await importProjectModule<{
+    GET: (request?: Request) => Response;
+  }>("app/api/orbit-reference/styles/route.ts");
+
+  const initialResponse = route.GET();
+  const etag = initialResponse.headers.get("etag");
+
+  assert.ok(etag);
+
+  const cachedResponse = route.GET(
+    new Request("https://orbit.local/api/orbit-reference/styles", {
+      headers: {
+        "if-none-match": etag,
+      },
+    }),
+  );
+  const css = await cachedResponse.text();
+
+  assert.equal(cachedResponse.status, 304);
+  assert.equal(cachedResponse.headers.get("etag"), etag);
+  assert.equal(css, "");
 });

@@ -28,6 +28,26 @@ function jsonResponse(body: unknown, init?: ResponseInit): Response {
   });
 }
 
+async function countJsonStringifyCalls<TValue>(
+  run: () => Promise<TValue>,
+): Promise<{ count: number; value: TValue }> {
+  const originalStringify = JSON.stringify;
+  let count = 0;
+
+  JSON.stringify = ((...args: Parameters<typeof JSON.stringify>) => {
+    count += 1;
+    return originalStringify(...args);
+  }) as typeof JSON.stringify;
+
+  try {
+    const value = await run();
+
+    return { count, value };
+  } finally {
+    JSON.stringify = originalStringify;
+  }
+}
+
 test("Gemini Orbit Agent provider validates the planner schema", async () => {
   const provider = await importProjectModule<{
     parseGeminiOrbitAgentPlannerOutput: (value: string) => {
@@ -1741,6 +1761,28 @@ test("live Orbit Agent defaults interactive turns to artifact generation without
     ),
     true,
   );
+});
+
+test("live Orbit Agent local boundaries do not deep-clone fresh payloads before API serialization", async () => {
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: () => {
+      sendMessage: (input: { message?: string | null }) => Promise<{
+        data?: { assistantMessage: string };
+        success: boolean;
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService();
+  const { count, value: result } = await countJsonStringifyCalls(() =>
+    service.sendMessage({
+      message: "请删除这段聊天记录，不要保存，也不要给 AI 分析。",
+    }),
+  );
+
+  assert.equal(result.success, true);
+  assert.match(result.data?.assistantMessage ?? "", /本地/);
+  assert.equal(count, 0);
 });
 
 test("live Gemini Orbit Agent keeps relationship context tool traces on the planner allowlist", async () => {

@@ -10,6 +10,7 @@ const prototypeHtmlPath = path.join(
 // reference styles 从旧 prototype HTML 中抽取，用来让 React 页面复用同一套视觉基线。
 // 这里做了进程内缓存，避免每次渲染都重复读取和解包完整 HTML。
 let cachedStyleText: string | undefined;
+let cachedStyleSheetEtag: string | undefined;
 const cachedScriptText = new Map<string, string>();
 
 // React 页面需要少量隔离样式，避免 prototype 的按钮/input/reset 规则和 React 组件互相污染。
@@ -1210,6 +1211,19 @@ function scriptContent(value: string) {
 
 export function readReferenceStyleSheet() {
   return `${readReferenceStyles()}\n${reactReferenceIsolationStyles}`;
+}
+
+export function readReferenceStyleSheetEtag() {
+  if (cachedStyleSheetEtag) {
+    return cachedStyleSheetEtag;
+  }
+
+  const stat = fs.statSync(prototypeHtmlPath);
+  cachedStyleSheetEtag = `"orbit-reference-styles-${stat.size}-${Math.floor(
+    stat.mtimeMs,
+  )}-${reactReferenceIsolationStyles.length}"`;
+
+  return cachedStyleSheetEtag;
 }
 
 export function OrbitReferenceThreeRuntime() {

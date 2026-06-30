@@ -32,6 +32,26 @@ function assertNoLiveProviderCalls(filePath: string): void {
   assert.doesNotMatch(source, /sendgrid|postmark|gmail|calendar\.google/i);
 }
 
+function countJsonStringifyCalls<TValue>(
+  run: () => TValue,
+): { count: number; value: TValue } {
+  const originalStringify = JSON.stringify;
+  let count = 0;
+
+  JSON.stringify = ((...args: Parameters<typeof JSON.stringify>) => {
+    count += 1;
+    return originalStringify(...args);
+  }) as typeof JSON.stringify;
+
+  try {
+    const value = run();
+
+    return { count, value };
+  } finally {
+    JSON.stringify = originalStringify;
+  }
+}
+
 test("Orbit Agent artifact task service is registered behind the module factory", async () => {
   const factoryModule = await importProjectModule<{
     createOrbitAgentArtifactTaskService: (mode?: string) => {
@@ -137,6 +157,32 @@ test("mock artifact task creates a traceable ready event recommendation view", a
   assert.equal(result.data?.result.safety.domainWritesExecuted, false);
   assert.equal(result.data?.result.safety.externalSideEffectsExecuted, false);
   assert.equal(result.data?.result.safety.liveDatabaseReadExecuted, false);
+});
+
+test("preview artifact task service does not deep-clone fresh generated payloads", async () => {
+  const serviceModule = await importProjectModule<{
+    createOrbitAgentArtifactPreviewService: () => {
+      createArtifactTask: (input: {
+        kind: string;
+        query: string;
+      }) => {
+        data?: { result: { presentation: { title: string } } };
+        success: boolean;
+      };
+    };
+  }>("features/orbit-ai/artifact-task-preview-service.ts");
+
+  const service = serviceModule.createOrbitAgentArtifactPreviewService();
+  const { count, value: result } = countJsonStringifyCalls(() =>
+    service.createArtifactTask({
+      kind: "event_recommendations",
+      query: "推荐下周适合认识投资人的活动",
+    }),
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.result.presentation.title, "Event recommendations");
+  assert.equal(count, 0);
 });
 
 test("mock artifact task supports contact chat and follow-up generated views", async () => {

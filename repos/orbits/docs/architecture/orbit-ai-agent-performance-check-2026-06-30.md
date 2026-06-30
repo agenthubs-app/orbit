@@ -23,6 +23,8 @@ Implemented on 2026-06-30:
 6. `/api/orbit-reference/styles` serves the extracted prototype CSS with cache headers.
 7. `/app/agent` now renders only the current responsive chat layout branch, leaving one active textarea and one submit button in the rendered HTML.
 8. The chat input exposes `data-orbit-agent-request-state` and `aria-busy` so the UI can distinguish idle vs "Orbit is thinking".
+9. Live/generated Orbit Agent payload paths no longer JSON-clone freshly built response objects before the API route serializes them. This removes duplicate stringify/parse work from `live-agent-runtime`, the preview artifact producer, and the contact recommendation artifact producer while keeping fixture-backed mock clone boundaries unchanged.
+10. `/api/orbit-reference/styles` now emits an ETag derived from the prototype HTML metadata and React isolation style version, and returns `304 Not Modified` for matching `If-None-Match` validators without reading or transferring the multi-MB CSS body.
 
 ## Current Runtime Mode
 
@@ -122,6 +124,10 @@ Post-optimization checks:
 | SSR textarea count | 2 | 1 |
 | SSR submit marker count | 2 | 1 |
 | Reference CSS route body | n/a | ~4,961,237 chars |
+| Service-layer clone before live local-boundary payload return | 1 JSON stringify | 0 JSON stringify |
+| Service-layer clone before preview artifact payload return | 1 JSON stringify | 0 JSON stringify |
+| Service-layer clone before contact recommendation artifact payload return | 1 JSON stringify | 0 JSON stringify |
+| Reference CSS matching cache revalidation | 200 + CSS body | 304 + empty body |
 
 Example local boundary response header after optimization:
 
@@ -167,7 +173,7 @@ So the symptom can look like a dead button, but the measured cause is usually a 
 
 1. Stream or progressively return the response: show planner/artifact first, then append synthesized natural language later.
 2. Prune `OrbitReferenceStyles` usage; 29-page usage suggests it became a global visual dependency instead of a small compatibility bridge.
-3. Evaluate a hashed/static CSS asset for the reference stylesheet instead of the API route if CDN caching becomes important.
+3. Evaluate a hashed/static CSS asset for the reference stylesheet instead of the API route if CDN caching needs immutable deploy-time URLs rather than ETag revalidation.
 
 ## Reproduction Notes
 
@@ -180,4 +186,5 @@ Checks used:
 - `curl -sS http://localhost:3000/app/agent -o /tmp/orbit-agent-current.html` plus size/style-block inspection.
 - `rg -l "<OrbitReferenceStyles" 'app/(app)/app' -g '*.tsx'` found 29 page/component files.
 - Post-change focused tests: `node --test --import tsx tests/capabilities/orbit-agent-conversation-mock.test.ts tests/capabilities/orbit-agent-gemini-live.test.ts tests/pages/orbit-reference-styles.test.tsx tests/pages/orbit-agent-api-ui.test.ts`.
+- Second-pass performance tests: `node --test --import tsx tests/capabilities/orbit-agent-gemini-live.test.ts tests/capabilities/orbit-ai-artifact-task-mock.test.ts tests/capabilities/orbit-ai-contact-recommendation-methods.test.ts` and `node --test --import tsx tests/pages/orbit-reference-styles.test.tsx`.
 - Post-change type/lint check: `npm run lint`.

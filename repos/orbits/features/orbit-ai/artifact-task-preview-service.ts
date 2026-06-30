@@ -40,10 +40,6 @@ const safety = {
   notificationDelivered: false,
 } as const;
 
-function clonePayload<TPayload>(payload: TPayload): TPayload {
-  return JSON.parse(JSON.stringify(payload)) as TPayload;
-}
-
 function readText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
@@ -381,7 +377,7 @@ function resultFor(
 
 function success(payload: OrbitAgentArtifactPayload): OrbitAgentArtifactSuccess {
   return {
-    data: clonePayload(payload),
+    data: payload,
     success: true,
   };
 }

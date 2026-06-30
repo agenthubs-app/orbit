@@ -44,6 +44,26 @@ async function withMethodEnv<TValue>(
   }
 }
 
+function countJsonStringifyCalls<TValue>(
+  run: () => TValue,
+): { count: number; value: TValue } {
+  const originalStringify = JSON.stringify;
+  let count = 0;
+
+  JSON.stringify = ((...args: Parameters<typeof JSON.stringify>) => {
+    count += 1;
+    return originalStringify(...args);
+  }) as typeof JSON.stringify;
+
+  try {
+    const value = run();
+
+    return { count, value };
+  } finally {
+    JSON.stringify = originalStringify;
+  }
+}
+
 test("contact recommendation abstraction declares four comparable methods", async () => {
   const module = await importProjectModule<{
     CONTACT_RECOMMENDATION_METHODS: readonly string[];
@@ -217,6 +237,92 @@ test("env selects unimplemented methods without silently falling back to rules",
     );
     assert.doesNotMatch(artifactText, /Omar Rahman/);
   });
+});
+
+test("contact recommendation artifact service does not deep-clone fresh generated payloads", async () => {
+  const serviceModule = await importProjectModule<{
+    createOrbitAgentContactRecommendationArtifactService: (input: {
+      matcher: {
+        method: string;
+        recommend: () => {
+          candidates: readonly {
+            contactId: string;
+            displayName: string;
+            evidenceIds: readonly string[];
+            matchReasons: readonly string[];
+            matchScore: number;
+            organization: string;
+            recommendedAction: string;
+            relationshipPath: string;
+            role: string;
+            sourceLabel: string;
+          }[];
+          criteria: {
+            businessIntent: string | null;
+            helpTypes: readonly string[];
+            industries: readonly string[];
+            relationshipPolicy: "existing_links_only";
+            searchQuery: string;
+            valueTypes: readonly string[];
+          };
+          method: string;
+          state: string;
+          summary: string;
+        };
+      };
+    }) => {
+      createArtifactTask: (input: {
+        kind: string;
+        query: string;
+      }) => {
+        data?: { result: { generatedView: { summary: string } | null } };
+        success: boolean;
+      };
+    };
+  }>("features/orbit-ai/contact-recommendation-artifact-service.ts");
+
+  const service = serviceModule.createOrbitAgentContactRecommendationArtifactService({
+    matcher: {
+      method: "rules_v1",
+      recommend: () => ({
+        candidates: [
+          {
+            contactId: "contact:test",
+            displayName: "Test Contact",
+            evidenceIds: ["evidence:test"],
+            matchReasons: ["Test evidence matched."],
+            matchScore: 91,
+            organization: "Orbit",
+            recommendedAction: "Review the relationship path.",
+            relationshipPath: "Existing trusted path.",
+            role: "Partner",
+            sourceLabel: "Test source",
+          },
+        ],
+        criteria: {
+          businessIntent: "find_warm_intro",
+          helpTypes: ["find_warm_intro"],
+          industries: ["fintech"],
+          relationshipPolicy: "existing_links_only",
+          searchQuery: "fintech referral",
+          valueTypes: ["referral_path"],
+        },
+        method: "rules_v1",
+        state: "success",
+        summary: "1 existing relationship candidate matched.",
+      }),
+    },
+  });
+  const { count, value: result } = countJsonStringifyCalls(() =>
+    service.createArtifactTask({
+      kind: "contact_recommendations",
+      query: "谁能介绍金融行业客户？",
+    }),
+  );
+
+  assert.equal(result.success, true);
+  assert.match(result.data?.result.generatedView?.summary ?? "", /1/);
+  assert.equal(count, 0);
 });
 
 test("invalid env method returns a visible configuration artifact", async () => {

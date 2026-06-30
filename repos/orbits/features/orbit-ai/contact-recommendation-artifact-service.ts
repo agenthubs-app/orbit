@@ -44,10 +44,6 @@ const safety: OrbitAgentArtifactSafety = {
 
 type ArtifactLocale = "en" | "zh";
 
-function clonePayload<TPayload>(payload: TPayload): TPayload {
-  return JSON.parse(JSON.stringify(payload)) as TPayload;
-}
-
 function readText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
@@ -419,7 +415,7 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
             : unimplementedResultFor(methodResolution.method);
 
       return {
-        data: clonePayload(payloadFor({ matchResult, query, request })),
+        data: payloadFor({ matchResult, query, request }),
         success: true,
       };
     },
