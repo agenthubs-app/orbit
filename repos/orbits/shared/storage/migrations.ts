@@ -41,3 +41,13 @@ create index if not exists orbit_records_updated_at_idx
 create index if not exists orbit_records_search_text_idx
   on orbit_records using gin (to_tsvector('simple', search_text));
 `;
+
+export interface OrbitRecordsMigrationClient {
+  query: (text: string) => Promise<unknown>;
+}
+
+export async function runOrbitRecordsMigration(
+  client: OrbitRecordsMigrationClient,
+): Promise<void> {
+  await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+}

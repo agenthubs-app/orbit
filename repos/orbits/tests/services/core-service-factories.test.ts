@@ -25,13 +25,16 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-test("core service factories expose default mock services and controlled live failures", () => {
+test("core service factories expose default mock services and controlled live failures", async () => {
   assert.equal(createAppBootstrapService().getAppBootstrap().success, true);
   assert.equal(
     createContactsListSearchAndFilterService().listContacts().success,
     true,
   );
-  assert.equal(createEventCrudAndImportService().listEvents().success, true);
+  assert.equal(
+    (await createEventCrudAndImportService().listEvents()).success,
+    true,
+  );
   assert.equal(createFollowupTaskGenerationService().listTasks().success, true);
   assert.equal(
     createDashboardAggregateService().getDashboardAggregate().success,

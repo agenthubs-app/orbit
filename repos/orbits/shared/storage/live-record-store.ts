@@ -54,6 +54,23 @@ export interface LiveRecordDeleteInput {
   deletedAt: string;
 }
 
+export type LiveRecordStoreResult<TValue> = TValue | Promise<TValue>;
+
+export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = Record<string, unknown>> {
+  deleteRecord: (
+    input: LiveRecordDeleteInput,
+  ) => LiveRecordStoreResult<LiveRecord<TPayload> | null>;
+  getRecord: (
+    query: LiveRecordGetQuery,
+  ) => LiveRecordStoreResult<LiveRecord<TPayload> | null>;
+  listRecords: (
+    query: LiveRecordListQuery,
+  ) => LiveRecordStoreResult<readonly LiveRecord<TPayload>[]>;
+  upsertRecord: (
+    record: LiveRecord<TPayload>,
+  ) => LiveRecordStoreResult<LiveRecord<TPayload>>;
+}
+
 export interface LiveRecordStore<TPayload extends Record<string, unknown> = Record<string, unknown>> {
   deleteRecord: (
     input: LiveRecordDeleteInput,

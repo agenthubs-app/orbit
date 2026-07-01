@@ -32,7 +32,7 @@ export async function GET(
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
   const eventService = createEventCrudAndImportService();
-  const result = eventService.getEvent({
+  const result = await eventService.getEvent({
     eventId: id,
     scenario: searchParams.get("scenario"),
   });

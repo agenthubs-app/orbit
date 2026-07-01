@@ -4,6 +4,7 @@
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createHybridEventCrudAndImportService } from "./event-crud-and-import/hybrid-service";
 import { createLiveEventCrudAndImportService } from "./event-crud-and-import/live-service";
+import { createConfiguredStorageEventStoreProvider } from "./event-crud-and-import/providers/storage-event-provider";
 import { createMockEventAttendeeRosterService } from "./mock-attendee-service";
 import { createMockEventEncounterNoteService } from "./mock-encounter-service";
 import { createMockEventGoalAndReadinessService } from "./mock-goal-service";
@@ -22,7 +23,10 @@ export const eventCrudAndImportServiceFactory =
     capabilityId: "event-crud-import",
     implementations: {
       hybrid: () => createHybridEventCrudAndImportService(),
-      live: () => createLiveEventCrudAndImportService(),
+      live: () =>
+        createLiveEventCrudAndImportService({
+          provider: createConfiguredStorageEventStoreProvider(),
+        }),
       mock: () => createMockEventCrudAndImportService(),
     },
   });

@@ -23,6 +23,8 @@ import {
 import type { SourceType } from "../../../shared/domain/source-types";
 import type { EventCrudAndImportService } from "../service";
 
+type LiveEventStoreProviderResult<TResult> = TResult | Promise<TResult>;
+
 export interface LiveEventStoreSource {
   type: SourceType;
   id: string;
@@ -66,11 +68,15 @@ export interface LiveEventStoreManualEventInput {
 export interface LiveEventStoreProvider {
   source: string;
   sourceLabel: string;
-  listEvents: () => readonly LiveEventStoreRecord[];
-  getEvent: (eventId: string) => LiveEventStoreRecord | null;
+  listEvents: () => LiveEventStoreProviderResult<
+    readonly LiveEventStoreRecord[]
+  >;
+  getEvent: (
+    eventId: string,
+  ) => LiveEventStoreProviderResult<LiveEventStoreRecord | null>;
   createManualEvent: (
     input: LiveEventStoreManualEventInput,
-  ) => LiveEventStoreRecord;
+  ) => LiveEventStoreProviderResult<LiveEventStoreRecord>;
 }
 
 export interface LiveEventCrudAndImportServiceOptions {
@@ -457,7 +463,7 @@ export function createLiveEventCrudAndImportService(
   const now = () => collectedAt(options.now);
 
   return {
-    listEvents(input = {}): EventListResult {
+    async listEvents(input = {}): Promise<EventListResult> {
       const currentTime = now();
 
       if (!provider) {
@@ -465,11 +471,11 @@ export function createLiveEventCrudAndImportService(
       }
 
       return success(
-        listPayload(provider, provider.listEvents(), input, currentTime),
+        listPayload(provider, await provider.listEvents(), input, currentTime),
       );
     },
 
-    createEvent(input = {}): ManualEventCreationResult {
+    async createEvent(input = {}): Promise<ManualEventCreationResult> {
       const currentTime = now();
 
       if (!provider) {
@@ -483,7 +489,7 @@ export function createLiveEventCrudAndImportService(
       }
 
       const event = toEventRecord(
-        provider.createManualEvent(manualInput),
+        await provider.createManualEvent(manualInput),
         true,
       );
 
@@ -496,7 +502,7 @@ export function createLiveEventCrudAndImportService(
       );
     },
 
-    getEvent(input: EventDetailInput): EventDetailResult {
+    async getEvent(input: EventDetailInput): Promise<EventDetailResult> {
       const currentTime = now();
 
       if (!provider) {
@@ -519,7 +525,7 @@ export function createLiveEventCrudAndImportService(
         );
       }
 
-      const record = provider.getEvent(eventId);
+      const record = await provider.getEvent(eventId);
 
       if (!record) {
         return failure(

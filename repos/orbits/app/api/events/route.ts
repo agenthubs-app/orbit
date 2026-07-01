@@ -135,7 +135,7 @@ export async function GET(request: Request): Promise<Response> {
   // GET 读取活动列表，不创建或导入活动。
   const mode = resolveFeatureMode();
   const eventService = createEventCrudAndImportService();
-  const result = eventService.listEvents(readEventListInput(request));
+  const result = await eventService.listEvents(readEventListInput(request));
 
   if (result.success === false) {
     const appError = eventCrudImportFailureToAppError(result);
@@ -175,7 +175,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const result = eventService.createEvent(inputResult.input);
+  const result = await eventService.createEvent(inputResult.input);
 
   if (result.success === false) {
     const appError = eventCrudImportFailureToAppError(result);

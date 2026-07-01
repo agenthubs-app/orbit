@@ -6,7 +6,10 @@ import {
   type LiveEventStoreProvider,
   type LiveEventStoreRecord,
 } from "../../features/events/event-crud-and-import/live-service";
-import { createStorageEventStoreProvider } from "../../features/events/event-crud-and-import/providers/storage-event-provider";
+import {
+  createConfiguredStorageEventStoreProvider,
+  createStorageEventStoreProvider,
+} from "../../features/events/event-crud-and-import/providers/storage-event-provider";
 import {
   resolveEventAttendeeRosterService,
   resolveEventCrudAndImportService,
@@ -102,7 +105,25 @@ function createFakeLiveProvider(): LiveEventStoreProvider {
   };
 }
 
-test("event CRUD import factory registers explicit live mode while other event child capabilities stay non-live", () => {
+function createAsyncFakeLiveProvider(): LiveEventStoreProvider {
+  const provider = createFakeLiveProvider();
+
+  return {
+    source: "live-store:async-fake-events",
+    sourceLabel: "Async fake live events store",
+    async listEvents() {
+      return provider.listEvents();
+    },
+    async getEvent(eventId) {
+      return provider.getEvent(eventId);
+    },
+    async createManualEvent(input) {
+      return provider.createManualEvent(input);
+    },
+  };
+}
+
+test("event CRUD import factory registers explicit live mode while other event child capabilities stay non-live", async () => {
   const liveResolution = resolveEventCrudAndImportService("live");
   const attendeeLive = resolveEventAttendeeRosterService("live");
   const goalLive = resolveEventGoalAndReadinessService("live");
@@ -112,7 +133,7 @@ test("event CRUD import factory registers explicit live mode while other event c
 
   assert.equal(liveResolution.success, true);
   if (liveResolution.success) {
-    const result = liveResolution.service.listEvents();
+    const result = await liveResolution.service.listEvents();
 
     assert.equal(result.success, false);
     assert.equal(result.error.code, "EVENTS_LIVE_STORE_UNCONFIGURED");
@@ -134,15 +155,83 @@ test("event CRUD import factory registers explicit live mode while other event c
   }
 });
 
-test("live event CRUD store maps provider records without calendar provider side effects", () => {
+test("live event CRUD awaits asynchronous store providers", async () => {
+  const service = createLiveEventCrudAndImportService({
+    provider: createAsyncFakeLiveProvider(),
+  });
+
+  const listed = await service.listEvents({ statusFilter: "confirmed" });
+  const detail = await service.getEvent({ eventId: "event:live:operator-dinner" });
+  const created = await service.createEvent({
+    title: "Async live investor dinner",
+    sourceNote: "Operator added the dinner through an async live events store.",
+    venue: "Marunouchi",
+    startsAt: "2026-07-21T10:00:00.000Z",
+  });
+
+  assert.equal(listed.success, true);
+  assert.equal(listed.data.events[0]?.title, "Operator dinner");
+  assert.equal(listed.data.provenance.source, "live-store:async-fake-events");
+  assert.equal(detail.success, true);
+  assert.equal(detail.data.event.id, "event:live:operator-dinner");
+  assert.equal(created.success, true);
+  assert.equal(created.data.event.id, "event:live:async-live-investor-dinner");
+  assert.equal(created.data.event.liveDatabaseWriteExecuted, true);
+});
+
+test("configured storage event provider reuses the default Postgres provider", () => {
+  const previousEventUrl = process.env.ORBIT_EVENT_DATABASE_URL;
+  const previousLiveUrl = process.env.ORBIT_LIVE_DATABASE_URL;
+  const previousOrbitUrl = process.env.ORBIT_DATABASE_URL;
+  const previousWorkspaceId = process.env.ORBIT_WORKSPACE_ID;
+
+  try {
+    delete process.env.ORBIT_EVENT_DATABASE_URL;
+    delete process.env.ORBIT_DATABASE_URL;
+    process.env.ORBIT_LIVE_DATABASE_URL = "postgres://example.test/orbit";
+    process.env.ORBIT_WORKSPACE_ID = "workspace:events-cache";
+
+    const first = createConfiguredStorageEventStoreProvider();
+    const second = createConfiguredStorageEventStoreProvider();
+
+    assert.ok(first);
+    assert.strictEqual(second, first);
+  } finally {
+    if (previousEventUrl === undefined) {
+      delete process.env.ORBIT_EVENT_DATABASE_URL;
+    } else {
+      process.env.ORBIT_EVENT_DATABASE_URL = previousEventUrl;
+    }
+
+    if (previousLiveUrl === undefined) {
+      delete process.env.ORBIT_LIVE_DATABASE_URL;
+    } else {
+      process.env.ORBIT_LIVE_DATABASE_URL = previousLiveUrl;
+    }
+
+    if (previousOrbitUrl === undefined) {
+      delete process.env.ORBIT_DATABASE_URL;
+    } else {
+      process.env.ORBIT_DATABASE_URL = previousOrbitUrl;
+    }
+
+    if (previousWorkspaceId === undefined) {
+      delete process.env.ORBIT_WORKSPACE_ID;
+    } else {
+      process.env.ORBIT_WORKSPACE_ID = previousWorkspaceId;
+    }
+  }
+});
+
+test("live event CRUD store maps provider records without calendar provider side effects", async () => {
   const service = createLiveEventCrudAndImportService({
     provider: createFakeLiveProvider(),
   });
 
-  const listed = service.listEvents({ statusFilter: "confirmed" });
-  const detail = service.getEvent({ eventId: "event:live:operator-dinner" });
-  const missing = service.getEvent({ eventId: "missing-live-event" });
-  const created = service.createEvent({
+  const listed = await service.listEvents({ statusFilter: "confirmed" });
+  const detail = await service.getEvent({ eventId: "event:live:operator-dinner" });
+  const missing = await service.getEvent({ eventId: "missing-live-event" });
+  const created = await service.createEvent({
     title: "Live investor dinner",
     sourceNote: "Operator added the dinner directly to the live events store.",
     venue: "Marunouchi",
@@ -187,12 +276,12 @@ test("live event CRUD store maps provider records without calendar provider side
   assert.equal(created.data.provenance.notificationDelivered, false);
 });
 
-test("unconfigured live event store fails closed for every operation", () => {
+test("unconfigured live event store fails closed for every operation", async () => {
   const service = createLiveEventCrudAndImportService();
 
-  const listed = service.listEvents();
-  const detail = service.getEvent({ eventId: "event:live:missing-provider" });
-  const created = service.createEvent({
+  const listed = await service.listEvents();
+  const detail = await service.getEvent({ eventId: "event:live:missing-provider" });
+  const created = await service.createEvent({
     title: "Live dinner",
     sourceNote: "Operator attempted live creation without provider config.",
   });
@@ -208,7 +297,7 @@ test("unconfigured live event store fails closed for every operation", () => {
   }
 });
 
-test("live event CRUD can read and create events through the shared storage provider", () => {
+test("live event CRUD can read and create events through the shared storage provider", async () => {
   const storageRecord: LiveRecord<{
     description: string;
     endsAt: string;
@@ -271,9 +360,9 @@ test("live event CRUD can read and create events through the shared storage prov
   });
   const service = createLiveEventCrudAndImportService({ provider });
 
-  const listed = service.listEvents({ sourceCaptureMethod: "manual_form" });
-  const detail = service.getEvent({ eventId: "event:storage:operator-breakfast" });
-  const created = service.createEvent({
+  const listed = await service.listEvents({ sourceCaptureMethod: "manual_form" });
+  const detail = await service.getEvent({ eventId: "event:storage:operator-breakfast" });
+  const created = await service.createEvent({
     title: "Storage investor dinner",
     sourceNote: "Operator added a storage-backed dinner.",
     venue: "Marunouchi",

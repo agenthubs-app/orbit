@@ -2,10 +2,18 @@ import {
   isSourceType,
   type SourceType,
 } from "../../../../shared/domain/source-types";
+import {
+  resolveLiveDatabaseConnectionConfig,
+  type LiveDatabaseEnv,
+} from "../../../../shared/storage/live-database-config";
 import type {
   LiveRecord,
-  LiveRecordStore,
+  LiveRecordStoreLike,
 } from "../../../../shared/storage/live-record-store";
+import {
+  createPgLiveRecordSqlClient,
+  createPostgresLiveRecordStore,
+} from "../../../../shared/storage/postgres-live-record-store";
 import type {
   LiveEventStoreEvidence,
   LiveEventStoreManualEventInput,
@@ -40,9 +48,23 @@ export interface StorageEventStoreProviderOptions {
   now?: () => string;
   source?: string;
   sourceLabel?: string;
-  store: LiveRecordStore<StorageEventPayload>;
+  store: LiveRecordStoreLike<StorageEventPayload>;
   workspaceId: string;
 }
+
+export interface ConfiguredStorageEventStoreProviderOptions {
+  createdBy?: string;
+  env?: LiveDatabaseEnv;
+  now?: () => string;
+  sourceLabel?: string;
+}
+
+interface CachedConfiguredStorageEventStoreProvider {
+  key: string;
+  provider: LiveEventStoreProvider;
+}
+
+let cachedDefaultProvider: CachedConfiguredStorageEventStoreProvider | null = null;
 
 function readText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -190,16 +212,16 @@ export function createStorageEventStoreProvider({
   return {
     source: source ?? `live-record-store:events:${workspaceId}`,
     sourceLabel,
-    listEvents() {
-      return store
-        .listRecords({
+    async listEvents() {
+      const records = await store.listRecords({
           workspaceId,
           collectionName: EVENTS_LIVE_RECORD_COLLECTION,
-        })
-        .map(toLiveEventStoreRecord);
+        });
+
+      return records.map(toLiveEventStoreRecord);
     },
-    getEvent(eventId) {
-      const record = store.getRecord({
+    async getEvent(eventId) {
+      const record = await store.getRecord({
         workspaceId,
         collectionName: EVENTS_LIVE_RECORD_COLLECTION,
         recordId: eventId,
@@ -207,9 +229,9 @@ export function createStorageEventStoreProvider({
 
       return record ? toLiveEventStoreRecord(record) : null;
     },
-    createManualEvent(input) {
+    async createManualEvent(input) {
       return toLiveEventStoreRecord(
-        store.upsertRecord(
+        await store.upsertRecord(
           manualRecord({
             createdBy,
             input,
@@ -220,4 +242,51 @@ export function createStorageEventStoreProvider({
       );
     },
   };
+}
+
+export function createConfiguredStorageEventStoreProvider({
+  createdBy,
+  env,
+  now,
+  sourceLabel = "Events Postgres live storage",
+}: ConfiguredStorageEventStoreProviderOptions = {}): LiveEventStoreProvider | null {
+  const config = resolveLiveDatabaseConnectionConfig(env);
+
+  if (!config) {
+    return null;
+  }
+
+  const canUseDefaultCache =
+    createdBy === undefined &&
+    env === undefined &&
+    now === undefined &&
+    sourceLabel === "Events Postgres live storage";
+  const cacheKey = `${config.connectionString}\u0000${config.workspaceId}`;
+
+  if (canUseDefaultCache && cachedDefaultProvider?.key === cacheKey) {
+    return cachedDefaultProvider.provider;
+  }
+
+  const client = createPgLiveRecordSqlClient({
+    connectionString: config.connectionString,
+  });
+  const store = createPostgresLiveRecordStore<StorageEventPayload>({ client });
+
+  const provider = createStorageEventStoreProvider({
+    createdBy,
+    now,
+    source: `postgres-live-record-store:events:${config.workspaceId}`,
+    sourceLabel,
+    store,
+    workspaceId: config.workspaceId,
+  });
+
+  if (canUseDefaultCache) {
+    cachedDefaultProvider = {
+      key: cacheKey,
+      provider,
+    };
+  }
+
+  return provider;
 }

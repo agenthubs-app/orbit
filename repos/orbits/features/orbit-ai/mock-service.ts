@@ -2,6 +2,7 @@ import { createAgentActionQueueService } from "../agent/service-factory";
 import { createAppBootstrapService } from "../bootstrap/service-factory";
 import { createContactsListSearchAndFilterService } from "../contacts/service-factory";
 import { createDashboardAggregateService } from "../dashboard/service-factory";
+import type { EventListResult } from "../events/contract";
 import { createEventCrudAndImportService } from "../events/service-factory";
 import { createFollowupTaskGenerationService } from "../followups/service-factory";
 import type {
@@ -239,6 +240,20 @@ function itemFromParts(input: {
   return input;
 }
 
+function requireSyncEventListResult(
+  result: EventListResult | Promise<EventListResult>,
+): EventListResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Orbit AI mock command service requires a synchronous events service.",
+    );
+  }
+
+  return result as EventListResult;
+}
+
 export function createMockOrbitAiCommandService(): OrbitAiCommandService {
   const bootstrapService = createAppBootstrapService();
   const contactsService = createContactsListSearchAndFilterService();
@@ -269,7 +284,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
       const baseEvidence = payload?.provenance.evidenceIds ?? ["bootstrap-fixture-1"];
 
       if (panel === "events") {
-        const events = eventService.listEvents();
+        const events = requireSyncEventListResult(eventService.listEvents());
         const records =
           payload?.upcomingEvents.map((event) =>
             itemFromParts({
