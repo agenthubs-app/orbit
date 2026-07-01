@@ -6,19 +6,24 @@ Orbit AI 是面向用户的 AI command center 和 chat assistant 编排层。它
 
 模块的职责是选择和组合 Orbit 内部能力；真实业务事实仍来自对应 feature module 的 contract、service factory 和测试。
 
-## 三个 Capability
+## 四个 Capability
 
-当前代码把 Orbit AI 拆成三个服务：
+当前代码把 Orbit AI 拆成四个服务：
 
 - `OrbitAiCommandService`：旧 command center 能力，用于首页输入和功能面板跳转。
 - `OrbitAgentConversationService`：产品 chat conversation 能力；mock 模式返回 fixture，live 模式进入 provider planner + 内部 artifact 编排链。服务名仍保留 `Agent` 作为当前代码兼容名。
 - `OrbitAgentArtifactTaskService`：生成可复核 artifact，例如活动推荐、人脉推荐、跟进队列或关系聊天上下文。
+- `OrbitAiProactiveAgentService`：把 Calendar、Events、Contacts、Followups 或系统状态 signal 转成 Orbit AI 聊天窗口里的主动管家消息。
 
-入口都在 `repos/orbits/features/orbit-ai/service-factory.ts`：
+前三个入口在 `repos/orbits/features/orbit-ai/service-factory.ts`：
 
 - `createOrbitAiCommandService()`
 - `createOrbitAgentConversationService()`
 - `createOrbitAgentArtifactTaskService()`
+
+主动管家入口在 `repos/orbits/features/orbit-ai/proactive-service-factory.ts`：
+
+- `createOrbitAiProactiveAgentService()`
 
 调用方必须走这些 factory，不直接导入 mock、live provider 或 fixture。
 
@@ -27,6 +32,8 @@ Orbit AI 是面向用户的 AI command center 和 chat assistant 编排层。它
 Orbit AI 应返回中文优先的 assistant reply、建议动作、可打开面板和可复核 artifact。它可以建议下一步，但不能绕过业务模块直接写联系人、发邮件、创建日历、投递通知或修改 live storage。
 
 当 Orbit AI 嵌入 `/app/chat` 或当前 legacy route `/app/agent` 时，自然语言输入先进入 conversation。只有 planner 或本地意图判断需要联系人、活动、跟进或关系聊天上下文时，才创建 artifact task。
+
+当 Calendar、Events、Contacts、Followups 或系统状态产生主动提醒 signal 时，signal 先进入 proactive agent。用户可读内容必须作为 Orbit AI 聊天窗口里的 assistant proactive turn 出现。Notifications 只负责 mobile push、badge、delivery status、quiet hours 和 permission guard，不拥有主动提醒文案，也不成为独立产品入口。
 
 artifact 可以带：
 
@@ -45,6 +52,8 @@ artifact 可以带：
 Mock 服务使用本地规则、fixture 和核心模块 factory 组合响应。它不调用真实模型、外部网络、数据库、邮件、日历、通知服务或设备 API。
 
 Mock conversation service 接受自由文本，不要求每句话都绑定工具。Mock artifact task service 只生成可查看的本地推荐或上下文结果，不执行报名、发信、日历、通知、资料写入或数据库写入。
+
+Mock proactive agent service 接受结构化 `AgentSignal`，生成 `deliverySurface: "orbit_ai_chat"` 的主动 assistant 消息。它不调用 push provider、不写日历、不发送邮件、不访问外部网络、不写 live storage，也不调用 live AI provider。
 
 ## Live 行为
 
@@ -89,7 +98,8 @@ Orbit AI planner
 ## 阅读代码顺序
 
 1. `features/orbit-ai/service-factory.ts`：先确认调用方能拿到哪些服务。
-2. `features/orbit-ai/artifact-contract.ts` 和 `conversation-contract.ts`：确认 payload、safety 和 provenance 字段。
-3. `features/orbit-ai/live-agent-runtime.ts`：确认 live conversation 的真实执行顺序。
-4. `features/orbit-ai/live-conversation-trace.ts` 和 `trace-contract.ts`：确认 trace 页面暴露了哪些 runtime 事实。
-5. `features/orbit-ai/DESIGN.md`：阅读更完整的 feature 设计和协作规则。
+2. `features/orbit-ai/proactive-contract.ts` 和 `proactive-service-factory.ts`：确认主动管家 signal 到 Orbit AI chat turn 的边界。
+3. `features/orbit-ai/artifact-contract.ts` 和 `conversation-contract.ts`：确认 payload、safety 和 provenance 字段。
+4. `features/orbit-ai/live-agent-runtime.ts`：确认 live conversation 的真实执行顺序。
+5. `features/orbit-ai/live-conversation-trace.ts` 和 `trace-contract.ts`：确认 trace 页面暴露了哪些 runtime 事实。
+6. `features/orbit-ai/DESIGN.md`：阅读更完整的 feature 设计和协作规则。

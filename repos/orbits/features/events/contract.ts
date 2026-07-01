@@ -33,6 +33,7 @@ export const EVENT_CRUD_AND_IMPORT_ERROR_CODES = [
   "EVENTS_SOURCE_NOTE_REQUIRED",
   "EVENTS_IMPORT_PENDING",
   "EVENTS_IMPORT_MOCK_FAILED",
+  "EVENTS_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type EventCrudImportErrorCode =
@@ -132,6 +133,14 @@ export const EVENT_CRUD_AND_IMPORT_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry calendar sync, organizer feed, live database, email, AI, or notification providers.",
   },
+  EVENTS_LIVE_STORE_UNCONFIGURED: {
+    code: "EVENTS_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live event store is not configured for this runtime.",
+    recovery:
+      "Configure an Events live-store provider before running live event CRUD, or switch the capability back to mock or hybrid mode.",
+  },
 } as const satisfies Record<
   EventCrudImportErrorCode,
   EventCrudImportErrorDefinition
@@ -146,7 +155,7 @@ export interface EventOriginMetadata extends SourceReferenceDTO {
   importedAt: string;
   calendarSyncRequested: false;
   organizerFeedRequested: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseWriteExecuted: boolean;
   externalNetworkRequested: false;
 }
 
@@ -176,7 +185,7 @@ export interface EventRecord {
   calendarSyncRequested: false;
   calendarProviderRequested: false;
   organizerFeedRequested: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseWriteExecuted: boolean;
   externalNetworkRequested: false;
   aiProviderRequested: false;
   emailProviderRequested: false;
@@ -195,7 +204,7 @@ export interface ImportedEventRecord {
   skippedFields: readonly string[];
   calendarSyncRequested: false;
   organizerFeedRequested: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseWriteExecuted: boolean;
 }
 
 // provenance 汇总这次活动数据的生成方式和所有 provider 安全标记。
@@ -209,10 +218,12 @@ export interface EventCrudImportProvenance {
     | "fixture"
     | "rule-based-event-filter"
     | "rule-based-manual-event-creation"
-    | "local-remote-store-query";
+    | "local-remote-store-query"
+    | "live-store-query"
+    | "live-store-manual-event-creation";
   calendarSyncRequested: false;
   organizerFeedRequested: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseWriteExecuted: boolean;
   externalNetworkRequested: false;
   aiProviderRequested: false;
   emailProviderRequested: false;
@@ -295,13 +306,17 @@ export function eventCrudImportErrorContext(
   errorCode: EventCrudImportErrorCode,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const provenance =
+    errorCode === "EVENTS_LIVE_STORE_UNCONFIGURED"
+      ? "Events live-store failure came from missing provider configuration."
+      : "Mock event CRUD and import failure came from deterministic fixture rules.";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     eventCrudImportErrorCode: errorCode,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock event CRUD and import failure came from deterministic fixture rules.",
+    provenance,
     service: "event-crud-and-import-mock",
   };
 }

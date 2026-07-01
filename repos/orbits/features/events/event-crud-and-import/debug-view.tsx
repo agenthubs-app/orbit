@@ -22,7 +22,7 @@ export const EVENT_CRUD_AND_IMPORT_MOCK_SLUG =
   "event-crud-and-import-mock";
 
 const liveImplementationNotesPath =
-  "features/events/event-crud-and-import-mock/LIVE_IMPLEMENTATION.md";
+  "features/events/event-crud-and-import/LIVE_IMPLEMENTATION.md";
 const pathWrapStyle = { overflowWrap: "anywhere" } as const;
 const responsiveWorkbenchStyles = `
 .event-crud-import-workbench {
@@ -128,7 +128,7 @@ const eventApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/events/event-crud-and-import-mock/.",
+  "Live service files live under features/events/event-crud-and-import/.",
   "ORBIT_EVENT_IMPORT_PROVIDER switches from mock fixtures to live providers.",
   "Live replacement requires calendar sync credentials, organizer feed permission, and live event database access.",
   "Every live event keeps source metadata, evidence ids, privacy limits, and provenance.",

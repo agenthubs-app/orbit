@@ -2,10 +2,18 @@
 
 ## Live service and provider files
 
-- `features/events/event-crud-and-import-mock/live-service.ts` should implement the `EventCrudAndImportService` interface from `features/events/service.ts`.
-- `features/events/event-crud-and-import-mock/providers/calendar-sync-provider.ts` should read calendar event records only after explicit calendar permission is granted.
-- `features/events/event-crud-and-import-mock/providers/organizer-feed-provider.ts` should read organizer feed event records only after the operator connects an approved event source.
-- `features/events/event-crud-and-import-mock/providers/event-database-provider.ts` should own live event database reads and writes behind the same API envelope used by the mock routes.
+- `features/events/event-crud-and-import/live-service.ts` should implement the `EventCrudAndImportService` interface from `features/events/service.ts`.
+- `features/events/event-crud-and-import/providers/storage-event-provider.ts`
+  maps shared `orbit_records` rows from `shared/storage` into the live event
+  provider contract. It is the first concrete provider for the Events Live Store
+  boundary and keeps event DTO mapping out of the generic storage layer.
+- The first live phase is the Events Live Store only: list/detail/manual create
+  for Orbit-owned event records. Calendar sync and organizer-feed import remain
+  separate future providers that can write into the live store after their own
+  OAuth, permission, deduplication, and replacement tests exist.
+- `features/events/event-crud-and-import/providers/calendar-sync-provider.ts` should read calendar event records only after explicit calendar permission is granted.
+- `features/events/event-crud-and-import/providers/organizer-feed-provider.ts` should read organizer feed event records only after the operator connects an approved event source.
+- `features/events/event-crud-and-import/providers/event-database-provider.ts` should own live event database reads and writes behind the same API envelope used by the mock routes.
 
 ## Switch mechanism
 
@@ -17,9 +25,13 @@
 ## Required env vars and permissions
 
 - `ORBIT_EVENT_IMPORT_PROVIDER` selects the provider implementation.
+- `ORBIT_EVENT_LIVE_STORE_PROVIDER` selects the first-phase Events Live Store
+  provider when it is wired outside tests.
 - `ORBIT_CALENDAR_SYNC_CLIENT_ID`, `ORBIT_CALENDAR_SYNC_CLIENT_SECRET`, and an approved calendar OAuth grant are required before calendar sync can run.
 - `ORBIT_ORGANIZER_FEED_BASE_URL` and `ORBIT_ORGANIZER_FEED_TOKEN` are required before organizer feed imports can run.
-- `ORBIT_EVENT_DATABASE_URL` and the live database service role are required before live event database writes can run.
+- `ORBIT_EVENT_DATABASE_URL` or the shared `ORBIT_LIVE_DATABASE_URL` and the
+  live database service role are required before live event database writes can
+  run against Postgres. Unit tests may use the in-memory `LiveRecordStore`.
 - Calendar sync, organizer feed import, and live event database writes must remain disabled until the operator has granted the specific permission and the route can attach consent evidence.
 
 ## Privacy and provenance constraints

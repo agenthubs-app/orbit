@@ -62,7 +62,7 @@ import {
 import {
   EventCrudAndImportMockDemo,
   EVENT_CRUD_AND_IMPORT_MOCK_SLUG,
-} from "../../../../features/events/event-crud-and-import-mock/debug-view";
+} from "../../../../features/events/event-crud-and-import/debug-view";
 import {
   EventAttendeeRosterMockDemo,
   EVENT_ATTENDEE_ROSTER_MOCK_SLUG,

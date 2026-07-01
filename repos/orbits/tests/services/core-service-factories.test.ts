@@ -16,6 +16,7 @@ import { createContactsListSearchAndFilterService } from "../../features/contact
 import { createDashboardAggregateService } from "../../features/dashboard/service-factory";
 import { createEventCrudAndImportService } from "../../features/events/service-factory";
 import { createFollowupTaskGenerationService } from "../../features/followups/service-factory";
+import { createOrbitAiProactiveAgentService } from "../../features/orbit-ai/proactive-service-factory";
 import { resolveOrbitAiCommandService } from "../../features/orbit-ai/service-factory";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
@@ -37,6 +38,17 @@ test("core service factories expose default mock services and controlled live fa
     true,
   );
   assert.equal(createAgentActionQueueService().listActions().success, true);
+  assert.equal(
+    createOrbitAiProactiveAgentService().createProactiveTurn({
+      signal: {
+        signalId: "signal:calendar:factory-coverage",
+        sourceModule: "calendar",
+        title: "Factory coverage calendar signal",
+        type: "calendar_event_upcoming",
+      },
+    }).success,
+    true,
+  );
   assert.equal(
     createChatConversationMessageService().listConversations().success,
     true,

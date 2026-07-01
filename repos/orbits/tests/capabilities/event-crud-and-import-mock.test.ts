@@ -131,6 +131,7 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
     "EVENTS_SOURCE_NOTE_REQUIRED",
     "EVENTS_IMPORT_PENDING",
     "EVENTS_IMPORT_MOCK_FAILED",
+    "EVENTS_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.EVENT_CRUD_AND_IMPORT_ERROR_DEFINITIONS.EVENTS_TITLE_REQUIRED
@@ -320,7 +321,7 @@ test("mock event CRUD and import service is deterministic rule-based code with n
     "features/events/mock-service.ts",
     "app/api/events/route.ts",
     "app/api/events/[id]/route.ts",
-    "features/events/event-crud-and-import-mock/debug-view.tsx",
+    "features/events/event-crud-and-import/debug-view.tsx",
   ]) {
     const source = readFileSync(join(projectRoot, filePath), "utf8");
 
@@ -568,7 +569,7 @@ test("event CRUD and import debug route renders all states and the live replacem
   const debugView = await importProjectModule<{
     EVENT_CRUD_AND_IMPORT_MOCK_SLUG: string;
     EventCrudAndImportMockDemo: () => React.ReactElement;
-  }>("features/events/event-crud-and-import-mock/debug-view.tsx");
+  }>("features/events/event-crud-and-import/debug-view.tsx");
   const html = renderToStaticMarkup(
     React.createElement(debugView.EventCrudAndImportMockDemo),
   );
@@ -577,7 +578,7 @@ test("event CRUD and import debug route renders all states and the live replacem
     "utf8",
   );
   const liveDocPath =
-    "features/events/event-crud-and-import-mock/LIVE_IMPLEMENTATION.md";
+    "features/events/event-crud-and-import/LIVE_IMPLEMENTATION.md";
   const liveDoc = readFileSync(join(projectRoot, liveDocPath), "utf8");
 
   assert.equal(
@@ -629,11 +630,11 @@ test("event CRUD and import debug route renders all states and the live replacem
 
   assert.match(
     liveDoc,
-    /features\/events\/event-crud-and-import-mock\/live-service\.ts/,
+    /features\/events\/event-crud-and-import\/live-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/events\/event-crud-and-import-mock\/providers\//,
+    /features\/events\/event-crud-and-import\/providers\//,
   );
   assert.match(liveDoc, /ORBIT_EVENT_IMPORT_PROVIDER/);
   assert.match(liveDoc, /calendar sync/i);

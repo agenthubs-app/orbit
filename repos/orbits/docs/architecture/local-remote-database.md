@@ -193,3 +193,28 @@ This fallback exists to keep the app and agent test harness running in hybrid
 mode while migrations happen capability by capability. It does not make those
 fallback services live, and `live` mode still fails closed unless a real live
 provider is registered.
+
+## Live Record Storage
+
+`shared/storage` is the new thin live-storage boundary. It is separate from
+`shared/local-remote-store`:
+
+- `shared/local-remote-store` remains the hybrid fixture-backed store. It keeps
+  the generated relationship graph in a versioned localStorage/memory envelope
+  so existing hybrid services can migrate gradually.
+- `shared/storage` owns the future live database shape: `orbit_records` rows
+  with typed envelope columns, stable provenance/index fields, and a JSONB
+  payload for feature-owned DTOs.
+
+The first shared storage contract is `LiveRecordStore`. It exposes list, get,
+upsert, and soft-delete operations over Live Records, plus a Postgres-compatible
+`orbit_records` migration string. It deliberately does not know about events,
+contacts, followups, search ranking, Orbit AI prompts, or dashboard business
+rules.
+
+Feature providers map their own DTOs into Live Records. The first provider is
+Events: `features/events/event-crud-and-import/providers/storage-event-provider.ts`
+maps `events` collection rows into the existing `LiveEventStoreProvider`
+interface used by the Events live service. Contacts, followups, dashboard, and
+Search should reuse the same storage boundary later, but their domain-specific
+mapping and query decisions stay in their feature/provider layer.
