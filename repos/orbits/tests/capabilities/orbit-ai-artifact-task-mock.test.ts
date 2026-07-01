@@ -234,6 +234,59 @@ test("mock artifact task supports contact chat and follow-up generated views", a
   assert.equal(followupResult.data?.result.provenance.toolCalls[0]?.toolName, "followups.reviewQueue");
 });
 
+test("mock artifact task localizes generated recommendation views from locale", async () => {
+  const serviceModule = await importProjectModule<{
+    createMockOrbitAgentArtifactTaskService: () => {
+      createArtifactTask: (input: {
+        kind: string;
+        locale?: string | null;
+        query: string;
+      }) => {
+        success: boolean;
+        data?: {
+          result: {
+            generatedView: {
+              sections: readonly {
+                items: readonly {
+                  actions: readonly { label: string }[];
+                  metadata: readonly { label: string; value: string }[];
+                }[];
+                title: string;
+              }[];
+              summary: string;
+            } | null;
+            nextAction: string;
+            presentation: { subtitle: string; title: string };
+          };
+        };
+      };
+    };
+  }>("features/orbit-ai/mock-artifact-task-service.ts");
+
+  const service = serviceModule.createMockOrbitAgentArtifactTaskService();
+  const result = service.createArtifactTask({
+    kind: "contact_recommendations",
+    locale: "zh",
+    query: "帮我推荐几个应该联系的人脉。",
+  });
+  const generatedViewText = JSON.stringify(result.data?.result.generatedView);
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.result.presentation.title, "推荐人脉");
+  assert.match(result.data?.result.presentation.subtitle ?? "", /人脉推荐/);
+  assert.match(result.data?.result.generatedView?.summary ?? "", /人脉推荐/);
+  assert.equal(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.actions[0]?.label,
+    "查看人脉",
+  );
+  assert.equal(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.metadata[1]?.label,
+    "最近联系",
+  );
+  assert.match(result.data?.result.nextAction ?? "", /复核|确认/);
+  assert.doesNotMatch(generatedViewText, /Recommended contacts|Review contact|Last touch/);
+});
+
 test("mock artifact task can return pending state without generated view", async () => {
   const serviceModule = await importProjectModule<{
     createMockOrbitAgentArtifactTaskService: () => {

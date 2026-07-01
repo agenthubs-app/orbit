@@ -32,6 +32,7 @@ const supportedScenarios = new Set<OrbitAgentConversationScenario>([
   "pending",
   "failure",
 ]);
+type ConversationLocale = "en" | "zh";
 
 const safetyLedger = {
   aiProviderRequested: false,
@@ -97,6 +98,18 @@ function readText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function normalizeLocale(locale: unknown): ConversationLocale | null {
+  return locale === "zh" || locale === "en" ? locale : null;
+}
+
+function localize(
+  locale: ConversationLocale | null,
+  copy: Record<ConversationLocale, string>,
+  fallback?: string,
+): string {
+  return locale ? copy[locale] : fallback ?? copy.en;
+}
+
 function success(
   payload: OrbitAgentConversationPayload,
 ): OrbitAgentConversationResult {
@@ -130,6 +143,7 @@ function failure(
 function payloadFor(input: {
   artifacts?: readonly OrbitAgentArtifactPayload[];
   assistantMessage: string;
+  locale?: ConversationLocale | null;
   messages?: readonly OrbitAgentConversationMessage[];
   proposedToolIntents?: readonly OrbitAgentProposedToolIntent[];
   sourceLabel?: string;
@@ -149,8 +163,10 @@ function payloadFor(input: {
       },
     ],
     messages,
-    nextAction:
-      "Continue the conversation naturally; confirm before any proposed tool or external action runs.",
+    nextAction: localize(input.locale ?? null, {
+      en: "Continue the conversation naturally; confirm before any proposed tool or external action runs.",
+      zh: "继续自然对话；任何计划工具或外部动作执行前都需要确认。",
+    }),
     proposedToolIntents: input.proposedToolIntents ?? [],
     provenance: {
       ...fixtureProvenance,
@@ -217,16 +233,24 @@ function scenarioResult(
   }
 }
 
-function proposedIntentsFor(message: string): readonly OrbitAgentProposedToolIntent[] {
+function proposedIntentsFor(
+  message: string,
+  locale: ConversationLocale | null,
+): readonly OrbitAgentProposedToolIntent[] {
   const normalized = message.toLowerCase();
   const intents: OrbitAgentProposedToolIntent[] = [];
 
   if (/maya|回复|reply/.test(normalized)) {
     intents.push({
       intentId: "intent:relationship-chat-review",
-      label: "Review relationship conversation context",
-      reason:
-        "The user mentioned a person, reply, or follow-up, so relationship chat context may help after confirmation.",
+      label: localize(locale, {
+        en: "Review relationship conversation context",
+        zh: "复核关系对话上下文",
+      }),
+      reason: localize(locale, {
+        en: "The user mentioned a person, reply, or follow-up, so relationship chat context may help after confirmation.",
+        zh: "用户提到了人物、回复或跟进，确认后关系聊天上下文可能有帮助。",
+      }),
       requiresUserConfirmation: true,
       toolFamily: "relationship_chat",
     });
@@ -235,9 +259,14 @@ function proposedIntentsFor(message: string): readonly OrbitAgentProposedToolInt
   if (/活动|event|meet|见/.test(normalized)) {
     intents.push({
       intentId: "intent:event-context-review",
-      label: "Inspect event context",
-      reason:
-        "The user mentioned meeting or event planning, so event tools may help after confirmation.",
+      label: localize(locale, {
+        en: "Inspect event context",
+        zh: "查看活动上下文",
+      }),
+      reason: localize(locale, {
+        en: "The user mentioned meeting or event planning, so event tools may help after confirmation.",
+        zh: "用户提到了见面或活动安排，确认后活动工具可能有帮助。",
+      }),
       requiresUserConfirmation: true,
       toolFamily: "events",
     });
@@ -246,9 +275,14 @@ function proposedIntentsFor(message: string): readonly OrbitAgentProposedToolInt
   if (/联系人|人脉|contact|introduc|推荐.*人|谁/.test(normalized)) {
     intents.push({
       intentId: "intent:contact-recommendations",
-      label: "Recommend relevant contacts",
-      reason:
-        "The user asked for people or relationship recommendations, so contact recommendation context can be generated.",
+      label: localize(locale, {
+        en: "Recommend relevant contacts",
+        zh: "推荐相关人脉",
+      }),
+      reason: localize(locale, {
+        en: "The user asked for people or relationship recommendations, so contact recommendation context can be generated.",
+        zh: "用户请求人物或关系推荐，可以生成待复核的人脉推荐上下文。",
+      }),
       requiresUserConfirmation: true,
       toolFamily: "contacts",
     });
@@ -257,9 +291,14 @@ function proposedIntentsFor(message: string): readonly OrbitAgentProposedToolInt
   if (/跟进|follow|todo|待办/.test(normalized)) {
     intents.push({
       intentId: "intent:followup-queue",
-      label: "Review follow-up queue",
-      reason:
-        "The user asked about follow-ups, so a follow-up review artifact can be generated.",
+      label: localize(locale, {
+        en: "Review follow-up queue",
+        zh: "复核跟进队列",
+      }),
+      reason: localize(locale, {
+        en: "The user asked about follow-ups, so a follow-up review artifact can be generated.",
+        zh: "用户询问了跟进事项，可以生成待复核的跟进结果。",
+      }),
       requiresUserConfirmation: true,
       toolFamily: "followups",
     });
@@ -270,6 +309,7 @@ function proposedIntentsFor(message: string): readonly OrbitAgentProposedToolInt
 
 function firstArtifactRequestFor(
   message: string,
+  locale: ConversationLocale | null,
 ): Omit<OrbitAgentArtifactTaskRequest, "conversationId" | "query"> | null {
   const normalized = message.toLowerCase();
 
@@ -278,7 +318,10 @@ function firstArtifactRequestFor(
       kind: "event_recommendations",
       presentation: {
         preferredSurface: "side_panel",
-        title: "Recommended events",
+        title: localize(locale, {
+          en: "Recommended events",
+          zh: "推荐活动",
+        }),
         widthHint: "half",
       },
     };
@@ -289,7 +332,10 @@ function firstArtifactRequestFor(
       kind: "followup_queue",
       presentation: {
         preferredSurface: "side_panel",
-        title: "Follow-up queue",
+        title: localize(locale, {
+          en: "Follow-up queue",
+          zh: "跟进队列",
+        }),
         widthHint: "half",
       },
     };
@@ -300,7 +346,10 @@ function firstArtifactRequestFor(
       kind: "contact_recommendations",
       presentation: {
         preferredSurface: "side_panel",
-        title: "Recommended contacts",
+        title: localize(locale, {
+          en: "Recommended contacts",
+          zh: "推荐人脉",
+        }),
         widthHint: "half",
       },
     };
@@ -311,7 +360,10 @@ function firstArtifactRequestFor(
       kind: "relationship_chat_context",
       presentation: {
         preferredSurface: "side_panel",
-        title: "Relationship chat context",
+        title: localize(locale, {
+          en: "Relationship chat context",
+          zh: "关系聊天上下文",
+        }),
         widthHint: "half",
       },
     };
@@ -322,32 +374,76 @@ function firstArtifactRequestFor(
 
 function assistantReplyFor(input: {
   artifactKind: OrbitAgentArtifactKind | null;
+  locale: ConversationLocale | null;
   message: string;
 }): string {
   if (!input.artifactKind) {
-    return "我明白。你可以继续用自然语言描述目标；如果需要联系人、活动或跟进上下文，我会先说明要查什么，再等你确认。";
+    return localize(
+      input.locale,
+      {
+        en: "Understood. Keep describing the goal in natural language; if contact, event, or follow-up context is needed, I will explain what to inspect before waiting for confirmation.",
+        zh: "我明白。你可以继续用自然语言描述目标；如果需要联系人、活动或跟进上下文，我会先说明要查什么，再等你确认。",
+      },
+      "我明白。你可以继续用自然语言描述目标；如果需要联系人、活动或跟进上下文，我会先说明要查什么，再等你确认。",
+    );
   }
 
   switch (input.artifactKind) {
     case "event_recommendations":
-      return "我理解你需要活动推荐。我已经让活动推荐生成器整理了一个可在侧边栏查看的结果；任何报名、日历或外部联系动作仍需要你确认。";
+      return localize(
+        input.locale,
+        {
+          en: "I understand you need event recommendations. I asked the event recommendation generator to prepare a side-panel result; any registration, calendar, or external contact action still requires your confirmation.",
+          zh: "我理解你需要活动推荐。我已经让活动推荐生成器整理了一个可在侧边栏查看的结果；任何报名、日历或外部联系动作仍需要你确认。",
+        },
+        "我理解你需要活动推荐。我已经让活动推荐生成器整理了一个可在侧边栏查看的结果；任何报名、日历或外部联系动作仍需要你确认。",
+      );
     case "contact_recommendations":
-      return "我理解你需要人脉推荐。我已经让人脉推荐生成器生成了一个可查看的推荐结果；任何联系或记录写入动作仍需要你确认。";
+      return localize(
+        input.locale,
+        {
+          en: "I understand you need contact recommendations. I asked the contact recommendation generator to prepare a reviewable result; any outreach or record write still requires your confirmation.",
+          zh: "我理解你需要人脉推荐。我已经让人脉推荐生成器生成了一个可查看的推荐结果；任何联系或记录写入动作仍需要你确认。",
+        },
+        "我理解你需要人脉推荐。我已经让人脉推荐生成器生成了一个可查看的推荐结果；任何联系或记录写入动作仍需要你确认。",
+      );
     case "followup_queue":
-      return "我理解你想查看跟进事项。我已经让跟进生成器整理了一个队列结果；任何发送消息或更新任务的动作仍需要你确认。";
+      return localize(
+        input.locale,
+        {
+          en: "I understand you want to review follow-ups. I asked the follow-up generator to prepare a queue result; any message send or task update still requires your confirmation.",
+          zh: "我理解你想查看跟进事项。我已经让跟进生成器整理了一个队列结果；任何发送消息或更新任务的动作仍需要你确认。",
+        },
+        "我理解你想查看跟进事项。我已经让跟进生成器整理了一个队列结果；任何发送消息或更新任务的动作仍需要你确认。",
+      );
     case "relationship_chat_context":
-      return "我理解你需要聊天上下文。我已经让关系聊天生成器整理了可查看的回复上下文；我不会自动发送任何消息。";
+      return localize(
+        input.locale,
+        {
+          en: "I understand you need chat context. I asked the relationship chat generator to prepare reviewable reply context; I will not send any message automatically.",
+          zh: "我理解你需要聊天上下文。我已经让关系聊天生成器整理了可查看的回复上下文；我不会自动发送任何消息。",
+        },
+        "我理解你需要聊天上下文。我已经让关系聊天生成器整理了可查看的回复上下文；我不会自动发送任何消息。",
+      );
     case "email_context":
     case "generic":
     default:
-      return "我理解你的目标了。我已经生成了一个可查看的上下文结果；任何外部动作仍需要你确认。";
+      return localize(
+        input.locale,
+        {
+          en: "I understand your goal. I prepared a reviewable context result; any external action still requires your confirmation.",
+          zh: "我理解你的目标了。我已经生成了一个可查看的上下文结果；任何外部动作仍需要你确认。",
+        },
+        "我理解你的目标了。我已经生成了一个可查看的上下文结果；任何外部动作仍需要你确认。",
+      );
   }
 }
 
 function artifactPayloadForMessage(
   message: string,
+  locale: ConversationLocale | null,
 ): OrbitAgentArtifactPayload | null {
-  const artifactRequest = firstArtifactRequestFor(message);
+  const artifactRequest = firstArtifactRequestFor(message, locale);
 
   if (!artifactRequest) {
     return null;
@@ -357,6 +453,7 @@ function artifactPayloadForMessage(
   const artifactResult = artifactService.createArtifactTask({
     ...artifactRequest,
     conversationId: defaultConversationId,
+    locale,
     query: message,
   });
 
@@ -436,10 +533,12 @@ export function createMockOrbitAgentConversationService(): OrbitAgentConversatio
         return failure("ORBIT_AGENT_MESSAGE_REQUIRED");
       }
 
-      const proposedToolIntents = proposedIntentsFor(message);
-      const artifact = artifactPayloadForMessage(message);
+      const locale = normalizeLocale(input.locale);
+      const proposedToolIntents = proposedIntentsFor(message, locale);
+      const artifact = artifactPayloadForMessage(message, locale);
       const reply = assistantReplyFor({
         artifactKind: artifact?.task.kind ?? null,
+        locale,
         message,
       });
 
@@ -447,6 +546,7 @@ export function createMockOrbitAgentConversationService(): OrbitAgentConversatio
         payloadFor({
           artifacts: artifact ? [artifact] : [],
           assistantMessage: reply,
+          locale,
           messages: [...baseMessages, userMessage(message), assistantMessage(reply)],
           proposedToolIntents,
           sourceLabel: "Orbit Agent free-form reply rule",

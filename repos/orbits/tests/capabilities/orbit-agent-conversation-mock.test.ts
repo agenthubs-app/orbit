@@ -318,6 +318,77 @@ test("mock Orbit Agent conversation routes contact and follow-up intents into ar
   );
 });
 
+test("mock Orbit Agent conversation passes locale into recommendation artifacts", async () => {
+  const serviceModule = await importProjectModule<{
+    createMockOrbitAgentConversationService: () => {
+      sendMessage: (input: { locale?: string | null; message?: string | null }) => {
+        success: boolean;
+        data?: {
+          artifacts: readonly {
+            result: {
+              generatedView: {
+                sections: readonly {
+                  items: readonly {
+                    actions: readonly { label: string }[];
+                    metadata: readonly { label: string; value: string }[];
+                  }[];
+                  title: string;
+                }[];
+                summary: string;
+              } | null;
+              nextAction: string;
+              presentation: { title: string };
+            };
+            task: { kind: string };
+          }[];
+          assistantMessage: string;
+          proposedToolIntents: readonly {
+            label: string;
+            reason: string;
+            toolFamily: string;
+          }[];
+        };
+      };
+    };
+  }>("features/orbit-ai/mock-conversation-service.ts");
+
+  const service = serviceModule.createMockOrbitAgentConversationService();
+  const result = service.sendMessage({
+    locale: "zh",
+    message: "帮我推荐几个应该联系的人脉。",
+  });
+  const renderedResultText = JSON.stringify({
+    artifacts: result.data?.artifacts,
+    proposedToolIntents: result.data?.proposedToolIntents,
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.artifacts[0]?.task.kind, "contact_recommendations");
+  assert.equal(result.data?.artifacts[0]?.result.presentation.title, "推荐人脉");
+  assert.match(result.data?.artifacts[0]?.result.generatedView?.summary ?? "", /人脉推荐/);
+  assert.equal(
+    result.data?.artifacts[0]?.result.generatedView?.sections[0]?.items[0]
+      ?.actions[0]?.label,
+    "查看人脉",
+  );
+  assert.equal(
+    result.data?.artifacts[0]?.result.generatedView?.sections[0]?.items[0]
+      ?.metadata[1]?.label,
+    "最近联系",
+  );
+  assert.match(result.data?.assistantMessage ?? "", /人脉推荐/);
+  assert.equal(
+    result.data?.proposedToolIntents.find(
+      (intent) => intent.toolFamily === "contacts",
+    )?.label,
+    "推荐相关人脉",
+  );
+  assert.doesNotMatch(
+    renderedResultText,
+    /Recommended contacts|Recommend relevant contacts|Review contact|Last touch/,
+  );
+});
+
 test("mock Orbit Agent conversation validates blank input and keeps live providers unused", async () => {
   const serviceModule = await importProjectModule<{
     createMockOrbitAgentConversationService: () => {
