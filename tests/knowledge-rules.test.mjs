@@ -25,7 +25,7 @@ test("root knowledge base has Chinese entry points and maintenance rules", () =>
     "knowledge/log.zh.md",
     "knowledge/wiki/project-overview.zh.md",
     "knowledge/wiki/architecture.zh.md",
-    "knowledge/wiki/agent-system.zh.md",
+    "knowledge/wiki/actions-system.zh.md",
     "knowledge/wiki/data-and-mockdata.zh.md",
     "knowledge/wiki/harness.zh.md",
     "knowledge/wiki/modules.zh.md",
@@ -49,7 +49,7 @@ test("root knowledge base has Chinese entry points and maintenance rules", () =>
   assert.match(index, /knowledge\/docs\/catalog\.zh\.md/);
   assert.match(index, /knowledge\/wiki\/project-overview\.zh\.md/);
   assert.match(index, /knowledge\/wiki\/architecture\.zh\.md/);
-  assert.match(index, /knowledge\/wiki\/agent-system\.zh\.md/);
+  assert.match(index, /knowledge\/wiki\/actions-system\.zh\.md/);
   assert.match(index, /knowledge\/wiki\/data-and-mockdata\.zh\.md/);
   assert.match(index, /knowledge\/wiki\/harness\.zh\.md/);
   assert.match(index, /knowledge\/wiki\/modules\.zh\.md/);

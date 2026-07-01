@@ -1,15 +1,17 @@
-# Orbit Agent 系统
+# Orbit Actions 系统
 
-Orbit Agent 由两个相关但不同的层组成：产品内的 Orbit AI / Agent 功能，以及根 harness 的多 agent 生成流程。本页只做阅读导航；具体字段和执行顺序以代码、contract 和测试为准。
+Orbit Actions 系统由两个相关但不同的层组成：产品内的 Orbit AI / Actions 功能，以及根 harness 的多 agent 生成流程。本页只做阅读导航；具体字段和执行顺序以代码、contract 和测试为准。
+
+产品术语中不再把外部动作执行边界称为 Agent。Actions 指 action queue、autonomy settings、external action sandbox、confirmation 和 audit 组成的 side-effect action lifecycle。根 harness、coding agent 和部分 legacy 代码符号仍保留 agent 一词。
 
 ## 产品内 Orbit AI
 
-`features/orbit-ai` 是产品内的对话式编排层。它把自然语言输入映射到联系人、活动、跟进、聊天上下文、dashboard 和 Agent action。
+`features/orbit-ai` 是产品内的对话式编排层。它把自然语言输入映射到联系人、活动、跟进、聊天上下文、dashboard 和 Actions 动作。
 
 当前代码把 Orbit AI 分成三个 capability：
 
 - `orbit-ai-command`：旧 command center，负责输入到功能面板的路由。
-- `orbit-agent-conversation`：chat agent conversation，live 模式走 provider planner、内部 tool/artifact mapping 和可选 synthesis。
+- `orbit-agent-conversation`：chat conversation，live 模式走 provider planner、内部 tool/artifact mapping 和可选 synthesis。名称里的 `agent` 是当前代码兼容名。
 - `orbit-agent-artifact-task`：生成 review-only artifact，例如活动推荐、人脉推荐、跟进队列和关系聊天上下文。
 
 这三类能力都通过 `features/orbit-ai/service-factory.ts` 暴露。页面、API route 和 dev tool 不应直接依赖 mock 或 live provider 实现。
@@ -27,9 +29,9 @@ Orbit Agent 由两个相关但不同的层组成：产品内的 Orbit AI / Agent
 
 `/dev/orbit-ai/trace` 通过 `live-conversation-trace.ts` 把这条链路转成 debugger payload。`trace-contract.ts` 中的 `runtimeSnapshot` 应展示本次运行看到的 planner、tools、artifact producers、renderers 和 unknown renderer warnings。
 
-## Agent Action
+## Actions
 
-`features/agent` 拥有 action queue、autonomy settings 和 external action sandbox。Orbit AI 可以生成建议、tool intent 和 artifact，但不应绕过 agent 模块执行外部副作用。
+Actions 拥有 action queue、autonomy settings 和 external action sandbox。Orbit AI 可以生成建议、tool intent 和 artifact，但不应绕过 Actions 模块执行外部副作用。当前实现路径仍是 legacy `features/agent`。
 
 ## Bounded ReAct 方向
 
@@ -49,6 +51,7 @@ Orbit Agent 由两个相关但不同的层组成：产品内的 Orbit AI / Agent
 ## 主要来源
 
 - `repos/orbits/docs/architecture/modules/orbit-ai.md`
+- `repos/orbits/docs/architecture/modules/actions.md`
 - `repos/orbits/features/orbit-ai/DESIGN.md`
 - `repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.zh.md`
 - `repos/orbits/docs/architecture/orbit-ai-agent-performance-check-2026-06-30.md`

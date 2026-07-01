@@ -57,12 +57,12 @@ const manifest = {
       ),
     },
     {
-      id: "agent-system",
-      titleZh: "Agent 系统",
-      path: "knowledge/wiki/agent-system.zh.md",
+      id: "actions-system",
+      titleZh: "Actions 系统",
+      path: "knowledge/wiki/actions-system.zh.md",
       summaryZh: summaryFrom(
-        "knowledge/wiki/agent-system.zh.md",
-        "Orbit AI 和 Agent action 的安全边界。",
+        "knowledge/wiki/actions-system.zh.md",
+        "Orbit AI 和 Actions 外部动作的安全边界。",
       ),
     },
     {
@@ -94,6 +94,14 @@ const manifest = {
     },
   ],
   recentHistory: [
+    {
+      id: "agent-module-renamed-actions",
+      date: "2026-07-01",
+      titleZh: "Agent 模块命名收敛为 Actions",
+      summaryZh:
+        "将产品外部动作边界的文档术语从 Agent 收敛为 Actions，同时保留 legacy features/agent、/app/agent 和 /api/agent/* 代码路径说明。",
+      sourcePath: "knowledge/history/development-log.zh.md",
+    },
     {
       id: "knowledge-chinese-source-body-mirrors",
       date: "2026-06-30",

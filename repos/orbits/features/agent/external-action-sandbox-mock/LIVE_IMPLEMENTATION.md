@@ -2,6 +2,10 @@
 
 Sprint 51 implements the mock boundary for no-op send message, no-op create calendar event, no-op notification delivery, and side-effect audit records. The current service must stay deterministic and must not call message, calendar, email, notification, push, device, AI, database, or external network providers.
 
+This is the Actions module's external side-effect boundary. The current code
+path still uses `features/agent` for compatibility, but product and architecture
+documents refer to the module as Actions.
+
 ## Live Service And Provider Files
 
 - `features/agent/external-action-sandbox-mock/live-service.ts` should implement the same `ExternalActionSandboxService` interface exported from `features/agent/external-action-contract.ts`.

@@ -129,7 +129,7 @@ orbits
 │  └─ source consistency/provenance audit
 ├─ search
 │  └─ relationship natural search
-├─ agent
+├─ actions
 │  ├─ action queue
 │  ├─ autonomy settings
 │  └─ external action sandbox
@@ -243,7 +243,7 @@ orbits
 │  └─ source consistency/provenance audit
 ├─ search
 │  └─ relationship natural search
-├─ agent
+├─ actions
 │  ├─ action queue
 │  ├─ autonomy settings
 │  └─ external action sandbox

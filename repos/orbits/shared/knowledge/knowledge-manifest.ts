@@ -209,16 +209,16 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "ownerArea": "module:acquisition"
     },
     {
-      "id": "module-agent",
-      "titleZh": "agent 模块架构",
-      "summaryZh": "说明 agent 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
+      "id": "module-actions",
+      "titleZh": "actions 模块架构",
+      "summaryZh": "说明 actions 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/agent/service-factory.ts。",
-      "sourcePath": "repos/orbits/docs/architecture/modules/agent.md",
-      "localizedSourcePath": "knowledge/docs/zh/module-agent.zh.md",
+      "sourcePath": "repos/orbits/docs/architecture/modules/actions.md",
+      "localizedSourcePath": "knowledge/docs/zh/module-actions.zh.md",
       "category": "module-architecture",
       "status": "current",
       "freshness": "verified-current",
-      "ownerArea": "module:agent"
+      "ownerArea": "module:actions"
     },
     {
       "id": "module-ai-provider",
@@ -437,16 +437,16 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "ownerArea": "feature:acquisition"
     },
     {
-      "id": "feature-agent-design",
-      "titleZh": "agent Feature 设计",
-      "summaryZh": "记录 agent feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。",
-      "reviewEvidenceZh": "已核对 repos/orbits/features/agent 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。",
+      "id": "feature-actions-design",
+      "titleZh": "actions Feature 设计",
+      "summaryZh": "记录 actions feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。",
+      "reviewEvidenceZh": "已核对 legacy implementation path repos/orbits/features/agent 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。",
       "sourcePath": "repos/orbits/features/agent/DESIGN.md",
-      "localizedSourcePath": "knowledge/docs/zh/feature-agent-design.zh.md",
+      "localizedSourcePath": "knowledge/docs/zh/feature-actions-design.zh.md",
       "category": "feature-design",
       "status": "current",
       "freshness": "likely-current",
-      "ownerArea": "feature:agent"
+      "ownerArea": "feature:actions"
     },
     {
       "id": "feature-analysis-design",
@@ -1253,40 +1253,40 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "ownerArea": "feature:acquisition"
     },
     {
-      "id": "live-handoff-feature-agent-agent-action-queue-mock",
-      "titleZh": "agent 能力 Live 交接：agent action queue mock",
-      "summaryZh": "记录 agent 模块中 agent action queue mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
+      "id": "live-handoff-feature-actions-action-queue-mock",
+      "titleZh": "actions 能力 Live 交接：action queue mock",
+      "summaryZh": "记录 actions 模块中 action queue mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
       "reviewEvidenceZh": "已核对对应 feature 目录存在：repos/orbits/features/agent/agent-action-queue-mock。目录级实时行为仍以 service factory、API route 和测试为准。",
       "sourcePath": "repos/orbits/features/agent/agent-action-queue-mock/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-agent-agent-action-queue-mock.zh.md",
+      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-actions-action-queue-mock.zh.md",
       "category": "implementation-handoff",
       "status": "generated-evidence",
       "freshness": "likely-current",
-      "ownerArea": "feature:agent"
+      "ownerArea": "feature:actions"
     },
     {
-      "id": "live-handoff-feature-agent-agent-autonomy-settings-mock",
-      "titleZh": "agent 能力 Live 交接：agent autonomy settings mock",
-      "summaryZh": "记录 agent 模块中 agent autonomy settings mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
+      "id": "live-handoff-feature-actions-autonomy-settings-mock",
+      "titleZh": "actions 能力 Live 交接：autonomy settings mock",
+      "summaryZh": "记录 actions 模块中 autonomy settings mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
       "reviewEvidenceZh": "已核对对应 feature 目录存在：repos/orbits/features/agent/agent-autonomy-settings-mock。目录级实时行为仍以 service factory、API route 和测试为准。",
       "sourcePath": "repos/orbits/features/agent/agent-autonomy-settings-mock/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-agent-agent-autonomy-settings-mock.zh.md",
+      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-actions-autonomy-settings-mock.zh.md",
       "category": "implementation-handoff",
       "status": "generated-evidence",
       "freshness": "likely-current",
-      "ownerArea": "feature:agent"
+      "ownerArea": "feature:actions"
     },
     {
-      "id": "live-handoff-feature-agent-external-action-sandbox-mock",
-      "titleZh": "agent 能力 Live 交接：external action sandbox mock",
-      "summaryZh": "记录 agent 模块中 external action sandbox mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
+      "id": "live-handoff-feature-actions-external-action-sandbox-mock",
+      "titleZh": "actions 能力 Live 交接：external action sandbox mock",
+      "summaryZh": "记录 actions 模块中 external action sandbox mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
       "reviewEvidenceZh": "已核对对应 feature 目录存在：repos/orbits/features/agent/external-action-sandbox-mock。目录级实时行为仍以 service factory、API route 和测试为准。",
       "sourcePath": "repos/orbits/features/agent/external-action-sandbox-mock/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-agent-external-action-sandbox-mock.zh.md",
+      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-actions-external-action-sandbox-mock.zh.md",
       "category": "implementation-handoff",
       "status": "generated-evidence",
       "freshness": "likely-current",
-      "ownerArea": "feature:agent"
+      "ownerArea": "feature:actions"
     },
     {
       "id": "live-handoff-feature-analysis-relationship-value-scoring-mock",
@@ -1783,10 +1783,10 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "summaryZh": "Orbit 的实现目标是模块化、可替换、可验证。页面、API、feature service、mock/hybrid/live provider 和测试各自有清晰边界。"
     },
     {
-      "id": "agent-system",
-      "titleZh": "Agent 系统",
-      "path": "knowledge/wiki/agent-system.zh.md",
-      "summaryZh": "Orbit Agent 由两个相关但不同的层组成：产品内的 Orbit AI / Agent 功能，以及根 harness 的多 agent 生成流程。本页只做阅读导航；具体字段和执行顺序以代码、contract 和测试为准。"
+      "id": "actions-system",
+      "titleZh": "Actions 系统",
+      "path": "knowledge/wiki/actions-system.zh.md",
+      "summaryZh": "Orbit Actions 系统由两个相关但不同的层组成：产品内的 Orbit AI / Actions 功能，以及根 harness 的多 agent 生成流程。本页只做阅读导航；具体字段和执行顺序以代码、contract 和测试为准。"
     },
     {
       "id": "data-and-mockdata",
@@ -1808,6 +1808,13 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
     }
   ],
   "recentHistory": [
+    {
+      "id": "agent-module-renamed-actions",
+      "date": "2026-07-01",
+      "titleZh": "Agent 模块命名收敛为 Actions",
+      "summaryZh": "将产品外部动作边界的文档术语从 Agent 收敛为 Actions，同时保留 legacy features/agent、/app/agent 和 /api/agent/* 代码路径说明。",
+      "sourcePath": "knowledge/history/development-log.zh.md"
+    },
     {
       "id": "knowledge-chinese-source-body-mirrors",
       "date": "2026-06-30",

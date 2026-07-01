@@ -1,9 +1,13 @@
-# App agent route live handoff
+# App Actions route live handoff
 
-Sprint 67 composes `/app/agent` from approved mock-first services for the
-agent action queue, autonomy settings, sensitive-action confirmation guard,
+Sprint 67 composes the current legacy route `/app/agent` from approved mock-first services for the
+Actions queue, autonomy settings, sensitive-action confirmation guard,
 external action sandbox, and notification queue. The page uses the route-owned
 adapter in this folder; nested UI does not import raw fixtures.
+
+Product and architecture documents now call this module Actions. The current
+route, folder names, service names, and API paths still use `agent` for
+compatibility until a separate route/symbol migration is planned.
 
 ## Evaluator Evidence Summary
 
@@ -26,7 +30,7 @@ Live files:
 
 This section covers live service/provider files.
 
-- `features/agent/live-service.ts` for the live agent action queue.
+- `features/agent/live-service.ts` for the live Actions queue.
 - `features/agent/agent-action-queue-mock/live-service.ts` for a capability
   specific action queue replacement if the provider remains split by sprint.
 - `features/agent/agent-autonomy-settings-mock/live-service.ts` for persisted
@@ -60,11 +64,11 @@ Required env vars or permissions:
 
 - Supabase or durable app storage URL, service role, row-level security policy,
   and migration permission for contact, connection, task, notification,
-  confirmation, and agent action tables.
-- Auth/session permission so each agent action and confirmation decision is
+  confirmation, and action queue tables.
+- Auth/session permission so each action queue item and confirmation decision is
   tied to the current user and organization.
 - AI provider key, model allowlist, prompt logging policy, and retention policy
-  before agent ranking or writing assistance can use a real model.
+  before action ranking or writing assistance can use a real model.
 - Email/message provider permission for sending participant-facing messages.
 - Calendar provider permission for scheduling or updating events.
 - Notification provider permission for push, email, SMS, and in-app delivery.

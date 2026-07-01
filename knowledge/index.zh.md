@@ -15,7 +15,7 @@
 
 - [项目总览](wiki/project-overview.zh.md)（`knowledge/wiki/project-overview.zh.md`）：Orbit 的产品目标、主要来源文档和当前开发阶段。
 - [架构总览](wiki/architecture.zh.md)（`knowledge/wiki/architecture.zh.md`）：Next.js app、feature module、service factory、mock/hybrid/live 和 route view-model 边界。
-- [Agent 系统](wiki/agent-system.zh.md)（`knowledge/wiki/agent-system.zh.md`）：Orbit AI、Agent action queue、bounded ReAct、工具注册、确认和安全账本。
+- [Actions 系统](wiki/actions-system.zh.md)（`knowledge/wiki/actions-system.zh.md`）：Orbit AI、Actions queue、bounded ReAct、工具注册、确认和安全账本。
 - [数据与 Mockdata](wiki/data-and-mockdata.zh.md)（`knowledge/wiki/data-and-mockdata.zh.md`）：local-remote database、relationship schema、generated fixture 和 mockdata 生成链路。
 - [Harness](wiki/harness.zh.md)（`knowledge/wiki/harness.zh.md`）：长跑 harness、sprint contract、evidence、protected paths 和验证流程。
 - [模块地图](wiki/modules.zh.md)（`knowledge/wiki/modules.zh.md`）：业务模块分组、模块架构文档和读取顺序。

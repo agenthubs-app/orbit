@@ -1,4 +1,4 @@
-# agent 能力 Live 交接：agent action queue mock
+# actions 能力 Live 交接：action queue mock
 
 本页是 Orbit Wiki 的中文阅读版，也是中文阅读入口。它不是新的权威副本；权威内容仍以原始来源、关联代码和测试为准。
 
@@ -7,11 +7,11 @@
 | 字段 | 内容 |
 | --- | --- |
 | 原始来源 | `repos/orbits/features/agent/agent-action-queue-mock/LIVE_IMPLEMENTATION.md` |
-| 中文镜像 | `knowledge/docs/zh/live-handoff-feature-agent-agent-action-queue-mock.zh.md` |
+| 中文镜像 | `knowledge/docs/zh/live-handoff-feature-actions-action-queue-mock.zh.md` |
 | 分类 | `implementation-handoff` |
 | 状态 | `generated-evidence` |
 | 新鲜度 | `likely-current` |
-| 负责人域 | `feature:agent` |
+| 负责人域 | `feature:actions` |
 
 ## 怎么读
 
@@ -23,7 +23,7 @@
 
 ## 中文摘要
 
-记录 agent 模块中 agent action queue mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
+记录 actions 模块中 action queue mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
 
 ## 审计依据
 
@@ -31,7 +31,7 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：源标题：Agent Action Queue Mock Live Handoff
+- 第 1 节：源标题：Actions Queue Mock Live Handoff
 - 第 2 节：Live 服务 和 Provider Files
 - 第 3 节：源标题：Switch Mechanism
 - 第 4 节：Required Environment 和 权限

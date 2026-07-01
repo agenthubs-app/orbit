@@ -87,6 +87,17 @@ function readableSlug(slug) {
   return slug.replace(/[-_]+/g, " ");
 }
 
+function featureDisplayId(moduleId) {
+  return moduleId === "agent" ? "actions" : moduleId;
+}
+
+function displayCapabilityId(moduleId, capabilityId) {
+  if (moduleId !== "agent") return capabilityId;
+  if (capabilityId === "agent-action-queue-mock") return "action-queue-mock";
+  if (capabilityId === "agent-autonomy-settings-mock") return "autonomy-settings-mock";
+  return capabilityId;
+}
+
 function liveImplementationDoc(sourcePath) {
   const parentDir = dirname(sourcePath);
   const segments = sourcePath.split("/");
@@ -97,18 +108,20 @@ function liveImplementationDoc(sourcePath) {
 
   if (featureMatch) {
     const [, moduleId, capabilityId] = featureMatch;
-    const capability = readableSlug(capabilityId);
+    const displayModuleId = featureDisplayId(moduleId);
+    const displayCapability = displayCapabilityId(moduleId, capabilityId);
+    const capability = readableSlug(displayCapability);
     return doc({
-      id: `live-handoff-feature-${moduleId}-${capabilityId}`,
-      titleZh: `${moduleId} 能力 Live 交接：${capability}`,
-      summaryZh: `记录 ${moduleId} 模块中 ${capability} 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。`,
+      id: `live-handoff-feature-${displayModuleId}-${displayCapability}`,
+      titleZh: `${displayModuleId} 能力 Live 交接：${capability}`,
+      summaryZh: `记录 ${displayModuleId} 模块中 ${capability} 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。`,
       reviewEvidenceZh:
         `已核对对应 feature 目录存在：${parentDir}。目录级实时行为仍以 service factory、API route 和测试为准。`,
       sourcePath,
       category: "implementation-handoff",
       status: "generated-evidence",
       freshness: "likely-current",
-      ownerArea: `feature:${moduleId}`,
+      ownerArea: `feature:${displayModuleId}`,
       relatedCodePaths: [parentDir, `repos/orbits/features/${moduleId}/service-factory.ts`],
       relatedKnowledgePages: ["knowledge/wiki/modules.zh.md"],
     });
@@ -177,7 +190,7 @@ function liveImplementationDoc(sourcePath) {
 const moduleDocs = [
   "account",
   "acquisition",
-  "agent",
+  "actions",
   "ai-provider",
   "analysis",
   "audit",
@@ -213,6 +226,8 @@ const moduleDocs = [
     relatedCodePaths:
       moduleId === "ai-provider"
         ? ["repos/orbits/shared/ai/service-factory.ts"]
+        : moduleId === "actions"
+          ? ["repos/orbits/features/agent/service-factory.ts"]
         : moduleId === "orbit-ai"
           ? [
               "repos/orbits/features/orbit-ai/service-factory.ts",
@@ -228,7 +243,7 @@ const moduleDocs = [
 const featureDesignDocs = [
   "account",
   "acquisition",
-  "agent",
+  "actions",
   "analysis",
   "audit",
   "bootstrap",
@@ -255,8 +270,13 @@ const featureDesignDocs = [
     reviewEvidenceZh:
       moduleId === "orbit-ai"
         ? "已核对 artifact-contract、service-factory、live-agent-runtime、live-conversation-service、live-conversation-trace、contact-recommendation artifact service 和相关 capability tests；产品 chat、full-chain trace、planner-only trace 共用同一 runtime。"
+        : moduleId === "actions"
+          ? "已核对 legacy implementation path repos/orbits/features/agent 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。"
         : `已核对 repos/orbits/features/${moduleId} 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。`,
-    sourcePath: `repos/orbits/features/${moduleId}/DESIGN.md`,
+    sourcePath:
+      moduleId === "actions"
+        ? "repos/orbits/features/agent/DESIGN.md"
+        : `repos/orbits/features/${moduleId}/DESIGN.md`,
     category: "feature-design",
     freshness: "likely-current",
     ownerArea: `feature:${moduleId}`,
@@ -270,7 +290,9 @@ const featureDesignDocs = [
             "repos/orbits/features/orbit-ai/contact-recommendation-artifact-service.ts",
             "repos/orbits/features/orbit-ai/contact-recommendation-matching.ts",
           ]
-        : [`repos/orbits/features/${moduleId}`, `repos/orbits/features/${moduleId}/service-factory.ts`],
+        : moduleId === "actions"
+          ? ["repos/orbits/features/agent", "repos/orbits/features/agent/service-factory.ts"]
+          : [`repos/orbits/features/${moduleId}`, `repos/orbits/features/${moduleId}/service-factory.ts`],
     relatedKnowledgePages: ["knowledge/wiki/modules.zh.md"],
   }),
 );
@@ -313,7 +335,7 @@ const additionalOrbitDocs = [
     freshness: "likely-current",
     ownerArea: "orbit-ai",
     relatedCodePaths: ["repos/orbits/features/orbit-ai", "repos/orbits/app/dev/orbit-ai/trace"],
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
     id: "orbit-ai-reference-redesign-sprints",
@@ -327,7 +349,7 @@ const additionalOrbitDocs = [
     freshness: "likely-current",
     ownerArea: "orbit-ai",
     relatedCodePaths: ["repos/orbits/app/(app)/app/orbit-ai-command-center.tsx"],
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
     id: "harness-audit-2026-06-24",
@@ -374,7 +396,7 @@ const additionalOrbitDocs = [
       "repos/orbits/app/dev/orbit-ai/trace",
       "repos/orbits/app/api/dev/orbit-agent/trace/route.ts",
     ],
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
     id: "orbits-app-readme",
@@ -498,7 +520,7 @@ const documents = [
     freshness: "likely-current",
     ownerArea: "orbit-ai",
     relatedCodePaths: ["repos/orbits/features/orbit-ai"],
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   ...moduleDocs,
   ...featureDesignDocs,
@@ -534,7 +556,7 @@ const documents = [
     freshness: "likely-current",
     ownerArea: "orbit-ai",
     relatedCodePaths: ["repos/orbits/features/orbit-ai", "repos/orbits/app/api/ai/conversations/route.ts"],
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
     id: "bounded-react-tool-registry",
@@ -545,7 +567,7 @@ const documents = [
     freshness: "likely-current",
     ownerArea: "orbit-ai",
     relatedCodePaths: ["repos/orbits/features/orbit-ai/agent-tools/registry.ts"],
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
     id: "trace-tool-catalog-plan",
@@ -556,7 +578,7 @@ const documents = [
     freshness: "likely-current",
     ownerArea: "orbit-ai",
     relatedCodePaths: ["repos/orbits/app/dev/orbit-ai/trace", "repos/orbits/features/orbit-ai"],
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
     id: "knowledge-wiki-design",
@@ -714,7 +736,7 @@ const documents = [
       "repos/orbits/app/dev/orbit-ai/trace",
       "repos/orbits/app/api/dev/orbit-agent/trace/route.ts",
     ],
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
     id: "trace-debug-plan",
@@ -724,7 +746,7 @@ const documents = [
     category: "implementation-plan",
     freshness: "likely-current",
     ownerArea: "orbit-ai",
-    relatedKnowledgePages: ["knowledge/wiki/agent-system.zh.md"],
+    relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
     id: "mock-to-live-sprint-68",

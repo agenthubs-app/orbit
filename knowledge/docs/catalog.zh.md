@@ -27,7 +27,7 @@
   - 简介：2026-06-30 的 Orbit AI 性能审计和已落地优化记录：provider latency、loop steps、Server-Timing、外置 reference CSS、ETag 和重复 JSON clone 移除。
   - 审计依据：已核对本记录对应的优化已在 route、live runtime、artifact producer 和 OrbitReferenceStyles 相关代码中落地；它仍是历史快照，新的性能判断要重新测量。
   - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 
 ### developer-guide
 
@@ -58,11 +58,11 @@
   - 审计依据：已核对 repos/orbits/features/acquisition 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:acquisition`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
-- **agent Feature 设计**（`repos/orbits/features/agent/DESIGN.md`）
-  - 中文阅读版：`knowledge/docs/zh/feature-agent-design.zh.md`
-  - 简介：记录 agent feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
-  - 审计依据：已核对 repos/orbits/features/agent 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
-  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:agent`
+- **actions Feature 设计**（`repos/orbits/features/agent/DESIGN.md`）
+  - 中文阅读版：`knowledge/docs/zh/feature-actions-design.zh.md`
+  - 简介：记录 actions feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
+  - 审计依据：已核对 legacy implementation path repos/orbits/features/agent 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`feature:actions`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **analysis Feature 设计**（`repos/orbits/features/analysis/DESIGN.md`）
   - 中文阅读版：`knowledge/docs/zh/feature-analysis-design.zh.md`
@@ -364,23 +364,23 @@
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/acquisition/referral-and-recommended-contact-confirm-mock。目录级实时行为仍以 service factory、API route 和测试为准。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:acquisition`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
-- **agent 能力 Live 交接：agent action queue mock**（`repos/orbits/features/agent/agent-action-queue-mock/LIVE_IMPLEMENTATION.md`）
-  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-agent-agent-action-queue-mock.zh.md`
-  - 简介：记录 agent 模块中 agent action queue mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
+- **actions 能力 Live 交接：action queue mock**（`repos/orbits/features/agent/agent-action-queue-mock/LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-actions-action-queue-mock.zh.md`
+  - 简介：记录 actions 模块中 action queue mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/agent/agent-action-queue-mock。目录级实时行为仍以 service factory、API route 和测试为准。
-  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:agent`
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:actions`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
-- **agent 能力 Live 交接：agent autonomy settings mock**（`repos/orbits/features/agent/agent-autonomy-settings-mock/LIVE_IMPLEMENTATION.md`）
-  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-agent-agent-autonomy-settings-mock.zh.md`
-  - 简介：记录 agent 模块中 agent autonomy settings mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
+- **actions 能力 Live 交接：autonomy settings mock**（`repos/orbits/features/agent/agent-autonomy-settings-mock/LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-actions-autonomy-settings-mock.zh.md`
+  - 简介：记录 actions 模块中 autonomy settings mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/agent/agent-autonomy-settings-mock。目录级实时行为仍以 service factory、API route 和测试为准。
-  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:agent`
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:actions`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
-- **agent 能力 Live 交接：external action sandbox mock**（`repos/orbits/features/agent/external-action-sandbox-mock/LIVE_IMPLEMENTATION.md`）
-  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-agent-external-action-sandbox-mock.zh.md`
-  - 简介：记录 agent 模块中 external action sandbox mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
+- **actions 能力 Live 交接：external action sandbox mock**（`repos/orbits/features/agent/external-action-sandbox-mock/LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-actions-external-action-sandbox-mock.zh.md`
+  - 简介：记录 actions 模块中 external action sandbox mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/agent/external-action-sandbox-mock。目录级实时行为仍以 service factory、API route 和测试为准。
-  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:agent`
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:actions`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **analysis 能力 Live 交接：relationship value scoring mock**（`repos/orbits/features/analysis/relationship-value-scoring-mock/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-analysis-relationship-value-scoring-mock.zh.md`
@@ -630,13 +630,13 @@
   - 简介：记录 Orbit Chat Agent 质量检查、trace 和改进循环的实施计划，是后续 agent 质量迭代的历史入口。
   - 审计依据：已核对 Orbit AI trace 页面、chat API 边界和相关测试仍存在；该计划作为历史质量循环入口保留。
   - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 - **Orbit AI Trace 工具目录计划**（`docs/superpowers/plans/2026-06-30-orbit-ai-trace-tool-catalog.md`）
   - 中文阅读版：`knowledge/docs/zh/trace-tool-catalog-plan.zh.md`
   - 简介：实施 trace debug 页面展示工具 catalog 和中文规格说明的计划。
   - 审计依据：已登记关联代码路径：repos/orbits/app/dev/orbit-ai/trace、repos/orbits/features/orbit-ai。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 - **文档库与知识库实施计划**（`docs/superpowers/plans/2026-06-30-orbit-docs-knowledge-wiki.md`）
   - 中文阅读版：`knowledge/docs/zh/knowledge-wiki-plan.zh.md`
   - 简介：把知识库目标拆成可测试任务：骨架、catalog、app manifest、可视化页面和最终验证。
@@ -660,7 +660,7 @@
   - 简介：实现 Orbit AI trace debug 页面和 API 的计划。
   - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 
 ### learning
 
@@ -730,11 +730,11 @@
   - 审计依据：已登记关联代码路径：repos/orbits/features/acquisition/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:acquisition`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
-- **agent 模块架构**（`repos/orbits/docs/architecture/modules/agent.md`）
-  - 中文阅读版：`knowledge/docs/zh/module-agent.zh.md`
-  - 简介：说明 agent 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
+- **actions 模块架构**（`repos/orbits/docs/architecture/modules/actions.md`）
+  - 中文阅读版：`knowledge/docs/zh/module-actions.zh.md`
+  - 简介：说明 actions 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
   - 审计依据：已登记关联代码路径：repos/orbits/features/agent/service-factory.ts。
-  - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:agent`
+  - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:actions`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **ai-provider 模块架构**（`repos/orbits/docs/architecture/modules/ai-provider.md`）
   - 中文阅读版：`knowledge/docs/zh/module-ai-provider.zh.md`
@@ -861,13 +861,13 @@
   - 简介：记录 Orbit AI 参考界面重设计的 sprint 拆分和验收方向，是 UI/agent 体验历史资料。
   - 审计依据：已纳入历史设计类文档；当前 UI 以 app/(app)/app/orbit-ai* 和 dev trace 页面源码为准。
   - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 - **Orbit AI Trace Debug 英文设计源**（`repos/orbits/docs/superpowers/specs/2026-06-29-orbit-ai-trace-debug-design.md`）
   - 中文阅读版：`knowledge/docs/zh/trace-debug-design-en.zh.md`
   - 简介：Orbit AI trace debug 设计的英文源文件；当前说明 full-chain trace、planner-only 兼容入口、共享 runtime 和人脉推荐方法选择。
   - 审计依据：已核对 live-agent-runtime、live-conversation-service、live-conversation-trace、/api/dev/orbit-agent/trace route 和 contact recommendation tests；英文源与中文 companion 同步更新。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 - **Capability-first Sprint 设计**（`docs/superpowers/specs/2026-06-24-capability-first-sprint-design.md`）
   - 中文阅读版：`knowledge/docs/zh/capability-first-sprint-design.zh.md`
   - 简介：解释为什么早期 Orbit sprint 以能力边界而不是页面组件为中心。
@@ -885,13 +885,13 @@
   - 简介：记录 Orbit 产品级 Chat Agent 的目标、边界和 agent 工作流判断。
   - 审计依据：已核对 Orbit AI service、chat/agent API、trace debug 页面和相关 tests 仍存在；更细的 ReAct 工具边界以 bounded ReAct 设计为准。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 - **Bounded ReAct 工具注册设计**（`docs/superpowers/specs/2026-06-30-orbit-bounded-react-tool-registry-design.md`）
   - 中文阅读版：`knowledge/docs/zh/bounded-react-tool-registry.zh.md`
   - 简介：设计 Orbit AI bounded ReAct runtime、工具 registry、policy gate、确认边界和工具风险等级。
   - 审计依据：已登记关联代码路径：repos/orbits/features/orbit-ai/agent-tools/registry.ts。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 - **文档库与知识库设计**（`docs/superpowers/specs/2026-06-30-orbit-docs-knowledge-wiki-design.md`）
   - 中文阅读版：`knowledge/docs/zh/knowledge-wiki-design.zh.md`
   - 简介：本次知识库目标的设计文档，定义 knowledge 目录、catalog、开发历史、learnings 和 /dev/knowledge 页面。
@@ -909,7 +909,7 @@
   - 简介：说明 /dev/orbit-ai/trace 如何展示 full-chain trace、planner-only 对比、runtimeSnapshot、artifact producers、tool calls、数据来源和安全边界。
   - 审计依据：已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；trace-contract 暴露 artifactProducers，contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`orbit-ai`
-  - 关联知识页：`knowledge/wiki/agent-system.zh.md`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`
 
 ### technical-design
 

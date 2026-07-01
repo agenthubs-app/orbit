@@ -14,7 +14,7 @@ const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const moduleDocs = [
   "account",
   "acquisition",
-  "agent",
+  "actions",
   "analysis",
   "audit",
   "bootstrap",

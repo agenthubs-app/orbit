@@ -1,4 +1,8 @@
-# Agent Action Queue Mock To Live Handoff
+# Actions Queue Mock To Live Handoff
+
+This capability is the Actions module's queue boundary. The current code path
+and service names still use `agent` for compatibility, but product and
+architecture documents refer to the module as Actions.
 
 ## Live Service And Provider Files
 

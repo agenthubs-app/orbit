@@ -18,7 +18,7 @@
         "repos/orbits/app/dev/orbit-ai/trace"
       ],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -37,7 +37,7 @@
         "repos/orbits/app/(app)/app/orbit-ai-command-center.tsx"
       ],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -96,7 +96,7 @@
         "repos/orbits/app/api/dev/orbit-agent/trace/route.ts"
       ],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -289,7 +289,7 @@
         "repos/orbits/features/orbit-ai"
       ],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -332,16 +332,16 @@
       "lastReviewedOn": "2026-06-30"
     },
     {
-      "id": "module-agent",
-      "titleZh": "agent 模块架构",
-      "summaryZh": "说明 agent 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
+      "id": "module-actions",
+      "titleZh": "actions 模块架构",
+      "summaryZh": "说明 actions 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。",
       "reviewEvidenceZh": "已登记关联代码路径：repos/orbits/features/agent/service-factory.ts。",
-      "sourcePath": "repos/orbits/docs/architecture/modules/agent.md",
-      "localizedSourcePath": "knowledge/docs/zh/module-agent.zh.md",
+      "sourcePath": "repos/orbits/docs/architecture/modules/actions.md",
+      "localizedSourcePath": "knowledge/docs/zh/module-actions.zh.md",
       "category": "module-architecture",
       "status": "current",
       "freshness": "verified-current",
-      "ownerArea": "module:agent",
+      "ownerArea": "module:actions",
       "relatedCodePaths": [
         "repos/orbits/features/agent/service-factory.ts"
       ],
@@ -698,16 +698,16 @@
       "lastReviewedOn": "2026-06-30"
     },
     {
-      "id": "feature-agent-design",
-      "titleZh": "agent Feature 设计",
-      "summaryZh": "记录 agent feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。",
-      "reviewEvidenceZh": "已核对 repos/orbits/features/agent 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。",
+      "id": "feature-actions-design",
+      "titleZh": "actions Feature 设计",
+      "summaryZh": "记录 actions feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。",
+      "reviewEvidenceZh": "已核对 legacy implementation path repos/orbits/features/agent 目录和 service factory 存在；模块边界还由 modular-boundaries 测试覆盖。",
       "sourcePath": "repos/orbits/features/agent/DESIGN.md",
-      "localizedSourcePath": "knowledge/docs/zh/feature-agent-design.zh.md",
+      "localizedSourcePath": "knowledge/docs/zh/feature-actions-design.zh.md",
       "category": "feature-design",
       "status": "current",
       "freshness": "likely-current",
-      "ownerArea": "feature:agent",
+      "ownerArea": "feature:actions",
       "relatedCodePaths": [
         "repos/orbits/features/agent",
         "repos/orbits/features/agent/service-factory.ts"
@@ -1071,7 +1071,7 @@
         "repos/orbits/app/api/ai/conversations/route.ts"
       ],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -1090,7 +1090,7 @@
         "repos/orbits/features/orbit-ai/agent-tools/registry.ts"
       ],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -1110,7 +1110,7 @@
         "repos/orbits/features/orbit-ai"
       ],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -1336,7 +1336,7 @@
         "repos/orbits/app/api/dev/orbit-agent/trace/route.ts"
       ],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -1353,7 +1353,7 @@
       "ownerArea": "orbit-ai",
       "relatedCodePaths": [],
       "relatedKnowledgePages": [
-        "knowledge/wiki/agent-system.zh.md"
+        "knowledge/wiki/actions-system.zh.md"
       ],
       "lastReviewedOn": "2026-06-30"
     },
@@ -2005,16 +2005,16 @@
       "lastReviewedOn": "2026-06-30"
     },
     {
-      "id": "live-handoff-feature-agent-agent-action-queue-mock",
-      "titleZh": "agent 能力 Live 交接：agent action queue mock",
-      "summaryZh": "记录 agent 模块中 agent action queue mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
+      "id": "live-handoff-feature-actions-action-queue-mock",
+      "titleZh": "actions 能力 Live 交接：action queue mock",
+      "summaryZh": "记录 actions 模块中 action queue mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
       "reviewEvidenceZh": "已核对对应 feature 目录存在：repos/orbits/features/agent/agent-action-queue-mock。目录级实时行为仍以 service factory、API route 和测试为准。",
       "sourcePath": "repos/orbits/features/agent/agent-action-queue-mock/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-agent-agent-action-queue-mock.zh.md",
+      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-actions-action-queue-mock.zh.md",
       "category": "implementation-handoff",
       "status": "generated-evidence",
       "freshness": "likely-current",
-      "ownerArea": "feature:agent",
+      "ownerArea": "feature:actions",
       "relatedCodePaths": [
         "repos/orbits/features/agent/agent-action-queue-mock",
         "repos/orbits/features/agent/service-factory.ts"
@@ -2025,16 +2025,16 @@
       "lastReviewedOn": "2026-06-30"
     },
     {
-      "id": "live-handoff-feature-agent-agent-autonomy-settings-mock",
-      "titleZh": "agent 能力 Live 交接：agent autonomy settings mock",
-      "summaryZh": "记录 agent 模块中 agent autonomy settings mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
+      "id": "live-handoff-feature-actions-autonomy-settings-mock",
+      "titleZh": "actions 能力 Live 交接：autonomy settings mock",
+      "summaryZh": "记录 actions 模块中 autonomy settings mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
       "reviewEvidenceZh": "已核对对应 feature 目录存在：repos/orbits/features/agent/agent-autonomy-settings-mock。目录级实时行为仍以 service factory、API route 和测试为准。",
       "sourcePath": "repos/orbits/features/agent/agent-autonomy-settings-mock/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-agent-agent-autonomy-settings-mock.zh.md",
+      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-actions-autonomy-settings-mock.zh.md",
       "category": "implementation-handoff",
       "status": "generated-evidence",
       "freshness": "likely-current",
-      "ownerArea": "feature:agent",
+      "ownerArea": "feature:actions",
       "relatedCodePaths": [
         "repos/orbits/features/agent/agent-autonomy-settings-mock",
         "repos/orbits/features/agent/service-factory.ts"
@@ -2045,16 +2045,16 @@
       "lastReviewedOn": "2026-06-30"
     },
     {
-      "id": "live-handoff-feature-agent-external-action-sandbox-mock",
-      "titleZh": "agent 能力 Live 交接：external action sandbox mock",
-      "summaryZh": "记录 agent 模块中 external action sandbox mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
+      "id": "live-handoff-feature-actions-external-action-sandbox-mock",
+      "titleZh": "actions 能力 Live 交接：external action sandbox mock",
+      "summaryZh": "记录 actions 模块中 external action sandbox mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
       "reviewEvidenceZh": "已核对对应 feature 目录存在：repos/orbits/features/agent/external-action-sandbox-mock。目录级实时行为仍以 service factory、API route 和测试为准。",
       "sourcePath": "repos/orbits/features/agent/external-action-sandbox-mock/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-agent-external-action-sandbox-mock.zh.md",
+      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-actions-external-action-sandbox-mock.zh.md",
       "category": "implementation-handoff",
       "status": "generated-evidence",
       "freshness": "likely-current",
-      "ownerArea": "feature:agent",
+      "ownerArea": "feature:actions",
       "relatedCodePaths": [
         "repos/orbits/features/agent/external-action-sandbox-mock",
         "repos/orbits/features/agent/service-factory.ts"

@@ -10,14 +10,14 @@ Orbit app 按业务能力拆为 feature modules。每个模块应有 contract、
 - 关系资料：`profile`、`contacts`、`connections`、`analysis`、`audit`
 - 获取来源：`acquisition`、`events`
 - 行动推进：`recommendations`、`followups`、`notifications`
-- AI 和 Agent：`chat`、`orbit-ai`、`agent`、`ai-provider`
+- AI 和 Actions：`chat`、`orbit-ai`、`actions`、`ai-provider`
 - 体验聚合：`dashboard`、`bootstrap`、`search`
 
 ## 阅读顺序
 
 1. 先读 `repos/orbits/docs/architecture/modular-design.md`。
 2. 再读 `repos/orbits/docs/architecture/modules/<module>.md`，确认模块职责、Mock 行为和热拔插边界。
-3. 继续读 `repos/orbits/features/<module>/DESIGN.md`，确认该 feature 的具体产品行为和协作规则。
+3. 继续读 `repos/orbits/features/<module>/DESIGN.md`，确认该 feature 的具体产品行为和协作规则。Actions 目前是例外：权威模块文档是 `repos/orbits/docs/architecture/modules/actions.md`，当前实现路径仍是 legacy `repos/orbits/features/agent/DESIGN.md`。
 4. 最后读 `contract.ts`、`service.ts`、`service-factory.ts` 和相关测试，确认代码现在实际怎么运行。
 
 ## Orbit AI 例外点

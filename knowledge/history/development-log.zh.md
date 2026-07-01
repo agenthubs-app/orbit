@@ -104,3 +104,10 @@
 - 修改摘要：更新中文镜像生成结构，加入“怎么读”、状态/新鲜度解释和更清楚的非中文源文档说明；重写 Orbit AI module/feature 文档；补充 trace 英中文设计的当前代码入口；补充 performance audit 的阅读提示；更新知识库首页、Agent 主题页和模块地图。
 - 知识库更新：更新 catalog 中 Orbit AI、trace 和 performance 条目的摘要、审计依据与关联代码路径；重新生成 catalog、中文镜像和 app-local knowledge manifest。
 - 验证方式：运行知识库生成脚本、root knowledge tests、app knowledge tests、app lint、`git diff --check` 和 GitNexus detect changes。
+
+## [2026-07-01] maintenance | Agent 模块命名收敛为 Actions
+
+- 用户目标：确认 Contacts/Events 负责业务工具、外部副作用执行边界由原 Agent 模块负责后，将该模块重命名为 Actions，降低与 Orbit AI agent/runtime 的语义混淆。
+- 修改摘要：将模块架构文档从 `agent.md` 改为 `actions.md`，更新模块树、`features/agent/DESIGN.md`、相关 live handoff 文档、Orbit AI 模块说明、知识库主题页和 app-local manifest；catalog 与中文镜像展示名改为 `actions`。
+- 架构边界：当前代码路径、route 和 API 仍保留 legacy `features/agent`、`/app/agent` 和 `/api/agent/*`，因为 GitNexus 对 `createAgentActionQueueService` 的上游影响为 HIGH；本次只收敛产品/文档术语，不做代码符号和路由迁移。
+- 验证方式：运行知识库生成脚本、root knowledge tests、app knowledge tests、modular-boundaries test、`git diff --check` 和 GitNexus detect changes。

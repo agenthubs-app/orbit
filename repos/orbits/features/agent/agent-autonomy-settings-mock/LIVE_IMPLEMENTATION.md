@@ -1,13 +1,16 @@
-# Agent Autonomy Settings Mock To Live Handoff
+# Actions Autonomy Settings Mock To Live Handoff
 
 ## Mock Boundary
 
-Sprint 50 implements a mock-first Agent autonomy settings boundary. The current
+Sprint 50 implements a mock-first Actions autonomy settings boundary. The current
 files expose low, medium, and high autonomy levels with deterministic fixtures,
 visible provider boundaries, and explicit confirmation rules. The mock never
-starts autonomous execution, scheduled live agent jobs, external networks,
+starts autonomous execution, scheduled live action jobs, external networks,
 devices, databases, AI providers, calendar providers, email providers, or
 notification services.
+
+The current code path and service names still use `agent` for compatibility,
+but product and architecture documents refer to the module as Actions.
 
 ## Live Service And Provider Files
 
@@ -77,7 +80,7 @@ workflow list intact until equivalent live enforcement exists:
 
 High autonomy still requires explicit confirmation before any external action,
 including sends, calendar writes, notification delivery, database mutation, AI
-provider requests, or scheduled live agent jobs. If provenance is incomplete,
+provider requests, or scheduled live action jobs. If provenance is incomplete,
 the live service must return a typed failure rather than applying the setting.
 
 ## Replacement Tests

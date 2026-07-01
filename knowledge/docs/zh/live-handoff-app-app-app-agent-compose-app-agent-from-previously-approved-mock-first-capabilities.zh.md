@@ -31,7 +31,7 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：App Agent 路由 Live handoff
+- 第 1 节：App Actions 路由 Live handoff
 - 第 2 节：评估器 Evidence 摘要
 
 ## 保留的代码与命令证据
