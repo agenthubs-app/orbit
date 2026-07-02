@@ -65,12 +65,19 @@ test("core service factories expose default mock services and controlled live fa
 
   const liveOrbitAi = resolveOrbitAiCommandService("live");
 
-  assert.equal(liveOrbitAi.success, false);
-  if (!liveOrbitAi.success) {
-    assert.equal(liveOrbitAi.error.code, "NOT_IMPLEMENTED");
-    assert.equal(liveOrbitAi.error.capabilityId, "orbit-ai-command");
-    assert.equal(liveOrbitAi.error.requestedMode, "live");
-    assert.deepEqual(liveOrbitAi.error.availableModes, ["mock"]);
+  assert.equal(
+    liveOrbitAi.success,
+    true,
+    liveOrbitAi.success === false ? liveOrbitAi.error.message : "",
+  );
+  if (liveOrbitAi.success) {
+    const commandCenter = await liveOrbitAi.service.getCommandCenter({
+      language: "en",
+      prompt: "show live priorities",
+    });
+
+    assert.equal(commandCenter.success, true);
+    assert.equal(commandCenter.data.sideEffectsExecuted, false);
   }
 });
 

@@ -74,7 +74,7 @@ Notifications 只负责底层投递能力，例如 mobile push、badge、deliver
 
 Chat/Messages 的边界仍是用户与人脉之间的沟通，包括联系人会话上下文、草稿、改写、跟进文案和发出前确认。日历提醒、活动准备、关系机会和系统状态不进入 Chat/Messages 作为全局 inbox。
 
-基础实现必须保持 mock-first：proactive message 可以出现在 Orbit AI conversation surface，但不能调用 live AI provider、push provider、email、calendar、外部网络、live database write 或 websocket。
+当前 proactive agent 已有 mock 和 live-policy 两个实现。mock 用于稳定 fixture；live-policy 用于 live 模式下的真实运行边界。两者都只生成 Orbit AI 聊天窗口里的 proactive assistant turn，不能调用 live AI provider、push provider、email、calendar、外部网络、live database write 或 websocket。
 
 ## 内部工具所有权
 
@@ -97,6 +97,10 @@ Orbit AI planner/runtime
 - `contacts.recommend`：Contacts 或 Recommendations 拥有人脉候选资格、联系人排序、推荐理由和联系人动作；它可以调用 Relationship Search 获取 evidence-backed candidates。
 - `followups.reviewQueue`：Followups 拥有跟进队列、逾期/沉睡关系解释和提醒动作边界。
 - `chat.context`：Chat 拥有会话上下文、隐私边界和草稿准备策略。
+
+当前 live artifact 链中，`chat.context` 通过 `createOrbitAgentChatContextArtifactService()` 调用 Chat conversation/message service，读取 live `conversations`、`messages`、`contacts` 和 `connections` 派生出的 thread payload，再映射为 `relationship_chat_context` artifact。Orbit AI 只负责工具适配、可复核 artifact、trace 和 safety 标记；artifact 生成不会绕过 feature service 直接读取 `orbit_records`，不会写消息，也不会打开实时传输、外部网络、邮件、日历或通知。
+
+开发调试用的 live trace 有一个例外边界：`database_context` stage 可以读取配置好的 live record store，按 planner 选中的白名单工具列出相关 `orbit_records` collection 的计数和选中状态。这个读取只用于 trace UI 解释“本次工具可见哪些 live 数据”，不把 raw payload 交给 Orbit AI 做业务决策，也不写数据库。没有 live storage 配置时，trace 仍 fallback 到本地 local-remote database 快照，方便无远程库的开发环境调试。
 
 Search/Relationship Search 是底层 retrieval substrate，不是业务工具 owner。当前 `contacts.recommend` 的候选检索和排序已经委托给 `features/contacts/contact-recommendation-search.ts`；Orbit AI 侧的 matcher 只保留方法选择、工具适配、artifact mapping 和 trace。
 
@@ -124,7 +128,11 @@ Live conversation 使用 server-side model provider API。必需环境变量：
 - `ORBIT_AGENT_MAX_LOOP_STEPS=3`
 - `ORBIT_CONTACT_RECOMMENDATION_METHOD=rules_v1 | structured_extraction_v1 | semantic_index_v1 | graph_gated_rag_v1`
 
-`ORBIT_AGENT_CONVERSATION_MODE` 只切换 Chat Agent conversation provider，不切换 `/app` 首页 command center 或其他模块。缺少所选 provider API key 时，live conversation service 必须 fail closed：返回可恢复错误，不回退到 mock、不执行工具、不请求外部网络。
+`ORBIT_AGENT_CONVERSATION_MODE` 只切换 Chat Agent conversation provider，不切换其他模块。缺少所选 provider API key 时，live conversation service 必须 fail closed：返回可恢复错误，不回退到 mock、不执行工具、不请求外部网络。
+
+旧 `orbit-ai-command` 面板现在也支持 `ORBIT_MODULE_MODE=live`。它不是模型 provider runtime，而是 read-only command surface：live command service 会读取 Events、Contacts、Followups、Dashboard 和 Agent queue 的 live services，把结果整理成可打开的 stage items，并保留 evidence ids。它不调用 AI provider、不执行外部动作、不发送通知、不写 live storage。任一子服务失败时，command payload 保留失败 evidence 并继续返回可恢复 UI，而不是静默回退 mock。
+
+`orbit-ai-proactive-agent` 的 live 模式是 policy provider，不是推送系统。它把结构化 signal 转成 `deliverySurface: "orbit_ai_chat"` 的 assistant proactive turn，并用 safety ledger 证明没有 push、notification、email、calendar、live storage write、AI provider 或 external network side effect。Notifications 仍只负责底层投递机制和 deep link，不生成主动管家文案。
 
 Provider planner 输出必须经过 schema validation、allowed intent mapping 和 safety guard。当前只有 `events.recommend`、`contacts.recommend`、`followups.reviewQueue` 和 `chat.context` 可以进入内部工具适配层。
 

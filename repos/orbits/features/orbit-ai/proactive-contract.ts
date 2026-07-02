@@ -20,6 +20,7 @@ export const ORBIT_AI_PROACTIVE_AGENT_ERROR_CODES = [
   "ORBIT_AI_PROACTIVE_AGENT_SIGNAL_ID_REQUIRED",
   "ORBIT_AI_PROACTIVE_AGENT_UNSUPPORTED_SIGNAL_TYPE",
   "ORBIT_AI_PROACTIVE_AGENT_MOCK_FAILED",
+  "ORBIT_AI_PROACTIVE_AGENT_LIVE_POLICY_FAILED",
 ] as const;
 
 export type OrbitAiProactiveAgentSignalType =
@@ -108,8 +109,12 @@ export interface OrbitAiProactiveAgentProvenance {
   generationMethod:
     | "fixture"
     | "rule-based-proactive-turn"
-    | "rule-based-proactive-state";
-  privacy: "demo-orbit-ai-proactive-agent-only";
+    | "rule-based-proactive-state"
+    | "live-policy-proactive-turn"
+    | "live-policy-proactive-state";
+  privacy:
+    | "demo-orbit-ai-proactive-agent-only"
+    | "live-orbit-ai-proactive-agent-policy-only";
   safety: OrbitAiProactiveAgentSafetyLedger;
 }
 
@@ -186,6 +191,13 @@ export const ORBIT_AI_PROACTIVE_AGENT_ERROR_DEFINITIONS = {
     message: "The Orbit AI proactive agent mock is pinned to a failure state.",
     recovery:
       "Render a controlled failure state without calling AI providers, push providers, notifications, email, calendar, storage, or network services.",
+  },
+  ORBIT_AI_PROACTIVE_AGENT_LIVE_POLICY_FAILED: {
+    appCode: "SERVICE_UNAVAILABLE",
+    code: "ORBIT_AI_PROACTIVE_AGENT_LIVE_POLICY_FAILED",
+    message: "The Orbit AI proactive agent live policy is unavailable.",
+    recovery:
+      "Keep the proactive turn out of the Orbit AI chat window and avoid AI providers, push providers, notifications, email, calendar, storage writes, or network services.",
   },
 } as const satisfies Record<
   OrbitAiProactiveAgentErrorCode,

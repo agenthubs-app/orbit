@@ -92,7 +92,7 @@ export interface OrbitAiTraceDatabaseInteraction {
   adapterKind: "memory" | "browser-localStorage" | "remote" | "unknown";
   collections: readonly OrbitAiTraceDatabaseCollection[];
   id: string;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   operation: "read" | "write" | "seed" | "skipped";
   role: "data";

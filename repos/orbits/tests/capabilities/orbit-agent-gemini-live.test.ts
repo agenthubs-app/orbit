@@ -1569,7 +1569,7 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
   );
 });
 
-test("live Orbit Agent localizes artifact preview copy from the request locale", async () => {
+test("live Orbit Agent localizes live event artifact copy from the request locale", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config: {
@@ -1653,11 +1653,11 @@ test("live Orbit Agent localizes artifact preview copy from the request locale",
   assert.match(artifact?.result.generatedView?.summary ?? "", /可复核/);
   assert.equal(
     artifact?.result.generatedView?.sections[0]?.items[0]?.actions[0]?.label,
-    "复核计划",
+    "复核活动",
   );
   assert.equal(
     artifact?.result.generatedView?.sections[0]?.items[0]?.metadata[0]?.label,
-    "结果类型",
+    "时间",
   );
   assert.match(artifact?.result.nextAction ?? "", /复核/);
   assert.match(result.data?.nextAction ?? "", /复核/);

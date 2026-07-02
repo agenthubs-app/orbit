@@ -65,11 +65,11 @@ function readSearchParam(
 }
 
 // 加载命令中心视图模型：这里只调用 command service，不执行 live conversation 或外部动作。
-export function loadOrbitAiCommandViewModel(
+export async function loadOrbitAiCommandViewModel(
   searchParams?: OrbitAiCommandSearchParams,
-): AppOrbitAiCommandViewModel {
+): Promise<AppOrbitAiCommandViewModel> {
   const service = createOrbitAiCommandService();
-  const result = service.getCommandCenter({
+  const result = await service.getCommandCenter({
     language: readSearchParam(searchParams, "lang"),
     panel: readSearchParam(searchParams, "panel"),
     prompt: readSearchParam(searchParams, "prompt"),

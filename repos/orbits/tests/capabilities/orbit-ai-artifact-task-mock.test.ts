@@ -73,12 +73,339 @@ test("Orbit Agent artifact task service is registered behind the module factory"
   );
   assert.deepEqual(
     factoryModule.orbitAgentArtifactTaskServiceFactory.availableModes,
-    ["mock"],
+    ["mock", "live"],
   );
 
   const service = factoryModule.createOrbitAgentArtifactTaskService("mock");
   assert.equal(typeof service.createArtifactTask, "function");
   assert.equal(typeof service.getArtifactTask, "function");
+});
+
+test("live artifact task renders follow-up queue from the followups service", async () => {
+  const serviceModule = await importProjectModule<{
+    createOrbitAgentFollowupReviewArtifactService: (input: {
+      followupService: {
+        listTasks: (input?: { limit?: number | null }) => Promise<{
+          success: true;
+          data: {
+            tasks: readonly {
+              audit: { sourceLabel: string };
+              connectionId: string;
+              contactName: string;
+              dueInDays: number;
+              evidenceIds: readonly string[];
+              organization: string;
+              priority: string;
+              rationale: string;
+              recommendedAction: string;
+              source: { label: string };
+              taskId: string;
+              title: string;
+              triggerKind: string;
+            }[];
+            provenance: {
+              collectedAt: string;
+              evidenceIds: readonly string[];
+              liveDatabaseReadExecuted: boolean;
+              source: string;
+              sourceLabel: string;
+            };
+            state: string;
+            summary: string;
+          };
+        }>;
+        generateTasks: () => never;
+      };
+    }) => {
+      createArtifactTask: (input: {
+        kind: string;
+        locale?: string;
+        query: string;
+        toolArguments?: Record<string, unknown>;
+      }) => Promise<{
+        success: boolean;
+        data?: {
+          result: {
+            generatedView: {
+              sections: readonly {
+                items: readonly {
+                  actions: readonly { requiresConfirmation: boolean }[];
+                  body?: string;
+                  evidenceIds: readonly string[];
+                  metadata: readonly { label: string; value: string }[];
+                  reason?: string;
+                  subtitle?: string;
+                  title: string;
+                }[];
+              }[];
+              summary: string;
+            } | null;
+            kind: string;
+            provenance: {
+              generationMethod: string;
+              source: string;
+              sourceModules: readonly string[];
+              toolCalls: readonly { status: string; toolName: string }[];
+            };
+            safety: {
+              externalSideEffectsExecuted: false;
+              liveDatabaseReadExecuted: boolean;
+            };
+          };
+          task: {
+            artifactProducer: string;
+            kind: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/followup-review-artifact-service.ts");
+
+  const listInputs: { limit?: number | null }[] = [];
+  const service = serviceModule.createOrbitAgentFollowupReviewArtifactService({
+    followupService: {
+      async listTasks(input) {
+        listInputs.push(input ?? {});
+
+        return {
+          success: true,
+          data: {
+            tasks: [
+              {
+                audit: { sourceLabel: "Followup Postgres live storage" },
+                connectionId: "connection_0012",
+                contactName: "佐藤 健一",
+                dueInDays: 2,
+                evidenceIds: ["evidence:task:001"],
+                organization: "North Star Foods",
+                priority: "this_week",
+                rationale: "Shared Japan market entry evidence supports a timely review.",
+                recommendedAction: "Review the Japan market entry thread.",
+                source: { label: "Live task source" },
+                taskId: "task_001",
+                title: "Follow up on Japan market entry",
+                triggerKind: "promised_action",
+              },
+            ],
+            provenance: {
+              collectedAt: "2026-06-30T00:00:00.000Z",
+              evidenceIds: ["evidence:task:001"],
+              liveDatabaseReadExecuted: true,
+              source: "postgres-live-record-store:followups:workspace:orbit-dev",
+              sourceLabel: "Followup Postgres live storage",
+            },
+            state: "success",
+            summary: "1 followup task was loaded from the live task store.",
+          },
+        };
+      },
+      generateTasks() {
+        throw new Error("generateTasks must not be used for review queue artifacts");
+      },
+    },
+  });
+
+  const result = await service.createArtifactTask({
+    kind: "followup_queue",
+    locale: "zh",
+    query: "本周应该跟进谁",
+    toolArguments: { limit: 1 },
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(listInputs[0]?.limit, 1);
+  assert.equal(result.data?.task.kind, "followup_queue");
+  assert.equal(result.data?.task.artifactProducer, "followup_review_producer");
+  assert.equal(result.data?.result.kind, "followup_queue");
+  assert.equal(result.data?.result.provenance.sourceModules.includes("followups"), true);
+  assert.equal(result.data?.result.provenance.toolCalls[0]?.toolName, "followups.reviewQueue");
+  assert.equal(result.data?.result.provenance.toolCalls[0]?.status, "completed");
+  assert.equal(result.data?.result.provenance.generationMethod, "artifact-producer-generated-view");
+  assert.equal(result.data?.result.safety.liveDatabaseReadExecuted, true);
+  assert.equal(result.data?.result.safety.externalSideEffectsExecuted, false);
+  assert.equal(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.title,
+    "Follow up on Japan market entry",
+  );
+  assert.equal(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.subtitle,
+    "佐藤 健一",
+  );
+  assert.equal(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.actions[0]?.requiresConfirmation,
+    true,
+  );
+  assert.deepEqual(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.evidenceIds,
+    ["evidence:task:001"],
+  );
+  assert.match(
+    JSON.stringify(result.data?.result.generatedView),
+    /North Star Foods/,
+  );
+  assert.doesNotMatch(
+    JSON.stringify(result.data?.result.generatedView),
+    /preview boundary|Maya Chen/,
+  );
+});
+
+test("live artifact task renders event recommendations from the events tool", async () => {
+  const serviceModule = await importProjectModule<{
+    createOrbitAgentEventRecommendationArtifactService: (input: {
+      recommendationTool: {
+        recommend: (input: {
+          query: string;
+          toolArguments?: Record<string, unknown> | null;
+        }) => Promise<{
+          candidates: readonly {
+            databaseQueryExecuted: boolean;
+            description: string;
+            endsAt: string;
+            eventId: string;
+            evidenceIds: readonly string[];
+            matchReasons: readonly string[];
+            nextAction: string;
+            recommendedPreparation: string;
+            relationshipContext: string;
+            score: number;
+            sourceLabel: string;
+            startsAt: string;
+            status: string;
+            title: string;
+            venue: string;
+          }[];
+          databaseQueryExecuted: boolean;
+          evidenceIds: readonly string[];
+          sourceLabel: string;
+          state: string;
+          summary: string;
+        }>;
+      };
+    }) => {
+      createArtifactTask: (input: {
+        kind: string;
+        locale?: string;
+        query: string;
+        toolArguments?: Record<string, unknown>;
+      }) => Promise<{
+        success: boolean;
+        data?: {
+          result: {
+            generatedView: {
+              sections: readonly {
+                items: readonly {
+                  actions: readonly { requiresConfirmation: boolean }[];
+                  evidenceIds: readonly string[];
+                  metadata: readonly { label: string; value: string }[];
+                  reason?: string;
+                  subtitle?: string;
+                  title: string;
+                }[];
+              }[];
+              summary: string;
+            } | null;
+            kind: string;
+            provenance: {
+              generationMethod: string;
+              sourceModules: readonly string[];
+              toolCalls: readonly { status: string; toolName: string }[];
+            };
+            safety: {
+              externalSideEffectsExecuted: false;
+              liveDatabaseReadExecuted: boolean;
+            };
+          };
+          task: {
+            artifactProducer: string;
+            kind: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/event-recommendation-artifact-service.ts");
+
+  const requests: {
+    query: string;
+    toolArguments?: Record<string, unknown> | null;
+  }[] = [];
+  const service = serviceModule.createOrbitAgentEventRecommendationArtifactService({
+    recommendationTool: {
+      async recommend(input) {
+        requests.push(input);
+
+        return {
+          candidates: [
+            {
+              databaseQueryExecuted: true,
+              description: "Invite-only operator dinner for Japan market entry teams.",
+              endsAt: "2026-07-08T12:00:00.000Z",
+              eventId: "event_tokyo_ai_dinner",
+              evidenceIds: ["evidence:event:tokyo-ai-dinner"],
+              matchReasons: [
+                "The event mentions Japan market entry and operator introductions.",
+              ],
+              nextAction: "Review the attendee list before asking for an intro.",
+              recommendedPreparation:
+                "Prepare a short China SaaS expansion question.",
+              relationshipContext:
+                "Useful for meeting founders selling into Japan.",
+              score: 94,
+              sourceLabel: "Events Postgres live storage",
+              startsAt: "2026-07-08T10:00:00.000Z",
+              status: "confirmed",
+              title: "Tokyo AI Operator Dinner",
+              venue: "Shibuya, Tokyo",
+            },
+          ],
+          databaseQueryExecuted: true,
+          evidenceIds: ["evidence:event:tokyo-ai-dinner"],
+          sourceLabel: "Events Postgres live storage",
+          state: "success",
+          summary: "1 event matched the request from live Events data.",
+        };
+      },
+    },
+  });
+
+  const result = await service.createArtifactTask({
+    kind: "event_recommendations",
+    locale: "zh",
+    query: "推荐适合 Japan market entry 的活动",
+    toolArguments: { limit: 1 },
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests[0]?.query, "推荐适合 Japan market entry 的活动");
+  assert.equal(requests[0]?.toolArguments?.limit, 1);
+  assert.equal(result.data?.task.kind, "event_recommendations");
+  assert.equal(result.data?.task.artifactProducer, "event_recommendation_producer");
+  assert.equal(result.data?.result.kind, "event_recommendations");
+  assert.equal(result.data?.result.provenance.sourceModules.includes("events"), true);
+  assert.equal(result.data?.result.provenance.toolCalls[0]?.toolName, "events.recommend");
+  assert.equal(result.data?.result.provenance.toolCalls[0]?.status, "completed");
+  assert.equal(result.data?.result.provenance.generationMethod, "artifact-producer-generated-view");
+  assert.equal(result.data?.result.safety.liveDatabaseReadExecuted, true);
+  assert.equal(result.data?.result.safety.externalSideEffectsExecuted, false);
+  assert.equal(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.title,
+    "Tokyo AI Operator Dinner",
+  );
+  assert.equal(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.subtitle,
+    "Shibuya, Tokyo",
+  );
+  assert.equal(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.actions[0]?.requiresConfirmation,
+    true,
+  );
+  assert.deepEqual(
+    result.data?.result.generatedView?.sections[0]?.items[0]?.evidenceIds,
+    ["evidence:event:tokyo-ai-dinner"],
+  );
+  assert.doesNotMatch(
+    JSON.stringify(result.data?.result.generatedView),
+    /preview boundary|Founder relationship roundtable/,
+  );
 });
 
 test("mock artifact task creates a traceable ready event recommendation view", async () => {

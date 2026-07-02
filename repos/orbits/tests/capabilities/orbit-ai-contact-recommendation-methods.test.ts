@@ -215,6 +215,103 @@ test("contacts recommendation search adapter owns candidate retrieval policy abo
   assert.match(result.candidates[0]?.sourceLabel ?? "", /Manual climate/i);
 });
 
+test("contacts recommendation search adapter awaits async relationship search services", async () => {
+  const contactsModule = await importProjectModule<{
+    createContactsRecommendationSearchTool: (input: {
+      relationshipSearchService: {
+        queryRelationships: (input: unknown) => Promise<unknown>;
+      };
+    }) => {
+      recommend: (input: {
+        query: string;
+      }) => Promise<{
+        candidates: readonly {
+          contactId: string;
+          displayName: string;
+          evidenceIds: readonly string[];
+          matchScore: number;
+        }[];
+        state: string;
+      }>;
+    };
+  }>("features/contacts/contact-recommendation-search.ts");
+
+  const tool = contactsModule.createContactsRecommendationSearchTool({
+    relationshipSearchService: {
+      async queryRelationships() {
+        return {
+          success: true,
+          data: {
+            results: [
+              {
+                aiProviderRequested: false,
+                calendarProviderRequested: false,
+                contactId: "contact_async_live",
+                crossProviderIndexQueried: false,
+                databaseQueryExecuted: true,
+                displayName: "Async Live Contact",
+                emailProviderRequested: false,
+                embeddingGenerated: false,
+                evidence: [
+                  {
+                    capturedAt: "2026-07-01T00:00:00.000Z",
+                    createdBy: "test",
+                    evidenceId: "evidence:async-live",
+                    excerpt: "Async relationship evidence.",
+                    source: {
+                      evidenceId: "evidence:async-live",
+                      id: "source:async-live",
+                      label: "Async live search source",
+                      type: "manual",
+                    },
+                  },
+                ],
+                externalNetworkRequested: false,
+                followUpStatus: "needs_follow_up",
+                id: "relationship-search-result:async-live",
+                industry: "enterprise_saas",
+                location: "Tokyo",
+                matchScore: {
+                  band: "high",
+                  matchedFields: ["relationshipContext"],
+                  rationale: "Async live relationship search matched.",
+                  value: 93,
+                },
+                notificationDelivered: false,
+                organization: "Async Orbit",
+                recommendedAction: "Review async live relationship path.",
+                relationshipContext: "Async live relationship path.",
+                role: "Partner",
+                semanticSearchExecuted: false,
+                source: {
+                  evidenceId: "evidence:async-live",
+                  id: "source:async-live",
+                  label: "Async live search source",
+                  type: "manual",
+                },
+                value: {
+                  evidenceIds: ["evidence:async-live"],
+                  rationale: "Async value evidence.",
+                  score: 93,
+                  valueTypes: ["strategic_intro"],
+                },
+              },
+            ],
+          },
+        };
+      },
+    },
+  });
+
+  const result = await tool.recommend({
+    query: "find async live relationship",
+  });
+
+  assert.equal(result.state, "success");
+  assert.equal(result.candidates[0]?.displayName, "Async Live Contact");
+  assert.deepEqual(result.candidates[0]?.evidenceIds, ["evidence:async-live"]);
+});
+
 test("Orbit AI contact recommendation matcher delegates candidate policy to feature-owned Contacts adapter", async () => {
   const module = await importProjectModule<{
     createRuleBasedContactRecommendationMatcher: (input: {

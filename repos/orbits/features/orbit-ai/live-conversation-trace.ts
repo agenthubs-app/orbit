@@ -45,6 +45,8 @@ import {
   ORBIT_LOCAL_REMOTE_DATABASE_KEY,
   ORBIT_LOCAL_REMOTE_DATABASE_SCHEMA_VERSION,
 } from "../../shared/local-remote-store/orbit-database";
+import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
+import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 import { ORBIT_AGENT_TOOL_CATALOG } from "./agent-tools/registry";
 
 const traceCollectedAt = "2026-06-27T00:03:00.000Z";
@@ -53,7 +55,10 @@ const maxSupportedTraceLoops = 3;
 // live-conversation-trace 是开发调试用的完整执行链快照：
 // 输入、本地 guardrail、planner、tool mapping、artifact、synthesis、最终响应都会记录成 stage。
 export interface LiveOrbitAgentTraceConfig
-  extends LiveOrbitAgentRuntimeConfig {}
+  extends LiveOrbitAgentRuntimeConfig {
+  liveRecordStore?: LiveRecordStoreLike<Record<string, unknown>>;
+  liveRecordWorkspaceId?: string | null;
+}
 
 export interface OrbitAgentTraceRunner {
   traceMessage(input: OrbitAgentSendMessageInput): Promise<OrbitAiTraceResult>;
@@ -219,9 +224,96 @@ function selectedDatabaseCollectionsForTools(
   return selected;
 }
 
-function databaseInteractionForTools(
+interface LiveTraceDatabaseContext {
+  source: string;
+  store: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
+}
+
+function configuredLiveTraceDatabaseContext(
+  config: LiveOrbitAgentTraceConfig,
+): LiveTraceDatabaseContext | null {
+  if (config.liveRecordStore && config.liveRecordWorkspaceId) {
+    return {
+      source: `live-record-store:${config.liveRecordWorkspaceId}`,
+      store: config.liveRecordStore,
+      workspaceId: config.liveRecordWorkspaceId,
+    };
+  }
+
+  const configured = createConfiguredPostgresLiveRecordStore();
+
+  if (!configured) {
+    return null;
+  }
+
+  return {
+    source: `live-record-store:${configured.workspaceId}`,
+    store: configured.store,
+    workspaceId: configured.workspaceId,
+  };
+}
+
+async function remoteDatabaseInteractionForTools(
   toolRequests: readonly GeminiOrbitAgentToolRequest[],
-): OrbitAiTraceDatabaseInteraction {
+  config: LiveOrbitAgentTraceConfig,
+): Promise<OrbitAiTraceDatabaseInteraction | null> {
+  const context = configuredLiveTraceDatabaseContext(config);
+
+  if (!context) {
+    return null;
+  }
+
+  const selectedCollections = Array.from(
+    selectedDatabaseCollectionsForTools(toolRequests),
+  ).sort();
+  const collections = await Promise.all(
+    selectedCollections.map(async (collectionName) => {
+      const records = await context.store.listRecords({
+        collectionName,
+        workspaceId: context.workspaceId,
+      });
+
+      return {
+        collectionName,
+        recordCount: records.length,
+        selectedForTools: true,
+      };
+    }),
+  );
+  const recordCount = collections.reduce(
+    (total, collection) => total + collection.recordCount,
+    0,
+  );
+
+  return {
+    adapterKind: "remote",
+    collections,
+    id: "database:live-record-context",
+    liveDatabaseReadExecuted: true,
+    liveDatabaseWriteExecuted: false,
+    operation: "read",
+    role: "data",
+    schemaVersion: 1,
+    source: context.source,
+    storageKey: "orbit_records",
+    summary: `${collections.length} remote live record collections with ${recordCount} records were inspected for the planned Orbit tools.`,
+  };
+}
+
+async function databaseInteractionForTools(
+  toolRequests: readonly GeminiOrbitAgentToolRequest[],
+  config: LiveOrbitAgentTraceConfig,
+): Promise<OrbitAiTraceDatabaseInteraction> {
+  const remoteInteraction = await remoteDatabaseInteractionForTools(
+    toolRequests,
+    config,
+  );
+
+  if (remoteInteraction) {
+    return remoteInteraction;
+  }
+
   // Trace 只读取本地 local-remote database 的表级快照，帮助调试数据上下文；不写 live 数据库。
   const database = createOrbitLocalRemoteDatabase();
   const state = database.getState() as unknown as Record<string, unknown>;
@@ -878,7 +970,9 @@ export function createLiveOrbitAgentTrace(
         toolRequests,
       } = runtimeResult;
       const databaseStartedAt = nowMs();
-      const databaseInteractions = [databaseInteractionForTools(toolRequests)];
+      const databaseInteractions = [
+        await databaseInteractionForTools(toolRequests, config),
+      ];
       const databaseDurationMs = elapsedSince(databaseStartedAt);
       const dataSources = dataSourcesForArtifacts(artifacts);
       const toolCalls = toolCallsFor({ artifacts, toolRequests });

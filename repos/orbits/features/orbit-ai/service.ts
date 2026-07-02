@@ -18,7 +18,9 @@ export type MaybePromise<TValue> = TValue | Promise<TValue>;
 
 // 旧 command center 能力：当前只有 mock，用于首页/命令中心类 UI。
 export interface OrbitAiCommandService {
-  getCommandCenter: (input?: OrbitAiCommandInput) => OrbitAiCommandResult;
+  getCommandCenter: (
+    input?: OrbitAiCommandInput,
+  ) => MaybePromise<OrbitAiCommandResult>;
 }
 
 // Chat Agent conversation 能力：mock 可以同步返回，live 会异步调用模型 provider。
@@ -39,10 +41,10 @@ export interface OrbitAgentConversationService {
 export interface OrbitAgentArtifactTaskService {
   createArtifactTask: (
     input: OrbitAgentArtifactTaskRequest,
-  ) => OrbitAgentArtifactResultEnvelope;
+  ) => MaybePromise<OrbitAgentArtifactResultEnvelope>;
   getArtifactTask: (
     input: OrbitAgentArtifactLookupInput,
-  ) => OrbitAgentArtifactResultEnvelope;
+  ) => MaybePromise<OrbitAgentArtifactResultEnvelope>;
 }
 
 export type { OrbitAiCommandInput, OrbitAiCommandResult };

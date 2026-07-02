@@ -45,6 +45,10 @@ export interface ContactRecommendationResult
   state: "success" | "empty" | "unimplemented" | "configuration_error";
 }
 
+export type ContactRecommendationMatcherResult =
+  | ContactRecommendationResult
+  | Promise<ContactRecommendationResult>;
+
 export interface ContactRecommendationMatcher {
   method: ContactRecommendationMethod;
   recommend: (input: {
@@ -52,7 +56,7 @@ export interface ContactRecommendationMatcher {
     locale?: string | null;
     query: string;
     toolArguments?: Record<string, unknown> | null;
-  }) => ContactRecommendationResult;
+  }) => ContactRecommendationMatcherResult;
 }
 
 function isContactRecommendationMethod(
@@ -101,7 +105,7 @@ export function createRuleBasedContactRecommendationMatcher(input: {
 
   return {
     method: "rules_v1",
-    recommend(request): ContactRecommendationResult {
+    recommend(request): ContactRecommendationMatcherResult {
       return recommendationSearchTool.recommend(request);
     },
   };

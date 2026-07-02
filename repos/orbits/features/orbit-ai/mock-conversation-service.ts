@@ -1,6 +1,7 @@
 import {
   type OrbitAgentArtifactKind,
   type OrbitAgentArtifactPayload,
+  type OrbitAgentArtifactResultEnvelope,
   type OrbitAgentArtifactTaskRequest,
 } from "./artifact-contract";
 import {
@@ -456,8 +457,23 @@ function artifactPayloadForMessage(
     locale,
     query: message,
   });
+  const syncArtifactResult = requireSyncArtifactResult(artifactResult);
 
-  return artifactResult.success ? artifactResult.data : null;
+  return syncArtifactResult.success ? syncArtifactResult.data : null;
+}
+
+function requireSyncArtifactResult(
+  result: OrbitAgentArtifactResultEnvelope | Promise<OrbitAgentArtifactResultEnvelope>,
+): OrbitAgentArtifactResultEnvelope {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Mock Orbit Agent conversation requires a synchronous artifact service.",
+    );
+  }
+
+  return result as OrbitAgentArtifactResultEnvelope;
 }
 
 function userMessage(content: string): OrbitAgentConversationMessage {

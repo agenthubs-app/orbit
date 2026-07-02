@@ -920,10 +920,10 @@ function bilingualIfDifferent(chinese: string, english: string): string {
 }
 
 // 组件入口：先加载 view-model，再按 chat + side stage + reviewed preview 三块渲染。
-export function OrbitAiCommandCenter({
+export async function OrbitAiCommandCenter({
   searchParams,
 }: OrbitAiCommandCenterProps = {}) {
-  const data = loadOrbitAiCommandViewModel(searchParams);
+  const data = await loadOrbitAiCommandViewModel(searchParams);
   const copy =
     data.language === "zh"
       ? bilingualOrbitAiCopy(orbitAiUiCopy.zh)

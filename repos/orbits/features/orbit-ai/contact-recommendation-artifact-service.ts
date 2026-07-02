@@ -19,6 +19,7 @@ import {
   type ContactRecommendationCriteria,
   type ContactRecommendationMatcher,
   type ContactRecommendationMethod,
+  type ContactRecommendationMatcherResult,
   type ContactRecommendationResult,
 } from "./contact-recommendation-matching";
 import type { OrbitAgentArtifactTaskService } from "./service";
@@ -46,6 +47,14 @@ type ArtifactLocale = "en" | "zh";
 
 function readText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isPromiseLike(
+  result: ContactRecommendationMatcherResult,
+): result is Promise<ContactRecommendationResult> {
+  const maybePromise = result as { then?: unknown };
+
+  return typeof maybePromise.then === "function";
 }
 
 function normalizeLocale(locale: unknown): ArtifactLocale {
@@ -83,6 +92,7 @@ function unimplementedResultFor(
   return {
     candidates: [],
     criteria: emptyCriteria,
+    databaseQueryExecuted: false,
     method,
     state: "unimplemented",
     summary: `${method} is selected but not implemented yet.`,
@@ -95,6 +105,7 @@ function configurationErrorResultFor(
   return {
     candidates: [],
     criteria: emptyCriteria,
+    databaseQueryExecuted: false,
     method: "invalid",
     requestedMethod,
     state: "configuration_error",
@@ -349,7 +360,11 @@ function resultFor(input: {
           }),
     presentation: input.presentation,
     provenance: provenanceFor(input.matchResult, input.locale),
-    safety,
+    safety: {
+      ...safety,
+      liveDatabaseReadExecuted:
+        input.matchResult.databaseQueryExecuted === true,
+    },
     status: "ready",
     taskId: input.task.taskId,
   };
@@ -390,7 +405,7 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
     input.matcher ?? createRuleBasedContactRecommendationMatcher();
 
   return {
-    createArtifactTask(request): OrbitAgentArtifactResultEnvelope {
+    createArtifactTask(request) {
       if (request.kind !== "contact_recommendations") {
         return fallbackService.createArtifactTask(request);
       }
@@ -413,6 +428,13 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
                 toolArguments: request.toolArguments,
               })
             : unimplementedResultFor(methodResolution.method);
+
+      if (isPromiseLike(matchResult)) {
+        return matchResult.then((resolved) => ({
+          data: payloadFor({ matchResult: resolved, query, request }),
+          success: true,
+        }));
+      }
 
       return {
         data: payloadFor({ matchResult, query, request }),

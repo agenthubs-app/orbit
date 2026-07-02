@@ -2,6 +2,7 @@ import {
   createModuleServiceFactory,
   type ModuleMode,
 } from "../../shared/services/module-mode";
+import { createLiveOrbitAiProactiveAgentService } from "./live-proactive-service";
 import { createMockOrbitAiProactiveAgentService } from "./mock-proactive-service";
 import type { OrbitAiProactiveAgentService } from "./proactive-contract";
 
@@ -9,6 +10,7 @@ export const orbitAiProactiveAgentServiceFactory =
   createModuleServiceFactory<OrbitAiProactiveAgentService>({
     capabilityId: "orbit-ai-proactive-agent",
     implementations: {
+      live: () => createLiveOrbitAiProactiveAgentService(),
       mock: () => createMockOrbitAiProactiveAgentService(),
     },
   });

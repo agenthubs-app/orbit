@@ -751,12 +751,12 @@ export function proposedIntentForTool(
   };
 }
 
-export function artifactForRequest(input: {
+export async function artifactForRequest(input: {
   artifactTaskService: OrbitAgentArtifactTaskService;
   locale?: string | null;
   message: string;
   request: GeminiOrbitAgentToolRequest;
-}): OrbitAgentArtifactPayload | null {
+}): Promise<OrbitAgentArtifactPayload | null> {
   const locale = normalizeLocale(input.locale);
   const request: OrbitAgentArtifactTaskRequest = {
     conversationId: liveConversationId,
@@ -775,7 +775,7 @@ export function artifactForRequest(input: {
     query: input.message,
     toolArguments: input.request.arguments,
   };
-  const result = input.artifactTaskService.createArtifactTask(request);
+  const result = await input.artifactTaskService.createArtifactTask(request);
 
   return result.success ? result.data : null;
 }
@@ -981,16 +981,18 @@ export async function runLiveOrbitAgentRuntime(
   const shouldExecuteDomainTools = runtime.maxLoopSteps >= 2;
   const artifactStartedAt = nowMs();
   const artifacts = shouldExecuteDomainTools
-    ? toolRequests
-        .map((request) =>
-          artifactForRequest({
-            artifactTaskService: runtime.artifactTaskService,
-            locale,
-            message,
-            request,
-          }),
+    ? (
+        await Promise.all(
+          toolRequests.map((request) =>
+            artifactForRequest({
+              artifactTaskService: runtime.artifactTaskService,
+              locale,
+              message,
+              request,
+            }),
+          ),
         )
-        .filter((artifact): artifact is OrbitAgentArtifactPayload =>
+      ).filter((artifact): artifact is OrbitAgentArtifactPayload =>
           Boolean(artifact),
         )
     : [];

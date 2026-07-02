@@ -185,7 +185,7 @@ export interface OrbitAgentArtifactSafety {
   domainWritesExecuted: false;
   aiProviderRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   emailProviderRequested: false;
   calendarProviderRequested: false;

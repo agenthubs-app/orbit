@@ -1,5 +1,7 @@
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createLiveOrbitAiCommandService } from "./live-command-service";
 import { createLiveOrbitAgentConversationService } from "./live-conversation-service";
+import { createOrbitAgentLiveArtifactTaskService } from "./live-artifact-task-service";
 import { createMockOrbitAgentArtifactTaskService } from "./mock-artifact-task-service";
 import { createMockOrbitAgentConversationService } from "./mock-conversation-service";
 import { createMockOrbitAiCommandService } from "./mock-service";
@@ -18,6 +20,7 @@ export const orbitAiCommandServiceFactory =
   createModuleServiceFactory<OrbitAiCommandService>({
     capabilityId: "orbit-ai-command",
     implementations: {
+      live: () => createLiveOrbitAiCommandService(),
       mock: () => createMockOrbitAiCommandService(),
     },
   });
@@ -37,6 +40,7 @@ export const orbitAgentArtifactTaskServiceFactory =
   createModuleServiceFactory<OrbitAgentArtifactTaskService>({
     capabilityId: "orbit-agent-artifact-task",
     implementations: {
+      live: () => createOrbitAgentLiveArtifactTaskService(),
       mock: () => createMockOrbitAgentArtifactTaskService(),
     },
   });
