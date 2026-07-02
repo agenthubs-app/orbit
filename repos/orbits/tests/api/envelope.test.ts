@@ -33,6 +33,14 @@ function restoreFeatureMode(previousMode: string | undefined): void {
   }
 }
 
+function restoreModuleMode(previousMode: string | undefined): void {
+  if (previousMode === undefined) {
+    delete process.env.ORBIT_MODULE_MODE;
+  } else {
+    process.env.ORBIT_MODULE_MODE = previousMode;
+  }
+}
+
 test("success wraps data in the shared API envelope", () => {
   assert.deepEqual(
     success({
@@ -156,11 +164,13 @@ test("app error codes map to deterministic HTTP status values", () => {
 });
 
 test("feature mode resolves mock by default and only accepts known runtime modes", () => {
-  const previousMode = process.env.ORBIT_FEATURE_MODE;
+  const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
 
   assert.equal(DEFAULT_FEATURE_MODE, "mock");
 
   delete process.env.ORBIT_FEATURE_MODE;
+  delete process.env.ORBIT_MODULE_MODE;
   try {
     assert.equal(resolveFeatureMode(), "mock");
     assert.equal(resolveFeatureMode(""), "mock");
@@ -169,14 +179,58 @@ test("feature mode resolves mock by default and only accepts known runtime modes
     assert.equal(resolveFeatureMode("live"), "live");
     assert.equal(resolveFeatureMode("unsupported"), "mock");
   } finally {
-    restoreFeatureMode(previousMode);
+    restoreFeatureMode(previousFeatureMode);
+    restoreModuleMode(previousModuleMode);
+  }
+});
+
+test("feature mode defaults to ORBIT_MODULE_MODE before ORBIT_FEATURE_MODE", () => {
+  const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "live";
+    process.env.ORBIT_FEATURE_MODE = "hybrid";
+    assert.equal(resolveFeatureMode(), "live");
+
+    delete process.env.ORBIT_MODULE_MODE;
+    process.env.ORBIT_FEATURE_MODE = "hybrid";
+    assert.equal(resolveFeatureMode(), "hybrid");
+
+    assert.equal(resolveFeatureMode("mock"), "mock");
+  } finally {
+    restoreFeatureMode(previousFeatureMode);
+    restoreModuleMode(previousModuleMode);
+  }
+});
+
+test("health route reports ORBIT_MODULE_MODE in runtime headers and body", async () => {
+  const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "live";
+    process.env.ORBIT_FEATURE_MODE = "hybrid";
+
+    const response = await getHealth();
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-orbit-feature-mode"), "live");
+    assert.equal(body.success, true);
+    assert.equal(body.data.mode, "live");
+  } finally {
+    restoreFeatureMode(previousFeatureMode);
+    restoreModuleMode(previousModuleMode);
   }
 });
 
 test("health route returns a success envelope in the active feature mode", async () => {
-  const previousMode = process.env.ORBIT_FEATURE_MODE;
+  const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
 
   delete process.env.ORBIT_FEATURE_MODE;
+  delete process.env.ORBIT_MODULE_MODE;
   try {
     const response = await getHealth();
 
@@ -202,12 +256,12 @@ test("health route returns a success envelope in the active feature mode", async
           nextStep:
             "Use feature-mode factories for relationship capabilities and keep external actions behind confirmation.",
           mockToLive:
-            "Switch providers through ORBIT_FEATURE_MODE and capability factories documented in the Sprint 4 live implementation notes.",
+            "Switch providers through ORBIT_MODULE_MODE, falling back to ORBIT_FEATURE_MODE, and capability factories documented in the live implementation notes.",
           modeTransition: {
             allowedModes: ["mock", "hybrid", "live"],
             defaultMode: "mock",
             switch:
-              "Set ORBIT_FEATURE_MODE to mock, hybrid, or live; missing, empty, and unknown values resolve to mock.",
+              "Set ORBIT_MODULE_MODE to mock, hybrid, or live; ORBIT_FEATURE_MODE remains a fallback for older scripts. Missing, empty, and unknown values resolve to mock.",
             providerRule:
               "Capability factories must call resolveFeatureMode() and must not branch on raw environment strings.",
             liveGuardrails:
@@ -216,18 +270,21 @@ test("health route returns a success envelope in the active feature mode", async
           privacy:
             "No contact, relationship, provider payload, prompt, or external-action data is exposed.",
           provenance:
-            "mode is resolved by resolveFeatureMode() from ORBIT_FEATURE_MODE with mock as the fallback.",
+            "mode is resolved by resolveFeatureMode() from ORBIT_MODULE_MODE before ORBIT_FEATURE_MODE, with mock as the fallback.",
         },
       },
     });
   } finally {
-    restoreFeatureMode(previousMode);
+    restoreFeatureMode(previousFeatureMode);
+    restoreModuleMode(previousModuleMode);
   }
 });
 
 test("health routes fall back to mock for invalid runtime mode values", async () => {
-  const previousMode = process.env.ORBIT_FEATURE_MODE;
+  const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
 
+  delete process.env.ORBIT_MODULE_MODE;
   process.env.ORBIT_FEATURE_MODE = "provider-token-preview";
   try {
     const response = await getHealth();
@@ -254,7 +311,8 @@ test("health routes fall back to mock for invalid runtime mode values", async ()
     assert.equal(errorBody.success, false);
     assert.equal(errorBody.error.context.mode, "mock");
   } finally {
-    restoreFeatureMode(previousMode);
+    restoreFeatureMode(previousFeatureMode);
+    restoreModuleMode(previousModuleMode);
   }
 });
 
@@ -270,9 +328,11 @@ test("health routes force dynamic evaluation for runtime mode resolution", () =>
 });
 
 test("health error route returns a deterministic failure envelope", async () => {
-  const previousMode = process.env.ORBIT_FEATURE_MODE;
+  const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
 
   delete process.env.ORBIT_FEATURE_MODE;
+  delete process.env.ORBIT_MODULE_MODE;
   try {
     const response = await getHealthError();
 
@@ -293,15 +353,16 @@ test("health error route returns a deterministic failure envelope", async () => 
           mode: "mock",
           privacy: "no-relationship-data",
           provenance:
-            "mode is resolved by resolveFeatureMode() from ORBIT_FEATURE_MODE with mock as the fallback.",
+            "mode is resolved by resolveFeatureMode() from ORBIT_MODULE_MODE before ORBIT_FEATURE_MODE, with mock as the fallback.",
           remediation:
-            "Check ORBIT_FEATURE_MODE, confirm capability providers use the shared envelope, and verify no provider payload or relationship data was serialized.",
+            "Check ORBIT_MODULE_MODE and ORBIT_FEATURE_MODE, confirm capability providers use the shared envelope, and verify no provider payload or relationship data was serialized.",
           service: "orbit-runtime",
         },
       },
     });
   } finally {
-    restoreFeatureMode(previousMode);
+    restoreFeatureMode(previousFeatureMode);
+    restoreModuleMode(previousModuleMode);
   }
 });
 
@@ -317,6 +378,7 @@ test("live implementation notes document the runtime boundary before live provid
   for (const requiredPattern of [
     /shared\/services\/<capability>\/live-\*\.ts/,
     /resolveFeatureMode\(\)/,
+    /ORBIT_MODULE_MODE/,
     /ORBIT_FEATURE_MODE/,
     /ORBIT_SUPABASE_URL/,
     /ORBIT_SUPABASE_SERVICE_ROLE_KEY/,

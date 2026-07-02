@@ -16,7 +16,7 @@ The health routes are operational probes for developers and administrators. They
 
 The probes also set explicit runtime boundary headers through `runtimeBoundaryHeaders()` and the shared `RUNTIME_BOUNDARY_HEADER_VALUES` constants: `x-orbit-runtime-boundary: developer-admin`, `x-orbit-feature-mode`, `x-orbit-privacy: no-relationship-data`, `cache-control: no-store`, `cdn-cache-control: no-store`, and `vercel-cdn-cache-control: no-store`. These headers make the raw JSON API response survivable for debugging without pretending it is a participant or organizer relationship workflow. Failure probes may include matching non-sensitive runtime context, such as service, mode, boundary, privacy, provenance, and remediation guidance, but must not include provider payloads, prompts, contact data, credentials, or user identifiers.
 
-The success probe also includes a `boundary.mockToLive` note and a structured `boundary.modeTransition` object so raw API consumers can find the switch mechanism without guessing from source code. `boundary.modeTransition.allowedModes` lists `mock, hybrid, or live`; the same object states the default fallback, the `ORBIT_FEATURE_MODE` switch, the provider factory rule, and live-mode guardrails. Those fields must stay operational and non-sensitive: they may name `ORBIT_FEATURE_MODE`, capability factories, `resolveFeatureMode()`, and these live implementation notes, but capability code must not branch on raw environment strings and must not expose provider payloads, contact records, prompts, credentials, or user identifiers.
+The success probe also includes a `boundary.mockToLive` note and a structured `boundary.modeTransition` object so raw API consumers can find the switch mechanism without guessing from source code. `boundary.modeTransition.allowedModes` lists `mock, hybrid, or live`; the same object states the default fallback, the `ORBIT_MODULE_MODE` switch, the older `ORBIT_FEATURE_MODE` fallback, the provider factory rule, and live-mode guardrails. Those fields must stay operational and non-sensitive: they may name `ORBIT_MODULE_MODE`, `ORBIT_FEATURE_MODE`, capability factories, `resolveFeatureMode()`, and these live implementation notes, but capability code must not branch on raw environment strings and must not expose provider payloads, contact records, prompts, credentials, or user identifiers.
 
 Both health route handlers also export `dynamic = "force-dynamic"` so the runtime mode boundary is evaluated per request instead of being captured by a static build artifact.
 
@@ -31,14 +31,14 @@ Future live capability providers should live outside page components and import 
 
 ## Switch Mechanism
 
-`ORBIT_FEATURE_MODE` is the only runtime switch introduced by this sprint, and `DEFAULT_FEATURE_MODE` keeps the fallback deterministic.
+`ORBIT_MODULE_MODE` is the primary runtime switch for module and API provider selection. `ORBIT_FEATURE_MODE` remains a fallback for older scripts, and `DEFAULT_FEATURE_MODE` keeps the final fallback deterministic.
 
 - Missing, empty, or unknown values resolve to `mock`; route-level probes cover invalid `ORBIT_FEATURE_MODE` input so bad deploy-time configuration cannot silently switch the runtime boundary away from deterministic mocks.
 - `mock` uses deterministic local providers only.
 - `hybrid` may combine live reads with mock-only external or sensitive actions.
 - `live` may use real providers once each capability has explicit privacy, provenance, confirmation, and replacement-test coverage.
 
-Pages and route handlers should call capability factories that use `resolveFeatureMode()`; they should not branch on raw environment strings.
+Pages and route handlers should call capability factories that use `resolveFeatureMode()`; they should not branch on raw environment strings. If both `ORBIT_MODULE_MODE` and `ORBIT_FEATURE_MODE` are set, `ORBIT_MODULE_MODE` wins so API headers and service factories report the same runtime mode.
 
 ## Required Environment Variables And Permissions
 
@@ -72,4 +72,4 @@ Before any capability switches from mock to live, add tests that prove:
 - Sensitive live actions require confirmation before any provider side effect.
 - Route-level tests cover both successful provider output and provider failure output without leaking raw provider details.
 - Shared boundary tests continue to assert `DEFAULT_FEATURE_MODE`, `RUNTIME_BOUNDARY_HEADER_VALUES`, and exact health-route failure envelopes so live changes cannot silently alter the runtime contract.
-- Health route replacement tests cover invalid `ORBIT_FEATURE_MODE` values and all no-store cache headers before any live provider can depend on those probes.
+- Health route replacement tests cover `ORBIT_MODULE_MODE` precedence, invalid `ORBIT_FEATURE_MODE` fallback values, and all no-store cache headers before any live provider can depend on those probes.

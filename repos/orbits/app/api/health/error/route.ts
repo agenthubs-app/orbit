@@ -26,9 +26,9 @@ export function GET(): Response {
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "mode is resolved by resolveFeatureMode() from ORBIT_FEATURE_MODE with mock as the fallback.",
+      "mode is resolved by resolveFeatureMode() from ORBIT_MODULE_MODE before ORBIT_FEATURE_MODE, with mock as the fallback.",
     remediation:
-      "Check ORBIT_FEATURE_MODE, confirm capability providers use the shared envelope, and verify no provider payload or relationship data was serialized.",
+      "Check ORBIT_MODULE_MODE and ORBIT_FEATURE_MODE, confirm capability providers use the shared envelope, and verify no provider payload or relationship data was serialized.",
     service: "orbit-runtime",
   };
 

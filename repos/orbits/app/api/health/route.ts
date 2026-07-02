@@ -21,12 +21,12 @@ const healthBoundary = {
   nextStep:
     "Use feature-mode factories for relationship capabilities and keep external actions behind confirmation.",
   mockToLive:
-    "Switch providers through ORBIT_FEATURE_MODE and capability factories documented in the Sprint 4 live implementation notes.",
+    "Switch providers through ORBIT_MODULE_MODE, falling back to ORBIT_FEATURE_MODE, and capability factories documented in the live implementation notes.",
   modeTransition: {
     allowedModes: FEATURE_MODES,
     defaultMode: DEFAULT_FEATURE_MODE,
     switch:
-      "Set ORBIT_FEATURE_MODE to mock, hybrid, or live; missing, empty, and unknown values resolve to mock.",
+      "Set ORBIT_MODULE_MODE to mock, hybrid, or live; ORBIT_FEATURE_MODE remains a fallback for older scripts. Missing, empty, and unknown values resolve to mock.",
     providerRule:
       "Capability factories must call resolveFeatureMode() and must not branch on raw environment strings.",
     liveGuardrails:
@@ -35,7 +35,7 @@ const healthBoundary = {
   privacy:
     "No contact, relationship, provider payload, prompt, or external-action data is exposed.",
   provenance:
-    "mode is resolved by resolveFeatureMode() from ORBIT_FEATURE_MODE with mock as the fallback.",
+    "mode is resolved by resolveFeatureMode() from ORBIT_MODULE_MODE before ORBIT_FEATURE_MODE, with mock as the fallback.",
 } as const;
 
 export function GET(): Response {

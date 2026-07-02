@@ -11,7 +11,9 @@ function isFeatureMode(value: string): value is FeatureMode {
   return FEATURE_MODES.includes(value as FeatureMode);
 }
 
-export function resolveFeatureMode(mode = process.env.ORBIT_FEATURE_MODE): FeatureMode {
+export function resolveFeatureMode(
+  mode = process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+): FeatureMode {
   // mode 可以来自环境变量、测试注入或 query 参数；统一 trim/lowercase 后解析。
   const normalizedMode = mode?.trim().toLowerCase() ?? "";
 
