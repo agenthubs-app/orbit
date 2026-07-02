@@ -29,7 +29,7 @@ export async function POST(request: Request): Promise<Response> {
   // POST 表达“触发重算”，但 route 本身不直接计算或写入分析结果。
   const mode = resolveFeatureMode();
   const opportunityService = createOpportunityReminderAnalyticsService();
-  const result = opportunityService.recomputeOpportunityReminderAnalytics(
+  const result = await opportunityService.recomputeOpportunityReminderAnalytics(
     readInput(request),
   );
 

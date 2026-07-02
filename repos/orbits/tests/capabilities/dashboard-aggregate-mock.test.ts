@@ -104,6 +104,8 @@ test("dashboard aggregate contract exports typed fixtures service and errors", a
   assert.match(serviceInterface, /getDashboardSummary/);
   assert.deepEqual(contract.DASHBOARD_AGGREGATE_ERROR_CODES, [
     "DASHBOARD_AGGREGATE_MOCK_FAILED",
+    "DASHBOARD_AGGREGATE_LIVE_FAILED",
+    "DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.DASHBOARD_AGGREGATE_ERROR_DEFINITIONS
@@ -114,6 +116,16 @@ test("dashboard aggregate contract exports typed fixtures service and errors", a
     contract.DASHBOARD_AGGREGATE_ERROR_DEFINITIONS
       .DASHBOARD_AGGREGATE_MOCK_FAILED.recovery,
     /dashboard aggregate mock/i,
+  );
+  assert.equal(
+    contract.DASHBOARD_AGGREGATE_ERROR_DEFINITIONS
+      .DASHBOARD_AGGREGATE_LIVE_FAILED.appCode,
+    "SERVICE_UNAVAILABLE",
+  );
+  assert.equal(
+    contract.DASHBOARD_AGGREGATE_ERROR_DEFINITIONS
+      .DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED.appCode,
+    "SERVICE_UNAVAILABLE",
   );
   assert.equal(
     dashboardFixtures.DASHBOARD_AGGREGATE_FIXTURE_SOURCE,

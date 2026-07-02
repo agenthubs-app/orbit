@@ -11,12 +11,15 @@ import {
 import type {
   DashboardAggregatePayload,
   DashboardAggregateProvenance,
+  DashboardAggregateResult,
+  DashboardAggregateSummaryResult,
   DashboardDormantContact,
   DashboardFollowupTask,
   DashboardHighValueRelationship,
   DashboardNewContact,
   DashboardRecentActivity,
 } from "../contract";
+import type { DashboardAggregateServiceResult } from "../service";
 import { createMockDashboardAggregateService } from "../mock-service";
 
 export const DASHBOARD_AGGREGATE_MOCK_SLUG = "dashboard-aggregate-mock";
@@ -446,19 +449,57 @@ function StateMatrix({
   );
 }
 
+function requireSyncDashboardAggregateResult(
+  result: DashboardAggregateServiceResult<DashboardAggregateResult>,
+): DashboardAggregateResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Dashboard aggregate mock demo requires a synchronous dashboard aggregate service.",
+    );
+  }
+
+  return result as DashboardAggregateResult;
+}
+
+function requireSyncDashboardAggregateSummaryResult(
+  result: DashboardAggregateServiceResult<DashboardAggregateSummaryResult>,
+): DashboardAggregateSummaryResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Dashboard aggregate mock demo requires a synchronous dashboard summary service.",
+    );
+  }
+
+  return result as DashboardAggregateSummaryResult;
+}
+
 export function DashboardAggregateMockDemo() {
   const dashboardService = createMockDashboardAggregateService();
-  const successResult = dashboardService.getDashboardAggregate();
-  const summaryResult = dashboardService.getDashboardSummary();
-  const emptyResult = dashboardService.getDashboardAggregate({
-    scenario: "empty",
-  });
-  const pendingResult = dashboardService.getDashboardAggregate({
-    scenario: "pending",
-  });
-  const failureResult = dashboardService.getDashboardAggregate({
-    scenario: "failure",
-  });
+  const successResult = requireSyncDashboardAggregateResult(
+    dashboardService.getDashboardAggregate(),
+  );
+  const summaryResult = requireSyncDashboardAggregateSummaryResult(
+    dashboardService.getDashboardSummary(),
+  );
+  const emptyResult = requireSyncDashboardAggregateResult(
+    dashboardService.getDashboardAggregate({
+      scenario: "empty",
+    }),
+  );
+  const pendingResult = requireSyncDashboardAggregateResult(
+    dashboardService.getDashboardAggregate({
+      scenario: "pending",
+    }),
+  );
+  const failureResult = requireSyncDashboardAggregateResult(
+    dashboardService.getDashboardAggregate({
+      scenario: "failure",
+    }),
+  );
 
   if (
     successResult.success === false ||

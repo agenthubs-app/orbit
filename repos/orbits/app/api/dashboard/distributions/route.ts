@@ -29,7 +29,7 @@ export async function GET(request: Request): Promise<Response> {
   // 该接口是只读分析视图，返回标准 envelope 和 runtime boundary header。
   const mode = resolveFeatureMode();
   const distributionService = createNetworkDistributionAnalyticsService();
-  const result = distributionService.getDistributions(readInput(request));
+  const result = await distributionService.getDistributions(readInput(request));
 
   if (result.success === false) {
     // analytics failure 映射为共享 AppError，保持 dashboard 子接口错误格式一致。

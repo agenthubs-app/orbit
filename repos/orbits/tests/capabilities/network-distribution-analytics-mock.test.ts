@@ -38,20 +38,20 @@ test("network distribution analytics contract exports typed fixtures service and
     NETWORK_DISTRIBUTION_ANALYTICS_FIXTURE_SOURCE: string;
     mockNetworkDistributionAnalyticsFixture: {
       state: string;
-      industryDistribution: readonly Array<{
+      industryDistribution: ReadonlyArray<{
         bucketId: string;
         label: string;
         contactCount: number;
         percentage: number;
         evidenceIds: readonly string[];
       }>;
-      valueTypeDistribution: readonly Array<{
+      valueTypeDistribution: ReadonlyArray<{
         valueType: string;
         label: string;
         relationshipCount: number;
         evidenceIds: readonly string[];
       }>;
-      relationshipStrengthDistribution: readonly Array<{
+      relationshipStrengthDistribution: ReadonlyArray<{
         strength: string;
         relationshipCount: number;
         percentage: number;
@@ -75,7 +75,7 @@ test("network distribution analytics contract exports typed fixtures service and
     mockNetworkGapAnalysisFixture: {
       state: string;
       coverageScore: number;
-      gaps: readonly Array<{
+      gaps: ReadonlyArray<{
         gapId: string;
         label: string;
         severity: string;
@@ -109,6 +109,8 @@ test("network distribution analytics contract exports typed fixtures service and
   assert.match(serviceSource, /getNetworkGaps/);
   assert.deepEqual(contract.NETWORK_DISTRIBUTION_ANALYTICS_ERROR_CODES, [
     "NETWORK_DISTRIBUTION_ANALYTICS_MOCK_FAILED",
+    "NETWORK_DISTRIBUTION_ANALYTICS_LIVE_FAILED",
+    "NETWORK_DISTRIBUTION_ANALYTICS_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS
@@ -119,6 +121,11 @@ test("network distribution analytics contract exports typed fixtures service and
     contract.NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS
       .NETWORK_DISTRIBUTION_ANALYTICS_MOCK_FAILED.recovery,
     /network distribution analytics mock/i,
+  );
+  assert.equal(
+    contract.NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS
+      .NETWORK_DISTRIBUTION_ANALYTICS_LIVE_FAILED.appCode,
+    "SERVICE_UNAVAILABLE",
   );
   assert.equal(
     dashboardDistributionFixtures.NETWORK_DISTRIBUTION_ANALYTICS_FIXTURE_SOURCE,
@@ -386,9 +393,8 @@ test("network distribution analytics API routes return stable envelopes with emp
         networkDistributionAnalyticsErrorCode:
           "NETWORK_DISTRIBUTION_ANALYTICS_MOCK_FAILED",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock network distribution analytics failure came from deterministic fixture rules.",
-        service: "network-distribution-analytics-mock",
+        provenance: "Mock network distribution analytics controlled failure",
+        service: "network-distribution-analytics",
       },
     },
   });
@@ -459,7 +465,7 @@ test("network distribution analytics debug route renders all states and live rep
     /GET \/api\/dashboard\/network-gaps\?scenario=pending/,
   );
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_NETWORK_DISTRIBUTION_ANALYTICS_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /network-distribution-analytics-workbench/);
   assert.match(
     html,
@@ -468,30 +474,28 @@ test("network distribution analytics debug route renders all states and live rep
 
   assert.match(
     liveDoc,
-    /features\/dashboard\/network-distribution-analytics-mock\/live-service\.ts/,
+    /features\/dashboard\/live-distribution-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/dashboard\/network-distribution-analytics-mock\/service-factory\.ts/,
+    /features\/dashboard\/service-factory\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/dashboard\/network-distribution-analytics-mock\/providers\//,
+    /features\/dashboard\/storage\/network-distribution-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_NETWORK_DISTRIBUTION_ANALYTICS_PROVIDER/);
-  assert.match(liveDoc, /ORBIT_RELATIONSHIP_ANALYTICS_DATABASE_URL/);
-  assert.match(liveDoc, /ORBIT_ANALYTICS_JOB_QUEUE/);
-  assert.match(liveDoc, /ORBIT_GRAPH_ANALYTICS_PROJECT_ID/);
-  assert.match(liveDoc, /ORBIT_VECTOR_INDEX_NAME/);
-  assert.match(liveDoc, /graph algorithm/i);
-  assert.match(liveDoc, /embedding/i);
-  assert.match(liveDoc, /analytics job/i);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
+  assert.match(liveDoc, /ORBIT_EVENT_DATABASE_URL/);
+  assert.match(liveDoc, /ORBIT_WORKSPACE_ID/);
+  assert.match(liveDoc, /orbit_records/i);
+  assert.match(liveDoc, /read-only behavior/i);
+  assert.match(liveDoc, /fail-closed behavior/i);
   assert.match(liveDoc, /database/i);
   assert.match(liveDoc, /privacy/i);
   assert.match(liveDoc, /provenance/i);
   assert.match(
     liveDoc,
-    /industry distribution, value type distribution, relationship strength distribution, and network gap analysis/i,
+    /industry distribution, value type distribution,\s+relationship strength distribution, and network gap analysis/i,
   );
   assert.match(liveDoc, /empty/i);
   assert.match(liveDoc, /pending/i);

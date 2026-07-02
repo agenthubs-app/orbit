@@ -8,6 +8,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // 它汇总联系人、关系价值、跟进、沉睡联系人和近期活动，不执行 live analytics。
 export const DASHBOARD_AGGREGATE_ERROR_CODES = [
   "DASHBOARD_AGGREGATE_MOCK_FAILED",
+  "DASHBOARD_AGGREGATE_LIVE_FAILED",
+  "DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type DashboardAggregateErrorCode =
@@ -54,6 +56,22 @@ export const DASHBOARD_AGGREGATE_ERROR_DEFINITIONS = {
     recovery:
       "Render the dashboard aggregate mock failure state and do not run live analytics queries, production materialized aggregates, databases, providers, devices, or external networks.",
   },
+  DASHBOARD_AGGREGATE_LIVE_FAILED: {
+    code: "DASHBOARD_AGGREGATE_LIVE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The dashboard aggregate live service returned a controlled failure state.",
+    recovery:
+      "Render the dashboard aggregate live failure state, keep downstream actions off, and inspect the source-backed relationship graph before retrying.",
+  },
+  DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED: {
+    code: "DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The dashboard aggregate live store is not configured for this runtime.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL with ORBIT_WORKSPACE_ID before using dashboard live mode.",
+  },
 } as const satisfies Record<
   DashboardAggregateErrorCode,
   DashboardAggregateErrorDefinition
@@ -69,7 +87,7 @@ export type DashboardAggregateSourceReference = SourceReferenceDTO & {
     | "system";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-dashboard-aggregate-rules";
+  generatedBy: "mock-dashboard-aggregate-rules" | "live-store-query";
 };
 
 // 以下 aggregate 类型对应首页区块，按 UI 信息架构组织而不是按底层表组织。
@@ -147,9 +165,10 @@ export interface DashboardAggregateProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-dashboard-aggregate-only";
+  privacy: "demo-dashboard-aggregate-only" | "live-dashboard-aggregate";
   generationMethod:
     | "fixture"
+    | "live-store-query"
     | "rule-based-summary"
     | "rule-based-state"
     | "rule-based-activity-limit"
@@ -241,13 +260,18 @@ export function dashboardAggregateFailureContext(
   failure: DashboardAggregateFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLiveFailure =
+    failure.error.code === "DASHBOARD_AGGREGATE_LIVE_FAILED" ||
+    failure.error.code === "DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     dashboardAggregateErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock dashboard aggregate failure came from deterministic fixture rules.",
-    service: "dashboard-aggregate-mock",
+    provenance: isLiveFailure
+      ? "Live dashboard aggregate failure came from configured storage setup."
+      : "Mock dashboard aggregate failure came from deterministic fixture rules.",
+    service: isLiveFailure ? "dashboard-aggregate-live" : "dashboard-aggregate-mock",
   };
 }

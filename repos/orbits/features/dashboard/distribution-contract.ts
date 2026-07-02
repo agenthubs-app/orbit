@@ -8,6 +8,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // 当前使用 fixture/rule，不运行图算法、embedding search 或 live analytics job。
 export const NETWORK_DISTRIBUTION_ANALYTICS_ERROR_CODES = [
   "NETWORK_DISTRIBUTION_ANALYTICS_MOCK_FAILED",
+  "NETWORK_DISTRIBUTION_ANALYTICS_LIVE_FAILED",
+  "NETWORK_DISTRIBUTION_ANALYTICS_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type NetworkDistributionAnalyticsErrorCode =
@@ -56,6 +58,22 @@ export const NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS = {
     recovery:
       "Render the network distribution analytics mock failure state and do not run graph algorithms, embedding search, live analytics jobs, databases, providers, devices, or external networks.",
   },
+  NETWORK_DISTRIBUTION_ANALYTICS_LIVE_FAILED: {
+    code: "NETWORK_DISTRIBUTION_ANALYTICS_LIVE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The network distribution analytics live service returned a controlled failure state.",
+    recovery:
+      "Render the live network distribution failure state, keep analytics actions off, and inspect the source-backed relationship graph before retrying.",
+  },
+  NETWORK_DISTRIBUTION_ANALYTICS_LIVE_STORE_UNCONFIGURED: {
+    code: "NETWORK_DISTRIBUTION_ANALYTICS_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "Network distribution analytics live storage is not configured for this workspace.",
+    recovery:
+      "Configure the shared live record store before requesting live network distribution analytics. Do not fall back to mock data silently.",
+  },
 } as const satisfies Record<
   NetworkDistributionAnalyticsErrorCode,
   NetworkDistributionAnalyticsErrorDefinition
@@ -68,10 +86,13 @@ export type NetworkDistributionAnalyticsSourceReference = SourceReferenceDTO & {
     | "email_signal"
     | "calendar_signal"
     | "chat_summary"
+    | "referral"
     | "system";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-network-distribution-analytics-rules";
+  generatedBy:
+    | "mock-network-distribution-analytics-rules"
+    | "live-store-query";
 };
 
 // provenance 是分布分析的安全账本。
@@ -80,13 +101,19 @@ export interface NetworkDistributionAnalyticsProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-network-distribution-analytics-only";
-  generationMethod: "fixture" | "rule-based-gap-analysis" | "rule-based-state";
+  privacy:
+    | "demo-network-distribution-analytics-only"
+    | "live-network-distribution-analytics";
+  generationMethod:
+    | "fixture"
+    | "rule-based-gap-analysis"
+    | "rule-based-state"
+    | "live-store-query";
   graphAlgorithmExecuted: false;
   embeddingSearchExecuted: false;
   liveAnalyticsJobExecuted: false;
   externalNetworkRequested: false;
-  databaseReadExecuted: false;
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   aiProviderRequested: false;
   calendarProviderRequested: false;
@@ -184,13 +211,17 @@ export type NetworkGapAnalysisResult =
   | NetworkGapAnalysisSuccess
   | NetworkDistributionAnalyticsFailure;
 
+export type NetworkDistributionAnalyticsServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
+
 export interface NetworkDistributionAnalyticsService {
   getDistributions: (
     input?: NetworkDistributionAnalyticsInput,
-  ) => NetworkDistributionAnalyticsResult;
+  ) => NetworkDistributionAnalyticsServiceResult<NetworkDistributionAnalyticsResult>;
   getNetworkGaps: (
     input?: NetworkDistributionAnalyticsInput,
-  ) => NetworkGapAnalysisResult;
+  ) => NetworkDistributionAnalyticsServiceResult<NetworkGapAnalysisResult>;
 }
 
 export function networkDistributionAnalyticsFailureToAppError(
@@ -208,8 +239,7 @@ export function networkDistributionAnalyticsFailureContext(
     mode,
     networkDistributionAnalyticsErrorCode: failure.error.code,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock network distribution analytics failure came from deterministic fixture rules.",
-    service: "network-distribution-analytics-mock",
+    provenance: failure.error.provenance.sourceLabel,
+    service: "network-distribution-analytics",
   };
 }

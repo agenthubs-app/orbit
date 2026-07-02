@@ -8,6 +8,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // 当前不执行预测评分、后台挖掘或 live analytics job。
 export const OPPORTUNITY_REMINDER_ANALYTICS_ERROR_CODES = [
   "OPPORTUNITY_REMINDER_ANALYTICS_MOCK_FAILED",
+  "OPPORTUNITY_REMINDER_ANALYTICS_LIVE_FAILED",
+  "OPPORTUNITY_REMINDER_ANALYTICS_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type OpportunityReminderAnalyticsErrorCode =
@@ -54,6 +56,22 @@ export const OPPORTUNITY_REMINDER_ANALYTICS_ERROR_DEFINITIONS = {
     recovery:
       "Render the opportunity reminder analytics mock failure state and do not run predictive scoring, background opportunity mining, live analytics jobs, databases, providers, devices, or external networks.",
   },
+  OPPORTUNITY_REMINDER_ANALYTICS_LIVE_FAILED: {
+    code: "OPPORTUNITY_REMINDER_ANALYTICS_LIVE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The opportunity reminder analytics live service returned a controlled failure state.",
+    recovery:
+      "Render the live opportunity reminder failure state, keep reminder actions off, and inspect the source-backed relationship graph before retrying.",
+  },
+  OPPORTUNITY_REMINDER_ANALYTICS_LIVE_STORE_UNCONFIGURED: {
+    code: "OPPORTUNITY_REMINDER_ANALYTICS_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "Opportunity reminder analytics live storage is not configured for this workspace.",
+    recovery:
+      "Configure the shared live record store before requesting live opportunity reminder analytics. Do not fall back to mock data silently.",
+  },
 } as const satisfies Record<
   OpportunityReminderAnalyticsErrorCode,
   OpportunityReminderAnalyticsErrorDefinition
@@ -70,7 +88,9 @@ export type OpportunityReminderAnalyticsSourceReference = SourceReferenceDTO & {
     | "system";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-opportunity-reminder-analytics-rules";
+  generatedBy:
+    | "mock-opportunity-reminder-analytics-rules"
+    | "live-store-query";
 };
 
 // provenance 记录 analytics 生成方式和所有未执行的后台能力。
@@ -79,17 +99,20 @@ export interface OpportunityReminderAnalyticsProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-opportunity-reminder-analytics-only";
+  privacy:
+    | "demo-opportunity-reminder-analytics-only"
+    | "live-opportunity-reminder-analytics";
   generationMethod:
     | "fixture"
     | "rule-based-current-goal-match"
     | "rule-based-state"
-    | "rule-based-recompute";
+    | "rule-based-recompute"
+    | "live-store-query";
   predictiveScoringExecuted: false;
   backgroundOpportunityMiningExecuted: false;
   liveAnalyticsJobExecuted: false;
   externalNetworkRequested: false;
-  databaseReadExecuted: false;
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   aiProviderRequested: false;
   calendarProviderRequested: false;
@@ -200,13 +223,17 @@ export type OpportunityReminderRecomputeResult =
   | OpportunityReminderRecomputeSuccess
   | OpportunityReminderAnalyticsFailure;
 
+export type OpportunityReminderAnalyticsServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
+
 export interface OpportunityReminderAnalyticsService {
   getOpportunityReminderAnalytics: (
     input?: OpportunityReminderAnalyticsInput,
-  ) => OpportunityReminderAnalyticsResult;
+  ) => OpportunityReminderAnalyticsServiceResult<OpportunityReminderAnalyticsResult>;
   recomputeOpportunityReminderAnalytics: (
     input?: OpportunityReminderAnalyticsInput,
-  ) => OpportunityReminderRecomputeResult;
+  ) => OpportunityReminderAnalyticsServiceResult<OpportunityReminderRecomputeResult>;
 }
 
 export function opportunityReminderAnalyticsFailureToAppError(
@@ -224,8 +251,7 @@ export function opportunityReminderAnalyticsFailureContext(
     mode,
     opportunityReminderAnalyticsErrorCode: failure.error.code,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock opportunity reminder analytics failure came from deterministic fixture rules.",
-    service: "opportunity-reminder-analytics-mock",
+    provenance: failure.error.provenance.sourceLabel,
+    service: "opportunity-reminder-analytics",
   };
 }

@@ -38,7 +38,7 @@ test("opportunity reminder analytics contract exports typed fixtures service and
     OPPORTUNITY_REMINDER_ANALYTICS_FIXTURE_SOURCE: string;
     mockOpportunityReminderAnalyticsFixture: {
       state: string;
-      highPriorityOpportunities: readonly Array<{
+      highPriorityOpportunities: ReadonlyArray<{
         opportunityId: string;
         priority: string;
         priorityScore: number;
@@ -46,20 +46,20 @@ test("opportunity reminder analytics contract exports typed fixtures service and
         reason: string;
         evidenceIds: readonly string[];
       }>;
-      dormantHighValueContacts: readonly Array<{
+      dormantHighValueContacts: ReadonlyArray<{
         contactId: string;
         contactName: string;
         lastTouchpointDays: number;
         valueScore: number;
         suggestedAction: string;
       }>;
-      currentGoalMatches: readonly Array<{
+      currentGoalMatches: ReadonlyArray<{
         goalId: string;
         label: string;
         coverageScore: number;
         matchedOpportunityIds: readonly string[];
       }>;
-      suggestedContactReasons: readonly Array<{
+      suggestedContactReasons: ReadonlyArray<{
         reasonId: string;
         contactId: string;
         reasonType: string;
@@ -112,6 +112,8 @@ test("opportunity reminder analytics contract exports typed fixtures service and
   assert.match(contractSource, /recomputeOpportunityReminderAnalytics/);
   assert.deepEqual(contract.OPPORTUNITY_REMINDER_ANALYTICS_ERROR_CODES, [
     "OPPORTUNITY_REMINDER_ANALYTICS_MOCK_FAILED",
+    "OPPORTUNITY_REMINDER_ANALYTICS_LIVE_FAILED",
+    "OPPORTUNITY_REMINDER_ANALYTICS_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.OPPORTUNITY_REMINDER_ANALYTICS_ERROR_DEFINITIONS
@@ -122,6 +124,11 @@ test("opportunity reminder analytics contract exports typed fixtures service and
     contract.OPPORTUNITY_REMINDER_ANALYTICS_ERROR_DEFINITIONS
       .OPPORTUNITY_REMINDER_ANALYTICS_MOCK_FAILED.recovery,
     /opportunity reminder analytics mock/i,
+  );
+  assert.equal(
+    contract.OPPORTUNITY_REMINDER_ANALYTICS_ERROR_DEFINITIONS
+      .OPPORTUNITY_REMINDER_ANALYTICS_LIVE_FAILED.appCode,
+    "SERVICE_UNAVAILABLE",
   );
   assert.equal(
     dashboardOpportunityFixtures.OPPORTUNITY_REMINDER_ANALYTICS_FIXTURE_SOURCE,
@@ -431,9 +438,8 @@ test("opportunity reminder analytics API routes return stable envelopes with emp
         opportunityReminderAnalyticsErrorCode:
           "OPPORTUNITY_REMINDER_ANALYTICS_MOCK_FAILED",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock opportunity reminder analytics failure came from deterministic fixture rules.",
-        service: "opportunity-reminder-analytics-mock",
+        provenance: "Mock opportunity reminder analytics controlled failure",
+        service: "opportunity-reminder-analytics",
       },
     },
   });
@@ -516,7 +522,7 @@ test("opportunity reminder analytics debug route renders all states and live rep
     /action="\/api\/dashboard\/opportunities\/recompute\?scenario=failure"/,
   );
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_OPPORTUNITY_REMINDER_ANALYTICS_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /opportunity-reminder-analytics-workbench/);
   assert.match(
     html,
@@ -525,28 +531,26 @@ test("opportunity reminder analytics debug route renders all states and live rep
 
   assert.match(
     liveDoc,
-    /features\/dashboard\/opportunity-reminder-analytics-mock\/live-service\.ts/,
+    /features\/dashboard\/live-opportunity-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/dashboard\/opportunity-reminder-analytics-mock\/service-factory\.ts/,
+    /features\/dashboard\/service-factory\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/dashboard\/opportunity-reminder-analytics-mock\/providers\//,
+    /features\/dashboard\/storage\/opportunity-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_OPPORTUNITY_REMINDER_ANALYTICS_PROVIDER/);
-  assert.match(liveDoc, /ORBIT_RELATIONSHIP_ANALYTICS_DATABASE_URL/);
-  assert.match(liveDoc, /ORBIT_GOAL_CONTEXT_SOURCE/);
-  assert.match(liveDoc, /email read permission/i);
-  assert.match(liveDoc, /calendar read permission/i);
-  assert.match(liveDoc, /predictive scoring/i);
-  assert.match(liveDoc, /background opportunity mining/i);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
+  assert.match(liveDoc, /ORBIT_EVENT_DATABASE_URL/);
+  assert.match(liveDoc, /ORBIT_WORKSPACE_ID/);
+  assert.match(liveDoc, /read-only behavior/i);
+  assert.match(liveDoc, /fail-closed behavior/i);
   assert.match(liveDoc, /privacy/i);
   assert.match(liveDoc, /provenance/i);
   assert.match(
     liveDoc,
-    /high-priority opportunities, dormant high-value contacts, current-goal matching, and suggested contact reasons/i,
+    /high-priority opportunities, dormant high-value\s+contacts, current-goal matching, and suggested contact reasons/i,
   );
   assert.match(liveDoc, /empty/i);
   assert.match(liveDoc, /pending/i);

@@ -26,7 +26,8 @@ export const appDashboardAggregateServiceFactory =
   createModuleServiceFactory<DashboardAggregateService>({
     capabilityId: "app-dashboard-aggregate",
     implementations: {
-      mock: () => createDashboardAggregateService(),
+      live: ({ requestedMode }) => createDashboardAggregateService(requestedMode),
+      mock: ({ requestedMode }) => createDashboardAggregateService(requestedMode),
     },
   });
 
@@ -34,7 +35,10 @@ export const appDashboardDistributionServiceFactory =
   createModuleServiceFactory<NetworkDistributionAnalyticsService>({
     capabilityId: "app-dashboard-network-distributions",
     implementations: {
-      mock: () => createNetworkDistributionAnalyticsService(),
+      live: ({ requestedMode }) =>
+        createNetworkDistributionAnalyticsService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createNetworkDistributionAnalyticsService(requestedMode),
     },
   });
 
@@ -42,7 +46,10 @@ export const appDashboardOpportunityServiceFactory =
   createModuleServiceFactory<OpportunityReminderAnalyticsService>({
     capabilityId: "app-dashboard-opportunities",
     implementations: {
-      mock: () => createOpportunityReminderAnalyticsService(),
+      live: ({ requestedMode }) =>
+        createOpportunityReminderAnalyticsService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createOpportunityReminderAnalyticsService(requestedMode),
     },
   });
 
@@ -50,7 +57,10 @@ export const appDashboardAuditServiceFactory =
   createModuleServiceFactory<SourceConsistencyProvenanceAuditService>({
     capabilityId: "app-dashboard-provenance-audit",
     implementations: {
-      mock: () => createSourceConsistencyProvenanceAuditService(),
+      live: ({ requestedMode }) =>
+        createSourceConsistencyProvenanceAuditService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createSourceConsistencyProvenanceAuditService(requestedMode),
     },
   });
 

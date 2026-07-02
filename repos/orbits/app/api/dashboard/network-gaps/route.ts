@@ -29,7 +29,7 @@ export async function GET(request: Request): Promise<Response> {
   // 该接口是只读分析视图，不在 route 层重新计算或写入关系数据。
   const mode = resolveFeatureMode();
   const distributionService = createNetworkDistributionAnalyticsService();
-  const result = distributionService.getNetworkGaps(readInput(request));
+  const result = await distributionService.getNetworkGaps(readInput(request));
 
   if (result.success === false) {
     // dashboard analytics 失败统一映射为共享 AppError。

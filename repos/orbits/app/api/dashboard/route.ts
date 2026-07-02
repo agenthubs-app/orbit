@@ -42,7 +42,7 @@ export async function GET(request: Request): Promise<Response> {
   // activityLimit 仅限制 mock payload 展示数量，不改变底层 fixture。
   const mode = resolveFeatureMode();
   const dashboardService = createDashboardAggregateService();
-  const result = dashboardService.getDashboardAggregate(readInput(request));
+  const result = await dashboardService.getDashboardAggregate(readInput(request));
 
   if (result.success === false) {
     const appError = dashboardAggregateFailureToAppError(result);

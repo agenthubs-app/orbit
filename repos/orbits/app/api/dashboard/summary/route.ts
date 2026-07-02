@@ -29,7 +29,7 @@ export async function GET(request: Request): Promise<Response> {
   // feature mode 决定 mock/live/hybrid，同时通过 header 暴露给调试和测试。
   const mode = resolveFeatureMode();
   const dashboardService = createDashboardAggregateService();
-  const result = dashboardService.getDashboardSummary(readInput(request));
+  const result = await dashboardService.getDashboardSummary(readInput(request));
 
   if (result.success === false) {
     // 聚合服务失败统一映射为 AppError，避免 dashboard 页面依赖内部错误码。

@@ -1284,10 +1284,10 @@ function RecentActivitySection({
   );
 }
 
-export function AppDashboardCommandCenter({
+export async function AppDashboardCommandCenter({
   searchParams,
 }: AppDashboardCommandCenterProps) {
-  const viewModel = loadAppDashboardRouteViewModel(searchParams);
+  const viewModel = await loadAppDashboardRouteViewModel(searchParams);
 
   if (viewModel.state === "route-state") {
     return (

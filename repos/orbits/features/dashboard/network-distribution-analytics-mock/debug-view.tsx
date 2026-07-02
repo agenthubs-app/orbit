@@ -12,9 +12,12 @@ import type {
   IndustryDistributionBucket,
   NetworkDistributionAnalyticsPayload,
   NetworkDistributionAnalyticsProvenance,
+  NetworkDistributionAnalyticsResult,
+  NetworkDistributionAnalyticsServiceResult,
   NetworkDistributionAnalyticsSourceReference,
   NetworkGapAnalysisItem,
   NetworkGapAnalysisPayload,
+  NetworkGapAnalysisResult,
   RelationshipStrengthDistributionBucket,
   ValueTypeDistributionBucket,
 } from "../distribution-contract";
@@ -139,11 +142,11 @@ const networkDistributionApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live files live under features/dashboard/network-distribution-analytics-mock/.",
-  "ORBIT_NETWORK_DISTRIBUTION_ANALYTICS_PROVIDER switches mock fixtures to live providers.",
-  "Live providers replace fixture buckets with approved graph algorithms, embedding indexes, analytics jobs, and database reads.",
+  "Live files live under features/dashboard/live-distribution-service.ts and features/dashboard/storage/network-distribution-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live switches mock fixtures to the shared live record store provider.",
+  "Live providers replace fixture buckets with deterministic reads from generated relationship graph records.",
   "Privacy and provenance stay attached to every distribution bucket and gap recommendation.",
-  "replacement tests cover success, empty, pending, controlled failure, and mock provider guards.",
+  "replacement tests cover success, empty, fail-closed storage configuration, read-only behavior, and mock provider guards.",
 ] as const;
 
 function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {
@@ -429,17 +432,53 @@ function StateMatrix({
   );
 }
 
+function requireSyncDistributionResult(
+  result: NetworkDistributionAnalyticsServiceResult<NetworkDistributionAnalyticsResult>,
+): NetworkDistributionAnalyticsResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Network distribution analytics debug view requires a synchronous mock distribution service.",
+    );
+  }
+
+  return result as NetworkDistributionAnalyticsResult;
+}
+
+function requireSyncGapResult(
+  result: NetworkDistributionAnalyticsServiceResult<NetworkGapAnalysisResult>,
+): NetworkGapAnalysisResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Network distribution analytics debug view requires a synchronous mock gap service.",
+    );
+  }
+
+  return result as NetworkGapAnalysisResult;
+}
+
 export function NetworkDistributionAnalyticsMockDemo() {
   const analyticsService = createMockNetworkDistributionAnalyticsService();
-  const distributionResult = analyticsService.getDistributions();
-  const gapResult = analyticsService.getNetworkGaps();
-  const emptyResult = analyticsService.getDistributions({ scenario: "empty" });
-  const pendingResult = analyticsService.getNetworkGaps({
-    scenario: "pending",
-  });
-  const failureResult = analyticsService.getNetworkGaps({
-    scenario: "failure",
-  });
+  const distributionResult = requireSyncDistributionResult(
+    analyticsService.getDistributions(),
+  );
+  const gapResult = requireSyncGapResult(analyticsService.getNetworkGaps());
+  const emptyResult = requireSyncDistributionResult(
+    analyticsService.getDistributions({ scenario: "empty" }),
+  );
+  const pendingResult = requireSyncGapResult(
+    analyticsService.getNetworkGaps({
+      scenario: "pending",
+    }),
+  );
+  const failureResult = requireSyncGapResult(
+    analyticsService.getNetworkGaps({
+      scenario: "failure",
+    }),
+  );
 
   if (
     distributionResult.success === false ||

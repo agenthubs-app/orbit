@@ -15,10 +15,12 @@ import type {
   DashboardRecentActivity,
   DashboardSummaryMetric,
 } from "../../../../../features/dashboard/contract";
+import type { DashboardAggregateServiceResult } from "../../../../../features/dashboard/service";
 import type {
   IndustryDistributionBucket,
   NetworkDistributionAnalyticsPayload,
   NetworkDistributionAnalyticsResult,
+  NetworkDistributionAnalyticsServiceResult,
   NetworkGapAnalysisItem,
   NetworkGapAnalysisPayload,
   NetworkGapAnalysisResult,
@@ -29,6 +31,7 @@ import type {
   HighPriorityOpportunity,
   OpportunityReminderAnalyticsPayload,
   OpportunityReminderAnalyticsResult,
+  OpportunityReminderAnalyticsServiceResult,
   OpportunityReminderRecomputeResult,
 } from "../../../../../features/dashboard/opportunity-contract";
 import { createAppDashboardRouteServices } from "./dashboard-service-factory";
@@ -206,6 +209,42 @@ function firstFailure(results: readonly RouteStateResult[]): RouteStateFailure |
   return results.find(isRouteStateFailure) ?? null;
 }
 
+async function resolveDashboardAggregateResult(
+  result: DashboardAggregateServiceResult<DashboardAggregateResult>,
+): Promise<DashboardAggregateResult> {
+  return await result;
+}
+
+async function resolveDashboardAggregateSummaryResult(
+  result: DashboardAggregateServiceResult<DashboardAggregateSummaryResult>,
+): Promise<DashboardAggregateSummaryResult> {
+  return await result;
+}
+
+async function resolveNetworkDistributionResult(
+  result: NetworkDistributionAnalyticsServiceResult<NetworkDistributionAnalyticsResult>,
+): Promise<NetworkDistributionAnalyticsResult> {
+  return await result;
+}
+
+async function resolveNetworkGapAnalysisResult(
+  result: NetworkDistributionAnalyticsServiceResult<NetworkGapAnalysisResult>,
+): Promise<NetworkGapAnalysisResult> {
+  return await result;
+}
+
+async function resolveOpportunityReminderResult(
+  result: OpportunityReminderAnalyticsServiceResult<OpportunityReminderAnalyticsResult>,
+): Promise<OpportunityReminderAnalyticsResult> {
+  return await result;
+}
+
+async function resolveOpportunityRecomputeResult(
+  result: OpportunityReminderAnalyticsServiceResult<OpportunityReminderRecomputeResult>,
+): Promise<OpportunityReminderRecomputeResult> {
+  return await result;
+}
+
 function stateCopy(scenario: AppDashboardRouteScenario) {
   if (scenario === "empty") {
     return {
@@ -330,32 +369,50 @@ function actionResultViewModel(
   };
 }
 
-export function loadAppDashboardRouteViewModel(
+export async function loadAppDashboardRouteViewModel(
   searchParams?: AppDashboardSearchParams,
-): AppDashboardRouteViewModel {
+): Promise<AppDashboardRouteViewModel> {
   const services = createAppDashboardRouteServices();
   const requestedScenario = readRouteScenario(searchParams);
 
   if (requestedScenario) {
-    const aggregateResult = services.dashboardService.getDashboardAggregate({
-      scenario: requestedScenario,
-    });
-    const summaryResult = services.dashboardService.getDashboardSummary({
-      scenario: requestedScenario,
-    });
-    const distributionResult = services.distributionService.getDistributions({
-      scenario: requestedScenario,
-    });
-    const gapsResult = services.distributionService.getNetworkGaps({
-      scenario: requestedScenario,
-    });
-    const opportunityResult =
-      services.opportunityService.getOpportunityReminderAnalytics({
+    const [
+      aggregateResult,
+      summaryResult,
+      distributionResult,
+      gapsResult,
+      opportunityResult,
+      auditResult,
+    ] = await Promise.all([
+      resolveDashboardAggregateResult(
+        services.dashboardService.getDashboardAggregate({
+          scenario: requestedScenario,
+        }),
+      ),
+      resolveDashboardAggregateSummaryResult(
+        services.dashboardService.getDashboardSummary({
+          scenario: requestedScenario,
+        }),
+      ),
+      resolveNetworkDistributionResult(
+        services.distributionService.getDistributions({
+          scenario: requestedScenario,
+        }),
+      ),
+      resolveNetworkGapAnalysisResult(
+        services.distributionService.getNetworkGaps({
+          scenario: requestedScenario,
+        }),
+      ),
+      resolveOpportunityReminderResult(
+        services.opportunityService.getOpportunityReminderAnalytics({
+          scenario: requestedScenario,
+        }),
+      ),
+      services.auditService.getAuditSnapshot({
         scenario: requestedScenario,
-      });
-    const auditResult = services.auditService.getAuditSnapshot({
-      scenario: requestedScenario,
-    });
+      }),
+    ]);
 
     return {
       routeState: routeStateViewModel({
@@ -373,15 +430,31 @@ export function loadAppDashboardRouteViewModel(
     };
   }
 
-  const aggregateResult = services.dashboardService.getDashboardAggregate({
-    activityLimit: 4,
-  });
-  const summaryResult = services.dashboardService.getDashboardSummary();
-  const distributionResult = services.distributionService.getDistributions();
-  const gapsResult = services.distributionService.getNetworkGaps();
-  const opportunityResult =
-    services.opportunityService.getOpportunityReminderAnalytics();
-  const auditResult = services.auditService.getAuditSnapshot();
+  const [
+    aggregateResult,
+    summaryResult,
+    distributionResult,
+    gapsResult,
+    opportunityResult,
+    auditResult,
+  ] = await Promise.all([
+    resolveDashboardAggregateResult(
+      services.dashboardService.getDashboardAggregate({
+        activityLimit: 4,
+      }),
+    ),
+    resolveDashboardAggregateSummaryResult(
+      services.dashboardService.getDashboardSummary(),
+    ),
+    resolveNetworkDistributionResult(
+      services.distributionService.getDistributions(),
+    ),
+    resolveNetworkGapAnalysisResult(services.distributionService.getNetworkGaps()),
+    resolveOpportunityReminderResult(
+      services.opportunityService.getOpportunityReminderAnalytics(),
+    ),
+    services.auditService.getAuditSnapshot(),
+  ]);
   const results = [
     aggregateResult,
     summaryResult,
@@ -411,9 +484,13 @@ export function loadAppDashboardRouteViewModel(
   const actionRequested =
     readSearchParam(searchParams, "action") === "run-dashboard-review";
   const recomputeResult = actionRequested
-    ? services.opportunityService.recomputeOpportunityReminderAnalytics()
+    ? await resolveOpportunityRecomputeResult(
+        services.opportunityService.recomputeOpportunityReminderAnalytics(),
+      )
     : null;
-  const auditRunResult = actionRequested ? services.auditService.runAudit() : null;
+  const auditRunResult = actionRequested
+    ? await services.auditService.runAudit()
+    : null;
 
   return {
     state: "success",

@@ -1,24 +1,27 @@
 # Compose App Dashboard Mock-to-Live Handoff
 
-This sprint composes `/app/dashboard` from approved dashboard, network
+This route composes `/app/dashboard` from approved dashboard, network
 distribution, opportunity reminder, and source provenance audit capabilities.
-The route adapter stays in this folder and consumes services through
-`dashboard-service-factory.ts`; nested UI components do not import raw fixtures.
+The route adapter consumes services through `dashboard-service-factory.ts`;
+nested UI components do not import raw fixtures.
 
 ## Evaluator Evidence Summary
 
-- Success route: `/app/dashboard` renders `Dashboard command center`, dashboard
-  summary metrics, a recommended next move, distributions, network gaps,
-  opportunities, provenance warnings, and recent sourced activity.
+- Success route: `/app/dashboard` calls `loadAppDashboardRouteViewModel()`,
+  maps the success payload through `dashboardRouteToOrbitDashboardViewModel()`,
+  and renders `OrbitRealDashboard`.
+- The product dashboard shows summary metrics, a recommended next move,
+  coverage gaps, industry concentration, source readiness counts, and recent
+  sourced activity without rendering command-center evidence accordions or
+  technical provenance details.
 - Route state checks: `/app/dashboard?scenario=empty`,
   `/app/dashboard?scenario=pending`, and `/app/dashboard?scenario=failure`
   render `data-state-boundary="shared-ui-state-view"` with route recovery
   actions.
-- The same route recovery actions are linked in the visible state navigation.
 - Core action: `/app/dashboard?action=run-dashboard-review` renders
   `data-action-evidence="dashboard-run-review-local-preview"` and
   `data-side-effects="none"` after local opportunity recompute and provenance
-  audit review.
+  audit review when using the retained command-center/debug surface.
 - The recommended next move remains a route adapter composition of the
   opportunity and network gap DTOs; it does not write tasks, send messages, or
   trigger outside delivery from the page.
@@ -32,8 +35,11 @@ This section lists the live service/provider files for replacing the current
 route services.
 
 - Keep `app/(app)/app/dashboard/page.tsx` as the route shell.
+- Keep `app/(app)/app/dashboard/orbit-real-dashboard.tsx` as the product UI.
+- Keep `app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-view-model-adapter.ts`
+  as the route-to-product view-model adapter.
 - Keep `app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-command-center.tsx`
-  as the route composition adapter.
+  as a retained command-center/debug surface, not the default page entry.
 - Keep `app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-service-factory.ts`
   as the route service selector.
 - Add live dashboard aggregate implementation under
@@ -88,7 +94,9 @@ These privacy/provenance constraints apply before the route can move beyond the
 current local review path.
 
 - Every summary metric, distribution bucket, gap, opportunity, recent activity,
-  and warning must keep source/evidence ids visible through the service DTOs.
+  and warning must keep source/evidence ids in the service DTOs. The default
+  product dashboard may summarize this into user-facing readiness counts instead
+  of rendering raw evidence ids or technical provenance accordions.
 - The route must not render provider secrets, raw credentials, private message
   bodies, or unaudited external identifiers.
 - The action preview must remain side-effect free until live confirmation flows
@@ -102,9 +110,10 @@ current local review path.
 
 ## Replacement tests:
 
-- Keep `tests/pages/app-dashboard-page.test.tsx` focused on the route heading,
-  domain datum, recommended next move, route state boundaries, mock action
-  result, API envelopes, and adapter ownership.
+- Keep `tests/pages/app-dashboard-live-route-services.test.ts` focused on the
+  live service bundle, controlled unconfigured-storage failure, real dashboard
+  route adapter, and absence of command-center provenance accordions in the
+  default success UI.
 - Add live service tests for success, empty, pending, and failure states for all
   four composed services.
 - Add action replacement tests proving dashboard review either remains preview

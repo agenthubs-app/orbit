@@ -29,7 +29,7 @@ export async function GET(request: Request): Promise<Response> {
   // GET 返回当前机会提醒分析，不在 route 层重新计算或写入状态。
   const mode = resolveFeatureMode();
   const opportunityService = createOpportunityReminderAnalyticsService();
-  const result = opportunityService.getOpportunityReminderAnalytics(
+  const result = await opportunityService.getOpportunityReminderAnalytics(
     readInput(request),
   );
 

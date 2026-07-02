@@ -14,8 +14,11 @@ import type {
   HighPriorityOpportunity,
   OpportunityReminderAnalyticsPayload,
   OpportunityReminderAnalyticsProvenance,
+  OpportunityReminderAnalyticsResult,
+  OpportunityReminderAnalyticsServiceResult,
   OpportunityReminderAnalyticsSourceReference,
   OpportunityReminderRecomputePayload,
+  OpportunityReminderRecomputeResult,
   SuggestedContactReason,
 } from "../opportunity-contract";
 import { createMockOpportunityReminderAnalyticsService } from "../mock-opportunity-service";
@@ -172,11 +175,11 @@ const opportunityApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live files live under features/dashboard/opportunity-reminder-analytics-mock/.",
-  "ORBIT_OPPORTUNITY_REMINDER_ANALYTICS_PROVIDER switches mock fixtures to live providers.",
-  "Live providers replace deterministic fixtures with approved goal, relationship, signal, and analytics reads.",
+  "Live files live under features/dashboard/live-opportunity-service.ts and features/dashboard/storage/opportunity-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live switches mock fixtures to the shared live record store provider.",
+  "Live providers replace deterministic fixtures with source-backed task, contact, connection, and evidence reads.",
   "Privacy and provenance stay attached to every opportunity, dormant contact, goal match, and suggested reason.",
-  "replacement tests cover success, empty, pending, controlled failure, and mock provider guards.",
+  "replacement tests cover success, empty, fail-closed storage configuration, read-only behavior, and mock provider guards.",
 ] as const;
 
 const scenarioExerciseControls = [
@@ -565,23 +568,57 @@ function ScenarioExerciseControls() {
   );
 }
 
+function requireSyncOpportunityResult(
+  result: OpportunityReminderAnalyticsServiceResult<OpportunityReminderAnalyticsResult>,
+): OpportunityReminderAnalyticsResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Opportunity reminder analytics debug view requires a synchronous mock opportunity service.",
+    );
+  }
+
+  return result as OpportunityReminderAnalyticsResult;
+}
+
+function requireSyncRecomputeResult(
+  result: OpportunityReminderAnalyticsServiceResult<OpportunityReminderRecomputeResult>,
+): OpportunityReminderRecomputeResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Opportunity reminder analytics debug view requires a synchronous mock recompute service.",
+    );
+  }
+
+  return result as OpportunityReminderRecomputeResult;
+}
+
 export function OpportunityReminderAnalyticsMockDemo() {
   const opportunityService = createMockOpportunityReminderAnalyticsService();
-  const opportunitiesResult =
-    opportunityService.getOpportunityReminderAnalytics();
-  const recomputeResult =
-    opportunityService.recomputeOpportunityReminderAnalytics();
-  const emptyResult = opportunityService.getOpportunityReminderAnalytics({
-    scenario: "empty",
-  });
-  const pendingResult =
+  const opportunitiesResult = requireSyncOpportunityResult(
+    opportunityService.getOpportunityReminderAnalytics(),
+  );
+  const recomputeResult = requireSyncRecomputeResult(
+    opportunityService.recomputeOpportunityReminderAnalytics(),
+  );
+  const emptyResult = requireSyncOpportunityResult(
+    opportunityService.getOpportunityReminderAnalytics({
+      scenario: "empty",
+    }),
+  );
+  const pendingResult = requireSyncRecomputeResult(
     opportunityService.recomputeOpportunityReminderAnalytics({
       scenario: "pending",
-    });
-  const failureResult =
+    }),
+  );
+  const failureResult = requireSyncRecomputeResult(
     opportunityService.recomputeOpportunityReminderAnalytics({
       scenario: "failure",
-    });
+    }),
+  );
 
   if (
     opportunitiesResult.success === false ||
