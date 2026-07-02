@@ -124,6 +124,10 @@ test("tasksToScheduleItems maps follow-up task payloads", () => {
   const items = tasksToScheduleItems({
     tasks: [
       {
+        contactName: "Maya Chen",
+        organization: "Kumo Grid",
+        priority: "this_week",
+        recommendedAction: "Send a concise recap before suggesting a pilot call.",
         taskId: "task-1",
         title: "Send post-event follow-up",
         dueInDays: 2
@@ -133,8 +137,12 @@ test("tasksToScheduleItems maps follow-up task payloads", () => {
 
   assert.deepEqual(items, [
     {
+      contactName: "Maya Chen",
       dueAt: "in 2 days",
       id: "task-1",
+      organization: "Kumo Grid",
+      priority: "This week",
+      recommendedAction: "Send a concise recap before suggesting a pilot call.",
       title: "Send post-event follow-up"
     }
   ]);

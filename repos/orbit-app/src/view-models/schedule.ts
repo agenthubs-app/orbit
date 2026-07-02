@@ -1,6 +1,10 @@
 export interface ScheduleItem {
+  contactName: string;
   dueAt: string;
   id: string;
+  organization: string;
+  priority: string;
+  recommendedAction: string;
   title: string;
 }
 
@@ -60,12 +64,33 @@ function dueLabel(task: Record<string, unknown>): string {
   return `in ${dueInDays} days`;
 }
 
+function priorityLabel(task: Record<string, unknown>): string {
+  const priority = stringField(task, "priority", "follow-up")
+    .replace(/[_-]+/gu, " ")
+    .trim()
+    .toLowerCase();
+
+  if (!priority) {
+    return "Follow-up";
+  }
+
+  return `${priority.charAt(0).toUpperCase()}${priority.slice(1)}`;
+}
+
 export function tasksToScheduleItems(data: unknown): ScheduleItem[] {
   return listFromPayload(data, "tasks")
     .filter(isRecord)
     .map((task) => ({
+      contactName: stringField(task, "contactName"),
       dueAt: dueLabel(task),
       id: stringField(task, "taskId", stringField(task, "id", "task")),
+      organization: stringField(task, "organization"),
+      priority: priorityLabel(task),
+      recommendedAction: stringField(
+        task,
+        "recommendedAction",
+        "Review before taking action."
+      ),
       title: stringField(task, "title", "Follow up")
     }));
 }

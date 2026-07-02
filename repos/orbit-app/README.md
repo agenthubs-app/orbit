@@ -44,7 +44,7 @@ at a different Orbit server.
 - Orbit AI: reads `/api/ai/conversations`.
 - Events: reads `/api/events`.
 - Contacts: reads `/api/contacts`.
-- Schedule: reads `/api/tasks`.
+- Schedule: reads `/api/tasks` and shows actionable follow-up context.
 - Profile: reads `/api/profile`.
 
 Each screen renders loading, empty, offline, failure, and success states through

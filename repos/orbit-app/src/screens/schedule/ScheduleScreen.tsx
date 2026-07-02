@@ -1,13 +1,22 @@
-import { RefreshControl, Text } from "react-native";
+import { RefreshControl, StyleSheet, Text } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors } from "../../design/tokens";
+import { colors, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
-import { tasksToScheduleItems } from "../../view-models/schedule";
+import {
+  tasksToScheduleItems,
+  type ScheduleItem
+} from "../../view-models/schedule";
+
+function scheduleDetail(task: ScheduleItem): string {
+  return [task.dueAt, task.contactName, task.organization]
+    .filter(Boolean)
+    .join(" | ");
+}
 
 export function ScheduleScreen() {
   const state = useApiResource<unknown>(
@@ -42,11 +51,26 @@ export function ScheduleScreen() {
       ) : null}
       {state.kind === "success"
         ? tasksToScheduleItems(state.data).map((task) => (
-            <DataCard detail={task.dueAt} key={task.id} title={task.title}>
-              <Text>Review before taking action.</Text>
+            <DataCard detail={scheduleDetail(task)} key={task.id} title={task.title}>
+              <Text style={styles.actionText}>{task.recommendedAction}</Text>
+              <Text style={styles.priorityText}>{task.priority}</Text>
             </DataCard>
           ))
         : null}
     </AppScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  actionText: {
+    color: colors.ink,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
+  priorityText: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    textTransform: "uppercase"
+  }
+});
