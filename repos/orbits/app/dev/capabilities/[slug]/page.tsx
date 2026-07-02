@@ -66,19 +66,19 @@ import {
 import {
   EventAttendeeRosterMockDemo,
   EVENT_ATTENDEE_ROSTER_MOCK_SLUG,
-} from "../../../../features/events/event-attendee-roster-mock/debug-view";
+} from "../../../../features/events/attendee-roster/debug-view";
 import {
   OnSiteWantToConnectMockDemo,
   ON_SITE_WANT_TO_CONNECT_MOCK_SLUG,
-} from "../../../../features/events/on-site-want-to-connect-mock/debug-view";
+} from "../../../../features/events/want-connect/debug-view";
 import {
   EventEncounterNoteCaptureMockDemo,
   EVENT_ENCOUNTER_NOTE_CAPTURE_MOCK_SLUG,
-} from "../../../../features/events/event-encounter-note-capture-mock/debug-view";
+} from "../../../../features/events/encounter-note/debug-view";
 import {
   EventGoalAndReadinessMockDemo,
   EVENT_GOAL_AND_READINESS_MOCK_SLUG,
-} from "../../../../features/events/event-goal-and-readiness-mock/debug-view";
+} from "../../../../features/events/goal-readiness/debug-view";
 import {
   ExternalContactsImportMockDemo,
   EXTERNAL_CONTACTS_IMPORT_MOCK_SLUG,
@@ -130,7 +130,7 @@ import {
 import {
   PostEventContactReviewMockDemo,
   POST_EVENT_CONTACT_REVIEW_MOCK_SLUG,
-} from "../../../../features/events/post-event-contact-review-mock/debug-view";
+} from "../../../../features/events/post-event-review/debug-view";
 import {
   FollowupTaskGenerationMockDemo,
   FOLLOWUP_TASK_GENERATION_MOCK_SLUG,

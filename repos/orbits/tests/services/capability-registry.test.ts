@@ -182,7 +182,7 @@ test("capability registry defaults every registered capability to mock mode with
   }
 });
 
-test("capability service lookup returns mock services by default and NOT_IMPLEMENTED for live mode", () => {
+test("capability service lookup returns mock services by default and live inventory metadata in live mode", () => {
   const contacts = createCapabilityService("contacts");
   assert.deepEqual(contacts, {
     success: true,
@@ -204,13 +204,43 @@ test("capability service lookup returns mock services by default and NOT_IMPLEME
     mode: "live",
   });
 
-  assert.equal(liveAgentActions.success, false);
-  if (!liveAgentActions.success) {
-    assert.equal(liveAgentActions.error.code, "NOT_IMPLEMENTED");
-    assert.equal(liveAgentActions.error.capabilityId, "agent-actions");
-    assert.equal(liveAgentActions.error.requestedMode, "live");
-    assert.deepEqual(liveAgentActions.error.availableModes, ["mock", "hybrid"]);
-  }
+  assert.deepEqual(liveAgentActions, {
+    success: true,
+    mode: "live",
+    service: {
+      capabilityId: "agent-actions",
+      mode: "live",
+      status: "live-ready",
+      source: "live-service-factory",
+      provenance: {
+        requiresEvidence: true,
+        requiresSource: true,
+        sensitiveActionsRequireConfirmation: true,
+      },
+    },
+  });
+});
+
+test("capability summaries report live-ready status for registered live capability groups", () => {
+  const liveSummaries = listCapabilitySummaries({ mode: "live" });
+
+  assert.equal(liveSummaries.length, 11);
+  assert.deepEqual(
+    liveSummaries.map((summary) => [summary.id, summary.serviceStatus]),
+    [
+      ["account-profile", "live-ready"],
+      ["permissions", "live-ready"],
+      ["contact-acquisition", "live-ready"],
+      ["contacts", "live-ready"],
+      ["connections", "live-ready"],
+      ["events", "live-ready"],
+      ["followups", "live-ready"],
+      ["chat", "live-ready"],
+      ["dashboard", "live-ready"],
+      ["agent-actions", "live-ready"],
+      ["notifications", "live-ready"],
+    ],
+  );
 });
 
 test("capability registration exposes metadata needed by pages and route handlers", () => {

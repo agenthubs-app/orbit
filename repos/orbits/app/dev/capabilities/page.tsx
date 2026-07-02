@@ -23,6 +23,9 @@ const liveModePreview = listCapabilitySummaries({
 const liveBlockedCount = liveModePreview.filter(
   (capability) => capability.serviceStatus === "not-implemented",
 ).length;
+const liveReadyCount = liveModePreview.filter(
+  (capability) => capability.serviceStatus === "live-ready",
+).length;
 const capabilityDebugDashboardRoute =
   "/dev/capabilities/capability-debug-dashboard";
 const liveImplementationNotesPath =
@@ -86,8 +89,8 @@ export default function CapabilitiesPage() {
           <p className="workbench-intro">
             Read-only summary for how Orbit pages and route handlers obtain
             mock, hybrid, or live services. Every registered capability defaults
-            to mock mode until a live provider is explicitly added behind the
-            shared service factory.
+            to mock mode, while the live preview shows which capability groups
+            now have a registered live service boundary.
           </p>
         </header>
 
@@ -110,18 +113,19 @@ export default function CapabilitiesPage() {
               </dd>
             </div>
             <div>
-              <dt>Live guard</dt>
+              <dt>Live inventory</dt>
               <dd>
-                {liveBlockedCount} live services return a controlled{" "}
-                <code>NOT_IMPLEMENTED</code> failure until provider files and
-                replacement tests exist.
+                {liveReadyCount} live service groups are registered as{" "}
+                <code>live-ready</code>; {liveBlockedCount} remain controlled{" "}
+                <code>NOT_IMPLEMENTED</code> entries for future capability
+                groups.
               </dd>
             </div>
           </dl>
           <div className="chip-row" aria-label="Capability mode guardrails">
             <Chip tone="evidence">mock default</Chip>
             <Chip tone="confirmation">hybrid factory</Chip>
-            <Chip tone="privacy">live guarded</Chip>
+            <Chip tone="privacy">live inventory</Chip>
           </div>
         </WorkbenchSurface>
 

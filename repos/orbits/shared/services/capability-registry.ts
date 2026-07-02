@@ -45,13 +45,19 @@ export interface CapabilityDebugMetadata {
   description: string;
 }
 
-export type CapabilityServiceStatus = "mock-ready" | "hybrid-mock-ready";
+export type CapabilityServiceStatus =
+  | "mock-ready"
+  | "hybrid-mock-ready"
+  | "live-ready";
 
 export interface CapabilityService {
   capabilityId: CapabilityId;
   mode: ModuleMode;
   status: CapabilityServiceStatus;
-  source: "mock-service-factory" | "hybrid-service-factory";
+  source:
+    | "mock-service-factory"
+    | "hybrid-service-factory"
+    | "live-service-factory";
   provenance: {
     requiresEvidence: true;
     requiresSource: true;
@@ -118,7 +124,7 @@ function createServiceConstructor(
 function createRegistration(
   definition: CapabilityDefinition,
 ): CapabilityRegistration {
-  // 每个 capability 都默认注册 mock/hybrid；live 未注册时会通过 module-mode 返回 not implemented。
+  // registry 只展示 capability group 的运行时目录状态；具体业务实现仍由各 feature factory 负责。
   const defaultMode = DEFAULT_MODULE_MODE;
 
   return {
@@ -149,6 +155,12 @@ function createRegistration(
           "hybrid",
           "hybrid-service-factory",
           "hybrid-mock-ready",
+          definition.sensitiveActionsRequireConfirmation,
+        ),
+        live: createServiceConstructor(
+          "live",
+          "live-service-factory",
+          "live-ready",
           definition.sensitiveActionsRequireConfirmation,
         ),
       },
