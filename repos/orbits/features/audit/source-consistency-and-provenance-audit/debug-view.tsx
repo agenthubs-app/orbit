@@ -427,13 +427,33 @@ function ScenarioControls() {
   );
 }
 
+function requireSyncAuditResult<TResult>(
+  result: TResult | Promise<TResult>,
+): TResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Source consistency provenance audit debug view requires the mock service to return synchronously.",
+    );
+  }
+
+  return result as TResult;
+}
+
 export function SourceConsistencyProvenanceAuditDemo() {
   const service = createMockSourceConsistencyProvenanceAuditService();
-  const successResult = service.getAuditSnapshot();
-  const runResult = service.runAudit();
-  const emptyResult = service.getAuditSnapshot({ scenario: "empty" });
-  const pendingResult = service.runAudit({ scenario: "pending" });
-  const failureResult = service.runAudit({ scenario: "failure" });
+  const successResult = requireSyncAuditResult(service.getAuditSnapshot());
+  const runResult = requireSyncAuditResult(service.runAudit());
+  const emptyResult = requireSyncAuditResult(
+    service.getAuditSnapshot({ scenario: "empty" }),
+  );
+  const pendingResult = requireSyncAuditResult(
+    service.runAudit({ scenario: "pending" }),
+  );
+  const failureResult = requireSyncAuditResult(
+    service.runAudit({ scenario: "failure" }),
+  );
 
   if (
     successResult.success === false ||

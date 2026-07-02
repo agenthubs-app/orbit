@@ -29,7 +29,7 @@ export async function POST(request: Request): Promise<Response> {
   // POST 表示“执行审计动作”，但具体执行范围和副作用边界仍在 service 中。
   const mode = resolveFeatureMode();
   const auditService = createSourceConsistencyProvenanceAuditService();
-  const result = auditService.runAudit(readInput(request));
+  const result = await auditService.runAudit(readInput(request));
 
   if (result.success === false) {
     // audit failure 使用 provenance contract 的上下文，保留运行模式和 evidence 信息。

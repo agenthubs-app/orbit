@@ -29,7 +29,7 @@ export async function GET(request: Request): Promise<Response> {
   // GET 读取最近一次/当前 mock 审计快照，不触发重新运行。
   const mode = resolveFeatureMode();
   const auditService = createSourceConsistencyProvenanceAuditService();
-  const result = auditService.getAuditSnapshot(readInput(request));
+  const result = await auditService.getAuditSnapshot(readInput(request));
 
   if (result.success === false) {
     // audit failure 使用 provenance contract 的上下文，保留运行模式和 evidence 信息。

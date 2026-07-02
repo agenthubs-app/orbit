@@ -116,6 +116,7 @@ test("source consistency provenance audit contract exports typed fixtures servic
     ],
   );
   assert.deepEqual(contract.SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ERROR_CODES, [
+    "SOURCE_CONSISTENCY_PROVENANCE_AUDIT_LIVE_STORE_UNCONFIGURED",
     "SOURCE_CONSISTENCY_PROVENANCE_AUDIT_MOCK_FAILED",
   ]);
   assert.equal(

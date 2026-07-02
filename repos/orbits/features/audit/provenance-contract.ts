@@ -17,6 +17,7 @@ export const SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ENTITY_KINDS = [
 ] as const;
 
 export const SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ERROR_CODES = [
+  "SOURCE_CONSISTENCY_PROVENANCE_AUDIT_LIVE_STORE_UNCONFIGURED",
   "SOURCE_CONSISTENCY_PROVENANCE_AUDIT_MOCK_FAILED",
 ] as const;
 
@@ -56,6 +57,14 @@ export interface SourceConsistencyProvenanceAuditErrorDefinition {
 
 // 审计失败时保持本地 mock 边界，不调用 compliance reporting 或生产审计存储。
 export const SOURCE_CONSISTENCY_PROVENANCE_AUDIT_ERROR_DEFINITIONS = {
+  SOURCE_CONSISTENCY_PROVENANCE_AUDIT_LIVE_STORE_UNCONFIGURED: {
+    code: "SOURCE_CONSISTENCY_PROVENANCE_AUDIT_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live source consistency and provenance audit store is not configured.",
+    recovery:
+      "Set a live Orbit database URL and workspace id before reading live source consistency and provenance audit records.",
+  },
   SOURCE_CONSISTENCY_PROVENANCE_AUDIT_MOCK_FAILED: {
     code: "SOURCE_CONSISTENCY_PROVENANCE_AUDIT_MOCK_FAILED",
     appCode: "SERVICE_UNAVAILABLE",
@@ -74,7 +83,9 @@ export type SourceConsistencyProvenanceAuditSourceReference =
     type: SourceType;
     label: string;
     providerRecordId: string;
-    generatedBy: "mock-source-consistency-provenance-audit-rules";
+    generatedBy:
+      | "mock-source-consistency-provenance-audit-rules"
+      | "live-store-query";
   };
 
 // provenance 是审计运行自身的安全账本。
@@ -83,15 +94,19 @@ export interface SourceConsistencyProvenanceAuditProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-source-consistency-provenance-audit-only";
+  privacy:
+    | "demo-source-consistency-provenance-audit-only"
+    | "live-source-consistency-provenance-audit";
   generationMethod:
     | "fixture"
+    | "live-audit-run"
+    | "live-store-query"
     | "rule-based-audit-run"
     | "rule-based-state";
   complianceReportingExecuted: false;
   productionAuditStorageWriteExecuted: false;
   externalNetworkRequested: false;
-  databaseReadExecuted: false;
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   aiProviderRequested: false;
   calendarProviderRequested: false;
@@ -185,10 +200,14 @@ export type SourceConsistencyProvenanceAuditRunResult =
 export interface SourceConsistencyProvenanceAuditService {
   getAuditSnapshot: (
     input?: SourceConsistencyProvenanceAuditInput,
-  ) => SourceConsistencyProvenanceAuditResult;
+  ) =>
+    | Promise<SourceConsistencyProvenanceAuditResult>
+    | SourceConsistencyProvenanceAuditResult;
   runAudit: (
     input?: SourceConsistencyProvenanceAuditInput,
-  ) => SourceConsistencyProvenanceAuditRunResult;
+  ) =>
+    | Promise<SourceConsistencyProvenanceAuditRunResult>
+    | SourceConsistencyProvenanceAuditRunResult;
 }
 
 export function sourceConsistencyProvenanceAuditFailureToAppError(
@@ -201,13 +220,19 @@ export function sourceConsistencyProvenanceAuditFailureContext(
   failure: SourceConsistencyProvenanceAuditFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive = mode === "live";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock source consistency provenance audit failure came from deterministic fixture rules.",
-    service: "source-consistency-and-provenance-audit",
+      isLive
+        ? "Live source consistency provenance audit failure came from live record store configuration."
+        : "Mock source consistency provenance audit failure came from deterministic fixture rules.",
+    service: isLive
+      ? "source-consistency-and-provenance-audit-live"
+      : "source-consistency-and-provenance-audit",
     sourceConsistencyProvenanceAuditErrorCode: failure.error.code,
   };
 }
