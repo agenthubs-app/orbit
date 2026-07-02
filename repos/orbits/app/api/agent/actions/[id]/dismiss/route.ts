@@ -67,7 +67,9 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const agentActionService = createAgentActionQueueService();
-  const result = agentActionService.dismissAction(await readInput(request, id));
+  const result = await agentActionService.dismissAction(
+    await readInput(request, id),
+  );
 
   if (result.success === false) {
     // 队列失败统一转成 AppError/envelope，保持前端错误处理稳定。

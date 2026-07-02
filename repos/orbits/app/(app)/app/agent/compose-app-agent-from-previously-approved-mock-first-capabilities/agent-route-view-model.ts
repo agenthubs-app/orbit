@@ -1,7 +1,9 @@
 import type {
+  AgentActionDecisionResult,
   AgentActionQueueItem,
   AgentActionQueueResult,
 } from "../../../../../features/agent/contract";
+import type { AgentActionQueueServiceResult } from "../../../../../features/agent/service";
 import type {
   AgentAutonomySettingsResult,
 } from "../../../../../features/agent/settings-contract";
@@ -12,6 +14,7 @@ import type {
   NotificationQueueEntry,
   ReminderScheduleNotificationResult,
 } from "../../../../../features/notifications/contract";
+import type { ReminderScheduleNotificationServiceResult } from "../../../../../features/notifications/service";
 import type {
   ConfirmationRequirementResult,
 } from "../../../../../features/permissions/confirmation-contract";
@@ -164,6 +167,18 @@ function evidenceIdsForResult(result: RouteStateResult): readonly string[] {
 
 function firstFailure(results: readonly RouteStateResult[]): RouteStateFailure | null {
   return results.find(isRouteStateFailure) ?? null;
+}
+
+async function resolveAgentActionResult<TResult>(
+  result: AgentActionQueueServiceResult<TResult>,
+): Promise<TResult> {
+  return await result;
+}
+
+async function resolveReminderScheduleNotificationResult(
+  result: ReminderScheduleNotificationServiceResult<ReminderScheduleNotificationResult>,
+): Promise<ReminderScheduleNotificationResult> {
+  return await result;
 }
 
 function titleCase(value: string): string {
@@ -353,17 +368,21 @@ function routeRecoveryActions(
   ];
 }
 
-function loadRouteStateViewModel(
+async function loadRouteStateViewModel(
   scenario: AppAgentRouteScenario,
-): AppAgentRouteStateViewModel {
+): Promise<AppAgentRouteStateViewModel> {
   const services = createAppAgentRouteServices();
-  const results = [
-    services.agentActionService.listActions({ scenario }),
+  const results = await Promise.all([
+    resolveAgentActionResult<AgentActionQueueResult>(
+      services.agentActionService.listActions({ scenario }),
+    ),
     services.settingsService.getSettings({ scenario }),
     services.confirmationService.listConfirmationRequirements({ scenario }),
     services.sandboxService.listAuditRecords({ scenario }),
-    services.notificationService.listNotifications({ scenario }),
-  ] as const;
+    resolveReminderScheduleNotificationResult(
+      services.notificationService.listNotifications({ scenario }),
+    ),
+  ]);
   const failure = firstFailure(results);
 
   return {
@@ -377,25 +396,29 @@ function loadRouteStateViewModel(
   };
 }
 
-export function loadAppAgentRouteViewModel(
+export async function loadAppAgentRouteViewModel(
   searchParams?: AppAgentSearchParams,
-): AppAgentRouteViewModel {
+): Promise<AppAgentRouteViewModel> {
   const requestedScenario = readRouteScenario(searchParams);
 
   if (requestedScenario) {
     return {
       state: "route-state",
-      routeState: loadRouteStateViewModel(requestedScenario),
+      routeState: await loadRouteStateViewModel(requestedScenario),
     };
   }
 
   const services = createAppAgentRouteServices();
-  const actionsResult = services.agentActionService.listActions();
+  const actionsResult = await resolveAgentActionResult<AgentActionQueueResult>(
+    services.agentActionService.listActions(),
+  );
   const settingsResult = services.settingsService.getSettings();
   const confirmationResult =
     services.confirmationService.listConfirmationRequirements();
   const sandboxAuditResult = services.sandboxService.listAuditRecords();
-  const notificationResult = services.notificationService.listNotifications();
+  const notificationResult = await resolveReminderScheduleNotificationResult(
+    services.notificationService.listNotifications(),
+  );
 
   if (
     actionsResult.success === false ||
@@ -406,7 +429,7 @@ export function loadAppAgentRouteViewModel(
   ) {
     return {
       state: "route-state",
-      routeState: loadRouteStateViewModel("failure"),
+      routeState: await loadRouteStateViewModel("failure"),
     };
   }
 
@@ -437,17 +460,19 @@ export function loadAppAgentRouteViewModel(
   ) {
     return {
       state: "route-state",
-      routeState: loadRouteStateViewModel("empty"),
+      routeState: await loadRouteStateViewModel("empty"),
     };
   }
 
   const shouldPreviewAction =
     readSearchParam(searchParams, "action") === "review-top-agent-action";
   const agentDecision = shouldPreviewAction
-    ? services.agentActionService.acceptAction({
-        actionId: selectedAction.actionId,
-        actorLabel: "Orbit user",
-      })
+    ? await resolveAgentActionResult<AgentActionDecisionResult>(
+        services.agentActionService.acceptAction({
+          actionId: selectedAction.actionId,
+          actorLabel: "Orbit user",
+        }),
+      )
     : null;
   const sandboxResult = shouldPreviewAction
     ? services.sandboxService.sendMessage({

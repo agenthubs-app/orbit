@@ -26,21 +26,27 @@ function source(path: string): string {
 }
 
 test("core service factories expose default mock services and controlled live failures", async () => {
-  assert.equal(createAppBootstrapService().getAppBootstrap().success, true);
+  assert.equal((await createAppBootstrapService().getAppBootstrap()).success, true);
   assert.equal(
-    createContactsListSearchAndFilterService().listContacts().success,
+    (await createContactsListSearchAndFilterService().listContacts()).success,
     true,
   );
   assert.equal(
     (await createEventCrudAndImportService().listEvents()).success,
     true,
   );
-  assert.equal(createFollowupTaskGenerationService().listTasks().success, true);
   assert.equal(
-    createDashboardAggregateService().getDashboardAggregate().success,
+    (await createFollowupTaskGenerationService().listTasks()).success,
     true,
   );
-  assert.equal(createAgentActionQueueService().listActions().success, true);
+  assert.equal(
+    (await createDashboardAggregateService().getDashboardAggregate()).success,
+    true,
+  );
+  assert.equal(
+    (await createAgentActionQueueService().listActions()).success,
+    true,
+  );
   assert.equal(
     createOrbitAiProactiveAgentService().createProactiveTurn({
       signal: {
@@ -53,7 +59,7 @@ test("core service factories expose default mock services and controlled live fa
     true,
   );
   assert.equal(
-    createChatConversationMessageService().listConversations().success,
+    (await createChatConversationMessageService().listConversations()).success,
     true,
   );
 

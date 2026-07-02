@@ -1,10 +1,18 @@
 import { createAgentActionQueueService } from "../agent/service-factory";
+import type { AgentActionQueueResult } from "../agent/contract";
+import type { AgentActionQueueServiceResult } from "../agent/service";
 import { createAppBootstrapService } from "../bootstrap/service-factory";
 import { createContactsListSearchAndFilterService } from "../contacts/service-factory";
 import { createDashboardAggregateService } from "../dashboard/service-factory";
-import type { EventListResult } from "../events/contract";
+import type { DashboardAggregateServiceResult } from "../dashboard/service";
+import type { DashboardAggregateSummaryResult } from "../dashboard/contract";
+import type { ContactsListSearchResult } from "../contacts/contract";
+import type { ContactsListSearchServiceResult } from "../contacts/service";
+import type { EventListResult } from "../events/event-crud-and-import/contract";
 import { createEventCrudAndImportService } from "../events/service-factory";
 import { createFollowupTaskGenerationService } from "../followups/service-factory";
+import type { FollowupTaskGenerationResult } from "../followups/contract";
+import type { FollowupTaskGenerationServiceResult } from "../followups/service";
 import type {
   OrbitAiCommandInput,
   OrbitAiCommandLink,
@@ -254,9 +262,65 @@ function requireSyncEventListResult(
   return result as EventListResult;
 }
 
+function requireSyncContactsListSearchResult(
+  result: ContactsListSearchServiceResult<ContactsListSearchResult>,
+): ContactsListSearchResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Orbit AI mock command service requires a synchronous contacts service.",
+    );
+  }
+
+  return result as ContactsListSearchResult;
+}
+
+function requireSyncFollowupTaskGenerationResult(
+  result: FollowupTaskGenerationServiceResult<FollowupTaskGenerationResult>,
+): FollowupTaskGenerationResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Orbit AI mock command service requires a synchronous followup service.",
+    );
+  }
+
+  return result as FollowupTaskGenerationResult;
+}
+
+function requireSyncDashboardAggregateSummaryResult(
+  result: DashboardAggregateServiceResult<DashboardAggregateSummaryResult>,
+): DashboardAggregateSummaryResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Orbit AI mock command service requires a synchronous dashboard service.",
+    );
+  }
+
+  return result as DashboardAggregateSummaryResult;
+}
+
+function requireSyncAgentActionQueueResult(
+  result: AgentActionQueueServiceResult<AgentActionQueueResult>,
+): AgentActionQueueResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Orbit AI mock command service requires a synchronous agent action service.",
+    );
+  }
+
+  return result as AgentActionQueueResult;
+}
+
 export function createMockOrbitAiCommandService(): OrbitAiCommandService {
-  const bootstrapService = createAppBootstrapService();
-  const contactsService = createContactsListSearchAndFilterService();
+  const bootstrapService = createAppBootstrapService("mock");
+  const contactsService = createContactsListSearchAndFilterService("mock");
   const dashboardService = createDashboardAggregateService();
   const eventService = createEventCrudAndImportService();
   const followupService = createFollowupTaskGenerationService();
@@ -345,7 +409,9 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
       }
 
       if (panel === "people") {
-        const contacts = contactsService.listContacts();
+        const contacts = requireSyncContactsListSearchResult(
+          contactsService.listContacts(),
+        );
         const bootstrapPeople =
           payload?.pendingTasks.slice(0, 2).map((task) =>
             itemFromParts({
@@ -399,7 +465,9 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
       }
 
       if (panel === "followups") {
-        const followups = followupService.listTasks({ limit: 3 });
+        const followups = requireSyncFollowupTaskGenerationResult(
+          followupService.listTasks({ limit: 3 }),
+        );
         const bootstrapTasks =
           payload?.pendingTasks.map((task) =>
             itemFromParts({
@@ -512,7 +580,9 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
       }
 
       if (panel === "agent") {
-        const actions = agentService.listActions();
+        const actions = requireSyncAgentActionQueueResult(
+          agentService.listActions(),
+        );
         const bootstrapActions =
           payload?.topAgentActions.map((action) =>
             itemFromParts({
@@ -574,7 +644,9 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
       }
 
       if (panel === "dashboard") {
-        const dashboard = dashboardService.getDashboardSummary();
+        const dashboard = requireSyncDashboardAggregateSummaryResult(
+          dashboardService.getDashboardSummary(),
+        );
         const metrics = dashboard.success ? dashboard.data.metrics : [];
 
         return success({

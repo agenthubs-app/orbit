@@ -603,10 +603,10 @@ function RouteStateLinks() {
   );
 }
 
-export function AppAgentCommandCenter({
+export async function AppAgentCommandCenter({
   searchParams,
 }: AppAgentCommandCenterProps) {
-  const viewModel = loadAppAgentRouteViewModel(searchParams);
+  const viewModel = await loadAppAgentRouteViewModel(searchParams);
 
   if (viewModel.state === "route-state") {
     return (

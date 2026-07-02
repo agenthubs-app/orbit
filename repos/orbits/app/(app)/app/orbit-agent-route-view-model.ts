@@ -163,11 +163,11 @@ function fallbackPeople(data: OrbitHybridRouteData): OrbitAgentPeopleResultView[
       match: connection?.businessRelevanceScore ?? connection?.relationshipStrength ?? 70,
       opener:
         connection?.suggestedActions?.[0] ??
-        "Review the local remote evidence before sending a follow-up.",
+        "Review the source evidence before sending a follow-up.",
       reason:
         connection?.summary ??
         contact.profileSnippet ??
-        "This contact is present in the hybrid local remote relationship graph.",
+        "This contact is present in your relationship graph.",
     };
   });
 }
@@ -178,7 +178,7 @@ function eventView(event: EventDTO, index: number): OrbitAgentEventView {
     g: eventIndustryFor(event),
     id: event.id,
     name: event.name,
-    place: event.location ?? "Local remote database",
+    place: event.location ?? "Orbit",
     startsAt: event.startsAt,
   };
 }
@@ -187,7 +187,7 @@ function eventResults(data: OrbitHybridRouteData): OrbitAgentEventResultView[] {
   return sortedEvents(data).slice(0, 5).map((event, index) => ({
     event: eventView(event, index),
     howto: "Review attendees, recommendations, and follow-up tasks before acting.",
-    reason: `${event.name} is available from the hybrid local remote database.`,
+    reason: `${event.name} has event, attendee, and follow-up context in Orbit.`,
     score: Math.max(70, 96 - index * 4),
   }));
 }
@@ -201,15 +201,15 @@ export function getOrbitAgentViewModel(): OrbitAgentViewModel {
   const peopleItems =
     recommendationItems.length > 0 ? recommendationItems : fallbackPeople(data);
   const events = eventResults(data);
-  const peopleQuery = "根据本地 hybrid 数据，帮我找最值得跟进的人脉。";
-  const eventQuery = "根据本地 hybrid 数据，推荐我应该关注的活动。";
+  const peopleQuery = "帮我找当前最值得跟进的人脉。";
+  const eventQuery = "推荐我现在应该关注的活动。";
   const peopleToEventsQuery = "如果目标人脉还不够，哪些活动最适合继续拓展？";
   const scenarios = {
     people: {
       q: peopleQuery,
       kind: "people" as const,
       panelTitle: `为你匹配的人脉 · ${peopleItems.length} 位`,
-      intro: "这些结果来自 local-remote database 中的联系人、连接和匹配推荐。",
+      intro: "这些结果来自联系人、连接和匹配推荐。",
       items: peopleItems,
     },
     peopleToEvents: {
@@ -217,7 +217,7 @@ export function getOrbitAgentViewModel(): OrbitAgentViewModel {
       kind: "events" as const,
       panelTitle: `推荐活动 · ${events.length} 场`,
       note: "当现有联系人不足时，优先看本地数据库中证据最完整的活动。",
-      intro: "以下活动来自 hybrid events 表，可继续用于参会和拓展关系。",
+      intro: "以下活动可继续用于参会和拓展关系。",
       items: events,
     },
     events: {
@@ -237,8 +237,8 @@ export function getOrbitAgentViewModel(): OrbitAgentViewModel {
       { label: "活动补足人脉缺口", q: peopleToEventsQuery, icon: "handshake" },
     ],
     history: [
-      { id: "history:people", group: "今天", when: "刚刚", title: "Hybrid 人脉推荐", q: peopleQuery },
-      { id: "history:events", group: "今天", when: "稍早", title: "Hybrid 活动推荐", q: eventQuery },
+      { id: "history:people", group: "今天", when: "刚刚", title: "人脉推荐", q: peopleQuery },
+      { id: "history:events", group: "今天", when: "稍早", title: "活动推荐", q: eventQuery },
       { id: "history:gaps", group: "本周", when: "最近", title: "通过活动补足关系缺口", q: peopleToEventsQuery },
     ],
   };

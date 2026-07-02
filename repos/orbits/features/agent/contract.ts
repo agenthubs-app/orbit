@@ -21,6 +21,7 @@ export const AGENT_ACTION_QUEUE_ERROR_CODES = [
   "AGENT_ACTION_QUEUE_EMPTY",
   "AGENT_ACTION_QUEUE_PENDING",
   "AGENT_ACTION_QUEUE_MOCK_FAILED",
+  "AGENT_ACTION_QUEUE_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type AgentActionType =
@@ -100,6 +101,13 @@ export const AGENT_ACTION_QUEUE_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry autonomous agent execution, external actions, AI providers, calendars, email, notifications, devices, databases, or external networks.",
   },
+  AGENT_ACTION_QUEUE_LIVE_STORE_UNCONFIGURED: {
+    code: "AGENT_ACTION_QUEUE_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live agent action queue store is not configured.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live agent action queues.",
+  },
 } as const satisfies Record<
   AgentActionQueueErrorCode,
   AgentActionQueueErrorDefinition
@@ -116,7 +124,7 @@ export type AgentActionSourceReference = SourceReferenceDTO & {
     | "system";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-agent-action-rules";
+  generatedBy: "mock-agent-action-rules" | "live-store-query";
 };
 
 // provenance 是建议动作队列的安全账本，所有外部副作用都固定为 false。
@@ -125,18 +133,20 @@ export interface AgentActionQueueProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-agent-action-queue-only";
+  privacy: "demo-agent-action-queue-only" | "live-agent-action-queue-preview";
   generationMethod:
     | "fixture"
     | "rule-based-agent-action"
     | "rule-based-user-decision"
     | "rule-based-state"
-    | "local-remote-store-query";
+    | "local-remote-store-query"
+    | "live-store-query"
+    | "live-store-decision";
   autonomousExecutionStarted: false;
   externalSideEffectExecuted: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseReadExecuted: boolean;
+  liveDatabaseWriteExecuted: boolean;
   productionAuditLogWriteExecuted: false;
   aiProviderRequested: false;
   calendarProviderRequested: false;
@@ -232,8 +242,7 @@ export function agentActionQueueFailureContext(
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock agent action queue failure came from deterministic fixture rules.",
-    service: "agent-action-queue-mock",
+    provenance: failure.error.provenance.sourceLabel,
+    service: "agent-action-queue",
   };
 }

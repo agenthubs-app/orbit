@@ -89,11 +89,15 @@ export interface AgentAutonomySettingsProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-agent-autonomy-settings-only";
+  privacy:
+    | "demo-agent-autonomy-settings-only"
+    | "live-agent-autonomy-settings-policy";
   generationMethod:
     | "fixture"
     | "rule-based-settings-state"
-    | "rule-based-settings-update";
+    | "rule-based-settings-update"
+    | "live-policy"
+    | "live-policy-update";
   autonomousExecutionPolicyEvaluated: false;
   autonomousExecutionStarted: false;
   scheduledLiveAgentJobRegistered: false;
@@ -222,7 +226,12 @@ export function agentAutonomySettingsFailureContext(
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock agent autonomy settings failure came from deterministic fixture rules.",
-    service: "agent-autonomy-settings-mock",
+      mode === "live"
+        ? "Live agent autonomy settings failure came from deterministic live safety policy rules."
+        : "Mock agent autonomy settings failure came from deterministic fixture rules.",
+    service:
+      mode === "live"
+        ? "agent-autonomy-settings-live-policy"
+        : "agent-autonomy-settings-mock",
   };
 }

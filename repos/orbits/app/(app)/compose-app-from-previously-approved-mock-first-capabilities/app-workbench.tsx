@@ -7,6 +7,11 @@
  */
 import { createAgentActionQueueService } from "../../../features/agent/service-factory";
 import type {
+  AgentActionDecisionResult,
+  AgentActionQueueResult,
+} from "../../../features/agent/contract";
+import type { AgentActionQueueServiceResult } from "../../../features/agent/service";
+import type {
   AppBootstrapPayload,
   AppBootstrapScenario,
 } from "../../../features/bootstrap/contract";
@@ -15,8 +20,12 @@ import type { AppBootstrapFailure } from "../../../features/bootstrap/service";
 import { createDashboardAggregateService } from "../../../features/dashboard/service-factory";
 import { createEventCrudAndImportService } from "../../../features/events/service-factory";
 import { createFollowupTaskGenerationService } from "../../../features/followups/service-factory";
+import type { ReminderScheduleNotificationResult } from "../../../features/notifications/contract";
 import { createReminderScheduleNotificationService } from "../../../features/notifications/service-factory";
+import type { ReminderScheduleNotificationServiceResult } from "../../../features/notifications/service";
+import type { ProfileResult } from "../../../features/profile/contract";
 import { createProfileService } from "../../../features/profile/service-factory";
+import type { ProfileServiceResult } from "../../../features/profile/service";
 import { Chip, WorkbenchSurface } from "../../../shared/ui/primitives";
 import { StateView } from "../../../shared/ui/state-view";
 
@@ -431,7 +440,52 @@ function OutcomeSummaries({ outcomes }: { outcomes: readonly OutcomeSummary[] })
   );
 }
 
-export function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
+}
+
+function requireSyncProfileResult(
+  result: ProfileServiceResult<ProfileResult>,
+): ProfileResult {
+  if (isPromiseLike(result)) {
+    throw new Error(
+      "The legacy app workbench only supports synchronous profile services.",
+    );
+  }
+
+  return result;
+}
+
+function requireSyncAgentActionResult<TResult>(
+  result: AgentActionQueueServiceResult<TResult>,
+): TResult {
+  if (isPromiseLike(result)) {
+    throw new Error(
+      "The legacy app workbench only supports synchronous agent action services.",
+    );
+  }
+
+  return result;
+}
+
+function requireSyncReminderScheduleNotificationResult(
+  result: ReminderScheduleNotificationServiceResult<ReminderScheduleNotificationResult>,
+): ReminderScheduleNotificationResult {
+  if (isPromiseLike(result)) {
+    throw new Error(
+      "The legacy app workbench only supports synchronous notification services.",
+    );
+  }
+
+  return result;
+}
+
+export async function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
   // 主聚合路径：先实例化各 capability service，再读取首屏所需的最小数据集。
   const bootstrapService = createAppBootstrapService();
   const profileService = createProfileService();
@@ -444,13 +498,17 @@ export function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
   const requestedScenario = readRouteScenario(searchParams);
   const requestedTaskLimit = readTaskLimit(searchParams);
   const actionRequested = requestedTaskLimit !== null;
-  const bootstrap = bootstrapService.getAppBootstrap();
-  const profile = profileService.getProfile();
-  const events = eventService.listEvents();
-  const generatedTasks = taskService.generateTasks({ limit: 1 });
-  const dashboard = dashboardService.getDashboardSummary();
-  const notifications = notificationService.listNotifications({ limit: 1 });
-  const agentQueue = agentService.listActions();
+  const bootstrap = await bootstrapService.getAppBootstrap();
+  const profile = requireSyncProfileResult(profileService.getProfile());
+  const events = await eventService.listEvents();
+  const generatedTasks = await taskService.generateTasks({ limit: 1 });
+  const dashboard = await dashboardService.getDashboardSummary();
+  const notifications = requireSyncReminderScheduleNotificationResult(
+    notificationService.listNotifications({ limit: 1 }),
+  );
+  const agentQueue = requireSyncAgentActionResult<AgentActionQueueResult>(
+    agentService.listActions(),
+  );
 
   if (bootstrap.success === false) {
     return (
@@ -469,7 +527,7 @@ export function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
 
   if (requestedScenario) {
     // scenario route 用于开发/测试恢复状态，不参与正常首屏推荐排序。
-    const scenarioBootstrap = bootstrapService.getAppBootstrap({
+    const scenarioBootstrap = await bootstrapService.getAppBootstrap({
       scenario: requestedScenario,
     });
 
@@ -537,7 +595,7 @@ export function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
 
   const payload = bootstrap.data;
   const focusQueue = actionRequested
-    ? bootstrapService.getAppBootstrap({ taskLimit: requestedTaskLimit })
+    ? await bootstrapService.getAppBootstrap({ taskLimit: requestedTaskLimit })
     : null;
   const focusPayload = focusQueue?.success ? focusQueue.data : null;
   const profileName =
@@ -621,10 +679,12 @@ export function AppWorkbench({ searchParams }: AppWorkbenchProps = {}) {
   ];
   const actionResult = actionRequested
     // 点击 focus queue 只接受 mock agent action，返回 provenance；不触发外部动作。
-    ? agentService.acceptAction({
-        actionId: "demo-action-1",
-        actorLabel: "Orbit workspace reviewer",
-      })
+    ? requireSyncAgentActionResult<AgentActionDecisionResult>(
+        agentService.acceptAction({
+          actionId: "demo-action-1",
+          actorLabel: "Orbit workspace reviewer",
+        }),
+      )
     : null;
   const externalNetworkRequested =
     actionResult?.success === true

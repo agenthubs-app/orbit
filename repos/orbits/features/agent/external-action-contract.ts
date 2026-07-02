@@ -41,7 +41,9 @@ export type ExternalActionSandboxProviderKind =
 export type ExternalActionSandboxGenerationMethod =
   | "fixture"
   | "rule-based-no-op"
-  | "rule-based-state";
+  | "rule-based-state"
+  | "live-policy-no-op"
+  | "live-policy-state";
 
 // actionId 指向已确认的本地动作；targetLabel/actorLabel 只用于审计展示。
 export interface ExternalActionSandboxInput {
@@ -114,7 +116,9 @@ export interface ExternalActionSandboxProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-external-action-sandbox-only";
+  privacy:
+    | "demo-external-action-sandbox-only"
+    | "live-external-action-sandbox-policy";
   generationMethod: ExternalActionSandboxGenerationMethod;
   explicitConfirmationRequired: true;
   explicitConfirmationRecorded: true | false;
@@ -259,7 +263,12 @@ export function externalActionSandboxFailureContext(
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock external action sandbox failure came from deterministic fixture rules.",
-    service: "external-action-sandbox-mock",
+      mode === "live"
+        ? "Live external action sandbox failure came from deterministic no-op policy rules."
+        : "Mock external action sandbox failure came from deterministic fixture rules.",
+    service:
+      mode === "live"
+        ? "external-action-sandbox-live-policy"
+        : "external-action-sandbox-mock",
   };
 }

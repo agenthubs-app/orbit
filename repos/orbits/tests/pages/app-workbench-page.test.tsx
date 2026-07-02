@@ -21,7 +21,7 @@ async function renderAppPage(searchParams?: PageSearchParams): Promise<string> {
   const { AppWorkbench } = await import(
     "../../app/(app)/compose-app-from-previously-approved-mock-first-capabilities/app-workbench"
   );
-  const element = <AppWorkbench searchParams={searchParams ?? {}} />;
+  const element = await AppWorkbench({ searchParams: searchParams ?? {} });
 
   return renderToStaticMarkup(element);
 }

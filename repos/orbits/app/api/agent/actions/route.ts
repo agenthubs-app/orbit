@@ -30,7 +30,7 @@ export async function GET(request: Request): Promise<Response> {
   // actionType/scenario 用于筛选 mock 队列和测试失败/空态。
   const mode = resolveFeatureMode();
   const agentActionService = createAgentActionQueueService();
-  const result = agentActionService.listActions(readInput(request));
+  const result = await agentActionService.listActions(readInput(request));
 
   if (result.success === false) {
     const appError = agentActionQueueFailureToAppError(result);

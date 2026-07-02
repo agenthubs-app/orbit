@@ -13,8 +13,10 @@ import type {
   AgentActionQueueItem,
   AgentActionQueuePayload,
   AgentActionQueueProvenance,
+  AgentActionQueueResult,
   AgentActionSourceReference,
 } from "../contract";
+import type { AgentActionQueueServiceResult } from "../service";
 import { createMockAgentActionQueueService } from "../mock-service";
 
 export const AGENT_ACTION_QUEUE_MOCK_SLUG = "agent-action-queue-mock";
@@ -380,12 +382,41 @@ function ScenarioControls() {
   );
 }
 
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
+}
+
+function requireSyncAgentActionQueueResult(
+  result: AgentActionQueueServiceResult<AgentActionQueueResult>,
+): AgentActionQueueResult {
+  if (isPromiseLike(result)) {
+    throw new Error(
+      "The agent action queue mock demo only supports synchronous mock services.",
+    );
+  }
+
+  return result;
+}
+
 export function AgentActionQueueMockDemo() {
   const agentService = createMockAgentActionQueueService();
-  const successResult = agentService.listActions();
-  const emptyResult = agentService.listActions({ scenario: "empty" });
-  const pendingResult = agentService.listActions({ scenario: "pending" });
-  const failureResult = agentService.listActions({ scenario: "failure" });
+  const successResult = requireSyncAgentActionQueueResult(
+    agentService.listActions(),
+  );
+  const emptyResult = requireSyncAgentActionQueueResult(
+    agentService.listActions({ scenario: "empty" }),
+  );
+  const pendingResult = requireSyncAgentActionQueueResult(
+    agentService.listActions({ scenario: "pending" }),
+  );
+  const failureResult = requireSyncAgentActionQueueResult(
+    agentService.listActions({ scenario: "failure" }),
+  );
 
   if (
     successResult.success === false ||
@@ -421,7 +452,7 @@ export function AgentActionQueueMockDemo() {
             className="relationship-meta"
             aria-label="Agent action queue operator checkpoint"
           >
-            <span>Provider switch ORBIT_AGENT_ACTION_QUEUE_PROVIDER</span>
+            <span>Runtime switch ORBIT_MODULE_MODE=live</span>
             <span>Live notes {liveImplementationNotesPath}</span>
             <span>{successResult.data.provenance.sourceLabel}</span>
           </div>

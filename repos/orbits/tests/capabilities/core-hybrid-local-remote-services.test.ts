@@ -180,13 +180,13 @@ test("core agent-facing services read the same hybrid local remote database seed
     );
 
     const events = await createEventCrudAndImportService().listEvents();
-    const tasks = createFollowupTaskGenerationService().listTasks();
-    const dashboard = createDashboardAggregateService().getDashboardAggregate();
-    const actions = createAgentActionQueueService().listActions();
-    const bootstrap = createAppBootstrapService().getAppBootstrap();
-    const conversations =
-      createChatConversationMessageService().listConversations();
-    const thread = createChatConversationMessageService().getMessageThread({
+    const tasks = await createFollowupTaskGenerationService().listTasks();
+    const dashboard = await createDashboardAggregateService().getDashboardAggregate();
+    const actions = await createAgentActionQueueService().listActions();
+    const bootstrap = await createAppBootstrapService().getAppBootstrap();
+    const conversations = await createChatConversationMessageService()
+      .listConversations();
+    const thread = await createChatConversationMessageService().getMessageThread({
       conversationId: "conversation_hybrid_mira",
     });
 

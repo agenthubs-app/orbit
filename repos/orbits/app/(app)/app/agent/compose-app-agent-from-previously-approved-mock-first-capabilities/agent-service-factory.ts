@@ -31,7 +31,8 @@ export const appAgentActionServiceFactory =
   createModuleServiceFactory<AgentActionQueueService>({
     capabilityId: "app-agent-action-queue",
     implementations: {
-      mock: () => createAgentActionQueueService(),
+      live: ({ requestedMode }) => createAgentActionQueueService(requestedMode),
+      mock: ({ requestedMode }) => createAgentActionQueueService(requestedMode),
     },
   });
 
@@ -39,7 +40,10 @@ export const appAgentSettingsServiceFactory =
   createModuleServiceFactory<AgentAutonomySettingsService>({
     capabilityId: "app-agent-autonomy-settings",
     implementations: {
-      mock: () => createAgentAutonomySettingsService(),
+      live: ({ requestedMode }) =>
+        createAgentAutonomySettingsService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createAgentAutonomySettingsService(requestedMode),
     },
   });
 
@@ -47,7 +51,10 @@ export const appAgentConfirmationServiceFactory =
   createModuleServiceFactory<SensitiveActionConfirmationService>({
     capabilityId: "app-agent-confirmation-guard",
     implementations: {
-      mock: () => createSensitiveActionConfirmationService(),
+      live: ({ requestedMode }) =>
+        createSensitiveActionConfirmationService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createSensitiveActionConfirmationService(requestedMode),
     },
   });
 
@@ -55,7 +62,10 @@ export const appAgentSandboxServiceFactory =
   createModuleServiceFactory<ExternalActionSandboxService>({
     capabilityId: "app-agent-external-action-sandbox",
     implementations: {
-      mock: () => createExternalActionSandboxService(),
+      live: ({ requestedMode }) =>
+        createExternalActionSandboxService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createExternalActionSandboxService(requestedMode),
     },
   });
 
@@ -63,7 +73,10 @@ export const appAgentNotificationServiceFactory =
   createModuleServiceFactory<ReminderScheduleNotificationService>({
     capabilityId: "app-agent-notification-queue",
     implementations: {
-      mock: () => createReminderScheduleNotificationService(),
+      live: ({ requestedMode }) =>
+        createReminderScheduleNotificationService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createReminderScheduleNotificationService(requestedMode),
     },
   });
 

@@ -2,9 +2,13 @@
 // 当前 mock 边界强调“预览和确认”，不会发送邮件、创建日程或执行真实外部动作。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createHybridAgentActionQueueService } from "./agent-action-queue-mock/hybrid-service";
+import { createLiveExternalActionSandboxService } from "./live-external-action-sandbox";
+import { createLiveAgentActionQueueService } from "./live-service";
+import { createLiveAgentAutonomySettingsService } from "./live-settings-service";
 import { createMockExternalActionSandboxService } from "./mock-external-action-sandbox";
 import { createMockAgentActionQueueService } from "./mock-service";
 import { createMockAgentAutonomySettingsService } from "./mock-settings-service";
+import { createConfiguredStorageAgentActionQueueProvider } from "./storage/agent-action-live-record-provider";
 import type { ExternalActionSandboxService } from "./external-action-contract";
 import type { AgentActionQueueService } from "./service";
 import type { AgentAutonomySettingsService } from "./settings-contract";
@@ -19,6 +23,10 @@ export const agentActionQueueServiceFactory =
     capabilityId: "agent-action-queue",
     implementations: {
       hybrid: () => createHybridAgentActionQueueService(),
+      live: () =>
+        createLiveAgentActionQueueService({
+          provider: createConfiguredStorageAgentActionQueueProvider(),
+        }),
       mock: () => createMockAgentActionQueueService(),
     },
   });
@@ -27,6 +35,7 @@ export const agentAutonomySettingsServiceFactory =
   createModuleServiceFactory<AgentAutonomySettingsService>({
     capabilityId: "agent-autonomy-settings",
     implementations: {
+      live: () => createLiveAgentAutonomySettingsService(),
       mock: () => createMockAgentAutonomySettingsService(),
     },
   });
@@ -35,6 +44,7 @@ export const externalActionSandboxServiceFactory =
   createModuleServiceFactory<ExternalActionSandboxService>({
     capabilityId: "external-action-sandbox",
     implementations: {
+      live: () => createLiveExternalActionSandboxService(),
       mock: () => createMockExternalActionSandboxService(),
     },
   });

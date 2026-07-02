@@ -40,13 +40,13 @@ test("agent action queue contract exports typed categories fixtures errors and s
     AGENT_ACTION_QUEUE_FIXTURE_SOURCE: string;
     mockAgentActionQueueFixture: {
       state: string;
-      actions: readonly Array<{
+      actions: ReadonlyArray<{
         actionId: string;
         actionType: string;
         title: string;
         recommendedAction: string;
         evidenceIds: readonly string[];
-        sourceRefs: readonly Array<{
+        sourceRefs: ReadonlyArray<{
           type: string;
           label: string;
           providerRecordId: string;
@@ -115,6 +115,7 @@ test("agent action queue contract exports typed categories fixtures errors and s
     "AGENT_ACTION_QUEUE_EMPTY",
     "AGENT_ACTION_QUEUE_PENDING",
     "AGENT_ACTION_QUEUE_MOCK_FAILED",
+    "AGENT_ACTION_QUEUE_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.AGENT_ACTION_QUEUE_ERROR_DEFINITIONS.AGENT_ACTION_QUEUE_MOCK_FAILED
@@ -204,7 +205,7 @@ test("mock agent action queue service is deterministic provider-free and side-ef
         success: boolean;
         data?: {
           state: string;
-          actions: readonly Array<{
+          actions: ReadonlyArray<{
             actionId: string;
             actionType: string;
             externalSideEffectExecuted: false;
@@ -441,9 +442,8 @@ test("agent action queue API routes return stable envelopes with empty and failu
         boundary: "developer-admin",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock agent action queue failure came from deterministic fixture rules.",
-        service: "agent-action-queue-mock",
+        provenance: "Mock agent action queue controlled failure",
+        service: "agent-action-queue",
       },
     },
   });
@@ -525,7 +525,7 @@ test("agent action queue debug route renders all states and live replacement han
     /action="\/api\/agent\/actions\/demo-action-1\/accept\?scenario=failure"/,
   );
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_AGENT_ACTION_QUEUE_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /agent-action-queue-workbench/);
   assert.match(
     html,
@@ -534,28 +534,26 @@ test("agent action queue debug route renders all states and live replacement han
 
   assert.match(
     liveDoc,
-    /features\/agent\/agent-action-queue-mock\/live-service\.ts/,
+    /features\/agent\/live-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/agent\/agent-action-queue-mock\/service-factory\.ts/,
+    /features\/agent\/storage\/agent-action-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /features\/agent\/agent-action-queue-mock\/providers\//);
-  assert.match(liveDoc, /ORBIT_AGENT_ACTION_QUEUE_PROVIDER/);
-  assert.match(liveDoc, /ORBIT_AGENT_ACTION_DATABASE_URL/);
-  assert.match(liveDoc, /ORBIT_AGENT_ACTION_AI_PROVIDER/);
-  assert.match(liveDoc, /calendar read permission/i);
-  assert.match(liveDoc, /email read permission/i);
-  assert.match(liveDoc, /notification permission/i);
-  assert.match(liveDoc, /explicit confirmation/i);
+  assert.match(liveDoc, /features\/agent\/service-factory\.ts/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
+  assert.match(liveDoc, /ORBIT_EVENT_DATABASE_URL/);
+  assert.match(liveDoc, /ORBIT_LIVE_DATABASE_URL/);
+  assert.match(liveDoc, /ORBIT_WORKSPACE_ID/);
+  assert.match(liveDoc, /approved/);
+  assert.match(liveDoc, /rejected/);
+  assert.match(liveDoc, /execution confirmation/i);
   assert.match(liveDoc, /privacy/i);
   assert.match(liveDoc, /provenance/i);
   assert.match(
     liveDoc,
-    /event reminders, post-event followups, dormant activation, message draft suggestions, and appointment suggestions/i,
+    /agentActions[\s\S]*contacts[\s\S]*connections[\s\S]*evidence[\s\S]*matchRecommendations[\s\S]*networkPeople/i,
   );
-  assert.match(liveDoc, /empty/i);
-  assert.match(liveDoc, /pending/i);
-  assert.match(liveDoc, /controlled failure/i);
+  assert.match(liveDoc, /external side\s+effects disabled/i);
   assert.match(liveDoc, /replacement tests/i);
 });
