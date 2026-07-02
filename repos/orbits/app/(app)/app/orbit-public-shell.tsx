@@ -8,6 +8,11 @@ import { Icon, Logo } from "./orbit-reference-primitives";
 export type OrbitNavActive = "home" | "events" | "schedule" | "cards" | "agent" | "me";
 
 export function productHref(prototypeHref: string) {
+  if (
+    prototypeHref === "/app" ||
+    prototypeHref.startsWith("/app/") ||
+    prototypeHref.startsWith("/app?")
+  ) return prototypeHref;
   if (prototypeHref === "/") return "/app";
   if (prototypeHref === "/explore") return "/app/events";
   if (prototypeHref === "/agent") return "/app/agent";
@@ -15,7 +20,7 @@ export function productHref(prototypeHref: string) {
   if (prototypeHref === "/home") return "/app/account/login";
   if (prototypeHref === "/home/events") return "/app/home/events";
   if (prototypeHref === "/home/profile") return "/app/profile";
-  if (prototypeHref === "/home/schedule") return "/app/followups";
+  if (prototypeHref === "/home/schedule") return "/app/schedule";
   if (prototypeHref === "/home/cards") return "/app/contacts";
   if (prototypeHref === "/home/cards/scan") return "/app/contacts/new";
   if (prototypeHref.startsWith("/home/cards/")) return `/app/contacts/${prototypeHref.split("/").pop()}`;

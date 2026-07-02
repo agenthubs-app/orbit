@@ -38,7 +38,7 @@ function productHref(prototypeHref: string) {
   if (prototypeHref === "/agent") return "/app/agent";
   if (prototypeHref === "/home") return "/app/account/login";
   if (prototypeHref === "/home/events") return "/app/home/events";
-  if (prototypeHref === "/home/schedule") return "/app/followups";
+  if (prototypeHref === "/home/schedule") return "/app/schedule";
   if (prototypeHref === "/home/cards") return "/app/contacts";
   if (prototypeHref === "/party") return "/app/party";
   if (prototypeHref.startsWith("/events/")) return `/app/events/${prototypeHref.split("/").pop()}`;

@@ -25,9 +25,9 @@ function homeFilters(t: Translate): Array<[HomeFilter, string]> {
 
 function hubEntryCards(t: Translate) {
   return [
-    { g: "g-emerald", href: "/home/profile", icon: "user", mobileSub: t({ en: "Reuse", zh: "复用" }), mobileTitle: t({ en: "Profile", zh: "画像" }), sub: t({ en: "Auto-reused for every event", zh: "报名各场自动复用" }), title: t({ en: "Universal profile", zh: "通用画像" }) },
-    { g: "g-rose", href: "/home/cards", icon: "wallet", mobileSub: t({ en: "CRM", zh: "CRM" }), mobileTitle: t({ en: "Contacts", zh: "名片夹" }), sub: t({ en: "Post-event contact CRM", zh: "会后人脉 CRM" }), title: t({ en: "Contacts", zh: "名片夹" }) },
-    { g: "g-sky", href: "/home/schedule", icon: "clock", mobileSub: t({ en: "Meet", zh: "约见" }), mobileTitle: t({ en: "Schedule", zh: "日程" }), sub: t({ en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ en: "Schedule", zh: "日程安排" }) },
+    { g: "g-emerald", href: "/app/profile", icon: "user", mobileSub: t({ en: "Reuse", zh: "复用" }), mobileTitle: t({ en: "Profile", zh: "画像" }), sub: t({ en: "Auto-reused for every event", zh: "报名各场自动复用" }), title: t({ en: "Universal profile", zh: "通用画像" }) },
+    { g: "g-rose", href: "/app/contacts", icon: "wallet", mobileSub: t({ en: "CRM", zh: "CRM" }), mobileTitle: t({ en: "Contacts", zh: "名片夹" }), sub: t({ en: "Post-event contact CRM", zh: "会后人脉 CRM" }), title: t({ en: "Contacts", zh: "名片夹" }) },
+    { g: "g-sky", href: "/app/schedule", icon: "clock", mobileSub: t({ en: "Meet", zh: "约见" }), mobileTitle: t({ en: "Schedule", zh: "日程" }), sub: t({ en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ en: "Schedule", zh: "日程安排" }) },
   ];
 }
 
@@ -202,15 +202,15 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
             <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 26, fontWeight: 700 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 1 }}>{label}</div></div>
           ))}
         </div>
-        <div style={{ alignItems: "start", display: "grid", gap: 30, gridTemplateColumns: "1fr 320px", marginTop: 34 }}>
-          <div>
+        <div className="orbit-home-main-grid">
+          <div className="orbit-home-events-pane">
             <div style={{ alignItems: "center", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 16 }}>
               <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "My events", zh: "我的活动" })}</h2>
               <a className="btn btn-ghost btn-sm" href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }}>{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={15} /></a>
             </div>
             <MyEventsBlock events={viewModel.events} language={language} t={t} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="orbit-home-hub-rail">
             {hubEntryCards(t).map((item) => (
               <a className="card card-hover" href={item.href} key={item.href} onClick={(event) => { event.preventDefault(); orbitNavigate(item.href); }} style={{ alignItems: "center", display: "flex", gap: 14, padding: 18, textDecoration: "none" }}>
                 <span className={`avatar ${item.g}`} style={{ borderRadius: 13, fontSize: 0, height: 46, width: 46 }}><Icon color="var(--on-dark)" name={item.icon} size={22} /></span>
