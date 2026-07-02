@@ -99,9 +99,10 @@ const businessCardApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/acquisition/business-card-scan-ocr-mock/.",
-  "ORBIT_BUSINESS_CARD_SCAN_PROVIDER switches from mock to live.",
-  "Live replacement requires camera permission, OCR provider, and storage bucket controls.",
+  "Live service files live under features/acquisition/live-business-card-scan-service.ts.",
+  "Storage provider files live under features/acquisition/storage/business-card-scan-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live switches business card scan OCR to source-backed remote live records.",
+  "Camera permission, OCR provider, and storage bucket controls remain future device-scanning work.",
   "Replacement tests cover scan, lookup, empty, pending, and provider failure paths.",
 ] as const;
 
@@ -434,7 +435,7 @@ export function BusinessCardScanOcrMockDemo() {
             <div>
               <dt>Switch</dt>
               <dd>
-                <code>ORBIT_BUSINESS_CARD_SCAN_PROVIDER</code>
+                <code>ORBIT_MODULE_MODE=live</code>
               </dd>
             </div>
           </dl>

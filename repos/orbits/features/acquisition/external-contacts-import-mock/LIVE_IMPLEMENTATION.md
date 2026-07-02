@@ -1,45 +1,72 @@
-# External Contacts Import Mock Live Implementation
+# External Contacts Import Live Implementation
 
 ## Live service and provider files
 
-- Keep `features/acquisition/external-import-contract.ts` as the typed DTO and error boundary for candidates, drafts, provenance, and API envelopes.
-- Replace `features/acquisition/mock-external-import-service.ts` with `features/acquisition/external-contacts-import-mock/live-service.ts` once live providers are enabled.
-- Add provider adapters under `features/acquisition/external-contacts-import-mock/providers/`:
-  - `phone-address-book-provider.ts` for phone address book reads after explicit user permission.
-  - `google-contacts-provider.ts` for Google Contacts reads after delegated contact permission.
-  - `csv-import-provider.ts` for bounded CSV validation, sampling, and parser errors.
-  - `existing-customer-list-provider.ts` for existing customer-list candidate imports from an approved customer source.
+- `features/acquisition/external-import-contract.ts` remains the typed DTO,
+  error, provenance, and API envelope boundary.
+- `features/acquisition/live-external-import-service.ts` is the live review
+  service. It derives external contact candidates and review drafts from seeded
+  live storage and does not execute real external-provider sync.
+- `features/acquisition/storage/external-import-live-record-provider.ts` reads
+  `networkPeople`, `contacts`, and `evidence` from the shared `orbit_records`
+  store.
+- `features/acquisition/service-factory.ts` registers
+  `external-contacts-import` for `live` mode through the configured Postgres
+  live record store.
 
 ## Switch mechanism
 
-- `ORBIT_EXTERNAL_CONTACTS_IMPORT_PROVIDER=mock` keeps the current deterministic fixture service active.
-- `ORBIT_EXTERNAL_CONTACTS_IMPORT_PROVIDER=live` should route API handlers through `live-service.ts`.
-- `hybrid` mode may use live candidate reads while contact writes, notifications, and production import jobs remain disabled until confirmation and provenance checks pass.
-- The API routes at `/api/contact-drafts/external/import` and `/api/contact-drafts/external/candidates` should keep returning `{ success: true, data }` and `{ success: false, error }` envelopes.
+- `ORBIT_MODULE_MODE=mock` keeps the deterministic fixture service active.
+- `ORBIT_MODULE_MODE=live` routes
+  `/api/contact-drafts/external/candidates` and
+  `/api/contact-drafts/external/import` through the live service.
+- `ORBIT_MODULE_MODE=hybrid` still falls back through the module-mode policy and
+  should not be treated as a partial provider sync path.
+- The contacts-new workbench remains pinned to mock external contacts import
+  because that page still composes its acquisition cards synchronously.
 
-## Required env vars or permissions
+## Live data boundary
 
-- `ORBIT_EXTERNAL_CONTACTS_IMPORT_PROVIDER` chooses mock, hybrid, or live behavior.
-- `ORBIT_GOOGLE_CONTACTS_CLIENT_ID`, `ORBIT_GOOGLE_CONTACTS_CLIENT_SECRET`, and `ORBIT_GOOGLE_CONTACTS_REDIRECT_URI` are required before Google Contacts reads can run.
-- Phone address book reads require explicit device/contact permission in the client surface before any provider adapter is called.
-- CSV imports require file size, MIME type, row count, encoding, and header validation before parsing beyond a bounded preview.
-- Existing customer-list imports require an approved customer source identifier and a read-only service credential scoped to candidate lookup.
+- The live path treats seeded `networkPeople` records with
+  `personKind="external_contact"` as the source-backed external candidate pool.
+- Existing `contacts` are read only for duplicate hints.
+- `evidence` records are mapped into draft evidence and provenance.
+- The service maps candidates into the existing source kinds
+  `phone`, `google_contacts`, `csv`, and `existing_customer_list` with stable,
+  deterministic assignment so the current contract can be exercised against
+  generated relationship data.
+- This keeps the same phone address book, Google Contacts, CSV, and existing customer-list review vocabulary as the mock capability.
+- The provider keeps `live-record-store.ts` generic. Field-specific validation
+  and mapping live in the acquisition storage provider and service.
+
+## Not implemented yet
+
+- No phone address book read is executed.
+- No Google Contacts sync is executed.
+- No CSV file is parsed.
+- No customer-list job is executed.
+- No contact, contactDraft, notification, task, email, or production import job
+  write is executed from these routes.
 
 ## Privacy and provenance constraints
 
-- Every candidate and draft must preserve `source`, `sourceKind`, evidence ids, collection time, and captured field provenance from the live provider payload.
-- Phone address book, Google Contacts, CSV, and existing customer-list payloads cannot be stored as raw provider blobs in product state.
-- Contact writes, follow-up creation, notifications, and production import jobs stay disabled until the user reviews the candidate and confirms the action.
-- Empty, pending, unsupported source, and provider failure states must fail visibly through API envelopes instead of silently dropping records.
-- Live services must never mix candidates from unapproved accounts or workspaces into the current user relationship graph.
+- Every candidate and draft preserves source references, source kind, evidence
+  ids, collection time, and captured field provenance.
+- Raw provider payloads are not stored in product state.
+- Empty, pending, unsupported source, unconfigured storage, and live storage
+  failure states fail visibly through API envelopes.
+- All live payloads set `privacy="live-external-contacts-import"` and
+  `generationMethod="live-store-query"`.
 
 ## Replacement tests
 
-The replacement tests must prove the live path preserves this mock boundary's
-shape before any provider is enabled.
+The replacement tests keep the live review path aligned with the existing mock
+contract before any real phone, Google, CSV, or customer-list provider is
+enabled.
 
-- Add contract tests for `features/acquisition/external-contacts-import-mock/live-service.ts` covering phone address book, Google Contacts, CSV, and existing customer-list candidate mapping.
-- Add API route tests proving the live switch preserves envelope shapes, runtime boundary headers, empty state, pending state, unsupported source validation, and controlled provider failure mapping.
-- Add privacy tests proving raw provider payloads are not exposed and every candidate carries source and evidence provenance.
-- Add confirmation tests proving live contact writes, notifications, and production import jobs cannot execute from import routes without explicit review and confirmation.
-- Keep the current mock tests as regression coverage for deterministic fixture behavior in mock mode.
+- `tests/capabilities/external-contacts-import-live-store.test.ts` proves live
+  candidate and draft mapping, no contact/contactDraft writes, unconfigured
+  fail-closed behavior, live factory registration, and API live-mode failure
+  envelopes.
+- `tests/capabilities/external-contacts-import-mock.test.ts` remains regression
+  coverage for deterministic fixture behavior and the debug handoff surface.

@@ -88,7 +88,7 @@ export async function POST(request: Request): Promise<Response> {
   // importEventAttendees 生成待确认草稿，不直接创建联系人。
   const mode = resolveFeatureMode();
   const importService = createEventAttendeeImportService();
-  const result = importService.importEventAttendees(
+  const result = await importService.importEventAttendees(
     await readEventAttendeeImportInput(request),
   );
 

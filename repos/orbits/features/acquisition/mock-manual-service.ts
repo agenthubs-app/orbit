@@ -11,7 +11,6 @@ import {
   type ManualContactCreationPayload,
   type ManualContactCreationResult,
   type ManualContactCreationScenario,
-  type ManualContactCreationService,
   type ManualContactCreationSuccess,
   type ManualContactDraft,
   type ManualContactEvidence,
@@ -285,7 +284,16 @@ function buildConfirmationPayload(
   };
 }
 
-export function createMockManualContactCreationService(): ManualContactCreationService {
+export interface MockManualContactCreationService {
+  createManualContactDraft: (
+    input?: ManualContactCreationInput,
+  ) => ManualContactCreationResult;
+  confirmManualContactDraft: (
+    input: ManualContactConfirmationInput,
+  ) => ManualContactConfirmationResult;
+}
+
+export function createMockManualContactCreationService(): MockManualContactCreationService {
   // create 阶段生成草稿；confirm 阶段生成候选 contact 和 confirmation evidence。
   return {
     createManualContactDraft(input = {}): ManualContactCreationResult {

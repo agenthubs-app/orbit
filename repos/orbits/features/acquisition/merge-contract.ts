@@ -17,6 +17,8 @@ export type DuplicateDetectionMatchReason =
   (typeof DUPLICATE_DETECTION_MATCH_REASONS)[number];
 
 export const DUPLICATE_DETECTION_MERGE_ERROR_CODES = [
+  "DUPLICATE_MERGE_LIVE_STORE_UNCONFIGURED",
+  "DUPLICATE_MERGE_LIVE_STORE_FAILED",
   "DUPLICATE_MERGE_SUGGESTION_NOT_FOUND",
   "DUPLICATE_MERGE_PENDING_REVIEW",
   "DUPLICATE_MERGE_CONFIRMATION_BLOCKED",
@@ -61,6 +63,20 @@ export interface DuplicateDetectionMergeErrorDefinition {
 
 // 合并错误定义把 pending review 和 destructive merge blocked 明确区分。
 export const DUPLICATE_DETECTION_MERGE_ERROR_DEFINITIONS = {
+  DUPLICATE_MERGE_LIVE_STORE_UNCONFIGURED: {
+    code: "DUPLICATE_MERGE_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live duplicate detection and merge store is not configured.",
+    recovery:
+      "Configure the shared live record store before running live duplicate detection, or switch this capability back to mock mode.",
+  },
+  DUPLICATE_MERGE_LIVE_STORE_FAILED: {
+    code: "DUPLICATE_MERGE_LIVE_STORE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live duplicate detection and merge boundary failed.",
+    recovery:
+      "Surface the live duplicate merge failure without applying a merge, writing contacts, or retrying external providers.",
+  },
   DUPLICATE_MERGE_SUGGESTION_NOT_FOUND: {
     code: "DUPLICATE_MERGE_SUGGESTION_NOT_FOUND",
     appCode: "NOT_FOUND",
@@ -108,8 +124,13 @@ export interface DuplicateMergeProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-duplicate-merge-only";
-  generationMethod: "fixture" | "rule-based-duplicate-merge";
+  privacy: "demo-duplicate-merge-only" | "live-duplicate-detection-merge";
+  generationMethod:
+    | "fixture"
+    | "live-store-confirmation"
+    | "live-store-query"
+    | "rule-based-duplicate-merge";
+  liveDatabaseReadExecuted?: boolean;
   externalNetworkRequested: false;
   databaseWriteExecuted: false;
   destructiveMergeExecuted: false;
@@ -126,7 +147,7 @@ export interface DuplicateMergeEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-duplicate-merge-service";
+  createdBy: "live-duplicate-merge-service" | "mock-duplicate-merge-service";
 }
 
 // duplicate candidate 只描述可能重复的两边记录，不自动选边或写入。
@@ -252,13 +273,17 @@ export type DuplicateMergeApplyResult =
   | DuplicateMergeApplySuccess
   | DuplicateDetectionMergeFailure;
 
+export type DuplicateDetectionMergeServiceResult<TResult> =
+  | Promise<TResult>
+  | TResult;
+
 export interface DuplicateDetectionMergeService {
   listMergeSuggestions: (
     input?: DuplicateMergeSuggestionInput,
-  ) => DuplicateMergeSuggestionsResult;
+  ) => DuplicateDetectionMergeServiceResult<DuplicateMergeSuggestionsResult>;
   applyMergeSuggestion: (
     input: DuplicateMergeApplyInput,
-  ) => DuplicateMergeApplyResult;
+  ) => DuplicateDetectionMergeServiceResult<DuplicateMergeApplyResult>;
 }
 
 export function duplicateMergeFailureToAppError(
@@ -271,13 +296,19 @@ export function duplicateMergeFailureContext(
   failure: DuplicateDetectionMergeFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive =
+    failure.error.provenance.privacy === "live-duplicate-detection-merge";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     duplicateMergeErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock duplicate merge failure came from deterministic fixture rules.",
-    service: "duplicate-detection-and-merge-mock",
+    provenance: isLive
+      ? "Live duplicate merge failure came from the shared live record store boundary."
+      : "Mock duplicate merge failure came from deterministic fixture rules.",
+    service: isLive
+      ? "duplicate-detection-and-merge-live"
+      : "duplicate-detection-and-merge-mock",
   };
 }

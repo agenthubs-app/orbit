@@ -21,6 +21,8 @@ export const EMAIL_CALENDAR_SIGNAL_ERROR_CODES = [
   "EMAIL_CALENDAR_SIGNAL_CONFIRMATION_REQUIRED",
   "EMAIL_CALENDAR_SIGNAL_PENDING",
   "EMAIL_CALENDAR_SIGNAL_MOCK_FAILED",
+  "EMAIL_CALENDAR_SIGNAL_LIVE_STORE_UNCONFIGURED",
+  "EMAIL_CALENDAR_SIGNAL_LIVE_STORE_FAILED",
 ] as const;
 
 export type EmailCalendarSignalErrorCode =
@@ -93,6 +95,20 @@ export const EMAIL_CALENDAR_SIGNAL_ERROR_DEFINITIONS = {
     recovery:
       "Render the failure state and avoid retrying Gmail, Google Calendar, Microsoft Graph, background sync, message ingestion, databases, notifications, or provider work.",
   },
+  EMAIL_CALENDAR_SIGNAL_LIVE_STORE_UNCONFIGURED: {
+    code: "EMAIL_CALENDAR_SIGNAL_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live email and calendar signal store is not configured.",
+    recovery:
+      "Configure the live record store before reading source-backed email and calendar relationship signals.",
+  },
+  EMAIL_CALENDAR_SIGNAL_LIVE_STORE_FAILED: {
+    code: "EMAIL_CALENDAR_SIGNAL_LIVE_STORE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live email and calendar signal store could not be read.",
+    recovery:
+      "Keep relationship signals in review mode and retry only after the live record store is healthy.",
+  },
 } as const satisfies Record<
   EmailCalendarSignalErrorCode,
   EmailCalendarSignalErrorDefinition
@@ -119,7 +135,13 @@ export type EmailCalendarSignalSourceReference = SourceReferenceDTO & {
 // permission 只表示 mock 授权状态，permissionFlowExecuted=false 表示未走真实 provider。
 export interface EmailCalendarSignalPermission {
   required: true;
-  state: "mock-granted" | "mock-pending" | "mock-missing";
+  state:
+    | "mock-granted"
+    | "mock-pending"
+    | "mock-missing"
+    | "live-granted"
+    | "live-pending"
+    | "live-missing";
   provider: EmailCalendarSignalSourceKind;
   scopes: readonly string[];
   permissionGrantId: string;
@@ -143,8 +165,15 @@ export interface EmailCalendarSignalProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-email-calendar-signals-only";
-  generationMethod: "fixture" | "rule-based-email-calendar-signal";
+  privacy:
+    | "demo-email-calendar-signals-only"
+    | "live-email-calendar-signals";
+  generationMethod:
+    | "fixture"
+    | "rule-based-email-calendar-signal"
+    | "live-store-query"
+    | "live-store-confirmation";
+  liveDatabaseReadExecuted?: boolean;
   permissionRequired: true;
   userConfirmationRequired: true;
   gmailApiRequested: false;
@@ -165,7 +194,9 @@ export interface EmailCalendarSignalEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-email-calendar-signal-service";
+  createdBy:
+    | "mock-email-calendar-signal-service"
+    | "live-email-calendar-signal-service";
   messageBodyIngested: false;
 }
 
@@ -246,13 +277,21 @@ export type EmailCalendarSignalConfirmationResult =
   | EmailCalendarSignalConfirmationSuccess
   | EmailCalendarSignalFailure;
 
+export type EmailCalendarSignalServiceResult =
+  | EmailCalendarSignalResult
+  | Promise<EmailCalendarSignalResult>;
+
+export type EmailCalendarSignalConfirmationServiceResult =
+  | EmailCalendarSignalConfirmationResult
+  | Promise<EmailCalendarSignalConfirmationResult>;
+
 export interface EmailCalendarSignalService {
   listEmailCalendarSignals: (
     input?: EmailCalendarSignalListInput,
-  ) => EmailCalendarSignalResult;
+  ) => EmailCalendarSignalServiceResult;
   confirmEmailCalendarSignal: (
     input: EmailCalendarSignalConfirmInput,
-  ) => EmailCalendarSignalConfirmationResult;
+  ) => EmailCalendarSignalConfirmationServiceResult;
 }
 
 export function emailCalendarSignalFailureToAppError(
@@ -265,13 +304,20 @@ export function emailCalendarSignalFailureContext(
   failure: EmailCalendarSignalFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive =
+    failure.error.provenance.privacy === "live-email-calendar-signals";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     emailCalendarSignalErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock email and calendar relationship signal failure came from deterministic fixture rules.",
-    service: "email-and-calendar-relationship-signal-mock",
+      isLive
+        ? "Live email and calendar relationship signal failure came from the shared live record store boundary."
+        : "Mock email and calendar relationship signal failure came from deterministic fixture rules.",
+    service: isLive
+      ? "email-calendar-signal-live"
+      : "email-and-calendar-relationship-signal-mock",
   };
 }

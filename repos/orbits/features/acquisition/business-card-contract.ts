@@ -12,6 +12,8 @@ export const BUSINESS_CARD_SCAN_OCR_ERROR_CODES = [
   "BUSINESS_CARD_DRAFT_NOT_FOUND",
   "BUSINESS_CARD_SCAN_NOT_READY",
   "BUSINESS_CARD_SCAN_OCR_MOCK_FAILED",
+  "BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED",
+  "BUSINESS_CARD_SCAN_OCR_LIVE_STORE_FAILED",
 ] as const;
 
 export type BusinessCardScanOcrErrorCode =
@@ -78,6 +80,20 @@ export const BUSINESS_CARD_SCAN_OCR_ERROR_DEFINITIONS = {
     recovery:
       "Render the failure state and avoid retrying live camera, upload storage, OCR, AI, database, calendar, email, or notification work.",
   },
+  BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED: {
+    code: "BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live business card scan OCR store is not configured.",
+    recovery:
+      "Configure the live record store before reading source-backed business card OCR drafts.",
+  },
+  BUSINESS_CARD_SCAN_OCR_LIVE_STORE_FAILED: {
+    code: "BUSINESS_CARD_SCAN_OCR_LIVE_STORE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live business card scan OCR store could not be read.",
+    recovery:
+      "Keep the contact graph unchanged and return a controlled live storage failure envelope.",
+  },
 } as const satisfies Record<
   BusinessCardScanOcrErrorCode,
   BusinessCardScanOcrErrorDefinition
@@ -94,14 +110,29 @@ export interface BusinessCardScanOcrProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-business-card-scan-ocr-only";
-  generationMethod: "fixture" | "rule-based-card-ocr";
+  privacy:
+    | "demo-business-card-scan-ocr-only"
+    | "live-business-card-scan-ocr";
+  generationMethod: "fixture" | "live-store-query" | "rule-based-card-ocr";
+  liveDatabaseReadExecuted?: boolean;
+  databaseWriteExecuted?: false;
+  contactWriteExecuted?: false;
+  cameraRequested?: false;
+  uploadStorageRequested?: false;
+  storageWriteExecuted?: false;
+  externalNetworkRequested?: false;
+  ocrProviderRequested?: false;
+  aiProviderRequested?: false;
+  notificationDelivered?: false;
 }
 
 // capture 表示输入图像的 mock 捕获记录，所有设备/存储副作用固定为 false。
 export interface BusinessCardCapture {
   captureId: string;
-  captureMethod: "fixture-camera-frame" | "rule-based-image-text";
+  captureMethod:
+    | "fixture-camera-frame"
+    | "live-store-business-card-record"
+    | "rule-based-image-text";
   imageName: string;
   imageMimeType: "image/jpeg" | "text/plain";
   imageDigest: string;
@@ -128,7 +159,7 @@ export interface BusinessCardEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-business-card-service";
+  createdBy: "live-business-card-scan-service" | "mock-business-card-service";
 }
 
 // 名片草稿默认处于 pending confirmation，不会直接写联系人。
@@ -198,10 +229,10 @@ export type BusinessCardDraftLookupResult =
 export interface BusinessCardScanOcrService {
   scanBusinessCard: (
     input?: BusinessCardScanOcrInput,
-  ) => BusinessCardScanOcrResult;
+  ) => Promise<BusinessCardScanOcrResult> | BusinessCardScanOcrResult;
   getBusinessCardDraft: (
     input: BusinessCardDraftLookupInput,
-  ) => BusinessCardDraftLookupResult;
+  ) => Promise<BusinessCardDraftLookupResult> | BusinessCardDraftLookupResult;
 }
 
 export function businessCardScanOcrFailureToAppError(
@@ -214,13 +245,20 @@ export function businessCardScanOcrFailureContext(
   failure: BusinessCardScanOcrFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive =
+    failure.error.provenance.privacy === "live-business-card-scan-ocr";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     businessCardScanOcrErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock business card scan OCR failure came from deterministic fixture rules.",
-    service: "business-card-scan-ocr-mock",
+      isLive
+        ? "Live business card scan OCR failure came from the source-backed live store boundary."
+        : "Mock business card scan OCR failure came from deterministic fixture rules.",
+    service: isLive
+      ? "business-card-scan-ocr-live"
+      : "business-card-scan-ocr-mock",
   };
 }

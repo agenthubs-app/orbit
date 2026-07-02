@@ -48,6 +48,7 @@ test("contact acquisition draft pipeline contract exposes source-aware drafts, c
   });
 
   assert.deepEqual(contract.CONTACT_ACQUISITION_DRAFT_ERROR_CODES, [
+    "CONTACT_DRAFT_LIVE_STORE_UNCONFIGURED",
     "CONTACT_DRAFT_NOT_FOUND",
     "CONTACT_DRAFT_ALREADY_CONFIRMED",
     "CONTACT_DRAFT_CONFIRMATION_NOT_ALLOWED",
@@ -329,11 +330,11 @@ test("contact acquisition draft debug route renders success, empty, pending, and
   assert.match(html, /Live handoff evidence excerpts/);
   assert.match(
     html,
-    /Provider adapters live under features\/acquisition\/providers\//,
+    /Storage-backed contact draft live provider lives under features\/acquisition\/storage\/contact-draft-live-record-provider\.ts/,
   );
   assert.match(
     html,
-    /ORBIT_CONTACT_ACQUISITION_PROVIDER gates provider-backed acquisition/,
+    /ORBIT_MODULE_MODE=live gates the live contact draft API path/,
   );
   assert.match(
     html,
@@ -362,9 +363,15 @@ test("contact acquisition draft live handoff covers replacement requirements", (
   assert.match(doc, /features\/acquisition\/contract\.ts/);
   assert.match(doc, /features\/acquisition\/mock-service\.ts/);
   assert.match(doc, /features\/acquisition\/live-service\.ts/);
+  assert.match(
+    doc,
+    /features\/acquisition\/storage\/contact-draft-live-record-provider\.ts/,
+  );
   assert.match(doc, /app\/api\/contact-drafts\/route\.ts/);
   assert.match(doc, /app\/api\/contact-drafts\/\[id\]\/confirm\/route\.ts/);
-  assert.match(doc, /ORBIT_CONTACT_ACQUISITION_PROVIDER/);
+  assert.match(doc, /ORBIT_MODULE_MODE=live/);
+  assert.match(doc, /ORBIT_EVENT_DATABASE_URL/);
+  assert.match(doc, /ORBIT_WORKSPACE_ID/);
   assert.match(doc, /source and evidence provenance/i);
   assert.match(doc, /operator confirmation/i);
   assert.match(doc, /business-card OCR/i);
@@ -374,11 +381,11 @@ test("contact acquisition draft live handoff covers replacement requirements", (
   assert.match(doc, /Live handoff evidence excerpts/i);
   assert.match(
     doc,
-    /Provider adapters live under `features\/acquisition\/providers\/`/,
+    /Storage-backed contact draft live provider lives under `features\/acquisition\/storage\/contact-draft-live-record-provider\.ts`/,
   );
   assert.match(
     doc,
-    /`ORBIT_CONTACT_ACQUISITION_PROVIDER` gates provider-backed acquisition/,
+    /`ORBIT_MODULE_MODE=live` gates the live contact draft API path/,
   );
   assert.match(doc, /Operator confirmation precedes every contact write/);
   assert.match(

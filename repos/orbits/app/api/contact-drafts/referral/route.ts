@@ -83,9 +83,11 @@ async function readReferralRecommendationInput(
 
 export async function POST(request: Request): Promise<Response> {
   // 创建推荐草稿是资源创建语义；success 返回 201，其余状态返回 200。
-  const mode = resolveFeatureMode();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
   const service = createReferralRecommendationService();
-  const result = service.createReferralContactDrafts(
+  const result = await service.createReferralContactDrafts(
     await readReferralRecommendationInput(request),
   );
 

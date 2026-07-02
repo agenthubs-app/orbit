@@ -3,7 +3,6 @@ import {
   type DuplicateDetectionMergeErrorCode,
   type DuplicateDetectionMergeFailure,
   type DuplicateDetectionMergeScenario,
-  type DuplicateDetectionMergeService,
   type DuplicateMergeApplyInput,
   type DuplicateMergeApplyPayload,
   type DuplicateMergeApplyResult,
@@ -23,6 +22,15 @@ import {
   mockEmptyDuplicateMergeSuggestionsFixture,
   mockPendingDuplicateMergeSuggestionsFixture,
 } from "./merge-fixtures";
+
+export interface MockDuplicateMergeService {
+  listMergeSuggestions: (
+    input?: DuplicateMergeSuggestionInput,
+  ) => DuplicateMergeSuggestionsResult;
+  applyMergeSuggestion: (
+    input: DuplicateMergeApplyInput,
+  ) => DuplicateMergeApplyResult;
+}
 
 const supportedListScenarios = new Set<DuplicateDetectionMergeScenario>([
   "success",
@@ -183,7 +191,7 @@ function buildAppliedPayload(
   };
 }
 
-export function createMockDuplicateMergeService(): DuplicateDetectionMergeService {
+export function createMockDuplicateMergeService(): MockDuplicateMergeService {
   // list 只展示建议；apply 只记录确认结果，不执行真实字段合并写入。
   return {
     listMergeSuggestions(input = {}): DuplicateMergeSuggestionsResult {

@@ -1,40 +1,67 @@
 # Referral and Recommended Contact Confirm Live Implementation
 
-## Live Service and Provider Files
+The live implementation is now registered through
+`features/acquisition/service-factory.ts` and implemented by
+`features/acquisition/live-referral-service.ts`.
 
-- Keep `features/acquisition/referral-contract.ts` as the shared DTO and API contract.
-- Keep `features/acquisition/mock-referral-service.ts` as the deterministic mock provider for local and harness runs.
-- Add `features/acquisition/referral-and-recommended-contact-confirm-mock/live-service.ts` for the live `ReferralRecommendationService` implementation.
-- Add provider adapters under `features/acquisition/referral-and-recommended-contact-confirm-mock/providers/` for approved referral source systems.
-- Keep API routes at `app/api/contact-drafts/referral/route.ts` and `app/api/contact-drafts/recommended/[id]/confirm/route.ts`; they should select a service and keep returning the shared API envelope.
+The storage adapter lives at
+`features/acquisition/storage/referral-live-record-provider.ts`. It reads remote
+`matchRecommendations`, `networkPeople`, `contacts`, and `evidence` records
+from the shared `orbit_records` envelope and maps them into the acquisition
+referral contract.
 
 ## Switch Mechanism
 
-- Use `ORBIT_REFERRAL_RECOMMENDATION_PROVIDER=mock` as the default.
-- Use `ORBIT_REFERRAL_RECOMMENDATION_PROVIDER=live` only after the live service, provider adapters, permissions, audit, and replacement tests are ready.
-- The route handlers should call a service factory that returns `createMockReferralRecommendationService()` in mock mode and the live service in live mode.
-- The dev capability page remains a probe surface and must not own referral matching logic.
+- `ORBIT_MODULE_MODE=mock` keeps route handlers on
+  `features/acquisition/mock-referral-service.ts`.
+- `ORBIT_MODULE_MODE=live` routes `/api/contact-drafts/referral` and
+  `/api/contact-drafts/recommended/[id]/confirm` to
+  `features/acquisition/live-referral-service.ts`.
+- `ORBIT_EVENT_DATABASE_URL`, `ORBIT_LIVE_DATABASE_URL`, or
+  `ORBIT_DATABASE_URL` configures the Postgres/Supabase live record store.
+- `ORBIT_WORKSPACE_ID` selects the workspace; the local development workspace is
+  usually `workspace:orbit-dev`.
 
-## Required Env Vars and Permissions
+## Current Live Boundary
 
-- `ORBIT_REFERRAL_RECOMMENDATION_PROVIDER` selects `mock` or `live`.
-- Live providers need explicit user-authorized access to referral source records.
-- Live providers need permission to read recommender context and provenance fields.
-- Live confirmation needs an authenticated actor id and an auditable user confirmation event.
-- Live contact writes and outbound intro actions must remain disabled until a separate confirmation guard approves them.
+- Reads live match recommendations and recommender/target people from shared
+  storage.
+- Maps `warm_intro`, `context_share`, and `event_follow_up` recommendation
+  types into acquisition referral source kinds.
+- Returns recommended contacts and referral contact drafts with source evidence,
+  recommender context, confirmation state, and no-side-effect flags.
+- `confirmRecommendedContact()` returns a review-only confirmation preview and
+  created evidence DTO.
 
-## Privacy and Provenance Constraints
+This first live version does not write `contacts`, does not upsert
+`contactDrafts`, does not perform multi-hop social graph discovery, does not
+send outreach, does not call AI, does not read devices/email/calendar providers,
+and does not deliver notifications.
 
-- Every referral source must preserve source id, source label, recommender context, evidence ids, and collection time.
-- Do not infer friend-of-friend paths from broad social graphs without explicit source consent and product approval.
-- Do not send automatic outreach when a recommendation is confirmed; confirmation only promotes a recommended contact into the next reviewed workflow.
-- Preserve `privacy`, `generationMethod`, and execution flags so reviewers can see whether graph discovery, outreach, provider access, persistence, AI, or notifications ran.
-- Do not store message bodies, private notes, or unrelated network data unless the live provider contract is expanded and reviewed.
+## Privacy And Provenance Constraints
 
-## Replacement Tests
+- Every live response carries `privacy="live-referral-recommendations"`.
+- Keep source provenance visible in both recommendation and confirmation
+  preview payloads.
+- Preserve source id, source label, recommender context, evidence ids, and
+  confirmation timestamp.
+- Keep `liveDatabaseReadExecuted=true` for successful live reads while
+  `databaseWriteExecuted=false`, `externalNetworkRequested=false`,
+  `multiHopSocialGraphDiscoveryExecuted=false`, and
+  `automaticFriendOfFriendOutreachExecuted=false`.
+- Unsupported source filters, missing recommendations, pending review, blocked
+  confirmation, unconfigured storage, and live provider failures must return
+  visible API failure envelopes.
 
-- Add service tests for live referral source filtering, empty state, pending provider state, provider failure, and unsupported source failures.
-- Add route tests proving `/api/contact-drafts/referral` returns stable envelopes and the correct status codes for success, empty, pending, and failure.
-- Add route tests proving `/api/contact-drafts/recommended/[id]/confirm` returns confirmed, blocked, pending, missing recommendation, and provider failure envelopes.
-- Add privacy/provenance tests that prove live records keep referral source, recommender context, user confirmation, evidence ids, and execution flags.
-- Add integration tests proving live confirmation does not write contacts, send messages, trigger notifications, or enqueue external actions without the separate confirmation guard.
+## Tests
+
+- `tests/capabilities/referral-recommendation-live-store.test.ts` proves live
+  recommendation mapping, confirmation preview behavior, unconfigured
+  fail-closed behavior, factory registration, and API live-mode failure
+  envelopes.
+- `tests/capabilities/referral-and-recommended-contact-confirm-mock.test.ts`
+  keeps the deterministic mock contract, API envelopes, debug panel, and
+  no-provider-call constraints covered.
+- Future outreach or contact writers need separate tests proving confirmation
+  guard integration, audit persistence, rollback behavior, and source evidence
+  retention before they can be enabled.

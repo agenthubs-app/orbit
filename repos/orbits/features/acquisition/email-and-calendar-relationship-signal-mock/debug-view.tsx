@@ -142,10 +142,11 @@ const emailCalendarApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/acquisition/email-and-calendar-relationship-signal-mock/.",
-  "ORBIT_EMAIL_CALENDAR_SIGNAL_PROVIDER switches from mock to live.",
-  "Live replacement requires Gmail, Google Calendar, and Microsoft Graph permissions.",
-  "Message body ingestion stays opt-in, minimized, and provenance-linked.",
+  "Live service files live under features/acquisition/live-email-calendar-service.ts.",
+  "Live storage provider lives under features/acquisition/storage/email-calendar-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live switches API routes from mock fixtures to source-backed live storage.",
+  "Live review mode reads seeded conversations, messages, contacts, and evidence without Gmail, Google Calendar, or Microsoft Graph provider calls.",
+  "Message body ingestion stays disabled, minimized, and provenance-linked.",
   "Replacement tests cover list, confirm, empty, pending, blocked, not-found, and provider failure paths.",
 ] as const;
 

@@ -18,10 +18,12 @@ export const dynamic = "force-dynamic";
 // route 只读取 scenario；草稿来源、排序和状态展示由 acquisition draft service 负责。
 export async function GET(request: Request): Promise<Response> {
   // runtime boundary header 让 UI 能显示当前数据来自 mock/live/hybrid。
-  const mode = resolveFeatureMode();
-  const draftService = createContactAcquisitionDraftService();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const draftService = createContactAcquisitionDraftService(mode);
   const scenario = new URL(request.url).searchParams.get("scenario");
-  const result = draftService.listContactDrafts({ scenario });
+  const result = await draftService.listContactDrafts({ scenario });
 
   if (result.success === false) {
     // draft failure 统一映射为 AppError/envelope。

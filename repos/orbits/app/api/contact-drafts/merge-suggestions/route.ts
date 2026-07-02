@@ -18,10 +18,12 @@ export const dynamic = "force-dynamic";
 // route 只读取 scenario；重复检测、证据和建议排序由 duplicate merge service 负责。
 export async function GET(request: Request): Promise<Response> {
   // 该接口只读，不执行合并动作。
-  const mode = resolveFeatureMode();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
   const searchParams = new URL(request.url).searchParams;
   const mergeService = createDuplicateMergeService();
-  const result = mergeService.listMergeSuggestions({
+  const result = await mergeService.listMergeSuggestions({
     scenario: searchParams.get("scenario"),
   });
 

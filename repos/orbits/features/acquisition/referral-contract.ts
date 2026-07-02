@@ -15,6 +15,8 @@ export const REFERRAL_SOURCE_KINDS = [
 export type ReferralSourceKind = (typeof REFERRAL_SOURCE_KINDS)[number];
 
 export const REFERRAL_RECOMMENDATION_ERROR_CODES = [
+  "REFERRAL_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
+  "REFERRAL_RECOMMENDATION_LIVE_STORE_FAILED",
   "REFERRAL_SOURCE_NOT_SUPPORTED",
   "REFERRAL_RECOMMENDATION_NOT_FOUND",
   "REFERRAL_RECOMMENDATION_CONFIRMATION_REQUIRED",
@@ -61,6 +63,20 @@ export interface ReferralRecommendationErrorDefinition {
 
 // 推荐错误定义覆盖来源不支持、推荐缺失、确认缺失、pending 和受控失败。
 export const REFERRAL_RECOMMENDATION_ERROR_DEFINITIONS = {
+  REFERRAL_RECOMMENDATION_LIVE_STORE_UNCONFIGURED: {
+    code: "REFERRAL_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live referral recommendation store is not configured.",
+    recovery:
+      "Configure the shared live record store before reading live referral recommendations, or switch this capability back to mock mode.",
+  },
+  REFERRAL_RECOMMENDATION_LIVE_STORE_FAILED: {
+    code: "REFERRAL_RECOMMENDATION_LIVE_STORE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live referral recommendation boundary failed.",
+    recovery:
+      "Surface the live referral failure without writing contacts, sending outreach, discovering a social graph, or retrying external providers.",
+  },
   REFERRAL_SOURCE_NOT_SUPPORTED: {
     code: "REFERRAL_SOURCE_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",
@@ -118,8 +134,15 @@ export interface ReferralRecommendationProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-referral-recommendations-only";
-  generationMethod: "fixture" | "rule-based-referral-recommendation";
+  privacy:
+    | "demo-referral-recommendations-only"
+    | "live-referral-recommendations";
+  generationMethod:
+    | "fixture"
+    | "live-store-confirmation"
+    | "live-store-query"
+    | "rule-based-referral-recommendation";
+  liveDatabaseReadExecuted?: boolean;
   multiHopSocialGraphDiscoveryExecuted: false;
   automaticFriendOfFriendOutreachExecuted: false;
   externalNetworkRequested: false;
@@ -149,7 +172,9 @@ export interface ReferralRecommendationEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-referral-recommendation-service";
+  createdBy:
+    | "live-referral-recommendation-service"
+    | "mock-referral-recommendation-service";
 }
 
 // RecommenderContext 解释推荐路径和信任信号，帮助用户判断是否采纳推荐。
@@ -297,13 +322,17 @@ export type RecommendedContactConfirmationResult =
   | RecommendedContactConfirmationSuccess
   | ReferralRecommendationFailure;
 
+export type ReferralRecommendationServiceResult<TResult> =
+  | Promise<TResult>
+  | TResult;
+
 export interface ReferralRecommendationService {
   createReferralContactDrafts: (
     input?: ReferralRecommendationInput,
-  ) => ReferralRecommendationResult;
+  ) => ReferralRecommendationServiceResult<ReferralRecommendationResult>;
   confirmRecommendedContact: (
     input: RecommendedContactConfirmInput,
-  ) => RecommendedContactConfirmationResult;
+  ) => ReferralRecommendationServiceResult<RecommendedContactConfirmationResult>;
 }
 
 export function referralRecommendationFailureToAppError(
@@ -316,13 +345,19 @@ export function referralRecommendationFailureContext(
   failure: ReferralRecommendationFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive =
+    failure.error.provenance.privacy === "live-referral-recommendations";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock referral recommendation failure came from deterministic fixture rules.",
+    provenance: isLive
+      ? "Live referral recommendation failure came from the shared live record store boundary."
+      : "Mock referral recommendation failure came from deterministic fixture rules.",
     referralRecommendationErrorCode: failure.error.code,
-    service: "referral-and-recommended-contact-confirm-mock",
+    service: isLive
+      ? "referral-recommendation-live"
+      : "referral-and-recommended-contact-confirm-mock",
   };
 }

@@ -1,96 +1,74 @@
-# Email And Calendar Relationship Signal Mock Live Implementation
+# Email And Calendar Relationship Signal Live Implementation
 
-## Current Mock Boundary
+## Live service and provider files
 
-Sprint 22 ships a mock-first boundary for email and calendar relationship
-signals. The reusable contract is `features/acquisition/email-calendar-contract.ts`,
-the deterministic service is `features/acquisition/mock-email-calendar-service.ts`,
-and the debug surface is
-`features/acquisition/email-and-calendar-relationship-signal-mock/debug-view.tsx`.
+- `features/acquisition/email-calendar-contract.ts` remains the typed DTO,
+  error, provenance, permission, confirmation, and API envelope boundary.
+- `features/acquisition/live-email-calendar-service.ts` is the live review
+  service. It derives relationship signals from seeded live conversations and
+  messages without calling Gmail, Google Calendar, or Microsoft Graph.
+- `features/acquisition/storage/email-calendar-live-record-provider.ts` reads
+  `contacts`, `conversations`, `messages`, and `evidence` from the shared
+  `orbit_records` store.
+- `features/acquisition/service-factory.ts` registers `email-calendar-signal`
+  for `live` mode through the configured Postgres live record store.
 
-The mock replaces Gmail, Google Calendar, Microsoft Graph, background sync, and
-message body ingestion with local fixtures and rule-based filtering. It never
-contacts provider APIs, device calendars, mailboxes, databases, notification
-services, or model providers.
+## Switch mechanism
 
-## Live Service And Provider Files
+- `ORBIT_MODULE_MODE=mock` keeps the deterministic fixture service active.
+- `ORBIT_MODULE_MODE=live` routes
+  `/api/relationship-signals/email-calendar` and
+  `/api/relationship-signals/[id]/confirm` through the live service.
+- `ORBIT_MODULE_MODE=hybrid` still follows module-mode fallback policy and
+  should not be treated as a partial Gmail or calendar provider sync path.
+- The contacts-new workbench remains pinned to mock email/calendar signals
+  because that page still composes acquisition cards synchronously.
 
-Introduce live code beside this document so the product route can switch
-providers without importing debug UI:
+## Live data boundary
 
-- `features/acquisition/email-and-calendar-relationship-signal-mock/live-service.ts`
-  should implement `EmailCalendarSignalService` from
-  `features/acquisition/email-calendar-contract.ts`.
-- `features/acquisition/email-and-calendar-relationship-signal-mock/providers/gmail-provider.ts`
-  should adapt Gmail metadata reads into `EmailCalendarRelationshipSignal`
-  objects.
-- `features/acquisition/email-and-calendar-relationship-signal-mock/providers/google-calendar-provider.ts`
-  should adapt Google Calendar event metadata into relationship signals.
-- `features/acquisition/email-and-calendar-relationship-signal-mock/providers/microsoft-graph-provider.ts`
-  should adapt Microsoft Graph mail and calendar metadata into relationship
-  signals.
-- `features/acquisition/email-and-calendar-relationship-signal-mock/provider-factory.ts`
-  should choose mock or live implementations and keep route handlers unchanged.
+- The live path treats seeded `conversations` and `messages` as already
+  ingested metadata inside Orbit's live record store.
+- `contacts` are read to attach display names, roles, and organizations.
+- `evidence` records provide review excerpts and confidence; raw provider
+  payloads are not stored in product state.
+- Conversation channel maps to existing source kinds:
+  - `email` -> `gmail`
+  - `calendar` -> `google_calendar`
+  - `chat` and `note` -> `microsoft_graph`
+- The provider keeps `live-record-store.ts` generic. Field-specific validation
+  and mapping live in the acquisition storage provider and service.
 
-## Switch Mechanism
+## Not implemented yet
 
-Use `ORBIT_EMAIL_CALENDAR_SIGNAL_PROVIDER` as the explicit provider switch.
-Allowed values should be `mock` and `live`. The default must remain `mock` for
-Milestone C and for harness runs.
+- No Gmail API request is executed.
+- No Google Calendar API request is executed.
+- No Microsoft Graph request is executed.
+- No background sync job is enqueued.
+- No message body ingestion is executed by this service.
+- No relationship, contact, contactDraft, notification, task, email, or external
+  action write is executed from these routes.
 
-The route handlers should continue to depend on the
-`EmailCalendarSignalService` interface. The only switch should happen in a
-factory module, not in page components or API route business logic.
+## Privacy and provenance constraints
 
-## Required Environment And Permissions
+- Every signal preserves source references, source kind, permission state,
+  confirmation state, evidence ids, collection time, and captured field
+  provenance.
+- Live payloads set `privacy="live-email-calendar-signals"`.
+- List payloads set `generationMethod="live-store-query"`.
+- Confirmation payloads set `generationMethod="live-store-confirmation"`.
+- Empty, pending, blocked confirmation, missing signal, unconfigured storage,
+  and live storage failure states fail visibly through API envelopes.
 
-Live mode requires provider credentials and scoped user consent before any
-metadata read:
+## Replacement tests
 
-- Gmail: client id, client secret, redirect URI, token storage boundary, and a
-  metadata-only mail scope.
-- Google Calendar: client id, client secret, redirect URI, token storage
-  boundary, and an event metadata scope.
-- Microsoft Graph: application id, tenant configuration, redirect URI, token
-  storage boundary, and least-privilege mail and calendar metadata scopes.
+The replacement tests keep the live review path aligned with the existing mock
+contract before any real Gmail, Google Calendar, or Microsoft Graph provider is
+enabled.
 
-Message body ingestion must stay disabled unless a future sprint adds a
-separate consent and minimization contract. Background sync must also remain a
-separate permissioned capability, not a side effect of this boundary.
-
-## Privacy And Provenance Constraints
-
-Every live `EmailCalendarRelationshipSignal` must preserve source, evidence,
-permission, confirmation, and provenance fields from the sprint contract.
-Provider adapters may store metadata needed to explain why a relationship signal
-exists, but they must not silently ingest message bodies or full calendar notes.
-The privacy boundary is metadata-first and must stay visible in each signal's
-provenance.
-
-Sensitive conversion remains confirmation-gated. A confirmed signal can become
-evidence for a later relationship action, but the confirmation route must not
-send messages, write contacts, enqueue notifications, or perform external
-actions by itself.
-
-Failures must use the shared API envelope and include the provider, permission
-state, and provenance reason without exposing tokens, message bodies, or private
-calendar descriptions.
-
-## Replacement Tests
-
-Before switching `ORBIT_EMAIL_CALENDAR_SIGNAL_PROVIDER=live`, add replacement
-tests that cover:
-
-These replacement tests must run against the live provider factory with network
-access mocked or sandboxed at the provider adapter boundary.
-
-- Successful list envelopes for Gmail, Google Calendar, and Microsoft Graph
-  metadata signals.
-- Successful confirmation for a calendar signal with explicit user confirmation.
-- Empty state when permission exists but no qualifying metadata rows are found.
-- Pending state while provider permission or review is incomplete.
-- Blocked confirmation when user confirmation has not been supplied.
-- Not-found confirmation for unknown signal ids.
-- Provider failure mapping for Gmail, Google Calendar, and Microsoft Graph.
-- Privacy checks proving message body ingestion, background sync, notification
-  delivery, and relationship writes do not occur in the list or confirm routes.
+- `tests/capabilities/email-calendar-signal-live-store.test.ts` proves live
+  signal mapping, no relationship/contactDraft writes, confirmation preview,
+  unconfigured fail-closed behavior, live factory registration, and API
+  live-mode failure envelopes.
+- `tests/capabilities/email-and-calendar-relationship-signal-mock.test.ts`
+  remains regression coverage for deterministic fixture behavior and the debug
+  handoff surface.

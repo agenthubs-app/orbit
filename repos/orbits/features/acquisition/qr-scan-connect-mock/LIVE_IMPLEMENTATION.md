@@ -1,39 +1,77 @@
-# QR Scan Connect Mock Replacement
+# QR Scan Connect Live Implementation
 
 ## Live Service Boundary
 
-Replace the mock behind `features/acquisition/qr-scan-connect-mock/live-service.ts`.
-Provider adapters belong under `features/acquisition/qr-scan-connect-mock/providers/`.
+The storage-backed live implementation now lives in
+`features/acquisition/live-qr-service.ts`.
 
-The live boundary should keep the same contract exported from
-`features/acquisition/qr-contract.ts`: scan result, mutual connection context, QR connection draft,
-confirmation payload, and failure definitions.
+The provider adapter lives in
+`features/acquisition/storage/qr-live-record-provider.ts` and reads only the
+remote live store collections needed for this capability:
+
+- `contacts`
+- `evidence`
+
+The live path keeps the contract exported from
+`features/acquisition/qr-contract.ts`: scan result, mutual connection context,
+QR connection draft, confirmation payload, and failure definitions.
 
 ## Switch
 
-Use `ORBIT_QR_SCAN_PROVIDER=mock|live`. Mock remains the default until live camera permission,
-QR decoder, signature verifier, relationship lookup, and persistence reviews are ready.
+Use `ORBIT_MODULE_MODE=live` with a configured remote live store. The service
+factory wires this mode to `createLiveQrScanConnectService()` through
+`createConfiguredStorageQrScanConnectProvider()`.
 
-## Required Live Inputs
+`hybrid` continues to fall back to mock until a dedicated hybrid QR policy is
+added. `mock` remains the default when no module mode is configured.
 
-- camera permission for QR frame capture
-- QR decoder library or native scanner adapter
-- signature verifier keys or issuer configuration for trusted relationship QR payloads
-- `ORBIT_QR_SCAN_PROVIDER` to select mock or live implementation
-- optional `ORBIT_QR_SIGNATURE_JWKS_URL` or equivalent verifier source when signed QR payloads ship
-- provenance records for scan frame, decoded payload, mutual context, confirmation, and created draft
-- contact and connection write permissions gated behind explicit confirmation
+## Current Live Inputs
+
+- remote live store credentials and `ORBIT_WORKSPACE_ID`
+- `contacts` records with `source.type === "qr_scan"`
+- `evidence` records referenced by those contacts
+- stable draft ids in the form `qr-draft:live:<contactId>`
+- provenance records for the live store read, QR-sourced draft, and confirmation preview
+
+The current live boundary does not request camera permission, call a QR decoder,
+verify signatures, perform external relationship graph lookup, write contacts,
+write connections, call AI providers, or deliver notifications.
 
 ## Privacy And Provenance
 
-The live path must preserve source evidence IDs, decoded QR payload metadata, mutual connection
-context, and the operator confirmation requirement. Do not write contacts, connections, messages,
-calendar events, email, notifications, or analytics until the QR connection draft is confirmed.
-Keep raw QR payload retention short, avoid storing unnecessary signed payload material, and attach
-the event or introducer context that explains why the relationship exists.
+The live path preserves source evidence IDs, source labels, decoded live record
+metadata, mutual context, and the operator confirmation requirement. Scan and
+confirm both return source-backed previews only:
+
+The privacy boundary is explicit: source-backed provenance is returned for
+review, but no relationship data is written by scan or confirm.
+
+- `liveDatabaseReadExecuted` is true after a configured live store read.
+- `databaseWriteExecuted`, `contactWriteExecuted`, and
+  `connectionWriteExecuted` remain false.
+- `cameraRequested`, `qrDecoderProviderRequested`,
+  `externalNetworkRequested`, `aiProviderRequested`, and
+  `notificationDelivered` remain false.
+
+Future camera, QR decoder, signature verifier, and real contact/connection
+write implementations must keep the same confirmation boundary and add their
+own replacement tests before enabling writes.
 
 ## Replacement Tests
 
-Add replacement tests for successful scan, empty or unreadable QR, pending validation, invalid
-signature, missing draft confirmation, provider failure, privacy headers, provenance continuity,
-and the no-contact-write or no-connection-write guarantee before confirmation.
+Current replacement tests cover:
+
+- live service reads source-backed QR contacts from remote-record-shaped storage
+- no contact, connection, database, camera, decoder, external lookup, AI, or notification side effects
+- live store unconfigured failure
+- service factory live-mode registration
+- API route mode resolution with `ORBIT_MODULE_MODE=live`
+- demo mock behavior remaining stable
+
+Additional tests are still needed before shipping device scanning:
+
+- unreadable QR payload
+- invalid signature
+- camera permission denial
+- QR decoder provider failure
+- explicit contact and connection persistence after confirmation

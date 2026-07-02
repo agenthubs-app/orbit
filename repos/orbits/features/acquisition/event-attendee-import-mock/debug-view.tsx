@@ -14,7 +14,9 @@ import {
   type EventAttendeeContactDraft,
   type EventAttendeeImportPayload,
   type EventAttendeeImportProvenance,
+  type EventAttendeeImportResult,
   type EventAttendeeRecord,
+  type EventAttendeeRosterResult,
 } from "../event-attendee-contract";
 import { createMockEventAttendeeImportService } from "../mock-event-attendee-import-service";
 
@@ -23,6 +25,17 @@ export const EVENT_ATTENDEE_IMPORT_MOCK_SLUG = "event-attendee-import-mock";
 const liveImplementationNotesPath =
   "features/acquisition/event-attendee-import-mock/LIVE_IMPLEMENTATION.md";
 const pathWrapStyle = { overflowWrap: "anywhere" } as const;
+
+function requireSynchronousMockResult<TResult>(
+  result: TResult | Promise<TResult>,
+): TResult {
+  if (typeof (result as { then?: unknown }).then === "function") {
+    throw new Error("Mock attendee import debug view requires synchronous mock results.");
+  }
+
+  return result as TResult;
+}
+
 const responsiveWorkbenchStyles = `
 .event-attendee-import-workbench {
   grid-template-columns: minmax(0, 1fr);
@@ -415,24 +428,34 @@ function ApiProbeActions() {
 
 export function EventAttendeeImportMockDemo() {
   const attendeeService = createMockEventAttendeeImportService();
-  const rosterState = attendeeService.listEventAttendees({
-    eventId: "demo-event-1",
-  });
-  const successState = attendeeService.importEventAttendees({
-    eventId: "demo-event-1",
-  });
-  const emptyState = attendeeService.importEventAttendees({
-    eventId: "demo-event-1",
-    scenario: "empty",
-  });
-  const pendingState = attendeeService.importEventAttendees({
-    eventId: "demo-event-1",
-    scenario: "pending",
-  });
-  const failureState = attendeeService.importEventAttendees({
-    eventId: "demo-event-1",
-    scenario: "failure",
-  });
+  const rosterState = requireSynchronousMockResult<EventAttendeeRosterResult>(
+    attendeeService.listEventAttendees({
+      eventId: "demo-event-1",
+    }),
+  );
+  const successState = requireSynchronousMockResult<EventAttendeeImportResult>(
+    attendeeService.importEventAttendees({
+      eventId: "demo-event-1",
+    }),
+  );
+  const emptyState = requireSynchronousMockResult<EventAttendeeImportResult>(
+    attendeeService.importEventAttendees({
+      eventId: "demo-event-1",
+      scenario: "empty",
+    }),
+  );
+  const pendingState = requireSynchronousMockResult<EventAttendeeImportResult>(
+    attendeeService.importEventAttendees({
+      eventId: "demo-event-1",
+      scenario: "pending",
+    }),
+  );
+  const failureState = requireSynchronousMockResult<EventAttendeeImportResult>(
+    attendeeService.importEventAttendees({
+      eventId: "demo-event-1",
+      scenario: "failure",
+    }),
+  );
   const rosterPayload = rosterState.success ? rosterState.data : null;
   const successPayload = successState.success ? successState.data : null;
 

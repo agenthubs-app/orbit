@@ -18,10 +18,11 @@ export const dynamic = "force-dynamic";
 // route 只读取 sourceKind/scenario；外部源模拟、候选过滤和 provenance 在 import service 中。
 export async function GET(request: Request): Promise<Response> {
   // 当前实现是只读候选列表，不触发导入或写入联系人。
-  const mode = resolveFeatureMode();
+  const runtimeMode = process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE;
+  const mode = resolveFeatureMode(runtimeMode);
   const searchParams = new URL(request.url).searchParams;
-  const candidatesService = createExternalContactsImportService();
-  const result = candidatesService.listExternalContactCandidates({
+  const candidatesService = createExternalContactsImportService(mode);
+  const result = await candidatesService.listExternalContactCandidates({
     sourceKind: searchParams.get("sourceKind"),
     scenario: searchParams.get("scenario"),
   });

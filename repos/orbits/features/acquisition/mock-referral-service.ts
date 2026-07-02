@@ -13,7 +13,6 @@ import {
   type ReferralRecommendationPayload,
   type ReferralRecommendationResult,
   type ReferralRecommendationScenario,
-  type ReferralRecommendationService,
   type ReferralRecommendationSuccess,
   type ReferralSourceKind,
   type ReferralSourceSummary,
@@ -47,6 +46,15 @@ const supportedConfirmationScenarios =
 const supportedSourceKinds = new Set<ReferralSourceKind>(
   REFERRAL_SOURCE_KINDS,
 );
+
+export interface MockReferralRecommendationService {
+  createReferralContactDrafts: (
+    input?: ReferralRecommendationInput,
+  ) => ReferralRecommendationResult;
+  confirmRecommendedContact: (
+    input: RecommendedContactConfirmInput,
+  ) => RecommendedContactConfirmationResult;
+}
 
 // ReferralRecommendation mock service 模拟从推荐人/介绍来源生成联系人草稿。
 // 它按 sourceKind 过滤本地 fixture，不联系推荐人、不创建真实联系人，也不发送介绍请求。
@@ -245,7 +253,7 @@ function findRecommendation(
   );
 }
 
-export function createMockReferralRecommendationService(): ReferralRecommendationService {
+export function createMockReferralRecommendationService(): MockReferralRecommendationService {
   // createReferralContactDrafts 只生成候选草稿；confirmRecommendedContact 只返回确认 payload。
   return {
     createReferralContactDrafts(input = {}): ReferralRecommendationResult {

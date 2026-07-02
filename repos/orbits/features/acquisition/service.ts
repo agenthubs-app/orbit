@@ -10,17 +10,20 @@ import type {
   ContactDraftConfirmationResult,
 } from "./contract";
 
+export type ContactAcquisitionDraftServiceResult<TResult> =
+  TResult | Promise<TResult>;
+
 // ContactAcquisitionDraftService 管理联系人采集管线里的“待确认草稿”。
 // 它不直接导入外部通讯录；草稿确认后是否写入真实联系人由具体实现决定。
 export interface ContactAcquisitionDraftService {
   // 列出采集管线产生的联系人草稿。
   listContactDrafts: (
     input?: ContactAcquisitionDraftInput,
-  ) => ContactAcquisitionDraftResult;
+  ) => ContactAcquisitionDraftServiceResult<ContactAcquisitionDraftResult>;
   // 确认或拒绝某个草稿，返回可复核结果。
   confirmContactDraft: (
     input: ContactDraftConfirmationInput,
-  ) => ContactDraftConfirmationResult;
+  ) => ContactAcquisitionDraftServiceResult<ContactDraftConfirmationResult>;
 }
 
 // 将采集草稿领域失败转换成统一 AppError。
@@ -35,6 +38,18 @@ export function contactAcquisitionDraftFailureContext(
   failure: ContactAcquisitionDraftFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  if (failure.error.provenance.privacy === "live-contact-acquisition-drafts") {
+    return {
+      boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
+      contactAcquisitionDraftErrorCode: failure.error.code,
+      mode,
+      privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
+      provenance:
+        "Live contact acquisition draft failure came from the shared storage boundary.",
+      service: "contact-acquisition-draft-live",
+    };
+  }
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     contactAcquisitionDraftErrorCode: failure.error.code,

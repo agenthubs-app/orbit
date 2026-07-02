@@ -47,6 +47,13 @@ const supportedConfirmationScenarios =
     "failure",
   ]);
 
+export interface MockQrScanConnectService extends QrScanConnectService {
+  scanQrCode: (input?: QrScanConnectInput) => QrScanConnectResult;
+  confirmQrConnectionDraft: (
+    input: QrConnectionDraftConfirmInput,
+  ) => QrConnectionConfirmationResult;
+}
+
 // QrScanConnect mock service 模拟扫描 Orbit 关系 QR 并生成连接草稿。
 // 它解析文本形式的 orbit-qr payload，不访问相机、签名校验、关系图、数据库或外部通知。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
@@ -288,7 +295,7 @@ function buildRuleBasedPayload(
   };
 }
 
-export function createMockQrScanConnectService(): QrScanConnectService {
+export function createMockQrScanConnectService(): MockQrScanConnectService {
   // confirmQrConnectionDraft 返回确认 fixture，但不会创建真实 connection。
   return {
     scanQrCode(input = {}): QrScanConnectResult {

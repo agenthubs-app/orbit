@@ -133,11 +133,11 @@ const duplicateMergeApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/acquisition/duplicate-detection-and-merge-mock/.",
-  "ORBIT_DUPLICATE_MERGE_PROVIDER switches from mock to live.",
-  "Live replacement requires imported contacts, existing contact read access, and audited merge permission.",
-  "Explicit confirmation stays required before destructive merge writes.",
-  "Replacement tests cover success, empty, pending, blocked confirmation, missing suggestion, provider failure, privacy, and provenance paths.",
+  "Live service files live under features/acquisition/live-merge-service.ts and features/acquisition/storage/.",
+  "ORBIT_MODULE_MODE=live switches duplicate merge from mock fixtures to shared live record storage.",
+  "The current live boundary reads contactDrafts, contacts, and evidence, then returns review-only merge suggestions.",
+  "Explicit confirmation returns a preview; destructive merge writes remain unimplemented.",
+  "Live tests cover duplicate detection, apply preview, unconfigured storage, API envelopes, privacy, and provenance paths.",
 ] as const;
 
 function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {

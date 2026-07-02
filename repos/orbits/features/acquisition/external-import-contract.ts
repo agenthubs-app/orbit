@@ -21,6 +21,8 @@ export const EXTERNAL_CONTACTS_IMPORT_ERROR_CODES = [
   "EXTERNAL_CONTACTS_IMPORT_SOURCE_NOT_SUPPORTED",
   "EXTERNAL_CONTACTS_IMPORT_PENDING",
   "EXTERNAL_CONTACTS_IMPORT_MOCK_FAILED",
+  "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_UNCONFIGURED",
+  "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_FAILED",
 ] as const;
 
 export type ExternalContactsImportErrorCode =
@@ -81,6 +83,20 @@ export const EXTERNAL_CONTACTS_IMPORT_ERROR_DEFINITIONS = {
     recovery:
       "Render the failure state and avoid retrying provider sync, device reads, file parsing, databases, messages, or production jobs.",
   },
+  EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_UNCONFIGURED: {
+    code: "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live external contacts import store is not configured.",
+    recovery:
+      "Configure the live record store before reading source-backed external contact candidates.",
+  },
+  EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_FAILED: {
+    code: "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live external contacts import store could not be read.",
+    recovery:
+      "Keep external contact import in review mode and retry only after the live record store is healthy.",
+  },
 } as const satisfies Record<
   ExternalContactsImportErrorCode,
   ExternalContactsImportErrorDefinition
@@ -99,8 +115,14 @@ export interface ExternalContactsImportProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-external-contacts-import-only";
-  generationMethod: "fixture" | "rule-based-external-contacts-import";
+  privacy:
+    | "demo-external-contacts-import-only"
+    | "live-external-contacts-import";
+  generationMethod:
+    | "fixture"
+    | "rule-based-external-contacts-import"
+    | "live-store-query";
+  liveDatabaseReadExecuted?: boolean;
   phoneAddressBookReadExecuted: false;
   googleContactsSyncExecuted: false;
   csvParsedAtScale: false;
@@ -116,7 +138,13 @@ export interface ExternalContactsSourceSummary {
   kind: ExternalContactsImportSourceKind;
   label: string;
   candidateCount: number;
-  permissionState: "mock-granted" | "mock-uploaded" | "mock-linked";
+  permissionState:
+    | "mock-granted"
+    | "mock-uploaded"
+    | "mock-linked"
+    | "live-indexed"
+    | "live-linked"
+    | "live-uploaded";
   source: ExternalContactsSourceReference;
   providerSyncRequested: false;
   fileParsingAtScale: false;
@@ -130,7 +158,9 @@ export interface ExternalContactsEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-external-contacts-import-service";
+  createdBy:
+    | "mock-external-contacts-import-service"
+    | "live-external-contacts-import-service";
 }
 
 // candidate 是待复核候选人，不是已经创建的联系人。
@@ -221,13 +251,21 @@ export type ExternalContactsImportResult =
   | ExternalContactsImportSuccess
   | ExternalContactsImportFailure;
 
+export type ExternalContactsCandidatesServiceResult =
+  | ExternalContactsCandidatesResult
+  | Promise<ExternalContactsCandidatesResult>;
+
+export type ExternalContactsImportServiceResult =
+  | ExternalContactsImportResult
+  | Promise<ExternalContactsImportResult>;
+
 export interface ExternalContactsImportService {
   listExternalContactCandidates: (
     input?: ExternalContactsImportInput,
-  ) => ExternalContactsCandidatesResult;
+  ) => ExternalContactsCandidatesServiceResult;
   importExternalContacts: (
     input?: ExternalContactsImportInput,
-  ) => ExternalContactsImportResult;
+  ) => ExternalContactsImportServiceResult;
 }
 
 export function externalContactsImportFailureToAppError(
@@ -240,13 +278,20 @@ export function externalContactsImportFailureContext(
   failure: ExternalContactsImportFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive =
+    failure.error.provenance.privacy === "live-external-contacts-import";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     externalContactsImportErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock external contacts import failure came from deterministic fixture rules.",
-    service: "external-contacts-import-mock",
+      isLive
+        ? "Live external contacts import failure came from the shared live record store boundary."
+        : "Mock external contacts import failure came from deterministic fixture rules.",
+    service: isLive
+      ? "external-contacts-import-live"
+      : "external-contacts-import-mock",
   };
 }

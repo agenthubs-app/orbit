@@ -12,7 +12,6 @@ import {
   type ExternalContactsImportPayload,
   type ExternalContactsImportResult,
   type ExternalContactsImportScenario,
-  type ExternalContactsImportService,
   type ExternalContactsImportSourceKind,
   type ExternalContactsImportSuccess,
   type ExternalContactsSourceSummary,
@@ -37,6 +36,15 @@ const supportedScenarios = new Set<ExternalContactsImportScenario>([
 const supportedSourceKinds = new Set<ExternalContactsImportSourceKind>(
   EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS,
 );
+
+export interface MockExternalContactsImportService {
+  listExternalContactCandidates: (
+    input?: ExternalContactsImportInput,
+  ) => ExternalContactsCandidatesResult;
+  importExternalContacts: (
+    input?: ExternalContactsImportInput,
+  ) => ExternalContactsImportResult;
+}
 
 // ExternalContactsImport mock service 模拟从外部联系人来源筛选候选人并生成草稿。
 // 它不连接 Gmail/通讯录/CRM，也不执行真实导入写入。
@@ -245,7 +253,7 @@ function scenarioImportResult(
   }
 }
 
-export function createMockExternalContactsImportService(): ExternalContactsImportService {
+export function createMockExternalContactsImportService(): MockExternalContactsImportService {
   // listExternalContactCandidates 和 importExternalContacts 共享 sourceKind 过滤规则。
   return {
     listExternalContactCandidates(

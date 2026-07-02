@@ -16,6 +16,7 @@ export const CONTACT_ACQUISITION_DRAFT_SOURCE_TYPES = [
 ] as const satisfies readonly SourceType[];
 
 export const CONTACT_ACQUISITION_DRAFT_ERROR_CODES = [
+  "CONTACT_DRAFT_LIVE_STORE_UNCONFIGURED",
   "CONTACT_DRAFT_NOT_FOUND",
   "CONTACT_DRAFT_ALREADY_CONFIRMED",
   "CONTACT_DRAFT_CONFIRMATION_NOT_ALLOWED",
@@ -67,6 +68,13 @@ export interface ContactAcquisitionDraftErrorDefinition {
 
 // 主草稿管线的失败都停在本地 mock 边界，不触发 OCR、导入、AI 或通知重试。
 export const CONTACT_ACQUISITION_DRAFT_ERROR_DEFINITIONS = {
+  CONTACT_DRAFT_LIVE_STORE_UNCONFIGURED: {
+    code: "CONTACT_DRAFT_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live contact acquisition draft store is not configured.",
+    recovery:
+      "Configure the live record store before reading or confirming live contact acquisition drafts.",
+  },
   CONTACT_DRAFT_NOT_FOUND: {
     code: "CONTACT_DRAFT_NOT_FOUND",
     appCode: "NOT_FOUND",
@@ -113,8 +121,19 @@ export interface ContactAcquisitionDraftProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-contact-acquisition-drafts-only";
-  generationMethod: "fixture" | "rule-based-contact-draft";
+  privacy:
+    | "demo-contact-acquisition-drafts-only"
+    | "live-contact-acquisition-drafts";
+  generationMethod:
+    | "fixture"
+    | "live-store-confirmation"
+    | "live-store-derived-event-draft"
+    | "live-store-query"
+    | "rule-based-contact-draft";
+  liveDatabaseReadExecuted?: boolean;
+  contactDraftWriteExecuted?: boolean;
+  contactWriteExecuted?: false;
+  externalNetworkRequested?: false;
 }
 
 export interface ContactDraftEvidence {
@@ -124,7 +143,7 @@ export interface ContactDraftEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-pipeline";
+  createdBy: "live-contact-acquisition-draft-service" | "mock-pipeline";
 }
 
 // confirmation 是草稿进入真实联系人写入前的人工复核门。

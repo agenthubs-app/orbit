@@ -38,8 +38,7 @@ test("business card scan OCR contract exposes capture upload OCR and extracted c
     typeof import("../../features/acquisition/mock-business-card-service")
   >("features/acquisition/mock-business-card-service.ts");
 
-  const service: contract.BusinessCardScanOcrService =
-    serviceModule.createMockBusinessCardScanOcrService();
+  const service = serviceModule.createMockBusinessCardScanOcrService();
   const success = service.scanBusinessCard();
   const empty = service.scanBusinessCard({ scenario: "empty" });
   const pending = service.scanBusinessCard({ scenario: "pending" });
@@ -53,6 +52,8 @@ test("business card scan OCR contract exposes capture upload OCR and extracted c
     "BUSINESS_CARD_DRAFT_NOT_FOUND",
     "BUSINESS_CARD_SCAN_NOT_READY",
     "BUSINESS_CARD_SCAN_OCR_MOCK_FAILED",
+    "BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED",
+    "BUSINESS_CARD_SCAN_OCR_LIVE_STORE_FAILED",
   ]);
   assert.equal(
     contract.BUSINESS_CARD_SCAN_OCR_ERROR_DEFINITIONS
@@ -315,7 +316,7 @@ test("business card scan OCR debug route renders all states and the live replace
   assert.match(html, /POST \/api\/contact-drafts\/business-card\/scan/);
   assert.match(html, /GET \/api\/contact-drafts\/demo-business-card-draft/);
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_BUSINESS_CARD_SCAN_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /business-card-ocr-workbench/);
   assert.match(
     html,
@@ -332,16 +333,16 @@ test("business card scan OCR debug route renders all states and the live replace
 
   assert.match(
     liveDoc,
-    /features\/acquisition\/business-card-scan-ocr-mock\/live-service\.ts/,
+    /features\/acquisition\/live-business-card-scan-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/acquisition\/business-card-scan-ocr-mock\/providers\//,
+    /features\/acquisition\/storage\/business-card-scan-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_BUSINESS_CARD_SCAN_PROVIDER/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
   assert.match(liveDoc, /camera permission/);
   assert.match(liveDoc, /OCR provider/);
-  assert.match(liveDoc, /storage bucket/);
+  assert.match(liveDoc, /remote live store/);
   assert.match(liveDoc, /privacy/);
   assert.match(liveDoc, /provenance/);
   assert.match(liveDoc, /replacement tests/);

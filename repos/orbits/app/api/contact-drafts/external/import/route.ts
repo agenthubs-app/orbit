@@ -83,9 +83,10 @@ async function readExternalContactsImportInput(
 
 export async function POST(request: Request): Promise<Response> {
   // importExternalContacts 返回草稿/候选结果；外部副作用边界留在 service。
-  const mode = resolveFeatureMode();
-  const importService = createExternalContactsImportService();
-  const result = importService.importExternalContacts(
+  const runtimeMode = process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE;
+  const mode = resolveFeatureMode(runtimeMode);
+  const importService = createExternalContactsImportService(mode);
+  const result = await importService.importExternalContacts(
     await readExternalContactsImportInput(request),
   );
 

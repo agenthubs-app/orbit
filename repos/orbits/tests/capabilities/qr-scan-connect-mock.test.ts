@@ -38,8 +38,7 @@ test("QR scan connect contract exposes scan result mutual context draft creation
     typeof import("../../features/acquisition/mock-qr-service")
   >("features/acquisition/mock-qr-service.ts");
 
-  const service: contract.QrScanConnectService =
-    serviceModule.createMockQrScanConnectService();
+  const service = serviceModule.createMockQrScanConnectService();
   const success = service.scanQrCode();
   const empty = service.scanQrCode({ scenario: "empty" });
   const pending = service.scanQrCode({ scenario: "pending" });
@@ -53,6 +52,8 @@ test("QR scan connect contract exposes scan result mutual context draft creation
     "QR_SCAN_DRAFT_NOT_FOUND",
     "QR_SCAN_CONNECT_PENDING",
     "QR_SCAN_CONNECT_MOCK_FAILED",
+    "QR_SCAN_CONNECT_LIVE_STORE_UNCONFIGURED",
+    "QR_SCAN_CONNECT_LIVE_STORE_FAILED",
   ]);
   assert.equal(
     contract.QR_SCAN_CONNECT_ERROR_DEFINITIONS.QR_SCAN_PAYLOAD_REQUIRED.appCode,
@@ -325,7 +326,7 @@ test("QR scan connect debug route renders all states and the live replacement ha
   assert.match(html, /POST \/api\/contact-drafts\/demo-qr-draft\/confirm/);
   assert.match(html, /Run confirm probe/);
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_QR_SCAN_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /qr-scan-connect-workbench/);
   assert.match(
     html,
@@ -342,16 +343,17 @@ test("QR scan connect debug route renders all states and the live replacement ha
 
   assert.match(
     liveDoc,
-    /features\/acquisition\/qr-scan-connect-mock\/live-service\.ts/,
+    /features\/acquisition\/live-qr-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/acquisition\/qr-scan-connect-mock\/providers\//,
+    /features\/acquisition\/storage\/qr-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_QR_SCAN_PROVIDER/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
   assert.match(liveDoc, /camera permission/);
   assert.match(liveDoc, /QR decoder/);
   assert.match(liveDoc, /signature verifier/);
+  assert.match(liveDoc, /remote live store/);
   assert.match(liveDoc, /privacy/);
   assert.match(liveDoc, /provenance/);
   assert.match(liveDoc, /replacement tests/);

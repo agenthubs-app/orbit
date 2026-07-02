@@ -41,8 +41,8 @@ const operatorRunbookSteps = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Provider adapters live under features/acquisition/providers/.",
-  "ORBIT_CONTACT_ACQUISITION_PROVIDER gates provider-backed acquisition.",
+  "Storage-backed contact draft live provider lives under features/acquisition/storage/contact-draft-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live gates the live contact draft API path.",
   "Operator confirmation precedes every contact write.",
   "Replacement tests cover draft list, confirm, privacy, and debug states.",
 ] as const;
@@ -413,16 +413,16 @@ export function ContactAcquisitionDraftPipelineDemo() {
                 <code style={pathWrapStyle}>
                   features/acquisition/live-service.ts
                 </code>{" "}
-                replaces the mock only after draft list and confirmation paths
-                have replacement tests.
+                maps live storage records into the same draft list and
+                confirmation contract as the mock service.
               </dd>
             </div>
             <div>
               <dt>Switch and env</dt>
               <dd>
-                Feature mode stays explicit, and live mode requires{" "}
-                <code>ORBIT_CONTACT_ACQUISITION_PROVIDER</code> before any
-                provider-backed source can enter the draft queue.
+                <code>ORBIT_MODULE_MODE=live</code> selects the live route path,
+                backed by <code>ORBIT_EVENT_DATABASE_URL</code> and{" "}
+                <code>ORBIT_WORKSPACE_ID</code>.
               </dd>
             </div>
             <div>

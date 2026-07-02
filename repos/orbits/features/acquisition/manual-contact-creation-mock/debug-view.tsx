@@ -87,10 +87,10 @@ const operatorRunbookSteps = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live provider files live under features/acquisition/manual-contact-creation-mock/.",
-  "ORBIT_MANUAL_CONTACT_PROVIDER switches from mock to live.",
-  "Manual notes, tags, and follow-up hints preserve source evidence.",
-  "Replacement tests cover create, confirm, validation, empty, and provider failure paths.",
+  "Live manual service lives in features/acquisition/live-manual-service.ts.",
+  "ORBIT_MODULE_MODE=live switches manual creation from mock to live storage.",
+  "Manual drafts are stored as central contactDrafts payloads with note, tags, and follow-up hints.",
+  "Replacement tests cover create, confirm, validation, empty, and unconfigured live-store paths.",
 ] as const;
 
 function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {
@@ -529,17 +529,18 @@ export function ManualContactCreationMockDemo() {
               <dt>Live provider files</dt>
               <dd>
                 <code style={pathWrapStyle}>
-                  features/acquisition/manual-contact-creation-mock/live-service.ts
+                  features/acquisition/live-manual-service.ts
                 </code>{" "}
-                replaces the mock only after source evidence and confirmation
-                tests are ready.
+                stages manual notes into the shared contact draft queue while
+                keeping contact writes disabled.
               </dd>
             </div>
             <div>
               <dt>Switch and env</dt>
               <dd>
-                <code>ORBIT_MANUAL_CONTACT_PROVIDER</code> switches from mock
-                to live and must fail closed when configuration is missing.
+                <code>ORBIT_MODULE_MODE=live</code> selects live storage through{" "}
+                <code>ORBIT_EVENT_DATABASE_URL</code> and{" "}
+                <code>ORBIT_WORKSPACE_ID</code>.
               </dd>
             </div>
           </dl>

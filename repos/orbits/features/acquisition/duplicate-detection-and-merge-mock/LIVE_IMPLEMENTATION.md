@@ -1,50 +1,62 @@
-# Duplicate Detection and Merge Mock Live Implementation
+# Duplicate Detection and Merge Live Implementation
 
-Replace the mock behind `features/acquisition/duplicate-detection-and-merge-mock/live-service.ts`.
-Provider adapters should live under
-`features/acquisition/duplicate-detection-and-merge-mock/providers/` and implement
-the service interface exported from `features/acquisition/merge-contract.ts`.
+The live implementation is now registered through
+`features/acquisition/service-factory.ts` and implemented by
+`features/acquisition/live-merge-service.ts`.
+
+The storage adapter lives at
+`features/acquisition/storage/duplicate-merge-live-record-provider.ts`. It
+uses the shared `orbit_records` envelope to read remote `contactDrafts`,
+`contacts`, and `evidence` records. Generic storage remains in
+`shared/storage/live-record-store.ts`; duplicate-specific fields stay in the
+acquisition contract and mapper layer.
 
 ## Switch Mechanism
 
-- `ORBIT_DUPLICATE_MERGE_PROVIDER=mock` keeps route handlers on
+- `ORBIT_MODULE_MODE=mock` keeps route handlers on
   `features/acquisition/mock-merge-service.ts`.
-- `ORBIT_DUPLICATE_MERGE_PROVIDER=live` should route the same API handlers to
-  `live-service.ts` through a small factory.
-- Route envelopes must stay `{ success: true, data }` or
-  `{ success: false, error }` with the same typed error codes.
+- `ORBIT_MODULE_MODE=live` routes the same API handlers to
+  `features/acquisition/live-merge-service.ts` through the acquisition service
+  factory.
+- `ORBIT_EVENT_DATABASE_URL`, `ORBIT_LIVE_DATABASE_URL`, or
+  `ORBIT_DATABASE_URL` configures the Postgres/Supabase live record store.
+- `ORBIT_WORKSPACE_ID` selects the workspace; the local development workspace is
+  usually `workspace:orbit-dev`.
 
-## Required Environment And Permissions
+## Current Live Boundary
 
-- Supabase URL, service role, and row-level security policies for reading
-  imported contacts, existing contacts, source evidence, and merge audit rows.
-- Permission to read imported contacts from acquisition draft tables without
-  expanding provider scopes.
-- Permission to write a merge audit record and then update contact records only
-  after explicit confirmation.
-- Optional background job credentials only for reviewed merge execution; never
-  for the detection preview path.
+- Reads source-backed imported drafts from the unified `contactDrafts` queue.
+- Reads existing relationship records from the `contacts` collection.
+- Uses evidence ids from both sides to explain every duplicate suggestion.
+- Generates duplicate candidates with deterministic email and
+  name+organization matching.
+- Returns field-level merge decisions and an explicit confirmation preview.
 
-## privacy and provenance constraints
+The first live version is intentionally review-only. `applyMergeSuggestion()`
+does not update `contacts`, does not write an audit record, does not perform a
+destructive merge, does not call AI, does not read email/calendar providers,
+does not send notifications, and does not use external network providers.
 
-- Preserve imported contact evidence, existing contact evidence, match reasons,
-  field-level merge decisions, reviewer identity, and confirmation timestamp.
-- Do not merge, delete, or overwrite source evidence without an audit trail.
-- Keep duplicate scoring explainable; every suggested merge needs source-backed
-  reasons such as email, name/organization, event context, or referral context.
-- Treat destructive merge writes as sensitive actions. They must remain behind
-  confirmation and must return visible failure envelopes for blocked, missing,
-  pending, and provider-failure paths.
+## Privacy And Provenance Constraints
 
-## replacement tests
+- Preserve imported draft evidence, existing contact evidence, match reasons,
+  field-level decisions, reviewer identity, and confirmation timestamp.
+- Keep source provenance visible in both suggestion and apply-preview payloads.
+- Every live response carries `privacy="live-duplicate-detection-merge"`.
+- Provenance must keep `liveDatabaseReadExecuted=true` for successful live
+  reads and keep `databaseWriteExecuted=false`, `destructiveMergeExecuted=false`,
+  `importedContactWriteExecuted=false`, and `notificationDelivered=false`.
+- Missing suggestions, blocked confirmations, pending review, unconfigured
+  storage, and live provider failures must return visible API failure envelopes.
 
-- Contract tests for live duplicate candidates, merge suggestions, confirmation
-  payloads, and error mappings.
-- API route tests for success, empty, pending, controlled failure, missing
-  suggestion, blocked confirmation, and provider-failure envelopes.
-- Privacy tests proving imported contacts and source evidence are not exposed
-  beyond the requested user/workspace boundary.
-- Provenance tests proving merged records retain source references, evidence
-  ids, field decisions, reviewer confirmation, and merge audit ids.
-- Regression tests proving live provider failures do not perform partial writes
-  and do not send notifications or external actions.
+## Tests
+
+- `tests/capabilities/duplicate-detection-merge-live-store.test.ts` proves live
+  duplicate detection, apply-preview behavior, unconfigured fail-closed
+  behavior, factory registration, and API live-mode failure envelopes.
+- `tests/capabilities/duplicate-detection-and-merge-mock.test.ts` keeps the
+  deterministic mock contract, API envelopes, debug panel, and no-provider-call
+  constraints covered.
+- Future destructive merge writers need separate tests proving audited contact
+  writes, rollback behavior, and source evidence retention before they can be
+  enabled.

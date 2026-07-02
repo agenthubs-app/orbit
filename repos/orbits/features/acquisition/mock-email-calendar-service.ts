@@ -12,7 +12,6 @@ import {
   type EmailCalendarSignalPayload,
   type EmailCalendarSignalResult,
   type EmailCalendarSignalScenario,
-  type EmailCalendarSignalService,
   type EmailCalendarSignalSourceKind,
   type EmailCalendarSignalSuccess,
 } from "./email-calendar-contract";
@@ -43,6 +42,15 @@ const supportedConfirmationScenarios =
 const supportedSourceKinds = new Set<EmailCalendarSignalSourceKind>(
   EMAIL_CALENDAR_SIGNAL_SOURCE_KINDS,
 );
+
+export interface MockEmailCalendarSignalService {
+  listEmailCalendarSignals: (
+    input?: EmailCalendarSignalListInput,
+  ) => EmailCalendarSignalResult;
+  confirmEmailCalendarSignal: (
+    input: EmailCalendarSignalConfirmInput,
+  ) => EmailCalendarSignalConfirmationResult;
+}
 
 // EmailCalendarSignal mock service 模拟从邮件/日历材料识别关系信号。
 // 它只读本地 fixture，不请求邮箱、日历、账号授权 token 或后台分析任务。
@@ -211,7 +219,7 @@ function findSignal(signalId: string): EmailCalendarRelationshipSignal | null {
   );
 }
 
-export function createMockEmailCalendarSignalService(): EmailCalendarSignalService {
+export function createMockEmailCalendarSignalService(): MockEmailCalendarSignalService {
   // confirmEmailCalendarSignal 只确认本地信号，不写入真实联系人或跟进记录。
   return {
     listEmailCalendarSignals(input = {}): EmailCalendarSignalResult {

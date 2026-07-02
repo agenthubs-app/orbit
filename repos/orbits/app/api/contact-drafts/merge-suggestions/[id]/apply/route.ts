@@ -94,10 +94,12 @@ export async function POST(
   context: ApplyDuplicateMergeRouteContext,
 ): Promise<Response> {
   // applyMergeSuggestion 是有状态动作，但 route 不直接改数据，只调用 service contract。
-  const mode = resolveFeatureMode();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
   const { id } = await context.params;
   const mergeService = createDuplicateMergeService();
-  const result = mergeService.applyMergeSuggestion(
+  const result = await mergeService.applyMergeSuggestion(
     await readApplyInput(request, id),
   );
 

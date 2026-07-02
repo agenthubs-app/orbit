@@ -94,10 +94,11 @@ export async function POST(
   context: ConfirmRelationshipSignalRouteContext,
 ): Promise<Response> {
   // confirmEmailCalendarSignal 会进入可复核状态更新，route 不直接写关系资料。
-  const mode = resolveFeatureMode();
+  const runtimeMode = process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE;
+  const mode = resolveFeatureMode(runtimeMode);
   const { id } = await context.params;
-  const service = createEmailCalendarSignalService();
-  const result = service.confirmEmailCalendarSignal(
+  const service = createEmailCalendarSignalService(mode);
+  const result = await service.confirmEmailCalendarSignal(
     await readConfirmInput(request, id),
   );
 

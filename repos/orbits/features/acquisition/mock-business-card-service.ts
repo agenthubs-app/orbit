@@ -34,6 +34,16 @@ const supportedScanScenarios = new Set<BusinessCardScanOcrScenario>([
   "failure",
 ]);
 
+export interface MockBusinessCardScanOcrService
+  extends BusinessCardScanOcrService {
+  scanBusinessCard: (
+    input?: BusinessCardScanOcrInput,
+  ) => BusinessCardScanOcrResult;
+  getBusinessCardDraft: (
+    input: BusinessCardDraftLookupInput,
+  ) => BusinessCardDraftLookupResult;
+}
+
 // BusinessCardScanOcr mock service 模拟名片 OCR 到联系人草稿的流程。
 // 它只解析传入的 imageText 或固定 fixture，不调用相机、OCR provider、AI 提取或数据库。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
@@ -195,7 +205,7 @@ function buildRuleBasedPayload(
   };
 }
 
-export function createMockBusinessCardScanOcrService(): BusinessCardScanOcrService {
+export function createMockBusinessCardScanOcrService(): MockBusinessCardScanOcrService {
   // scanBusinessCard 负责生成草稿；getBusinessCardDraft 只查固定 demo draft。
   return {
     scanBusinessCard(input = {}): BusinessCardScanOcrResult {

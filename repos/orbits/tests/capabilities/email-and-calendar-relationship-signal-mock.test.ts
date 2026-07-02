@@ -39,7 +39,7 @@ test("email calendar signal contract exposes fixtures service interface and perm
     EMAIL_CALENDAR_SIGNAL_SOURCE_KINDS: readonly string[];
     mockEmailCalendarSignalFixture: {
       state: string;
-      signals: readonly Array<{
+      signals: ReadonlyArray<{
         id: string;
         sourceKind: string;
         signalKind: string;
@@ -126,6 +126,8 @@ test("email calendar signal contract exposes fixtures service interface and perm
     "EMAIL_CALENDAR_SIGNAL_CONFIRMATION_REQUIRED",
     "EMAIL_CALENDAR_SIGNAL_PENDING",
     "EMAIL_CALENDAR_SIGNAL_MOCK_FAILED",
+    "EMAIL_CALENDAR_SIGNAL_LIVE_STORE_UNCONFIGURED",
+    "EMAIL_CALENDAR_SIGNAL_LIVE_STORE_FAILED",
   ]);
   assert.equal(
     contract.EMAIL_CALENDAR_SIGNAL_ERROR_DEFINITIONS
@@ -230,7 +232,7 @@ test("mock email calendar signal service is deterministic rule-based code with n
   const filtered = service.listEmailCalendarSignals(filterInput) as {
     success: true;
     data: {
-      signals: readonly Array<{ sourceKind: string; displayName: string }>;
+      signals: ReadonlyArray<{ sourceKind: string; displayName: string }>;
       provenance: { generationMethod: string };
     };
   };
@@ -492,7 +494,7 @@ test("email calendar signal debug route renders all states and the live replacem
     /POST \/api\/relationship-signals\/missing-signal\/confirm/,
   );
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_EMAIL_CALENDAR_SIGNAL_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /email-calendar-signal-workbench/);
   assert.match(
     html,
@@ -501,13 +503,13 @@ test("email calendar signal debug route renders all states and the live replacem
 
   assert.match(
     liveDoc,
-    /features\/acquisition\/email-and-calendar-relationship-signal-mock\/live-service\.ts/,
+    /features\/acquisition\/live-email-calendar-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/acquisition\/email-and-calendar-relationship-signal-mock\/providers\//,
+    /features\/acquisition\/storage\/email-calendar-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_EMAIL_CALENDAR_SIGNAL_PROVIDER/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
   assert.match(liveDoc, /Gmail/);
   assert.match(liveDoc, /Google Calendar/);
   assert.match(liveDoc, /Microsoft Graph/);

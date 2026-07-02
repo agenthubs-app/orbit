@@ -103,6 +103,7 @@ test("event attendee import contract exposes attendee roster drafts relationship
     "EVENT_ATTENDEE_EVENT_NOT_FOUND",
     "EVENT_ATTENDEE_IMPORT_PENDING",
     "EVENT_ATTENDEE_IMPORT_MOCK_FAILED",
+    "EVENT_ATTENDEE_IMPORT_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.EVENT_ATTENDEE_IMPORT_ERROR_DEFINITIONS
@@ -426,11 +427,11 @@ test("event attendee import debug route renders all states and the live replacem
 
   assert.match(
     liveDoc,
-    /features\/acquisition\/event-attendee-import-mock\/live-service\.ts/,
+    /features\/acquisition\/live-event-attendee-import-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/acquisition\/event-attendee-import-mock\/providers\//,
+    /features\/acquisition\/storage\/event-attendee-live-record-provider\.ts/,
   );
   assert.match(liveDoc, /ORBIT_EVENT_ATTENDEE_IMPORT_PROVIDER/);
   assert.match(liveDoc, /organizer attendee feed/);

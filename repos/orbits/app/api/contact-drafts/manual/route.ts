@@ -66,6 +66,9 @@ async function readManualContactCreationInput(
     return {
       scenario,
       source: sourceLabel ? { label: sourceLabel } : undefined,
+      displayName: readFormText(formData, "displayName"),
+      role: readFormText(formData, "role"),
+      organization: readFormText(formData, "organization"),
       note: readFormText(formData, "note"),
       tags: readFormTags(formData),
       followUpHint: readFormText(formData, "followUpHint"),
@@ -91,6 +94,11 @@ async function readManualContactCreationInput(
   return {
     scenario,
     source,
+    displayName:
+      typeof body.displayName === "string" ? body.displayName : undefined,
+    role: typeof body.role === "string" ? body.role : undefined,
+    organization:
+      typeof body.organization === "string" ? body.organization : undefined,
     note: typeof body.note === "string" ? body.note : undefined,
     tags: isStringArray(body.tags) ? body.tags : undefined,
     followUpHint:
@@ -100,10 +108,12 @@ async function readManualContactCreationInput(
 
 export async function POST(request: Request): Promise<Response> {
   // 手动创建草稿是“创建资源”语义：success 返回 201，其余状态返回 200。
-  const mode = resolveFeatureMode();
-  const manualService = createManualContactCreationService();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const manualService = createManualContactCreationService(mode);
   const scenario = new URL(request.url).searchParams.get("scenario");
-  const result = manualService.createManualContactDraft(
+  const result = await manualService.createManualContactDraft(
     await readManualContactCreationInput(request, scenario),
   );
 

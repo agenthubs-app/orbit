@@ -12,6 +12,8 @@ export const QR_SCAN_CONNECT_ERROR_CODES = [
   "QR_SCAN_DRAFT_NOT_FOUND",
   "QR_SCAN_CONNECT_PENDING",
   "QR_SCAN_CONNECT_MOCK_FAILED",
+  "QR_SCAN_CONNECT_LIVE_STORE_UNCONFIGURED",
+  "QR_SCAN_CONNECT_LIVE_STORE_FAILED",
 ] as const;
 
 export type QrScanConnectErrorCode =
@@ -85,10 +87,26 @@ export const QR_SCAN_CONNECT_ERROR_DEFINITIONS = {
     recovery:
       "Render the failure state and avoid retrying live camera, QR decode, validation, database, AI, calendar, email, or notification work.",
   },
+  QR_SCAN_CONNECT_LIVE_STORE_UNCONFIGURED: {
+    code: "QR_SCAN_CONNECT_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live QR scan connect store is not configured.",
+    recovery:
+      "Configure the live record store before reading source-backed QR scan connection drafts.",
+  },
+  QR_SCAN_CONNECT_LIVE_STORE_FAILED: {
+    code: "QR_SCAN_CONNECT_LIVE_STORE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live QR scan connect store could not be read.",
+    recovery:
+      "Keep the contact graph unchanged and return a controlled live storage failure envelope.",
+  },
 } as const satisfies Record<
   QrScanConnectErrorCode,
   QrScanConnectErrorDefinition
 >;
+
+export const QR_SCAN_CONNECT_LIVE_DRAFT_ID_PREFIX = "qr-draft:live:" as const;
 
 export type QrScanSourceReference = SourceReferenceDTO & {
   type: "qr_scan";
@@ -101,14 +119,26 @@ export interface QrScanConnectProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-qr-scan-connect-only";
-  generationMethod: "fixture" | "rule-based-qr";
+  privacy: "demo-qr-scan-connect-only" | "live-qr-scan-connect";
+  generationMethod: "fixture" | "live-store-confirmation" | "live-store-query" | "rule-based-qr";
+  liveDatabaseReadExecuted?: boolean;
+  databaseWriteExecuted?: false;
+  contactWriteExecuted?: false;
+  connectionWriteExecuted?: false;
+  externalNetworkRequested?: false;
+  cameraRequested?: false;
+  qrDecoderProviderRequested?: false;
+  aiProviderRequested?: false;
+  notificationDelivered?: false;
 }
 
 // QrScanResult 表示扫码解析结果；所有设备、解码、校验和写入副作用为 false。
 export interface QrScanResult {
   scanId: string;
-  scanMethod: "fixture-camera-frame" | "rule-based-qr-text";
+  scanMethod:
+    | "fixture-camera-frame"
+    | "live-store-qr-record"
+    | "rule-based-qr-text";
   scanLabel: string;
   payloadFormat: "orbit-demo-qr-v1";
   qrText: string;
@@ -129,7 +159,7 @@ export interface QrMutualConnectionContext {
   mutualConnections: readonly string[];
   sharedTopics: readonly string[];
   introductionPath: string;
-  confidence: "fixture-high" | "rule-based";
+  confidence: "fixture-high" | "live-store" | "rule-based";
   evidenceId: string;
   externalGraphLookupExecuted: false;
 }
@@ -141,7 +171,7 @@ export interface QrConnectionEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-qr-service";
+  createdBy: "live-qr-scan-connect-service" | "mock-qr-service";
 }
 
 // QR 草稿进入联系人图谱前仍需要用户确认。
@@ -247,10 +277,12 @@ export type QrConnectionConfirmationResult =
   | QrScanConnectFailure;
 
 export interface QrScanConnectService {
-  scanQrCode: (input?: QrScanConnectInput) => QrScanConnectResult;
+  scanQrCode: (
+    input?: QrScanConnectInput,
+  ) => Promise<QrScanConnectResult> | QrScanConnectResult;
   confirmQrConnectionDraft: (
     input: QrConnectionDraftConfirmInput,
-  ) => QrConnectionConfirmationResult;
+  ) => Promise<QrConnectionConfirmationResult> | QrConnectionConfirmationResult;
 }
 
 export function qrScanConnectFailureToAppError(
@@ -263,13 +295,17 @@ export function qrScanConnectFailureContext(
   failure: QrScanConnectFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive = failure.error.provenance.privacy === "live-qr-scan-connect";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock QR scan connect failure came from deterministic fixture rules.",
+      isLive
+        ? "Live QR scan connect failure came from the source-backed live store boundary."
+        : "Mock QR scan connect failure came from deterministic fixture rules.",
     qrScanConnectErrorCode: failure.error.code,
-    service: "qr-scan-connect-mock",
+    service: isLive ? "qr-scan-connect-live" : "qr-scan-connect-mock",
   };
 }

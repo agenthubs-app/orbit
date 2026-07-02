@@ -50,6 +50,19 @@ const reviewFieldNames: readonly (keyof BusinessCardReviewedFields)[] = [
   "phone",
 ];
 
+export interface MockBusinessCardReviewService
+  extends BusinessCardReviewService {
+  getReviewDraft: (
+    input: Parameters<BusinessCardReviewService["getReviewDraft"]>[0],
+  ) => BusinessCardReviewResult;
+  updateReviewDraft: (
+    input: Parameters<BusinessCardReviewService["updateReviewDraft"]>[0],
+  ) => BusinessCardReviewResult;
+  confirmReviewedDraft: (
+    input: Parameters<BusinessCardReviewService["confirmReviewedDraft"]>[0],
+  ) => BusinessCardReviewConfirmationResult;
+}
+
 // BusinessCardReview mock service 模拟 OCR 后的人工字段复核。
 // 它允许编辑提取字段并确认草稿，但不会写入真实联系人或调用再识别服务。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
@@ -226,7 +239,7 @@ function buildRuleBasedReviewPayload(
   };
 }
 
-export function createMockBusinessCardReviewService(): BusinessCardReviewService {
+export function createMockBusinessCardReviewService(): MockBusinessCardReviewService {
   // get/update/confirm 对应人工复核的三个阶段，confirm 仍停在 mock 联系人写入前。
   return {
     getReviewDraft(input): BusinessCardReviewResult {

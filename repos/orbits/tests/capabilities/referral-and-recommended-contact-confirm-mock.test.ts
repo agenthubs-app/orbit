@@ -39,14 +39,14 @@ test("referral recommendation contract exposes referral sources recommender cont
     REFERRAL_SOURCE_KINDS: readonly string[];
     mockReferralRecommendationFixture: {
       state: string;
-      referralSources: readonly Array<{
+      referralSources: ReadonlyArray<{
         kind: string;
         label: string;
         recommenderCount: number;
         externalNetworkRequested: false;
         automaticOutreachExecuted: false;
       }>;
-      recommendations: readonly Array<{
+      recommendations: ReadonlyArray<{
         id: string;
         displayName: string;
         sourceKind: string;
@@ -65,7 +65,7 @@ test("referral recommendation contract exposes referral sources recommender cont
         aiProviderRequested: false;
         notificationDelivered: false;
       }>;
-      contactDrafts: readonly Array<{
+      contactDrafts: ReadonlyArray<{
         id: string;
         recommendationId: string;
         displayName: string;
@@ -160,6 +160,8 @@ test("referral recommendation contract exposes referral sources recommender cont
     "community_referral",
   ]);
   assert.deepEqual(contract.REFERRAL_RECOMMENDATION_ERROR_CODES, [
+    "REFERRAL_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
+    "REFERRAL_RECOMMENDATION_LIVE_STORE_FAILED",
     "REFERRAL_SOURCE_NOT_SUPPORTED",
     "REFERRAL_RECOMMENDATION_NOT_FOUND",
     "REFERRAL_RECOMMENDATION_CONFIRMATION_REQUIRED",
@@ -316,7 +318,7 @@ test("mock referral recommendation service is deterministic rule-based code with
   const filtered = service.createReferralContactDrafts(filterInput) as {
     success: true;
     data: {
-      recommendations: readonly Array<{
+      recommendations: ReadonlyArray<{
         sourceKind: string;
         displayName: string;
       }>;
@@ -593,7 +595,7 @@ test("referral recommendation debug route renders all states and the live replac
   assert.match(html, /envelope success true/);
   assert.match(html, /envelope success false/);
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_REFERRAL_RECOMMENDATION_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /referral-recommendation-workbench/);
   assert.match(
     html,
@@ -602,17 +604,17 @@ test("referral recommendation debug route renders all states and the live replac
 
   assert.match(
     liveDoc,
-    /features\/acquisition\/referral-and-recommended-contact-confirm-mock\/live-service\.ts/,
+    /features\/acquisition\/live-referral-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/acquisition\/referral-and-recommended-contact-confirm-mock\/providers\//,
+    /features\/acquisition\/storage\/referral-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_REFERRAL_RECOMMENDATION_PROVIDER/);
-  assert.match(liveDoc, /referral source/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
+  assert.match(liveDoc, /matchRecommendations/);
   assert.match(liveDoc, /recommender context/);
-  assert.match(liveDoc, /user confirmation/);
+  assert.match(liveDoc, /confirmation preview/);
   assert.match(liveDoc, /privacy/);
   assert.match(liveDoc, /provenance/);
-  assert.match(liveDoc, /replacement tests/);
+  assert.match(liveDoc, /referral-recommendation-live-store\.test\.ts/);
 });

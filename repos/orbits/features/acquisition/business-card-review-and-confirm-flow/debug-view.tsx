@@ -148,8 +148,8 @@ const reviewApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Provider adapters live under features/acquisition/business-card-review-and-confirm-flow/providers/.",
-  "ORBIT_BUSINESS_CARD_REVIEW_PROVIDER switches the review boundary from mock to live.",
+  "Provider adapters live under features/acquisition/storage/business-card-review-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live switches the review boundary from mock to live through the service factory.",
   "Human review stays between OCR extraction and contact creation.",
   "Replacement tests cover review, confirm, privacy, and debug states.",
 ] as const;
@@ -526,7 +526,7 @@ export function BusinessCardReviewAndConfirmFlowDemo() {
             <div>
               <dt>Switch</dt>
               <dd>
-                <code>ORBIT_BUSINESS_CARD_REVIEW_PROVIDER</code>
+                <code>ORBIT_MODULE_MODE=live</code>
               </dd>
             </div>
           </dl>

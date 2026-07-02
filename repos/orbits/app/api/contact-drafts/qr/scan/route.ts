@@ -75,10 +75,14 @@ async function readQrScanInput(
 
 export async function POST(request: Request): Promise<Response> {
   // scanQrCode 只生成待确认草稿，不在 route 层保存联系人或发送通知。
-  const mode = resolveFeatureMode();
-  const scanService = createQrScanConnectService();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const scanService = createQrScanConnectService(mode);
   const scenario = new URL(request.url).searchParams.get("scenario");
-  const result = scanService.scanQrCode(await readQrScanInput(request, scenario));
+  const result = await scanService.scanQrCode(
+    await readQrScanInput(request, scenario),
+  );
 
   if (result.success === false) {
     // QR scan failure 统一映射成 AppError/envelope。

@@ -36,8 +36,7 @@ test("business card review contract exposes human field review before contact co
     typeof import("../../features/acquisition/mock-business-card-review-service")
   >("features/acquisition/mock-business-card-review-service.ts");
 
-  const service: contract.BusinessCardReviewService =
-    serviceModule.createMockBusinessCardReviewService();
+  const service = serviceModule.createMockBusinessCardReviewService();
   const success = service.getReviewDraft({
     draftId: "demo-business-card-draft",
   });
@@ -70,6 +69,8 @@ test("business card review contract exposes human field review before contact co
     "BUSINESS_CARD_REVIEW_PENDING",
     "BUSINESS_CARD_REVIEW_CONFIRMATION_NOT_ALLOWED",
     "BUSINESS_CARD_REVIEW_MOCK_FAILED",
+    "BUSINESS_CARD_REVIEW_LIVE_STORE_UNCONFIGURED",
+    "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED",
   ]);
   assert.equal(
     contract.BUSINESS_CARD_REVIEW_ERROR_DEFINITIONS
@@ -413,11 +414,11 @@ test("business card review debug route renders success empty pending and failure
     /POST \/api\/contact-drafts\/demo-business-card-draft\/confirm/,
   );
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_BUSINESS_CARD_REVIEW_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /Live handoff evidence excerpts/);
   assert.match(
     html,
-    /Provider adapters live under features\/acquisition\/business-card-review-and-confirm-flow\/providers\//,
+    /Provider adapters live under features\/acquisition\/storage\/business-card-review-live-record-provider\.ts/,
   );
   assert.match(
     html,
@@ -435,10 +436,10 @@ test("business card review debug route renders success empty pending and failure
   assert.match(liveDoc, /Replacement tests/i);
   assert.match(liveDoc, /features\/acquisition\/business-card-review-contract\.ts/);
   assert.match(liveDoc, /features\/acquisition\/mock-business-card-review-service\.ts/);
-  assert.match(liveDoc, /features\/acquisition\/business-card-review-and-confirm-flow\/live-service\.ts/);
+  assert.match(liveDoc, /features\/acquisition\/live-business-card-review-service\.ts/);
   assert.match(liveDoc, /app\/api\/contact-drafts\/\[id\]\/route\.ts/);
   assert.match(liveDoc, /app\/api\/contact-drafts\/\[id\]\/confirm\/route\.ts/);
-  assert.match(liveDoc, /ORBIT_BUSINESS_CARD_REVIEW_PROVIDER/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
   assert.match(liveDoc, /source and evidence provenance/i);
   assert.match(liveDoc, /human review/i);
   assert.match(liveDoc, /contact creation/i);

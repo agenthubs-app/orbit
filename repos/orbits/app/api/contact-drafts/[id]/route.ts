@@ -11,6 +11,7 @@ import {
   businessCardScanOcrFailureToAppError,
 } from "../../../../features/acquisition/business-card-contract";
 import {
+  BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX,
   businessCardReviewFailureContext,
   businessCardReviewFailureToAppError,
   type BusinessCardReviewedFields,
@@ -83,11 +84,39 @@ export async function GET(
   context: ContactDraftLookupRouteContext,
 ): Promise<Response> {
   // 查询草稿时只需要 draftId/scenario；OCR 数据来源和状态由 scan service 管。
-  const mode = resolveFeatureMode();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
-  const scanService = createBusinessCardScanOcrService();
-  const result = scanService.getBusinessCardDraft({
+
+  if (id.startsWith(BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX)) {
+    const reviewService = createBusinessCardReviewService(mode);
+    const result = await reviewService.getReviewDraft({
+      draftId: id,
+      scenario,
+    });
+
+    if (result.success === false) {
+      const appError = businessCardReviewFailureToAppError(result);
+
+      return NextResponse.json(
+        failure(appError, businessCardReviewFailureContext(result, mode)),
+        {
+          headers: runtimeBoundaryHeaders(mode),
+          status: getHttpStatusForAppErrorCode(appError.code),
+        },
+      );
+    }
+
+    return NextResponse.json(success(result.data), {
+      headers: runtimeBoundaryHeaders(mode),
+      status: 200,
+    });
+  }
+
+  const scanService = createBusinessCardScanOcrService(mode);
+  const result = await scanService.getBusinessCardDraft({
     draftId: id,
     scenario,
   });
@@ -116,12 +145,14 @@ export async function PATCH(
   context: ContactDraftLookupRouteContext,
 ): Promise<Response> {
   // 更新复核字段不会直接创建联系人，只更新待确认 draft 的 review 状态。
-  const mode = resolveFeatureMode();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
   const body = await readPatchBody(request);
-  const reviewService = createBusinessCardReviewService();
-  const result = reviewService.updateReviewDraft({
+  const reviewService = createBusinessCardReviewService(mode);
+  const result = await reviewService.updateReviewDraft({
     draftId: id,
     reviewedFields: body.reviewedFields,
     reviewerLabel: body.reviewerLabel,

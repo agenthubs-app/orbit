@@ -94,10 +94,12 @@ export async function POST(
   context: ConfirmRecommendedContactRouteContext,
 ): Promise<Response> {
   // confirmRecommendedContact 返回确认后的草稿/联系人状态；route 不直接写联系人表。
-  const mode = resolveFeatureMode();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
   const { id } = await context.params;
   const service = createReferralRecommendationService();
-  const result = service.confirmRecommendedContact(
+  const result = await service.confirmRecommendedContact(
     await readConfirmInput(request, id),
   );
 

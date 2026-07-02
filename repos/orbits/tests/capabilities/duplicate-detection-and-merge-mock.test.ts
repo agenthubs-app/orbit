@@ -39,7 +39,7 @@ test("duplicate detection and merge contract exposes typed fixtures service inte
     DUPLICATE_DETECTION_MATCH_REASONS: readonly string[];
     mockDuplicateMergeSuggestionsFixture: {
       state: string;
-      duplicateCandidates: readonly Array<{
+      duplicateCandidates: ReadonlyArray<{
         importedDraftId: string;
         importedContactName: string;
         existingContactId: string;
@@ -49,7 +49,7 @@ test("duplicate detection and merge contract exposes typed fixtures service inte
         externalLookupExecuted: false;
         aiProviderRequested: false;
       }>;
-      mergeSuggestions: readonly Array<{
+      mergeSuggestions: ReadonlyArray<{
         id: string;
         importedDraftId: string;
         existingContactId: string;
@@ -122,6 +122,8 @@ test("duplicate detection and merge contract exposes typed fixtures service inte
     "referral_context",
   ]);
   assert.deepEqual(contract.DUPLICATE_DETECTION_MERGE_ERROR_CODES, [
+    "DUPLICATE_MERGE_LIVE_STORE_UNCONFIGURED",
+    "DUPLICATE_MERGE_LIVE_STORE_FAILED",
     "DUPLICATE_MERGE_SUGGESTION_NOT_FOUND",
     "DUPLICATE_MERGE_PENDING_REVIEW",
     "DUPLICATE_MERGE_CONFIRMATION_BLOCKED",
@@ -452,7 +454,7 @@ test("duplicate detection and merge debug route renders all states and the live 
     /action="\/api\/contact-drafts\/merge-suggestions\/missing-merge\/apply" aria-label="Run missing suggestion duplicate merge API probe" method="post"><button class="secondary-action" type="submit">Run missing suggestion probe/,
   );
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_DUPLICATE_MERGE_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /duplicate-merge-workbench/);
   assert.match(
     html,
@@ -461,17 +463,18 @@ test("duplicate detection and merge debug route renders all states and the live 
 
   assert.match(
     liveDoc,
-    /features\/acquisition\/duplicate-detection-and-merge-mock\/live-service\.ts/,
+    /features\/acquisition\/live-merge-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/acquisition\/duplicate-detection-and-merge-mock\/providers\//,
+    /features\/acquisition\/storage\/duplicate-merge-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_DUPLICATE_MERGE_PROVIDER/);
-  assert.match(liveDoc, /Supabase/);
-  assert.match(liveDoc, /imported contacts/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
+  assert.match(liveDoc, /Postgres\/Supabase/);
+  assert.match(liveDoc, /contactDrafts/);
+  assert.match(liveDoc, /contacts/);
   assert.match(liveDoc, /privacy/);
   assert.match(liveDoc, /provenance/);
   assert.match(liveDoc, /confirmation/);
-  assert.match(liveDoc, /replacement tests/);
+  assert.match(liveDoc, /duplicate-detection-merge-live-store\.test\.ts/);
 });

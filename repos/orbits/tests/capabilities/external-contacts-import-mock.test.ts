@@ -39,12 +39,12 @@ test("external contacts import contract exposes phone google csv and customer-li
     EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS: readonly string[];
     mockExternalContactsCandidatesFixture: {
       state: string;
-      sources: readonly Array<{
+      sources: ReadonlyArray<{
         kind: string;
         label: string;
         providerSyncRequested: false;
       }>;
-      candidates: readonly Array<{
+      candidates: ReadonlyArray<{
         candidateId: string;
         displayName: string;
         sourceKind: string;
@@ -65,7 +65,7 @@ test("external contacts import contract exposes phone google csv and customer-li
     };
     mockExternalContactsImportFixture: {
       state: string;
-      contactDrafts: readonly Array<{
+      contactDrafts: ReadonlyArray<{
         id: string;
         candidateId: string;
         displayName: string;
@@ -117,6 +117,8 @@ test("external contacts import contract exposes phone google csv and customer-li
     "EXTERNAL_CONTACTS_IMPORT_SOURCE_NOT_SUPPORTED",
     "EXTERNAL_CONTACTS_IMPORT_PENDING",
     "EXTERNAL_CONTACTS_IMPORT_MOCK_FAILED",
+    "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_UNCONFIGURED",
+    "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_FAILED",
   ]);
   assert.equal(
     contract.EXTERNAL_CONTACTS_IMPORT_ERROR_DEFINITIONS
@@ -224,7 +226,7 @@ test("mock external contacts import service is deterministic rule-based code wit
   const filtered = service.importExternalContacts(filterInput) as {
     success: true;
     data: {
-      contactDrafts: readonly Array<{
+      contactDrafts: ReadonlyArray<{
         sourceKind: string;
         displayName: string;
       }>;
@@ -494,13 +496,13 @@ test("external contacts import debug route renders all states and the live repla
 
   assert.match(
     liveDoc,
-    /features\/acquisition\/external-contacts-import-mock\/live-service\.ts/,
+    /features\/acquisition\/live-external-import-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/acquisition\/external-contacts-import-mock\/providers\//,
+    /features\/acquisition\/storage\/external-import-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_EXTERNAL_CONTACTS_IMPORT_PROVIDER/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
   assert.match(liveDoc, /phone address book/);
   assert.match(liveDoc, /Google Contacts/);
   assert.match(liveDoc, /CSV/);

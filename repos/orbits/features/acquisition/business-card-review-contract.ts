@@ -12,6 +12,8 @@ export const BUSINESS_CARD_REVIEW_ERROR_CODES = [
   "BUSINESS_CARD_REVIEW_PENDING",
   "BUSINESS_CARD_REVIEW_CONFIRMATION_NOT_ALLOWED",
   "BUSINESS_CARD_REVIEW_MOCK_FAILED",
+  "BUSINESS_CARD_REVIEW_LIVE_STORE_UNCONFIGURED",
+  "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED",
 ] as const;
 
 export type BusinessCardReviewErrorCode =
@@ -87,10 +89,27 @@ export const BUSINESS_CARD_REVIEW_ERROR_DEFINITIONS = {
     recovery:
       "Render the failure state and avoid retrying live OCR, AI, persistence, calendar, email, or notification work.",
   },
+  BUSINESS_CARD_REVIEW_LIVE_STORE_UNCONFIGURED: {
+    code: "BUSINESS_CARD_REVIEW_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live business card review store is not configured.",
+    recovery:
+      "Configure the live record store before reading source-backed business card review drafts.",
+  },
+  BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED: {
+    code: "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live business card review store could not be read.",
+    recovery:
+      "Keep the contact graph unchanged and return a controlled live storage failure envelope.",
+  },
 } as const satisfies Record<
   BusinessCardReviewErrorCode,
   BusinessCardReviewErrorDefinition
 >;
+
+export const BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX =
+  "business-card-review:live:" as const;
 
 export interface BusinessCardReviewLookupInput {
   draftId: string;
@@ -121,8 +140,20 @@ export interface BusinessCardReviewProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-business-card-review-only";
-  generationMethod: "fixture" | "rule-based-card-review";
+  privacy: "demo-business-card-review-only" | "live-business-card-review";
+  generationMethod:
+    | "fixture"
+    | "live-store-confirmation"
+    | "live-store-query"
+    | "live-store-review"
+    | "rule-based-card-review";
+  liveDatabaseReadExecuted?: boolean;
+  databaseWriteExecuted?: false;
+  contactWriteExecuted?: false;
+  externalNetworkRequested?: false;
+  ocrProviderRequested?: false;
+  aiProviderRequested?: false;
+  notificationDelivered?: false;
 }
 
 export interface BusinessCardReviewEvidence {
@@ -132,7 +163,9 @@ export interface BusinessCardReviewEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-business-card-review-service";
+  createdBy:
+    | "live-business-card-review-service"
+    | "mock-business-card-review-service";
 }
 
 // 单个字段保留原值、复核值和 confidence，便于 UI 高亮需要人工确认的字段。
@@ -256,13 +289,15 @@ export type BusinessCardReviewConfirmationResult =
 export interface BusinessCardReviewService {
   getReviewDraft: (
     input: BusinessCardReviewLookupInput,
-  ) => BusinessCardReviewResult;
+  ) => BusinessCardReviewResult | Promise<BusinessCardReviewResult>;
   updateReviewDraft: (
     input: BusinessCardReviewUpdateInput,
-  ) => BusinessCardReviewResult;
+  ) => BusinessCardReviewResult | Promise<BusinessCardReviewResult>;
   confirmReviewedDraft: (
     input: BusinessCardReviewConfirmInput,
-  ) => BusinessCardReviewConfirmationResult;
+  ) =>
+    | BusinessCardReviewConfirmationResult
+    | Promise<BusinessCardReviewConfirmationResult>;
 }
 
 export function businessCardReviewFailureToAppError(
@@ -275,13 +310,19 @@ export function businessCardReviewFailureContext(
   failure: BusinessCardReviewFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive = failure.error.provenance.privacy === "live-business-card-review";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     businessCardReviewErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock business card review failure came from deterministic fixture rules.",
-    service: "business-card-review-and-confirm-flow-mock",
+      isLive
+        ? "Live business card review failure came from the source-backed live store boundary."
+        : "Mock business card review failure came from deterministic fixture rules.",
+    service: isLive
+      ? "business-card-review-live"
+      : "business-card-review-and-confirm-flow-mock",
   };
 }

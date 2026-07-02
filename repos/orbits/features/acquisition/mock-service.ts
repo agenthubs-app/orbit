@@ -24,6 +24,16 @@ import {
 } from "./fixtures";
 import type { ContactAcquisitionDraftService } from "./service";
 
+export interface MockContactAcquisitionDraftService
+  extends ContactAcquisitionDraftService {
+  listContactDrafts: (
+    input?: ContactAcquisitionDraftInput,
+  ) => ContactAcquisitionDraftResult;
+  confirmContactDraft: (
+    input: ContactDraftConfirmationInput,
+  ) => ContactDraftConfirmationResult;
+}
+
 // ContactAcquisitionDraft mock service 是统一的联系人草稿管线。
 // 它汇总来自不同 intake 的候选联系人，并模拟“确认草稿”到 contact candidate 的过程，
 // 但不会写入真实 contacts 表。
@@ -179,7 +189,7 @@ function buildConfirmationPayload(
   };
 }
 
-export function createMockContactAcquisitionDraftService(): ContactAcquisitionDraftService {
+export function createMockContactAcquisitionDraftService(): MockContactAcquisitionDraftService {
   // listContactDrafts 展示候选草稿；confirmContactDraft 只生成 readyForContactWrite 候选结果。
   return {
     listContactDrafts(input = {}): ContactAcquisitionDraftResult {

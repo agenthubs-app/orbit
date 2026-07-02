@@ -74,10 +74,12 @@ async function readBusinessCardScanInput(
 
 export async function POST(request: Request): Promise<Response> {
   // scanBusinessCard 返回的是可复核 contact draft，不会直接创建联系人。
-  const mode = resolveFeatureMode();
-  const scanService = createBusinessCardScanOcrService();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const scanService = createBusinessCardScanOcrService(mode);
   const scenario = new URL(request.url).searchParams.get("scenario");
-  const result = scanService.scanBusinessCard(
+  const result = await scanService.scanBusinessCard(
     await readBusinessCardScanInput(request, scenario),
   );
 

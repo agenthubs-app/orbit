@@ -127,9 +127,10 @@ const externalContactsApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/acquisition/external-contacts-import-mock/.",
-  "ORBIT_EXTERNAL_CONTACTS_IMPORT_PROVIDER switches from mock to live.",
-  "Live replacement requires phone address book, Google Contacts, CSV, and existing customer-list permissions.",
+  "Live service files live under features/acquisition/live-external-import-service.ts.",
+  "Live storage provider lives under features/acquisition/storage/external-import-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live switches API routes from mock fixtures to source-backed live storage.",
+  "Live review mode reads seeded networkPeople, contacts, and evidence without phone address book, Google Contacts, CSV, or customer-list provider calls.",
   "Contact writes remain behind review, provenance, and confirmation tests.",
   "Replacement tests cover candidates, import, empty, pending, unsupported source, and provider failure paths.",
 ] as const;

@@ -46,6 +46,8 @@ test("manual contact creation contract exposes source note tags follow-up hints 
   });
 
   assert.deepEqual(contract.MANUAL_CONTACT_CREATION_ERROR_CODES, [
+    "MANUAL_CONTACT_LIVE_STORE_UNCONFIGURED",
+    "MANUAL_CONTACT_LIVE_STORE_FAILED",
     "MANUAL_CONTACT_NOTE_REQUIRED",
     "MANUAL_CONTACT_DRAFT_NOT_FOUND",
     "MANUAL_CONTACT_CONFIRMATION_NOT_ALLOWED",
@@ -172,7 +174,7 @@ test("manual contact creation API routes return stable envelopes with empty and 
     typeof import("../../app/api/contact-drafts/[id]/confirm/route")
   >("app/api/contact-drafts/[id]/confirm/route.ts");
   const fixtures = await importProjectModule<
-    typeof import("../../features/acquisition/manual-contract")
+    typeof import("../../features/acquisition/manual-fixtures")
   >("features/acquisition/manual-fixtures.ts");
 
   const createResponse = await createRoute.POST(
@@ -399,19 +401,19 @@ test("manual contact creation debug route renders success empty pending and fail
   assert.match(html, /Live handoff evidence excerpts/);
   assert.match(
     html,
-    /Live provider files live under features\/acquisition\/manual-contact-creation-mock\//,
+    /Live manual service lives in features\/acquisition\/live-manual-service\.ts/,
   );
   assert.match(
     html,
-    /ORBIT_MANUAL_CONTACT_PROVIDER switches from mock to live/,
+    /ORBIT_MODULE_MODE=live switches manual creation from mock to live storage/,
   );
   assert.match(
     html,
-    /Manual notes, tags, and follow-up hints preserve source evidence/,
+    /Manual drafts are stored as central contactDrafts payloads with note, tags, and follow-up hints/,
   );
   assert.match(
     html,
-    /Replacement tests cover create, confirm, validation, empty, and provider failure paths/,
+    /Replacement tests cover create, confirm, validation, empty, and unconfigured live-store paths/,
   );
   assert.match(
     html,
@@ -433,11 +435,17 @@ test("manual contact creation live handoff covers replacement requirements", () 
   assert.match(doc, /features\/acquisition\/mock-manual-service\.ts/);
   assert.match(
     doc,
-    /features\/acquisition\/manual-contact-creation-mock\/live-service\.ts/,
+    /features\/acquisition\/live-manual-service\.ts/,
+  );
+  assert.match(
+    doc,
+    /features\/acquisition\/storage\/contact-draft-live-record-provider\.ts/,
   );
   assert.match(doc, /app\/api\/contact-drafts\/manual\/route\.ts/);
   assert.match(doc, /app\/api\/contact-drafts\/\[id\]\/confirm\/route\.ts/);
-  assert.match(doc, /ORBIT_MANUAL_CONTACT_PROVIDER/);
+  assert.match(doc, /ORBIT_MODULE_MODE=live/);
+  assert.match(doc, /ORBIT_EVENT_DATABASE_URL/);
+  assert.match(doc, /ORBIT_WORKSPACE_ID/);
   assert.match(doc, /manual notes, tags, and follow-up hints/i);
   assert.match(doc, /source evidence/i);
   assert.match(doc, /explicit confirmation/i);
@@ -446,18 +454,18 @@ test("manual contact creation live handoff covers replacement requirements", () 
   assert.match(doc, /Live handoff evidence excerpts/i);
   assert.match(
     doc,
-    /Live provider files live under `features\/acquisition\/manual-contact-creation-mock\/`/,
+    /Live manual service lives in `features\/acquisition\/live-manual-service\.ts`/,
   );
   assert.match(
     doc,
-    /`ORBIT_MANUAL_CONTACT_PROVIDER` switches from mock to live/,
+    /`ORBIT_MODULE_MODE=live` switches manual creation from mock to live storage/,
   );
   assert.match(
     doc,
-    /Manual notes, tags, and follow-up hints preserve source evidence/,
+    /Manual drafts are stored as central `contactDrafts` payloads with note, tags, and follow-up hints/,
   );
   assert.match(
     doc,
-    /Replacement tests cover create, confirm, validation, empty, and provider failure paths/,
+    /Replacement tests cover create, confirm, validation, empty, and unconfigured live-store paths/,
   );
 });

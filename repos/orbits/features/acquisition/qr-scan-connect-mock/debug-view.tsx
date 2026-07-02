@@ -99,9 +99,10 @@ const qrApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/acquisition/qr-scan-connect-mock/.",
-  "ORBIT_QR_SCAN_PROVIDER switches from mock to live.",
-  "Live replacement requires camera permission, QR decoder, and signature verifier controls.",
+  "Live service files live under features/acquisition/live-qr-service.ts.",
+  "Storage provider files live under features/acquisition/storage/qr-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live switches QR scan connect to source-backed remote live records.",
+  "Camera permission, QR decoder, and signature verifier controls remain future device-scanning work.",
   "Replacement tests cover scan, confirm, empty, pending, invalid payload, and provider failure paths.",
 ] as const;
 
@@ -453,7 +454,7 @@ export function QrScanConnectMockDemo() {
             <div>
               <dt>Switch</dt>
               <dd>
-                <code>ORBIT_QR_SCAN_PROVIDER</code>
+                <code>ORBIT_MODULE_MODE=live</code>
               </dd>
             </div>
           </dl>

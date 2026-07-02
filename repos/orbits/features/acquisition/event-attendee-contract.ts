@@ -11,6 +11,7 @@ export const EVENT_ATTENDEE_IMPORT_ERROR_CODES = [
   "EVENT_ATTENDEE_EVENT_NOT_FOUND",
   "EVENT_ATTENDEE_IMPORT_PENDING",
   "EVENT_ATTENDEE_IMPORT_MOCK_FAILED",
+  "EVENT_ATTENDEE_IMPORT_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type EventAttendeeImportErrorCode =
@@ -86,6 +87,13 @@ export const EVENT_ATTENDEE_IMPORT_ERROR_DEFINITIONS = {
     recovery:
       "Render the failure state and avoid retrying organizer feeds, live imports, databases, AI, calendar, email, or notification work.",
   },
+  EVENT_ATTENDEE_IMPORT_LIVE_STORE_UNCONFIGURED: {
+    code: "EVENT_ATTENDEE_IMPORT_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live event attendee import store is not configured.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before reading live event attendees.",
+  },
 } as const satisfies Record<
   EventAttendeeImportErrorCode,
   EventAttendeeImportErrorDefinition
@@ -104,10 +112,17 @@ export interface EventAttendeeImportProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-event-attendee-import-only";
-  generationMethod: "fixture" | "rule-based-event-attendee-import";
+  privacy:
+    | "demo-event-attendee-import-only"
+    | "live-event-attendee-import-only";
+  generationMethod:
+    | "fixture"
+    | "rule-based-event-attendee-import"
+    | "live-store-query"
+    | "live-store-draft-stage";
   organizerFeedRequested: false;
   bulkDatabaseImportExecuted: false;
+  liveDatabaseReadExecuted?: boolean;
   externalNetworkRequested: false;
 }
 
@@ -138,7 +153,9 @@ export interface EventAttendeeEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "mock-event-attendee-import-service";
+  createdBy:
+    | "mock-event-attendee-import-service"
+    | "live-event-attendee-import-service";
 }
 
 // EventAttendeeRecord 是单个参会人候选 DTO，importEligible 只表示可进入复核。
@@ -222,13 +239,15 @@ export type EventAttendeeImportResult =
   | EventAttendeeImportSuccess
   | EventAttendeeImportFailure;
 
+export type EventAttendeeImportServiceResult<TResult> = TResult | Promise<TResult>;
+
 export interface EventAttendeeImportService {
   listEventAttendees: (
     input?: EventAttendeeImportInput,
-  ) => EventAttendeeRosterResult;
+  ) => EventAttendeeImportServiceResult<EventAttendeeRosterResult>;
   importEventAttendees: (
     input?: EventAttendeeImportInput,
-  ) => EventAttendeeImportResult;
+  ) => EventAttendeeImportServiceResult<EventAttendeeImportResult>;
 }
 
 export function eventAttendeeImportFailureToAppError(
@@ -241,13 +260,19 @@ export function eventAttendeeImportFailureContext(
   failure: EventAttendeeImportFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive =
+    failure.error.provenance.generationMethod === "live-store-query" ||
+    failure.error.provenance.generationMethod === "live-store-draft-stage";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     eventAttendeeImportErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock event attendee import failure came from deterministic fixture rules.",
-    service: "event-attendee-import-mock",
+      isLive
+        ? "Live event attendee import failure came from the configured live provider boundary."
+        : "Mock event attendee import failure came from deterministic fixture rules.",
+    service: isLive ? "event-attendee-import" : "event-attendee-import-mock",
   };
 }

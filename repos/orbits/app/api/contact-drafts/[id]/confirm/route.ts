@@ -11,10 +11,12 @@ import {
   manualContactCreationFailureToAppError,
 } from "../../../../../features/acquisition/manual-contract";
 import {
+  QR_SCAN_CONNECT_LIVE_DRAFT_ID_PREFIX,
   qrScanConnectFailureContext,
   qrScanConnectFailureToAppError,
 } from "../../../../../features/acquisition/qr-contract";
 import {
+  BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX,
   businessCardReviewFailureContext,
   businessCardReviewFailureToAppError,
 } from "../../../../../features/acquisition/business-card-review-contract";
@@ -42,14 +44,21 @@ export async function POST(
   context: ConfirmContactDraftRouteContext,
 ): Promise<Response> {
   // scenario 来自 query，用于复现不同确认状态；confirmation 逻辑在各 service 内部。
-  const mode = resolveFeatureMode();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
 
-  if (id === "demo-qr-draft") {
+  if (
+    id === "demo-qr-draft" ||
+    id.startsWith(QR_SCAN_CONNECT_LIVE_DRAFT_ID_PREFIX)
+  ) {
     // QR 草稿有独立 confirm 路径，因为它的证据来源和字段结构不同。
-    const qrService = createQrScanConnectService();
-    const result = qrService.confirmQrConnectionDraft({
+    const qrService = createQrScanConnectService(
+      id.startsWith(QR_SCAN_CONNECT_LIVE_DRAFT_ID_PREFIX) ? mode : "mock",
+    );
+    const result = await qrService.confirmQrConnectionDraft({
       draftId: id,
       scenario,
     });
@@ -73,10 +82,15 @@ export async function POST(
     });
   }
 
-  if (id === "demo-business-card-draft") {
+  if (
+    id === "demo-business-card-draft" ||
+    id.startsWith(BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX)
+  ) {
     // 名片草稿确认前通常已经经过 reviewedFields 复核。
-    const reviewService = createBusinessCardReviewService();
-    const result = reviewService.confirmReviewedDraft({
+    const reviewService = createBusinessCardReviewService(
+      id.startsWith(BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX) ? mode : "mock",
+    );
+    const result = await reviewService.confirmReviewedDraft({
       draftId: id,
       scenario,
     });
@@ -100,10 +114,10 @@ export async function POST(
     });
   }
 
-  if (id === "demo-manual-draft") {
+  if (id === "demo-manual-draft" || id.startsWith("manual-draft:live:")) {
     // 手动草稿确认走 manual service，保留手工录入来源说明。
-    const manualService = createManualContactCreationService();
-    const result = manualService.confirmManualContactDraft({
+    const manualService = createManualContactCreationService(mode);
+    const result = await manualService.confirmManualContactDraft({
       draftId: id,
       scenario,
     });
@@ -128,8 +142,8 @@ export async function POST(
   }
 
   // 其他 draft id 走通用草稿确认服务，后续真实数据源也从这里扩展。
-  const draftService = createContactAcquisitionDraftService();
-  const result = draftService.confirmContactDraft({
+  const draftService = createContactAcquisitionDraftService(mode);
+  const result = await draftService.confirmContactDraft({
     draftId: id,
     scenario,
   });

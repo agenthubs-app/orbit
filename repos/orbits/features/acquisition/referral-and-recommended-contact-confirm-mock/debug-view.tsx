@@ -133,11 +133,11 @@ const referralRecommendationApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/acquisition/referral-and-recommended-contact-confirm-mock/.",
-  "ORBIT_REFERRAL_RECOMMENDATION_PROVIDER switches from mock to live.",
-  "Live replacement requires explicit referral source and recommender context permissions.",
-  "User confirmation remains required before contact writes or outbound intro actions.",
-  "Replacement tests cover source filtering, empty, pending, failure, blocked confirmation, and missing recommendation paths.",
+  "Live service files live under features/acquisition/live-referral-service.ts and features/acquisition/storage/.",
+  "ORBIT_MODULE_MODE=live switches referral recommendations from mock fixtures to shared live record storage.",
+  "The current live boundary reads matchRecommendations, networkPeople, contacts, and evidence.",
+  "User confirmation returns a preview; contact writes and outbound intro actions remain unimplemented.",
+  "Live tests cover source filtering, confirmation preview, unconfigured storage, API envelopes, privacy, and provenance paths.",
 ] as const;
 
 function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {
@@ -789,7 +789,7 @@ export function ReferralRecommendationMockDemo() {
             <div>
               <dt>Switch</dt>
               <dd>
-                <code>ORBIT_REFERRAL_RECOMMENDATION_PROVIDER</code>
+                <code>ORBIT_MODULE_MODE=live</code>
               </dd>
             </div>
           </dl>
