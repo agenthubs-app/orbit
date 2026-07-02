@@ -1,4 +1,8 @@
 import type { ApiEnvelope, ApiResult, OrbitApiMeta } from "./types";
+import {
+  DEFAULT_ORBIT_API_BASE_URL,
+  normalizeOrbitApiBaseUrl
+} from "./base-url";
 
 export type FetchLike = (
   input: RequestInfo | URL,
@@ -28,11 +32,11 @@ export interface OrbitApiClient {
 }
 
 function configuredBaseUrl(): string {
-  return process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL ?? "http://localhost:3000";
+  return DEFAULT_ORBIT_API_BASE_URL;
 }
 
 function normalizeBaseUrl(value: string): string {
-  return value.replace(/\/+$/u, "");
+  return normalizeOrbitApiBaseUrl(value);
 }
 
 function pathToUrl(baseUrl: string, path: string): string {
