@@ -210,6 +210,87 @@ function latestTimestamp(records: readonly LiveRecord<Record<string, unknown>>[]
   );
 }
 
+function uniqueEvidenceIds(
+  connections: readonly ConnectionDTO[],
+  contacts: readonly ContactDTO[],
+): string[] {
+  return Array.from(
+    new Set([
+      ...connections.flatMap((connection) => connection.evidenceIds),
+      ...contacts.flatMap((contact) => contact.evidenceIds),
+    ]),
+  );
+}
+
+function graphFromRecords(input: {
+  connectionRecords: readonly LiveRecord<Record<string, unknown>>[];
+  contactRecords: readonly LiveRecord<Record<string, unknown>>[];
+  evidenceRecords: readonly LiveRecord<Record<string, unknown>>[];
+}): LiveConnectionEvidenceGraph {
+  return {
+    connections: input.connectionRecords
+      .map(connectionFromRecord)
+      .filter((connection): connection is ConnectionDTO => connection !== null),
+    contacts: input.contactRecords
+      .map(contactFromRecord)
+      .filter((contact): contact is ContactDTO => contact !== null),
+    evidence: input.evidenceRecords
+      .map(evidenceFromRecord)
+      .filter(
+        (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
+      ),
+    generatedAt: latestTimestamp([
+      ...input.connectionRecords,
+      ...input.contactRecords,
+      ...input.evidenceRecords,
+    ]),
+  };
+}
+
+async function readFocusedConnectionGraph(input: {
+  connectionId: string;
+  store: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
+}): Promise<LiveConnectionEvidenceGraph> {
+  const connectionRecords = await input.store.listRecords({
+    workspaceId: input.workspaceId,
+    collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
+    recordIds: [input.connectionId],
+  });
+  const connections = connectionRecords
+    .map(connectionFromRecord)
+    .filter((connection): connection is ConnectionDTO => connection !== null);
+  const contactIds = Array.from(
+    new Set(connections.map((connection) => connection.contactId)),
+  );
+  const contactRecords =
+    contactIds.length > 0
+      ? await input.store.listRecords({
+          workspaceId: input.workspaceId,
+          collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.contacts,
+          recordIds: contactIds,
+        })
+      : [];
+  const contacts = contactRecords
+    .map(contactFromRecord)
+    .filter((contact): contact is ContactDTO => contact !== null);
+  const evidenceRecordIds = uniqueEvidenceIds(connections, contacts);
+  const evidenceRecords =
+    evidenceRecordIds.length > 0
+      ? await input.store.listRecords({
+          workspaceId: input.workspaceId,
+          collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.evidence,
+          recordIds: evidenceRecordIds,
+        })
+      : [];
+
+  return graphFromRecords({
+    connectionRecords,
+    contactRecords,
+    evidenceRecords,
+  });
+}
+
 export function createStorageConnectionEvidenceProvider({
   source,
   sourceLabel = "Connections shared live storage",
@@ -236,24 +317,18 @@ export function createStorageConnectionEvidenceProvider({
           }),
         ]);
 
-      return {
-        connections: connectionRecords
-          .map(connectionFromRecord)
-          .filter((connection): connection is ConnectionDTO => connection !== null),
-        contacts: contactRecords
-          .map(contactFromRecord)
-          .filter((contact): contact is ContactDTO => contact !== null),
-        evidence: evidenceRecords
-          .map(evidenceFromRecord)
-          .filter(
-            (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
-          ),
-        generatedAt: latestTimestamp([
-          ...connectionRecords,
-          ...contactRecords,
-          ...evidenceRecords,
-        ]),
-      };
+      return graphFromRecords({
+        connectionRecords,
+        contactRecords,
+        evidenceRecords,
+      });
+    },
+    readConnectionEvidenceGraphForConnection(connectionId: string) {
+      return readFocusedConnectionGraph({
+        connectionId: connectionId.trim(),
+        store,
+        workspaceId,
+      });
     },
   };
 }

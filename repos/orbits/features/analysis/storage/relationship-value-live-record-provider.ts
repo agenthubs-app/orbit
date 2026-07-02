@@ -12,6 +12,9 @@ export interface LiveRelationshipValueProvider {
   readRelationshipGraph: () =>
     | LiveConnectionEvidenceGraph
     | Promise<LiveConnectionEvidenceGraph>;
+  readRelationshipGraphForConnection?: (
+    connectionId: string,
+  ) => LiveConnectionEvidenceGraph | Promise<LiveConnectionEvidenceGraph>;
 }
 
 export type StorageRelationshipValueProviderOptions =
@@ -37,6 +40,10 @@ export function createStorageRelationshipValueProvider({
     source: provider.source,
     sourceLabel: provider.sourceLabel,
     readRelationshipGraph: () => provider.readConnectionEvidenceGraph(),
+    readRelationshipGraphForConnection: (connectionId) =>
+      provider.readConnectionEvidenceGraphForConnection
+        ? provider.readConnectionEvidenceGraphForConnection(connectionId)
+        : provider.readConnectionEvidenceGraph(),
   };
 }
 
@@ -60,5 +67,9 @@ export function createConfiguredStorageRelationshipValueProvider({
     ),
     sourceLabel: provider.sourceLabel,
     readRelationshipGraph: () => provider.readConnectionEvidenceGraph(),
+    readRelationshipGraphForConnection: (connectionId) =>
+      provider.readConnectionEvidenceGraphForConnection
+        ? provider.readConnectionEvidenceGraphForConnection(connectionId)
+        : provider.readConnectionEvidenceGraph(),
   };
 }

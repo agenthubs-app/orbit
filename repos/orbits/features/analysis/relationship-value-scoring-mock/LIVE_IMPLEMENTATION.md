@@ -20,6 +20,10 @@ The live contract must preserve relationship value type, priority score, rationa
   `features/analysis/storage/relationship-value-live-record-provider.ts`. It
   reads generated `connections`, `contacts`, and `evidence` records through the
   existing connection graph parser.
+- The live provider exposes `readRelationshipGraphForConnection` when the
+  underlying connection graph provider supports focused reads. Relationship
+  value scoring uses that path for get/recompute requests so scoring a single
+  connection does not require unrelated contact or evidence rows.
 - Future ranking model adapters can still be added under
   `features/analysis/relationship-value-scoring-mock/providers/`, but the
   current live path is deterministic and provider-free.
@@ -99,8 +103,9 @@ Coverage must include:
 Current evidence:
 
 - `tests/capabilities/relationship-value-live-store.test.ts` proves live scoring
-  reads generated `connections`, `contacts`, and `evidence`, recomputes from
-  selected evidence, and leaves the source connection record unchanged.
+  reads generated `connections`, `contacts`, and `evidence`, uses focused
+  selected-connection reads, recomputes from selected evidence, and leaves the
+  source connection record unchanged.
 - Remote validation for `connection_0007` returned `x-orbit-feature-mode:
   live` for both detail and recompute routes, with score `62` and recompute
   score `57`.

@@ -31,12 +31,19 @@
 - API failure envelopes must not expose raw database rows, search index internals, credentials, provider request ids, email bodies, calendar text, or private contact details outside the typed response contract.
 - Search ranking must be explainable enough to show which local query and filters were applied; opaque provider scores cannot replace Orbit relationship value rationale.
 - Tag, source, value, and status filters must be validated against `features/contacts/contract.ts` before reaching the provider layer.
+- Live list/search providers should implement `readContactGraphForList` so route
+  searches fetch contacts and only the evidence ids attached to listed contacts
+  and their related connections. The full `readContactGraph` path remains a
+  compatibility fallback, not the preferred live route read path.
 - Empty, pending, unsupported filter, and provider failure paths must keep provenance that explains whether the response came from local rules, a live search index, or a live database query.
 
 ## Replacement tests
 
 - Replace `tests/capabilities/contacts-list-search-and-filter-mock.test.ts` mock-only assertions with service-mode tests that prove live mode still returns the same envelope shape.
-- Add contract tests for `features/contacts/contacts-list-search-and-filter-mock/live-service.ts` covering list, text search, tag filters, source filters, value filters, status filters, empty state, pending state, unsupported filters, and provider failure.
+- Keep `tests/capabilities/contacts-live-store.test.ts` proving live list/search
+  output matches the service contract and focused search reads do not fetch
+  unrelated evidence rows.
+- Add contract tests for future provider adapters covering list, text search, tag filters, source filters, value filters, status filters, empty state, pending state, unsupported filters, and provider failure.
 - Add API tests for `app/api/contacts/route.ts` and `app/api/contacts/search/route.ts` proving status codes, runtime boundary headers, source/evidence provenance, privacy-safe errors, and stable API envelopes.
 - Add privacy tests proving provider raw payloads, credentials, search-index internals, private message text, and database diagnostics never appear in success or failure envelopes.
 - Add debug-route tests proving the dev capability surface still renders success, empty, pending, and failure states without owning business logic locally.

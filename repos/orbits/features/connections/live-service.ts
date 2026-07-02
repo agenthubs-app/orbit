@@ -30,6 +30,9 @@ export interface LiveConnectionEvidenceProvider {
   source: string;
   sourceLabel: string;
   readConnectionEvidenceGraph: () => LiveConnectionEvidenceProviderResult<LiveConnectionEvidenceGraph>;
+  readConnectionEvidenceGraphForConnection?: (
+    connectionId: string,
+  ) => LiveConnectionEvidenceProviderResult<LiveConnectionEvidenceGraph>;
 }
 
 export interface LiveConnectionEvidenceServiceOptions {
@@ -295,9 +298,14 @@ function detailPayload(input: {
 
 async function graphOrFailure(
   provider: LiveConnectionEvidenceProvider | null,
+  connectionId?: string,
 ): Promise<LiveConnectionEvidenceGraph | ConnectionEvidenceFailure> {
   if (!provider) {
     return unconfiguredFailure();
+  }
+
+  if (connectionId && provider.readConnectionEvidenceGraphForConnection) {
+    return provider.readConnectionEvidenceGraphForConnection(connectionId);
   }
 
   return provider.readConnectionEvidenceGraph();
@@ -326,7 +334,7 @@ export function createLiveConnectionEvidenceService({
     async getConnection(
       input: ConnectionEvidenceLookupInput,
     ): Promise<ConnectionEvidenceDetailResult> {
-      const graph = await graphOrFailure(provider);
+      const graph = await graphOrFailure(provider, input.connectionId.trim());
 
       if (isFailure(graph)) {
         return graph;

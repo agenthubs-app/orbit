@@ -324,7 +324,9 @@ async function payload(input: {
   provider: LiveRelationshipValueProvider;
   selectedEvidenceIds?: readonly string[] | null;
 }): Promise<RelationshipValueResult> {
-  const graph = await input.provider.readRelationshipGraph();
+  const graph = input.provider.readRelationshipGraphForConnection
+    ? await input.provider.readRelationshipGraphForConnection(input.connectionId)
+    : await input.provider.readRelationshipGraph();
   const connection = graph.connections.find(
     (candidate) => candidate.id === input.connectionId,
   );

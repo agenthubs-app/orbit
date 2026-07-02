@@ -5,6 +5,11 @@
 - Keep `features/contacts/detail-contract.ts` as the DTO, editable tag, status, note, last interaction metadata, provenance, state, service interface, and error-code boundary.
 - Keep `features/contacts/mock-detail-service.ts` as the deterministic Milestone C implementation for contact detail review, tag editing, status changes, note updates, and last interaction metadata.
 - `features/contacts/live-detail-service.ts` is the current live read implementation. It implements the same `ContactDetailTagStatusService` interface, reads generated `contacts`, `connections`, and `evidence` from shared live record storage through `features/contacts/storage/contact-live-record-provider.ts`, and returns contact detail DTOs with source/evidence provenance.
+- Live detail reads use `readContactGraphForContact` when available, so a
+  selected contact detail request fetches the selected contact record and only
+  the evidence ids attached to that contact and its related connections. The
+  older full `readContactGraph` path remains a compatibility fallback for
+  providers that have not implemented focused reads.
 - Current live `PATCH` behavior is a preview only. It validates tags/status, appends preview notes, updates last-interaction metadata in the response, and explicitly reports `databaseWriteExecuted: false` and `productionAuditLogWriteExecuted: false`.
 - Add provider adapters under `features/contacts/contact-detail-tag-and-status-mock/providers/`, for example `contact-persistence-provider.ts`, `contact-audit-log-provider.ts`, and `contact-evidence-provider.ts`, only when true contact persistence and production audit logging are in scope.
 - Keep `app/api/contacts/[id]/route.ts` as a thin route handler that calls the service interface and returns the shared API envelope.
@@ -15,7 +20,9 @@ Live handoff evidence excerpts:
 - `ORBIT_MODULE_MODE=live` or `ORBIT_FEATURE_MODE=live` routes `contact-detail-tag-status` through the live service factory implementation.
 - A future live write replacement wires a contact persistence service and production audit log behind `ContactDetailTagStatusService`.
 - Contact detail keeps tags, status, notes, last interaction metadata, source evidence, and provenance together.
-- `tests/capabilities/contact-detail-live-store.test.ts` covers live detail read and read-only preview update against generated live records.
+- `tests/capabilities/contact-detail-live-store.test.ts` covers live detail read,
+  focused selected-contact evidence reads, and read-only preview update against
+  generated live records.
 - Future replacement tests cover persisted tag edit, status change, note update, malformed update bodies, empty state, pending state, update-pending conflict, validation, provider failure, and audit failure paths.
 
 ## Switch mechanism

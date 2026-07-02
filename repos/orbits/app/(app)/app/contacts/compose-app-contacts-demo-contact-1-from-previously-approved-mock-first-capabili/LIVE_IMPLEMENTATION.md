@@ -39,10 +39,12 @@ import fixtures or live record stores directly.
 
 - The route loader is async-compatible and awaits the existing
   `T | Promise<T>` service result types.
-- Live contact detail is requested by the route `contactId`.
-- The route lists live connections and selects the first connection whose
-  `contactId` matches the requested contact. That connection id is then used
-  for both connection detail and relationship value scoring.
+- Live mode requests one focused graph by route `contactId` through
+  `readContactGraphForContact` when the provider supports it.
+- The route reuses that same graph for contact detail, connection evidence,
+  and relationship value scoring. Connection id resolution is in-memory from
+  the shared graph, so the normal success path does not repeat full
+  `contacts`, `connections`, or `evidence` reads.
 - If no live connection exists for the requested contact, the route returns a
   controlled failure rather than showing an unrelated demo connection.
 - The actual `/app/contacts/[id]` page must not call
@@ -63,6 +65,9 @@ import fixtures or live record stores directly.
 - `tests/pages/app-contact-detail-live-route-services.test.ts` proves live mode
   reaches child services instead of failing at the page factory with
   `NOT_IMPLEMENTED`.
+- The same test proves the live detail route loads one shared focused graph for
+  success payloads and returns a controlled boundary when that graph does not
+  contain the requested contact.
 - The same test proves the real `/app/contacts/[id]` page calls the live route
   service, avoids the legacy contacts view model, and renders live-store
   failure evidence when storage is unconfigured.

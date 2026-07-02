@@ -61,6 +61,13 @@ fixture imports. The factory now supports live mode through
 results through the service interface and do not import fixture files, provider
 SDKs, or database clients.
 
+Live list/search now uses `readContactGraphForList` when the configured provider
+supports it. The focused path applies text search at the contact-record read and
+fetches evidence by the listed contacts' and related connections' evidence ids,
+so `/app/contacts?query=...` does not read unrelated evidence rows. Providers
+that only implement `readContactGraph` still work through the compatibility
+fallback.
+
 The legacy contacts subpages `/app/contacts/pipeline`, `/app/contacts/graph`,
 and `/app/contacts/intros` now use the same live-capable route service. Their
 shared `contacts-subroute-route-adapter.tsx` maps the contacts payload into the
@@ -89,6 +96,11 @@ free and continue to expose `data-action-evidence` and
 
 - Keep `tests/pages/app-contacts-page.test.tsx` asserting the route heading, one contact datum with its row-local source labels, value tags, source tags, evidence id, local action result, product-facing route state checks, route recovery actions, adapter imports, live handoff, and `GET /api/contacts` success envelope.
 - Keep `tests/pages/app-contacts-subroutes-live-route-services.test.ts` proving pipeline, graph, and intros no longer import `getOrbitContactsViewModel`, use `contactsRouteToOrbitContactsViewModel`, and render controlled live failures when storage is unconfigured.
+- Keep `tests/pages/app-contacts-live-route-services.test.ts` proving the live
+  route resolves live contacts search and fails closed when storage is
+  unconfigured.
+- Keep `tests/capabilities/contacts-live-store.test.ts` proving focused list
+  search reads only evidence records needed for the listed contacts.
 - Add live-mode service contract tests proving live list/search/filter output matches `ContactsListSearchAndFilterService`.
 - Add API parity tests for `GET /api/contacts` and `POST /api/contacts/search` in mock and live modes.
 - Add route state checks for success, empty, pending/loading, unsupported-filter failure, and provider failure after service factory switching.

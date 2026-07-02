@@ -646,7 +646,9 @@ export function createLiveContactDetailTagStatusService({
       });
     }
 
-    const graph = await provider.readContactGraph();
+    const graph = provider.readContactGraphForContact
+      ? await provider.readContactGraphForContact(input.contactId.trim())
+      : await provider.readContactGraph();
     const contact =
       graph.contacts.find((item) => item.id === input.contactId.trim()) ?? null;
 

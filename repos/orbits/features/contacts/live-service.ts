@@ -18,6 +18,12 @@ export interface LiveContactsGraphProvider {
   source: string;
   sourceLabel: string;
   readContactGraph: () => LiveContactsProviderResult<LocalRemoteContactGraph>;
+  readContactGraphForList?: (
+    input?: ContactsListSearchFilterInput,
+  ) => LiveContactsProviderResult<LocalRemoteContactGraph>;
+  readContactGraphForContact?: (
+    contactId: string,
+  ) => LiveContactsProviderResult<LocalRemoteContactGraph>;
 }
 
 export interface LiveContactsListSearchAndFilterServiceOptions {
@@ -84,9 +90,13 @@ async function runLiveContactsQuery(
     return unconfiguredFailure();
   }
 
+  const graph = provider.readContactGraphForList
+    ? await provider.readContactGraphForList(input)
+    : await provider.readContactGraph();
+
   return clonePayload(
     runContactsGraphQuery(
-      await provider.readContactGraph(),
+      graph,
       input,
       graphQueryContext(provider),
     ),

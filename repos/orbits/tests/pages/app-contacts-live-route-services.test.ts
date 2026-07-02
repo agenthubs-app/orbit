@@ -5,8 +5,16 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { createLiveContactsListSearchAndFilterService } from "../../features/contacts/live-service";
+import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
 import { loadAppContactsRouteViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { resolveAppContactsListSearchAndFilterService } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-service-factory";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
+import {
+  createMemoryLiveRecordStore,
+  type LiveRecordListQuery,
+} from "../../shared/storage/live-record-store";
+import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -76,6 +84,70 @@ test("app contacts route loader returns a controlled live failure when storage i
       );
     }
   });
+});
+
+test("app contacts live route does not read full evidence for filtered results", async () => {
+  const workspaceId = "workspace:app-contacts-focused-list";
+  const rawStore = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const listQueries: Array<
+    LiveRecordListQuery & { returnedRowCount?: number }
+  > = [];
+  const store = {
+    ...rawStore,
+    listRecords(query: LiveRecordListQuery) {
+      const rows = rawStore.listRecords(query);
+
+      listQueries.push({
+        ...query,
+        recordIds: query.recordIds ? [...query.recordIds] : undefined,
+        returnedRowCount: rows.length,
+      });
+
+      return rows;
+    },
+  };
+
+  await seedGeneratedRelationshipFixturesIntoLiveStore({
+    now: () => "2026-07-02T12:00:00.000Z",
+    store: rawStore,
+    workspaceId,
+  });
+
+  const service = createLiveContactsListSearchAndFilterService({
+    provider: createStorageContactGraphProvider({
+      sourceLabel: "App contacts focused storage",
+      store,
+      workspaceId,
+    }),
+  });
+  const viewModel = await loadAppContactsRouteViewModel(
+    {
+      query: "North Star Foods",
+    },
+    {
+      contactsService: service,
+    },
+  );
+
+  assert.equal(viewModel.state, "success");
+
+  if (viewModel.state === "success") {
+    assert.deepEqual(
+      viewModel.payload.contacts.map((contact) => contact.id),
+      ["contact_001"],
+    );
+  }
+
+  const evidenceQuery = listQueries.find(
+    (query) => query.collectionName === "evidence",
+  );
+
+  assert.ok(evidenceQuery);
+  assert.ok(evidenceQuery.recordIds);
+  assert.ok(evidenceQuery.recordIds.length > 0);
+  assert.ok(
+    (evidenceQuery.returnedRowCount ?? 0) < defaultMockFixtures.evidence.length,
+  );
 });
 
 test("/app/contacts page renders the live-capable product contacts UI", async () => {

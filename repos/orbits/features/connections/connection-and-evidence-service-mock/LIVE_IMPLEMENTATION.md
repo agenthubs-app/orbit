@@ -41,6 +41,10 @@ No live implementation may request OCR, camera, external message sending, notifi
 ## Privacy and provenance constraints
 
 - Every live connection response must preserve connection id, contact id, relationship reason, relationship stage, source links, evidence timeline ids, next action, collection timestamp, and privacy-safe provenance.
+- Live connection detail providers should implement
+  `readConnectionEvidenceGraphForConnection` so detail reads fetch the selected
+  connection, its contact, and only their evidence ids. `readConnectionEvidenceGraph`
+  remains the compatibility path for list views and older providers.
 - Every live add-evidence response must record who initiated the addition, which source link produced the evidence, which connection received the evidence, and whether persistence and audit logging both completed.
 - Production audit log writes must never replace user-visible provenance. The API response still needs explicit evidence ids and privacy-safe source labels.
 - API failure envelopes must not expose raw database rows, evidence store payloads, credentials, provider request ids, email bodies, calendar text, audit log internals, or private diagnostics.
@@ -50,7 +54,10 @@ No live implementation may request OCR, camera, external message sending, notifi
 ## Replacement tests
 
 - Replace mock-only expectations in `tests/capabilities/connection-and-evidence-service-mock.test.ts` with service-mode tests proving mock mode remains deterministic.
-- Add contract tests for `features/connections/connection-and-evidence-service-mock/live-service.ts` covering connection list, connection detail, source link mapping, evidence timeline ordering, add-evidence, malformed add-evidence body mapping, empty state, pending state, add-pending conflict, not found, validation, and provider failure.
+- Keep `tests/capabilities/connection-live-store.test.ts` proving live list/detail
+  output matches the service contract and focused connection detail reads do not
+  fetch unrelated contact or evidence rows.
+- Add contract tests for future provider adapters covering connection list, connection detail, source link mapping, evidence timeline ordering, add-evidence, malformed add-evidence body mapping, empty state, pending state, add-pending conflict, not found, validation, and provider failure.
 - Add API tests for `app/api/connections/route.ts`, `app/api/connections/[id]/route.ts`, and `app/api/connections/[id]/evidence/route.ts` proving status codes, runtime boundary headers, source/evidence provenance, privacy-safe errors, malformed body handling, and stable API envelopes.
 - Add audit tests proving a live evidence addition cannot report success unless the connection persistence result, evidence store result, and production audit log result are all accounted for.
 - Add privacy tests proving raw provider payloads, credentials, audit log internals, private message text, calendar text, email bodies, and database diagnostics never appear in success or failure envelopes.

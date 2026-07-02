@@ -17,6 +17,7 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import type { ContactsListSearchFilterInput } from "../contract";
 import type { LiveContactsGraphProvider } from "../live-service";
 import type { LocalRemoteContactGraph } from "../contacts-list-search-and-filter-mock/providers/contact-local-remote-provider";
 
@@ -204,6 +205,91 @@ function latestTimestamp(records: readonly LiveRecord<Record<string, unknown>>[]
   );
 }
 
+function uniqueEvidenceIds(
+  contacts: readonly ContactDTO[],
+  connections: readonly ConnectionDTO[],
+): string[] {
+  return Array.from(
+    new Set([
+      ...contacts.flatMap((contact) => contact.evidenceIds),
+      ...connections.flatMap((connection) => connection.evidenceIds),
+    ]),
+  );
+}
+
+function graphFromRecords(input: {
+  contactRecords: readonly LiveRecord<Record<string, unknown>>[];
+  connectionRecords: readonly LiveRecord<Record<string, unknown>>[];
+  evidenceRecords: readonly LiveRecord<Record<string, unknown>>[];
+}): LocalRemoteContactGraph {
+  return {
+    contacts: input.contactRecords
+      .map(contactFromRecord)
+      .filter((contact): contact is ContactDTO => contact !== null),
+    connections: input.connectionRecords
+      .map(connectionFromRecord)
+      .filter((connection): connection is ConnectionDTO => connection !== null),
+    evidence: input.evidenceRecords
+      .map(evidenceFromRecord)
+      .filter(
+        (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
+      ),
+    generatedAt: latestTimestamp([
+      ...input.contactRecords,
+      ...input.connectionRecords,
+      ...input.evidenceRecords,
+    ]),
+  };
+}
+
+async function readFocusedContactGraph(input: {
+  contactId?: string;
+  listInput?: ContactsListSearchFilterInput;
+  store: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
+}): Promise<LocalRemoteContactGraph> {
+  const query = input.listInput?.query?.trim();
+  const [contactRecords, allConnectionRecords] = await Promise.all([
+    input.store.listRecords({
+      workspaceId: input.workspaceId,
+      collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+      ...(input.contactId ? { recordIds: [input.contactId] } : {}),
+      ...(query ? { searchText: query } : {}),
+    }),
+    input.store.listRecords({
+      workspaceId: input.workspaceId,
+      collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
+    }),
+  ]);
+  const contacts = contactRecords
+    .map(contactFromRecord)
+    .filter((contact): contact is ContactDTO => contact !== null);
+  const contactIds = new Set(contacts.map((contact) => contact.id));
+  const connectionRecords = allConnectionRecords.filter((record) => {
+    const connection = connectionFromRecord(record);
+
+    return connection ? contactIds.has(connection.contactId) : false;
+  });
+  const connections = connectionRecords
+    .map(connectionFromRecord)
+    .filter((connection): connection is ConnectionDTO => connection !== null);
+  const evidenceRecordIds = uniqueEvidenceIds(contacts, connections);
+  const evidenceRecords =
+    evidenceRecordIds.length > 0
+      ? await input.store.listRecords({
+          workspaceId: input.workspaceId,
+          collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
+          recordIds: evidenceRecordIds,
+        })
+      : [];
+
+  return graphFromRecords({
+    contactRecords,
+    connectionRecords,
+    evidenceRecords,
+  });
+}
+
 export function createStorageContactGraphProvider({
   source,
   sourceLabel = "Contacts shared live storage",
@@ -230,24 +316,25 @@ export function createStorageContactGraphProvider({
           }),
         ]);
 
-      return {
-        contacts: contactRecords
-          .map(contactFromRecord)
-          .filter((contact): contact is ContactDTO => contact !== null),
-        connections: connectionRecords
-          .map(connectionFromRecord)
-          .filter((connection): connection is ConnectionDTO => connection !== null),
-        evidence: evidenceRecords
-          .map(evidenceFromRecord)
-          .filter(
-            (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
-          ),
-        generatedAt: latestTimestamp([
-          ...contactRecords,
-          ...connectionRecords,
-          ...evidenceRecords,
-        ]),
-      };
+      return graphFromRecords({
+        contactRecords,
+        connectionRecords,
+        evidenceRecords,
+      });
+    },
+    readContactGraphForList(input = {}) {
+      return readFocusedContactGraph({
+        listInput: input,
+        store,
+        workspaceId,
+      });
+    },
+    readContactGraphForContact(contactId: string) {
+      return readFocusedContactGraph({
+        contactId: contactId.trim(),
+        store,
+        workspaceId,
+      });
     },
   };
 }

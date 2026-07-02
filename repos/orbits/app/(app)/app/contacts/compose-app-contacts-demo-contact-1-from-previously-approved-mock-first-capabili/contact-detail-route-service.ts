@@ -5,7 +5,9 @@
  * 组合成页面需要的单一 view model。它不直接读写数据库；即使用户触发
  * `prepare-follow-up`，也只生成本地草稿和证据结果，不发送消息或执行外部动作。
  */
+import { createLiveRelationshipValueScoringService } from "../../../../../features/analysis/live-value-service";
 import { createRelationshipValueScoringService } from "../../../../../features/analysis/service-factory";
+import type { LiveRelationshipValueProvider } from "../../../../../features/analysis/storage/relationship-value-live-record-provider";
 import type {
   RelationshipValueAssessment,
   RelationshipValuePayload,
@@ -13,7 +15,10 @@ import type {
   RelationshipValueScoringService,
   RelationshipValueServiceResult,
 } from "../../../../../features/analysis/value-contract";
+import { createLiveConnectionEvidenceService } from "../../../../../features/connections/live-service";
 import { createConnectionEvidenceService } from "../../../../../features/connections/service-factory";
+import type { LiveConnectionEvidenceProvider } from "../../../../../features/connections/live-service";
+import type { LiveConnectionEvidenceGraph } from "../../../../../features/connections/storage/connection-live-record-provider";
 import type {
   ConnectionEvidenceDetailPayload,
   ConnectionEvidenceListPayload,
@@ -24,7 +29,10 @@ import type {
   ConnectionEvidenceService,
   ConnectionEvidenceServiceResult,
 } from "../../../../../features/connections/service";
+import { createLiveContactDetailTagStatusService } from "../../../../../features/contacts/live-detail-service";
+import type { LiveContactsGraphProvider } from "../../../../../features/contacts/live-service";
 import { createContactDetailTagStatusService } from "../../../../../features/contacts/service-factory";
+import { createConfiguredStorageContactGraphProvider } from "../../../../../features/contacts/storage/contact-live-record-provider";
 import type {
   ContactDetail,
   ContactDetailTagStatusPayload,
@@ -32,8 +40,10 @@ import type {
   ContactDetailTagStatusService,
   ContactDetailTagStatusServiceResult,
 } from "../../../../../features/contacts/detail-contract";
+import type { LocalRemoteContactGraph } from "../../../../../features/contacts/contacts-list-search-and-filter-mock/providers/contact-local-remote-provider";
 import {
   createModuleServiceFactory,
+  resolveModuleMode,
   type ModuleMode,
 } from "../../../../../shared/services/module-mode";
 
@@ -51,6 +61,7 @@ export type AppContactDetailRouteState =
 export interface AppContactDetailRouteInput {
   action?: string | null;
   contactId: string;
+  liveContactGraphProvider?: LiveContactsGraphProvider | null;
   mode?: ModuleMode | string;
   scenario?: string | null;
 }
@@ -365,37 +376,99 @@ function routeStateForPayloads(
   return null;
 }
 
-export async function loadAppContactDetailRoute({
-  action,
-  contactId,
-  mode,
-  scenario,
-}: AppContactDetailRouteInput): Promise<AppContactDetailRouteModel> {
-  // 主入口：解析服务 -> 拉取三个 capability payload -> 合并失败/空/pending 状态 ->
-  // 成功时返回详情、证据时间线、关系价值和可选本地 actionResult。
-  const services = resolveRouteServices(mode);
+function contactProviderForGraph(input: {
+  graph: LocalRemoteContactGraph;
+  provider: LiveContactsGraphProvider;
+}): LiveContactsGraphProvider {
+  return {
+    source: input.provider.source,
+    sourceLabel: input.provider.sourceLabel,
+    readContactGraph: () => input.graph,
+    readContactGraphForContact: () => input.graph,
+    readContactGraphForList: () => input.graph,
+  };
+}
 
-  if (isBoundaryModel(services)) {
-    return services;
-  }
+function connectionProviderForGraph(input: {
+  graph: LiveConnectionEvidenceGraph;
+  provider: LiveContactsGraphProvider;
+}): LiveConnectionEvidenceProvider {
+  return {
+    source: input.provider.source.replace(":contacts:", ":connections:"),
+    sourceLabel: input.provider.sourceLabel,
+    readConnectionEvidenceGraph: () => input.graph,
+    readConnectionEvidenceGraphForConnection: () => input.graph,
+  };
+}
 
-  const routeScenario = normalizeScenario(scenario);
-  const contactResult = await services.contactDetail.getContactDetail({
-    contactId,
+function relationshipValueProviderForGraph(input: {
+  graph: LiveConnectionEvidenceGraph;
+  provider: LiveContactsGraphProvider;
+}): LiveRelationshipValueProvider {
+  return {
+    source: input.provider.source.replace(":contacts:", ":relationship-value:"),
+    sourceLabel: input.provider.sourceLabel,
+    readRelationshipGraph: () => input.graph,
+    readRelationshipGraphForConnection: () => input.graph,
+  };
+}
+
+async function resolveLiveRouteServicesFromGraph(input: {
+  contactId: string;
+  provider: LiveContactsGraphProvider;
+}): Promise<AppContactDetailRouteServices> {
+  const graph = input.provider.readContactGraphForContact
+    ? await input.provider.readContactGraphForContact(input.contactId.trim())
+    : await input.provider.readContactGraph();
+  const contactProvider = contactProviderForGraph({
+    graph,
+    provider: input.provider,
+  });
+  const connectionProvider = connectionProviderForGraph({
+    graph,
+    provider: input.provider,
+  });
+  const relationshipValueProvider = relationshipValueProviderForGraph({
+    graph,
+    provider: input.provider,
+  });
+
+  return {
+    contactDetail: createLiveContactDetailTagStatusService({
+      provider: contactProvider,
+    }),
+    connectionEvidence: createLiveConnectionEvidenceService({
+      provider: connectionProvider,
+    }),
+    relationshipValue: createLiveRelationshipValueScoringService({
+      provider: relationshipValueProvider,
+    }),
+  };
+}
+
+async function loadComposedContactDetailRoute(input: {
+  action?: string | null;
+  contactId: string;
+  scenario?: string | null;
+  services: AppContactDetailRouteServices;
+}): Promise<AppContactDetailRouteModel> {
+  const routeScenario = normalizeScenario(input.scenario);
+  const contactResult = await input.services.contactDetail.getContactDetail({
+    contactId: input.contactId,
     scenario: routeScenario,
   });
-  const connectionListResult = await services.connectionEvidence.listConnections({
+  const connectionListResult = await input.services.connectionEvidence.listConnections({
     scenario: routeScenario,
   });
   const connectionId =
     connectionListResult.success === true
-      ? connectionIdForContact(connectionListResult.data, contactId)
+      ? connectionIdForContact(connectionListResult.data, input.contactId)
       : APP_CONTACT_DETAIL_CONNECTION_ID;
-  const connectionResult = await services.connectionEvidence.getConnection({
+  const connectionResult = await input.services.connectionEvidence.getConnection({
     connectionId: connectionId ?? APP_CONTACT_DETAIL_CONNECTION_ID,
     scenario: routeScenario,
   });
-  const valueResult = await services.relationshipValue.getRelationshipValue({
+  const valueResult = await input.services.relationshipValue.getRelationshipValue({
     connectionId: connectionId ?? APP_CONTACT_DETAIL_CONNECTION_ID,
     scenario: routeScenario,
   });
@@ -437,8 +510,8 @@ export async function loadAppContactDetailRoute({
 
   return {
     actionResult:
-      normalizeAction(action) === "prepare-follow-up"
-        ? await buildLocalActionResult(services.connectionEvidence, connectionId)
+      normalizeAction(input.action) === "prepare-follow-up"
+        ? await buildLocalActionResult(input.services.connectionEvidence, connectionId)
         : null,
     assessment: valueResult.data.assessment,
     contact: contactResult.data.contact,
@@ -449,4 +522,64 @@ export async function loadAppContactDetailRoute({
     routeState: "success",
     valuePayload: valueResult.data,
   };
+}
+
+async function loadLiveAppContactDetailRoute(input: {
+  action?: string | null;
+  contactId: string;
+  liveContactGraphProvider?: LiveContactsGraphProvider | null;
+  scenario?: string | null;
+}): Promise<AppContactDetailRouteModel> {
+  const provider =
+    input.liveContactGraphProvider ?? createConfiguredStorageContactGraphProvider();
+
+  if (!provider) {
+    return createBoundaryModel("failure", [
+      "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
+    ]);
+  }
+
+  const services = await resolveLiveRouteServicesFromGraph({
+    contactId: input.contactId,
+    provider,
+  });
+
+  return loadComposedContactDetailRoute({
+    action: input.action,
+    contactId: input.contactId,
+    scenario: input.scenario,
+    services,
+  });
+}
+
+export async function loadAppContactDetailRoute({
+  action,
+  contactId,
+  liveContactGraphProvider,
+  mode,
+  scenario,
+}: AppContactDetailRouteInput): Promise<AppContactDetailRouteModel> {
+  // 主入口：live 模式先读取一次 focused graph，再复用现有 live capability
+  // mappers；mock/hybrid 继续走原有 service composition。
+  if (resolveModuleMode(mode) === "live") {
+    return loadLiveAppContactDetailRoute({
+      action,
+      contactId,
+      liveContactGraphProvider,
+      scenario,
+    });
+  }
+
+  const services = resolveRouteServices(mode);
+
+  if (isBoundaryModel(services)) {
+    return services;
+  }
+
+  return loadComposedContactDetailRoute({
+    action,
+    contactId,
+    scenario,
+    services,
+  });
 }

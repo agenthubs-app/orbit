@@ -4,7 +4,10 @@ import type {
   ContactsListSearchPayload,
   ContactsListSearchResult,
 } from "../../../../../features/contacts/contract";
-import type { ContactsListSearchServiceResult } from "../../../../../features/contacts/service";
+import type {
+  ContactsListSearchAndFilterService,
+  ContactsListSearchServiceResult,
+} from "../../../../../features/contacts/service";
 import { createAppContactsListSearchAndFilterService } from "./contacts-service-factory";
 
 // Contacts route view model 是服务 contract 到页面 UI 的转换层。
@@ -109,6 +112,16 @@ export type AppContactsRouteViewModel =
         evidenceIds: readonly string[];
       };
     };
+
+export interface AppContactsRouteViewModelOptions {
+  contactsService?: ContactsListSearchAndFilterService;
+}
+
+function contactsServiceFor(
+  options: AppContactsRouteViewModelOptions,
+): ContactsListSearchAndFilterService {
+  return options.contactsService ?? createAppContactsListSearchAndFilterService();
+}
 
 function readSearchParam(
   searchParams: AppContactsSearchParams | undefined,
@@ -381,8 +394,9 @@ function routeRecoveryActions(
 
 async function routeStateViewModel(
   scenario: AppContactsRouteScenario,
+  options: AppContactsRouteViewModelOptions,
 ): Promise<AppContactsRouteStateViewModel> {
-  const contactsService = createAppContactsListSearchAndFilterService();
+  const contactsService = contactsServiceFor(options);
 
   if (scenario === "empty") {
     const emptyState = await resolveContactsListSearchResult(
@@ -463,17 +477,18 @@ async function routeStateViewModel(
 
 export async function loadAppContactsRouteViewModel(
   searchParams?: AppContactsSearchParams,
+  options: AppContactsRouteViewModelOptions = {},
 ): Promise<AppContactsRouteViewModel> {
   const requestedScenario = readRouteScenario(searchParams);
 
   if (requestedScenario) {
     return {
       state: "route-state",
-      routeState: await routeStateViewModel(requestedScenario),
+      routeState: await routeStateViewModel(requestedScenario, options),
     };
   }
 
-  const contactsService = createAppContactsListSearchAndFilterService();
+  const contactsService = contactsServiceFor(options);
   const input = readContactsInput(searchParams);
   const reviewActionRequested =
     readSearchParam(searchParams, "action") === "review-filtered-contact";
