@@ -108,7 +108,7 @@ export async function POST(request: Request): Promise<Response> {
   // generateReminders 生成的是提醒候选/计划，不在 route 层投递通知。
   const mode = resolveFeatureMode();
   const notificationService = createReminderScheduleNotificationService();
-  const result = notificationService.generateReminders(await readInput(request));
+  const result = await notificationService.generateReminders(await readInput(request));
 
   if (result.success === false) {
     // notification failure 统一映射成 AppError/envelope。

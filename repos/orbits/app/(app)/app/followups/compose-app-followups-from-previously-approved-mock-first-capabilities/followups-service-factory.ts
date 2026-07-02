@@ -23,7 +23,10 @@ export const appFollowupTaskServiceFactory =
   createModuleServiceFactory<FollowupTaskGenerationService>({
     capabilityId: "followup-tasks",
     implementations: {
-      mock: () => createFollowupTaskGenerationService(),
+      live: ({ requestedMode }) =>
+        createFollowupTaskGenerationService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createFollowupTaskGenerationService(requestedMode),
     },
   });
 
@@ -31,7 +34,10 @@ export const appFollowupDraftServiceFactory =
   createModuleServiceFactory<MessageDraftGeneratorService>({
     capabilityId: "followup-message-drafts",
     implementations: {
-      mock: () => createMessageDraftGeneratorService(),
+      live: ({ requestedMode }) =>
+        createMessageDraftGeneratorService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createMessageDraftGeneratorService(requestedMode),
     },
   });
 
@@ -39,7 +45,10 @@ export const appFollowupNotificationServiceFactory =
   createModuleServiceFactory<ReminderScheduleNotificationService>({
     capabilityId: "followup-reminders",
     implementations: {
-      mock: () => createReminderScheduleNotificationService(),
+      live: ({ requestedMode }) =>
+        createReminderScheduleNotificationService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createReminderScheduleNotificationService(requestedMode),
     },
   });
 

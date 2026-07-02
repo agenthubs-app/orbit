@@ -46,7 +46,7 @@ export async function GET(request: Request): Promise<Response> {
   // GET 是只读通知视图，不投递真实通知。
   const mode = resolveFeatureMode();
   const notificationService = createReminderScheduleNotificationService();
-  const result = notificationService.listNotifications(readInput(request));
+  const result = await notificationService.listNotifications(readInput(request));
 
   if (result.success === false) {
     // notification failure 统一映射成 AppError/envelope。

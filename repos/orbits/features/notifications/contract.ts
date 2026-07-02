@@ -13,6 +13,7 @@ export const REMINDER_SCHEDULE_NOTIFICATION_ERROR_CODES = [
   "REMINDER_SCHEDULE_NOTIFICATION_EMPTY",
   "REMINDER_SCHEDULE_NOTIFICATION_PENDING",
   "REMINDER_SCHEDULE_NOTIFICATION_MOCK_FAILED",
+  "REMINDER_SCHEDULE_NOTIFICATION_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ReminderScheduleNotificationErrorCode =
@@ -35,7 +36,11 @@ export type ReminderPriority = "high" | "normal" | "low";
 
 export type NotificationQueueChannel = "push" | "email" | "sms" | "in_app";
 
-export type NotificationQueueStatus = "mock_queued" | "mock_grouped";
+export type NotificationQueueStatus =
+  | "mock_queued"
+  | "mock_grouped"
+  | "live_queued"
+  | "live_grouped";
 
 // list 输入用于过滤已有提醒；generate 输入用于按频率和时间窗口生成建议。
 export interface ReminderScheduleNotificationListInput {
@@ -102,6 +107,14 @@ export const REMINDER_SCHEDULE_NOTIFICATION_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry push notifications, email delivery, SMS delivery, cron jobs, databases, devices, or external networks.",
   },
+  REMINDER_SCHEDULE_NOTIFICATION_LIVE_STORE_UNCONFIGURED: {
+    code: "REMINDER_SCHEDULE_NOTIFICATION_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live reminder schedule and notification store is not configured.",
+    recovery:
+      "Configure a live database connection or run this capability in mock mode; do not call push notifications, email delivery, SMS delivery, cron jobs, devices, or external networks.",
+  },
 } as const satisfies Record<
   ReminderScheduleNotificationErrorCode,
   ReminderScheduleNotificationErrorDefinition
@@ -111,7 +124,7 @@ export type ReminderScheduleNotificationSourceReference = SourceReferenceDTO & {
   type: "manual" | "event_import" | "calendar_signal" | "email_signal" | "system";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-reminder-rules";
+  generatedBy: "mock-reminder-rules" | "live-store-query";
 };
 
 // audit 描述提醒仍需人工复核，所有 delivery provider 均为 false。
@@ -139,7 +152,7 @@ export interface ScheduledReminder {
   source: ReminderScheduleNotificationSourceReference;
   evidenceIds: readonly string[];
   audit: ReminderNotificationAudit;
-  generatedBy: "mock-reminder-rules";
+  generatedBy: "mock-reminder-rules" | "live-store-query";
   pushNotificationRequested: false;
   emailDeliveryRequested: false;
   smsDeliveryRequested: false;
@@ -191,17 +204,21 @@ export interface ReminderScheduleNotificationProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-reminder-schedule-notification-only";
+  privacy:
+    | "demo-reminder-schedule-notification-only"
+    | "live-reminder-schedule-notification-preview";
   generationMethod:
     | "fixture"
     | "rule-based-reminder-schedule"
-    | "rule-based-state";
+    | "rule-based-state"
+    | "live-store-query"
+    | "live-reminder-schedule";
   pushNotificationRequested: false;
   emailDeliveryRequested: false;
   smsDeliveryRequested: false;
   cronJobRequested: false;
   notificationProviderRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
@@ -250,9 +267,8 @@ export function reminderScheduleNotificationFailureContext(
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock reminder schedule and notification failure came from deterministic fixture rules.",
+    provenance: failure.error.provenance.sourceLabel,
     reminderScheduleNotificationErrorCode: failure.error.code,
-    service: "reminder-schedule-and-notification-mock",
+    service: "reminder-schedule-notification",
   };
 }

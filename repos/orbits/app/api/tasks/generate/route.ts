@@ -88,7 +88,7 @@ export async function POST(request: Request): Promise<Response> {
   // generateTasks 生成可复核任务候选，不在 route 层创建真实提醒或通知。
   const mode = resolveFeatureMode();
   const taskService = createFollowupTaskGenerationService();
-  const result = taskService.generateTasks(await readInput(request));
+  const result = await taskService.generateTasks(await readInput(request));
 
   if (result.success === false) {
     // follow-up task failure 统一映射成 AppError/envelope。

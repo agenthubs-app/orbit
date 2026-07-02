@@ -11,9 +11,11 @@ import {
 import type {
   ReminderFrequency,
   ReminderScheduleNotificationPayload,
+  ReminderScheduleNotificationResult,
   ScheduledReminder,
 } from "../contract";
 import { createMockReminderScheduleNotificationService } from "../mock-service";
+import type { ReminderScheduleNotificationServiceResult } from "../service";
 
 export const REMINDER_SCHEDULE_NOTIFICATION_MOCK_SLUG =
   "reminder-schedule-and-notification-mock";
@@ -122,12 +124,12 @@ export const REMINDER_SCHEDULE_NOTIFICATION_API_PROBES = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/notifications/reminder-schedule-and-notification-mock/.",
-  "ORBIT_REMINDER_NOTIFICATION_PROVIDER switches mock fixtures to live providers.",
-  "Live replacement requires a push notification provider, email delivery provider, SMS delivery provider, and cron scheduler.",
-  "Every live reminder keeps source evidence, provenance, and privacy constraints from the originating follow-up due date.",
-  "Required env vars and device or messaging permissions must be explicit before live delivery is enabled.",
-  "Replacement tests cover success, empty, pending, controlled failure, provider failure, and no-provider-call mock guards.",
+  "Live service files are features/notifications/live-service.ts and features/notifications/storage/reminder-notification-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live switches the service factory to shared live storage.",
+  "The current live path reads notifications, tasks, contacts, connections, and evidence from orbit_records.",
+  "Live reminder generation keeps source evidence, provenance, and privacy constraints from the originating follow-up due date.",
+  "Push notification provider, email delivery provider, SMS delivery provider, and cron scheduler work remain disabled.",
+  "Replacement tests cover live storage success, unconfigured live storage, and no-provider-call mock guards.",
 ] as const;
 
 function apiProbeCommand(
@@ -153,6 +155,27 @@ function frequencyLabel(frequency: ReminderFrequency): string {
 
 function reminderEvidenceActionLabel(reminder: ScheduledReminder): string {
   return `Review ${reminder.contactName} evidence`;
+}
+
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
+}
+
+function requireSyncReminderScheduleNotificationResult(
+  result: ReminderScheduleNotificationServiceResult<ReminderScheduleNotificationResult>,
+): ReminderScheduleNotificationResult {
+  if (isPromiseLike(result)) {
+    throw new Error(
+      "Reminder schedule notification debug view requires the synchronous mock service.",
+    );
+  }
+
+  return result;
 }
 
 function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {
@@ -350,14 +373,24 @@ function StateMatrix({
 
 export function ReminderScheduleNotificationMockDemo() {
   const service = createMockReminderScheduleNotificationService();
-  const successResult = service.listNotifications();
-  const emptyResult = service.listNotifications({ scenario: "empty" });
-  const pendingResult = service.generateReminders({ scenario: "pending" });
-  const failureResult = service.listNotifications({ scenario: "failure" });
-  const generatedResult = service.generateReminders({
-    frequencies: ["once", "daily", "weekly", "monthly"],
-    includeGroupedLowPriority: true,
-  });
+  const successResult = requireSyncReminderScheduleNotificationResult(
+    service.listNotifications(),
+  );
+  const emptyResult = requireSyncReminderScheduleNotificationResult(
+    service.listNotifications({ scenario: "empty" }),
+  );
+  const pendingResult = requireSyncReminderScheduleNotificationResult(
+    service.generateReminders({ scenario: "pending" }),
+  );
+  const failureResult = requireSyncReminderScheduleNotificationResult(
+    service.listNotifications({ scenario: "failure" }),
+  );
+  const generatedResult = requireSyncReminderScheduleNotificationResult(
+    service.generateReminders({
+      frequencies: ["once", "daily", "weekly", "monthly"],
+      includeGroupedLowPriority: true,
+    }),
+  );
 
   if (
     successResult.success === false ||

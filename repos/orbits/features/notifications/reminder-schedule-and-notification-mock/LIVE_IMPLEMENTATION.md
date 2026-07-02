@@ -1,35 +1,39 @@
-# Reminder Schedule And Notification Mock Live Implementation
+# Reminder Schedule And Notification Live Implementation
 
 ## Live Service Files
 
-- Keep the mock boundary in `features/notifications/mock-service.ts` and add live adapters under `features/notifications/reminder-schedule-and-notification-mock/providers/`.
-- Add `features/notifications/reminder-schedule-and-notification-mock/live-service.ts` for provider orchestration only after the mock API and dev route continue passing.
-- Route handlers in `app/api/notifications/route.ts` and `app/api/notifications/reminders/generate/route.ts` must keep returning the shared API envelope and must not import provider SDKs directly.
+- `features/notifications/live-service.ts` maps generated `notifications`, `tasks`, `contacts`, `connections`, and `evidence` records into reminder schedules and in-app notification queue entries.
+- `features/notifications/storage/reminder-notification-live-record-provider.ts` reads those collections from the shared live record store or Postgres-backed `orbit_records`.
+- `features/notifications/service-factory.ts` registers the live implementation behind `ORBIT_MODULE_MODE=live`.
+- `app/api/notifications/route.ts` and `app/api/notifications/reminders/generate/route.ts` await the service result and keep provider SDKs out of route handlers.
 
-## Switch Mechanism
+## Required Env Vars And Runtime Configuration
 
-- `ORBIT_REMINDER_NOTIFICATION_PROVIDER=mock` keeps using deterministic fixtures.
-- `ORBIT_REMINDER_NOTIFICATION_PROVIDER=live` may switch the service factory to the live service after replacement tests exist.
-- Hybrid mode may read live reminder configuration, but push notification provider work, email delivery provider work, SMS delivery provider work, cron scheduler work, and live persistence remain disabled until explicit confirmation and provenance checks pass.
+- Set `ORBIT_MODULE_MODE=live` and `ORBIT_FEATURE_MODE=live` for live API responses.
+- Provide one of `ORBIT_EVENT_DATABASE_URL`, `ORBIT_LIVE_DATABASE_URL`, or `ORBIT_DATABASE_URL`.
+- Set `ORBIT_WORKSPACE_ID` to the workspace seeded in `orbit_records`, such as `workspace:orbit-dev`.
+- If the database URL is missing, live mode returns `REMINDER_SCHEDULE_NOTIFICATION_LIVE_STORE_UNCONFIGURED` and does not call external notification systems.
 
-## Required Env Vars And Permissions
+## Current Live Boundary
 
-- Push provider credentials, such as `ORBIT_PUSH_PROVIDER_KEY`, must be scoped to notification delivery and must not expose relationship records beyond the selected reminder copy.
-- Email delivery provider credentials, such as `ORBIT_EMAIL_DELIVERY_API_KEY`, require user-approved sender identity and unsubscribe handling before use.
-- SMS delivery provider credentials, such as `ORBIT_SMS_DELIVERY_API_KEY`, require country-specific consent and opt-out handling before use.
-- Cron scheduler configuration, such as `ORBIT_REMINDER_CRON_SECRET`, must be server-only and must not be usable from a browser route.
-- Device notification permissions must be requested only after a product confirmation flow explains the reminder purpose.
+- The live implementation only reads reminder source data and returns reviewable Orbit queue entries.
+- It does not call a push notification provider, email delivery provider, SMS delivery provider, cron scheduler, device API, AI provider, or external network.
+- It does not write live reminder state, production audit logs, calendars, email, SMS, push jobs, or device permissions.
+- `generateReminders` is a read-only derivation over the same live records. It does not persist generated reminders.
 
-## Privacy And Provenance Constraints
+## Data Mapping
 
-- Every live reminder must preserve source evidence, provenance, follow-up due dates, reminder frequency, grouped low-priority reminders, and notification queue entry identifiers.
-- Live delivery must never include hidden relationship notes or unrelated evidence in push, email, or SMS payloads.
-- Grouped low-priority reminders should remain grouped unless the user explicitly promotes a reminder to a higher priority.
-- Failures must return controlled API envelopes and must not retry provider calls without a visible audit state.
+- `NotificationDTO` records become `ScheduledReminder` and `NotificationQueueEntry` records.
+- Notification source evidence can link back to generated `TaskDTO` records, which then enrich reminders with contact and connection context.
+- `in_app` and `email` channels map directly to the queue channel contract. `calendar` and `system` records stay as in-app review queue entries until a delivery-specific contract exists.
+- Priority and frequency are derived from the scheduled time window, so filters can be exercised against generated fixture records.
+
+## Provenance And Privacy
+
+- Live provenance uses `live-reminder-schedule-notification-preview` privacy and marks live database reads as executed.
+- Source evidence ids are preserved on reminders, queue entries, grouped low-priority reminders, and failure envelopes.
 
 ## Replacement Tests
 
-- Add contract tests proving live payloads preserve source evidence, provenance, due dates, reminder frequency, grouped low-priority reminders, and notification queue entries.
-- Add provider-switch tests for `ORBIT_REMINDER_NOTIFICATION_PROVIDER=mock` and `ORBIT_REMINDER_NOTIFICATION_PROVIDER=live`.
-- Add failure tests for push notification provider errors, email delivery provider errors, SMS delivery provider errors, cron scheduler failures, permission denial, and persistence failures.
-- Keep mock-only tests proving the mock path never calls external networks, device APIs, databases, AI providers, calendars, email, notification providers, SMS services, or cron jobs.
+- `tests/capabilities/reminder-schedule-notification-live-store.test.ts` seeds generated fixtures into a memory live store and verifies live reads, filters, provenance, and no delivery side effects.
+- The mock test continues to prove the mock path never calls external networks, device APIs, databases, AI providers, calendars, email, notification providers, SMS services, or cron jobs.

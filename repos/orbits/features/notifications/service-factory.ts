@@ -1,13 +1,19 @@
 // Notifications service factory 管理提醒排程/通知能力。
 // 当前 mock 只生成可复核的通知计划，不投递真实通知。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createLiveReminderScheduleNotificationService } from "./live-service";
 import { createMockReminderScheduleNotificationService } from "./mock-service";
 import type { ReminderScheduleNotificationService } from "./service";
+import { createConfiguredStorageReminderScheduleNotificationProvider } from "./storage/reminder-notification-live-record-provider";
 
 export const reminderScheduleNotificationServiceFactory =
   createModuleServiceFactory<ReminderScheduleNotificationService>({
     capabilityId: "reminder-schedule-notification",
     implementations: {
+      live: () =>
+        createLiveReminderScheduleNotificationService({
+          provider: createConfiguredStorageReminderScheduleNotificationProvider(),
+        }),
       mock: () => createMockReminderScheduleNotificationService(),
     },
   });

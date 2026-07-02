@@ -43,7 +43,7 @@ export async function GET(request: Request): Promise<Response> {
   // 当前 mock 只返回可展示任务，不创建真实提醒或通知。
   const mode = resolveFeatureMode();
   const taskService = createFollowupTaskGenerationService();
-  const result = taskService.listTasks(readInput(request));
+  const result = await taskService.listTasks(readInput(request));
 
   if (result.success === false) {
     const appError = followupTaskGenerationFailureToAppError(result);

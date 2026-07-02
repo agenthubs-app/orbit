@@ -21,6 +21,7 @@ export const MESSAGE_DRAFT_GENERATOR_ERROR_CODES = [
   "MESSAGE_DRAFT_GENERATOR_DRAFT_NOT_FOUND",
   "MESSAGE_DRAFT_GENERATOR_EMPTY",
   "MESSAGE_DRAFT_GENERATOR_PENDING",
+  "MESSAGE_DRAFT_GENERATOR_LIVE_RULE_FAILED",
   "MESSAGE_DRAFT_GENERATOR_MOCK_FAILED",
 ] as const;
 
@@ -104,7 +105,7 @@ export const MESSAGE_DRAFT_GENERATOR_ERROR_DEFINITIONS = {
     code: "MESSAGE_DRAFT_GENERATOR_EMPTY",
     appCode: "CONFLICT",
     message:
-      "No mock message draft can be generated because no source-backed relationship context is available.",
+      "No message draft can be generated because no source-backed relationship context is available.",
     recovery:
       "Add relationship context, contact evidence, or source notes before generating a message draft.",
   },
@@ -124,10 +125,22 @@ export const MESSAGE_DRAFT_GENERATOR_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry live AI writing providers, external send channels, email, calendar, notification, network, device, or database services.",
   },
+  MESSAGE_DRAFT_GENERATOR_LIVE_RULE_FAILED: {
+    code: "MESSAGE_DRAFT_GENERATOR_LIVE_RULE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live message draft generator could not prepare a review-only draft from sourced context.",
+    recovery:
+      "Review the source-backed relationship context before retrying the local draft rule.",
+  },
 } as const satisfies Record<
   MessageDraftGeneratorErrorCode,
   MessageDraftGeneratorErrorDefinition
 >;
+
+export type MessageDraftGeneratedBy =
+  | "mock-message-draft-rules"
+  | "live-rule-based-draft-generation";
 
 export type MessageDraftGeneratorSourceReference = SourceReferenceDTO & {
   type:
@@ -140,7 +153,7 @@ export type MessageDraftGeneratorSourceReference = SourceReferenceDTO & {
     | "system";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-message-draft-rules";
+  generatedBy: MessageDraftGeneratedBy;
 };
 
 // audit 告诉 UI 该草稿必须复核来源证据。
@@ -165,7 +178,7 @@ export interface MessageDraft {
   rationale: string;
   source: MessageDraftGeneratorSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-message-draft-rules";
+  generatedBy: MessageDraftGeneratedBy;
   audit: MessageDraftAudit;
   sendActionRequiresConfirmation: true;
   aiProviderRequested: false;
@@ -186,9 +199,12 @@ export interface MessageDraftGeneratorProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-message-draft-generator-only";
+  privacy:
+    | "demo-message-draft-generator-only"
+    | "live-message-draft-generator-preview";
   generationMethod:
     | "fixture"
+    | "live-rule-based-draft-generation"
     | "rule-based-draft-generation"
     | "rule-based-update"
     | "rule-based-state";
@@ -240,13 +256,19 @@ export function messageDraftGeneratorFailureContext(
   failure: MessageDraftGeneratorFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive = mode === "live";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     messageDraftGeneratorErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock message draft generator failure came from deterministic fixture rules.",
-    service: "message-draft-generator-mock",
+      isLive
+        ? "Live message draft generator failure came from deterministic review rules."
+        : "Mock message draft generator failure came from deterministic fixture rules.",
+    service: isLive
+      ? "message-draft-generator-live"
+      : "message-draft-generator-mock",
   };
 }

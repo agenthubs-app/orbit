@@ -11,9 +11,11 @@ import {
 import type {
   FollowupTask,
   FollowupTaskGenerationPayload,
+  FollowupTaskGenerationResult,
   FollowupTaskTriggerKind,
 } from "../contract";
 import { createMockFollowupTaskGenerationService } from "../mock-service";
+import type { FollowupTaskGenerationServiceResult } from "../service";
 
 export const FOLLOWUP_TASK_GENERATION_MOCK_SLUG =
   "followup-task-generation-mock";
@@ -77,6 +79,20 @@ const responsiveWorkbenchStyles = `
   padding-left: var(--orbit-space-sm);
 }
 `;
+
+function requireSyncFollowupTaskGenerationResult(
+  result: FollowupTaskGenerationServiceResult<FollowupTaskGenerationResult>,
+): FollowupTaskGenerationResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Followup task mock debug view requires a synchronous service.",
+    );
+  }
+
+  return result as FollowupTaskGenerationResult;
+}
 
 export const FOLLOWUP_TASK_GENERATION_API_PROBES = [
   {
@@ -336,18 +352,28 @@ function StateMatrix({
 
 export function FollowupTaskGenerationMockDemo() {
   const service = createMockFollowupTaskGenerationService();
-  const successResult = service.listTasks();
-  const emptyResult = service.listTasks({ scenario: "empty" });
-  const pendingResult = service.generateTasks({ scenario: "pending" });
-  const failureResult = service.listTasks({ scenario: "failure" });
-  const generatedResult = service.generateTasks({
-    triggerKinds: [
-      "new_connection",
-      "event_encounter",
-      "promised_action",
-      "dormant_relationship",
-    ],
-  });
+  const successResult = requireSyncFollowupTaskGenerationResult(
+    service.listTasks(),
+  );
+  const emptyResult = requireSyncFollowupTaskGenerationResult(
+    service.listTasks({ scenario: "empty" }),
+  );
+  const pendingResult = requireSyncFollowupTaskGenerationResult(
+    service.generateTasks({ scenario: "pending" }),
+  );
+  const failureResult = requireSyncFollowupTaskGenerationResult(
+    service.listTasks({ scenario: "failure" }),
+  );
+  const generatedResult = requireSyncFollowupTaskGenerationResult(
+    service.generateTasks({
+      triggerKinds: [
+        "new_connection",
+        "event_encounter",
+        "promised_action",
+        "dormant_relationship",
+      ],
+    }),
+  );
 
   if (
     successResult.success === false ||

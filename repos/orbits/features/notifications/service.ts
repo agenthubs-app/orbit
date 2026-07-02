@@ -15,12 +15,16 @@ export interface ReminderScheduleNotificationService {
   // 读取待展示的通知/提醒建议。
   listNotifications: (
     input?: ReminderScheduleNotificationListInput,
-  ) => ReminderScheduleNotificationResult;
+  ) => ReminderScheduleNotificationServiceResult<ReminderScheduleNotificationResult>;
   // 根据上下文生成提醒建议；投递动作必须由后续确认流程完成。
   generateReminders: (
     input?: ReminderScheduleNotificationGenerateInput,
-  ) => ReminderScheduleNotificationResult;
+  ) => ReminderScheduleNotificationServiceResult<ReminderScheduleNotificationResult>;
 }
+
+export type ReminderScheduleNotificationServiceResult<TResult> =
+  | Promise<TResult>
+  | TResult;
 
 export {
   reminderScheduleNotificationFailureContext,

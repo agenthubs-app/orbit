@@ -39,7 +39,7 @@ test("reminder notification contract exports typed fixtures errors and mock-only
     mockReminderFrequencies: readonly string[];
     mockReminderScheduleNotificationFixture: {
       state: string;
-      reminders: readonly Array<{
+      reminders: ReadonlyArray<{
         reminderId: string;
         followupTaskId: string;
         dueAt: string;
@@ -59,13 +59,13 @@ test("reminder notification contract exports typed fixtures errors and mock-only
         cronJobRequested: false;
         externalNetworkRequested: false;
       }>;
-      groupedLowPriorityReminders: readonly Array<{
+      groupedLowPriorityReminders: ReadonlyArray<{
         groupId: string;
         frequency: string;
         reminderIds: readonly string[];
         queueEntryId: string;
       }>;
-      notificationQueue: readonly Array<{
+      notificationQueue: ReadonlyArray<{
         queueEntryId: string;
         reminderIds: readonly string[];
         channel: string;
@@ -115,6 +115,7 @@ test("reminder notification contract exports typed fixtures errors and mock-only
     "REMINDER_SCHEDULE_NOTIFICATION_EMPTY",
     "REMINDER_SCHEDULE_NOTIFICATION_PENDING",
     "REMINDER_SCHEDULE_NOTIFICATION_MOCK_FAILED",
+    "REMINDER_SCHEDULE_NOTIFICATION_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.REMINDER_SCHEDULE_NOTIFICATION_ERROR_DEFINITIONS
@@ -236,7 +237,7 @@ test("mock reminder notification service is deterministic and never calls live p
         success: boolean;
         data?: {
           state: string;
-          reminders: readonly Array<{
+          reminders: ReadonlyArray<{
             reminderId: string;
             frequency: string;
             priority: string;
@@ -246,7 +247,7 @@ test("mock reminder notification service is deterministic and never calls live p
             smsDeliveryRequested: false;
             cronJobRequested: false;
           }>;
-          notificationQueue: readonly Array<{ channel: string }>;
+          notificationQueue: ReadonlyArray<{ channel: string }>;
         };
         error?: { code: string; appCode: string };
       };
@@ -260,13 +261,13 @@ test("mock reminder notification service is deterministic and never calls live p
         success: boolean;
         data?: {
           state: string;
-          reminders: readonly Array<{
+          reminders: ReadonlyArray<{
             reminderId: string;
             frequency: string;
             dueInDays: number;
             groupedLowPriority: boolean;
           }>;
-          groupedLowPriorityReminders: readonly Array<{
+          groupedLowPriorityReminders: ReadonlyArray<{
             reminderIds: readonly string[];
           }>;
         };
@@ -402,14 +403,14 @@ test("reminder notification API routes return stable envelopes with empty and fa
     success: true;
     data: {
       state: string;
-      reminders: readonly Array<{
+      reminders: ReadonlyArray<{
         frequency: string;
         pushNotificationRequested: false;
         emailDeliveryRequested: false;
         smsDeliveryRequested: false;
         cronJobRequested: false;
       }>;
-      notificationQueue: readonly Array<{ status: string }>;
+      notificationQueue: ReadonlyArray<{ status: string }>;
       provenance: {
         pushNotificationRequested: false;
         emailDeliveryRequested: false;
@@ -422,8 +423,8 @@ test("reminder notification API routes return stable envelopes with empty and fa
     success: true;
     data: {
       state: string;
-      reminders: readonly Array<{ frequency: string }>;
-      groupedLowPriorityReminders: readonly Array<{
+      reminders: ReadonlyArray<{ frequency: string }>;
+      groupedLowPriorityReminders: ReadonlyArray<{
         reminderIds: readonly string[];
       }>;
     };
@@ -485,11 +486,10 @@ test("reminder notification API routes return stable envelopes with empty and fa
         boundary: "developer-admin",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock reminder schedule and notification failure came from deterministic fixture rules.",
+        provenance: "Mock reminder schedule controlled failure",
         reminderScheduleNotificationErrorCode:
           "REMINDER_SCHEDULE_NOTIFICATION_MOCK_FAILED",
-        service: "reminder-schedule-and-notification-mock",
+        service: "reminder-schedule-notification",
       },
     },
   });
@@ -497,7 +497,7 @@ test("reminder notification API routes return stable envelopes with empty and fa
 
 test("reminder notification dev probe manifest exercises declared API paths", async () => {
   const debugView = await importProjectModule<{
-    REMINDER_SCHEDULE_NOTIFICATION_API_PROBES: readonly Array<{
+    REMINDER_SCHEDULE_NOTIFICATION_API_PROBES: ReadonlyArray<{
       label: string;
       method: "GET" | "POST";
       path: string;
@@ -638,7 +638,7 @@ test("reminder notification debug route renders all states and the live replacem
 
   for (const requiredText of [
     "Live service files",
-    "ORBIT_REMINDER_NOTIFICATION_PROVIDER",
+    "ORBIT_MODULE_MODE=live",
     "push notification provider",
     "email delivery provider",
     "SMS delivery provider",

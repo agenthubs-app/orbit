@@ -4,6 +4,7 @@ import type {
   FollowupTaskPriority,
   FollowupTaskTriggerKind,
 } from "../../../../../features/followups/contract";
+import type { FollowupTaskGenerationServiceResult } from "../../../../../features/followups/service";
 import type {
   MessageDraft,
   MessageDraftChannel,
@@ -19,6 +20,7 @@ import type {
   ReminderScheduleNotificationResult,
   ScheduledReminder,
 } from "../../../../../features/notifications/contract";
+import type { ReminderScheduleNotificationServiceResult } from "../../../../../features/notifications/service";
 import { createAppFollowupsRouteServices } from "./followups-service-factory";
 
 export type AppFollowupsSearchParams = Record<
@@ -177,6 +179,18 @@ function evidenceIdsForResult(result: RouteStateResult): readonly string[] {
   }
 
   return [];
+}
+
+async function resolveFollowupTaskGenerationResult(
+  result: FollowupTaskGenerationServiceResult<FollowupTaskGenerationResult>,
+): Promise<FollowupTaskGenerationResult> {
+  return await result;
+}
+
+async function resolveReminderScheduleNotificationResult(
+  result: ReminderScheduleNotificationServiceResult<ReminderScheduleNotificationResult>,
+): Promise<ReminderScheduleNotificationResult> {
+  return await result;
 }
 
 function uniqueEvidenceIds(results: readonly RouteStateResult[]): string[] {
@@ -654,20 +668,24 @@ function successViewModel(input: {
   };
 }
 
-export function loadAppFollowupsRouteViewModel(
+export async function loadAppFollowupsRouteViewModel(
   searchParams?: AppFollowupsSearchParams,
-): AppFollowupsRouteViewModel {
+): Promise<AppFollowupsRouteViewModel> {
   const services = createAppFollowupsRouteServices();
   const requestedScenario = readRouteScenario(searchParams);
 
   if (requestedScenario) {
-    const taskResult = services.taskService.listTasks({ scenario: requestedScenario });
+    const taskResult = await resolveFollowupTaskGenerationResult(
+      services.taskService.listTasks({ scenario: requestedScenario }),
+    );
     const draftResult = services.draftService.createDraft({
       scenario: requestedScenario,
     });
-    const notificationResult = services.notificationService.listNotifications({
-      scenario: requestedScenario,
-    });
+    const notificationResult = await resolveReminderScheduleNotificationResult(
+      services.notificationService.listNotifications({
+        scenario: requestedScenario,
+      }),
+    );
 
     return {
       routeState: routeStateViewModel({
@@ -678,7 +696,9 @@ export function loadAppFollowupsRouteViewModel(
     };
   }
 
-  const taskResult = services.taskService.listTasks();
+  const taskResult = await resolveFollowupTaskGenerationResult(
+    services.taskService.listTasks(),
+  );
 
   if (taskResult.success === false) {
     return {
@@ -697,9 +717,11 @@ export function loadAppFollowupsRouteViewModel(
     organization: topTask?.organization,
     recipientName: topTask?.contactName,
   });
-  const notificationResult = services.notificationService.listNotifications({
-    limit: 4,
-  });
+  const notificationResult = await resolveReminderScheduleNotificationResult(
+    services.notificationService.listNotifications({
+      limit: 4,
+    }),
+  );
 
   if (draftResult.success === false || notificationResult.success === false) {
     return {

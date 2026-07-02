@@ -106,6 +106,7 @@ test("message draft generator keeps typed contract separate from mock fixture pr
     "MESSAGE_DRAFT_GENERATOR_DRAFT_NOT_FOUND",
     "MESSAGE_DRAFT_GENERATOR_EMPTY",
     "MESSAGE_DRAFT_GENERATOR_PENDING",
+    "MESSAGE_DRAFT_GENERATOR_LIVE_RULE_FAILED",
     "MESSAGE_DRAFT_GENERATOR_MOCK_FAILED",
   ]);
   assert.equal(

@@ -10,6 +10,7 @@ export const FOLLOWUP_TASK_GENERATION_ERROR_CODES = [
   "FOLLOWUP_TASK_GENERATION_TASK_ID_REQUIRED",
   "FOLLOWUP_TASK_GENERATION_TASK_NOT_FOUND",
   "FOLLOWUP_TASK_GENERATION_EMPTY",
+  "FOLLOWUP_TASK_GENERATION_LIVE_STORE_UNCONFIGURED",
   "FOLLOWUP_TASK_GENERATION_PENDING",
   "FOLLOWUP_TASK_GENERATION_MOCK_FAILED",
 ] as const;
@@ -79,6 +80,14 @@ export const FOLLOWUP_TASK_GENERATION_ERROR_DEFINITIONS = {
     recovery:
       "Add a new connection, record an event encounter, capture promised actions, or review dormant relationships before generating tasks.",
   },
+  FOLLOWUP_TASK_GENERATION_LIVE_STORE_UNCONFIGURED: {
+    code: "FOLLOWUP_TASK_GENERATION_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live followup task store is not configured.",
+    recovery:
+      "Set a live Orbit database URL and workspace id before reading live followup tasks.",
+  },
   FOLLOWUP_TASK_GENERATION_PENDING: {
     code: "FOLLOWUP_TASK_GENERATION_PENDING",
     appCode: "CONFLICT",
@@ -101,10 +110,16 @@ export const FOLLOWUP_TASK_GENERATION_ERROR_DEFINITIONS = {
 >;
 
 export type FollowupTaskGenerationSourceReference = SourceReferenceDTO & {
-  type: "manual" | "event_import" | "calendar_signal" | "email_signal" | "system";
+  type:
+    | "agent_action"
+    | "calendar_signal"
+    | "email_signal"
+    | "event_import"
+    | "manual"
+    | "system";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-followup-rules";
+  generatedBy: string;
 };
 
 // Trigger 是任务建议的原因；false 标记说明没有读取真实 scheduler/数据库/provider。
@@ -120,7 +135,7 @@ export interface FollowupTaskTrigger {
   source: FollowupTaskGenerationSourceReference;
   evidenceIds: readonly string[];
   backgroundSchedulerRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   aiProviderRequested: false;
   calendarProviderRequested: false;
   emailProviderRequested: false;
@@ -149,7 +164,7 @@ export interface FollowupTask {
   rationale: string;
   source: FollowupTaskGenerationSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-followup-rules";
+  generatedBy: string;
   audit: FollowupTaskAudit;
   backgroundSchedulerRequested: false;
   liveTaskPersistenceRequested: false;
@@ -168,15 +183,18 @@ export interface FollowupTaskGenerationProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-followup-task-generation-only";
+  privacy:
+    | "demo-followup-task-generation-only"
+    | "live-followup-task-generation";
   generationMethod:
     | "fixture"
+    | "live-store-query"
     | "rule-based-task-generation"
     | "rule-based-state"
     | "local-remote-store-query";
   backgroundSchedulerRequested: false;
   liveTaskPersistenceRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
@@ -225,13 +243,20 @@ export function followupTaskGenerationFailureContext(
   failure: FollowupTaskGenerationFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive =
+    failure.error.provenance.privacy === "live-followup-task-generation";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     followupTaskGenerationErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock followup task generation failure came from deterministic fixture rules.",
-    service: "followup-task-generation-mock",
+      isLive
+        ? "Live followup task generation failure came from shared live storage."
+        : "Mock followup task generation failure came from deterministic fixture rules.",
+    service: isLive
+      ? "followup-task-generation-live"
+      : "followup-task-generation-mock",
   };
 }

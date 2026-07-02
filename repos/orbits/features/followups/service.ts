@@ -15,12 +15,16 @@ export interface FollowupTaskGenerationService {
   // 读取当前跟进队列。
   listTasks: (
     input?: FollowupTaskGenerationListInput,
-  ) => FollowupTaskGenerationResult;
+  ) => FollowupTaskGenerationServiceResult<FollowupTaskGenerationResult>;
   // 根据当前上下文生成任务建议；执行仍需要用户确认。
   generateTasks: (
     input?: FollowupTaskGenerationGenerateInput,
-  ) => FollowupTaskGenerationResult;
+  ) => FollowupTaskGenerationServiceResult<FollowupTaskGenerationResult>;
 }
+
+export type FollowupTaskGenerationServiceResult<TResult> =
+  | Promise<TResult>
+  | TResult;
 
 export {
   followupTaskGenerationFailureContext,

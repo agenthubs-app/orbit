@@ -754,10 +754,10 @@ function ReminderQueueSection({
   );
 }
 
-export function AppFollowupsCommandCenter({
+export async function AppFollowupsCommandCenter({
   searchParams,
 }: AppFollowupsCommandCenterProps) {
-  const viewModel = loadAppFollowupsRouteViewModel(searchParams);
+  const viewModel = await loadAppFollowupsRouteViewModel(searchParams);
 
   if (viewModel.state === "route-state") {
     return (
