@@ -708,10 +708,10 @@ function SuccessView({
   );
 }
 
-export function AppEventsCommandCenter({
+export async function AppEventsCommandCenter({
   searchParams,
 }: AppEventsCommandCenterProps) {
-  const viewModel = loadAppEventsRouteViewModel(searchParams);
+  const viewModel = await loadAppEventsRouteViewModel(searchParams);
 
   if (viewModel.state === "route-state") {
     return <RouteStateBoundary routeState={viewModel.routeState} />;

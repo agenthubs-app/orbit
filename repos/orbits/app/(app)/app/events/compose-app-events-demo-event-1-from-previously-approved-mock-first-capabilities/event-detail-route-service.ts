@@ -9,32 +9,32 @@ import { createEventAttendeeRosterService } from "../../../../../features/events
 import type {
   EventAttendeeRosterPayload,
   EventAttendeeRosterService,
-} from "../../../../../features/events/attendee-contract";
+} from "../../../../../features/events/attendee-roster/contract";
 import { createEventCrudAndImportService } from "../../../../../features/events/service-factory";
-import type { EventDetailPayload } from "../../../../../features/events/contract";
-import type { EventCrudAndImportService } from "../../../../../features/events/service";
+import type { EventDetailPayload } from "../../../../../features/events/event-crud-and-import/contract";
+import type { EventCrudAndImportService } from "../../../../../features/events/event-crud-and-import/service";
 import { createEventEncounterNoteService } from "../../../../../features/events/service-factory";
 import type {
   EventEncounterNotePayload,
   EventEncounterNoteService,
-} from "../../../../../features/events/encounter-contract";
+} from "../../../../../features/events/encounter-note/contract";
 import { createEventGoalAndReadinessService } from "../../../../../features/events/service-factory";
 import type {
   EventGoalAndReadinessService,
   EventGoalReadinessPayload,
-} from "../../../../../features/events/goal-contract";
+} from "../../../../../features/events/goal-readiness/contract";
 import { createPostEventContactReviewService } from "../../../../../features/events/service-factory";
 import type {
   PostEventContactReviewService,
   PostEventReviewPayload,
-} from "../../../../../features/events/post-event-contract";
+} from "../../../../../features/events/post-event-review/contract";
 import { createWantConnectService } from "../../../../../features/events/service-factory";
 import type {
   WantConnectMatchesPayload,
   WantConnectPayload,
   WantConnectResult,
   WantConnectService,
-} from "../../../../../features/events/want-connect-contract";
+} from "../../../../../features/events/want-connect/contract";
 import { createEventRecommendationService } from "../../../../../features/recommendations/service-factory";
 import type {
   EventOpeningLinePayload,
@@ -79,7 +79,7 @@ export interface AppEventDetailRouteInput {
 
 export interface AppEventDetailActionResult {
   calendarUpdateExecuted: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   evidenceId: string;
   externalMessageSent: false;
   externalNetworkRequested: false;
@@ -87,7 +87,7 @@ export interface AppEventDetailActionResult {
   notificationDelivered: false;
   peerNotificationDelivered: false;
   realtimePresenceRequested: false;
-  sideEffectsLabel: "none";
+  sideEffectsLabel: "none" | "live-storage";
   targetDisplayName: string;
 }
 
@@ -154,19 +154,21 @@ interface AppEventDetailRouteServices {
 }
 
 type RouteResult =
-  | ReturnType<EventCrudAndImportService["getEvent"]>
-  | ReturnType<EventAttendeeRosterService["getAttendeeRoster"]>
-  | ReturnType<EventRecommendationService["listEventRecommendations"]>
-  | ReturnType<EventGoalAndReadinessService["getReadiness"]>
-  | ReturnType<WantConnectService["listMatches"]>
-  | ReturnType<EventEncounterNoteService["createEncounterNote"]>
-  | ReturnType<PostEventContactReviewService["getPostEventReview"]>;
+  | Awaited<ReturnType<EventCrudAndImportService["getEvent"]>>
+  | Awaited<ReturnType<EventAttendeeRosterService["getAttendeeRoster"]>>
+  | Awaited<ReturnType<EventRecommendationService["listEventRecommendations"]>>
+  | Awaited<ReturnType<EventGoalAndReadinessService["getReadiness"]>>
+  | Awaited<ReturnType<WantConnectService["listMatches"]>>
+  | Awaited<ReturnType<EventEncounterNoteService["createEncounterNote"]>>
+  | Awaited<ReturnType<PostEventContactReviewService["getPostEventReview"]>>;
 
 const eventDetailServiceFactory =
   createModuleServiceFactory<EventCrudAndImportService>({
     capabilityId: "app-events-demo-event-1.event-detail",
     implementations: {
-      mock: () => createEventCrudAndImportService(),
+      hybrid: ({ requestedMode }) => createEventCrudAndImportService(requestedMode),
+      live: ({ requestedMode }) => createEventCrudAndImportService(requestedMode),
+      mock: ({ requestedMode }) => createEventCrudAndImportService(requestedMode),
     },
   });
 
@@ -174,7 +176,10 @@ const attendeeRosterServiceFactory =
   createModuleServiceFactory<EventAttendeeRosterService>({
     capabilityId: "app-events-demo-event-1.attendee-roster",
     implementations: {
-      mock: () => createEventAttendeeRosterService(),
+      hybrid: ({ requestedMode }) =>
+        createEventAttendeeRosterService(requestedMode),
+      live: ({ requestedMode }) => createEventAttendeeRosterService(requestedMode),
+      mock: ({ requestedMode }) => createEventAttendeeRosterService(requestedMode),
     },
   });
 
@@ -182,7 +187,9 @@ const recommendationServiceFactory =
   createModuleServiceFactory<EventRecommendationService>({
     capabilityId: "app-events-demo-event-1.event-recommendations",
     implementations: {
-      mock: () => createEventRecommendationService(),
+      hybrid: ({ requestedMode }) => createEventRecommendationService(requestedMode),
+      live: ({ requestedMode }) => createEventRecommendationService(requestedMode),
+      mock: ({ requestedMode }) => createEventRecommendationService(requestedMode),
     },
   });
 
@@ -190,7 +197,12 @@ const readinessServiceFactory =
   createModuleServiceFactory<EventGoalAndReadinessService>({
     capabilityId: "app-events-demo-event-1.goal-readiness",
     implementations: {
-      mock: () => createEventGoalAndReadinessService(),
+      hybrid: ({ requestedMode }) =>
+        createEventGoalAndReadinessService(requestedMode),
+      live: ({ requestedMode }) =>
+        createEventGoalAndReadinessService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createEventGoalAndReadinessService(requestedMode),
     },
   });
 
@@ -198,7 +210,9 @@ const wantConnectServiceFactory =
   createModuleServiceFactory<WantConnectService>({
     capabilityId: "app-events-demo-event-1.want-connect",
     implementations: {
-      mock: () => createWantConnectService(),
+      hybrid: ({ requestedMode }) => createWantConnectService(requestedMode),
+      live: ({ requestedMode }) => createWantConnectService(requestedMode),
+      mock: ({ requestedMode }) => createWantConnectService(requestedMode),
     },
   });
 
@@ -206,7 +220,10 @@ const encounterNoteServiceFactory =
   createModuleServiceFactory<EventEncounterNoteService>({
     capabilityId: "app-events-demo-event-1.encounter-notes",
     implementations: {
-      mock: () => createEventEncounterNoteService(),
+      hybrid: ({ requestedMode }) =>
+        createEventEncounterNoteService(requestedMode),
+      live: ({ requestedMode }) => createEventEncounterNoteService(requestedMode),
+      mock: ({ requestedMode }) => createEventEncounterNoteService(requestedMode),
     },
   });
 
@@ -214,7 +231,12 @@ const postEventReviewServiceFactory =
   createModuleServiceFactory<PostEventContactReviewService>({
     capabilityId: "app-events-demo-event-1.post-event-review",
     implementations: {
-      mock: () => createPostEventContactReviewService(),
+      hybrid: ({ requestedMode }) =>
+        createPostEventContactReviewService(requestedMode),
+      live: ({ requestedMode }) =>
+        createPostEventContactReviewService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createPostEventContactReviewService(requestedMode),
     },
   });
 
@@ -418,11 +440,33 @@ function targetDisplayName(
   return participant?.displayName ?? "selected attendee";
 }
 
+export function selectWantConnectTargetContactId(
+  payload: WantConnectMatchesPayload,
+  requestedTargetContactId?: string | null,
+): string {
+  const requested = requestedTargetContactId?.trim();
+
+  if (requested) {
+    return requested;
+  }
+
+  for (const match of payload.matches) {
+    const targetContactId =
+      match.participantContactIds.find((contactId) => contactId !== "contact:operator") ??
+      match.participantContactIds[0];
+
+    if (targetContactId) {
+      return targetContactId;
+    }
+  }
+
+  return defaultWantConnectTargetContactId;
+}
+
 function hasOutsideSideEffects(payload: WantConnectPayload): boolean {
-  // want-to-connect action 必须保持 no-op；只要发现外部副作用标记，就拒绝展示 actionResult。
+  // live storage 写入是记录本地意图的允许副作用；外部消息、presence 和通知仍然必须被拦截。
   return (
     payload.provenance.externalNetworkRequested ||
-    payload.provenance.liveDatabaseWriteExecuted ||
     Boolean(payload.intent?.realtimePresenceRequested) ||
     Boolean(payload.intent?.peerNotificationDelivered) ||
     Boolean(payload.intent?.externalMessageSent) ||
@@ -432,7 +476,7 @@ function hasOutsideSideEffects(payload: WantConnectPayload): boolean {
   );
 }
 
-function buildWantConnectActionResult(
+export function buildWantConnectActionResult(
   result: WantConnectResult,
 ): AppEventDetailActionResult | null {
   // 只有 create intent 成功且没有任何外部副作用时，才把本地 actionResult 展示给页面。
@@ -458,7 +502,9 @@ function buildWantConnectActionResult(
     notificationDelivered: false,
     peerNotificationDelivered: payload.intent.peerNotificationDelivered,
     realtimePresenceRequested: payload.intent.realtimePresenceRequested,
-    sideEffectsLabel: "none",
+    sideEffectsLabel: payload.provenance.liveDatabaseWriteExecuted
+      ? "live-storage"
+      : "none",
     targetDisplayName: targetDisplayName(payload),
   };
 }
@@ -615,13 +661,13 @@ function buildSourceConsistency(input: {
   };
 }
 
-export function loadAppEventDetailRoute({
+export async function loadAppEventDetailRoute({
   action,
   eventId,
   mode,
   scenario,
   targetContactId,
-}: AppEventDetailRouteInput): AppEventDetailRouteModel {
+}: AppEventDetailRouteInput): Promise<AppEventDetailRouteModel> {
   // 主入口：加载七个 capability payload，统一处理失败/空/pending，
   // 再生成 opening line、canonical event、一致性摘要和可选 no-op action result。
   const services = resolveRouteServices(mode);
@@ -631,33 +677,33 @@ export function loadAppEventDetailRoute({
   }
 
   const routeScenario = normalizeScenario(scenario);
-  const eventResult = services.events.getEvent({
+  const eventResult = await services.events.getEvent({
     eventId,
     scenario: routeScenario,
   });
-  const attendeeRosterResult = services.attendeeRoster.getAttendeeRoster({
+  const attendeeRosterResult = await services.attendeeRoster.getAttendeeRoster({
     eventId,
     scenario: routeScenario,
   });
-  const recommendationResult = services.recommendations.listEventRecommendations({
+  const recommendationResult = await services.recommendations.listEventRecommendations({
     eventId,
     limit: 3,
     scenario: routeScenario,
   });
-  const readinessResult = services.readiness.getReadiness({
+  const readinessResult = await services.readiness.getReadiness({
     eventId,
     scenario: routeScenario,
   });
-  const wantConnectMatchesResult = services.wantConnect.listMatches({
+  const wantConnectMatchesResult = await services.wantConnect.listMatches({
     eventId,
     scenario: routeScenario,
   });
-  const encounterNoteResult = services.encounterNotes.createEncounterNote({
+  const encounterNoteResult = await services.encounterNotes.createEncounterNote({
     contactId: defaultWantConnectTargetContactId,
     eventId,
     scenario: routeScenario,
   });
-  const postEventReviewResult = services.postEventReview.getPostEventReview({
+  const postEventReviewResult = await services.postEventReview.getPostEventReview({
     eventId,
     scenario: routeScenario,
   });
@@ -710,7 +756,7 @@ export function loadAppEventDetailRoute({
     return createBoundaryModel("empty");
   }
 
-  const openingLineResult = services.recommendations.composeOpeningLine({
+  const openingLineResult = await services.recommendations.composeOpeningLine({
     attendeeId: topRecommendation.attendee.attendeeId,
     eventId,
     scenario: routeScenario,
@@ -734,10 +780,13 @@ export function loadAppEventDetailRoute({
   const actionResult =
     normalizeAction(action) === "want-to-connect"
       ? buildWantConnectActionResult(
-          services.wantConnect.createWantToConnectIntent({
+          await services.wantConnect.createWantToConnectIntent({
             actorContactId: "contact:operator",
             eventId,
-            targetContactId: targetContactId ?? defaultWantConnectTargetContactId,
+            targetContactId: selectWantConnectTargetContactId(
+              wantConnectMatchesResult.data,
+              targetContactId,
+            ),
           }),
         )
       : null;

@@ -31,7 +31,7 @@ export async function POST(
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
   const eventValueService = createEventValueRecommendationService();
-  const result = eventValueService.acceptRecommendedEvent({
+  const result = await eventValueService.acceptRecommendedEvent({
     eventId: id,
     scenario: searchParams.get("scenario"),
   });

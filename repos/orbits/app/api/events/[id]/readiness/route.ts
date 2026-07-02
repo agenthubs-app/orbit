@@ -9,7 +9,7 @@ import { getHttpStatusForAppErrorCode } from "../../../../../shared/errors/app-e
 import {
   eventGoalReadinessFailureContext,
   eventGoalReadinessFailureToAppError,
-} from "../../../../../features/events/goal-contract";
+} from "../../../../../features/events/goal-readiness/contract";
 import { createEventGoalAndReadinessService } from "../../../../../features/events/service-factory";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export async function GET(
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
   const goalService = createEventGoalAndReadinessService();
-  const result = goalService.getReadiness({
+  const result = await goalService.getReadiness({
     eventId: id,
     scenario: searchParams.get("scenario"),
   });

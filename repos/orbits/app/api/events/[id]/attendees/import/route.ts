@@ -10,7 +10,7 @@ import {
   eventAttendeeRosterFailureContext,
   eventAttendeeRosterFailureToAppError,
   type EventAttendeeRosterInput,
-} from "../../../../../../features/events/attendee-contract";
+} from "../../../../../../features/events/attendee-roster/contract";
 import { createEventAttendeeRosterService } from "../../../../../../features/events/service-factory";
 
 export const dynamic = "force-dynamic";
@@ -115,7 +115,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const rosterService = createEventAttendeeRosterService();
-  const result = rosterService.importAttendeeRoster(
+  const result = await rosterService.importAttendeeRoster(
     await readEventAttendeeRosterImportInput(request, id),
   );
 

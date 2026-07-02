@@ -31,7 +31,7 @@ export async function GET(
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
   const attendeeService = createEventAttendeeImportService();
-  const result = attendeeService.listEventAttendees({
+  const result = await attendeeService.listEventAttendees({
     eventId: id,
     relationshipStatusFilter: searchParams.get("relationshipStatusFilter"),
     scenario: searchParams.get("scenario"),

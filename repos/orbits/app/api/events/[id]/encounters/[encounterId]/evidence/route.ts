@@ -10,7 +10,7 @@ import {
   eventEncounterNoteFailureContext,
   eventEncounterNoteFailureToAppError,
   type EventEncounterEvidenceInput,
-} from "../../../../../../../features/events/encounter-contract";
+} from "../../../../../../../features/events/encounter-note/contract";
 import { createEventEncounterNoteService } from "../../../../../../../features/events/service-factory";
 
 export const dynamic = "force-dynamic";
@@ -79,7 +79,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { encounterId, id } = await context.params;
   const encounterNoteService = createEventEncounterNoteService();
-  const result = encounterNoteService.createEncounterEvidence(
+  const result = await encounterNoteService.createEncounterEvidence(
     await readEncounterEvidenceInput(request, id, encounterId),
   );
 

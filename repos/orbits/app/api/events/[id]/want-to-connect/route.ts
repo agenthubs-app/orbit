@@ -10,7 +10,7 @@ import {
   wantConnectFailureContext,
   wantConnectFailureToAppError,
   type WantConnectIntentInput,
-} from "../../../../../features/events/want-connect-contract";
+} from "../../../../../features/events/want-connect/contract";
 import { createWantConnectService } from "../../../../../features/events/service-factory";
 
 export const dynamic = "force-dynamic";
@@ -112,7 +112,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const wantConnectService = createWantConnectService();
-  const result = wantConnectService.createWantToConnectIntent(
+  const result = await wantConnectService.createWantToConnectIntent(
     await readWantConnectInput(request, id),
   );
 

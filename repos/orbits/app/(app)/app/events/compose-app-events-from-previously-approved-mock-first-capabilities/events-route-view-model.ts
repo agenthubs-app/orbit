@@ -2,12 +2,12 @@ import type {
   EventListPayload,
   EventListResult,
   EventRecord,
-} from "../../../../../features/events/contract";
+} from "../../../../../features/events/event-crud-and-import/contract";
 import type {
   EventGoalReadinessPayload,
   EventGoalReadinessResult,
   EventReadinessChecklistItem,
-} from "../../../../../features/events/goal-contract";
+} from "../../../../../features/events/goal-readiness/contract";
 import type {
   EventRecommendationsPayload,
   EventRecommendationsResult,
@@ -15,6 +15,7 @@ import type {
 import type {
   EventValueRecommendation,
   EventValueRecommendationAcceptanceResult,
+  EventValueRecommendationService,
   EventValueRecommendationsPayload,
   EventValueRecommendationsResult,
 } from "../../../../../features/recommendations/event-value-contract";
@@ -81,11 +82,14 @@ export interface AppEventsCurrentPriorityViewModel {
 export interface AppEventsEventChoiceViewModel {
   attendeeName: string;
   detailHref: string;
+  endsAt: string;
   evidence: readonly AppEventsEvidenceViewModel[];
   id: string;
   nextAction: string;
   readinessScore: number;
   relationshipValue: string;
+  startsAt: string;
+  status: EventRecord["status"];
   title: string;
   venue: string;
 }
@@ -435,10 +439,13 @@ function eventChoiceViewModel(input: {
     attendeeName: input.attendeeName,
     detailHref: eventDetailHref(input.event),
     evidence: evidenceViewModels(input.event.evidence.map((item) => item.evidenceId)),
+    endsAt: input.event.endsAt,
     id: input.event.id,
     nextAction: `${productCopy(input.event.nextAction)} ${productCopy(input.event.recommendedPreparation)}`,
     readinessScore: input.readinessScore,
     relationshipValue: relationshipValueCopy(input.event),
+    startsAt: input.event.startsAt,
+    status: input.event.status,
     title: input.event.title,
     venue: input.event.venue,
   };
@@ -502,16 +509,16 @@ function actionResultViewModel(
   };
 }
 
-function actionResultFor(
+async function actionResultFor(
   action: string | null,
   topRecommendation: EventValueRecommendation | undefined,
-): AppEventsActionResultViewModel | null {
+  eventValueService: EventValueRecommendationService,
+): Promise<AppEventsActionResultViewModel | null> {
   if (action !== "accept-top-event" || !topRecommendation) {
     return null;
   }
 
-  const services = createAppEventsRouteServices();
-  const result = services.eventValues.acceptRecommendedEvent({
+  const result = await eventValueService.acceptRecommendedEvent({
     eventId: topRecommendation.eventId,
   });
 
@@ -519,13 +526,16 @@ function actionResultFor(
 }
 
 function successViewModel(input: {
-  action: string | null;
+  actionResult: AppEventsActionResultViewModel | null;
   attendeePayload: EventRecommendationsPayload;
   eventPayload: EventListPayload;
+  primaryEventId: string;
   readinessPayload: EventGoalReadinessPayload;
   valuePayload: EventValueRecommendationsPayload;
 }): AppEventsSuccessViewModel {
-  const currentEvent = input.eventPayload.events[0];
+  const currentEvent =
+    input.eventPayload.events.find((event) => event.id === input.primaryEventId) ??
+    input.eventPayload.events[0];
   const topAttendee = input.attendeePayload.recommendations[0];
   const topValueEvent = input.valuePayload.recommendations[0];
   const detailActionLabel = currentEvent
@@ -536,7 +546,7 @@ function successViewModel(input: {
     : "";
 
   return {
-    actionResult: actionResultFor(input.action, topValueEvent),
+    actionResult: input.actionResult,
     attendeePanel: {
       recommendation: topAttendee
         ? {
@@ -580,10 +590,10 @@ function successViewModel(input: {
       eventCount: input.eventPayload.events.length,
       importedRecordCount: input.eventPayload.importedRecords.length,
       primaryStatus:
-        input.eventPayload.events[0]?.status ??
+        currentEvent?.status ??
         bilingualText("不可用", "unavailable"),
       primaryTitle:
-        input.eventPayload.events[0]?.title ??
+        currentEvent?.title ??
         bilingualText("没有有来源活动", "No sourced event"),
     },
     readiness: readinessViewModel(input.readinessPayload),
@@ -609,21 +619,107 @@ function successViewModel(input: {
   };
 }
 
-export function loadAppEventsRouteViewModel(
+export async function loadAppEventsRouteViewModel(
   searchParams?: AppEventsSearchParams,
-): AppEventsRouteViewModel {
+): Promise<AppEventsRouteViewModel> {
   const scenario = readRouteScenario(searchParams);
   const services = createAppEventsRouteServices();
-  const eventResult = services.events.listEvents({ scenario });
-  const attendeeResult = services.attendeeRecommendations.listEventRecommendations({
+  const eventResult = await services.events.listEvents({ scenario });
+  const eventFailure = firstFailure([eventResult]);
+
+  if (eventFailure || scenario === "failure") {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({
+        failure: eventFailure,
+        scenario: "failure",
+      }),
+    };
+  }
+
+  if (eventResult.success === false) {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({
+        failure: eventResult.error,
+        scenario: "failure",
+      }),
+    };
+  }
+
+  if (scenario === "empty" || eventResult.data.state === "empty") {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({ scenario: "empty" }),
+    };
+  }
+
+  if (scenario === "pending" || eventResult.data.state === "pending") {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({ scenario: "pending" }),
+    };
+  }
+
+  const valueResult = await services.eventValues.listRecommendedEvents({
     limit: 3,
     scenario,
   });
-  const valueResult = services.eventValues.listRecommendedEvents({
-    limit: 3,
-    scenario,
-  });
-  const readinessResult = services.readiness.getReadiness({ scenario });
+  const valueFailure = firstFailure([valueResult]);
+
+  if (valueFailure) {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({
+        failure: valueFailure,
+        scenario: "failure",
+      }),
+    };
+  }
+
+  if (valueResult.success === false) {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({
+        failure: valueResult.error,
+        scenario: "failure",
+      }),
+    };
+  }
+
+  if (valueResult.data.state === "empty") {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({ scenario: "empty" }),
+    };
+  }
+
+  if (valueResult.data.state === "pending") {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({ scenario: "pending" }),
+    };
+  }
+
+  const primaryEventId =
+    valueResult.data.recommendations[0]?.eventId ??
+    eventResult.data.events[0]?.id;
+
+  if (!primaryEventId) {
+    return {
+      state: "route-state",
+      routeState: routeStateViewModel({ scenario: "empty" }),
+    };
+  }
+
+  const [attendeeResult, readinessResult] = await Promise.all([
+    services.attendeeRecommendations.listEventRecommendations({
+      eventId: primaryEventId,
+      limit: 3,
+      scenario,
+    }),
+    services.readiness.getReadiness({ eventId: primaryEventId, scenario }),
+  ]);
   const results = [
     eventResult,
     attendeeResult,
@@ -632,21 +728,21 @@ export function loadAppEventsRouteViewModel(
   ] as const;
   const failure = firstFailure(results);
 
-  if (failure || scenario === "failure") {
+  if (failure) {
     return {
       state: "route-state",
       routeState: routeStateViewModel({ failure, scenario: "failure" }),
     };
   }
 
-  if (scenario === "empty" || anyResultState(results, "empty")) {
+  if (anyResultState(results, "empty")) {
     return {
       state: "route-state",
       routeState: routeStateViewModel({ scenario: "empty" }),
     };
   }
 
-  if (scenario === "pending" || anyResultState(results, "pending")) {
+  if (anyResultState(results, "pending")) {
     return {
       state: "route-state",
       routeState: routeStateViewModel({ scenario: "pending" }),
@@ -654,9 +750,7 @@ export function loadAppEventsRouteViewModel(
   }
 
   if (
-    eventResult.success === false ||
     attendeeResult.success === false ||
-    valueResult.success === false ||
     readinessResult.success === false
   ) {
     return {
@@ -665,12 +759,19 @@ export function loadAppEventsRouteViewModel(
     };
   }
 
+  const actionResult = await actionResultFor(
+    readSearchParam(searchParams, "action"),
+    valueResult.data.recommendations[0],
+    services.eventValues,
+  );
+
   return {
     state: "success",
     workspace: successViewModel({
-      action: readSearchParam(searchParams, "action"),
+      actionResult,
       attendeePayload: attendeeResult.data,
       eventPayload: eventResult.data,
+      primaryEventId,
       readinessPayload: readinessResult.data,
       valuePayload: valueResult.data,
     }),

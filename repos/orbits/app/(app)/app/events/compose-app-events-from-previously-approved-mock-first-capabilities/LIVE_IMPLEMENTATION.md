@@ -8,10 +8,10 @@ This document covers live service/provider files, switch mechanism, required env
 
 Live files:
 
-- `features/events/service.ts`, `features/events/contract.ts`, and future `features/events/live-service.ts` for event CRUD/import.
+- `features/events/event-crud-and-import/service.ts`, `features/events/event-crud-and-import/contract.ts`, and future `features/events/live-service.ts` for event CRUD/import.
 - `features/recommendations/service.ts`, `features/recommendations/contract.ts`, and future `features/recommendations/live-service.ts` for event attendee recommendations and opening lines.
 - `features/recommendations/event-value-contract.ts` and future `features/recommendations/live-event-value-service.ts` for event value recommendations and accept actions.
-- `features/events/goal-contract.ts` and future `features/events/live-goal-service.ts` for event goals and readiness.
+- `features/events/goal-readiness/contract.ts` and future `features/events/live-goal-service.ts` for event goals and readiness.
 - `app/api/events/route.ts`, `app/api/recommendations/events/route.ts`, `app/api/recommendations/event/[id]/route.ts`, and `app/api/events/[id]/readiness/route.ts` for API envelopes.
 - `app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory.ts` for app route service resolution.
 

@@ -9,7 +9,7 @@ import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-erro
 import {
   eventCrudImportFailureContext,
   eventCrudImportFailureToAppError,
-} from "../../../../features/events/service";
+} from "../../../../features/events/event-crud-and-import/service";
 import { createEventCrudAndImportService } from "../../../../features/events/service-factory";
 
 export const dynamic = "force-dynamic";

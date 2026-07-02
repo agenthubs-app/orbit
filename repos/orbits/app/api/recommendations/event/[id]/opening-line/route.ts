@@ -105,7 +105,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const recommendationService = createEventRecommendationService();
-  const result = recommendationService.composeOpeningLine(
+  const result = await recommendationService.composeOpeningLine(
     await readOpeningLineInput(request, id),
   );
 

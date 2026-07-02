@@ -43,7 +43,7 @@ export async function GET(request: Request): Promise<Response> {
     scenario: searchParams.get("scenario"),
   };
   const eventValueService = createEventValueRecommendationService();
-  const result = eventValueService.listRecommendedEvents(input);
+  const result = await eventValueService.listRecommendedEvents(input);
 
   if (result.success === false) {
     // event value recommendation failure 统一映射成 AppError/envelope。

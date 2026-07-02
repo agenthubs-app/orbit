@@ -10,7 +10,7 @@ import {
   eventGoalReadinessFailureContext,
   eventGoalReadinessFailureToAppError,
   type EventGoalSetInput,
-} from "../../../../../features/events/goal-contract";
+} from "../../../../../features/events/goal-readiness/contract";
 import { createEventGoalAndReadinessService } from "../../../../../features/events/service-factory";
 
 export const dynamic = "force-dynamic";
@@ -105,7 +105,7 @@ export async function PUT(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const goalService = createEventGoalAndReadinessService();
-  const result = goalService.setGoal(await readGoalInput(request, id));
+  const result = await goalService.setGoal(await readGoalInput(request, id));
 
   if (result.success === false) {
     // goal/readiness failure 统一映射成 AppError/envelope。

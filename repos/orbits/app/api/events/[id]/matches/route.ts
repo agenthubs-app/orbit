@@ -9,7 +9,7 @@ import { getHttpStatusForAppErrorCode } from "../../../../../shared/errors/app-e
 import {
   wantConnectFailureContext,
   wantConnectFailureToAppError,
-} from "../../../../../features/events/want-connect-contract";
+} from "../../../../../features/events/want-connect/contract";
 import { createWantConnectService } from "../../../../../features/events/service-factory";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export async function GET(
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
   const wantConnectService = createWantConnectService();
-  const result = wantConnectService.listMatches({
+  const result = await wantConnectService.listMatches({
     eventId: id,
     scenario: searchParams.get("scenario"),
   });

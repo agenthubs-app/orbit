@@ -10,13 +10,13 @@ import type {
   EventCrudImportErrorCode,
   EventCrudImportInput,
   ManualEventCreationInput,
-} from "../../../features/events/contract";
+} from "../../../features/events/event-crud-and-import/contract";
 import {
   eventCrudImportErrorContext,
   eventCrudImportErrorToAppError,
   eventCrudImportFailureContext,
   eventCrudImportFailureToAppError,
-} from "../../../features/events/service";
+} from "../../../features/events/event-crud-and-import/service";
 import { createEventCrudAndImportService } from "../../../features/events/service-factory";
 
 // Events route 提供活动列表读取和手动活动创建预览。

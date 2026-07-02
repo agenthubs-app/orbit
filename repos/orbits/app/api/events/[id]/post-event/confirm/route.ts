@@ -10,7 +10,7 @@ import {
   postEventReviewFailureContext,
   postEventReviewFailureToAppError,
   type ConfirmPostEventContactsInput,
-} from "../../../../../../features/events/post-event-contract";
+} from "../../../../../../features/events/post-event-review/contract";
 import { createPostEventContactReviewService } from "../../../../../../features/events/service-factory";
 
 export const dynamic = "force-dynamic";
@@ -121,7 +121,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const postEventReviewService = createPostEventContactReviewService();
-  const result = postEventReviewService.confirmPostEventContacts(
+  const result = await postEventReviewService.confirmPostEventContacts(
     await readPostEventReviewConfirmInput(request, id),
   );
 
