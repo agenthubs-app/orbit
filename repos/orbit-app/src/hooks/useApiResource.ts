@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { createOrbitApiClient } from "../api/client";
 import type { RouteState } from "../view-models/route-state";
 import { resultToRouteState } from "../view-models/route-state";
@@ -24,7 +25,8 @@ export function useApiResource<TData>(
   path: string,
   isEmpty: (data: TData) => boolean
 ): ApiResourceState<TData> {
-  const client = useMemo(() => createOrbitApiClient(), []);
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const client = useMemo(() => createOrbitApiClient({ baseUrl }), [baseUrl]);
   const isEmptyRef = useRef(isEmpty);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
