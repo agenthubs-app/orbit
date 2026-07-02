@@ -797,9 +797,11 @@ const reactReferenceIsolationStyles = `
     align-items: center;
     display: inline-flex;
     flex: 0 0 auto;
-    font-size: 11px;
+    font-size: 12px;
     height: 34px;
-    padding: 0 4px;
+    justify-content: center;
+    min-width: 48px;
+    padding: 0 8px;
     white-space: nowrap;
   }
 
@@ -963,6 +965,28 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page] .field:focus {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 4px var(--accent-ring);
+}
+
+[data-orbit-real-page="home"] .orbit-home-main-grid {
+  align-items: start;
+  display: grid;
+  gap: clamp(16px, 3vw, 30px);
+  grid-template-areas: "events rail";
+  grid-template-columns: minmax(0, 1fr) clamp(220px, 30vw, 320px);
+  margin-top: 34px;
+}
+
+[data-orbit-real-page="home"] .orbit-home-events-pane {
+  grid-area: events;
+  min-width: 0;
+}
+
+[data-orbit-real-page="home"] .orbit-home-hub-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  grid-area: rail;
+  min-width: 0;
 }
 
 /* ===================================================================
