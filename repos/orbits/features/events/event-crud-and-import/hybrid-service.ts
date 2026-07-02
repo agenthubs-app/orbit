@@ -19,7 +19,7 @@ import {
   type ManualEventCreationInput,
   type ManualEventCreationPayload,
   type ManualEventCreationResult,
-} from "../contract";
+} from "./contract";
 import type {
   EventDTO,
   RelationshipEvidenceDTO,
@@ -30,7 +30,7 @@ import {
   type OrbitLocalRemoteDatabase,
 } from "../../../shared/local-remote-store/orbit-database";
 import type { MockRuntimeFixtures } from "../../../shared/mock/fixtures";
-import type { EventCrudAndImportService } from "../service";
+import type { EventCrudAndImportService } from "./service";
 
 interface LocalRemoteEventGraph {
   events: readonly EventDTO[];

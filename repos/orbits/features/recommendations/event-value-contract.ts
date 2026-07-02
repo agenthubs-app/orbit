@@ -11,6 +11,7 @@ export const EVENT_VALUE_RECOMMENDATION_ERROR_CODES = [
   "EVENT_VALUE_RECOMMENDATION_EVENT_NOT_FOUND",
   "EVENT_VALUE_RECOMMENDATION_PENDING",
   "EVENT_VALUE_RECOMMENDATION_MOCK_FAILED",
+  "EVENT_VALUE_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type EventValueRecommendationErrorCode =
@@ -85,6 +86,13 @@ export const EVENT_VALUE_RECOMMENDATION_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry external network, database, AI provider, calendar, email, notification, or live event discovery feed services.",
   },
+  EVENT_VALUE_RECOMMENDATION_LIVE_STORE_UNCONFIGURED: {
+    code: "EVENT_VALUE_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live event value recommendation store is not configured.",
+    recovery:
+      "Configure an event value live-store provider before running live event value recommendations, or switch the capability back to mock or hybrid mode.",
+  },
 } as const satisfies Record<
   EventValueRecommendationErrorCode,
   EventValueRecommendationErrorDefinition
@@ -94,7 +102,7 @@ export type EventValueRecommendationSourceReference = SourceReferenceDTO & {
   type: "event_import";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-event-value-service";
+  generatedBy: "mock-event-value-service" | "live-store-query";
 };
 
 // Factors 和 Signal 解释活动分数由哪些维度贡献。
@@ -124,10 +132,10 @@ export interface EventValueRecommendationSignal {
   weight: number;
   evidenceIds: readonly string[];
   source: EventValueRecommendationSourceReference;
-  generatedBy: "mock-event-value-rule";
+  generatedBy: "mock-event-value-rule" | "live-event-value-rule";
   liveEventDiscoveryFeedRequested: false;
   calendarProviderRequested: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
   aiProviderRequested: false;
   externalNetworkRequested: false;
 }
@@ -150,33 +158,37 @@ export interface EventValueRecommendation {
   recommendedAction: string;
   source: EventValueRecommendationSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-event-value-rule";
+  generatedBy: "mock-event-value-rule" | "live-store-event-value";
   calendarAvailabilitySynced: false;
   liveEventDiscoveryFeedRequested: false;
   externalNetworkRequested: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
   aiProviderRequested: false;
   calendarProviderRequested: false;
   emailProviderRequested: false;
   notificationDelivered: false;
 }
 
-// provenance 记录没有日历同步、活动发现 feed、数据库或 AI 调用。
+// provenance 记录没有日历同步、活动发现 feed 或 AI 调用；live 模式只允许数据库查询。
 export interface EventValueRecommendationProvenance {
   source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-event-value-recommendation-only";
+  privacy:
+    | "demo-event-value-recommendation-only"
+    | "live-event-value-recommendation-only";
   generationMethod:
     | "fixture"
     | "rule-based-event-value"
     | "rule-based-acceptance"
-    | "rule-based-state";
+    | "rule-based-state"
+    | "live-store-event-value"
+    | "live-store-acceptance";
   calendarProviderRequested: false;
   calendarAvailabilitySynced: false;
   liveEventDiscoveryFeedRequested: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
   databaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
@@ -198,7 +210,7 @@ export interface EventValueRecommendationsPayload {
 export interface EventValueRecommendationAcceptanceAction {
   actionId: string;
   label: string;
-  generatedBy: "mock-event-value-service";
+  generatedBy: "mock-event-value-service" | "live-event-value-service";
   evidenceIds: readonly string[];
   source: EventValueRecommendationSourceReference;
   externalNetworkRequested: false;
@@ -244,13 +256,17 @@ export type EventValueRecommendationAcceptanceResult =
   | EventValueRecommendationAcceptanceSuccess
   | EventValueRecommendationFailure;
 
+export type EventValueRecommendationServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
+
 export interface EventValueRecommendationService {
   listRecommendedEvents: (
     input?: EventValueRecommendationInput,
-  ) => EventValueRecommendationsResult;
+  ) => EventValueRecommendationServiceResult<EventValueRecommendationsResult>;
   acceptRecommendedEvent: (
     input?: AcceptEventValueRecommendationInput,
-  ) => EventValueRecommendationAcceptanceResult;
+  ) => EventValueRecommendationServiceResult<EventValueRecommendationAcceptanceResult>;
 }
 
 export function eventValueRecommendationErrorToAppError(
@@ -271,14 +287,21 @@ export function eventValueRecommendationErrorContext(
   errorCode: EventValueRecommendationErrorCode,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLiveStoreError =
+    errorCode === "EVENT_VALUE_RECOMMENDATION_LIVE_STORE_UNCONFIGURED";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     eventValueRecommendationErrorCode: errorCode,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock event value recommendation failure came from deterministic fixture rules.",
-    service: "event-value-recommendation-mock",
+      isLiveStoreError
+        ? "Live event value recommendation failure came from the configured live provider boundary."
+        : "Mock event value recommendation failure came from deterministic fixture rules.",
+    service: isLiveStoreError
+      ? "event-value-recommendation"
+      : "event-value-recommendation-mock",
   };
 }
 

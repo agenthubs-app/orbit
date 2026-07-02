@@ -13,6 +13,7 @@ export const EVENT_RECOMMENDATION_ERROR_CODES = [
   "EVENT_RECOMMENDATION_ATTENDEE_NOT_FOUND",
   "EVENT_RECOMMENDATION_PENDING",
   "EVENT_RECOMMENDATION_MOCK_FAILED",
+  "EVENT_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type EventRecommendationErrorCode =
@@ -93,6 +94,13 @@ export const EVENT_RECOMMENDATION_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry external network, database, model, calendar, email, notification, ranking, or vector providers.",
   },
+  EVENT_RECOMMENDATION_LIVE_STORE_UNCONFIGURED: {
+    code: "EVENT_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live event recommendation store is not configured.",
+    recovery:
+      "Configure the shared live record store before serving live event recommendations or opening-line drafts.",
+  },
 } as const satisfies Record<
   EventRecommendationErrorCode,
   EventRecommendationErrorDefinition
@@ -103,7 +111,7 @@ export type EventRecommendationSourceReference = SourceReferenceDTO & {
   label: string;
   eventId: string;
   providerRecordId: string;
-  generatedBy: "mock-event-recommendation-service";
+  generatedBy: "mock-event-recommendation-service" | "live-store-query";
 };
 
 // EventRecommendationEvent 是推荐链路里需要的活动摘要，不代表真实日历记录。
@@ -131,7 +139,7 @@ export interface EventRecommendationAttendee {
   source: EventRecommendationSourceReference;
   evidenceIds: readonly string[];
   externalProfileRequested: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
   aiProviderRequested: false;
   calendarProviderRequested: false;
   emailProviderRequested: false;
@@ -146,13 +154,13 @@ export interface EventRecommendationMatchSignal {
   weight: number;
   evidenceIds: readonly string[];
   source: EventRecommendationSourceReference;
-  generatedBy: "mock-match-signal-rule";
+  generatedBy: "mock-match-signal-rule" | "live-match-signal-rule";
   vectorSearchExecuted: false;
   embeddingGenerated: false;
   rankingProviderRequested: false;
   aiProviderRequested: false;
   externalNetworkRequested: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
 }
 
 // opening line 是可复核草稿，不会直接发送邮件或消息。
@@ -165,7 +173,7 @@ export interface EventRecommendationOpeningLine {
   rationale: string;
   source: EventRecommendationSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-opening-line-rule";
+  generatedBy: "mock-opening-line-rule" | "live-opening-line-rule";
   aiProviderRequested: false;
   externalNetworkRequested: false;
   calendarProviderRequested: false;
@@ -187,12 +195,12 @@ export interface EventAttendeeRecommendation {
   recommendedAction: string;
   source: EventRecommendationSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-ranking-rule";
+  generatedBy: "mock-ranking-rule" | "live-store-ranking";
   vectorSearchExecuted: false;
   embeddingGenerated: false;
   rankingProviderRequested: false;
   aiProviderRequested: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
   externalNetworkRequested: false;
   calendarProviderRequested: false;
   emailProviderRequested: false;
@@ -205,16 +213,18 @@ export interface EventRecommendationProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-event-recommendation-only";
+  privacy: "demo-event-recommendation-only" | "live-event-recommendation-only";
   generationMethod:
     | "fixture"
     | "rule-based-ranking"
     | "rule-based-opening-line"
-    | "rule-based-state";
+    | "rule-based-state"
+    | "live-store-ranking"
+    | "live-store-opening-line";
   vectorSearchExecuted: false;
   embeddingsGenerated: false;
   rankingProviderRequested: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
   databaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
@@ -306,5 +316,14 @@ export function eventRecommendationFailureContext(
   failure: EventRecommendationFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  if (failure.error.provenance.privacy === "live-event-recommendation-only") {
+    return {
+      ...eventRecommendationErrorContext(failure.error.code, mode),
+      provenance:
+        "Live event recommendation failure came from the configured live provider boundary.",
+      service: "event-recommendation",
+    };
+  }
+
   return eventRecommendationErrorContext(failure.error.code, mode);
 }

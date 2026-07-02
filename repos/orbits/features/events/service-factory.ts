@@ -5,18 +5,32 @@ import { createModuleServiceFactory, type ModuleMode } from "../../shared/servic
 import { createHybridEventCrudAndImportService } from "./event-crud-and-import/hybrid-service";
 import { createLiveEventCrudAndImportService } from "./event-crud-and-import/live-service";
 import { createConfiguredStorageEventStoreProvider } from "./event-crud-and-import/providers/storage-event-provider";
-import { createMockEventAttendeeRosterService } from "./mock-attendee-service";
-import { createMockEventEncounterNoteService } from "./mock-encounter-service";
-import { createMockEventGoalAndReadinessService } from "./mock-goal-service";
-import { createMockPostEventContactReviewService } from "./mock-post-event-service";
-import { createMockEventCrudAndImportService } from "./mock-service";
-import { createMockWantConnectService } from "./mock-want-connect-service";
-import type { EventAttendeeRosterService } from "./attendee-contract";
-import type { EventEncounterNoteService } from "./encounter-contract";
-import type { EventGoalAndReadinessService } from "./goal-contract";
-import type { PostEventContactReviewService } from "./post-event-contract";
-import type { EventCrudAndImportService } from "./service";
-import type { WantConnectService } from "./want-connect-contract";
+import { createMockEventAttendeeRosterService } from "./attendee-roster/mock-service";
+import { createLiveEventAttendeeRosterService } from "./attendee-roster/live-service";
+import { createConfiguredGeneratedEventAttendeeRosterProvider } from "./attendee-roster/storage/generated-attendee-roster-live-record-provider";
+import type { EventAttendeeRosterService } from "./attendee-roster/contract";
+import { createMockEventEncounterNoteService } from "./encounter-note/mock-service";
+import { createLiveEventEncounterNoteService } from "./encounter-note/live-service";
+import type { EventEncounterNoteService } from "./encounter-note/contract";
+import { createMockEventCrudAndImportService } from "./event-crud-and-import/mock-service";
+import type { EventCrudAndImportService } from "./event-crud-and-import/service";
+import { createMockEventGoalAndReadinessService } from "./goal-readiness/mock-service";
+import { createLiveEventGoalAndReadinessService } from "./goal-readiness/live-service";
+import { createConfiguredGeneratedEventGoalReadinessProvider } from "./goal-readiness/storage/generated-goal-readiness-live-record-provider";
+import type { EventGoalAndReadinessService } from "./goal-readiness/contract";
+import { createMockPostEventContactReviewService } from "./post-event-review/mock-service";
+import { createLivePostEventContactReviewService } from "./post-event-review/live-service";
+import type { PostEventContactReviewService } from "./post-event-review/contract";
+import { createConfiguredGeneratedPostEventContactReviewProvider } from "./post-event-review/storage/generated-post-event-review-live-record-provider";
+import { createConfiguredGeneratedEventEncounterNoteProvider } from "./encounter-note/storage/generated-encounter-note-live-record-provider";
+import { createConfiguredGeneratedWantConnectProvider } from "./want-connect/storage/generated-want-connect-live-record-provider";
+import {
+  createConfiguredEventCapabilityRecordProvider,
+  EVENT_WORK_RECORD_COLLECTIONS,
+} from "./storage/event-work-record-provider";
+import { createMockWantConnectService } from "./want-connect/mock-service";
+import { createLiveWantConnectService } from "./want-connect/live-service";
+import type { WantConnectService } from "./want-connect/contract";
 
 export const eventCrudAndImportServiceFactory =
   createModuleServiceFactory<EventCrudAndImportService>({
@@ -35,6 +49,16 @@ export const eventAttendeeRosterServiceFactory =
   createModuleServiceFactory<EventAttendeeRosterService>({
     capabilityId: "event-attendee-roster",
     implementations: {
+      hybrid: () =>
+        createLiveEventAttendeeRosterService({
+          provider: createConfiguredEventCapabilityRecordProvider({
+            collectionName: EVENT_WORK_RECORD_COLLECTIONS.attendeeRoster,
+          }),
+        }),
+      live: () =>
+        createLiveEventAttendeeRosterService({
+          provider: createConfiguredGeneratedEventAttendeeRosterProvider(),
+        }),
       mock: () => createMockEventAttendeeRosterService(),
     },
   });
@@ -43,6 +67,16 @@ export const eventGoalAndReadinessServiceFactory =
   createModuleServiceFactory<EventGoalAndReadinessService>({
     capabilityId: "event-goal-readiness",
     implementations: {
+      hybrid: () =>
+        createLiveEventGoalAndReadinessService({
+          provider: createConfiguredEventCapabilityRecordProvider({
+            collectionName: EVENT_WORK_RECORD_COLLECTIONS.goalReadiness,
+          }),
+        }),
+      live: () =>
+        createLiveEventGoalAndReadinessService({
+          provider: createConfiguredGeneratedEventGoalReadinessProvider(),
+        }),
       mock: () => createMockEventGoalAndReadinessService(),
     },
   });
@@ -51,6 +85,16 @@ export const eventEncounterNoteServiceFactory =
   createModuleServiceFactory<EventEncounterNoteService>({
     capabilityId: "event-encounter-note",
     implementations: {
+      hybrid: () =>
+        createLiveEventEncounterNoteService({
+          provider: createConfiguredEventCapabilityRecordProvider({
+            collectionName: EVENT_WORK_RECORD_COLLECTIONS.encounterNotes,
+          }),
+        }),
+      live: () =>
+        createLiveEventEncounterNoteService({
+          provider: createConfiguredGeneratedEventEncounterNoteProvider(),
+        }),
       mock: () => createMockEventEncounterNoteService(),
     },
   });
@@ -59,6 +103,16 @@ export const wantConnectServiceFactory =
   createModuleServiceFactory<WantConnectService>({
     capabilityId: "want-to-connect",
     implementations: {
+      hybrid: () =>
+        createLiveWantConnectService({
+          provider: createConfiguredEventCapabilityRecordProvider({
+            collectionName: EVENT_WORK_RECORD_COLLECTIONS.wantConnect,
+          }),
+        }),
+      live: () =>
+        createLiveWantConnectService({
+          provider: createConfiguredGeneratedWantConnectProvider(),
+        }),
       mock: () => createMockWantConnectService(),
     },
   });
@@ -67,6 +121,16 @@ export const postEventContactReviewServiceFactory =
   createModuleServiceFactory<PostEventContactReviewService>({
     capabilityId: "post-event-contact-review",
     implementations: {
+      hybrid: () =>
+        createLivePostEventContactReviewService({
+          provider: createConfiguredEventCapabilityRecordProvider({
+            collectionName: EVENT_WORK_RECORD_COLLECTIONS.postEventReview,
+          }),
+        }),
+      live: () =>
+        createLivePostEventContactReviewService({
+          provider: createConfiguredGeneratedPostEventContactReviewProvider(),
+        }),
       mock: () => createMockPostEventContactReviewService(),
     },
   });

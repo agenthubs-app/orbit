@@ -12,11 +12,13 @@ import {
 import {
   EVENT_CRUD_AND_IMPORT_ERROR_DEFINITIONS,
   type EventCrudImportProvenance,
+  type EventListResult,
   type EventRecord,
   type ImportedEventRecord,
+  type ManualEventCreationResult,
   type ManualEventCreationPayload,
-} from "../contract";
-import { createMockEventCrudAndImportService } from "../mock-service";
+} from "./contract";
+import { createMockEventCrudAndImportService } from "./mock-service";
 
 export const EVENT_CRUD_AND_IMPORT_MOCK_SLUG =
   "event-crud-and-import-mock";
@@ -415,11 +417,18 @@ function ApiProbeActions() {
 
 export function EventCrudAndImportMockDemo() {
   const eventService = createMockEventCrudAndImportService();
-  const listState = eventService.listEvents();
-  const manualCreationState = eventService.createEvent();
-  const emptyState = eventService.listEvents({ scenario: "empty" });
-  const pendingState = eventService.listEvents({ scenario: "pending" });
-  const failureState = eventService.listEvents({ scenario: "failure" });
+  const listState = eventService.listEvents() as EventListResult;
+  const manualCreationState =
+    eventService.createEvent() as ManualEventCreationResult;
+  const emptyState = eventService.listEvents({
+    scenario: "empty",
+  }) as EventListResult;
+  const pendingState = eventService.listEvents({
+    scenario: "pending",
+  }) as EventListResult;
+  const failureState = eventService.listEvents({
+    scenario: "failure",
+  }) as EventListResult;
   const listPayload = listState.success ? listState.data : null;
   const manualCreationPayload = manualCreationState.success
     ? manualCreationState.data

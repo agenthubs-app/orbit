@@ -117,6 +117,7 @@ test("event recommendation contract exposes ranked attendees signals opening lin
     "EVENT_RECOMMENDATION_ATTENDEE_NOT_FOUND",
     "EVENT_RECOMMENDATION_PENDING",
     "EVENT_RECOMMENDATION_MOCK_FAILED",
+    "EVENT_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.EVENT_RECOMMENDATION_ERROR_DEFINITIONS

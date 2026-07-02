@@ -6,6 +6,7 @@ import {
   type LiveEventStoreProvider,
   type LiveEventStoreRecord,
 } from "../../features/events/event-crud-and-import/live-service";
+import { createEventsRecommendationTool } from "../../features/events/event-recommendation-tool";
 import {
   createConfiguredStorageEventStoreProvider,
   createStorageEventStoreProvider,
@@ -123,7 +124,7 @@ function createAsyncFakeLiveProvider(): LiveEventStoreProvider {
   };
 }
 
-test("event CRUD import factory registers explicit live mode while other event child capabilities stay non-live", async () => {
+test("event CRUD and child event factories register explicit live mode", async () => {
   const liveResolution = resolveEventCrudAndImportService("live");
   const attendeeLive = resolveEventAttendeeRosterService("live");
   const goalLive = resolveEventGoalAndReadinessService("live");
@@ -146,12 +147,7 @@ test("event CRUD import factory registers explicit live mode while other event c
     wantConnectLive,
     postEventLive,
   ]) {
-    assert.equal(resolution.success, false);
-    if (!resolution.success) {
-      assert.equal(resolution.error.code, "NOT_IMPLEMENTED");
-      assert.equal(resolution.error.requestedMode, "live");
-      assert.deepEqual(resolution.error.availableModes, ["mock"]);
-    }
+    assert.equal(resolution.success, true);
   }
 });
 
@@ -177,6 +173,34 @@ test("live event CRUD awaits asynchronous store providers", async () => {
   assert.equal(created.success, true);
   assert.equal(created.data.event.id, "event:live:async-live-investor-dinner");
   assert.equal(created.data.event.liveDatabaseWriteExecuted, true);
+});
+
+test("events recommendation tool ranks live events from an async Events service", async () => {
+  const provider = createAsyncFakeLiveProvider();
+  await provider.createManualEvent({
+    description: "Japan market entry operator dinner for China SaaS founders.",
+    sourceNote: "Operator added a Japan market entry event.",
+    startsAt: "2026-07-22T10:00:00.000Z",
+    title: "Japan market entry operator dinner",
+    venue: "Shibuya",
+  });
+  const eventService = createLiveEventCrudAndImportService({ provider });
+  const tool = createEventsRecommendationTool({ eventService });
+
+  const result = await tool.recommend({
+    query: "Japan market entry for China SaaS founders",
+    toolArguments: { limit: 1 },
+  });
+
+  assert.equal(result.state, "success");
+  assert.equal(result.databaseQueryExecuted, true);
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0]?.title, "Japan market entry operator dinner");
+  assert.equal(result.candidates[0]?.venue, "Shibuya");
+  assert.equal(result.candidates[0]?.databaseQueryExecuted, true);
+  assert.equal(result.candidates[0]?.evidenceIds[0], "evidence:live-store:event:live:japan-market-entry-operator-dinner");
+  assert.match(result.candidates[0]?.matchReasons.join(" ") ?? "", /Japan market entry/i);
+  assert.match(result.summary, /live Events data/i);
 });
 
 test("configured storage event provider reuses the default Postgres provider", () => {
@@ -394,4 +418,43 @@ test("live event CRUD can read and create events through the shared storage prov
     })?.payload.title,
     "Storage investor dinner",
   );
+});
+
+test("storage event provider maps shared EventDTO-shaped name and location fields", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+
+  await store.upsertRecord({
+    workspaceId: "workspace:event-dto",
+    collectionName: "events",
+    recordId: "event:storage:dto-meetup",
+    sourceType: "event_import",
+    sourceId: "source:event-dto",
+    sourceLabel: "Shared EventDTO seed",
+    provider: "shared-live-record-storage",
+    providerRecordId: "provider:event-dto",
+    evidenceIds: ["evidence:event-dto"],
+    targetType: "event",
+    targetId: "event:storage:dto-meetup",
+    occurredAt: "2026-08-02T10:00:00.000Z",
+    createdAt: "2026-07-01T00:00:00.000Z",
+    updatedAt: "2026-07-01T00:00:00.000Z",
+    lifecycleState: "active",
+    searchText: "shared event dto meetup tokyo",
+    payload: {
+      endsAt: "2026-08-02T12:00:00.000Z",
+      location: "Tokyo",
+      name: "Shared EventDTO meetup",
+      startsAt: "2026-08-02T10:00:00.000Z",
+    },
+  });
+
+  const provider = createStorageEventStoreProvider({
+    store: store as Parameters<typeof createStorageEventStoreProvider>[0]["store"],
+    workspaceId: "workspace:event-dto",
+  });
+  const events = await provider.listEvents();
+
+  assert.equal(events[0]?.title, "Shared EventDTO meetup");
+  assert.equal(events[0]?.venue, "Tokyo");
+  assert.equal(events[0]?.status, "confirmed");
 });

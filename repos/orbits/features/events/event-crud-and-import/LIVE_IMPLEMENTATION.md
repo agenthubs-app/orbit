@@ -2,7 +2,7 @@
 
 ## Live service and provider files
 
-- `features/events/event-crud-and-import/live-service.ts` should implement the `EventCrudAndImportService` interface from `features/events/service.ts`.
+- `features/events/event-crud-and-import/live-service.ts` should implement the `EventCrudAndImportService` interface from `features/events/event-crud-and-import/service.ts`.
 - `features/events/event-crud-and-import/providers/storage-event-provider.ts`
   maps shared `orbit_records` rows from `shared/storage` into the live event
   provider contract. It is the first concrete provider for the Events Live Store

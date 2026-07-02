@@ -23,7 +23,15 @@ Mock 使用本地事件和联系人 fixture 排序。开场白是确定性文案
 
 ## Live 替换方案
 
-Live 可以接 ranking model、LLM opening-line generator、搜索索引或活动数据库。模型输出必须经过 mapper 和 safety validator。开场白应保留来源理由，并在发送前交给 Chat/Agent/Permissions。
+当前 event recommendation 已有只读 live storage 实现：
+
+- `features/recommendations/live-service.ts`
+- `features/recommendations/storage/event-recommendation-live-record-provider.ts`
+- `features/recommendations/service-factory.ts`
+
+它从 shared live record store 读取 `events`、`matchRecommendations`、`attendees`、`eventParticipantIntents`、`contacts`、`connections`、`networkPeople` 和 `evidence`，映射为活动参会者推荐与 opening line payload。这个实现不调用 AI provider、ranking provider、vector search、外部网络，也不写联系人、日历、消息或通知。
+
+后续更高级的 Live 可以接 ranking model、LLM opening-line generator、搜索索引或活动数据库。模型输出必须经过 mapper 和 safety validator。开场白应保留来源理由，并在发送前交给 Chat/Agent/Permissions。
 
 ## API 与页面使用
 

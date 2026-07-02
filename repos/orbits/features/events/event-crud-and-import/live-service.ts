@@ -19,9 +19,9 @@ import {
   type ManualEventCreationInput,
   type ManualEventCreationPayload,
   type ManualEventCreationResult,
-} from "../contract";
+} from "./contract";
 import type { SourceType } from "../../../shared/domain/source-types";
-import type { EventCrudAndImportService } from "../service";
+import type { EventCrudAndImportService } from "./service";
 
 type LiveEventStoreProviderResult<TResult> = TResult | Promise<TResult>;
 

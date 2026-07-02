@@ -10,6 +10,7 @@ import {
 } from "../../../shared/ui/primitives";
 import type {
   EventValueRecommendation,
+  EventValueRecommendationServiceResult,
   EventValueRecommendationSignal,
   EventValueRecommendationsPayload,
 } from "../event-value-contract";
@@ -315,15 +316,35 @@ function StateMatrix({
   );
 }
 
+function requireSyncEventValueResult<TResult>(
+  result: EventValueRecommendationServiceResult<TResult>,
+): TResult {
+  if (result instanceof Promise) {
+    throw new Error("Event value mock debug view requires a synchronous mock service.");
+  }
+
+  return result;
+}
+
 export function EventValueRecommendationMockDemo() {
   const service = createMockEventValueRecommendationService();
-  const successResult = service.listRecommendedEvents();
-  const emptyResult = service.listRecommendedEvents({ scenario: "empty" });
-  const pendingResult = service.listRecommendedEvents({ scenario: "pending" });
-  const failureResult = service.listRecommendedEvents({ scenario: "failure" });
-  const acceptResult = service.acceptRecommendedEvent({
-    eventId: "demo-event-1",
-  });
+  const successResult = requireSyncEventValueResult(
+    service.listRecommendedEvents(),
+  );
+  const emptyResult = requireSyncEventValueResult(
+    service.listRecommendedEvents({ scenario: "empty" }),
+  );
+  const pendingResult = requireSyncEventValueResult(
+    service.listRecommendedEvents({ scenario: "pending" }),
+  );
+  const failureResult = requireSyncEventValueResult(
+    service.listRecommendedEvents({ scenario: "failure" }),
+  );
+  const acceptResult = requireSyncEventValueResult(
+    service.acceptRecommendedEvent({
+      eventId: "demo-event-1",
+    }),
+  );
 
   if (
     successResult.success === false ||

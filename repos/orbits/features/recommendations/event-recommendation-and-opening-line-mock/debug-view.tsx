@@ -13,8 +13,10 @@ import {
   EVENT_RECOMMENDATION_ERROR_DEFINITIONS,
   type EventAttendeeRecommendation,
   type EventOpeningLinePayload,
+  type EventOpeningLineResult,
   type EventRecommendationMatchSignal,
   type EventRecommendationsPayload,
+  type EventRecommendationsResult,
 } from "../contract";
 import { createMockEventRecommendationService } from "../mock-service";
 
@@ -24,6 +26,19 @@ export const EVENT_RECOMMENDATION_OPENING_LINE_MOCK_SLUG =
 const liveImplementationNotesPath =
   "features/recommendations/event-recommendation-and-opening-line-mock/LIVE_IMPLEMENTATION.md";
 const pathWrapStyle = { overflowWrap: "anywhere" } as const;
+
+function requireSynchronousMockResult<TResult>(
+  result: TResult | Promise<TResult>,
+): TResult {
+  if (typeof (result as { then?: unknown }).then === "function") {
+    throw new Error(
+      "Mock event recommendation debug view requires synchronous mock results.",
+    );
+  }
+
+  return result as TResult;
+}
+
 const responsiveWorkbenchStyles = `
 .event-recommendation-workbench {
   grid-template-columns: minmax(0, 1fr);
@@ -449,25 +464,36 @@ function ApiProbeActions() {
 
 export function EventRecommendationOpeningLineMockDemo() {
   const recommendationService = createMockEventRecommendationService();
-  const successState = recommendationService.listEventRecommendations({
-    eventId: "demo-event-1",
-  });
-  const openingLineState = recommendationService.composeOpeningLine({
-    attendeeId: "attendee:mina-park",
-    eventId: "demo-event-1",
-  });
-  const emptyState = recommendationService.listEventRecommendations({
-    eventId: "demo-event-1",
-    scenario: "empty",
-  });
-  const pendingState = recommendationService.listEventRecommendations({
-    eventId: "demo-event-1",
-    scenario: "pending",
-  });
-  const failureState = recommendationService.composeOpeningLine({
-    eventId: "demo-event-1",
-    scenario: "failure",
-  });
+  const successState = requireSynchronousMockResult<EventRecommendationsResult>(
+    recommendationService.listEventRecommendations({
+      eventId: "demo-event-1",
+    }),
+  );
+  const openingLineState =
+    requireSynchronousMockResult<EventOpeningLineResult>(
+      recommendationService.composeOpeningLine({
+        attendeeId: "attendee:mina-park",
+        eventId: "demo-event-1",
+      }),
+    );
+  const emptyState = requireSynchronousMockResult<EventRecommendationsResult>(
+    recommendationService.listEventRecommendations({
+      eventId: "demo-event-1",
+      scenario: "empty",
+    }),
+  );
+  const pendingState = requireSynchronousMockResult<EventRecommendationsResult>(
+    recommendationService.listEventRecommendations({
+      eventId: "demo-event-1",
+      scenario: "pending",
+    }),
+  );
+  const failureState = requireSynchronousMockResult<EventOpeningLineResult>(
+    recommendationService.composeOpeningLine({
+      eventId: "demo-event-1",
+      scenario: "failure",
+    }),
+  );
   const successPayload = successState.success ? successState.data : null;
   const openingLinePayload = openingLineState.success
     ? openingLineState.data

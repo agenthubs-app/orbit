@@ -6,14 +6,11 @@ import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
 } from "../../../../shared/storage/live-database-config";
+import { createConfiguredPostgresLiveRecordStore } from "../../../../shared/storage/configured-live-record-store";
 import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../../shared/storage/live-record-store";
-import {
-  createPgLiveRecordSqlClient,
-  createPostgresLiveRecordStore,
-} from "../../../../shared/storage/postgres-live-record-store";
 import type {
   LiveEventStoreEvidence,
   LiveEventStoreManualEventInput,
@@ -34,12 +31,14 @@ export interface StorageEventPayload extends Record<string, unknown> {
   description?: string | null;
   endsAt?: string | null;
   evidence?: readonly StorageEventEvidencePayload[] | null;
+  location?: string | null;
+  name?: string | null;
   nextAction?: string | null;
   recommendedPreparation?: string | null;
   relationshipContext?: string | null;
   startsAt?: string | null;
   status?: string | null;
-  title: string;
+  title?: string | null;
   venue?: string | null;
 }
 
@@ -113,20 +112,49 @@ function evidenceFor(record: LiveRecord<StorageEventPayload>): readonly LiveEven
   }));
 }
 
+function titleFor(record: LiveRecord<StorageEventPayload>): string {
+  return (
+    readText(record.payload.title) ??
+    readText(record.payload.name) ??
+    readText(record.searchText) ??
+    record.recordId
+  );
+}
+
+function descriptionFor(record: LiveRecord<StorageEventPayload>, title: string): string {
+  return (
+    readText(record.payload.description) ??
+    readText(record.searchText) ??
+    title
+  );
+}
+
+function venueFor(record: LiveRecord<StorageEventPayload>): string {
+  return (
+    readText(record.payload.venue) ??
+    readText(record.payload.location) ??
+    record.sourceLabel ??
+    "Events live store"
+  );
+}
+
 function toLiveEventStoreRecord(
   record: LiveRecord<StorageEventPayload>,
 ): LiveEventStoreRecord {
+  const title = titleFor(record);
+  const description = descriptionFor(record, title);
+
   return {
     id: record.recordId,
-    title: record.payload.title,
-    description: readText(record.payload.description),
-    venue: readText(record.payload.venue),
+    title,
+    description,
+    venue: venueFor(record),
     startsAt: readText(record.payload.startsAt) ?? record.occurredAt,
     endsAt:
       readText(record.payload.endsAt) ??
       readText(record.payload.startsAt) ??
       record.occurredAt,
-    status: readText(record.payload.status),
+    status: readText(record.payload.status) ?? "confirmed",
     source: {
       type: sourceTypeFor(record.sourceType),
       id: record.sourceId,
@@ -136,9 +164,14 @@ function toLiveEventStoreRecord(
       importedAt: record.createdAt,
     },
     evidence: evidenceFor(record),
-    relationshipContext: readText(record.payload.relationshipContext),
-    recommendedPreparation: readText(record.payload.recommendedPreparation),
-    nextAction: readText(record.payload.nextAction),
+    relationshipContext:
+      readText(record.payload.relationshipContext) ?? description,
+    recommendedPreparation:
+      readText(record.payload.recommendedPreparation) ??
+      "Review the source-backed event before taking action.",
+    nextAction:
+      readText(record.payload.nextAction) ??
+      "Review the source-backed event in Orbit.",
   };
 }
 
@@ -267,18 +300,21 @@ export function createConfiguredStorageEventStoreProvider({
     return cachedDefaultProvider.provider;
   }
 
-  const client = createPgLiveRecordSqlClient({
-    connectionString: config.connectionString,
+  const configured = createConfiguredPostgresLiveRecordStore<StorageEventPayload>({
+    env,
   });
-  const store = createPostgresLiveRecordStore<StorageEventPayload>({ client });
+
+  if (!configured) {
+    return null;
+  }
 
   const provider = createStorageEventStoreProvider({
     createdBy,
     now,
-    source: `postgres-live-record-store:events:${config.workspaceId}`,
+    source: `postgres-live-record-store:events:${configured.workspaceId}`,
     sourceLabel,
-    store,
-    workspaceId: config.workspaceId,
+    store: configured.store,
+    workspaceId: configured.workspaceId,
   });
 
   if (canUseDefaultCache) {
