@@ -45,6 +45,7 @@ test("account contract exposes demo sign-in, signed-out, and require-account beh
     "DEMO_SIGN_IN_PENDING",
     "SIGNED_OUT",
     "ACCOUNT_REQUIRED",
+    "ACCOUNT_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     ACCOUNT_SESSION_ERROR_DEFINITIONS.ACCOUNT_REQUIRED.appCode,

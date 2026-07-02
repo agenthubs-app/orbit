@@ -17,16 +17,18 @@ export const dynamic = "force-dynamic";
 // /api/account/session/sign-out 是账号退出入口。
 // route 只读取演示 scenario 并调用 account session service；
 // 会话状态、require-account 校验和失败语义都由 feature contract 维护。
-export function POST(request: Request): Response {
+export async function POST(request: Request): Promise<Response> {
   // mode 会写入 runtime boundary header，帮助前端判断当前是 mock/live/hybrid。
-  const mode = resolveFeatureMode();
-  const accountService = createAccountSessionService();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const accountService = createAccountSessionService(mode);
   const scenario = new URL(request.url).searchParams.get("scenario");
   // require-account scenario 用于演示“未登录访问受保护资源”的失败路径。
   const result =
     scenario === "require-account"
-      ? accountService.requireAccount("signed-out")
-      : accountService.signOut();
+      ? await accountService.requireAccount("signed-out")
+      : await accountService.signOut();
 
   if (result.success === false) {
     // AccountSessionFailure 在这里统一转换成 AppError/envelope。

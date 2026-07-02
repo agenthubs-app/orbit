@@ -14,6 +14,19 @@ import {
 } from "./fixtures";
 import type { AccountSessionService } from "./service";
 
+export interface MockAccountSessionService extends AccountSessionService {
+  demoSignIn: () => AccountSessionSuccess;
+  getCurrentSession: (options?: {
+    scenario?: AccountSessionScenario | string | null;
+  }) => AccountSessionResult;
+  getPendingDemoSignIn: () => AccountSessionSuccess;
+  getSignedOutSession: () => AccountSessionSuccess;
+  requireAccount: (
+    scenario?: AccountSessionScenario | string | null,
+  ) => AccountSessionResult;
+  signOut: () => AccountSessionSuccess;
+}
+
 // Account session mock service 提供本地 demo 登录状态。
 // 它不连接真实 auth provider，也不写 cookie/session storage；route 只用它模拟账号边界。
 const supportedScenarios = new Set<AccountSessionScenario>([
@@ -61,9 +74,9 @@ function normalizeScenario(
   return "demo-sign-in";
 }
 
-export function createMockAccountSessionService(): AccountSessionService {
+export function createMockAccountSessionService(): MockAccountSessionService {
   // service 自引用用于保证 getCurrentSession/requireAccount/signOut 复用同一套状态 payload。
-  const service: AccountSessionService = {
+  const service: MockAccountSessionService = {
     demoSignIn() {
       return success(mockAccountSessionFixture);
     },
@@ -92,7 +105,7 @@ export function createMockAccountSessionService(): AccountSessionService {
 
     requireAccount(scenario = "demo-sign-in"): AccountSessionResult {
       if (normalizeScenario(scenario) === "demo-sign-in") {
-        return service.demoSignIn();
+        return success(mockAccountSessionFixture);
       }
 
       return failure("ACCOUNT_REQUIRED");

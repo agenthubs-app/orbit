@@ -34,11 +34,13 @@ function getScenario(request: Request): AccountSessionScenario | undefined {
   return undefined;
 }
 
-export function GET(request: Request): Response {
+export async function GET(request: Request): Promise<Response> {
   // mode 会写入 runtime boundary header，方便前端和测试知道当前走 mock/live/hybrid。
-  const mode = resolveFeatureMode();
-  const accountService = createAccountSessionService();
-  const result = accountService.getCurrentSession({
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const accountService = createAccountSessionService(mode);
+  const result = await accountService.getCurrentSession({
     scenario: getScenario(request),
   });
 

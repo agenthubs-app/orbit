@@ -6,6 +6,7 @@ export const ACCOUNT_SESSION_ERROR_CODES = [
   "DEMO_SIGN_IN_PENDING",
   "SIGNED_OUT",
   "ACCOUNT_REQUIRED",
+  "ACCOUNT_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type AccountSessionErrorCode =
@@ -49,6 +50,14 @@ export const ACCOUNT_SESSION_ERROR_DEFINITIONS = {
       "A mock account is required before this relationship action can run.",
     recovery: "Return a controlled failure envelope with provenance context.",
   },
+  ACCOUNT_LIVE_STORE_UNCONFIGURED: {
+    code: "ACCOUNT_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The account session live store is not configured for this runtime.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL with ORBIT_WORKSPACE_ID before using account live mode.",
+  },
 } as const satisfies Record<AccountSessionErrorCode, AccountSessionErrorDefinition>;
 
 // provenance 说明账号数据只来自 demo account 边界，不代表真实认证 provider。
@@ -57,7 +66,7 @@ export interface AccountSessionProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-account-only";
+  privacy: "demo-account-only" | "live-account-session";
 }
 
 // MockAccount 是 workspace 级别的账号信息。
@@ -66,7 +75,7 @@ export interface MockAccount {
   displayName: string;
   workspaceName: string;
   role: string;
-  plan: "mock-pro";
+  plan: "mock-pro" | "live-relationship-os";
 }
 
 // MockAccountUser 是当前操作者视角的用户资料。
