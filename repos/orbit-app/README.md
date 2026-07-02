@@ -21,6 +21,10 @@ EXPO_PUBLIC_ORBIT_API_BASE_URL=http://localhost:3000 npm run ios
 
 For a physical iPhone, use the Mac LAN address instead of `localhost`.
 
+The local default is `http://localhost:3000`, which works for the iOS
+simulator. Set `EXPO_PUBLIC_ORBIT_API_BASE_URL` whenever the app should point
+at a different Orbit server.
+
 ## Scripts
 
 - `npm run ios`: start Expo and open iOS simulator.
@@ -34,3 +38,14 @@ For a physical iPhone, use the Mac LAN address instead of `localhost`.
 - The app does not import Next.js pages or feature services.
 - The app does not read Postgres, Supabase, `orbit_records`, or web localStorage.
 - Orbit AI remains the single assistant inbox, including proactive turns.
+
+## First Screens
+
+- Orbit AI: reads `/api/ai/conversations`.
+- Events: reads `/api/events`.
+- Contacts: reads `/api/contacts`.
+- Schedule: reads `/api/tasks`.
+- Profile: reads `/api/profile`.
+
+Each screen renders loading, empty, offline, failure, and success states through
+the shared Orbit API envelope client.

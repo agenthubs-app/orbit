@@ -10,16 +10,19 @@
     "test": "node --test --import tsx \"tests/**/*.test.ts\""
   },
   "dependencies": {
+    "@expo/metro-runtime": "~57.0.2",
     "@expo/vector-icons": "latest",
     "expo": "latest",
     "expo-constants": "latest",
     "expo-linking": "latest",
     "expo-router": "latest",
     "expo-status-bar": "latest",
-    "react": "latest",
+    "react": "^19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "latest",
     "react-native-safe-area-context": "latest",
-    "react-native-screens": "latest"
+    "react-native-screens": "latest",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
