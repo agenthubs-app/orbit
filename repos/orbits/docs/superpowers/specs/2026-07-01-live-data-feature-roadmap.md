@@ -58,7 +58,7 @@ The following feature families are now wired to explicit remote live providers:
 - `app-contact-detail-page`: the real `/app/contacts/[id]` route adapter now calls the contact detail live route service, maps the live route model into the existing detail UI view model, and renders a shared controlled failure boundary when live storage is unconfigured.
 - `app-contacts-subroutes`: the real `/app/contacts/pipeline`, `/app/contacts/graph`, and `/app/contacts/intros` routes now call the live-capable contacts route service, map its payload into the existing contacts UI view model through a shared adapter, and render shared controlled failure boundaries when live storage is unconfigured.
 - `app-contacts-new-route-services`: the real `/app/contacts/new` route adapter now resolves the acquisition and permission child services through module mode, awaits async live results, renders a capability-first acquisition workspace, and preserves a controlled failure boundary when live storage is unconfigured. The live first screen is read-only: it lists or derives acquisition context without creating a manual contact draft unless an explicit action is requested.
-- `app-home-route-services`: the real `/`, `/app`, `/app/home`, and `/app/home/events` routes now compose the live-capable events, contacts, and profile route payloads into the existing `OrbitHomeViewModel` UI shape. Home does not read storage directly, does not call the legacy `getOrbitHomeViewModel`, and renders a shared controlled failure boundary when any child route payload is unavailable. The web root and product namespace root now share the live personal Home hub instead of the public landing experience.
+- `app-home-route-services`: the real `/app/home` and `/app/home/events` routes now compose the live-capable events, contacts, and profile route payloads into the existing `OrbitHomeViewModel` UI shape. Home does not read storage directly, does not call the legacy `getOrbitHomeViewModel`, and renders a shared controlled failure boundary when any child route payload is unavailable. The web root `/` and product namespace root `/app` intentionally remain on the public landing experience so the approved web entry UI does not change.
 - `app-followups-route-services`: the `/app/followups` page now mounts the capability-first followups command center, resolves live follow-up tasks, live message drafts, and live reminders, and awaits async live task/reminder results while preserving controlled failure states when live storage is unconfigured.
 - `app-dashboard-route-services`: the `/app/dashboard` page now calls the live-capable dashboard route loader, maps dashboard aggregate, network distribution, opportunity reminder, and provenance audit payloads into `OrbitRealDashboard`, and awaits async live service results while preserving controlled failure states when live storage is unconfigured. The retained dashboard command center is no longer the default web page entry.
 - `app-agent-route-services`: the `/app/agent` page now mounts the capability-first agent command center, resolves live agent actions, live autonomy policy, live confirmation policy, live no-op sandbox, and live reminders, and awaits async live action/reminder results while preserving controlled failure states when live storage is unconfigured.
@@ -1937,15 +1937,15 @@ Implementation evidence:
   `grid-template-columns: minmax(0, 1fr) clamp(220px, 30vw, 320px)` and keeps
   `grid-template-areas: "events rail"`.
 - `tests/pages/app-home-live-route-services.test.ts` proves the public web root
-  delegates to the live app Home route, the product Home grid keeps the rail
-  beside events on medium-width screens, and the concrete hub entry hrefs stay
-  on `/app/*` routes.
-- Browser verification confirmed `/` and `/app` render
-  `data-orbit-route="app-root-home-route"` and `data-orbit-real-page="home"`
-  on desktop and mobile widths, with no public landing hero text and no
-  horizontal overflow.
-- Browser verification also confirmed `/app/events`, `/app/schedule`, and
-  `/app/contacts` remain reachable from the web nav after the root route change.
+  and product namespace root stay on `OrbitRealLandingPage`, the product Home
+  grid keeps the rail beside events on medium-width screens, and the concrete
+  hub entry hrefs stay on `/app/*` routes.
+- Browser verification should confirm `/` and `/app` render
+  `data-orbit-real-page="landing"` on desktop and mobile widths, while
+  `/app/home` and `/app/home/events` render the live Home hub with no horizontal
+  overflow.
+- Browser verification should also confirm `/app/events`, `/app/schedule`, and
+  `/app/contacts` remain reachable from the public web nav.
 
 ## Execution Rules
 

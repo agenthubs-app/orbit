@@ -66,11 +66,6 @@ async function withUnconfiguredLiveStorage<T>(
 
 const homeRoutes = [
   {
-    importPath: "../../app/(app)/app/page",
-    marker: "app-root-home-route",
-    sourcePath: "app/(app)/app/page.tsx",
-  },
-  {
     importPath: "../../app/(app)/app/home/page",
     marker: "app-home-route",
     sourcePath: "app/(app)/app/home/page.tsx",
@@ -82,21 +77,24 @@ const homeRoutes = [
   },
 ] as const;
 
-test("web root delegates to the live app home route", () => {
+test("web root stays on public landing instead of live app home", () => {
   const pageSource = source("app/page.tsx");
 
-  assert.match(pageSource, /\.\/\(app\)\/app\/page/);
-  assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
+  assert.match(pageSource, /OrbitRealLandingPage/);
+  assert.doesNotMatch(pageSource, /loadAppHomeRouteViewModel/);
+  assert.doesNotMatch(pageSource, /HomeRouteStateBoundary/);
+  assert.doesNotMatch(pageSource, /OrbitRealHome/);
+  assert.doesNotMatch(pageSource, /web-root-home-route/);
 });
 
-test("web root renders the live app home route boundary", async () => {
-  await withUnconfiguredLiveStorage(async () => {
-    const html = await renderLiveModePage("../../app/page");
+test("app root stays on public landing instead of live app home", () => {
+  const pageSource = source("app/(app)/app/page.tsx");
 
-    assert.match(html, /app-root-home-route/);
-    assert.match(html, /Home could not load/);
-    assert.doesNotMatch(html, /让对的人，进入你的商业轨道/);
-  });
+  assert.match(pageSource, /OrbitRealLandingPage/);
+  assert.doesNotMatch(pageSource, /loadAppHomeRouteViewModel/);
+  assert.doesNotMatch(pageSource, /HomeRouteStateBoundary/);
+  assert.doesNotMatch(pageSource, /OrbitRealHome/);
+  assert.doesNotMatch(pageSource, /app-root-home-route/);
 });
 
 for (const route of homeRoutes) {
