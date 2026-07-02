@@ -65,7 +65,7 @@ successful write.
 
 ## Files
 
-- `features/events/contract.ts`: allow live-store database execution flags and
+- `features/events/event-crud-and-import/contract.ts`: allow live-store database execution flags and
   add a live-store configuration failure code.
 - `features/events/event-crud-and-import/live-service.ts`: implement the
   live CRUD/import service and provider interface.

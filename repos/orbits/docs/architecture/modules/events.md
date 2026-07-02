@@ -14,9 +14,14 @@ Mock 服务返回固定活动、参会者、准备度、现场记录、连接意
 
 ## Live Store
 
-第一阶段 live 只开放 `event-crud-import` 的 Events Live Store：活动列表、活动详情和手动活动创建。它代表 Orbit 自有活动存储，不代表 Google/Apple Calendar、活动平台或 organizer feed 导入。
+Events live mode 现在分成两类数据路径：
 
-其他 Events 子能力仍没有 live provider。请求它们的 live mode 应继续受控失败，直到各自 provider 和替换测试就绪。
+- `event-crud-import` 读取共享 live storage 的 `events` collection，用于活动列表、活动详情和手动活动创建。它代表 Orbit 自有活动存储，不代表 Google/Apple Calendar、活动平台或 organizer feed 直接导入。
+- 参会者名单、goal/readiness、encounter note、want-to-connect、post-event review 读取 generated relationship graph，再把需要确认的工作状态写入各自的 event work collection，例如 `event_attendee_rosters`、`event_goal_readiness`、`event_encounter_notes`、`event_want_connect` 和 `post_event_reviews`。
+
+事件详情页本身不是新的数据层。它只组合这些 feature service：在 live mode 下加载活动、参会者、推荐、准备度、现场记录预览、want-connect 匹配和会后复核；在存储未配置时返回受控 route failure。页面加载不应写 encounter note；只有用户提供 typed note 时才写 `event_encounter_notes`。want-to-connect action 可以写 storage-only intent，但不得触发 presence、peer notification、external message、notification provider 或外部网络。
+
+`/app/events/[id]` 现在通过 `loadAppEventDetailRoute` 初始化页面。页面 adapter 只负责把 route success model 映射到既有活动详情 UI 的 `OrbitLandingEventView` 形状；空态、pending 和 failure 通过 shared `StateView` 展示。
 
 ## 热拔插边界
 

@@ -58,7 +58,7 @@ Expected: FAIL because `live-service.ts` does not exist or the factory does not 
 ### Task 2: Contract and Live Service
 
 **Files:**
-- Modify: `repos/orbits/features/events/contract.ts`
+- Modify: `repos/orbits/features/events/event-crud-and-import/contract.ts`
 - Create: `repos/orbits/features/events/event-crud-and-import/live-service.ts`
 
 **Interfaces:**
