@@ -56,3 +56,6 @@ detail screens support pull-to-refresh through the same envelope client.
 The Server screen can save a runtime Orbit server address on device. This is
 useful when moving from the iOS simulator to a physical iPhone or a remote API
 server.
+
+Orbit AI includes a message composer that posts to `/api/ai/conversations` and
+renders the latest assistant reply or a controlled error state.
