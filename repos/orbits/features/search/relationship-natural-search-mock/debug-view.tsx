@@ -12,9 +12,12 @@ import {
 import type {
   RelationshipNaturalSearchPayload,
   RelationshipNaturalSearchProvenance,
+  RelationshipNaturalSearchResult,
   RelationshipNaturalSearchResultItem,
+  RelationshipNaturalSearchSuggestionsResult,
 } from "../contract";
 import { createMockRelationshipNaturalSearchService } from "../mock-service";
+import type { RelationshipNaturalSearchServiceResult } from "../service";
 
 export const RELATIONSHIP_NATURAL_SEARCH_MOCK_SLUG =
   "relationship-natural-search-mock";
@@ -92,6 +95,20 @@ const responsiveWorkbenchStyles = `
   padding: var(--orbit-space-sm);
 }
 `;
+
+function requireSyncRelationshipNaturalSearchResult<TResult>(
+  result: RelationshipNaturalSearchServiceResult<TResult>,
+): TResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Relationship natural search mock debug view requires a synchronous service.",
+    );
+  }
+
+  return result as TResult;
+}
 
 const apiProbes = [
   {
@@ -388,16 +405,34 @@ function StateSurface({
 
 export function RelationshipNaturalSearchMockDemo() {
   const searchService = createMockRelationshipNaturalSearchService();
-  const successState = searchService.queryRelationships();
-  const filteredState = searchService.queryRelationships({
-    businessIntent: "find_warm_intro",
-    industryFilters: ["climate"],
-    query: "pilot operator intro",
-  });
-  const emptyState = searchService.queryRelationships({ scenario: "empty" });
-  const pendingState = searchService.queryRelationships({ scenario: "pending" });
-  const failureState = searchService.queryRelationships({ scenario: "failure" });
-  const suggestionsState = searchService.getSearchSuggestions();
+  const successState =
+    requireSyncRelationshipNaturalSearchResult<RelationshipNaturalSearchResult>(
+      searchService.queryRelationships(),
+    );
+  const filteredState =
+    requireSyncRelationshipNaturalSearchResult<RelationshipNaturalSearchResult>(
+      searchService.queryRelationships({
+        businessIntent: "find_warm_intro",
+        industryFilters: ["climate"],
+        query: "pilot operator intro",
+      }),
+    );
+  const emptyState =
+    requireSyncRelationshipNaturalSearchResult<RelationshipNaturalSearchResult>(
+      searchService.queryRelationships({ scenario: "empty" }),
+    );
+  const pendingState =
+    requireSyncRelationshipNaturalSearchResult<RelationshipNaturalSearchResult>(
+      searchService.queryRelationships({ scenario: "pending" }),
+    );
+  const failureState =
+    requireSyncRelationshipNaturalSearchResult<RelationshipNaturalSearchResult>(
+      searchService.queryRelationships({ scenario: "failure" }),
+    );
+  const suggestionsState =
+    requireSyncRelationshipNaturalSearchResult<RelationshipNaturalSearchSuggestionsResult>(
+      searchService.getSearchSuggestions(),
+    );
   const successPayload = successState.success ? successState.data : null;
   const filteredPayload = filteredState.success ? filteredState.data : null;
   const emptyPayload = emptyState.success ? emptyState.data : null;

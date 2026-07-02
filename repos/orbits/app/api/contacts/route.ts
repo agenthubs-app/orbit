@@ -53,7 +53,7 @@ export async function GET(request: Request): Promise<Response> {
   // 当前 contacts service 是 mock-first；即使 query/filter 存在，也不读真实搜索索引。
   const mode = resolveFeatureMode();
   const contactsService = createContactsListSearchAndFilterService();
-  const result = contactsService.listContacts(readContactsListInput(request));
+  const result = await contactsService.listContacts(readContactsListInput(request));
 
   if (result.success === false) {
     const appError = contactsListSearchFailureToAppError(result);

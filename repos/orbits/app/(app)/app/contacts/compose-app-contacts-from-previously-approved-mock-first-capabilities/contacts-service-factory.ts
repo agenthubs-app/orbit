@@ -12,7 +12,10 @@ export const appContactsListSearchAndFilterServiceFactory =
   createModuleServiceFactory<ContactsListSearchAndFilterService>({
     capabilityId: "contacts",
     implementations: {
-      mock: () => createContactsListSearchAndFilterService(),
+      live: ({ requestedMode }) =>
+        createContactsListSearchAndFilterService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createContactsListSearchAndFilterService(requestedMode),
     },
   });
 

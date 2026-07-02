@@ -46,7 +46,26 @@ contact persistence run without permission and confirmation.
 
 ## Switch Mechanism
 
-The page imports the current mock service factories directly for Milestone C. Live migration should move those factories behind service factory resolution in `shared/services/module-mode.ts` and `shared/services/capability-registry.ts`, then select mock or live with the existing feature-mode boundary. The page should keep consuming typed services and API envelopes, not raw source records.
+The page now consumes `loadAppContactsNewRouteViewModel()` instead of the legacy
+contacts view model. The route service resolves acquisition and permission child
+services through module mode and awaits async live providers. `mode=live` or
+`ORBIT_MODULE_MODE=live` selects the storage-backed live providers; mock remains
+available through `mode=mock`.
+
+The live first screen is read-only. It may list or derive contact acquisition
+context from live records, but it must not create a manual contact draft on page
+load. Manual contact writes require an explicit action with user-provided input.
+The default event-attendee import target is `demo-event-1` in mock mode and
+`event_01` in live/hybrid mode, with `eventId=` available as a route override.
+
+Verification:
+
+- `tests/pages/app-contacts-new-live-route-services.test.ts` proves live
+  unconfigured storage fails through a controlled route-state boundary and the
+  page no longer imports `getOrbitContactsViewModel`.
+- Remote smoke for `/app/contacts/new?mode=live` resolved ten successful child
+  states from Postgres live storage and rendered the acquisition workspace
+  without the failure boundary.
 
 ## Required Env Vars Or Permissions
 

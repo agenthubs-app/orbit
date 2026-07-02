@@ -6,6 +6,7 @@ import type {
   RelationshipNaturalSearchResult,
   RelationshipNaturalSearchResultItem,
   RelationshipNaturalSearchScenario,
+  RelationshipNaturalSearchState,
   RelationshipNaturalSearchSuggestionsInput,
   RelationshipNaturalSearchSuggestionsPayload,
   RelationshipNaturalSearchSuggestionsResult,
@@ -37,7 +38,12 @@ export interface RelationshipSearchSuggestionScenarioPayloads {
 }
 
 export interface RelationshipSearchStore {
-  kind: RelationshipSearchStoreKind;
+  kind: RelationshipSearchStoreKind | "live_record";
+  buildRelationshipPayload?: (input: {
+    input?: RelationshipNaturalSearchInput;
+    results: readonly RelationshipNaturalSearchResultItem[];
+    state?: RelationshipNaturalSearchState;
+  }) => RelationshipNaturalSearchPayload;
   readFailureProvenance: () => RelationshipNaturalSearchFailure["error"]["provenance"];
   readRelationshipResults: () => readonly RelationshipNaturalSearchResultItem[];
   readScenarioPayloads: () => RelationshipSearchScenarioPayloads;

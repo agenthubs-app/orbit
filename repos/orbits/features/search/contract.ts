@@ -61,6 +61,7 @@ export const RELATIONSHIP_NATURAL_SEARCH_ERROR_CODES = [
   "RELATIONSHIP_NATURAL_SEARCH_BACKEND_NOT_SUPPORTED",
   "RELATIONSHIP_NATURAL_SEARCH_FILTER_NOT_SUPPORTED",
   "RELATIONSHIP_NATURAL_SEARCH_INVALID_BODY",
+  "RELATIONSHIP_NATURAL_SEARCH_LIVE_STORE_UNCONFIGURED",
   "RELATIONSHIP_NATURAL_SEARCH_PENDING",
   "RELATIONSHIP_NATURAL_SEARCH_MOCK_FAILED",
   "RELATIONSHIP_NATURAL_SEARCH_STORE_NOT_SUPPORTED",
@@ -109,6 +110,14 @@ export const RELATIONSHIP_NATURAL_SEARCH_ERROR_DEFINITIONS = {
       "The mock relationship natural search request body must be valid JSON or form data.",
     recovery:
       "Send a JSON object or form body with query and optional supported filter fields.",
+  },
+  RELATIONSHIP_NATURAL_SEARCH_LIVE_STORE_UNCONFIGURED: {
+    code: "RELATIONSHIP_NATURAL_SEARCH_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live relationship natural search store is not configured.",
+    recovery:
+      "Set a live Orbit database URL and workspace id before running live relationship search.",
   },
   RELATIONSHIP_NATURAL_SEARCH_PENDING: {
     code: "RELATIONSHIP_NATURAL_SEARCH_PENDING",
@@ -175,7 +184,7 @@ export interface RelationshipNaturalSearchEvidence {
   source: RelationshipNaturalSearchSourceReference;
   excerpt: string;
   capturedAt: string;
-  createdBy: "mock-relationship-natural-search-service";
+  createdBy: string;
 }
 
 export interface RelationshipNaturalSearchValue {
@@ -213,7 +222,7 @@ export interface RelationshipNaturalSearchResultItem {
   semanticSearchExecuted: false;
   embeddingGenerated: false;
   crossProviderIndexQueried: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
   externalNetworkRequested: false;
   aiProviderRequested: false;
   calendarProviderRequested: false;
@@ -226,12 +235,17 @@ export interface RelationshipNaturalSearchProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-relationship-natural-search-only";
-  generationMethod: "fixture" | "rule-based-relationship-natural-search";
+  privacy:
+    | "demo-relationship-natural-search-only"
+    | "live-relationship-natural-search";
+  generationMethod:
+    | "fixture"
+    | "live-store-query"
+    | "rule-based-relationship-natural-search";
   semanticSearchExecuted: false;
   embeddingsGenerated: false;
   crossProviderIndexQueried: false;
-  databaseQueryExecuted: false;
+  databaseQueryExecuted: boolean;
   databaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;

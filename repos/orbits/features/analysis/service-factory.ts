@@ -1,7 +1,9 @@
 // Analysis service factory 管理关系价值评分能力。
 // 当前实现是 mock scorer，用于把来源证据转换成可解释的 value score 和分类。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createLiveRelationshipValueScoringService } from "./live-value-service";
 import { createMockRelationshipValueScoringService } from "./mock-value-service";
+import { createConfiguredStorageRelationshipValueProvider } from "./storage/relationship-value-live-record-provider";
 import type { RelationshipValueScoringService } from "./value-contract";
 
 export {
@@ -13,6 +15,10 @@ export const relationshipValueScoringServiceFactory =
   createModuleServiceFactory<RelationshipValueScoringService>({
     capabilityId: "relationship-value-scoring",
     implementations: {
+      live: () =>
+        createLiveRelationshipValueScoringService({
+          provider: createConfiguredStorageRelationshipValueProvider(),
+        }),
       mock: () => createMockRelationshipValueScoringService(),
     },
   });

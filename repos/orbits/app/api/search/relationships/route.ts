@@ -254,8 +254,8 @@ export async function POST(request: Request): Promise<Response> {
   const searchService = createRelationshipNaturalSearchService();
   const input = await readRelationshipSearchInput(request);
   const result = input
-    ? searchService.queryRelationships(input)
-    : searchService.invalidQueryBody();
+    ? await searchService.queryRelationships(input)
+    : await searchService.invalidQueryBody();
 
   return responseForResult(result, mode);
 }

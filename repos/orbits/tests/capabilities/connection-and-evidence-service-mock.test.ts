@@ -77,6 +77,7 @@ test("connection and evidence contract exposes records timelines source links fi
     "CONNECTION_EVIDENCE_SOURCE_NOT_SUPPORTED",
     "CONNECTION_EVIDENCE_ADD_PENDING",
     "CONNECTION_EVIDENCE_SERVICE_MOCK_FAILED",
+    "CONNECTION_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.CONNECTION_EVIDENCE_SERVICE_ERROR_DEFINITIONS

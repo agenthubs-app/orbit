@@ -173,10 +173,9 @@ export async function PATCH(
 
   if (!profileBody.success) {
     // JSON 解析失败交给 service 产出标准 invalid body response。
-    return responseForResult(
-      profileService.invalidRelationshipProfileBody(),
-      mode,
-    );
+    const invalidResult = await profileService.invalidRelationshipProfileBody();
+
+    return responseForResult(invalidResult, mode);
   }
 
   // route 不直接修改关系数据，只把白名单字段传给 service。
@@ -189,5 +188,7 @@ export async function PATCH(
     scenario: searchParams.get("scenario") ?? profileBody.body.scenario,
   };
 
-  return responseForResult(profileService.updateProfile(input), mode);
+  const result = await profileService.updateProfile(input);
+
+  return responseForResult(result, mode);
 }

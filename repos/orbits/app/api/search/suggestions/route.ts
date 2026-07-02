@@ -45,6 +45,7 @@ export async function GET(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
   const scenario = new URL(request.url).searchParams.get("scenario");
   const searchService = createRelationshipNaturalSearchService();
+  const result = await searchService.getSearchSuggestions({ scenario });
 
-  return responseForResult(searchService.getSearchSuggestions({ scenario }), mode);
+  return responseForResult(result, mode);
 }

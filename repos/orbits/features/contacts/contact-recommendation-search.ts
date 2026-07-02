@@ -1,4 +1,5 @@
 import type {
+  RelationshipNaturalSearchResult,
   RelationshipNaturalSearchBusinessIntent,
   RelationshipNaturalSearchIndustry,
   RelationshipNaturalSearchInput,
@@ -6,7 +7,10 @@ import type {
   RelationshipNaturalSearchValueType,
 } from "../search/contract";
 import { createRelationshipNaturalSearchService } from "../search/service-factory";
-import type { RelationshipNaturalSearchService } from "../search/service";
+import type {
+  RelationshipNaturalSearchService,
+  RelationshipNaturalSearchServiceResult,
+} from "../search/service";
 
 export interface ContactRecommendationContextMessage {
   role: "user" | "assistant" | "system" | string;
@@ -24,6 +28,7 @@ export interface ContactRecommendationCriteria {
 
 export interface ContactRecommendationCandidate {
   contactId: string;
+  databaseQueryExecuted: boolean;
   displayName: string;
   evidenceIds: readonly string[];
   matchReasons: readonly string[];
@@ -38,11 +43,16 @@ export interface ContactRecommendationCandidate {
 export interface ContactRecommendationResult {
   candidates: readonly ContactRecommendationCandidate[];
   criteria: ContactRecommendationCriteria;
+  databaseQueryExecuted: boolean;
   method: "rules_v1";
   requestedMethod?: string;
   state: "success" | "empty";
   summary: string;
 }
+
+export type ContactsRecommendationSearchToolResult =
+  | ContactRecommendationResult
+  | Promise<ContactRecommendationResult>;
 
 export interface ContactsRecommendationSearchTool {
   recommend: (input: {
@@ -50,7 +60,7 @@ export interface ContactsRecommendationSearchTool {
     locale?: string | null;
     query: string;
     toolArguments?: Record<string, unknown> | null;
-  }) => ContactRecommendationResult;
+  }) => ContactsRecommendationSearchToolResult;
 }
 
 export interface ContactsRecommendationSearchToolOptions {
@@ -185,6 +195,7 @@ function candidateFor(
 
   return {
     contactId: item.contactId,
+    databaseQueryExecuted: item.databaseQueryExecuted,
     displayName: item.displayName,
     evidenceIds,
     matchReasons: [item.matchScore.rationale, item.value.rationale],
@@ -197,6 +208,45 @@ function candidateFor(
   };
 }
 
+function isPromiseLike<TResult>(
+  result: RelationshipNaturalSearchServiceResult<TResult>,
+): result is Promise<TResult> {
+  const maybePromise = result as { then?: unknown };
+
+  return typeof maybePromise.then === "function";
+}
+
+function resultForSearch(
+  criteria: ContactRecommendationCriteria,
+  searchResult: RelationshipNaturalSearchResult,
+): ContactRecommendationResult {
+  const candidates =
+    searchResult.success === true
+      ? searchResult.data.results
+          .map(candidateFor)
+          .filter((candidate): candidate is ContactRecommendationCandidate =>
+            Boolean(candidate),
+          )
+          .sort((left, right) => right.matchScore - left.matchScore)
+      : [];
+
+  return {
+    candidates,
+    criteria,
+    databaseQueryExecuted:
+      searchResult.success === true
+        ? searchResult.data.provenance?.databaseQueryExecuted ??
+          candidates.some((candidate) => candidate.databaseQueryExecuted)
+        : false,
+    method: "rules_v1",
+    state: candidates.length > 0 ? "success" : "empty",
+    summary:
+      candidates.length > 0
+        ? `${candidates.length} existing relationship candidate(s) matched the rules_v1 contact recommendation method.`
+        : "No existing relationship candidate carried enough source evidence for the rules_v1 contact recommendation method.",
+  };
+}
+
 export function createContactsRecommendationSearchTool(
   options: ContactsRecommendationSearchToolOptions = {},
 ): ContactsRecommendationSearchTool {
@@ -204,31 +254,16 @@ export function createContactsRecommendationSearchTool(
     options.relationshipSearchService ?? createRelationshipNaturalSearchService();
 
   return {
-    recommend(request): ContactRecommendationResult {
+    recommend(request): ContactsRecommendationSearchToolResult {
       const criteria = extractRuleCriteria(request);
-      const searchResult = relationshipSearchService.queryRelationships(
-        searchInputFor(criteria),
-      );
-      const candidates =
-        searchResult.success === true
-          ? searchResult.data.results
-              .map(candidateFor)
-              .filter((candidate): candidate is ContactRecommendationCandidate =>
-                Boolean(candidate),
-              )
-              .sort((left, right) => right.matchScore - left.matchScore)
-          : [];
+      const searchResult =
+        relationshipSearchService.queryRelationships(searchInputFor(criteria));
 
-      return {
-        candidates,
-        criteria,
-        method: "rules_v1",
-        state: candidates.length > 0 ? "success" : "empty",
-        summary:
-          candidates.length > 0
-            ? `${candidates.length} existing relationship candidate(s) matched the rules_v1 contact recommendation method.`
-            : "No existing relationship candidate carried enough source evidence for the rules_v1 contact recommendation method.",
-      };
+      if (isPromiseLike(searchResult)) {
+        return searchResult.then((resolved) => resultForSearch(criteria, resolved));
+      }
+
+      return resultForSearch(criteria, searchResult);
     },
   };
 }

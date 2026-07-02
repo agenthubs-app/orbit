@@ -281,6 +281,18 @@ function hasSearchInput(input: RelationshipNaturalSearchInput): boolean {
   );
 }
 
+function buildStorePayload(
+  store: RelationshipSearchStore,
+  input: {
+    input?: RelationshipNaturalSearchInput;
+    results: readonly RelationshipNaturalSearchResultItem[];
+    state?: RelationshipNaturalSearchPayload["state"];
+  },
+): RelationshipNaturalSearchPayload {
+  return store.buildRelationshipPayload?.(input) ??
+    buildRelationshipNaturalSearchPayload(input);
+}
+
 function runRelationshipNaturalSearch(
   store: RelationshipSearchStore,
   input: RelationshipNaturalSearchInput = {},
@@ -306,7 +318,7 @@ function runRelationshipNaturalSearch(
     .filter((item) => matchesRelationshipSearchInput(item, input));
 
   return success(
-    buildRelationshipNaturalSearchPayload({
+    buildStorePayload(store, {
       input,
       results: matchingResults,
       state: matchingResults.length > 0 ? "success" : "empty",

@@ -1,47 +1,77 @@
-# Live Implementation Notes
+# Contact Detail Route Live Implementation Notes
 
-Sprint 61 composes `/app/contacts/demo-contact-1` from approved mock-first capability boundaries. The route adapter is `contact-detail-route-service.ts`; the page is `app/(app)/app/contacts/[id]/page.tsx`.
+This route composes a contact detail workspace from three feature services:
+contact detail/tag/status, connection evidence, and relationship value scoring.
+The route adapter is `contact-detail-route-service.ts`; nested UI must not
+import fixtures or live record stores directly.
 
-## Evaluator Evidence Summary
+## Live Files
 
-- Route state checks: `/app/contacts/demo-contact-1`, `/app/contacts/demo-contact-1?scenario=empty`, `/app/contacts/demo-contact-1?scenario=pending`, and `/app/contacts/demo-contact-1?scenario=failure`.
-- API probes: `GET /api/contacts/demo-contact-1`, `GET /api/connections/demo-connection-1`, and `GET /api/analysis/relationship-value/demo-connection-1`.
-- Follow-up action evidence: `data-action-result="contact-detail-follow-up-prepared"`, `data-action-evidence="evidence:connection-added-manual-note"`, and `data-side-effects="none"`.
+- `features/contacts/live-detail-service.ts` and
+  `features/contacts/storage/contact-live-record-provider.ts` read generated
+  `contacts`, `connections`, and `evidence` records for contact detail.
+- `features/connections/live-service.ts` and
+  `features/connections/storage/connection-live-record-provider.ts` read live
+  connection evidence.
+- `features/analysis/live-value-service.ts` and
+  `features/analysis/storage/relationship-value-live-record-provider.ts` derive
+  relationship value from the same live connection graph.
+- `app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts`
+  owns page-level service composition only.
+- `app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts`
+  maps the route success model into the existing contact detail UI view model.
+- `app/(app)/app/contacts/[id]/page.tsx` is the real Next route adapter. It
+  reads route/search params, calls the route service, and renders either the
+  existing detail UI or a shared state boundary.
 
-## Live files:
+## Switch
 
-- Contact detail live service/provider files should replace `features/contacts/service-factory.ts` behind the `ContactDetailTagStatusService` contract in `features/contacts/detail-contract.ts`.
-- Connection and evidence live service/provider files should replace `features/connections/service-factory.ts` behind `ConnectionEvidenceService` in `features/connections/service.ts` and the DTOs in `features/connections/contract.ts`.
-- Relationship value live service/provider files should replace `features/analysis/service-factory.ts` behind `RelationshipValueScoringService` in `features/analysis/value-contract.ts`.
-- API routes remain the provider boundary: `app/api/contacts/[id]/route.ts`, `app/api/connections/[id]/route.ts`, and `app/api/analysis/relationship-value/[id]/route.ts`.
-- Product composition remains in `app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts`; nested UI should not import fixtures directly.
+- `ORBIT_MODULE_MODE` selects `mock`, `hybrid`, or `live`; missing or invalid
+  values fall back to mock.
+- The page-level factories now register `hybrid` and `live` and pass the
+  requested mode through to feature-level factories.
+- Live storage is configured through `ORBIT_EVENT_DATABASE_URL`,
+  `ORBIT_LIVE_DATABASE_URL`, or `ORBIT_DATABASE_URL`.
+- Missing live storage must return controlled route failure evidence instead of
+  falling back to mock data.
 
-## Switch:
+## Route Composition
 
-- The switch mechanism is the shared module factory in `shared/services/module-mode.ts`.
-- Add `hybrid` or `live` constructors to the three route-owned service factories in `contact-detail-route-service.ts`.
-- Keep `ORBIT_MODULE_MODE=mock` or `ORBIT_FEATURE_MODE=mock` as the default until live contact, evidence, and scoring providers are available together.
-- A live switch must preserve the same API envelope shape: `{ success: true, data }` and `{ success: false, error: { code, message } }`.
+- The route loader is async-compatible and awaits the existing
+  `T | Promise<T>` service result types.
+- Live contact detail is requested by the route `contactId`.
+- The route lists live connections and selects the first connection whose
+  `contactId` matches the requested contact. That connection id is then used
+  for both connection detail and relationship value scoring.
+- If no live connection exists for the requested contact, the route returns a
+  controlled failure rather than showing an unrelated demo connection.
+- The actual `/app/contacts/[id]` page must not call
+  `getOrbitContactsViewModel`; it must use `loadAppContactDetailRoute`.
 
-## Env and permissions:
+## Privacy And Side Effects
 
-- Required env vars or permissions for live contact detail: authenticated contact-store read/write scope, tag/status update scope, and user-level audit metadata.
-- Required env vars or permissions for live connection evidence: evidence-store read/write scope, source-link read scope, and event/email/calendar evidence read scopes only after explicit user authorization.
-- Required env vars or permissions for live relationship value: scoring service credentials or internal ranking job access, with no AI provider call unless the provider is explicitly enabled and provenance is recorded.
-- The route action must remain confirmation-gated before any live email, calendar, notification, CRM, database write, or external message delivery side effect is allowed.
+- Loading the route reads live records only.
+- Contact detail update remains a preview in the feature service; it does not
+  write contacts or production audit logs.
+- `prepare-follow-up` remains a local/mock action. Live connection evidence
+  returns a controlled pending failure for unconfirmed add-evidence requests, so
+  the route does not send messages, write contact records, write evidence,
+  deliver notifications, call AI providers, or access external networks.
 
-## Privacy and provenance:
+## Verified Behavior
 
-- Privacy/provenance constraints:
-- Every rendered contact, status, tag, connection reason, evidence timeline item, value score, and suggested next action must keep source labels and evidence ids.
-- Privacy and provenance constraints require the page to show relationship context without exposing unrelated contacts, hidden email bodies, calendar attendees, or provider credentials.
-- The prepare-follow-up action currently records `data-action-evidence` and `data-side-effects="none"`; a live action must replace that with a confirmation record, user id, target provider, and durable audit evidence.
-- Failure and pending states must not retry provider calls automatically or hide partial provenance.
-
-## Replacement tests:
-
-- Keep `tests/pages/app-contacts-demo-contact-1-page.test.tsx` and replace only the service factory mode under test when live providers exist.
-- Add contract tests for live contact detail, connection evidence, and relationship value providers using the same DTO shapes as the mock services.
-- Add route state checks for success, empty, pending, and failure using the shared `StateView` boundary.
-- Add replacement tests proving a live confirmed follow-up action writes exactly one audit record and that unconfirmed route actions still report `data-side-effects="none"`.
-- Keep API envelope replacement tests for `GET /api/contacts/demo-contact-1`, `GET /api/connections/demo-connection-1`, and `GET /api/analysis/relationship-value/demo-connection-1`.
+- `tests/pages/app-contact-detail-live-route-services.test.ts` proves live mode
+  reaches child services instead of failing at the page factory with
+  `NOT_IMPLEMENTED`.
+- The same test proves the real `/app/contacts/[id]` page calls the live route
+  service, avoids the legacy contacts view model, and renders live-store
+  failure evidence when storage is unconfigured.
+- Focused contact detail, connection evidence, relationship value, and app
+  contacts tests pass with the live-capable route loader.
+- Remote smoke with `ORBIT_MODULE_MODE=live` loaded `contact_078` (`曾伟`),
+  selected `connection_0031`, returned relationship value score `86` with
+  `relationshipValueType="strategic_intro"`, and rendered one evidence timeline
+  item.
+- Remote page smoke rendered `/app/contacts/contact_078?mode=live` with
+  `hasRemoteName=true`, `hasStaticDemoName=false`, `hasFailure=false`, and
+  `hasDetailPage=true`.

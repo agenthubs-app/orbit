@@ -37,6 +37,7 @@ export const CONNECTION_EVIDENCE_SERVICE_ERROR_CODES = [
   "CONNECTION_EVIDENCE_SOURCE_NOT_SUPPORTED",
   "CONNECTION_EVIDENCE_ADD_PENDING",
   "CONNECTION_EVIDENCE_SERVICE_MOCK_FAILED",
+  "CONNECTION_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ConnectionEvidenceErrorCode =
@@ -96,6 +97,14 @@ export const CONNECTION_EVIDENCE_SERVICE_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry a database, evidence store, provider, AI, calendar, email, notification, or device call.",
   },
+  CONNECTION_LIVE_STORE_UNCONFIGURED: {
+    code: "CONNECTION_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live connection evidence store is not configured for this runtime.",
+    recovery:
+      "Configure a connection evidence live-store provider before running live relationship evidence, or switch the capability back to mock or hybrid mode.",
+  },
 } as const satisfies Record<
   ConnectionEvidenceErrorCode,
   ConnectionEvidenceErrorDefinition
@@ -119,7 +128,7 @@ export interface ConnectionEvidenceTimelineItem {
   capturedAt: string;
   title: string;
   excerpt: string;
-  createdBy: "mock-connection-and-evidence-service";
+  createdBy: string;
 }
 
 // ConnectionRecord 是关系详情的核心 DTO，false 字段证明未访问真实数据库/provider。
@@ -137,9 +146,9 @@ export interface ConnectionRecord {
   nextAction: string;
   sourceLinks: readonly ConnectionSourceLink[];
   evidenceTimeline: readonly ConnectionEvidenceTimelineItem[];
-  databaseReadExecuted: false;
-  databaseWriteExecuted: false;
-  productionAuditLogWriteExecuted: false;
+  databaseReadExecuted: boolean;
+  databaseWriteExecuted: boolean;
+  productionAuditLogWriteExecuted: boolean;
   externalNetworkRequested: false;
   deviceRequested: false;
   aiProviderRequested: false;
@@ -154,11 +163,14 @@ export interface ConnectionEvidenceProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-connection-evidence-only";
-  generationMethod: "fixture" | "rule-based-connection-evidence";
-  databaseReadExecuted: false;
-  databaseWriteExecuted: false;
-  productionAuditLogWriteExecuted: false;
+  privacy: "demo-connection-evidence-only" | "live-connection-evidence";
+  generationMethod:
+    | "fixture"
+    | "live-store-query"
+    | "rule-based-connection-evidence";
+  databaseReadExecuted: boolean;
+  databaseWriteExecuted: boolean;
+  productionAuditLogWriteExecuted: boolean;
   externalNetworkRequested: false;
   deviceRequested: false;
   aiProviderRequested: false;

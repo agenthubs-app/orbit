@@ -41,6 +41,7 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_CODES = [
   "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
   "CONTACT_DETAIL_UPDATE_PENDING",
   "CONTACT_DETAIL_TAG_STATUS_MOCK_FAILED",
+  "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ContactDetailTagStatusErrorCode =
@@ -105,6 +106,13 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
       "The mock contact detail tag and status boundary is pinned to a controlled failure scenario.",
     recovery:
       "Render the controlled failure state and do not retry a contact store, production audit log, provider, AI, calendar, email, notification, or device call.",
+  },
+  CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED: {
+    code: "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live contact detail store is not configured.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live contact details.",
   },
 } as const satisfies Record<
   ContactDetailTagStatusErrorCode,
@@ -207,7 +215,7 @@ export interface ContactDetail {
   statusWriteExecuted: false;
   noteWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
-  databaseReadExecuted: false;
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   externalNetworkRequested: false;
   deviceRequested: false;
@@ -224,8 +232,12 @@ export interface ContactDetailTagStatusProvenance {
   evidenceIds: readonly string[];
   collectedAt: string;
   privacy: "demo-contact-detail-tag-status-only";
-  generationMethod: "fixture" | "rule-based-contact-detail-tag-status";
-  databaseReadExecuted: false;
+  generationMethod:
+    | "fixture"
+    | "rule-based-contact-detail-tag-status"
+    | "live-store-query"
+    | "live-store-preview-update";
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
@@ -306,14 +318,18 @@ export type ContactDetailTagStatusInvalidPatchBodyError =
 export type ContactDetailTagStatusUpdatePendingError =
   ContactDetailTagStatusFailureForCode<"CONTACT_DETAIL_UPDATE_PENDING">;
 
+export type ContactDetailTagStatusServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
+
 export interface ContactDetailTagStatusService {
   getContactDetail: (
     input: ContactDetailLookupInput,
-  ) => ContactDetailTagStatusResult;
+  ) => ContactDetailTagStatusServiceResult<ContactDetailTagStatusResult>;
   updateContactDetail: (
     input: ContactDetailUpdateInput,
-  ) => ContactDetailTagStatusResult;
-  invalidPatchBody: () => ContactDetailTagStatusInvalidPatchBodyError;
+  ) => ContactDetailTagStatusServiceResult<ContactDetailTagStatusResult>;
+  invalidPatchBody: () => ContactDetailTagStatusServiceResult<ContactDetailTagStatusInvalidPatchBodyError>;
 }
 
 export function contactDetailTagStatusFailureToAppError(

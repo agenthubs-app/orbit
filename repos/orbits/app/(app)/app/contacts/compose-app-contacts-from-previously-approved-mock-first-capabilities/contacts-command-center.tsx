@@ -755,10 +755,10 @@ function FilterVocabulary({ payload }: { payload: AppContactsPayloadViewModel })
 }
 
 // 页面入口：根据 view-model state 选择 route-state、failure 或 success 工作区。
-export function AppContactsCommandCenter({
+export async function AppContactsCommandCenter({
   searchParams,
 }: AppContactsCommandCenterProps) {
-  const viewModel = loadAppContactsRouteViewModel(searchParams);
+  const viewModel = await loadAppContactsRouteViewModel(searchParams);
 
   if (viewModel.state === "route-state") {
     return (

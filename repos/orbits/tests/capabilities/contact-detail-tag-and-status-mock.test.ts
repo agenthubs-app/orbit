@@ -87,6 +87,7 @@ test("contact detail tag and status contract exposes detail tags status notes la
     "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
     "CONTACT_DETAIL_UPDATE_PENDING",
     "CONTACT_DETAIL_TAG_STATUS_MOCK_FAILED",
+    "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS
@@ -530,13 +531,18 @@ test("contact detail tag and status debug route renders all states and the live 
 
   assert.match(
     liveDoc,
-    /features\/contacts\/contact-detail-tag-and-status-mock\/live-service\.ts/,
+    /features\/contacts\/live-detail-service\.ts/,
+  );
+  assert.match(
+    liveDoc,
+    /features\/contacts\/storage\/contact-live-record-provider\.ts/,
   );
   assert.match(
     liveDoc,
     /features\/contacts\/contact-detail-tag-and-status-mock\/providers\//,
   );
-  assert.match(liveDoc, /ORBIT_CONTACT_DETAIL_PROVIDER/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
+  assert.match(liveDoc, /ORBIT_FEATURE_MODE=live/);
   assert.match(liveDoc, /contact persistence service/);
   assert.match(liveDoc, /production audit log/);
   assert.match(liveDoc, /privacy/);

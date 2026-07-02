@@ -80,6 +80,7 @@ test("relationship value contract exposes typed scores rationale fixtures servic
     "RELATIONSHIP_VALUE_RECOMPUTE_INVALID_BODY",
     "RELATIONSHIP_VALUE_RECOMPUTE_PENDING",
     "RELATIONSHIP_VALUE_SERVICE_MOCK_FAILED",
+    "RELATIONSHIP_VALUE_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.RELATIONSHIP_VALUE_ERROR_DEFINITIONS
@@ -350,11 +351,10 @@ test("relationship value scoring API routes return stable envelopes with empty p
         boundary: "developer-admin",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock relationship value scoring failure came from deterministic fixture rules.",
+        provenance: "Mock relationship value controlled failure rule",
         relationshipValueErrorCode:
           "RELATIONSHIP_VALUE_SERVICE_MOCK_FAILED",
-        service: "relationship-value-scoring-mock",
+        service: "relationship-value-scoring",
       },
     },
   });
@@ -365,15 +365,14 @@ test("relationship value scoring API routes return stable envelopes with empty p
     error: {
       code: "NOT_FOUND",
       message:
-        "That mock connection is not available for relationship value scoring.",
+        "That connection is not available for relationship value scoring.",
       context: {
         boundary: "developer-admin",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock relationship value scoring failure came from deterministic fixture rules.",
+        provenance: "Mock relationship value controlled failure rule",
         relationshipValueErrorCode: "RELATIONSHIP_VALUE_NOT_FOUND",
-        service: "relationship-value-scoring-mock",
+        service: "relationship-value-scoring",
       },
     },
   });
@@ -407,11 +406,10 @@ test("relationship value scoring API routes return stable envelopes with empty p
         boundary: "developer-admin",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock relationship value scoring failure came from deterministic fixture rules.",
+        provenance: "Mock relationship value controlled failure rule",
         relationshipValueErrorCode:
           "RELATIONSHIP_VALUE_RECOMPUTE_INVALID_BODY",
-        service: "relationship-value-scoring-mock",
+        service: "relationship-value-scoring",
       },
     },
   });
@@ -427,10 +425,9 @@ test("relationship value scoring API routes return stable envelopes with empty p
         boundary: "developer-admin",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock relationship value scoring failure came from deterministic fixture rules.",
+        provenance: "Mock relationship value controlled failure rule",
         relationshipValueErrorCode: "RELATIONSHIP_VALUE_RECOMPUTE_PENDING",
-        service: "relationship-value-scoring-mock",
+        service: "relationship-value-scoring",
       },
     },
   });
@@ -494,11 +491,11 @@ test("relationship value scoring debug route renders all states and the live rep
 
   assert.match(
     liveDoc,
-    /features\/analysis\/relationship-value-scoring-mock\/live-service\.ts/,
+    /features\/analysis\/live-value-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/analysis\/relationship-value-scoring-mock\/providers\//,
+    /features\/analysis\/storage\/relationship-value-live-record-provider\.ts/,
   );
   assert.match(liveDoc, /ORBIT_RELATIONSHIP_VALUE_PROVIDER/);
   assert.match(liveDoc, /ranking model/);

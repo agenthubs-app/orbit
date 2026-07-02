@@ -19,18 +19,21 @@ export interface ConnectionEvidenceService {
   // 列出关系证据摘要。
   listConnections: (
     input?: ConnectionEvidenceListInput,
-  ) => ConnectionEvidenceListResult;
+  ) => ConnectionEvidenceServiceResult<ConnectionEvidenceListResult>;
   // 读取单条关系证据详情。
   getConnection: (
     input: ConnectionEvidenceLookupInput,
-  ) => ConnectionEvidenceDetailResult;
+  ) => ConnectionEvidenceServiceResult<ConnectionEvidenceDetailResult>;
   // 添加新的关系证据；具体实现决定是否持久化。
   addEvidence: (
     input: ConnectionAddEvidenceInput,
-  ) => ConnectionEvidenceAddResult;
+  ) => ConnectionEvidenceServiceResult<ConnectionEvidenceAddResult>;
   // 请求体不合法时返回领域失败，避免 route 自己拼错误结构。
-  invalidAddEvidenceBody: () => ConnectionEvidenceInvalidBodyFailure;
+  invalidAddEvidenceBody: () => ConnectionEvidenceServiceResult<ConnectionEvidenceInvalidBodyFailure>;
 }
+
+export type ConnectionEvidenceServiceResult<TResult> =
+  TResult | Promise<TResult>;
 
 // 将关系证据失败转换成统一 AppError，供 API 层复用。
 export function connectionEvidenceFailureToAppError(
@@ -44,14 +47,20 @@ export function connectionEvidenceFailureContext(
   failure: ConnectionEvidenceFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const liveFailure = failure.error.provenance.generationMethod === "live-store-query";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     connectionEvidenceErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock connection evidence failure came from deterministic fixture rules.",
-    service: "connection-and-evidence-service-mock",
+      liveFailure
+        ? "Connection evidence failure came from the live storage boundary."
+        : "Mock connection evidence failure came from deterministic fixture rules.",
+    service: liveFailure
+      ? "connection-evidence-live"
+      : "connection-and-evidence-service-mock",
   };
 }
 

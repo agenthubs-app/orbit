@@ -26,6 +26,7 @@ export const RELATIONSHIP_VALUE_ERROR_CODES = [
   "RELATIONSHIP_VALUE_RECOMPUTE_INVALID_BODY",
   "RELATIONSHIP_VALUE_RECOMPUTE_PENDING",
   "RELATIONSHIP_VALUE_SERVICE_MOCK_FAILED",
+  "RELATIONSHIP_VALUE_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type RelationshipValueErrorCode =
@@ -52,7 +53,7 @@ export const RELATIONSHIP_VALUE_ERROR_DEFINITIONS = {
     code: "RELATIONSHIP_VALUE_NOT_FOUND",
     appCode: "NOT_FOUND",
     message:
-      "That mock connection is not available for relationship value scoring.",
+      "That connection is not available for relationship value scoring.",
     recovery:
       "Use demo-connection-1 or choose an explicit empty-state scenario before scoring relationship value.",
   },
@@ -79,6 +80,13 @@ export const RELATIONSHIP_VALUE_ERROR_DEFINITIONS = {
       "The mock relationship value scoring boundary is pinned to a controlled failure scenario.",
     recovery:
       "Render the controlled failure state and do not retry external scoring, database, AI, calendar, email, device, or notification work.",
+  },
+  RELATIONSHIP_VALUE_LIVE_STORE_UNCONFIGURED: {
+    code: "RELATIONSHIP_VALUE_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live relationship value store is not configured.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live relationship value scoring.",
   },
 } as const satisfies Record<
   RelationshipValueErrorCode,
@@ -137,7 +145,9 @@ export interface RelationshipValueAssessment {
   suggestedNextAction: RelationshipValueSuggestedNextAction;
   sourceEvidenceIds: readonly string[];
   scoredAt: string;
-  createdBy: "mock-relationship-value-scoring-service";
+  createdBy:
+    | "mock-relationship-value-scoring-service"
+    | "live-relationship-value-scoring-service";
 }
 
 // provenance 记录评分没有触发真实数据库、AI、日历、邮件或通知。
@@ -148,7 +158,7 @@ export interface RelationshipValueProvenance {
   collectedAt: string;
   privacy: "demo-relationship-value-only";
   generationMethod: "fixture" | "rule-based";
-  databaseReadExecuted: false;
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
@@ -207,12 +217,14 @@ export type RelationshipValueResult =
   | RelationshipValueSuccess
   | RelationshipValueFailure;
 
+export type RelationshipValueServiceResult<TResult> = TResult | Promise<TResult>;
+
 export interface RelationshipValueScoringService {
   getRelationshipValue: (
     input: RelationshipValueLookupInput,
-  ) => RelationshipValueResult;
+  ) => RelationshipValueServiceResult<RelationshipValueResult>;
   recomputeRelationshipValue: (
     input: RelationshipValueRecomputeInput,
-  ) => RelationshipValueResult;
-  invalidRecomputeBody: () => RelationshipValueInvalidBodyFailure;
+  ) => RelationshipValueServiceResult<RelationshipValueResult>;
+  invalidRecomputeBody: () => RelationshipValueServiceResult<RelationshipValueInvalidBodyFailure>;
 }

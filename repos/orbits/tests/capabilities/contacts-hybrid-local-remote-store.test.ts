@@ -81,7 +81,7 @@ function createHybridContactsSeed(): MockRuntimeFixtures {
 
 // 这条用例证明 contact、connection、evidence 三类关系数据会被组合成 UI contract。
 // 断言 provenance 和执行标记，是为了防止实现不小心退回纯 mock fixture。
-test("hybrid contacts service reads source-backed contacts from the local remote database", () => {
+test("hybrid contacts service reads source-backed contacts from the local remote database", async () => {
   const storage = createMemoryStorageAdapter();
   const database = createOrbitLocalRemoteDatabase({
     seed: createHybridContactsSeed(),
@@ -89,7 +89,7 @@ test("hybrid contacts service reads source-backed contacts from the local remote
   });
   const service = createHybridContactsListSearchAndFilterService({ database });
 
-  const result = service.searchContacts({
+  const result = await service.searchContacts({
     query: "localStorage-backed",
     sourceFilters: ["manual"],
     statusFilters: ["needs_follow_up"],
@@ -129,18 +129,14 @@ test("hybrid contacts service reads source-backed contacts from the local remote
 
 // service factory 是 mode 切换入口：hybrid 已可用，live 仍显式关闭。
 // 这个边界避免 UI 或 API 在还没有真实联系人服务时误认为 live 可执行。
-test("contacts service factory uses hybrid for local remote database mode while keeping live closed", () => {
+test("contacts service factory uses hybrid for local remote database mode and registers live fail-closed mode", async () => {
   const hybridResolution = resolveContactsListSearchAndFilterService("hybrid");
   const liveResolution = resolveContactsListSearchAndFilterService("live");
   const hybridService = createContactsListSearchAndFilterService("hybrid");
-  const hybridResult = hybridService.listContacts();
+  const hybridResult = await hybridService.listContacts();
 
   assert.equal(hybridResolution.success, true);
-  assert.equal(liveResolution.success, false);
-
-  if (!liveResolution.success) {
-    assert.deepEqual(liveResolution.error.availableModes, ["mock", "hybrid"]);
-  }
+  assert.equal(liveResolution.success, true);
 
   assert.equal(hybridResult.success, true);
   assert.equal(hybridResult.data.provenance.databaseQueryExecuted, true);

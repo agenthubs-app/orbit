@@ -59,6 +59,7 @@ export const CONTACTS_LIST_SEARCH_FILTER_ERROR_CODES = [
   "CONTACTS_FILTER_NOT_SUPPORTED",
   "CONTACTS_SEARCH_PENDING",
   "CONTACTS_LIST_SEARCH_FILTER_MOCK_FAILED",
+  "CONTACTS_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ContactsListSearchFilterErrorCode =
@@ -112,6 +113,14 @@ export const CONTACTS_LIST_SEARCH_FILTER_ERROR_DEFINITIONS = {
       "The mock contacts list search and filter boundary is pinned to a controlled failure scenario.",
     recovery:
       "Render the controlled failure state and do not retry a search index, database, provider, AI, calendar, email, notification, or device call.",
+  },
+  CONTACTS_LIVE_STORE_UNCONFIGURED: {
+    code: "CONTACTS_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live contacts store is not configured for this runtime.",
+    recovery:
+      "Configure a contacts live-store provider before running live contacts search, or switch the capability back to mock or hybrid mode.",
   },
 } as const satisfies Record<
   ContactsListSearchFilterErrorCode,
@@ -194,9 +203,12 @@ export interface ContactsListSearchProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-contacts-list-search-filter-only";
+  privacy:
+    | "demo-contacts-list-search-filter-only"
+    | "live-contacts-list-search-filter";
   generationMethod:
     | "fixture"
+    | "live-store-query"
     | "local-remote-store-query"
     | "rule-based-contacts-list-search-filter";
   searchIndexReadExecuted: boolean;

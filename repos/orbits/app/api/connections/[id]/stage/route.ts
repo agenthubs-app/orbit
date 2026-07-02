@@ -123,10 +123,9 @@ export async function PATCH(
 
   if (!stageBody.success) {
     // malformed JSON 交给 service 的 invalid body 分支，保持 envelope 一致。
-    return responseForResult(
-      profileService.invalidRelationshipProfileBody(),
-      mode,
-    );
+    const invalidResult = await profileService.invalidRelationshipProfileBody();
+
+    return responseForResult(invalidResult, mode);
   }
 
   // route 不在这里判断 stage 是否允许，只把输入交给业务服务。
@@ -136,5 +135,7 @@ export async function PATCH(
     scenario: searchParams.get("scenario") ?? stageBody.body.scenario,
   };
 
-  return responseForResult(profileService.updateStage(input), mode);
+  const result = await profileService.updateStage(input);
+
+  return responseForResult(result, mode);
 }

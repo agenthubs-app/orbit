@@ -127,7 +127,7 @@ export async function POST(
 
   if (!addEvidenceBody.success) {
     // JSON 解析失败走 service 的 invalid body 分支，保持错误格式一致。
-    return responseForResult(connectionService.invalidAddEvidenceBody(), mode);
+    return responseForResult(await connectionService.invalidAddEvidenceBody(), mode);
   }
 
   const { body } = addEvidenceBody;
@@ -143,7 +143,7 @@ export async function POST(
     sourceType: body.sourceType,
     title: body.title,
   };
-  const result = connectionService.addEvidence(input);
+  const result = await connectionService.addEvidence(input);
 
   return responseForResult(result, mode);
 }

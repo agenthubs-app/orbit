@@ -53,14 +53,19 @@ source-check scenario and must continue to expose `data-side-effects="none"`.
 
 ## Switch Mechanism
 
-The Milestone C route resolves the current mock service through
+The route resolves contacts list/search/filter through
 `contacts-service-factory.ts`, which uses `createModuleServiceFactory` from
 `shared/services/module-mode.ts` and keeps the page/command-center off direct
-fixture imports. Live migration should add a `live` constructor to that factory
-and, if cross-capability health metadata is needed, mirror the registration in
-`shared/services/capability-registry.ts`. The page should continue to ask for
-list/search results through the service interface and should not import fixture
-files, provider SDKs, or database clients.
+fixture imports. The factory now supports live mode through
+`features/contacts/live-service.ts`; pages continue to ask for list/search
+results through the service interface and do not import fixture files, provider
+SDKs, or database clients.
+
+The legacy contacts subpages `/app/contacts/pipeline`, `/app/contacts/graph`,
+and `/app/contacts/intros` now use the same live-capable route service. Their
+shared `contacts-subroute-route-adapter.tsx` maps the contacts payload into the
+existing `OrbitContactsViewModel` UI shape only. It is not a storage layer and
+does not query live records directly.
 
 ## Required Env Vars Or Permissions
 
@@ -83,6 +88,7 @@ free and continue to expose `data-action-evidence` and
 ## Replacement Tests
 
 - Keep `tests/pages/app-contacts-page.test.tsx` asserting the route heading, one contact datum with its row-local source labels, value tags, source tags, evidence id, local action result, product-facing route state checks, route recovery actions, adapter imports, live handoff, and `GET /api/contacts` success envelope.
+- Keep `tests/pages/app-contacts-subroutes-live-route-services.test.ts` proving pipeline, graph, and intros no longer import `getOrbitContactsViewModel`, use `contactsRouteToOrbitContactsViewModel`, and render controlled live failures when storage is unconfigured.
 - Add live-mode service contract tests proving live list/search/filter output matches `ContactsListSearchAndFilterService`.
 - Add API parity tests for `GET /api/contacts` and `POST /api/contacts/search` in mock and live modes.
 - Add route state checks for success, empty, pending/loading, unsupported-filter failure, and provider failure after service factory switching.

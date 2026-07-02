@@ -86,7 +86,7 @@ export async function POST(request: Request): Promise<Response> {
   if (request.body === null || !acceptsJsonBody(request)) {
     // 没有 JSON body 时使用稳定默认输入，而不是让 JSON parser 抛错。
     return responseForResult(
-      relationshipValueService.recomputeRelationshipValue(
+      await relationshipValueService.recomputeRelationshipValue(
         normalizeBody({}, scenario),
       ),
       mode,
@@ -99,20 +99,20 @@ export async function POST(request: Request): Promise<Response> {
     // JSON 顶层必须是对象；数组或 primitive 会走 service 的 invalid body 分支。
     if (!isObjectBody(body)) {
       return responseForResult(
-        relationshipValueService.invalidRecomputeBody(),
+        await relationshipValueService.invalidRecomputeBody(),
         mode,
       );
     }
 
     return responseForResult(
-      relationshipValueService.recomputeRelationshipValue(
+      await relationshipValueService.recomputeRelationshipValue(
         normalizeBody(body, scenario),
       ),
       mode,
     );
   } catch {
     return responseForResult(
-      relationshipValueService.invalidRecomputeBody(),
+      await relationshipValueService.invalidRecomputeBody(),
       mode,
     );
   }

@@ -56,7 +56,7 @@ export async function GET(
   const scenario = new URL(request.url).searchParams.get("scenario");
   const relationshipValueService =
     createRelationshipValueScoringService();
-  const result = relationshipValueService.getRelationshipValue({
+  const result = await relationshipValueService.getRelationshipValue({
     connectionId: id,
     scenario,
   });

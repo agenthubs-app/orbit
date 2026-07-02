@@ -17,6 +17,7 @@ import {
   type RelationshipValuePayload,
   type RelationshipValueProvenance,
   type RelationshipValueResult,
+  type RelationshipValueServiceResult,
   type RelationshipValueSourceEvidence,
 } from "../value-contract";
 import {
@@ -498,36 +499,61 @@ function MockOnlyExecutionChecks({
   );
 }
 
+function requireSyncRelationshipValueResult(
+  result: RelationshipValueServiceResult<RelationshipValueResult>,
+): RelationshipValueResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "The relationship value capability demo only supports synchronous mock services.",
+    );
+  }
+
+  return result as RelationshipValueResult;
+}
+
 export function RelationshipValueScoringMockDemo() {
   const relationshipValueService =
     createMockRelationshipValueScoringService();
-  const successState = relationshipValueService.getRelationshipValue({
-    connectionId: "demo-connection-1",
-  });
-  const recomputeState = relationshipValueService.recomputeRelationshipValue({
-    connectionId: "demo-connection-1",
-    evidenceIds: [
-      "evidence:connection-storage-pilot",
-      "evidence:connection-follow-up",
-    ],
-  });
-  const pendingRecomputeState =
+  const successState = requireSyncRelationshipValueResult(
+    relationshipValueService.getRelationshipValue({
+      connectionId: "demo-connection-1",
+    }),
+  );
+  const recomputeState = requireSyncRelationshipValueResult(
+    relationshipValueService.recomputeRelationshipValue({
+      connectionId: "demo-connection-1",
+      evidenceIds: [
+        "evidence:connection-storage-pilot",
+        "evidence:connection-follow-up",
+      ],
+    }),
+  );
+  const pendingRecomputeState = requireSyncRelationshipValueResult(
     relationshipValueService.recomputeRelationshipValue({
       connectionId: "demo-connection-1",
       scenario: "pending",
-    });
-  const emptyState = relationshipValueService.getRelationshipValue({
-    connectionId: "demo-connection-1",
-    scenario: "empty",
-  });
-  const pendingState = relationshipValueService.getRelationshipValue({
-    connectionId: "demo-connection-1",
-    scenario: "pending",
-  });
-  const failureState = relationshipValueService.getRelationshipValue({
-    connectionId: "demo-connection-1",
-    scenario: "failure",
-  });
+    }),
+  );
+  const emptyState = requireSyncRelationshipValueResult(
+    relationshipValueService.getRelationshipValue({
+      connectionId: "demo-connection-1",
+      scenario: "empty",
+    }),
+  );
+  const pendingState = requireSyncRelationshipValueResult(
+    relationshipValueService.getRelationshipValue({
+      connectionId: "demo-connection-1",
+      scenario: "pending",
+    }),
+  );
+  const failureState = requireSyncRelationshipValueResult(
+    relationshipValueService.getRelationshipValue({
+      connectionId: "demo-connection-1",
+      scenario: "failure",
+    }),
+  );
   const successPayload = successState.success ? successState.data : null;
   const successAssessment = successPayload?.assessment ?? null;
   const recomputePayload =

@@ -14,8 +14,10 @@ import {
   type ContactListItem,
   type ContactsListSearchPayload,
   type ContactsListSearchProvenance,
+  type ContactsListSearchResult,
 } from "../contract";
 import { createMockContactsListSearchAndFilterService } from "../mock-service";
+import type { ContactsListSearchServiceResult } from "../service";
 
 export const CONTACTS_LIST_SEARCH_AND_FILTER_MOCK_SLUG =
   "contacts-list-search-and-filter-mock";
@@ -88,6 +90,20 @@ const responsiveWorkbenchStyles = `
   padding-top: 0;
 }
 `;
+
+function requireSyncContactsListSearchResult(
+  result: ContactsListSearchServiceResult<ContactsListSearchResult>,
+): ContactsListSearchResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Contacts mock debug view requires a synchronous contacts service.",
+    );
+  }
+
+  return result as ContactsListSearchResult;
+}
 
 const contactsApiProbes = [
   {
@@ -480,14 +496,24 @@ function ApiProbeActions() {
 
 export function ContactsListSearchAndFilterMockDemo() {
   const contactsService = createMockContactsListSearchAndFilterService();
-  const successState = contactsService.listContacts();
-  const filteredState = contactsService.searchContacts({
-    tagFilters: ["topic:storage-pilots"],
-    valueFilters: ["commercial_opportunity"],
-  });
-  const emptyState = contactsService.listContacts({ scenario: "empty" });
-  const pendingState = contactsService.listContacts({ scenario: "pending" });
-  const failureState = contactsService.searchContacts({ scenario: "failure" });
+  const successState = requireSyncContactsListSearchResult(
+    contactsService.listContacts(),
+  );
+  const filteredState = requireSyncContactsListSearchResult(
+    contactsService.searchContacts({
+      tagFilters: ["topic:storage-pilots"],
+      valueFilters: ["commercial_opportunity"],
+    }),
+  );
+  const emptyState = requireSyncContactsListSearchResult(
+    contactsService.listContacts({ scenario: "empty" }),
+  );
+  const pendingState = requireSyncContactsListSearchResult(
+    contactsService.listContacts({ scenario: "pending" }),
+  );
+  const failureState = requireSyncContactsListSearchResult(
+    contactsService.searchContacts({ scenario: "failure" }),
+  );
   const successPayload = successState.success ? successState.data : null;
   const filteredPayload = filteredState.success ? filteredState.data : null;
 

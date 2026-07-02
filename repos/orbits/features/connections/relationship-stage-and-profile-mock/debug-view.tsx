@@ -14,6 +14,8 @@ import {
   RELATIONSHIP_PROFILE_TYPES,
   type RelationshipProfilePayload,
   type RelationshipProfileRecord,
+  type RelationshipProfileResult,
+  type RelationshipProfileServiceResult,
 } from "../profile-contract";
 import { createMockRelationshipStageAndProfileService } from "../mock-profile-service";
 
@@ -65,6 +67,20 @@ const responsiveWorkbenchStyles = `
   padding: var(--orbit-space-sm);
 }
 `;
+
+function requireSyncRelationshipProfileResult(
+  result: RelationshipProfileServiceResult<RelationshipProfileResult>,
+): RelationshipProfileResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Relationship stage/profile mock demo requires a synchronous profile service.",
+    );
+  }
+
+  return result as RelationshipProfileResult;
+}
 
 const relationshipProfileApiProbes = [
   {
@@ -297,26 +313,36 @@ function ApiProbeActions() {
 
 export function RelationshipStageAndProfileMockDemo() {
   const profileService = createMockRelationshipStageAndProfileService();
-  const successState = profileService.updateStage({
-    connectionId: "demo-connection-1",
-    relationshipStage: "active",
-  });
-  const profileUpdateState = profileService.updateProfile({
-    connectionId: "demo-connection-1",
-    relationshipType: "customer_candidate",
-  });
-  const emptyState = profileService.updateStage({
-    connectionId: "demo-connection-1",
-    scenario: "empty",
-  });
-  const pendingState = profileService.updateProfile({
-    connectionId: "demo-connection-1",
-    scenario: "pending",
-  });
-  const failureState = profileService.updateStage({
-    connectionId: "demo-connection-1",
-    scenario: "failure",
-  });
+  const successState = requireSyncRelationshipProfileResult(
+    profileService.updateStage({
+      connectionId: "demo-connection-1",
+      relationshipStage: "active",
+    }),
+  );
+  const profileUpdateState = requireSyncRelationshipProfileResult(
+    profileService.updateProfile({
+      connectionId: "demo-connection-1",
+      relationshipType: "customer_candidate",
+    }),
+  );
+  const emptyState = requireSyncRelationshipProfileResult(
+    profileService.updateStage({
+      connectionId: "demo-connection-1",
+      scenario: "empty",
+    }),
+  );
+  const pendingState = requireSyncRelationshipProfileResult(
+    profileService.updateProfile({
+      connectionId: "demo-connection-1",
+      scenario: "pending",
+    }),
+  );
+  const failureState = requireSyncRelationshipProfileResult(
+    profileService.updateStage({
+      connectionId: "demo-connection-1",
+      scenario: "failure",
+    }),
+  );
   const successPayload = successState.success ? successState.data : null;
   const profilePayload = profileUpdateState.success
     ? profileUpdateState.data

@@ -93,6 +93,24 @@ export interface HybridContactsListSearchAndFilterServiceOptions {
   provider?: ContactLocalRemoteProvider;
 }
 
+export interface ContactsGraphQueryContext {
+  databaseQueryExecuted: boolean;
+  generationMethod: ContactsListSearchProvenance["generationMethod"];
+  honorScenarios?: boolean;
+  privacy: ContactsListSearchProvenance["privacy"];
+  source: string;
+  sourceLabel: string;
+}
+
+const hybridGraphQueryContext: ContactsGraphQueryContext = {
+  databaseQueryExecuted: true,
+  generationMethod: "local-remote-store-query",
+  honorScenarios: true,
+  privacy: "demo-contacts-list-search-filter-only",
+  source: `local-remote-store:${ORBIT_LOCAL_REMOTE_DATABASE_KEY}`,
+  sourceLabel: "Hybrid local remote contacts database",
+};
+
 // service 返回前 clone payload，避免 UI/test 修改返回对象影响内部计算结果。
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
@@ -131,6 +149,7 @@ function hasUnsupportedValue<TValue extends string>(
 // 任何不在枚举里的过滤器都会变成领域失败，而不是被静默忽略。
 function unsupportedFilterFailure(
   input: ContactsListSearchFilterInput,
+  context: ContactsGraphQueryContext,
 ): ContactsListSearchFailure | null {
   if (
     hasUnsupportedValue(normalizedValues(input.tagFilters), supportedTags) ||
@@ -141,7 +160,7 @@ function unsupportedFilterFailure(
     hasUnsupportedValue(normalizedValues(input.valueFilters), supportedValues) ||
     hasUnsupportedValue(normalizedValues(input.statusFilters), supportedStatuses)
   ) {
-    return failure("CONTACTS_FILTER_NOT_SUPPORTED", []);
+    return failure("CONTACTS_FILTER_NOT_SUPPORTED", [], context);
   }
 
   return null;
@@ -409,16 +428,17 @@ function evidenceIdsForContacts(
 function buildProvenance(
   graph: LocalRemoteContactGraph,
   contacts: readonly ContactListItem[],
+  context: ContactsGraphQueryContext,
 ): ContactsListSearchProvenance {
   return {
-    source: `local-remote-store:${ORBIT_LOCAL_REMOTE_DATABASE_KEY}`,
-    sourceLabel: "Hybrid local remote contacts database",
+    source: context.source,
+    sourceLabel: context.sourceLabel,
     evidenceIds: evidenceIdsForContacts(contacts),
     collectedAt: graph.generatedAt,
-    privacy: "demo-contacts-list-search-filter-only",
-    generationMethod: "local-remote-store-query",
+    privacy: context.privacy,
+    generationMethod: context.generationMethod,
     searchIndexReadExecuted: false,
-    databaseQueryExecuted: true,
+    databaseQueryExecuted: context.databaseQueryExecuted,
     externalNetworkRequested: false,
     deviceRequested: false,
     aiProviderRequested: false,
@@ -432,6 +452,7 @@ function buildProvenance(
 function buildPayload(
   graph: LocalRemoteContactGraph,
   input: ContactsListSearchFilterInput = {},
+  context: ContactsGraphQueryContext = hybridGraphQueryContext,
 ): ContactsListSearchPayload {
   const allContacts = toContactListItems(graph);
   const appliedFilters = appliedFiltersFromInput(input);
@@ -449,7 +470,7 @@ function buildPayload(
       contacts.length > 0
         ? `${contacts.length} contacts matched the hybrid local remote database query.`
         : "No contacts matched the hybrid local remote database query.",
-    provenance: buildProvenance(graph, contacts),
+    provenance: buildProvenance(graph, contacts, context),
     nextAction:
       contacts.length > 0
         ? "Use the source-backed local database contacts for agent workflow testing."
@@ -470,20 +491,21 @@ function success(
 function failure(
   code: ContactsListSearchFilterErrorCode,
   evidenceIds: readonly string[],
+  context: ContactsGraphQueryContext = hybridGraphQueryContext,
 ): ContactsListSearchFailure {
   const definition = CONTACTS_LIST_SEARCH_FILTER_ERROR_DEFINITIONS[code];
   const provenance: ContactsListSearchProvenance = {
-    source: `local-remote-store:${ORBIT_LOCAL_REMOTE_DATABASE_KEY}`,
-    sourceLabel: "Hybrid local remote contacts database failure",
+    source: context.source,
+    sourceLabel: `${context.sourceLabel} failure`,
     evidenceIds:
       evidenceIds.length > 0
         ? evidenceIds
         : ["evidence:contacts-local-remote-failure"],
     collectedAt: new Date(0).toISOString(),
-    privacy: "demo-contacts-list-search-filter-only",
-    generationMethod: "local-remote-store-query",
+    privacy: context.privacy,
+    generationMethod: context.generationMethod,
     searchIndexReadExecuted: false,
-    databaseQueryExecuted: true,
+    databaseQueryExecuted: context.databaseQueryExecuted,
     externalNetworkRequested: false,
     deviceRequested: false,
     aiProviderRequested: false,
@@ -507,25 +529,26 @@ function failure(
 function scenarioResult(
   graph: LocalRemoteContactGraph,
   scenario: ContactsListSearchFilterScenario,
+  context: ContactsGraphQueryContext,
 ): ContactsListSearchResult | null {
   switch (scenario) {
     case "empty":
       return success({
-        ...buildPayload(graph),
+        ...buildPayload(graph, {}, context),
         contacts: [],
         state: "empty",
         summary: "The hybrid local remote contacts database returned no rows.",
       });
     case "pending":
       return success({
-        ...buildPayload(graph),
+        ...buildPayload(graph, {}, context),
         contacts: [],
         state: "pending",
         summary:
           "The hybrid local remote contacts database is waiting for seed review.",
       });
     case "failure":
-      return failure("CONTACTS_LIST_SEARCH_FILTER_MOCK_FAILED", []);
+      return failure("CONTACTS_LIST_SEARCH_FILTER_MOCK_FAILED", [], context);
     case "success":
     default:
       return null;
@@ -533,24 +556,38 @@ function scenarioResult(
 }
 
 // 查询顺序：读 graph -> scenario 短路 -> 过滤器校验 -> 生成成功 payload。
-function runHybridContactsQuery(
-  provider: ContactLocalRemoteProvider,
+export function runContactsGraphQuery(
+  graph: LocalRemoteContactGraph,
   input: ContactsListSearchFilterInput = {},
+  context: ContactsGraphQueryContext = hybridGraphQueryContext,
 ): ContactsListSearchResult {
-  const graph = provider.readContactGraph();
-  const scenario = scenarioResult(graph, normalizeScenario(input.scenario));
+  const scenario =
+    context.honorScenarios === false
+      ? null
+      : scenarioResult(graph, normalizeScenario(input.scenario), context);
 
   if (scenario) {
     return scenario;
   }
 
-  const unsupported = unsupportedFilterFailure(input);
+  const unsupported = unsupportedFilterFailure(input, context);
 
   if (unsupported) {
     return unsupported;
   }
 
-  return success(buildPayload(graph, input));
+  return success(buildPayload(graph, input, context));
+}
+
+function runHybridContactsQuery(
+  provider: ContactLocalRemoteProvider,
+  input: ContactsListSearchFilterInput = {},
+): ContactsListSearchResult {
+  return runContactsGraphQuery(
+    provider.readContactGraph(),
+    input,
+    hybridGraphQueryContext,
+  );
 }
 
 // 对外暴露仍然是 ContactsListSearchAndFilterService，调用方不需要知道是否 hybrid。

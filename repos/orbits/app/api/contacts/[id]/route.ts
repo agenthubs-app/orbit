@@ -166,7 +166,7 @@ export async function GET(
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
   const contactDetailService = createContactDetailTagStatusService();
-  const result = contactDetailService.getContactDetail({
+  const result = await contactDetailService.getContactDetail({
     contactId: id,
     scenario,
   });
@@ -187,7 +187,9 @@ export async function PATCH(
 
   if (!patchBody.success) {
     // JSON 解析失败走 service 的 invalid body 分支。
-    return responseForResult(contactDetailService.invalidPatchBody(), mode);
+    const invalidResult = await contactDetailService.invalidPatchBody();
+
+    return responseForResult(invalidResult, mode);
   }
 
   const { body } = patchBody;
@@ -202,7 +204,7 @@ export async function PATCH(
     status: body.status,
     tags: body.tags,
   };
-  const result = contactDetailService.updateContactDetail(input);
+  const result = await contactDetailService.updateContactDetail(input);
 
   return responseForResult(result, mode);
 }

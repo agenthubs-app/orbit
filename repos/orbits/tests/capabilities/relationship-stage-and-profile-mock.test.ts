@@ -85,6 +85,7 @@ test("relationship profile contract exposes typed fixtures service methods and e
     "RELATIONSHIP_PROFILE_STAGE_NOT_SUPPORTED",
     "RELATIONSHIP_PROFILE_PENDING",
     "RELATIONSHIP_PROFILE_SERVICE_MOCK_FAILED",
+    "RELATIONSHIP_PROFILE_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.deepEqual(contract.RELATIONSHIP_PROFILE_TYPES, [
     "event_peer",
@@ -546,13 +547,18 @@ test("relationship stage and profile debug route renders states and live handoff
 
   assert.match(
     liveDoc,
-    /features\/connections\/relationship-stage-and-profile-mock\/live-service\.ts/,
+    /features\/connections\/live-profile-service\.ts/,
+  );
+  assert.match(
+    liveDoc,
+    /features\/connections\/storage\/connection-live-record-provider\.ts/,
   );
   assert.match(
     liveDoc,
     /features\/connections\/relationship-stage-and-profile-mock\/providers\//,
   );
-  assert.match(liveDoc, /ORBIT_RELATIONSHIP_PROFILE_PROVIDER/);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
+  assert.match(liveDoc, /ORBIT_FEATURE_MODE=live/);
   assert.match(liveDoc, /stage automation/);
   assert.match(liveDoc, /relationship profiling/);
   assert.match(liveDoc, /privacy/);

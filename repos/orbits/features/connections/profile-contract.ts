@@ -23,6 +23,7 @@ export const RELATIONSHIP_PROFILE_ERROR_CODES = [
   "RELATIONSHIP_PROFILE_STAGE_NOT_SUPPORTED",
   "RELATIONSHIP_PROFILE_PENDING",
   "RELATIONSHIP_PROFILE_SERVICE_MOCK_FAILED",
+  "RELATIONSHIP_PROFILE_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type RelationshipProfileErrorCode =
@@ -81,6 +82,13 @@ export const RELATIONSHIP_PROFILE_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry any live service.",
   },
+  RELATIONSHIP_PROFILE_LIVE_STORE_UNCONFIGURED: {
+    code: "RELATIONSHIP_PROFILE_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live relationship profile store is not configured.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live relationship profiles.",
+  },
 } as const satisfies Record<
   RelationshipProfileErrorCode,
   RelationshipProfileErrorDefinition
@@ -104,8 +112,14 @@ export interface RelationshipLatestSummary {
   text: string;
   generatedAt: string;
   evidenceIds: readonly string[];
-  generationMethod: "fixture" | "rule-based-relationship-profile";
-  createdBy: "mock-relationship-stage-and-profile-service";
+  generationMethod:
+    | "fixture"
+    | "rule-based-relationship-profile"
+    | "live-store-stage-preview"
+    | "live-store-profile-preview";
+  createdBy:
+    | "mock-relationship-stage-and-profile-service"
+    | "relationship-stage-profile-live-service";
 }
 
 // RelationshipProfileRecord 是详情页可编辑/可复核的关系画像读模型。
@@ -119,7 +133,7 @@ export interface RelationshipProfileRecord {
   mutualValue: RelationshipMutualValue;
   latestSummary: RelationshipLatestSummary;
   nextAction: RelationshipNextAction;
-  databaseReadExecuted: false;
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
@@ -137,8 +151,12 @@ export interface RelationshipProfileProvenance {
   evidenceIds: readonly string[];
   collectedAt: string;
   privacy: "demo-relationship-profile-only";
-  generationMethod: "fixture" | "rule-based-relationship-profile";
-  databaseReadExecuted: false;
+  generationMethod:
+    | "fixture"
+    | "rule-based-relationship-profile"
+    | "live-store-stage-preview"
+    | "live-store-profile-preview";
+  databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
@@ -215,10 +233,16 @@ export type RelationshipProfileResult =
   | RelationshipProfileSuccess
   | RelationshipProfileFailure;
 
+export type RelationshipProfileServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
+
 export interface RelationshipStageAndProfileService {
-  updateStage: (input: RelationshipStageUpdateInput) => RelationshipProfileResult;
+  updateStage: (
+    input: RelationshipStageUpdateInput,
+  ) => RelationshipProfileServiceResult<RelationshipProfileResult>;
   updateProfile: (
     input: RelationshipProfileUpdateInput,
-  ) => RelationshipProfileResult;
-  invalidRelationshipProfileBody: () => RelationshipProfileInvalidBodyFailure;
+  ) => RelationshipProfileServiceResult<RelationshipProfileResult>;
+  invalidRelationshipProfileBody: () => RelationshipProfileServiceResult<RelationshipProfileInvalidBodyFailure>;
 }

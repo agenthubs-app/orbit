@@ -55,7 +55,7 @@ export async function GET(
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
   const connectionService = createConnectionEvidenceService();
-  const result = connectionService.getConnection({
+  const result = await connectionService.getConnection({
     connectionId: id,
     scenario,
   });

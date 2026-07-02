@@ -119,15 +119,14 @@ export function relationshipValueFailureContext(
   serviceFailure: RelationshipValueFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
-  // API route 用这个 context 说明失败仍处于 mock runtime boundary 内。
+  // API route 用这个 context 说明失败仍处于 relationship value runtime boundary 内。
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock relationship value scoring failure came from deterministic fixture rules.",
+    provenance: serviceFailure.error.provenance.sourceLabel,
     relationshipValueErrorCode: serviceFailure.error.code,
-    service: "relationship-value-scoring-mock",
+    service: "relationship-value-scoring",
   };
 }
 

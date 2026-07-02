@@ -17,14 +17,18 @@ export interface RelationshipNaturalSearchService {
   // 执行自然语言关系查询。
   queryRelationships: (
     input?: RelationshipNaturalSearchInput,
-  ) => RelationshipNaturalSearchResult;
+  ) => RelationshipNaturalSearchServiceResult<RelationshipNaturalSearchResult>;
   // 返回搜索建议，帮助 UI 提示可查询的问题类型。
   getSearchSuggestions: (
     input?: RelationshipNaturalSearchSuggestionsInput,
-  ) => RelationshipNaturalSearchSuggestionsResult;
+  ) => RelationshipNaturalSearchServiceResult<RelationshipNaturalSearchSuggestionsResult>;
   // 请求体不合法时返回领域失败，保持 route 错误结构一致。
-  invalidQueryBody: () => RelationshipNaturalSearchInvalidBodyFailure;
+  invalidQueryBody: () => RelationshipNaturalSearchServiceResult<RelationshipNaturalSearchInvalidBodyFailure>;
 }
+
+export type RelationshipNaturalSearchServiceResult<TResult> =
+  | Promise<TResult>
+  | TResult;
 
 // 将自然语言搜索失败转换成统一 AppError。
 export function relationshipNaturalSearchFailureToAppError(
@@ -38,14 +42,21 @@ export function relationshipNaturalSearchFailureContext(
   failure: RelationshipNaturalSearchFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLive =
+    failure.error.provenance.privacy === "live-relationship-natural-search";
+
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock relationship natural search failure came from deterministic fixture rules.",
+      isLive
+        ? "Live relationship natural search failure came from shared live storage."
+        : "Mock relationship natural search failure came from deterministic fixture rules.",
     relationshipNaturalSearchErrorCode: failure.error.code,
-    service: "relationship-natural-search-mock",
+    service: isLive
+      ? "relationship-natural-search-live"
+      : "relationship-natural-search-mock",
   };
 }
 

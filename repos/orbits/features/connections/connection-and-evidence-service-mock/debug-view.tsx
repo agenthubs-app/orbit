@@ -16,6 +16,8 @@ import {
   CONNECTION_EVIDENCE_SOURCE_TYPES,
   type ConnectionEvidenceAddResult,
   type ConnectionEvidenceDetailPayload,
+  type ConnectionEvidenceDetailResult,
+  type ConnectionEvidenceListResult,
   type ConnectionEvidenceProvenance,
   type ConnectionEvidenceTimelineItem,
   type ConnectionRecord,
@@ -24,6 +26,7 @@ import { createMockConnectionEvidenceService } from "../mock-service";
 import {
   connectionEvidenceFailureContext,
   connectionEvidenceFailureToAppError,
+  type ConnectionEvidenceServiceResult,
 } from "../service";
 
 export const CONNECTION_EVIDENCE_SERVICE_MOCK_SLUG =
@@ -178,6 +181,20 @@ const liveHandoffEvidenceExcerpts = [
 
 function formatPreviewObject(value: unknown): string {
   return JSON.stringify(value, null, 2);
+}
+
+function requireSyncConnectionEvidenceResult<TResult>(
+  result: ConnectionEvidenceServiceResult<TResult>,
+): TResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Connection evidence mock debug view requires a synchronous service.",
+    );
+  }
+
+  return result as TResult;
 }
 
 function AddEvidenceResponsePreviews({
@@ -548,33 +565,54 @@ function ApiProbeActions() {
 
 export function ConnectionEvidenceServiceMockDemo() {
   const connectionService = createMockConnectionEvidenceService();
-  const successState = connectionService.getConnection({
-    connectionId: "demo-connection-1",
-  });
-  const listState = connectionService.listConnections();
-  const addedState = connectionService.addEvidence({
-    connectionId: "demo-connection-1",
-    contribution: "follow_up_signal",
-    occurredAt: "2026-06-25T19:20:00.000Z",
-    sourceLabel: "Operator follow-up note",
-    sourceType: "manual",
-    title: "Operator confirmed warm introduction path",
-    excerpt:
-      "Kenji wants the storage pilot operator intro before the partner review call.",
-  });
-  const pendingAddState = connectionService.addEvidence({
-    connectionId: "demo-connection-1",
-    scenario: "pending",
-  });
-  const emptyState = connectionService.listConnections({ scenario: "empty" });
-  const pendingState = connectionService.getConnection({
-    connectionId: "demo-connection-1",
-    scenario: "pending",
-  });
-  const failureState = connectionService.getConnection({
-    connectionId: "demo-connection-1",
-    scenario: "failure",
-  });
+  const successState =
+    requireSyncConnectionEvidenceResult<ConnectionEvidenceDetailResult>(
+      connectionService.getConnection({
+        connectionId: "demo-connection-1",
+      }),
+    );
+  const listState =
+    requireSyncConnectionEvidenceResult<ConnectionEvidenceListResult>(
+      connectionService.listConnections(),
+    );
+  const addedState =
+    requireSyncConnectionEvidenceResult<ConnectionEvidenceAddResult>(
+      connectionService.addEvidence({
+        connectionId: "demo-connection-1",
+        contribution: "follow_up_signal",
+        occurredAt: "2026-06-25T19:20:00.000Z",
+        sourceLabel: "Operator follow-up note",
+        sourceType: "manual",
+        title: "Operator confirmed warm introduction path",
+        excerpt:
+          "Kenji wants the storage pilot operator intro before the partner review call.",
+      }),
+    );
+  const pendingAddState =
+    requireSyncConnectionEvidenceResult<ConnectionEvidenceAddResult>(
+      connectionService.addEvidence({
+        connectionId: "demo-connection-1",
+        scenario: "pending",
+      }),
+    );
+  const emptyState =
+    requireSyncConnectionEvidenceResult<ConnectionEvidenceListResult>(
+      connectionService.listConnections({ scenario: "empty" }),
+    );
+  const pendingState =
+    requireSyncConnectionEvidenceResult<ConnectionEvidenceDetailResult>(
+      connectionService.getConnection({
+        connectionId: "demo-connection-1",
+        scenario: "pending",
+      }),
+    );
+  const failureState =
+    requireSyncConnectionEvidenceResult<ConnectionEvidenceDetailResult>(
+      connectionService.getConnection({
+        connectionId: "demo-connection-1",
+        scenario: "failure",
+      }),
+    );
   const successPayload = successState.success ? successState.data : null;
   const listPayload = listState.success ? listState.data : null;
   const addedPayload = addedState.success ? addedState.data : null;

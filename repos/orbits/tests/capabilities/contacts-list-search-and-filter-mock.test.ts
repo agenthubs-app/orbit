@@ -39,24 +39,24 @@ test("contacts list search and filter contract exposes typed filters fixtures an
   >("features/contacts/mock-service.ts");
 
   const service = serviceModule.createMockContactsListSearchAndFilterService();
-  const success = service.listContacts();
-  const textSearch = service.searchContacts({ query: "venture ecosystem" });
-  const tagFiltered = service.searchContacts({
+  const success = await service.listContacts();
+  const textSearch = await service.searchContacts({ query: "venture ecosystem" });
+  const tagFiltered = await service.searchContacts({
     tagFilters: ["topic:storage-pilots"],
   });
-  const sourceFiltered = service.searchContacts({
+  const sourceFiltered = await service.searchContacts({
     sourceFilters: ["manual"],
   });
-  const valueFiltered = service.searchContacts({
+  const valueFiltered = await service.searchContacts({
     valueFilters: ["referral_path"],
   });
-  const statusFiltered = service.searchContacts({
+  const statusFiltered = await service.searchContacts({
     statusFilters: ["needs_follow_up"],
   });
-  const empty = service.searchContacts({ scenario: "empty" });
-  const pending = service.searchContacts({ scenario: "pending" });
-  const failure = service.searchContacts({ scenario: "failure" });
-  const unsupported = service.searchContacts({
+  const empty = await service.searchContacts({ scenario: "empty" });
+  const pending = await service.searchContacts({ scenario: "pending" });
+  const failure = await service.searchContacts({ scenario: "failure" });
+  const unsupported = await service.searchContacts({
     sourceFilters: ["linkedin"],
   });
 
@@ -64,6 +64,7 @@ test("contacts list search and filter contract exposes typed filters fixtures an
     "CONTACTS_FILTER_NOT_SUPPORTED",
     "CONTACTS_SEARCH_PENDING",
     "CONTACTS_LIST_SEARCH_FILTER_MOCK_FAILED",
+    "CONTACTS_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.CONTACTS_LIST_SEARCH_FILTER_ERROR_DEFINITIONS
@@ -207,18 +208,18 @@ test("mock contacts list search and filter service is deterministic with no exte
     valueFilters: ["commercial_opportunity"],
   };
 
-  assert.deepEqual(service.listContacts(), service.listContacts());
-  assert.deepEqual(service.searchContacts(), service.searchContacts());
+  assert.deepEqual(await service.listContacts(), await service.listContacts());
+  assert.deepEqual(await service.searchContacts(), await service.searchContacts());
   assert.deepEqual(
-    service.searchContacts({ scenario: "unknown-scenario" }),
-    service.searchContacts(),
+    await service.searchContacts({ scenario: "unknown-scenario" }),
+    await service.searchContacts(),
   );
   assert.deepEqual(
-    service.searchContacts(filterInput),
-    service.searchContacts(filterInput),
+    await service.searchContacts(filterInput),
+    await service.searchContacts(filterInput),
   );
 
-  const filtered = service.searchContacts(filterInput);
+  const filtered = await service.searchContacts(filterInput);
 
   assert.equal(filtered.success, true);
   assert.equal(filtered.data.contacts.length, 1);

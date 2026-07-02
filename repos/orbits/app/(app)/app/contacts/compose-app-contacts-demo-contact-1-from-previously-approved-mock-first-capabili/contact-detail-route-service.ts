@@ -9,20 +9,28 @@ import { createRelationshipValueScoringService } from "../../../../../features/a
 import type {
   RelationshipValueAssessment,
   RelationshipValuePayload,
+  RelationshipValueResult,
   RelationshipValueScoringService,
+  RelationshipValueServiceResult,
 } from "../../../../../features/analysis/value-contract";
 import { createConnectionEvidenceService } from "../../../../../features/connections/service-factory";
 import type {
   ConnectionEvidenceDetailPayload,
+  ConnectionEvidenceListPayload,
   ConnectionEvidenceTimelineItem,
   ConnectionRecord,
 } from "../../../../../features/connections/contract";
-import type { ConnectionEvidenceService } from "../../../../../features/connections/service";
+import type {
+  ConnectionEvidenceService,
+  ConnectionEvidenceServiceResult,
+} from "../../../../../features/connections/service";
 import { createContactDetailTagStatusService } from "../../../../../features/contacts/service-factory";
 import type {
   ContactDetail,
   ContactDetailTagStatusPayload,
+  ContactDetailTagStatusResult,
   ContactDetailTagStatusService,
+  ContactDetailTagStatusServiceResult,
 } from "../../../../../features/contacts/detail-contract";
 import {
   createModuleServiceFactory,
@@ -103,7 +111,10 @@ const contactDetailServiceFactory =
   createModuleServiceFactory<ContactDetailTagStatusService>({
     capabilityId: "app-contacts-demo-contact-1.contact-detail",
     implementations: {
-      mock: () => createContactDetailTagStatusService(),
+      hybrid: ({ requestedMode }) =>
+        createContactDetailTagStatusService(requestedMode),
+      live: ({ requestedMode }) => createContactDetailTagStatusService(requestedMode),
+      mock: ({ requestedMode }) => createContactDetailTagStatusService(requestedMode),
     },
   });
 
@@ -111,7 +122,9 @@ const connectionEvidenceServiceFactory =
   createModuleServiceFactory<ConnectionEvidenceService>({
     capabilityId: "app-contacts-demo-contact-1.connection-evidence",
     implementations: {
-      mock: () => createConnectionEvidenceService(),
+      hybrid: ({ requestedMode }) => createConnectionEvidenceService(requestedMode),
+      live: ({ requestedMode }) => createConnectionEvidenceService(requestedMode),
+      mock: ({ requestedMode }) => createConnectionEvidenceService(requestedMode),
     },
   });
 
@@ -119,7 +132,12 @@ const relationshipValueServiceFactory =
   createModuleServiceFactory<RelationshipValueScoringService>({
     capabilityId: "app-contacts-demo-contact-1.relationship-value",
     implementations: {
-      mock: () => createRelationshipValueScoringService(),
+      hybrid: ({ requestedMode }) =>
+        createRelationshipValueScoringService(requestedMode),
+      live: ({ requestedMode }) =>
+        createRelationshipValueScoringService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createRelationshipValueScoringService(requestedMode),
     },
   });
 
@@ -263,13 +281,27 @@ function collectRouteEvidenceIds(
   );
 }
 
-function buildLocalActionResult(
+function connectionIdForContact(
+  connectionsPayload: ConnectionEvidenceListPayload,
+  contactId: string,
+): string | null {
+  return (
+    connectionsPayload.connections.find(
+      (connection) => connection.contactId === contactId,
+    )?.id ?? (contactId === APP_CONTACT_DETAIL_CONTACT_ID
+      ? APP_CONTACT_DETAIL_CONNECTION_ID
+      : null)
+  );
+}
+
+async function buildLocalActionResult(
   connectionEvidence: ConnectionEvidenceService,
-): AppContactDetailLocalActionResult | null {
+  connectionId: string,
+): Promise<AppContactDetailLocalActionResult | null> {
   // 本地 action 只向 mock connection evidence 追加一条可复核证据。
   // 返回的 actionResult 明确标记无数据库查询、无写入、无通知、无消息发送。
-  const result = connectionEvidence.addEvidence({
-    connectionId: APP_CONTACT_DETAIL_CONNECTION_ID,
+  const result = await connectionEvidence.addEvidence({
+    connectionId,
     contribution: "follow_up_signal",
     occurredAt: "2026-06-25T19:20:00.000Z",
     sourceLabel: "Operator follow-up note",
@@ -299,10 +331,10 @@ function buildLocalActionResult(
     draftBody:
       "Kenji, I can introduce you to the operator team that validated the storage pilot path after the climate founders dinner. I will keep the context tied to the partner review call and wait for your confirmation before anything leaves Orbit.",
     draftSubject: "Warm intro for storage pilot operators",
-    notificationDelivered: connection.notificationDelivered,
-    productionAuditLogWriteExecuted: connection.productionAuditLogWriteExecuted,
-    databaseWriteExecuted: connection.databaseWriteExecuted,
-    externalNetworkRequested: connection.externalNetworkRequested,
+    notificationDelivered: false,
+    productionAuditLogWriteExecuted: false,
+    databaseWriteExecuted: false,
+    externalNetworkRequested: false,
     localNextStep:
       "Choose where to stage this draft. Orbit keeps it local and does not send, notify, write, query, or sync.",
     messageSent: false,
@@ -333,12 +365,12 @@ function routeStateForPayloads(
   return null;
 }
 
-export function loadAppContactDetailRoute({
+export async function loadAppContactDetailRoute({
   action,
   contactId,
   mode,
   scenario,
-}: AppContactDetailRouteInput): AppContactDetailRouteModel {
+}: AppContactDetailRouteInput): Promise<AppContactDetailRouteModel> {
   // 主入口：解析服务 -> 拉取三个 capability payload -> 合并失败/空/pending 状态 ->
   // 成功时返回详情、证据时间线、关系价值和可选本地 actionResult。
   const services = resolveRouteServices(mode);
@@ -348,26 +380,39 @@ export function loadAppContactDetailRoute({
   }
 
   const routeScenario = normalizeScenario(scenario);
-  const contactResult = services.contactDetail.getContactDetail({
+  const contactResult = await services.contactDetail.getContactDetail({
     contactId,
     scenario: routeScenario,
   });
-  const connectionResult = services.connectionEvidence.getConnection({
-    connectionId: APP_CONTACT_DETAIL_CONNECTION_ID,
+  const connectionListResult = await services.connectionEvidence.listConnections({
     scenario: routeScenario,
   });
-  const valueResult = services.relationshipValue.getRelationshipValue({
-    connectionId: APP_CONTACT_DETAIL_CONNECTION_ID,
+  const connectionId =
+    connectionListResult.success === true
+      ? connectionIdForContact(connectionListResult.data, contactId)
+      : APP_CONTACT_DETAIL_CONNECTION_ID;
+  const connectionResult = await services.connectionEvidence.getConnection({
+    connectionId: connectionId ?? APP_CONTACT_DETAIL_CONNECTION_ID,
+    scenario: routeScenario,
+  });
+  const valueResult = await services.relationshipValue.getRelationshipValue({
+    connectionId: connectionId ?? APP_CONTACT_DETAIL_CONNECTION_ID,
     scenario: routeScenario,
   });
 
   if (
     contactResult.success === false ||
+    connectionListResult.success === false ||
+    connectionId === null ||
     connectionResult.success === false ||
     valueResult.success === false
   ) {
     const evidence = [
       ...(contactResult.success === false ? contactResult.error.evidenceIds : []),
+      ...(connectionListResult.success === false
+        ? connectionListResult.error.evidenceIds
+        : []),
+      ...(connectionId === null ? ["contact-detail-no-live-connection"] : []),
       ...(connectionResult.success === false
         ? connectionResult.error.evidenceIds
         : []),
@@ -393,7 +438,7 @@ export function loadAppContactDetailRoute({
   return {
     actionResult:
       normalizeAction(action) === "prepare-follow-up"
-        ? buildLocalActionResult(services.connectionEvidence)
+        ? await buildLocalActionResult(services.connectionEvidence, connectionId)
         : null,
     assessment: valueResult.data.assessment,
     contact: contactResult.data.contact,

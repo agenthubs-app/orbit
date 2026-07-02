@@ -22,7 +22,7 @@ export async function GET(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
   const scenario = new URL(request.url).searchParams.get("scenario");
   const connectionService = createConnectionEvidenceService();
-  const result = connectionService.listConnections({ scenario });
+  const result = await connectionService.listConnections({ scenario });
 
   if (result.success === false) {
     // connection failure 统一映射为 AppError/envelope。

@@ -16,6 +16,8 @@ import {
   type ContactDetail,
   type ContactDetailTagStatusPayload,
   type ContactDetailTagStatusProvenance,
+  type ContactDetailTagStatusResult,
+  type ContactDetailTagStatusServiceResult,
 } from "../detail-contract";
 import { createMockContactDetailTagStatusService } from "../mock-detail-service";
 
@@ -91,6 +93,20 @@ const responsiveWorkbenchStyles = `
   padding-top: 0;
 }
 `;
+
+function requireSyncContactDetailResult(
+  result: ContactDetailTagStatusServiceResult<ContactDetailTagStatusResult>,
+): ContactDetailTagStatusResult {
+  const maybePromise = result as { then?: unknown };
+
+  if (typeof maybePromise.then === "function") {
+    throw new Error(
+      "Contact detail mock demo requires a synchronous contact detail service.",
+    );
+  }
+
+  return result as ContactDetailTagStatusResult;
+}
 
 const contactDetailApiProbes = [
   {
@@ -451,36 +467,46 @@ function ApiProbeActions() {
 
 export function ContactDetailTagAndStatusMockDemo() {
   const contactDetailService = createMockContactDetailTagStatusService();
-  const successState = contactDetailService.getContactDetail({
-    contactId: "demo-contact-1",
-  });
-  const updatedState = contactDetailService.updateContactDetail({
-    addTags: ["topic:venture-ecosystem"],
-    contactId: "demo-contact-1",
-    lastInteraction: {
-      channel: "manual_note",
-      occurredAt: "2026-06-25T18:45:00.000Z",
-      summary: "Operator confirmed the venture ecosystem follow-up path.",
-    },
-    note: {
-      authorLabel: "Orbit operator",
-      body: "Confirmed partner review context before changing status.",
-    },
-    removeTags: ["event:climate-founders-dinner"],
-    status: "active",
-  });
-  const emptyState = contactDetailService.getContactDetail({
-    contactId: "demo-contact-1",
-    scenario: "empty",
-  });
-  const pendingState = contactDetailService.getContactDetail({
-    contactId: "demo-contact-1",
-    scenario: "pending",
-  });
-  const failureState = contactDetailService.getContactDetail({
-    contactId: "demo-contact-1",
-    scenario: "failure",
-  });
+  const successState = requireSyncContactDetailResult(
+    contactDetailService.getContactDetail({
+      contactId: "demo-contact-1",
+    }),
+  );
+  const updatedState = requireSyncContactDetailResult(
+    contactDetailService.updateContactDetail({
+      addTags: ["topic:venture-ecosystem"],
+      contactId: "demo-contact-1",
+      lastInteraction: {
+        channel: "manual_note",
+        occurredAt: "2026-06-25T18:45:00.000Z",
+        summary: "Operator confirmed the venture ecosystem follow-up path.",
+      },
+      note: {
+        authorLabel: "Orbit operator",
+        body: "Confirmed partner review context before changing status.",
+      },
+      removeTags: ["event:climate-founders-dinner"],
+      status: "active",
+    }),
+  );
+  const emptyState = requireSyncContactDetailResult(
+    contactDetailService.getContactDetail({
+      contactId: "demo-contact-1",
+      scenario: "empty",
+    }),
+  );
+  const pendingState = requireSyncContactDetailResult(
+    contactDetailService.getContactDetail({
+      contactId: "demo-contact-1",
+      scenario: "pending",
+    }),
+  );
+  const failureState = requireSyncContactDetailResult(
+    contactDetailService.getContactDetail({
+      contactId: "demo-contact-1",
+      scenario: "failure",
+    }),
+  );
   const successPayload = successState.success ? successState.data : null;
   const updatedPayload = updatedState.success ? updatedState.data : null;
 

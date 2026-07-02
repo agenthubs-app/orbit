@@ -179,7 +179,7 @@ export async function POST(request: Request): Promise<Response> {
   // 搜索是读操作但用 POST 承载复杂过滤条件；响应仍是标准 success/failure envelope。
   const mode = resolveFeatureMode();
   const contactsService = createContactsListSearchAndFilterService();
-  const result = contactsService.searchContacts(
+  const result = await contactsService.searchContacts(
     await readContactsSearchInput(request),
   );
 

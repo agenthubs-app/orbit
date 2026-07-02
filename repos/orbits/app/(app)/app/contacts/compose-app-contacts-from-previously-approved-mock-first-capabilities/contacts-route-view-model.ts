@@ -4,6 +4,7 @@ import type {
   ContactsListSearchPayload,
   ContactsListSearchResult,
 } from "../../../../../features/contacts/contract";
+import type { ContactsListSearchServiceResult } from "../../../../../features/contacts/service";
 import { createAppContactsListSearchAndFilterService } from "./contacts-service-factory";
 
 // Contacts route view model 是服务 contract 到页面 UI 的转换层。
@@ -186,6 +187,12 @@ function evidenceFromContactsResult(
   }
 
   return Array.from(result.data.provenance.evidenceIds);
+}
+
+async function resolveContactsListSearchResult(
+  result: ContactsListSearchServiceResult<ContactsListSearchResult>,
+): Promise<ContactsListSearchResult> {
+  return result;
 }
 
 function sourceLabel(sourceType: SourceType): string {
@@ -372,13 +379,15 @@ function routeRecoveryActions(
   ];
 }
 
-function routeStateViewModel(
+async function routeStateViewModel(
   scenario: AppContactsRouteScenario,
-): AppContactsRouteStateViewModel {
+): Promise<AppContactsRouteStateViewModel> {
   const contactsService = createAppContactsListSearchAndFilterService();
 
   if (scenario === "empty") {
-    const emptyState = contactsService.listContacts({ scenario: "empty" });
+    const emptyState = await resolveContactsListSearchResult(
+      contactsService.listContacts({ scenario: "empty" }),
+    );
 
     return {
       copy: {
@@ -402,7 +411,9 @@ function routeStateViewModel(
   }
 
   if (scenario === "pending") {
-    const pendingState = contactsService.listContacts({ scenario: "pending" });
+    const pendingState = await resolveContactsListSearchResult(
+      contactsService.listContacts({ scenario: "pending" }),
+    );
 
     return {
       copy: {
@@ -424,7 +435,9 @@ function routeStateViewModel(
     };
   }
 
-  const failureState = contactsService.searchContacts({ scenario: "failure" });
+  const failureState = await resolveContactsListSearchResult(
+    contactsService.searchContacts({ scenario: "failure" }),
+  );
 
   return {
     copy: {
@@ -448,15 +461,15 @@ function routeStateViewModel(
   };
 }
 
-export function loadAppContactsRouteViewModel(
+export async function loadAppContactsRouteViewModel(
   searchParams?: AppContactsSearchParams,
-): AppContactsRouteViewModel {
+): Promise<AppContactsRouteViewModel> {
   const requestedScenario = readRouteScenario(searchParams);
 
   if (requestedScenario) {
     return {
       state: "route-state",
-      routeState: routeStateViewModel(requestedScenario),
+      routeState: await routeStateViewModel(requestedScenario),
     };
   }
 
@@ -465,8 +478,8 @@ export function loadAppContactsRouteViewModel(
   const reviewActionRequested =
     readSearchParam(searchParams, "action") === "review-filtered-contact";
   const result = reviewActionRequested
-    ? contactsService.searchContacts(input)
-    : contactsService.listContacts(input);
+    ? await resolveContactsListSearchResult(contactsService.searchContacts(input))
+    : await resolveContactsListSearchResult(contactsService.listContacts(input));
 
   if (result.success === false) {
     return {
