@@ -59,6 +59,26 @@ function seededRandom(seedText: string) {
   };
 }
 
+function createPrototypeWebGlRenderer(THREE: any) {
+  try {
+    const canvas = document.createElement("canvas");
+    const context =
+      canvas.getContext("webgl", { alpha: true, antialias: true }) ||
+      canvas.getContext("experimental-webgl", { alpha: true, antialias: true });
+
+    if (!context) return null;
+
+    return new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      canvas,
+      context,
+    });
+  } catch {
+    return null;
+  }
+}
+
 function PrototypeThreeBg({ opacity = 1 }: { opacity?: number }) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -74,7 +94,9 @@ function PrototypeThreeBg({ opacity = 1 }: { opacity?: number }) {
     const camera = new THREE.PerspectiveCamera(60, W() / H(), 1, 2000);
     camera.position.z = 340;
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    const renderer = createPrototypeWebGlRenderer(THREE);
+    if (!renderer) return;
+
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.setSize(W(), H());
     mount.appendChild(renderer.domElement);
@@ -227,10 +249,20 @@ export function OrbitAgentHero() {
         overflow: "hidden",
         padding: "8px 18px 16px",
         position: "relative",
+        width: "100%",
       }}
     >
       <PrototypeThreeBg />
-      <div style={{ position: "relative", zIndex: 1, width: "min(720px, 100%)", textAlign: "center" }}>
+      <div
+        style={{
+          maxWidth: "calc(100vw - 36px)",
+          minWidth: 0,
+          position: "relative",
+          textAlign: "center",
+          width: "min(720px, 100%)",
+          zIndex: 1,
+        }}
+      >
         <div
           style={{
             alignItems: "center",
@@ -251,7 +283,15 @@ export function OrbitAgentHero() {
         </div>
         <h1
           className="h-display"
-          style={{ color: "var(--ink)", fontSize: "clamp(28px, 5vw, 46px)", letterSpacing: "-0.02em", lineHeight: 1.1, margin: 0 }}
+          style={{
+            color: "var(--ink)",
+            fontSize: "clamp(28px, 5vw, 46px)",
+            letterSpacing: 0,
+            lineHeight: 1.1,
+            margin: 0,
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
+          }}
         >
           {t({ en: "Bring the right people into your ", zh: "让对的人，进入你的" })}
           <span
@@ -305,8 +345,8 @@ export function OrbitAgentHero() {
             }}
             value={text}
           />
-          <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
+          <div style={{ alignItems: "center", display: "flex", gap: 10, justifyContent: "space-between", marginTop: 8, minWidth: 0 }}>
+            <div style={{ alignItems: "center", display: "flex", gap: 8, minWidth: 0 }}>
               <span
                 style={{
                   alignItems: "center",
@@ -324,7 +364,7 @@ export function OrbitAgentHero() {
                 <Icon name="sparkle" size={14} />
                 iOrbit
               </span>
-              <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
+              <span style={{ color: "var(--text-4)", fontSize: 12, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
             </div>
             <button
               aria-disabled={isBlank}
@@ -369,8 +409,11 @@ export function OrbitAgentHero() {
                 fontSize: 13.5,
                 fontWeight: 550,
                 gap: 7,
-                height: 38,
-                padding: "0 15px",
+                lineHeight: 1.25,
+                maxWidth: "100%",
+                minHeight: 38,
+                padding: "9px 15px",
+                whiteSpace: "normal",
               }}
               type="button"
             >
