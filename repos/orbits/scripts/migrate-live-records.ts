@@ -1,8 +1,11 @@
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
 import { runOrbitRecordsMigration } from "../shared/storage/migrations";
 import { createPgLiveRecordSqlClient } from "../shared/storage/postgres-live-record-store";
+import { loadLocalEnv } from "./load-local-env";
 
 async function main(): Promise<void> {
+  loadLocalEnv();
+
   const config = resolveLiveDatabaseConnectionConfig();
 
   if (!config) {
