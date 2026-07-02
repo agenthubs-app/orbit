@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { conversationPayloadToChatView } from "../src/view-models/conversations";
+import {
+  conversationPayloadToChatView,
+  conversationsToSummaries
+} from "../src/view-models/conversations";
 
 test("conversationPayloadToChatView maps assistant reply messages and proposed tool intents", () => {
   const view = conversationPayloadToChatView({
@@ -65,4 +68,25 @@ test("conversationPayloadToChatView uses safe defaults for empty payloads", () =
     messages: [],
     proposedToolIntents: []
   });
+});
+
+test("conversationsToSummaries hides implementation labels in titles", () => {
+  const summaries = conversationsToSummaries({
+    conversations: [
+      {
+        conversationId: "conversation-1",
+        lastMessagePreview:
+          "Orbit Agent is ready for a natural-language request.",
+        title: "Orbit Agent live conversation"
+      }
+    ]
+  });
+
+  assert.deepEqual(summaries, [
+    {
+      id: "conversation-1",
+      preview: "Orbit AI is ready for a natural-language request.",
+      title: "Orbit AI conversation"
+    }
+  ]);
 });

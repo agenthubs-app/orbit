@@ -38,6 +38,27 @@ function stringField(
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
+function containsImplementationLabel(value: string): boolean {
+  return /\b(live|mock|hybrid|fixture|provider|providers|command-center|command center)\b/i.test(
+    value
+  );
+}
+
+function normalizeOrbitAiName(value: string): string {
+  return value.replace(/\bOrbit Agent\b/g, "Orbit AI");
+}
+
+function conversationTitle(value: string): string {
+  const title = normalizeOrbitAiName(value);
+  return title && !containsImplementationLabel(title)
+    ? title
+    : "Orbit AI conversation";
+}
+
+function conversationPreview(value: string): string {
+  return normalizeOrbitAiName(value);
+}
+
 function listFromPayload(value: unknown, fieldName: string): readonly unknown[] {
   if (Array.isArray(value)) {
     return value;
@@ -61,9 +82,11 @@ export function conversationsToSummaries(data: unknown): ConversationSummary[] {
         stringField(conversation, "id", "conversation")
       ),
       preview:
-        stringField(conversation, "lastMessagePreview") ||
-        stringField(conversation, "preview"),
-      title: stringField(conversation, "title", "Orbit AI conversation")
+        conversationPreview(stringField(conversation, "lastMessagePreview")) ||
+        conversationPreview(stringField(conversation, "preview")),
+      title: conversationTitle(
+        stringField(conversation, "title", "Orbit AI conversation")
+      )
     }));
 }
 

@@ -50,6 +50,9 @@ at a different Orbit server.
 Each screen renders loading, empty, offline, failure, and success states through
 the shared Orbit API envelope client.
 
+Orbit AI also reads `/api/app/bootstrap` to show the startup relationship
+summary above the composer.
+
 Events and Contacts cards navigate to API-backed detail screens. List and
 detail screens support pull-to-refresh through the same envelope client.
 

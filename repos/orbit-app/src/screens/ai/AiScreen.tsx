@@ -15,8 +15,16 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { MetricPill } from "../../components/MetricPill";
 import { colors, radius, spacing, typography } from "../../design/tokens";
-import { useApiResource } from "../../hooks/useApiResource";
+import {
+  useApiResource,
+  type ApiResourceState
+} from "../../hooks/useApiResource";
+import {
+  bootstrapMetrics,
+  bootstrapToSummary
+} from "../../view-models/bootstrap";
 import {
   conversationPayloadToChatView,
   conversationsToSummaries,
@@ -29,6 +37,10 @@ export function AiScreen() {
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.conversations,
     (data) => conversationsToSummaries(data).length === 0
+  );
+  const bootstrapState = useApiResource<unknown>(
+    ORBIT_API_ENDPOINTS.bootstrap,
+    () => false
   );
   const [draftMessage, setDraftMessage] = useState("");
   const [latestChat, setLatestChat] = useState<ConversationChatView | null>(
@@ -84,6 +96,7 @@ export function AiScreen() {
       }
       title="Orbit AI"
     >
+      <OrbitSummaryCard state={bootstrapState} />
       <DataCard
         detail="Ask about who to meet, what to prepare, or who needs follow-up."
         title="Ask Orbit AI"
@@ -145,6 +158,44 @@ export function AiScreen() {
   );
 }
 
+function OrbitSummaryCard({ state }: { state: ApiResourceState<unknown> }) {
+  if (state.kind === "loading" || state.kind === "empty") {
+    return null;
+  }
+
+  if (state.kind === "offline") {
+    return (
+      <ErrorState message={state.error.message} title="Startup summary unavailable" />
+    );
+  }
+
+  if (state.kind === "failure") {
+    return <ErrorState message={state.error.message} title="Startup summary unavailable" />;
+  }
+
+  const summary = bootstrapToSummary(state.data);
+  const metrics = bootstrapMetrics(summary);
+
+  return (
+    <DataCard detail={summary.profileName} title={summary.workspaceName}>
+      <Text style={styles.summaryText}>{summary.summary}</Text>
+      <View style={styles.metricsRow}>
+        {metrics.map((metric) => (
+          <MetricPill
+            key={metric.label}
+            label={metric.label}
+            value={metric.value}
+          />
+        ))}
+      </View>
+      <View style={styles.nextAction}>
+        <Text style={styles.nextActionLabel}>Next</Text>
+        <Text style={styles.nextActionText}>{summary.nextAction}</Text>
+      </View>
+    </DataCard>
+  );
+}
+
 function LatestChatCard({
   latestChat
 }: {
@@ -194,6 +245,28 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     textAlignVertical: "top"
   },
+  metricsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  nextAction: {
+    backgroundColor: colors.tint,
+    borderRadius: radius.card,
+    gap: spacing.xs,
+    padding: spacing.md
+  },
+  nextActionLabel: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    textTransform: "uppercase"
+  },
+  nextActionText: {
+    color: colors.ink,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
   pressed: {
     opacity: 0.72
   },
@@ -209,5 +282,10 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontSize: typography.small,
     fontWeight: "800"
+  },
+  summaryText: {
+    color: colors.ink,
+    fontSize: typography.small,
+    lineHeight: 20
   }
 });
