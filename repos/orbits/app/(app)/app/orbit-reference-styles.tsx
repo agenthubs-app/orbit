@@ -834,6 +834,45 @@ const reactReferenceIsolationStyles = `
   }
 }
 
+@media (max-width: 340px) {
+  [data-orbit-real-page] .orbit-top-nav {
+    gap: 2px;
+    padding: 0 2px;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-brand-link,
+  [data-orbit-real-page] .orbit-top-nav .orbit-lang-button {
+    display: none;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-agent-btn {
+    font-size: 12px;
+    gap: 3px;
+    min-width: 70px;
+    padding: 0 7px;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-nav-links {
+    gap: 1px;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-nav-link {
+    font-size: 12px;
+    min-width: 46px;
+    padding: 0 7px;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-top-actions {
+    gap: 2px !important;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-me-link {
+    font-size: 12px;
+    min-width: 44px;
+    padding: 0 7px;
+  }
+}
+
 [data-orbit-real-page] .chip {
   align-items: center;
   background: var(--surface-2);
