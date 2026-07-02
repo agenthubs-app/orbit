@@ -762,7 +762,7 @@ const reactReferenceIsolationStyles = `
     min-height: 58px;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 0 8px;
+    padding: 0 2px;
     scrollbar-width: none;
     width: 100%;
   }
@@ -777,14 +777,15 @@ const reactReferenceIsolationStyles = `
 
   [data-orbit-real-page] .orbit-top-nav .orbit-agent-btn {
     flex: 0 0 auto;
-    font-size: 11.5px;
+    font-size: 12.5px;
     gap: 4px;
-    height: 34px;
-    padding: 0 5px;
+    height: 36px;
+    min-width: 74px;
+    padding: 0 7px;
   }
 
   [data-orbit-real-page] .orbit-top-nav .orbit-agent-btn svg {
-    display: none !important;
+    display: block !important;
   }
 
   [data-orbit-real-page] .orbit-top-nav .orbit-nav-links {
@@ -797,17 +798,17 @@ const reactReferenceIsolationStyles = `
     align-items: center;
     display: inline-flex;
     flex: 0 0 auto;
-    font-size: 12px;
-    height: 34px;
+    font-size: 12.5px;
+    height: 36px;
     justify-content: center;
-    min-width: 48px;
-    padding: 0 8px;
+    min-width: 50px;
+    padding: 0 9px;
     white-space: nowrap;
   }
 
   [data-orbit-real-page] .orbit-top-nav .orbit-top-actions {
     flex: 0 0 auto;
-    gap: 5px !important;
+    gap: 4px !important;
     margin-left: 0;
   }
 
@@ -818,9 +819,10 @@ const reactReferenceIsolationStyles = `
 
   [data-orbit-real-page] .orbit-top-nav .orbit-me-link {
     flex: 0 0 auto;
-    font-size: 11.5px;
-    height: 34px;
-    padding: 0 6px;
+    font-size: 12.5px;
+    height: 36px;
+    min-width: 46px;
+    padding: 0 9px;
   }
 
   /* Agent (iOrbit) shares the standard mobile top-nav sizing — the bar scrolls
