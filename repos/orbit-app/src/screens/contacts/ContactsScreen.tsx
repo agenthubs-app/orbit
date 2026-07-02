@@ -1,14 +1,21 @@
 import { useRouter } from "expo-router";
-import { RefreshControl, Text } from "react-native";
+import { RefreshControl, StyleSheet, Text } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors } from "../../design/tokens";
+import { colors, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
-import { contactsToSummaries } from "../../view-models/contacts";
+import {
+  contactsToSummaries,
+  type ContactSummary
+} from "../../view-models/contacts";
+
+function contactDetail(contact: ContactSummary): string {
+  return [contact.organization, contact.status].filter(Boolean).join(" | ");
+}
 
 export function ContactsScreen() {
   const router = useRouter();
@@ -45,7 +52,7 @@ export function ContactsScreen() {
       {state.kind === "success"
         ? contactsToSummaries(state.data).map((contact) => (
             <DataCard
-              detail={contact.organization}
+              detail={contactDetail(contact)}
               key={contact.id}
               onPress={() =>
                 router.push({
@@ -55,10 +62,37 @@ export function ContactsScreen() {
               }
               title={contact.name}
             >
-              <Text>{contact.relationship}</Text>
+              <Text style={styles.relationshipText}>
+                {contact.relationship}
+              </Text>
+              <Text style={styles.nextActionText}>{contact.nextAction}</Text>
+              {contact.valueScore === null ? null : (
+                <Text style={styles.valueText}>
+                  {contact.valueScore} value score
+                </Text>
+              )}
             </DataCard>
           ))
         : null}
     </AppScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  nextActionText: {
+    color: colors.muted,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
+  relationshipText: {
+    color: colors.ink,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
+  valueText: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    textTransform: "uppercase"
+  }
+});

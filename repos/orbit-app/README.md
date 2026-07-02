@@ -43,7 +43,7 @@ at a different Orbit server.
 
 - Orbit AI: reads `/api/ai/conversations`.
 - Events: reads `/api/events`.
-- Contacts: reads `/api/contacts`.
+- Contacts: reads `/api/contacts` and shows next action, status, and value context.
 - Schedule: reads `/api/tasks` and shows actionable follow-up context.
 - Profile: reads `/api/profile`.
 

@@ -52,7 +52,10 @@ test("contactDetailToSummary maps contact detail payloads", () => {
       profileSnippet: "Invests in climate infrastructure.",
       relationshipContext: "Warm investor relationship",
       role: "Partner",
-      status: "needs_follow_up"
+      status: "needs_follow_up",
+      value: {
+        score: 88
+      }
     }
   });
 
@@ -65,6 +68,7 @@ test("contactDetailToSummary maps contact detail payloads", () => {
     organization: "Northstar",
     relationship: "Warm investor relationship",
     role: "Partner",
-    status: "needs_follow_up"
+    status: "Needs follow up",
+    valueScore: 88
   });
 });

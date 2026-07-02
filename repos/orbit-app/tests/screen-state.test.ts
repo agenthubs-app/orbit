@@ -104,8 +104,13 @@ test("contactsToSummaries maps contact list payloads", () => {
       {
         displayName: "Maya Chen",
         id: "contact-1",
+        nextAction: "Send the storage intro.",
         organization: "Northstar",
-        relationshipContext: "Warm investor relationship"
+        relationshipContext: "Warm investor relationship",
+        status: "needs_follow_up",
+        value: {
+          score: 91
+        }
       }
     ]
   });
@@ -114,8 +119,11 @@ test("contactsToSummaries maps contact list payloads", () => {
     {
       id: "contact-1",
       name: "Maya Chen",
+      nextAction: "Send the storage intro.",
       organization: "Northstar",
-      relationship: "Warm investor relationship"
+      relationship: "Warm investor relationship",
+      status: "Needs follow up",
+      valueScore: 91
     }
   ]);
 });
