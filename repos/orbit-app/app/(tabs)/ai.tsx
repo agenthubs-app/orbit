@@ -1,9 +1,3 @@
-import { Text, View } from "react-native";
+import { AiScreen } from "../../src/screens/ai/AiScreen";
 
-export default function AiRoute() {
-  return (
-    <View>
-      <Text>Orbit AI</Text>
-    </View>
-  );
-}
+export default AiScreen;
