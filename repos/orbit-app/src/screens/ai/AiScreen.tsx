@@ -1,10 +1,11 @@
-import { Text } from "react-native";
+import { RefreshControl, Text } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { colors } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { conversationsToSummaries } from "../../view-models/conversations";
 
@@ -15,7 +16,17 @@ export function AiScreen() {
   );
 
   return (
-    <AppScreen eyebrow="Relationship steward" title="Orbit AI">
+    <AppScreen
+      eyebrow="Relationship steward"
+      refreshControl={
+        <RefreshControl
+          onRefresh={state.refresh}
+          refreshing={state.refreshing}
+          tintColor={colors.accent}
+        />
+      }
+      title="Orbit AI"
+    >
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="Server is offline" />

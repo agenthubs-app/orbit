@@ -1,15 +1,37 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createOrbitApiClient } from "../api/client";
 import type { RouteState } from "../view-models/route-state";
 import { resultToRouteState } from "../view-models/route-state";
 
+export type ApiResourceState<TData> = RouteState<TData> & {
+  refresh: () => void;
+  refreshing: boolean;
+};
+
+function unexpectedErrorState<TData>(error: unknown): RouteState<TData> {
+  return {
+    kind: "failure",
+    error: {
+      code: "ORBIT_APP_UNEXPECTED_ERROR",
+      message: error instanceof Error ? error.message : "Unexpected request error"
+    },
+    meta: { featureMode: null, privacy: null, runtimeBoundary: null },
+    status: 0
+  };
+}
+
 export function useApiResource<TData>(
   path: string,
   isEmpty: (data: TData) => boolean
-): RouteState<TData> {
+): ApiResourceState<TData> {
   const client = useMemo(() => createOrbitApiClient(), []);
   const isEmptyRef = useRef(isEmpty);
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const [state, setState] = useState<RouteState<TData>>({ kind: "loading" });
+  const refresh = useCallback(() => {
+    setRefreshIndex((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     isEmptyRef.current = isEmpty;
@@ -17,18 +39,40 @@ export function useApiResource<TData>(
 
   useEffect(() => {
     let active = true;
+    const isRefresh = refreshIndex > 0;
 
-    setState({ kind: "loading" });
-    void client.get<TData>(path).then((result) => {
-      if (active) {
-        setState(resultToRouteState(result, isEmptyRef.current));
-      }
-    });
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setState({ kind: "loading" });
+    }
+
+    void client
+      .get<TData>(path)
+      .then((result) => {
+        if (active) {
+          setState(resultToRouteState(result, isEmptyRef.current));
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setState(unexpectedErrorState(error));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setRefreshing(false);
+        }
+      });
 
     return () => {
       active = false;
     };
-  }, [client, path]);
+  }, [client, path, refreshIndex]);
 
-  return state;
+  return {
+    ...state,
+    refresh,
+    refreshing
+  };
 }

@@ -1,19 +1,32 @@
-import type { PropsWithChildren } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import type { PropsWithChildren, ReactElement } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type RefreshControlProps
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing, typography } from "../design/tokens";
 
 interface AppScreenProps extends PropsWithChildren {
   eyebrow?: string;
+  refreshControl?: ReactElement<RefreshControlProps>;
   title: string;
 }
 
-export function AppScreen({ children, eyebrow, title }: AppScreenProps) {
+export function AppScreen({
+  children,
+  eyebrow,
+  refreshControl,
+  title
+}: AppScreenProps) {
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={refreshControl}
       >
         <View style={styles.header}>
           {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}

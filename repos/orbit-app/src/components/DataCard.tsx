@@ -1,14 +1,15 @@
 import type { PropsWithChildren } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, radius, spacing, typography } from "../design/tokens";
 
 interface DataCardProps extends PropsWithChildren {
   detail?: string;
+  onPress?: () => void;
   title: string;
 }
 
-export function DataCard({ children, detail, title }: DataCardProps) {
-  return (
+export function DataCard({ children, detail, onPress, title }: DataCardProps) {
+  const content = (
     <View style={styles.card}>
       <View style={styles.header}>
         <Text numberOfLines={2} style={styles.title}>
@@ -22,6 +23,20 @@ export function DataCard({ children, detail, title }: DataCardProps) {
       </View>
       {children ? <View style={styles.body}>{children}</View> : null}
     </View>
+  );
+
+  if (!onPress) {
+    return content;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [pressed ? styles.pressed : null]}
+    >
+      {content}
+    </Pressable>
   );
 }
 
@@ -44,6 +59,9 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.xs
+  },
+  pressed: {
+    opacity: 0.72
   },
   title: {
     color: colors.ink,
