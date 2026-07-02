@@ -26,6 +26,28 @@ function stringField(
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
+function formatDateTime(value: string): string {
+  const timestamp = Date.parse(value);
+
+  if (!Number.isFinite(timestamp)) {
+    return value || "Time pending";
+  }
+
+  const parts = new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric"
+  }).formatToParts(new Date(timestamp));
+  const partValue = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${partValue("month")} ${partValue("day")}, ${partValue("year")}, ${partValue("hour")}:${partValue("minute")}`;
+}
+
 function listFromPayload(value: unknown, fieldName: string): readonly unknown[] {
   if (Array.isArray(value)) {
     return value;
@@ -48,7 +70,7 @@ export function eventsToSummaries(data: unknown): EventSummary[] {
         stringField(event, "venue") ||
         stringField(event, "location") ||
         stringField(event, "locationLabel"),
-      startsAt: stringField(event, "startsAt", "Time pending"),
+      startsAt: formatDateTime(stringField(event, "startsAt", "Time pending")),
       status: stringField(event, "status", "scheduled"),
       title: stringField(event, "title", stringField(event, "name", "Event"))
     }));
@@ -101,7 +123,7 @@ export function eventDetailToSummary(data: unknown): EventDetailSummary {
       "relationshipContext",
       "Relationship context is not available yet."
     ),
-    startsAt: stringField(event, "startsAt", "Time pending"),
+    startsAt: formatDateTime(stringField(event, "startsAt", "Time pending")),
     status: stringField(event, "status", "scheduled"),
     title: stringField(event, "title", stringField(event, "name", "Event"))
   };

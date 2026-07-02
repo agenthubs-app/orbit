@@ -91,7 +91,7 @@ test("eventsToSummaries maps Orbit event list payloads", () => {
     {
       id: "event-1",
       location: "Shibuya",
-      startsAt: "2026-07-04T10:00:00.000Z",
+      startsAt: "Jul 4, 2026, 10:00",
       status: "confirmed",
       title: "Tokyo founder salon"
     }

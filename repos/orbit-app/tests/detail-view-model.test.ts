@@ -34,7 +34,7 @@ test("eventDetailToSummary maps event detail payloads", () => {
     nextAction: "Prepare three introductions.",
     preparation: "Review attendee context.",
     relationshipContext: "Climate network",
-    startsAt: "2026-07-04T10:00:00.000Z",
+    startsAt: "Jul 4, 2026, 10:00",
     status: "confirmed",
     title: "Tokyo founder salon"
   });
