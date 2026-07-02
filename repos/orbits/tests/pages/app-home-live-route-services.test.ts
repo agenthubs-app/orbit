@@ -52,6 +52,11 @@ async function withUnconfiguredLiveStorage<T>(
 
 const homeRoutes = [
   {
+    importPath: "../../app/(app)/app/page",
+    marker: "app-root-home-route",
+    sourcePath: "app/(app)/app/page.tsx",
+  },
+  {
     importPath: "../../app/(app)/app/home/page",
     marker: "app-home-route",
     sourcePath: "app/(app)/app/home/page.tsx",
@@ -71,16 +76,6 @@ test("web root stays on public landing instead of live app home", () => {
   assert.doesNotMatch(pageSource, /HomeRouteStateBoundary/);
   assert.doesNotMatch(pageSource, /OrbitRealHome/);
   assert.doesNotMatch(pageSource, /web-root-home-route/);
-});
-
-test("app root stays on public landing instead of live app home", () => {
-  const pageSource = source("app/(app)/app/page.tsx");
-
-  assert.match(pageSource, /OrbitRealLandingPage/);
-  assert.doesNotMatch(pageSource, /loadAppHomeRouteViewModel/);
-  assert.doesNotMatch(pageSource, /HomeRouteStateBoundary/);
-  assert.doesNotMatch(pageSource, /OrbitRealHome/);
-  assert.doesNotMatch(pageSource, /app-root-home-route/);
 });
 
 for (const route of homeRoutes) {
