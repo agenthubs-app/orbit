@@ -54,7 +54,7 @@ export async function GET(request: Request): Promise<Response> {
   // GET 不改变任何隐私设置，只返回当前 conversation 的控制面板状态。
   const mode = resolveFeatureMode();
   const service = createChatPrivacyControlsService();
-  const result = service.getPrivacyControls(readInput(request));
+  const result = await service.getPrivacyControls(readInput(request));
 
   return responseForResult(result, mode);
 }

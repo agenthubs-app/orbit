@@ -19,6 +19,7 @@ export const CHAT_WRITING_ASSIST_ERROR_CODES = [
   "CHAT_WRITING_ASSIST_EMPTY",
   "CHAT_WRITING_ASSIST_PENDING",
   "CHAT_WRITING_ASSIST_MOCK_FAILED",
+  "CHAT_WRITING_ASSIST_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ChatWritingAssistKind =
@@ -34,6 +35,9 @@ export type ChatWritingAssistScenario =
   | "failure";
 
 export type ChatWritingAssistState = "success" | "empty" | "pending";
+export type ChatWritingAssistServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
 
 // 输入既可以来自已有会话，也可以来自用户给出的 sourceText/contextNote。
 export interface ChatWritingAssistInput {
@@ -49,16 +53,16 @@ export interface ChatWritingAssistInput {
 export interface ChatWritingAssistService {
   rewritePolitely: (
     input?: ChatWritingAssistInput,
-  ) => ChatWritingAssistResult;
+  ) => ChatWritingAssistServiceResult<ChatWritingAssistResult>;
   draftFollowup: (
     input?: ChatWritingAssistInput,
-  ) => ChatWritingAssistResult;
+  ) => ChatWritingAssistServiceResult<ChatWritingAssistResult>;
   suggestAppointment: (
     input?: ChatWritingAssistInput,
-  ) => ChatWritingAssistResult;
+  ) => ChatWritingAssistServiceResult<ChatWritingAssistResult>;
   createQuickGreeting: (
     input?: ChatWritingAssistInput,
-  ) => ChatWritingAssistResult;
+  ) => ChatWritingAssistServiceResult<ChatWritingAssistResult>;
 }
 
 export interface ChatWritingAssistErrorDefinition {
@@ -102,6 +106,14 @@ export const CHAT_WRITING_ASSIST_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry live AI writing providers, external send channels, email, calendar, notification, network, device, or database services.",
   },
+  CHAT_WRITING_ASSIST_LIVE_STORE_UNCONFIGURED: {
+    code: "CHAT_WRITING_ASSIST_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The chat writing assist live store is not configured for this workspace.",
+    recovery:
+      "Configure the shared live database before enabling live chat writing assistance. Do not fall back to mock writing assists in live mode.",
+  },
 } as const satisfies Record<
   ChatWritingAssistErrorCode,
   ChatWritingAssistErrorDefinition
@@ -112,7 +124,7 @@ export type ChatWritingAssistSourceReference = SourceReferenceDTO & {
   label: string;
   providerRecordId: string;
   collectedAt: string;
-  generatedBy: "mock-chat-writing-assist-rules";
+  generatedBy: "mock-chat-writing-assist-rules" | "live-store-query";
 };
 
 // audit 提醒 UI：生成结果只是草稿，需要人工复核。
@@ -135,7 +147,7 @@ export interface ChatWritingAssistSuggestion {
   rationale: string;
   source: ChatWritingAssistSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-chat-writing-assist-rules";
+  generatedBy: "mock-chat-writing-assist-rules" | "live-store-query";
   audit: ChatWritingAssistAudit;
   sendActionRequiresConfirmation: true;
   aiProviderRequested: false;
@@ -145,7 +157,7 @@ export interface ChatWritingAssistSuggestion {
   calendarProviderRequested: false;
   notificationDelivered: false;
   deviceRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   productionMessageStorageRequested: false;
   productionAuditLogWriteExecuted: false;
@@ -157,7 +169,9 @@ export interface ChatWritingAssistProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-chat-writing-assist-only";
+  privacy:
+    | "demo-chat-writing-assist-only"
+    | "live-chat-writing-assist-preview";
   generationMethod:
     | "fixture"
     | "rule-based-politeness-rewrite"
@@ -172,7 +186,7 @@ export interface ChatWritingAssistProvenance {
   calendarProviderRequested: false;
   notificationDelivered: false;
   deviceRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   productionMessageStorageRequested: false;
   productionAuditLogWriteExecuted: false;
@@ -219,8 +233,7 @@ export function chatWritingAssistFailureContext(
     chatWritingAssistErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock chat writing assist failure came from deterministic fixture rules.",
-    service: "chat-writing-assist-mock",
+    provenance: failure.error.provenance.sourceLabel,
+    service: "chat-writing-assist",
   };
 }

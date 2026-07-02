@@ -68,7 +68,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createChatSummaryExtractionService();
-  const result = service.summarizeConversation(readInput(request, id));
+  const result = await service.summarizeConversation(readInput(request, id));
 
   return responseForResult(result, mode);
 }

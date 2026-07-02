@@ -52,7 +52,7 @@ function responseForResult(
 export async function GET(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
   const service = createChatConversationMessageService();
-  const result = service.listConversations(readInput(request));
+  const result = await service.listConversations(readInput(request));
 
   return responseForResult(result, mode);
 }

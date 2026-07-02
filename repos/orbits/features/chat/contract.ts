@@ -25,6 +25,7 @@ export const CHAT_CONVERSATION_MOCK_ERROR_CODES = [
   "CHAT_CONVERSATION_EMPTY",
   "CHAT_CONVERSATION_PENDING",
   "CHAT_CONVERSATION_MOCK_FAILED",
+  "CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ChatConversationStatus =
@@ -71,11 +72,13 @@ export interface ChatSendMessageInput {
 export interface ChatConversationMessageService {
   listConversations: (
     input?: ChatConversationListInput,
-  ) => ChatConversationListResult;
+  ) => ChatConversationListResult | Promise<ChatConversationListResult>;
   getMessageThread: (
     input: ChatMessageThreadInput,
-  ) => ChatMessageThreadResult;
-  sendMessage: (input: ChatSendMessageInput) => ChatSendMessageResult;
+  ) => ChatMessageThreadResult | Promise<ChatMessageThreadResult>;
+  sendMessage: (
+    input: ChatSendMessageInput,
+  ) => ChatSendMessageResult | Promise<ChatSendMessageResult>;
 }
 
 // 聊天错误定义显式列出恢复方式，防止调用方在失败时误触发真实传输层。
@@ -132,6 +135,14 @@ export const CHAT_CONVERSATION_MOCK_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry live chat transport, websocket subscriptions, production message storage, network, device, database, AI, email, calendar, or notification services.",
   },
+  CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED: {
+    code: "CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The chat conversation live store is not configured for this environment.",
+    recovery:
+      "Set ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live chat storage; do not fall back to external transport.",
+  },
 } as const satisfies Record<
   ChatConversationMockErrorCode,
   ChatConversationMockErrorDefinition
@@ -149,7 +160,10 @@ export type ChatSourceReference = SourceReferenceDTO & {
   label: string;
   providerRecordId: string;
   collectedAt: string;
-  generatedBy: "mock-chat-conversation-rules";
+  generatedBy:
+    | "mock-chat-conversation-rules"
+    | "live-store-query"
+    | "live-store-send";
 };
 
 // one-to-one context 是聊天页和关系图之间的桥梁：
@@ -184,8 +198,8 @@ export interface ChatConversationSummary {
   websocketSubscriptionRequested: false;
   productionMessageStorageRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseReadExecuted: boolean;
+  liveDatabaseWriteExecuted: boolean;
   aiProviderRequested: false;
   emailProviderRequested: false;
   calendarProviderRequested: false;
@@ -208,8 +222,8 @@ export interface ChatMessage {
   websocketSubscriptionRequested: false;
   productionMessageStorageRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseReadExecuted: boolean;
+  liveDatabaseWriteExecuted: boolean;
   aiProviderRequested: false;
   emailProviderRequested: false;
   calendarProviderRequested: false;
@@ -234,20 +248,22 @@ export interface ChatConversationMockProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-chat-conversation-only";
+  privacy: "demo-chat-conversation-only" | "live-chat-conversation-preview";
   generationMethod:
     | "fixture"
     | "rule-based-list"
     | "rule-based-thread"
     | "rule-based-send"
     | "rule-based-state"
-    | "local-remote-store-query";
+    | "local-remote-store-query"
+    | "live-store-query"
+    | "live-store-send";
   realtimeTransportRequested: false;
   websocketSubscriptionRequested: false;
   productionMessageStorageRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseReadExecuted: boolean;
+  liveDatabaseWriteExecuted: boolean;
   aiProviderRequested: false;
   emailProviderRequested: false;
   calendarProviderRequested: false;
@@ -342,8 +358,7 @@ export function chatConversationMockFailureContext(
     chatConversationMockErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock chat conversation failure came from deterministic fixture rules.",
-    service: "chat-conversation-and-message-mock",
+    provenance: failure.error.provenance.sourceLabel,
+    service: "chat-conversation-message",
   };
 }

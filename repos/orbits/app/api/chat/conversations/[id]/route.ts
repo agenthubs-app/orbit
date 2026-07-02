@@ -68,7 +68,7 @@ export async function GET(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createChatConversationMessageService();
-  const result = service.getMessageThread(readInput(request, id));
+  const result = await service.getMessageThread(readInput(request, id));
 
   return responseForResult(result, mode);
 }

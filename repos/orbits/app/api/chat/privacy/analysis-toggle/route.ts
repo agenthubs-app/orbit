@@ -122,7 +122,7 @@ export async function POST(request: Request): Promise<Response> {
   // 修改分析开关只调用 privacy service，不在 route 层启动任何 AI 分析。
   const mode = resolveFeatureMode();
   const service = createChatPrivacyControlsService();
-  const result = service.setAnalysisOptIn(await readInput(request));
+  const result = await service.setAnalysisOptIn(await readInput(request));
 
   return responseForResult(result, mode);
 }

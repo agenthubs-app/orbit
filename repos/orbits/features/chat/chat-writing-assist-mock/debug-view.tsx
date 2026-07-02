@@ -10,6 +10,7 @@ import {
 } from "../../../shared/ui/primitives";
 import type {
   ChatWritingAssistPayload,
+  ChatWritingAssistResult,
   ChatWritingAssistSuggestion,
 } from "../assist-contract";
 import { createMockChatWritingAssistService } from "../mock-assist-service";
@@ -125,12 +126,12 @@ export const CHAT_WRITING_ASSIST_API_PROBES = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/chat/chat-writing-assist-mock/.",
-  "ORBIT_CHAT_WRITING_ASSIST_PROVIDER switches mock fixtures to live providers.",
-  "Live replacement requires an AI writing provider and explicit external send adapters.",
+  "Live service files live under features/chat/live-assist-service.ts and features/chat/storage/.",
+  "ORBIT_MODULE_MODE=live switches mock fixtures to the shared live storage provider.",
+  "Current live mode is deterministic storage-backed drafting, not an AI writing provider.",
   "Email, calendar, and notification permissions stay separate from chat writing assistance.",
   "Every live assist keeps source evidence, provenance, privacy constraints, and confirmation requirements.",
-  "Replacement tests cover success, empty, pending, controlled failure, provider failure, and no-provider-call mock guards.",
+  "Replacement tests cover success, empty, pending, controlled failure, unconfigured storage, and no-provider-call mock guards.",
 ] as const;
 
 function apiProbeCommand(
@@ -152,6 +153,25 @@ function assistKindLabel(kind: ChatWritingAssistSuggestion["kind"]): string {
     default:
       return kind;
   }
+}
+
+function requireSyncChatWritingAssistResult(
+  result: ChatWritingAssistResult | Promise<ChatWritingAssistResult>,
+  label: string,
+): ChatWritingAssistResult {
+  const isAsyncResult = (
+    value: ChatWritingAssistResult | Promise<ChatWritingAssistResult>,
+  ): value is Promise<ChatWritingAssistResult> =>
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof value.then === "function";
+
+  if (isAsyncResult(result)) {
+    throw new Error(`${label} returned async chat writing assist result.`);
+  }
+
+  return result;
 }
 
 function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {
@@ -366,10 +386,22 @@ function StateMatrix({
 
 function combinedPayloadFromService(): ChatWritingAssistPayload | null {
   const service = createMockChatWritingAssistService();
-  const rewrite = service.rewritePolitely();
-  const followup = service.draftFollowup();
-  const appointment = service.suggestAppointment();
-  const greeting = service.createQuickGreeting();
+  const rewrite = requireSyncChatWritingAssistResult(
+    service.rewritePolitely(),
+    "rewritePolitely",
+  );
+  const followup = requireSyncChatWritingAssistResult(
+    service.draftFollowup(),
+    "draftFollowup",
+  );
+  const appointment = requireSyncChatWritingAssistResult(
+    service.suggestAppointment(),
+    "suggestAppointment",
+  );
+  const greeting = requireSyncChatWritingAssistResult(
+    service.createQuickGreeting(),
+    "createQuickGreeting",
+  );
 
   if (
     rewrite.success === false ||
@@ -406,9 +438,18 @@ function combinedPayloadFromService(): ChatWritingAssistPayload | null {
 export function ChatWritingAssistMockDemo() {
   const service = createMockChatWritingAssistService();
   const successPayload = combinedPayloadFromService();
-  const emptyResult = service.draftFollowup({ scenario: "empty" });
-  const pendingResult = service.rewritePolitely({ scenario: "pending" });
-  const failureResult = service.rewritePolitely({ scenario: "failure" });
+  const emptyResult = requireSyncChatWritingAssistResult(
+    service.draftFollowup({ scenario: "empty" }),
+    "draftFollowup",
+  );
+  const pendingResult = requireSyncChatWritingAssistResult(
+    service.rewritePolitely({ scenario: "pending" }),
+    "rewritePolitely",
+  );
+  const failureResult = requireSyncChatWritingAssistResult(
+    service.rewritePolitely({ scenario: "failure" }),
+    "rewritePolitely",
+  );
 
   if (
     !successPayload ||
@@ -506,8 +547,8 @@ export function ChatWritingAssistMockDemo() {
             <div>
               <dt>Switch mechanism</dt>
               <dd>
-                <code>ORBIT_CHAT_WRITING_ASSIST_PROVIDER</code> remains
-                documented before any live service is wired.
+                <code>ORBIT_MODULE_MODE=live</code> uses the shared live
+                database provider when database configuration is present.
               </dd>
             </div>
           </dl>

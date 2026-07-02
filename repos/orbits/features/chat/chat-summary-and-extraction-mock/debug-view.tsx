@@ -11,6 +11,7 @@ import {
 } from "../../../shared/ui/primitives";
 import type {
   ChatSummaryExtractionPayload,
+  ChatSummaryExtractionServiceResult,
   ConfirmationRequiredProfileSuggestion,
   ExtractedNeed,
   ExtractedTask,
@@ -439,26 +440,57 @@ function StateMatrix({
   );
 }
 
+function requireSyncSummaryResult<TResult>(
+  result: ChatSummaryExtractionServiceResult<TResult>,
+  label: string,
+): TResult {
+  if (
+    typeof result === "object" &&
+    result !== null &&
+    "then" in result &&
+    typeof result.then === "function"
+  ) {
+    throw new Error(`${label} returned async chat summary service result.`);
+  }
+
+  return result as TResult;
+}
+
 export function ChatSummaryExtractionMockDemo() {
   const service = createMockChatSummaryExtractionService();
-  const summaryResult = service.summarizeConversation({
-    conversationId: "demo-conversation-1",
-  });
-  const extractionResult = service.extractConversationSignals({
-    conversationId: "demo-conversation-1",
-  });
-  const emptyResult = service.summarizeConversation({
-    conversationId: "demo-conversation-1",
-    scenario: "empty",
-  });
-  const pendingResult = service.extractConversationSignals({
-    conversationId: "demo-conversation-1",
-    scenario: "pending",
-  });
-  const failureResult = service.extractConversationSignals({
-    conversationId: "demo-conversation-1",
-    scenario: "failure",
-  });
+  const summaryResult = requireSyncSummaryResult(
+    service.summarizeConversation({
+      conversationId: "demo-conversation-1",
+    }),
+    "summarizeConversation",
+  );
+  const extractionResult = requireSyncSummaryResult(
+    service.extractConversationSignals({
+      conversationId: "demo-conversation-1",
+    }),
+    "extractConversationSignals",
+  );
+  const emptyResult = requireSyncSummaryResult(
+    service.summarizeConversation({
+      conversationId: "demo-conversation-1",
+      scenario: "empty",
+    }),
+    "summarizeConversation",
+  );
+  const pendingResult = requireSyncSummaryResult(
+    service.extractConversationSignals({
+      conversationId: "demo-conversation-1",
+      scenario: "pending",
+    }),
+    "extractConversationSignals",
+  );
+  const failureResult = requireSyncSummaryResult(
+    service.extractConversationSignals({
+      conversationId: "demo-conversation-1",
+      scenario: "failure",
+    }),
+    "extractConversationSignals",
+  );
 
   if (
     summaryResult.success === false ||

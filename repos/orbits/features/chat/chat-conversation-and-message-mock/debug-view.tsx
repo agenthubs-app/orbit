@@ -15,6 +15,7 @@ import type {
   ChatMessageThreadPayload,
   ChatSendMessagePayload,
 } from "../contract";
+import type { ChatConversationMessageServiceResult } from "../service";
 import { CHAT_CONVERSATION_MOCK_DEFAULT_MESSAGE_BODY } from "../fixtures";
 import { createMockChatConversationMessageService } from "../mock-service";
 
@@ -403,19 +404,53 @@ function StateMatrix({
   );
 }
 
+function requireSyncChatResult<TResult>(
+  result: ChatConversationMessageServiceResult<TResult>,
+  label: string,
+): TResult {
+  if (
+    typeof result === "object" &&
+    result !== null &&
+    "then" in result &&
+    typeof result.then === "function"
+  ) {
+    throw new Error(`${label} returned async chat service result.`);
+  }
+
+  return result as TResult;
+}
+
 export function ChatConversationAndMessageMockDemo() {
   const service = createMockChatConversationMessageService();
-  const successResult = service.listConversations();
-  const emptyResult = service.listConversations({ scenario: "empty" });
-  const pendingResult = service.listConversations({ scenario: "pending" });
-  const failureResult = service.listConversations({ scenario: "failure" });
-  const threadResult = service.getMessageThread({
-    conversationId: "demo-conversation-1",
-  });
-  const sendResult = service.sendMessage({
-    body: "Let's compare pilot windows next week.",
-    conversationId: "demo-conversation-1",
-  });
+  const successResult = requireSyncChatResult(
+    service.listConversations(),
+    "listConversations",
+  );
+  const emptyResult = requireSyncChatResult(
+    service.listConversations({ scenario: "empty" }),
+    "listConversations",
+  );
+  const pendingResult = requireSyncChatResult(
+    service.listConversations({ scenario: "pending" }),
+    "listConversations",
+  );
+  const failureResult = requireSyncChatResult(
+    service.listConversations({ scenario: "failure" }),
+    "listConversations",
+  );
+  const threadResult = requireSyncChatResult(
+    service.getMessageThread({
+      conversationId: "demo-conversation-1",
+    }),
+    "getMessageThread",
+  );
+  const sendResult = requireSyncChatResult(
+    service.sendMessage({
+      body: "Let's compare pilot windows next week.",
+      conversationId: "demo-conversation-1",
+    }),
+    "sendMessage",
+  );
 
   if (
     successResult.success === false ||

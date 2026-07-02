@@ -1,70 +1,80 @@
-# Chat Writing Assist Mock To Live Handoff
+# Chat Writing Assist Live Store Implementation
 
 ## Live Service Files
 
-The mock boundary is implemented in:
+Chat writing assist now has a storage-backed live implementation:
 
 - `features/chat/assist-contract.ts`
-- `features/chat/mock-assist-service.ts`
+- `features/chat/live-assist-service.ts`
+- `features/chat/storage/chat-writing-assist-live-record-provider.ts`
+- `features/chat/service-factory.ts`
 - `app/api/chat/assist/rewrite/route.ts`
 - `app/api/chat/assist/followup-draft/route.ts`
-- `features/chat/chat-writing-assist-mock/debug-view.tsx`
+- `tests/capabilities/chat-writing-assist-live-store.test.ts`
 
-Live service files should stay under `features/chat/chat-writing-assist-mock/`
-or a future `features/chat/live-assist-service.ts` provider file that implements
-the existing `ChatWritingAssistService` interface. Route handlers should keep
-calling the service interface and should not learn provider-specific request or
-response shapes.
+The live service reuses the chat conversation live graph provider, then maps
+`conversations`, `messages`, `contacts`, and `connections` into deterministic
+writing assists. It does not define new storage fields and it does not write
+message drafts back to storage.
 
-## Switch Mechanism
+## Runtime Selection
 
-Use `ORBIT_CHAT_WRITING_ASSIST_PROVIDER` as the explicit provider switch:
+Use the shared module mode switch:
 
-- `mock`: use `createMockChatWritingAssistService`.
-- `live`: use the live writing provider adapter after replacement tests exist.
+- `ORBIT_MODULE_MODE=mock`: use deterministic mock fixtures.
+- `ORBIT_MODULE_MODE=live`: use the shared live database provider.
+- `ORBIT_MODULE_MODE=hybrid`: follows the existing module factory fallback rules.
 
-The switch must be centralized in a service factory before live wiring. Do not
-branch inside product pages or dev views.
+Live mode reads database configuration through the shared live storage config:
 
-## Required Env Vars And Permissions
+- `ORBIT_EVENT_DATABASE_URL`, `ORBIT_LIVE_DATABASE_URL`, or
+  `ORBIT_DATABASE_URL`
+- `ORBIT_WORKSPACE_ID`
 
-A live implementation will require:
+There is no separate `ORBIT_CHAT_WRITING_ASSIST_PROVIDER` switch in the current
+implementation.
 
-- `ORBIT_CHAT_WRITING_ASSIST_PROVIDER=live`
-- A server-only AI writing provider key for rewrite and draft generation.
-- Email, calendar, and notification permissions only when a confirmed external
-  send, appointment creation, or notification action is added.
-- Explicit confirmation before any external send action leaves Orbit.
+## Current Live Boundary
 
-The current mock intentionally requires none of those permissions and must never
-call network, device, database, AI writing provider, email, calendar, or
-notification services.
+The current live implementation is deterministic and storage-backed:
 
-## Privacy And Provenance Constraints
+- It reads source-backed chat context from the live store.
+- It generates polite rewrite, follow-up draft, appointment suggestion, and
+  quick greeting payloads with `generatedBy: live-store-query`.
+- It preserves source evidence, provenance, privacy, and confirmation
+  requirements.
+- It sets AI, external send, external network, email, calendar, notification,
+  device, production message storage, and audit-log write flags to `false`.
+- It sets `liveDatabaseReadExecuted: true` only after reading the live store.
+- It keeps `liveDatabaseWriteExecuted: false`.
 
-Every live assist must preserve:
+This is intentionally not an AI writing provider integration. A future AI
+writing provider can be added behind the same service contract, but only after
+separate provider, retention, confirmation, and safety review.
 
-- Source evidence IDs used to generate the suggestion.
-- Provenance describing provider, generation method, and collection time.
-- Privacy boundaries for chat text and relationship context.
-- Flags or audit metadata proving whether AI writing, external send, database,
-  email, calendar, or notification services were requested.
-- Confirmation requirements before any suggested text is sent externally.
+## Failure And State Handling
 
-Live providers must avoid training or retention settings that conflict with
-Orbit relationship data privacy. If a provider cannot guarantee those
-constraints, keep the mock provider active.
+Live mode fails closed when the shared live database is not configured:
+
+- Error code: `CHAT_WRITING_ASSIST_LIVE_STORE_UNCONFIGURED`
+- App error: `SERVICE_UNAVAILABLE`
+- No fallback to mock data in live mode.
+
+The live service also preserves the existing success, empty, pending, and
+controlled failure states. Empty and pending are successful envelopes with no
+assists. Controlled failure uses the existing
+`CHAT_WRITING_ASSIST_MOCK_FAILED` state path for compatibility with the debug
+surface.
 
 ## Replacement Tests
 
-Before switching from mock to live, add replacement tests for:
+Coverage lives in:
 
-- Success envelopes for polite rewrite and follow-up draft.
-- Appointment suggestion and quick greeting service methods.
-- Empty source-context responses.
-- Pending local writing guard responses.
-- Controlled provider failure responses.
-- Provider timeout and malformed provider payload handling.
-- Proof that mock mode still makes no provider calls.
-- Confirmation guard coverage before external send, email, calendar, or
-  notification actions execute.
+- `tests/capabilities/chat-writing-assist-live-store.test.ts`
+- `tests/capabilities/chat-writing-assist-mock.test.ts`
+
+The live test proves that generated chat records can produce reviewable writing
+assists for `conversation_001`, including the Japanese contact `山田 千尋` and
+`Morning Light Foods`, without AI, send providers, notifications, or database
+writes. The mock test continues to prove the mock boundary never calls live
+providers.

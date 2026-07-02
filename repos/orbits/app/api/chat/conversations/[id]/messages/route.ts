@@ -121,7 +121,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createChatConversationMessageService();
-  const result = service.sendMessage(await readInput(request, id));
+  const result = await service.sendMessage(await readInput(request, id));
 
   return responseForResult(result, mode);
 }

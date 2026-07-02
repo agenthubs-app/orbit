@@ -1,100 +1,67 @@
-# Chat Summary And Extraction Mock Live Implementation
+# Chat Summary And Extraction Live Implementation
 
 ## Live Service Files
 
-Live service files should stay behind this capability boundary:
-
-- `features/chat/chat-summary-and-extraction-mock/live-summary-service.ts`
-- `features/chat/chat-summary-and-extraction-mock/summary-provider.ts`
-- `features/chat/chat-summary-and-extraction-mock/prompt-builder.ts`
-- `features/chat/chat-summary-and-extraction-mock/provider-mapper.ts`
-- `features/chat/chat-summary-and-extraction-mock/profile-suggestion-mapper.ts`
-- `features/chat/chat-summary-and-extraction-mock/redaction.ts`
-- `features/chat/chat-summary-and-extraction-mock/provider-errors.ts`
-
-The product route and API route handlers should continue consuming the
-`ChatSummaryExtractionService` interface from `features/chat/summary-contract.ts`.
-Pages must not import provider SDKs or raw provider responses. The prompt builder
-owns provider prompts, the provider mapper owns conversion back into Orbit DTOs,
-and redaction owns removal of unrelated relationship, credential, calendar, and
-email details before any provider request is assembled.
+- Contract: `features/chat/summary-contract.ts`.
+- Mock service: `features/chat/mock-summary-service.ts`.
+- Live service: `features/chat/live-summary-service.ts`.
+- Live storage adapter:
+  `features/chat/storage/chat-summary-live-record-provider.ts`.
+- Shared chat graph storage mapper:
+  `features/chat/storage/chat-conversation-live-record-provider.ts`.
+- Factory registration: `features/chat/service-factory.ts`.
+- Route handlers keep the same envelopes:
+  `POST /api/chat/conversations/[id]/summary` and
+  `GET /api/chat/conversations/[id]/extractions`.
 
 ## Switch Mechanism
 
-`ORBIT_CHAT_SUMMARY_EXTRACTION_PROVIDER` is the explicit switch from deterministic
-mock fixtures to live provider-backed summary extraction. Accepted live values
-should be declared in code before any provider is wired. The default remains the
-mock service unless both the provider switch and provider configuration are
-present.
-
-Recommended first values:
-
-- `mock`: default. Uses `createMockChatSummaryExtractionService()` and the
-  deterministic fixtures in `features/chat/summary-contract.ts`.
-- `live-ai-summary`: uses `live-summary-service.ts`, `summary-provider.ts`,
-  `prompt-builder.ts`, `provider-mapper.ts`, `profile-suggestion-mapper.ts`,
-  `redaction.ts`, and `provider-errors.ts`.
-
-The switch belongs in the same service factory pattern used by other
-capabilities. API routes should ask for a `ChatSummaryExtractionService`; they
-should not branch on raw environment variables or provider names directly.
+- `ORBIT_MODULE_MODE=mock` uses deterministic fixtures.
+- `ORBIT_MODULE_MODE=live` resolves `createLiveChatSummaryExtractionService`
+  with the configured shared live record store provider.
+- The previous `ORBIT_CHAT_SUMMARY_EXTRACTION_PROVIDER` AI-provider switch is
+  not used by the current implementation.
+- Live mode fails closed with `CHAT_SUMMARY_LIVE_STORE_UNCONFIGURED` when no
+  database URL is configured. It must not silently fall back to mock, AI
+  summarization, profile mutation, notifications, email, calendar, devices, or
+  external networks.
 
 ## Required Env Vars Or Permissions
 
-A live AI summarization provider needs provider-specific credentials, model
-selection, timeout limits, and cost controls. Relationship profile update
-suggestions also need a write-capable profile service, but automatic profile
-mutation must stay disabled until a confirmation guard approves the change.
-
-Initial environment contract:
-
-- `ORBIT_CHAT_SUMMARY_EXTRACTION_PROVIDER=live-ai-summary`
-- `ORBIT_CHAT_SUMMARY_AI_API_KEY`
-- `ORBIT_CHAT_SUMMARY_AI_MODEL`
-- `ORBIT_CHAT_SUMMARY_AI_TIMEOUT_MS`
-- `ORBIT_CHAT_SUMMARY_AI_MAX_TOKENS`
-
-The live service should fail closed when a required value is missing: return the
-shared API failure envelope with provider-safe context, keep mock fixtures as the
-local default, and never silently fall through to an undeclared provider.
-
-Email, calendar, and notification permissions are not owned by this capability.
-If live extraction references those signals, it should receive already-approved
-source evidence from their capability services rather than opening a new
-provider session here.
+- Live storage uses `ORBIT_EVENT_DATABASE_URL`, `ORBIT_LIVE_DATABASE_URL`, or
+  `ORBIT_DATABASE_URL`.
+- `ORBIT_WORKSPACE_ID` selects the tenant/workspace rows, defaulting to
+  `workspace:default`.
+- The provider reads generic `orbit_records` rows from `conversations`,
+  `messages`, `contacts`, and `connections`.
+- No AI provider credentials, model selection, prompt builder, vector store,
+  profile write permission, email/calendar permission, notification permission,
+  device permission, or external network permission is required for this goal.
 
 ## Privacy And Provenance Constraints
 
-Every summary, extracted need, extracted task, relationship profile update, and
-confirmation-required profile suggestion must keep source evidence, provenance,
-privacy scope, and provider boundary flags. The live service must preserve the
-mock contract's no-silent-mutation rule: profile suggestions are proposed with
-`confirmationRequired: true` and `autoApplied: false` until reviewed.
-
-Provider prompts must include only the minimum source-backed chat context needed
-for the summary. Raw chat logs, unrelated contacts, credentials, and private
-calendar or email data must not be sent to the provider.
-
-The provider mapper must reject provider output that drops evidence ids,
-changes `confirmationRequired: true`, flips `autoApplied` to true, omits privacy
-scope, or cannot trace each summary, need, task, and suggestion back to a source
-record.
+- Live extraction is deterministic and storage-backed. It does not send raw chat
+  logs to AI or analytics providers.
+- Every summary, extracted need, extracted task, relationship profile update,
+  and confirmation-required profile suggestion keeps source evidence,
+  provenance, and privacy scope.
+- Live provenance uses `privacy: "live-chat-summary-extraction-preview"` and
+  `generationMethod: "live-store-summary"` or `"live-store-extraction"`.
+- `liveDatabaseReadExecuted` is true only when the live record store is read.
+  `liveDatabaseWriteExecuted` remains false because this service is read-only.
+- Relationship profile updates are proposals only: `confirmationRequired: true`,
+  `autoApplied: false`, and `automaticProfileMutationExecuted: false`.
 
 ## Replacement Tests
 
-Replacement tests should cover:
-
-- Contract parity for summary, extracted needs, extracted tasks, profile update
-  suggestions, confirmation-required suggestions, and provenance.
-- Service factory tests for `mock`, `live-ai-summary`, missing provider config,
-  and invalid provider switch values.
-- API envelope behavior for success, empty, pending, not found, validation, and
-  controlled provider failure paths.
-- The mock service still making no external provider, database, email, calendar,
-  notification, network, or device calls.
-- Prompt builder and redaction tests proving only source-backed chat context is
-  sent to the provider.
-- Provider mapper tests that preserve source evidence and privacy fields.
-- Confirmation guard tests proving automatic profile mutation remains blocked.
-- Route tests for `POST /api/chat/conversations/[id]/summary` and
-  `GET /api/chat/conversations/[id]/extractions` under mock and live modes.
+- `tests/capabilities/chat-summary-extraction-live-store.test.ts` covers live
+  summary, extraction, empty/pending scenarios, validation errors, not-found
+  errors, and fail-closed missing configuration.
+- `tests/capabilities/chat-summary-and-extraction-mock.test.ts` keeps proving
+  the mock service is deterministic and makes no external provider, database,
+  email, calendar, notification, network, AI, or device calls.
+- Route tests keep proving stable success and failure API envelopes for
+  `POST /api/chat/conversations/[id]/summary` and
+  `GET /api/chat/conversations/[id]/extractions`.
+- Build verification covers the dev capability view, which uses synchronous
+  guards around mock-only summary service calls.

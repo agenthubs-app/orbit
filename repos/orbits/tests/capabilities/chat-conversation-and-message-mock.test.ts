@@ -53,7 +53,7 @@ test("chat conversation keeps typed contract separate from mock fixture provenan
     CHAT_CONVERSATION_MOCK_FIXTURE_SOURCE: string;
     mockChatConversationListFixture: {
       state: string;
-      conversations: readonly Array<{
+      conversations: ReadonlyArray<{
         conversationId: string;
         participantName: string;
         oneToOneContext: {
@@ -87,7 +87,7 @@ test("chat conversation keeps typed contract separate from mock fixture provenan
         conversationId: string;
         participantName: string;
       };
-      messages: readonly Array<{
+      messages: ReadonlyArray<{
         messageId: string;
         body: string;
         evidenceIds: readonly string[];
@@ -146,6 +146,7 @@ test("chat conversation keeps typed contract separate from mock fixture provenan
     "CHAT_CONVERSATION_EMPTY",
     "CHAT_CONVERSATION_PENDING",
     "CHAT_CONVERSATION_MOCK_FAILED",
+    "CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.CHAT_CONVERSATION_MOCK_ERROR_DEFINITIONS
@@ -240,7 +241,7 @@ test("mock chat service is deterministic and never calls live transport storage 
         success: boolean;
         data?: {
           state: string;
-          conversations: readonly Array<{
+          conversations: ReadonlyArray<{
             conversationId: string;
             participantName: string;
             websocketSubscriptionRequested: false;
@@ -255,7 +256,7 @@ test("mock chat service is deterministic and never calls live transport storage 
         success: boolean;
         data?: {
           state: string;
-          messages: readonly Array<{
+          messages: ReadonlyArray<{
             messageId: string;
             body: string;
             productionMessageStorageRequested: false;
@@ -460,7 +461,7 @@ test("chat conversation API routes return stable envelopes with empty and failur
     success: true;
     data: {
       state: string;
-      conversations: readonly Array<{
+      conversations: ReadonlyArray<{
         conversationId: string;
         participantName: string;
         websocketSubscriptionRequested: false;
@@ -475,7 +476,7 @@ test("chat conversation API routes return stable envelopes with empty and failur
     success: true;
     data: {
       state: string;
-      messages: readonly Array<{ body: string }>;
+      messages: ReadonlyArray<{ body: string }>;
       oneToOneContext: {
         participantName: string;
         latestContext: string;
@@ -584,7 +585,7 @@ test("chat conversation API routes return stable envelopes with empty and failur
   );
   assert.equal(
     blankBodyEnvelope.error.context.service,
-    "chat-conversation-and-message-mock",
+    "chat-conversation-message",
   );
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {
@@ -603,9 +604,8 @@ test("chat conversation API routes return stable envelopes with empty and failur
         chatConversationMockErrorCode: "CHAT_CONVERSATION_MOCK_FAILED",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock chat conversation failure came from deterministic fixture rules.",
-        service: "chat-conversation-and-message-mock",
+        provenance: "Controlled chat conversation mock failure",
+        service: "chat-conversation-message",
       },
     },
   });
@@ -614,7 +614,7 @@ test("chat conversation API routes return stable envelopes with empty and failur
 test("chat conversation debug route renders all states and live replacement handoff", async () => {
   const debugView = await importProjectModule<{
     CHAT_CONVERSATION_AND_MESSAGE_MOCK_SLUG: string;
-    CHAT_CONVERSATION_AND_MESSAGE_API_PROBES: readonly Array<{
+    CHAT_CONVERSATION_AND_MESSAGE_API_PROBES: ReadonlyArray<{
       label: string;
       method: "GET" | "POST";
       path: string;

@@ -15,6 +15,7 @@ export const CHAT_PRIVACY_CONTROLS_ERROR_CODES = [
   "CHAT_PRIVACY_PENDING",
   "CHAT_PRIVACY_SENSITIVE_SHARE_CONFIRMATION_REQUIRED",
   "CHAT_PRIVACY_MOCK_FAILED",
+  "CHAT_PRIVACY_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ChatPrivacyControlsErrorCode =
@@ -27,6 +28,9 @@ export type ChatPrivacyControlsScenario =
   | "failure";
 
 export type ChatPrivacyControlsState = "success" | "empty" | "pending";
+export type ChatPrivacyControlsServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
 
 // 三类输入分别服务读取控制、切换 AI 分析、准备敏感分享。
 export interface ChatPrivacyControlsInput {
@@ -45,16 +49,16 @@ export interface ChatSensitiveShareInput extends ChatPrivacyControlsInput {
 export interface ChatPrivacyControlsService {
   getPrivacyControls: (
     input?: ChatPrivacyControlsInput,
-  ) => ChatPrivacyControlsResult;
+  ) => ChatPrivacyControlsServiceResult<ChatPrivacyControlsResult>;
   setAnalysisOptIn: (
     input: ChatAnalysisOptInInput,
-  ) => ChatPrivacyControlsResult;
+  ) => ChatPrivacyControlsServiceResult<ChatPrivacyControlsResult>;
   requestAnalysisDeletion: (
     input?: ChatPrivacyControlsInput,
-  ) => ChatPrivacyControlsResult;
+  ) => ChatPrivacyControlsServiceResult<ChatPrivacyControlsResult>;
   prepareSensitiveShare: (
     input: ChatSensitiveShareInput,
-  ) => ChatPrivacyControlsResult;
+  ) => ChatPrivacyControlsServiceResult<ChatPrivacyControlsResult>;
 }
 
 export interface ChatPrivacyControlsErrorDefinition {
@@ -122,6 +126,14 @@ export const CHAT_PRIVACY_CONTROLS_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry live deletion workers, privacy audit logs, databases, network, device, email, calendar, notification, or AI services.",
   },
+  CHAT_PRIVACY_LIVE_STORE_UNCONFIGURED: {
+    code: "CHAT_PRIVACY_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The chat privacy controls live store is not configured for this workspace.",
+    recovery:
+      "Configure the shared live database before enabling live chat privacy controls. Do not fall back to mock privacy controls in live mode.",
+  },
 } as const satisfies Record<
   ChatPrivacyControlsErrorCode,
   ChatPrivacyControlsErrorDefinition
@@ -132,7 +144,7 @@ export type ChatPrivacyControlsSourceReference = SourceReferenceDTO & {
   label: string;
   providerRecordId: string;
   collectedAt: string;
-  generatedBy: "mock-chat-privacy-controls-rules";
+  generatedBy: "mock-chat-privacy-controls-rules" | "live-store-query";
 };
 
 // AnalysisOptInState 描述当前是否允许聊天分析，但写入仍只在 mock 边界内。
@@ -142,10 +154,10 @@ export interface ChatAnalysisOptInState {
   confirmationRequiredToDisable: true;
   source: ChatPrivacyControlsSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-chat-privacy-controls-rules";
+  generatedBy: "mock-chat-privacy-controls-rules" | "live-store-query";
   aiProviderRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   productionPrivacyAuditLogWritten: false;
 }
@@ -156,10 +168,10 @@ export interface ChatAnalysisDeletionState {
   deletedInMock?: true;
   source: ChatPrivacyControlsSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-chat-privacy-controls-rules";
+  generatedBy: "mock-chat-privacy-controls-rules" | "live-store-query";
   productionDataDeletionExecuted: false;
   productionPrivacyAuditLogWritten: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   externalNetworkRequested: false;
 }
@@ -173,12 +185,12 @@ export interface ChatPrivateNote {
   redactedPreview: string;
   source: ChatPrivacyControlsSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-chat-privacy-controls-rules";
+  generatedBy: "mock-chat-privacy-controls-rules" | "live-store-query";
   visibleToAiAnalysis: false;
   visibleInSharePreview: false;
   aiProviderRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
 }
 
@@ -189,10 +201,10 @@ export interface ChatSensitiveShareConfirmation {
   canShareWithoutConfirmation: false;
   source: ChatPrivacyControlsSourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-chat-privacy-controls-rules";
+  generatedBy: "mock-chat-privacy-controls-rules" | "live-store-query";
   externalActionExecuted: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   productionPrivacyAuditLogWritten: false;
 }
@@ -202,7 +214,9 @@ export interface ChatPrivacyControlsProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-chat-privacy-controls-only";
+  privacy:
+    | "demo-chat-privacy-controls-only"
+    | "live-chat-privacy-controls-preview";
   generationMethod:
     | "fixture"
     | "rule-based-analysis-toggle"
@@ -211,7 +225,7 @@ export interface ChatPrivacyControlsProvenance {
     | "rule-based-state";
   aiProviderRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   productionDataDeletionExecuted: false;
   productionPrivacyAuditLogWritten: false;
@@ -267,8 +281,7 @@ export function chatPrivacyControlsFailureContext(
     chatPrivacyControlsErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock chat privacy controls failure came from deterministic fixture rules.",
-    service: "chat-privacy-controls-mock",
+    provenance: failure.error.provenance.sourceLabel,
+    service: "chat-privacy-controls",
   };
 }

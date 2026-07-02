@@ -13,6 +13,7 @@ export const CHAT_SUMMARY_EXTRACTION_ERROR_CODES = [
   "CHAT_SUMMARY_EMPTY",
   "CHAT_SUMMARY_PENDING",
   "CHAT_SUMMARY_MOCK_FAILED",
+  "CHAT_SUMMARY_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ChatSummaryExtractionErrorCode =
@@ -32,13 +33,17 @@ export interface ChatSummaryExtractionInput {
   scenario?: ChatSummaryExtractionScenario | string | null;
 }
 
+export type ChatSummaryExtractionServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
+
 export interface ChatSummaryExtractionService {
   summarizeConversation: (
     input: ChatSummaryExtractionInput,
-  ) => ChatSummaryExtractionResult;
+  ) => ChatSummaryExtractionServiceResult<ChatSummaryExtractionResult>;
   extractConversationSignals: (
     input: ChatSummaryExtractionInput,
-  ) => ChatSummaryExtractionResult;
+  ) => ChatSummaryExtractionServiceResult<ChatSummaryExtractionResult>;
 }
 
 export interface ChatSummaryExtractionErrorDefinition {
@@ -90,6 +95,14 @@ export const CHAT_SUMMARY_EXTRACTION_ERROR_DEFINITIONS = {
     recovery:
       "Render the controlled failure state and do not retry live summarization, persistence, email, calendar, notification, network, device, or database services.",
   },
+  CHAT_SUMMARY_LIVE_STORE_UNCONFIGURED: {
+    code: "CHAT_SUMMARY_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The chat summary extraction live store is not configured for this environment.",
+    recovery:
+      "Set ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live chat summary extraction; do not call AI or mutate profiles as a fallback.",
+  },
 } as const satisfies Record<
   ChatSummaryExtractionErrorCode,
   ChatSummaryExtractionErrorDefinition
@@ -100,7 +113,7 @@ export type ChatSummarySourceReference = SourceReferenceDTO & {
   label: string;
   providerRecordId: string;
   collectedAt: string;
-  generatedBy: "mock-chat-summary-extraction-rules";
+  generatedBy: "mock-chat-summary-extraction-rules" | "live-store-query";
 };
 
 // SummaryRecord 是聊天摘要的核心 DTO，同时列出提取出的需求、任务和 profile 建议 ID。
@@ -116,12 +129,16 @@ export interface ChatSummaryRecord {
   extractedTaskIds: readonly string[];
   relationshipProfileUpdateIds: readonly string[];
   confirmationRequiredSuggestionIds: readonly string[];
-  generatedBy: "mock-chat-summary-extraction-rules";
-  generationMethod: "fixture" | "rule-based-chat-summary";
+  generatedBy: "mock-chat-summary-extraction-rules" | "live-store-query";
+  generationMethod:
+    | "fixture"
+    | "rule-based-chat-summary"
+    | "live-store-summary"
+    | "live-store-extraction";
   aiProviderRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseReadExecuted: boolean;
+  liveDatabaseWriteExecuted: boolean;
   emailProviderRequested: false;
   calendarProviderRequested: false;
   notificationDelivered: false;
@@ -138,7 +155,7 @@ export interface ExtractedNeed {
   priority: "high" | "medium" | "low";
   source: ChatSummarySourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-chat-summary-extraction-rules";
+  generatedBy: "mock-chat-summary-extraction-rules" | "live-store-query";
   aiProviderRequested: false;
   externalNetworkRequested: false;
 }
@@ -152,7 +169,7 @@ export interface ExtractedTask {
   rationale: string;
   source: ChatSummarySourceReference;
   evidenceIds: readonly string[];
-  generatedBy: "mock-chat-summary-extraction-rules";
+  generatedBy: "mock-chat-summary-extraction-rules" | "live-store-query";
   notificationDelivered: false;
   liveDatabaseWriteExecuted: false;
 }
@@ -191,16 +208,20 @@ export interface ChatSummaryExtractionProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-chat-summary-extraction-only";
+  privacy:
+    | "demo-chat-summary-extraction-only"
+    | "live-chat-summary-extraction-preview";
   generationMethod:
     | "fixture"
     | "rule-based-chat-summary"
     | "rule-based-extraction"
-    | "rule-based-state";
+    | "rule-based-state"
+    | "live-store-summary"
+    | "live-store-extraction";
   aiProviderRequested: false;
   externalNetworkRequested: false;
-  liveDatabaseReadExecuted: false;
-  liveDatabaseWriteExecuted: false;
+  liveDatabaseReadExecuted: boolean;
+  liveDatabaseWriteExecuted: boolean;
   emailProviderRequested: false;
   calendarProviderRequested: false;
   notificationDelivered: false;
@@ -255,8 +276,7 @@ export function chatSummaryExtractionFailureContext(
     chatSummaryExtractionErrorCode: failure.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
-    provenance:
-      "Mock chat summary and extraction failure came from deterministic fixture rules.",
-    service: "chat-summary-and-extraction-mock",
+    provenance: failure.error.provenance.sourceLabel,
+    service: "chat-summary-and-extraction",
   };
 }

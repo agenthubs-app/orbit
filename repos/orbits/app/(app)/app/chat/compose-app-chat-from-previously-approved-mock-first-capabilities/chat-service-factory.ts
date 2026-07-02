@@ -26,7 +26,10 @@ export const appChatConversationServiceFactory =
   createModuleServiceFactory<ChatConversationMessageService>({
     capabilityId: "chat-conversations",
     implementations: {
-      mock: () => createChatConversationMessageService(),
+      live: ({ requestedMode }) =>
+        createChatConversationMessageService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createChatConversationMessageService(requestedMode),
     },
   });
 
@@ -34,7 +37,10 @@ export const appChatWritingAssistServiceFactory =
   createModuleServiceFactory<ChatWritingAssistService>({
     capabilityId: "chat-writing-assist",
     implementations: {
-      mock: () => createChatWritingAssistService(),
+      live: ({ requestedMode }) =>
+        createChatWritingAssistService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createChatWritingAssistService(requestedMode),
     },
   });
 
@@ -42,7 +48,10 @@ export const appChatSummaryExtractionServiceFactory =
   createModuleServiceFactory<ChatSummaryExtractionService>({
     capabilityId: "chat-summary-extraction",
     implementations: {
-      mock: () => createChatSummaryExtractionService(),
+      live: ({ requestedMode }) =>
+        createChatSummaryExtractionService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createChatSummaryExtractionService(requestedMode),
     },
   });
 
@@ -50,7 +59,10 @@ export const appChatPrivacyControlsServiceFactory =
   createModuleServiceFactory<ChatPrivacyControlsService>({
     capabilityId: "chat-privacy-controls",
     implementations: {
-      mock: () => createChatPrivacyControlsService(),
+      live: ({ requestedMode }) =>
+        createChatPrivacyControlsService(requestedMode),
+      mock: ({ requestedMode }) =>
+        createChatPrivacyControlsService(requestedMode),
     },
   });
 

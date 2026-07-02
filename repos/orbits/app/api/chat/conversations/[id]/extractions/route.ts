@@ -68,7 +68,7 @@ export async function GET(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const service = createChatSummaryExtractionService();
-  const result = service.extractConversationSignals(readInput(request, id));
+  const result = await service.extractConversationSignals(readInput(request, id));
 
   return responseForResult(result, mode);
 }

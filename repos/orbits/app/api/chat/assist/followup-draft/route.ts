@@ -82,7 +82,7 @@ export async function POST(request: Request): Promise<Response> {
   // route 不直接调用 AI provider；是否使用 mock/live 由 ChatWritingAssistService 决定。
   const mode = resolveFeatureMode();
   const service = createChatWritingAssistService();
-  const result = service.draftFollowup(await readInput(request));
+  const result = await service.draftFollowup(await readInput(request));
 
   return responseForResult(result, mode);
 }

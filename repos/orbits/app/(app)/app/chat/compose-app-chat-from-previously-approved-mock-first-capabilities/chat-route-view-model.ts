@@ -42,6 +42,7 @@ type ChatRouteResult =
   | ChatPrivacyControlsResult;
 type ChatRouteSuccess = Extract<ChatRouteResult, { success: true }>;
 type ChatRouteFailure = Extract<ChatRouteResult, { success: false }>;
+type AppChatMaybeAsyncResult<TResult> = TResult | Promise<TResult>;
 
 export interface AppChatRouteStateCopyViewModel {
   description: string;
@@ -265,6 +266,12 @@ function isRouteStateSuccess(result: ChatRouteResult): result is ChatRouteSucces
 
 function isRouteStateFailure(result: ChatRouteResult): result is ChatRouteFailure {
   return result.success === false;
+}
+
+async function resolveChatResult<TResult>(
+  result: AppChatMaybeAsyncResult<TResult>,
+): Promise<TResult> {
+  return result;
 }
 
 // route-state 需要从多个服务结果中抽取 evidence，成功和失败格式不同，先收敛到一个 helper。
@@ -563,34 +570,44 @@ function workspaceViewModel(input: {
 }
 
 // 加载固定 route-state，用于测试 empty/pending/failure 分支和恢复路径。
-export function loadAppChatRouteStateViewModel(
+export async function loadAppChatRouteStateViewModel(
   scenario: AppChatRouteScenario,
-): AppChatRouteStateViewModel {
+): Promise<AppChatRouteStateViewModel> {
   const services = createAppChatRouteServices();
-  const conversationResult = services.conversationService.listConversations({
-    scenario,
-  });
-  const threadResult = services.conversationService.getMessageThread({
-    conversationId: "demo-conversation-1",
-    scenario,
-  });
-  const assistResult = services.writingAssistService.draftFollowup({
-    conversationId: "demo-conversation-1",
-    scenario,
-  });
-  const summaryResult =
+  const conversationResult = await resolveChatResult(
+    services.conversationService.listConversations({
+      scenario,
+    }),
+  );
+  const threadResult = await resolveChatResult(
+    services.conversationService.getMessageThread({
+      conversationId: "demo-conversation-1",
+      scenario,
+    }),
+  );
+  const assistResult = await resolveChatResult(
+    services.writingAssistService.draftFollowup({
+      conversationId: "demo-conversation-1",
+      scenario,
+    }),
+  );
+  const summaryResult = await resolveChatResult(
     services.summaryExtractionService.summarizeConversation({
       conversationId: "demo-conversation-1",
       scenario,
-    });
-  const extractionResult =
+    }),
+  );
+  const extractionResult = await resolveChatResult(
     services.summaryExtractionService.extractConversationSignals({
       conversationId: "demo-conversation-1",
       scenario,
-    });
-  const privacyResult = services.privacyControlsService.getPrivacyControls({
-    scenario,
-  });
+    }),
+  );
+  const privacyResult = await resolveChatResult(
+    services.privacyControlsService.getPrivacyControls({
+      scenario,
+    }),
+  );
   const results: ChatRouteResult[] = [
     conversationResult,
     threadResult,
@@ -616,17 +633,19 @@ export async function loadAppChatRouteViewModel(
 
   if (requestedScenario) {
     return {
-      routeState: loadAppChatRouteStateViewModel(requestedScenario),
+      routeState: await loadAppChatRouteStateViewModel(requestedScenario),
       state: "route-state",
     };
   }
 
   const services = createAppChatRouteServices();
-  const conversationsResult = services.conversationService.listConversations();
+  const conversationsResult = await resolveChatResult(
+    services.conversationService.listConversations(),
+  );
 
   if (conversationsResult.success === false) {
     return {
-      routeState: loadAppChatRouteStateViewModel("failure"),
+      routeState: await loadAppChatRouteStateViewModel("failure"),
       state: "route-state",
     };
   }
@@ -635,28 +654,37 @@ export async function loadAppChatRouteViewModel(
 
   if (!conversation) {
     return {
-      routeState: loadAppChatRouteStateViewModel("empty"),
+      routeState: await loadAppChatRouteStateViewModel("empty"),
       state: "route-state",
     };
   }
 
-  const threadResult = services.conversationService.getMessageThread({
-    conversationId: conversation.conversationId,
-  });
-  const assistResult = services.writingAssistService.draftFollowup({
-    contextNote: conversation.oneToOneContext.recommendedFollowup,
-    conversationId: conversation.conversationId,
-    organization: conversation.organization,
-    participantName: conversation.participantName,
-  });
-  const summaryResult = services.summaryExtractionService.summarizeConversation({
-    conversationId: conversation.conversationId,
-  });
-  const extractionResult =
+  const threadResult = await resolveChatResult(
+    services.conversationService.getMessageThread({
+      conversationId: conversation.conversationId,
+    }),
+  );
+  const assistResult = await resolveChatResult(
+    services.writingAssistService.draftFollowup({
+      contextNote: conversation.oneToOneContext.recommendedFollowup,
+      conversationId: conversation.conversationId,
+      organization: conversation.organization,
+      participantName: conversation.participantName,
+    }),
+  );
+  const summaryResult = await resolveChatResult(
+    services.summaryExtractionService.summarizeConversation({
+      conversationId: conversation.conversationId,
+    }),
+  );
+  const extractionResult = await resolveChatResult(
     services.summaryExtractionService.extractConversationSignals({
       conversationId: conversation.conversationId,
-    });
-  const privacyResult = services.privacyControlsService.getPrivacyControls();
+    }),
+  );
+  const privacyResult = await resolveChatResult(
+    services.privacyControlsService.getPrivacyControls(),
+  );
   const results: ChatRouteResult[] = [
     conversationsResult,
     threadResult,
@@ -668,7 +696,7 @@ export async function loadAppChatRouteViewModel(
 
   if (firstFailure(results)) {
     return {
-      routeState: loadAppChatRouteStateViewModel("failure"),
+      routeState: await loadAppChatRouteStateViewModel("failure"),
       state: "route-state",
     };
   }
@@ -681,7 +709,7 @@ export async function loadAppChatRouteViewModel(
     privacyResult.success === false
   ) {
     return {
-      routeState: loadAppChatRouteStateViewModel("failure"),
+      routeState: await loadAppChatRouteStateViewModel("failure"),
       state: "route-state",
     };
   }
@@ -691,12 +719,14 @@ export async function loadAppChatRouteViewModel(
   const selectedAssist = assistResult.data.assists[0];
   const sendResult =
     action === "record-local-reply"
-      ? services.conversationService.sendMessage({
-          body:
-            selectedAssist?.suggestedText ??
-            conversation.oneToOneContext.recommendedFollowup,
-          conversationId: conversation.conversationId,
-        })
+      ? await resolveChatResult(
+          services.conversationService.sendMessage({
+            body:
+              selectedAssist?.suggestedText ??
+              conversation.oneToOneContext.recommendedFollowup,
+            conversationId: conversation.conversationId,
+          }),
+        )
       : null;
   const actionResult =
     sendResult?.success === true ? sendResult.data : null;

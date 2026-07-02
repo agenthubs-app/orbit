@@ -131,6 +131,7 @@ test("chat privacy controls keeps typed contract separate from mock fixture stat
     "CHAT_PRIVACY_PENDING",
     "CHAT_PRIVACY_SENSITIVE_SHARE_CONFIRMATION_REQUIRED",
     "CHAT_PRIVACY_MOCK_FAILED",
+    "CHAT_PRIVACY_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.CHAT_PRIVACY_CONTROLS_ERROR_DEFINITIONS
@@ -557,9 +558,8 @@ test("chat privacy controls API routes return stable envelopes with empty and fa
         chatPrivacyControlsErrorCode: "CHAT_PRIVACY_MOCK_FAILED",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock chat privacy controls failure came from deterministic fixture rules.",
-        service: "chat-privacy-controls-mock",
+        provenance: "Controlled chat privacy controls mock failure",
+        service: "chat-privacy-controls",
       },
     },
   });
@@ -663,14 +663,13 @@ test("chat privacy controls debug route renders all states and live replacement 
 
   for (const requiredText of [
     "Live service files",
-    "ORBIT_CHAT_PRIVACY_CONTROLS_PROVIDER",
+    "ORBIT_MODULE_MODE",
     "mock",
-    "live-privacy-controls",
-    "ORBIT_CHAT_PRIVACY_CONTROLS_DATABASE_URL",
-    "ORBIT_CHAT_PRIVACY_AUDIT_LOG_STREAM",
-    "ORBIT_CHAT_PRIVACY_DELETION_QUEUE",
+    "live",
+    "ORBIT_EVENT_DATABASE_URL",
+    "ORBIT_WORKSPACE_ID",
     "analysis opt-in",
-    "deletion worker",
+    "deletion preview",
     "privacy audit log",
     "private notes",
     "redaction",

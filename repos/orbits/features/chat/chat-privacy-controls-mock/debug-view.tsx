@@ -11,6 +11,7 @@ import {
 import type {
   ChatPrivateNote,
   ChatPrivacyControlsPayload,
+  ChatPrivacyControlsResult,
 } from "../privacy-contract";
 import { createMockChatPrivacyControlsService } from "../mock-privacy-service";
 
@@ -132,12 +133,12 @@ export const CHAT_PRIVACY_CONTROLS_API_PROBES = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live service files live under features/chat/chat-privacy-controls-mock/.",
-  "ORBIT_CHAT_PRIVACY_CONTROLS_PROVIDER switches mock fixtures to live-privacy-controls providers.",
-  "Live replacement requires analysis opt-in storage, a deletion worker, a privacy audit log, private notes redaction, and a confirmation guard.",
+  "Live service files live under features/chat/live-privacy-service.ts and features/chat/storage/.",
+  "ORBIT_MODULE_MODE=live switches mock fixtures to the shared live storage provider.",
+  "Current live mode reads chat context and returns privacy previews without deletion workers or audit-log writes.",
   "AI provider and external share adapters remain blocked until source evidence, provenance, and privacy constraints are preserved.",
-  "Required env vars and deletion or audit permissions must be explicit before live privacy controls are enabled.",
-  "Replacement tests cover success, empty, pending, controlled failure, provider failure, redaction, confirmation, and no-provider-call mock guards.",
+  "Database env vars come from the shared live storage config instead of a privacy-specific provider switch.",
+  "Replacement tests cover success, empty, pending, controlled failure, unconfigured storage, redaction, confirmation, and no-provider-call mock guards.",
 ] as const;
 
 function apiProbeCommand(
@@ -197,6 +198,25 @@ function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {
       ))}
     </div>
   );
+}
+
+function requireSyncChatPrivacyControlsResult(
+  result: ChatPrivacyControlsResult | Promise<ChatPrivacyControlsResult>,
+  label: string,
+): ChatPrivacyControlsResult {
+  const isAsyncResult = (
+    value: ChatPrivacyControlsResult | Promise<ChatPrivacyControlsResult>,
+  ): value is Promise<ChatPrivacyControlsResult> =>
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof value.then === "function";
+
+  if (isAsyncResult(result)) {
+    throw new Error(`${label} returned async chat privacy controls result.`);
+  }
+
+  return result;
 }
 
 function PrivateNoteList({
@@ -389,10 +409,22 @@ function StateMatrix({
 
 export function ChatPrivacyControlsMockDemo() {
   const service = createMockChatPrivacyControlsService();
-  const successResult = service.getPrivacyControls();
-  const emptyResult = service.getPrivacyControls({ scenario: "empty" });
-  const pendingResult = service.getPrivacyControls({ scenario: "pending" });
-  const failureResult = service.getPrivacyControls({ scenario: "failure" });
+  const successResult = requireSyncChatPrivacyControlsResult(
+    service.getPrivacyControls(),
+    "getPrivacyControls",
+  );
+  const emptyResult = requireSyncChatPrivacyControlsResult(
+    service.getPrivacyControls({ scenario: "empty" }),
+    "getPrivacyControls",
+  );
+  const pendingResult = requireSyncChatPrivacyControlsResult(
+    service.getPrivacyControls({ scenario: "pending" }),
+    "getPrivacyControls",
+  );
+  const failureResult = requireSyncChatPrivacyControlsResult(
+    service.getPrivacyControls({ scenario: "failure" }),
+    "getPrivacyControls",
+  );
 
   if (
     successResult.success === false ||
@@ -499,8 +531,8 @@ export function ChatPrivacyControlsMockDemo() {
             <div>
               <dt>Switch mechanism</dt>
               <dd>
-                <code>ORBIT_CHAT_PRIVACY_CONTROLS_PROVIDER</code> remains
-                documented before any live service is wired.
+                <code>ORBIT_MODULE_MODE=live</code> uses the shared live
+                database provider when database configuration is present.
               </dd>
             </div>
           </dl>

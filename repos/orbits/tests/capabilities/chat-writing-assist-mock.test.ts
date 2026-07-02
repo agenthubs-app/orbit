@@ -119,6 +119,7 @@ test("chat writing assist keeps typed contract separate from mock fixture proven
     "CHAT_WRITING_ASSIST_EMPTY",
     "CHAT_WRITING_ASSIST_PENDING",
     "CHAT_WRITING_ASSIST_MOCK_FAILED",
+    "CHAT_WRITING_ASSIST_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.CHAT_WRITING_ASSIST_ERROR_DEFINITIONS
@@ -438,9 +439,8 @@ test("chat writing assist API routes return stable envelopes with empty and fail
         chatWritingAssistErrorCode: "CHAT_WRITING_ASSIST_MOCK_FAILED",
         mode: "mock",
         privacy: "no-relationship-data",
-        provenance:
-          "Mock chat writing assist failure came from deterministic fixture rules.",
-        service: "chat-writing-assist-mock",
+        provenance: "Controlled chat writing assist mock failure",
+        service: "chat-writing-assist",
       },
     },
   });
@@ -534,8 +534,9 @@ test("chat writing assist debug route renders all states and the live replacemen
 
   for (const requiredText of [
     "Live service files",
-    "ORBIT_CHAT_WRITING_ASSIST_PROVIDER",
-    "AI writing provider",
+    "ORBIT_MODULE_MODE",
+    "ORBIT_EVENT_DATABASE_URL",
+    "live-store-query",
     "email",
     "calendar",
     "notification",
