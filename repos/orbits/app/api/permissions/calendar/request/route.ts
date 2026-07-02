@@ -43,9 +43,11 @@ async function readCalendarPermissionInput(
 
 export async function POST(request: Request): Promise<Response> {
   // requestPermission 只是进入授权请求流程，route 不直接访问真实日历。
-  const mode = resolveFeatureMode();
-  const permissionService = createPermissionStateService();
-  const result = permissionService.requestPermission(
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const permissionService = createPermissionStateService(mode);
+  const result = await permissionService.requestPermission(
     await readCalendarPermissionInput(request),
   );
 

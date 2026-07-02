@@ -17,6 +17,7 @@ export const PERMISSION_STATE_ERROR_CODES = [
   "PERMISSION_CAPABILITY_NOT_FOUND",
   "PERMISSION_REQUEST_NOT_ALLOWED",
   "PERMISSION_STATE_MOCK_FAILED",
+  "PERMISSION_STATE_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type PermissionCapability = (typeof PERMISSION_CAPABILITIES)[number];
@@ -101,6 +102,14 @@ export const PERMISSION_STATE_ERROR_DEFINITIONS = {
     recovery:
       "Render the failure state and avoid attempting a live account, device, calendar, email, notification, or analysis call.",
   },
+  PERMISSION_STATE_LIVE_STORE_UNCONFIGURED: {
+    code: "PERMISSION_STATE_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The permission state live store is not configured for this runtime.",
+    recovery:
+      "Configure the shared live record store before using permission live mode.",
+  },
 } as const satisfies Record<
   PermissionStateErrorCode,
   PermissionStateErrorDefinition
@@ -112,8 +121,13 @@ export interface PermissionStateProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-permission-state-only";
-  generationMethod: "fixture" | "rule-based-staged-authorization";
+  privacy: "demo-permission-state-only" | "live-permission-state";
+  generationMethod:
+    | "fixture"
+    | "rule-based-staged-authorization"
+    | "live-store-query"
+    | "live-store-derived-state"
+    | "live-store-request-policy";
 }
 
 // PermissionEvidence 让 UI 能解释为什么某个权限被建议或被阻塞。

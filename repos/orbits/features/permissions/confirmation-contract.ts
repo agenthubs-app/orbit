@@ -101,8 +101,11 @@ export interface ConfirmationGuardProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-confirmation-guard-only";
-  generationMethod: "fixture" | "rule-based-confirmation-guard";
+  privacy: "demo-confirmation-guard-only" | "live-confirmation-guard-policy";
+  generationMethod:
+    | "fixture"
+    | "rule-based-confirmation-guard"
+    | "live-policy-confirmation-guard";
 }
 
 export interface ConfirmationEvidence {

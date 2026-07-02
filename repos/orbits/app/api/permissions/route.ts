@@ -18,10 +18,12 @@ export const dynamic = "force-dynamic";
 // route 只读取 scenario；权限默认值、可请求动作和状态解释由 permission service 负责。
 export async function GET(request: Request): Promise<Response> {
   // GET 是只读权限视图，不发起授权流程。
-  const mode = resolveFeatureMode();
-  const permissionService = createPermissionStateService();
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const permissionService = createPermissionStateService(mode);
   const scenario = new URL(request.url).searchParams.get("scenario");
-  const result = permissionService.listPermissionStates({ scenario });
+  const result = await permissionService.listPermissionStates({ scenario });
 
   if (result.success === false) {
     // permission failure 统一映射成 AppError/envelope。

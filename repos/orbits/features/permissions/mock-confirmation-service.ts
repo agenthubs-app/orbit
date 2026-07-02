@@ -469,15 +469,19 @@ export function confirmationGuardFailureContext(
   result: ConfirmationGuardFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
-  // 失败上下文标记 mock guard 边界，方便调试 confirmation 相关 API。
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     confirmationGuardErrorCode: result.error.code,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock confirmation guard failure came from deterministic fixture rules.",
-    service: "sensitive-action-confirmation-guard",
+      mode === "live"
+        ? "Live confirmation guard failure came from deterministic live safety policy rules."
+        : "Mock confirmation guard failure came from deterministic fixture rules.",
+    service:
+      mode === "live"
+        ? "sensitive-action-confirmation-guard-live-policy"
+        : "sensitive-action-confirmation-guard",
   };
 }
 

@@ -26,6 +26,11 @@ import {
 } from "./fixtures";
 import type { PermissionStateService } from "./service";
 
+export interface MockPermissionStateService extends PermissionStateService {
+  listPermissionStates: (input?: PermissionStateInput) => PermissionStateResult;
+  requestPermission: (input: PermissionRequestInput) => PermissionRequestResult;
+}
+
 // Permission mock service 模拟外部账号授权/设备权限前的 staged review。
 // requestPermission 只创建本地可复核授权请求，不会打开 provider 授权页或读取外部账号。
 const supportedStateScenarios = new Set<PermissionStateScenario>([
@@ -170,7 +175,7 @@ function buildRequestPayload(
   };
 }
 
-export function createMockPermissionStateService(): PermissionStateService {
+export function createMockPermissionStateService(): MockPermissionStateService {
   // list 展示当前权限矩阵；request 创建 staged review，不改变真实授权状态。
   return {
     listPermissionStates(input = {}): PermissionStateResult {

@@ -62,6 +62,7 @@ test("permission contract exposes typed states for every staged authorization bo
     "PERMISSION_CAPABILITY_NOT_FOUND",
     "PERMISSION_REQUEST_NOT_ALLOWED",
     "PERMISSION_STATE_MOCK_FAILED",
+    "PERMISSION_STATE_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.PERMISSION_STATE_ERROR_DEFINITIONS
