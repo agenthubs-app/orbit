@@ -132,10 +132,12 @@ test("app home hub entry cards link to live app routes", () => {
   assert.match(homeUiSource, /href: "\/app\/profile"/);
   assert.match(homeUiSource, /href: "\/app\/contacts"/);
   assert.match(homeUiSource, /href: "\/app\/schedule"/);
-  assert.match(homeUiSource, /mobileTitle: t\(\{ en: "Profile", zh: "画像" \}\)/);
-  assert.match(homeUiSource, /mobileTitle: t\(\{ en: "Contacts", zh: "名片夹" \}\)/);
-  assert.match(homeUiSource, /mobileTitle: t\(\{ en: "Schedule", zh: "日程" \}\)/);
-  assert.doesNotMatch(homeUiSource, /mobileTitle: t\(\{ en: "Universal profile", zh: "通用画像" \}\)/);
+  assert.match(homeUiSource, /title: t\(\{ en: "Universal profile", zh: "通用画像" \}\)/);
+  assert.match(homeUiSource, /sub: t\(\{ en: "Meetings and interaction log", zh: "约见与交往记录" \}\)/);
+  assert.match(homeUiSource, /<h3 className="h-section"[^>]*>\{item\.title\}<\/h3>/);
+  assert.match(homeUiSource, /<span style=\{\{ color: "var\(--text-3\)".*>\{item\.sub\}<\/span>/);
+  assert.doesNotMatch(homeUiSource, /mobileTitle:/);
+  assert.doesNotMatch(homeUiSource, /mobileSub:/);
   assert.doesNotMatch(homeUiSource, /href: "\/home\/(?:profile|cards|schedule)"/);
 });
 

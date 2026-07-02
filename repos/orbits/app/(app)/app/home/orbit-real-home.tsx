@@ -25,9 +25,9 @@ function homeFilters(t: Translate): Array<[HomeFilter, string]> {
 
 function hubEntryCards(t: Translate) {
   return [
-    { g: "g-emerald", href: "/app/profile", icon: "user", mobileSub: t({ en: "Reuse", zh: "复用" }), mobileTitle: t({ en: "Profile", zh: "画像" }), sub: t({ en: "Auto-reused for every event", zh: "报名各场自动复用" }), title: t({ en: "Universal profile", zh: "通用画像" }) },
-    { g: "g-rose", href: "/app/contacts", icon: "wallet", mobileSub: t({ en: "CRM", zh: "CRM" }), mobileTitle: t({ en: "Contacts", zh: "名片夹" }), sub: t({ en: "Post-event contact CRM", zh: "会后人脉 CRM" }), title: t({ en: "Contacts", zh: "名片夹" }) },
-    { g: "g-sky", href: "/app/schedule", icon: "clock", mobileSub: t({ en: "Meet", zh: "约见" }), mobileTitle: t({ en: "Schedule", zh: "日程" }), sub: t({ en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ en: "Schedule", zh: "日程安排" }) },
+    { g: "g-emerald", href: "/app/profile", icon: "user", sub: t({ en: "Auto-reused for every event", zh: "报名各场自动复用" }), title: t({ en: "Universal profile", zh: "通用画像" }) },
+    { g: "g-rose", href: "/app/contacts", icon: "wallet", sub: t({ en: "Post-event contact CRM", zh: "会后人脉 CRM" }), title: t({ en: "Contacts", zh: "名片夹" }) },
+    { g: "g-sky", href: "/app/schedule", icon: "clock", sub: t({ en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ en: "Schedule", zh: "日程安排" }) },
   ];
 }
 
@@ -241,12 +241,15 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
             <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 22, fontWeight: 700 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 11.5 }}>{label}</div></div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
           {hubEntryCards(t).map((item) => (
-            <a className="card card-hover" href={item.href} key={item.href} onClick={(event) => { event.preventDefault(); orbitNavigate(item.href); }} style={{ flex: 1, padding: 14, textDecoration: "none" }}>
-              <span className={`avatar ${item.g}`} style={{ borderRadius: 11, fontSize: 0, height: 38, width: 38 }}><Icon color="var(--on-dark)" name={item.icon} size={19} /></span>
-              <h3 className="h-section" style={{ color: "var(--ink)", display: "block", margin: "10px 0 0" }}>{item.mobileTitle}</h3>
-              <span style={{ color: "var(--text-3)", display: "block", fontSize: 11.5, marginTop: 1 }}>{item.mobileSub}</span>
+            <a className="card card-hover" href={item.href} key={item.href} onClick={(event) => { event.preventDefault(); orbitNavigate(item.href); }} style={{ alignItems: "center", display: "flex", gap: 12, padding: 14, textDecoration: "none" }}>
+              <span className={`avatar ${item.g}`} style={{ borderRadius: 11, flexShrink: 0, fontSize: 0, height: 38, width: 38 }}><Icon color="var(--on-dark)" name={item.icon} size={19} /></span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <h3 className="h-section" style={{ color: "var(--ink)", display: "block", margin: 0 }}>{item.title}</h3>
+                <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginTop: 2 }}>{item.sub}</span>
+              </span>
+              <Icon color="var(--text-4)" name="chevR" size={17} />
             </a>
           ))}
         </div>
