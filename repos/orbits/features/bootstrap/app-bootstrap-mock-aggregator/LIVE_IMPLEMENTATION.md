@@ -1,58 +1,75 @@
 # App Bootstrap Mock Aggregator 的 Live 实现说明
 
-## Live Service 和 Provider 文件
+## 当前实现
 
-- `features/bootstrap/app-bootstrap-mock-aggregator/live-service.ts` 应该实现 `features/bootstrap/service.ts` 里的 `AppBootstrapService`。
-- `features/bootstrap/app-bootstrap-mock-aggregator/providers/account-provider.ts` 负责读取已登录账号和 workspace 上下文。
-- `features/bootstrap/app-bootstrap-mock-aggregator/providers/profile-provider.ts` 负责读取用户 profile 摘要和手动填写的 profile 偏好。
-- `features/bootstrap/app-bootstrap-mock-aggregator/providers/event-provider.ts` 负责读取即将开始的活动 readiness 记录。
-- `features/bootstrap/app-bootstrap-mock-aggregator/providers/relationship-provider.ts` 负责执行已批准的 live database 聚合，生成 connection summary、pending tasks、top agent actions、dashboard summary、permission summary 和 notification summary。
+App Bootstrap 已经有 live 实现：
+
+- `features/bootstrap/live-service.ts` 实现 `AppBootstrapService`。
+- `features/bootstrap/storage/bootstrap-live-record-provider.ts` 从 shared live record store 读取远程 `orbit_records`。
+- `features/bootstrap/service-factory.ts` 在 `ORBIT_MODULE_MODE=live` 下注册 live service。
+- `/api/app/bootstrap` 使用 `ORBIT_MODULE_MODE ?? ORBIT_FEATURE_MODE` 选择 service mode，并返回对应 `x-orbit-feature-mode` header。
+
+## 读取的 live collections
+
+当前 live provider 读取这些 collections：
+
+- `accounts`
+- `profiles`
+- `contacts`
+- `connections`
+- `events`
+- `tasks`
+- `agentActions`
+- `permissions`
+- `notifications`
+- `evidence`
+
+provider 只负责把 `record.payload` 映射回已有领域 DTO。不要把这些业务字段加进 `shared/storage/live-record-store.ts`；storage 只负责通用 record envelope。
 
 ## 切换机制
 
-在现有 feature-mode guard 后面使用 `ORBIT_APP_BOOTSTRAP_PROVIDER=mock|live`。
+使用统一模块模式：
 
-`mock` 模式必须继续使用 `createMockAppBootstrapService`。`live` 模式只有在 provider 文件、权限检查和替换测试都准备好之后，才可以解析到 live service。
+```bash
+export ORBIT_MODULE_MODE=live
+```
 
-`hybrid` 模式不要静默丢字段。如果某个字段还没有 live provider，就优先使用 mock 数据，并保留 provenance。
+live database 连接仍通过 shared storage 配置读取：
 
-## 必需环境变量和权限
+- `ORBIT_EVENT_DATABASE_URL`、`ORBIT_LIVE_DATABASE_URL` 或 `ORBIT_DATABASE_URL`
+- `ORBIT_WORKSPACE_ID`
 
-- `ORBIT_APP_BOOTSTRAP_PROVIDER`
-- 用于读取 live account 的 auth/session provider 配置。
-- 用于 live database 聚合的数据库连接变量。
-- 如果 calendar 派生的 upcoming events 或 readiness 会影响 bootstrap，必须先有 calendar 权限。
-- 如果 email relationship signals 会影响 tasks、agent actions 或 connection summary，必须先有 email 权限。
-- 如果 notification summary 要包含 live pending deliveries，必须先有 notification 权限。
+不要使用旧的 `ORBIT_APP_BOOTSTRAP_PROVIDER` 开关。
 
 ## 隐私 / Privacy 和 Provenance 约束
 
-首屏里的这些字段都必须带 source 或 evidence provenance：
+live bootstrap 是只读聚合边界：
 
-- account
-- profile
-- upcoming events
-- connection summary
-- pending tasks
-- top agent actions
-- dashboard summary
-- permission summary
-- notification summary
+- 不写数据库。
+- 不发送通知。
+- 不调用 AI provider。
+- 不调用 calendar、email、device 或外部 provider。
+- 不把 mock-only evidence ids 复制到 live payload。
 
-live service 不能在没有 source references 或 evidence ids 的情况下推断 relationship context。
+live payload 使用 `privacy="live-app-bootstrap"`，并把 `databaseReadExecuted=true`、`databaseWriteExecuted=false`、`liveDatabaseAggregationExecuted=true` 写进 provenance。这个 flag 表示本次执行了 live database aggregation。`taskLimit` 只改变 `generationMethod`，不能覆盖 storage provider 的 `sourceLabel`。
 
-server-side personalization 和 live database aggregation 必须在 provenance flags 里可见。这样 evaluator 才能判断这次走的是 live path。
+## Failure 和 Recovery
 
-`topAgentActions` 里的敏感动作必须继续要求 confirmation。任何外部副作用发生前，都要先经过 confirmation guard。
+未配置 live storage 时返回 `APP_BOOTSTRAP_LIVE_STORE_UNCONFIGURED`，API envelope 使用 503。controlled failure 使用 `APP_BOOTSTRAP_LIVE_FAILED`。
 
-live service 不能把只属于 mock 的 evidence ids 复制到生产数据里。
+empty、pending 和 failure 必须继续作为明确 envelope 返回，不能藏在 partial success payload 里。
 
-empty、pending 和 controlled failure 必须继续作为明确的 API envelope 返回，不能藏在 partial success payload 里。
+## Replacement tests
 
-## 替换测试 / Replacement tests
+- `tests/capabilities/app-bootstrap-live-store.test.ts` 覆盖 memory live store 聚合、未配置 live store fail-closed、factory live registration、API live envelope。
+- `tests/capabilities/app-bootstrap-mock-aggregator.test.ts` 继续锁定 mock provider-free 边界、debug view 和 API mock envelopes。
+- `tests/pages/app-workbench-page.test.tsx` 覆盖 `/app` 通过 service factory 消费 bootstrap payload。
 
-- 替换 mock provider guard 测试，证明 `ORBIT_APP_BOOTSTRAP_PROVIDER=mock` 仍然不会触发 network、database、AI、calendar、email、notification 或 device 调用。
-- 增加 live service 测试，覆盖 success、empty、pending 和 controlled failure envelope。
-- 增加 contract 测试，证明 live service 返回的 top-level DTO 字段和 mock 一致：first-screen account, profile, upcoming events, connection summary, pending tasks, top agent actions, dashboard summary, permission summary, and notification summary。
-- 增加权限测试，证明 calendar permission、email permission 和 notification permission 会分别 gate 对应的 live 字段。
-- 增加 provenance 测试，证明每个 aggregate 字段都包含 evidence ids 或 source references。
+## 后续方向
+
+当前 live bootstrap 直接读 shared live record store。等各 feature live service 的行为更稳定后，可以考虑把 bootstrap 从直接读取 collections 改为并发调用各 feature service。那时必须保留：
+
+- 超时和错误归因。
+- partial recovery。
+- 每个区块的 source refs/evidence ids。
+- no-write/no-provider/no-notification 副作用边界。

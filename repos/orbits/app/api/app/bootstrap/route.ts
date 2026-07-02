@@ -40,9 +40,11 @@ function readInput(request: Request): AppBootstrapInput {
 
 export async function GET(request: Request): Promise<Response> {
   // scenario/taskLimit 用于本地演示和测试不同启动状态，不触发真实 provider。
-  const mode = resolveFeatureMode();
-  const bootstrapService = createAppBootstrapService();
-  const result = bootstrapService.getAppBootstrap(readInput(request));
+  const mode = resolveFeatureMode(
+    process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
+  );
+  const bootstrapService = createAppBootstrapService(mode);
+  const result = await bootstrapService.getAppBootstrap(readInput(request));
 
   if (result.success === false) {
     const appError = appBootstrapFailureToAppError(result);

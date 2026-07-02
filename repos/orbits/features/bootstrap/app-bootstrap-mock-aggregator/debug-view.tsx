@@ -134,10 +134,10 @@ const appBootstrapApiProbes = [
 ] as const;
 
 const liveHandoffEvidenceExcerpts = [
-  "Live files live under features/bootstrap/app-bootstrap-mock-aggregator/.",
-  "ORBIT_APP_BOOTSTRAP_PROVIDER switches deterministic fixtures to live providers.",
-  "Live providers replace mock first-screen aggregation with server-side personalization and live database aggregation.",
-  "Calendar permission, email permission, and notification permission are required before those signals affect the bootstrap.",
+  "Live files live under features/bootstrap/live-service.ts and features/bootstrap/storage/.",
+  "ORBIT_MODULE_MODE=live switches deterministic fixtures to the shared live record store provider.",
+  "Live providers replace mock first-screen aggregation with source-backed live database aggregation.",
+  "Permission records are surfaced as a summary, while bootstrap stays read-only and does not call calendar, email, or notification providers.",
   "privacy and provenance stay attached to every first-screen aggregate field.",
   "replacement tests cover success, empty, pending, controlled failure, and mock provider guards.",
 ] as const;
@@ -759,8 +759,8 @@ export function AppBootstrapMockAggregatorDemo() {
             <div>
               <dt>Switch mechanism</dt>
               <dd>
-                <code>ORBIT_APP_BOOTSTRAP_PROVIDER</code> remains documented
-                before live bootstrap providers are wired.
+                <code>ORBIT_MODULE_MODE=live</code> reads the shared live
+                record store through the bootstrap service factory.
               </dd>
             </div>
           </dl>

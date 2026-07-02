@@ -83,6 +83,8 @@ test("app bootstrap contract exports typed fixture service and error definitions
   assert.match(serviceSource, /interface AppBootstrapService/);
   assert.match(serviceSource, /getAppBootstrap/);
   assert.deepEqual(contract.APP_BOOTSTRAP_ERROR_CODES, [
+    "APP_BOOTSTRAP_LIVE_FAILED",
+    "APP_BOOTSTRAP_LIVE_STORE_UNCONFIGURED",
     "APP_BOOTSTRAP_MOCK_FAILED",
   ]);
   assert.equal(
@@ -366,7 +368,7 @@ test("app bootstrap debug route renders all states and live replacement handoff"
   assert.match(html, /GET \/api\/app\/bootstrap\?scenario=pending/);
   assert.match(html, /GET \/api\/app\/bootstrap\?scenario=failure/);
   assert.match(html, new RegExp(liveDocPath));
-  assert.match(html, /ORBIT_APP_BOOTSTRAP_PROVIDER/);
+  assert.match(html, /ORBIT_MODULE_MODE=live/);
   assert.match(html, /app-bootstrap-workbench/);
   assert.match(
     html,
@@ -375,24 +377,24 @@ test("app bootstrap debug route renders all states and live replacement handoff"
 
   assert.match(
     liveDoc,
-    /features\/bootstrap\/app-bootstrap-mock-aggregator\/live-service\.ts/,
+    /features\/bootstrap\/live-service\.ts/,
   );
   assert.match(
     liveDoc,
-    /features\/bootstrap\/app-bootstrap-mock-aggregator\/providers\//,
+    /features\/bootstrap\/storage\/bootstrap-live-record-provider\.ts/,
   );
-  assert.match(liveDoc, /ORBIT_APP_BOOTSTRAP_PROVIDER/);
-  assert.match(liveDoc, /server-side personalization/i);
+  assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
+  assert.match(liveDoc, /databaseReadExecuted=true/);
+  assert.match(liveDoc, /databaseWriteExecuted=false/);
   assert.match(liveDoc, /live database aggregation/i);
-  assert.match(liveDoc, /calendar permission/i);
-  assert.match(liveDoc, /email permission/i);
-  assert.match(liveDoc, /notification permission/i);
+  assert.match(liveDoc, /AI provider/i);
+  assert.match(liveDoc, /calendar/i);
+  assert.match(liveDoc, /notification/i);
   assert.match(liveDoc, /privacy/i);
   assert.match(liveDoc, /provenance/i);
-  assert.match(
-    liveDoc,
-    /first-screen account, profile, upcoming events, connection summary, pending tasks, top agent actions, dashboard summary, permission summary, and notification summary/i,
-  );
+  assert.match(liveDoc, /accounts/);
+  assert.match(liveDoc, /profiles/);
+  assert.match(liveDoc, /agentActions/);
   assert.match(liveDoc, /empty/i);
   assert.match(liveDoc, /pending/i);
   assert.match(liveDoc, /controlled failure/i);

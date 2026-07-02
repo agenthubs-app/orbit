@@ -22,6 +22,10 @@ import {
 } from "./fixtures";
 import type { AppBootstrapService } from "./service";
 
+export interface MockAppBootstrapService extends AppBootstrapService {
+  getAppBootstrap: (input?: AppBootstrapInput) => AppBootstrapResult;
+}
+
 const supportedScenarios = new Set<AppBootstrapScenario>([
   "success",
   "empty",
@@ -115,7 +119,7 @@ function applyTaskLimit(
   };
 }
 
-export function createMockAppBootstrapService(): AppBootstrapService {
+export function createMockAppBootstrapService(): MockAppBootstrapService {
   // 应用启动页只依赖这个 service contract，不需要感知背后是 mock 还是真实实现。
   return {
     getAppBootstrap(input = {}): AppBootstrapResult {

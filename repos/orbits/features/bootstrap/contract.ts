@@ -7,6 +7,8 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // 它把账号、资料、活动、任务、权限、通知摘要打包成一个稳定 payload，
 // 让 UI 启动时不必直接拼多个 feature service 的 fixture。
 export const APP_BOOTSTRAP_ERROR_CODES = [
+  "APP_BOOTSTRAP_LIVE_FAILED",
+  "APP_BOOTSTRAP_LIVE_STORE_UNCONFIGURED",
   "APP_BOOTSTRAP_MOCK_FAILED",
 ] as const;
 
@@ -31,6 +33,22 @@ export interface AppBootstrapErrorDefinition {
 }
 
 export const APP_BOOTSTRAP_ERROR_DEFINITIONS = {
+  APP_BOOTSTRAP_LIVE_FAILED: {
+    code: "APP_BOOTSTRAP_LIVE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The app bootstrap live aggregator returned a controlled failure state.",
+    recovery:
+      "Render the app bootstrap live failure state, keep provider-backed actions off, and inspect the source-backed storage graph before retrying.",
+  },
+  APP_BOOTSTRAP_LIVE_STORE_UNCONFIGURED: {
+    code: "APP_BOOTSTRAP_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The app bootstrap live aggregator requires a configured live record store.",
+    recovery:
+      "Configure the live database environment and workspace before running app bootstrap in live mode.",
+  },
   APP_BOOTSTRAP_MOCK_FAILED: {
     code: "APP_BOOTSTRAP_MOCK_FAILED",
     appCode: "SERVICE_UNAVAILABLE",
@@ -44,25 +62,27 @@ export const APP_BOOTSTRAP_ERROR_DEFINITIONS = {
 export type AppBootstrapSourceReference = SourceReferenceDTO & {
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-app-bootstrap-rules";
+  generatedBy: "live-store-query" | "mock-app-bootstrap-rules";
 };
 
 // Bootstrap provenance 记录首屏聚合有没有触碰真实后端或外部 provider。
-// 当前所有副作用标记都固定为 false，保证 mock 边界可审计。
+// mock 固定 false；live 只允许读取共享 storage，不允许写入或调用外部 provider。
 export interface AppBootstrapProvenance {
   source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-app-bootstrap-only";
+  privacy: "demo-app-bootstrap-only" | "live-app-bootstrap";
   generationMethod:
     | "fixture"
+    | "live-store-query"
+    | "live-store-task-limit"
     | "rule-based-empty-state"
     | "rule-based-pending-state"
     | "rule-based-task-limit"
     | "local-remote-store-query";
   serverSidePersonalizationExecuted: false;
-  liveDatabaseAggregationExecuted: false;
+  liveDatabaseAggregationExecuted: boolean;
   externalNetworkRequested: false;
   databaseReadExecuted: boolean;
   databaseWriteExecuted: false;
@@ -79,7 +99,7 @@ export interface AppBootstrapAccount {
   accountId: string;
   workspaceName: string;
   role: string;
-  plan: "mock-pro";
+  plan: "live-relationship-os" | "mock-pro";
   timezone: string;
   evidenceIds: readonly string[];
   sourceRefs: readonly AppBootstrapSourceReference[];
@@ -210,6 +230,21 @@ export function appBootstrapFailureContext(
   result: AppBootstrapFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  if (
+    result.error.code === "APP_BOOTSTRAP_LIVE_FAILED" ||
+    result.error.code === "APP_BOOTSTRAP_LIVE_STORE_UNCONFIGURED"
+  ) {
+    return {
+      appBootstrapErrorCode: result.error.code,
+      boundary: "developer-admin",
+      mode,
+      privacy: "no-relationship-data",
+      provenance:
+        "Live app bootstrap failure came from the configured storage boundary.",
+      service: "app-bootstrap-live",
+    };
+  }
+
   return {
     appBootstrapErrorCode: result.error.code,
     boundary: "developer-admin",
