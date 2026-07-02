@@ -16,6 +16,20 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
+type RoutePage = (props: {
+  searchParams: Promise<Record<string, string>>;
+}) => Promise<Parameters<typeof renderToStaticMarkup>[0]>;
+
+async function renderLiveModePage(importPath: string): Promise<string> {
+  const pageModule = (await import(importPath)) as { default: RoutePage };
+
+  return renderToStaticMarkup(
+    await pageModule.default({
+      searchParams: Promise.resolve({ mode: "live" }),
+    }),
+  );
+}
+
 async function withUnconfiguredLiveStorage<T>(
   run: () => Promise<T>,
 ): Promise<T> {
@@ -68,14 +82,21 @@ const homeRoutes = [
   },
 ] as const;
 
-test("web root stays on public landing instead of live app home", () => {
+test("web root delegates to the live app home route", () => {
   const pageSource = source("app/page.tsx");
 
-  assert.match(pageSource, /OrbitRealLandingPage/);
-  assert.doesNotMatch(pageSource, /loadAppHomeRouteViewModel/);
-  assert.doesNotMatch(pageSource, /HomeRouteStateBoundary/);
-  assert.doesNotMatch(pageSource, /OrbitRealHome/);
-  assert.doesNotMatch(pageSource, /web-root-home-route/);
+  assert.match(pageSource, /\.\/\(app\)\/app\/page/);
+  assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
+});
+
+test("web root renders the live app home route boundary", async () => {
+  await withUnconfiguredLiveStorage(async () => {
+    const html = await renderLiveModePage("../../app/page");
+
+    assert.match(html, /app-root-home-route/);
+    assert.match(html, /Home could not load/);
+    assert.doesNotMatch(html, /让对的人，进入你的商业轨道/);
+  });
 });
 
 for (const route of homeRoutes) {
@@ -89,16 +110,7 @@ for (const route of homeRoutes) {
     assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
 
     await withUnconfiguredLiveStorage(async () => {
-      const pageModule = await import(route.importPath);
-      const Page =
-        typeof pageModule.default === "function"
-          ? pageModule.default
-          : pageModule.default?.default;
-      const html = renderToStaticMarkup(
-        await Page({
-          searchParams: Promise.resolve({ mode: "live" }),
-        }),
-      );
+      const html = await renderLiveModePage(route.importPath);
 
       assert.match(html, new RegExp(route.marker));
       assert.match(html, /Home could not load/);
