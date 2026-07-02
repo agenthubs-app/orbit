@@ -307,14 +307,17 @@ function ProfileReadinessSplit({
   );
 }
 
-export function AppProfileCommandCenter({
+export async function AppProfileCommandCenter({
   searchParams,
 }: AppProfileCommandCenterProps = {}) {
-  const viewModel = loadAppProfileRouteViewModel(searchParams);
+  const viewModel = await loadAppProfileRouteViewModel(searchParams);
 
   if (viewModel.state === "route-state") {
     return (
-      <div className="app-profile-route">
+      <div
+        className="app-profile-route"
+        data-error-code={viewModel.routeState.errorCode ?? undefined}
+      >
         <style>{appProfileStyles}</style>
         <RouteStateBoundary routeState={viewModel.routeState} />
       </div>

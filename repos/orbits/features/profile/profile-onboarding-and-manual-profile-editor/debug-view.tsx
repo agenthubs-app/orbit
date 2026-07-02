@@ -9,9 +9,10 @@ import {
   WorkbenchFrame,
   WorkbenchSurface,
 } from "../../../shared/ui/primitives";
-import { PROFILE_ERROR_DEFINITIONS } from "../contract";
+import { PROFILE_ERROR_DEFINITIONS, type ProfileResult } from "../contract";
 import { mockProfileUpdateInput } from "../fixtures";
 import { createMockProfileService } from "../mock-service";
+import type { ProfileServiceResult } from "../service";
 
 export const PROFILE_ONBOARDING_CAPABILITY_SLUG =
   "profile-onboarding-and-manual-profile-editor";
@@ -62,13 +63,42 @@ function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {
   );
 }
 
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
+}
+
+function requireSyncProfileResult(
+  result: ProfileServiceResult<ProfileResult>,
+): ProfileResult {
+  if (isPromiseLike(result)) {
+    throw new Error(
+      "The profile onboarding capability demo only supports synchronous mock profile services.",
+    );
+  }
+
+  return result;
+}
+
 export function ProfileOnboardingCapabilityDemo() {
   const profileService = createMockProfileService();
-  const successState = profileService.getProfile();
-  const emptyState = profileService.getProfile({ scenario: "empty" });
-  const pendingState = profileService.getPendingManualReview();
-  const updateState = profileService.updateProfile(mockProfileUpdateInput);
-  const failureState = profileService.updateProfile({ displayName: "" });
+  const successState = requireSyncProfileResult(profileService.getProfile());
+  const emptyState = requireSyncProfileResult(
+    profileService.getProfile({ scenario: "empty" }),
+  );
+  const pendingState = requireSyncProfileResult(
+    profileService.getPendingManualReview(),
+  );
+  const updateState = requireSyncProfileResult(
+    profileService.updateProfile(mockProfileUpdateInput),
+  );
+  const failureState = requireSyncProfileResult(
+    profileService.updateProfile({ displayName: "" }),
+  );
 
   return (
     <WorkbenchFrame>

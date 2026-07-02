@@ -49,6 +49,7 @@ test("profile signal review queue contract exposes typed chat, activity, and con
     "PROFILE_SIGNAL_SUGGESTION_NOT_FOUND",
     "PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED",
     "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED",
+    "PROFILE_SIGNAL_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     contract.PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_DEFINITIONS
@@ -249,16 +250,15 @@ test("profile signal review queue API routes return stable envelopes and documen
     error: {
       code: "SERVICE_UNAVAILABLE",
       message:
-        "The mock profile signal review queue is pinned to a controlled failure scenario.",
+        "The profile signal review queue is pinned to a controlled failure scenario.",
       context: {
         boundary: "developer-admin",
         mode: "mock",
         privacy: "no-relationship-data",
         profileSignalReviewQueueErrorCode:
           "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED",
-        provenance:
-          "Mock profile signal review failure came from deterministic fixture rules.",
-        service: "profile-signal-review-queue-mock",
+        provenance: "Mock profile signal review failure rule",
+        service: "profile-signal-review-queue",
       },
     },
   });
@@ -268,16 +268,15 @@ test("profile signal review queue API routes return stable envelopes and documen
     success: false,
     error: {
       code: "NOT_FOUND",
-      message: "No mock profile update suggestion matches that id.",
+      message: "No profile update suggestion matches that id.",
       context: {
         boundary: "developer-admin",
         mode: "mock",
         privacy: "no-relationship-data",
         profileSignalReviewQueueErrorCode:
           "PROFILE_SIGNAL_SUGGESTION_NOT_FOUND",
-        provenance:
-          "Mock profile signal review failure came from deterministic fixture rules.",
-        service: "profile-signal-review-queue-mock",
+        provenance: "Mock profile signal review failure rule",
+        service: "profile-signal-review-queue",
       },
     },
   });

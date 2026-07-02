@@ -3,16 +3,27 @@
 ## Live Service/Provider Files
 
 - `features/profile/service.ts` remains the typed boundary for reading profile data, scoring completeness, and applying manual profile edits.
-- `features/profile/service-factory.ts` is the current mock provider used by `/app/profile`; replace it with a live provider such as `features/profile/live-service.ts` when real account storage exists.
-- `features/profile/service-factory.ts` is the current document extraction provider; replace it with a live provider such as `features/profile/live-extraction-service.ts` when OCR, parsing, or AI extraction is approved.
-- `features/profile/service-factory.ts` is the current profile update review provider; replace it with a live provider such as `features/profile/live-signal-service.ts` when chat, activity, contact, email, or calendar signals are live.
+- `features/profile/service-factory.ts` resolves manual profile, document extraction, and profile signal review services in `mock`, `hybrid`, or `live` mode.
+- `features/profile/live-service.ts` reads generated `profiles` and `accounts` records from shared live storage and upserts explicit manual profile edits.
+- `features/profile/live-signal-service.ts` reads generated profile, contact, connection, message, interaction-memory, and evidence records to produce review-only profile update suggestions.
+- `features/profile/live-extraction-service.ts` is an explicit live policy provider. It returns empty resume/business-card extraction payloads with `live-policy-no-op` provenance until an approved OCR, parser, or AI extraction provider exists.
+- `app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts` composes the three profile child services into the `/app/profile` route bundle.
 - `app/api/profile/route.ts` and `app/api/profile/update-suggestions/route.ts` are the API evidence surfaces that should keep returning the shared success/failure envelope.
 
 ## Switch Mechanism
 
-The route currently imports mock service factories directly so Sprint 58 stays mock-first and deterministic. The live switch should move provider selection into profile service factories that call `resolveFeatureMode()`, default to mock mode, and choose mock, hybrid, or live providers without branching inside nested UI components.
+The route now resolves profile services through a route-local bundle. The bundle
+passes the requested module mode into `features/profile/service-factory.ts`;
+`ORBIT_MODULE_MODE=live` selects live profile reads, live signal suggestions,
+and the live document-extraction policy provider. `hybrid` continues to inherit
+mock behavior for providers that have not opted into a hybrid implementation.
 
-`app/(app)/app/profile/page.tsx` should continue to render the route adapter. Only the adapter or a route-local factory should change from mock factories to feature-mode-aware providers.
+`app/(app)/app/profile/page.tsx` now awaits `loadAppProfileRouteViewModel()`
+directly. Successful route models are adapted through
+`profile-view-model-adapter.ts` and rendered by `OrbitRealProfile`; loading,
+empty, and failure states stay at the route boundary through `StateView`. This
+keeps the product profile editor on the real UI while preserving the
+live-capable service bundle and controlled failure behavior.
 
 The current route action is `action=complete-profile-field`. It previews the
 manual profile editor patch for the profile completeness field reported by the
@@ -76,8 +87,10 @@ suggestions stay blocked until Ari Lane confirms the save.
 
 ## Replacement Tests
 
-- Replace the route test's mock service assertions with factory-mode assertions that prove `/app/profile` composes the same profile, extraction, and update review contracts in mock, hybrid, and live modes.
-- Add provider tests for live profile reads, current-field manual profile saves, document extraction, and suggestion acceptance with provenance preserved.
+- `tests/pages/app-profile-live-route-services.test.ts` proves `/app/profile` composes profile, extraction, and update review services in live mode, fails closed when storage is unconfigured, renders the real Orbit profile editor, and preserves editable identity fields needed by the product UI.
+- `tests/capabilities/profile-document-extraction-live-policy.test.ts` proves the live document extraction provider is policy-only and never falls back to mock extraction.
+- `tests/capabilities/profile-live-store.test.ts` proves live profile reads and manual profile saves preserve provenance.
+- `tests/capabilities/profile-signal-review-live-store.test.ts` proves live profile signal suggestions return review-only patches without profile writes.
 - Add API route tests for `GET /api/profile`, `PUT /api/profile`, `GET /api/profile/update-suggestions`, and suggestion acceptance failure paths.
 - Add privacy regression tests for missing permissions, unsupported document types, redacted provider failures, and accepted-patch review before persistence.
 - Add a route regression proving the primary `/app/profile` action follows
@@ -101,3 +114,18 @@ suggestions stay blocked until Ari Lane confirms the save.
   route test output, including the `StateView` boundary marker and the
   `data-route-state-url`, `data-action-evidence`, and `data-task-result` local
   preview markers.
+
+## Current Verification
+
+- Focused profile tests passed:
+  `tests/capabilities/profile-live-store.test.ts`,
+  `tests/capabilities/profile-signal-review-live-store.test.ts`,
+  `tests/pages/app-profile-live-route-services.test.ts`, and
+  `tests/pages/orbit-hybrid-route-view-models.test.ts`.
+- `npm run lint` and `npm run build` passed for the current workspace.
+- Browser verification for `/app/profile` showed `data-orbit-real-page="profile"`
+  once, no `.app-profile-route` command-center DOM, and no profile failure
+  state on desktop or mobile viewports.
+- Remote API validation for `/api/profile` returned `200`,
+  `x-orbit-feature-mode: live`, profile owner `結城 航太郎`, organization
+  `Orbit Generated Relationship Workspace`, and completeness score 100.

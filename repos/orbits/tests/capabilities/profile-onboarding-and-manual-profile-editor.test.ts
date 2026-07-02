@@ -44,6 +44,7 @@ test("profile contract exposes onboarding, update, completeness, and controlled 
     "PROFILE_REQUIRED",
     "PROFILE_VALIDATION_FAILED",
     "PROFILE_UPDATE_PENDING",
+    "PROFILE_LIVE_STORE_UNCONFIGURED",
   ]);
   assert.equal(
     PROFILE_ERROR_DEFINITIONS.PROFILE_VALIDATION_FAILED.appCode,

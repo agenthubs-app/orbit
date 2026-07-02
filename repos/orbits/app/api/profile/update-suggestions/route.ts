@@ -21,7 +21,7 @@ export async function GET(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
   const signalService = createProfileSignalReviewQueueService();
   const scenario = new URL(request.url).searchParams.get("scenario");
-  const result = signalService.listUpdateSuggestions({ scenario });
+  const result = await signalService.listUpdateSuggestions({ scenario });
 
   if (result.success === false) {
     // review queue failure 统一映射成 AppError/envelope。

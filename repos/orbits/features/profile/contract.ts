@@ -6,6 +6,7 @@ export const PROFILE_ERROR_CODES = [
   "PROFILE_REQUIRED",
   "PROFILE_VALIDATION_FAILED",
   "PROFILE_UPDATE_PENDING",
+  "PROFILE_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ProfileErrorCode = (typeof PROFILE_ERROR_CODES)[number];
@@ -48,6 +49,13 @@ export const PROFILE_ERROR_DEFINITIONS = {
     message: "The mock profile update is waiting for manual review.",
     recovery:
       "Render the pending state and avoid persisting profile changes elsewhere.",
+  },
+  PROFILE_LIVE_STORE_UNCONFIGURED: {
+    code: "PROFILE_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live profile store is not configured.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live profile data.",
   },
 } as const satisfies Record<ProfileErrorCode, ProfileErrorDefinition>;
 

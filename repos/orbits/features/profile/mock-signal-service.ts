@@ -159,15 +159,14 @@ export function profileSignalReviewQueueFailureContext(
   result: ProfileSignalReviewQueueFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
-  // envelope 使用这些字段说明失败来自 mock signal review 边界。
+  // envelope 使用这些字段说明失败来自 profile signal review 边界。
   return {
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     profileSignalReviewQueueErrorCode: result.error.code,
-    provenance:
-      "Mock profile signal review failure came from deterministic fixture rules.",
-    service: "profile-signal-review-queue-mock",
+    provenance: result.error.provenance.sourceLabel,
+    service: "profile-signal-review-queue",
   };
 }
 

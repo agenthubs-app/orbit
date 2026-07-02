@@ -10,7 +10,10 @@ import {
 } from "../../../shared/ui/primitives";
 import {
   PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_DEFINITIONS,
+  type ProfileSignalReviewQueueResult,
+  type ProfileSignalReviewQueueServiceResult,
   type ProfileSignalSuggestionAcceptedPayload,
+  type ProfileSignalSuggestionAcceptResult,
   type ProfileUpdateSuggestion,
 } from "../signal-contract";
 import { createMockProfileSignalReviewQueueService } from "../mock-signal-service";
@@ -126,18 +129,59 @@ function SourceReviewRehearsal({
   );
 }
 
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
+}
+
+function requireSyncProfileSignalResult(
+  result: ProfileSignalReviewQueueServiceResult<ProfileSignalReviewQueueResult>,
+): ProfileSignalReviewQueueResult {
+  if (isPromiseLike(result)) {
+    throw new Error(
+      "The profile signal review capability demo only supports synchronous mock signal services.",
+    );
+  }
+
+  return result;
+}
+
+function requireSyncProfileSignalAcceptResult(
+  result: ProfileSignalReviewQueueServiceResult<ProfileSignalSuggestionAcceptResult>,
+): ProfileSignalSuggestionAcceptResult {
+  if (isPromiseLike(result)) {
+    throw new Error(
+      "The profile signal review capability demo only supports synchronous mock signal services.",
+    );
+  }
+
+  return result;
+}
+
 export function ProfileSignalReviewQueueCapabilityDemo() {
   const signalService = createMockProfileSignalReviewQueueService();
-  const successState = signalService.listUpdateSuggestions();
-  const emptyState = signalService.listUpdateSuggestions({ scenario: "empty" });
-  const pendingState = signalService.listUpdateSuggestions({
-    scenario: "pending",
-  });
-  const failureState = signalService.listUpdateSuggestions({
-    scenario: "failure",
-  });
-  const acceptState = signalService.acceptUpdateSuggestion(
-    "demo-profile-suggestion-1",
+  const successState = requireSyncProfileSignalResult(
+    signalService.listUpdateSuggestions(),
+  );
+  const emptyState = requireSyncProfileSignalResult(
+    signalService.listUpdateSuggestions({ scenario: "empty" }),
+  );
+  const pendingState = requireSyncProfileSignalResult(
+    signalService.listUpdateSuggestions({
+      scenario: "pending",
+    }),
+  );
+  const failureState = requireSyncProfileSignalResult(
+    signalService.listUpdateSuggestions({
+      scenario: "failure",
+    }),
+  );
+  const acceptState = requireSyncProfileSignalAcceptResult(
+    signalService.acceptUpdateSuggestion("demo-profile-suggestion-1"),
   );
 
   return (

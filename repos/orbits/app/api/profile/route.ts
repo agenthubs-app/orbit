@@ -44,11 +44,11 @@ async function readProfileUpdateInput(
   }
 }
 
-export function GET(request: Request): Response {
+export async function GET(request: Request): Promise<Response> {
   // GET 只读取当前 profile，不触发抽取或更新建议。
   const mode = resolveFeatureMode();
   const profileService = createProfileService();
-  const result = profileService.getProfile({
+  const result = await profileService.getProfile({
     scenario: getScenario(request),
   });
 
@@ -75,7 +75,7 @@ export async function PUT(request: Request): Promise<Response> {
   // 手动更新 profile 仍走 service contract，route 不直接写入存储。
   const mode = resolveFeatureMode();
   const profileService = createProfileService();
-  const result = profileService.updateProfile(
+  const result = await profileService.updateProfile(
     await readProfileUpdateInput(request),
   );
 

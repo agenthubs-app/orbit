@@ -30,7 +30,7 @@ export async function POST(
   const mode = resolveFeatureMode();
   const signalService = createProfileSignalReviewQueueService();
   const { id } = await context.params;
-  const result = signalService.acceptUpdateSuggestion(id);
+  const result = await signalService.acceptUpdateSuggestion(id);
 
   if (result.success === false) {
     // accept failure 统一映射成 AppError/envelope。

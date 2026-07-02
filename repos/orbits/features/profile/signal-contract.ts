@@ -6,6 +6,7 @@ export const PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_CODES = [
   "PROFILE_SIGNAL_SUGGESTION_NOT_FOUND",
   "PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED",
   "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED",
+  "PROFILE_SIGNAL_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type ProfileSignalReviewQueueErrorCode =
@@ -57,14 +58,14 @@ export const PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_DEFINITIONS = {
   PROFILE_SIGNAL_SUGGESTION_NOT_FOUND: {
     code: "PROFILE_SIGNAL_SUGGESTION_NOT_FOUND",
     appCode: "NOT_FOUND",
-    message: "No mock profile update suggestion matches that id.",
+    message: "No profile update suggestion matches that id.",
     recovery:
       "Keep the profile unchanged and return the missing suggestion failure envelope.",
   },
   PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED: {
     code: "PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED",
     appCode: "CONFLICT",
-    message: "That mock profile update suggestion has already been resolved.",
+    message: "That profile update suggestion has already been resolved.",
     recovery:
       "Refresh the review queue before accepting or dismissing another suggestion.",
   },
@@ -72,9 +73,16 @@ export const PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_DEFINITIONS = {
     code: "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED",
     appCode: "SERVICE_UNAVAILABLE",
     message:
-      "The mock profile signal review queue is pinned to a controlled failure scenario.",
+      "The profile signal review queue is pinned to a controlled failure scenario.",
     recovery:
       "Render the failure state and avoid retrying a live AI, email, calendar, database, or notification provider.",
+  },
+  PROFILE_SIGNAL_LIVE_STORE_UNCONFIGURED: {
+    code: "PROFILE_SIGNAL_LIVE_STORE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live profile signal store is not configured.",
+    recovery:
+      "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live profile signal review.",
   },
 } as const satisfies Record<
   ProfileSignalReviewQueueErrorCode,
@@ -161,11 +169,15 @@ export type ProfileSignalSuggestionAcceptResult =
   | ProfileSignalSuggestionAcceptedSuccess
   | ProfileSignalReviewQueueFailure;
 
+export type ProfileSignalReviewQueueServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
+
 export interface ProfileSignalReviewQueueService {
   listUpdateSuggestions: (
     input?: ProfileSignalReviewQueueInput,
-  ) => ProfileSignalReviewQueueResult;
+  ) => ProfileSignalReviewQueueServiceResult<ProfileSignalReviewQueueResult>;
   acceptUpdateSuggestion: (
     id: string,
-  ) => ProfileSignalSuggestionAcceptResult;
+  ) => ProfileSignalReviewQueueServiceResult<ProfileSignalSuggestionAcceptResult>;
 }

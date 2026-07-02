@@ -1,12 +1,17 @@
 // Profile service factory 管理用户画像、文档抽取和信号复核队列。
 // 当前 mock 不读取真实文档或外部账号，抽取结果来自 fixture 边界。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
+import { createLiveProfileDocumentExtractionService } from "./live-extraction-service";
+import { createLiveProfileSignalReviewQueueService } from "./live-signal-service";
+import { createLiveProfileService } from "./live-service";
 import { createMockProfileDocumentExtractionService } from "./mock-extraction-service";
 import { createMockProfileService } from "./mock-service";
 import { createMockProfileSignalReviewQueueService } from "./mock-signal-service";
 import type { ProfileDocumentExtractionService } from "./extraction-contract";
 import type { ProfileService } from "./service";
 import type { ProfileSignalReviewQueueService } from "./signal-contract";
+import { createConfiguredStorageProfileProvider } from "./storage/profile-live-record-provider";
+import { createConfiguredStorageProfileSignalProvider } from "./storage/profile-signal-live-record-provider";
 
 export {
   profileDocumentExtractionFailureContext,
@@ -21,6 +26,10 @@ export const profileServiceFactory =
   createModuleServiceFactory<ProfileService>({
     capabilityId: "profile",
     implementations: {
+      live: () =>
+        createLiveProfileService({
+          provider: createConfiguredStorageProfileProvider(),
+        }),
       mock: () => createMockProfileService(),
     },
   });
@@ -29,6 +38,7 @@ export const profileDocumentExtractionServiceFactory =
   createModuleServiceFactory<ProfileDocumentExtractionService>({
     capabilityId: "profile-document-extraction",
     implementations: {
+      live: () => createLiveProfileDocumentExtractionService(),
       mock: () => createMockProfileDocumentExtractionService(),
     },
   });
@@ -37,6 +47,10 @@ export const profileSignalReviewQueueServiceFactory =
   createModuleServiceFactory<ProfileSignalReviewQueueService>({
     capabilityId: "profile-signal-review-queue",
     implementations: {
+      live: () =>
+        createLiveProfileSignalReviewQueueService({
+          provider: createConfiguredStorageProfileSignalProvider(),
+        }),
       mock: () => createMockProfileSignalReviewQueueService(),
     },
   });

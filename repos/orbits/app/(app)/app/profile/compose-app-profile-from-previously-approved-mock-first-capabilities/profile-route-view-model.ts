@@ -3,9 +3,7 @@ import type {
   ProfileCompletenessField,
   ProfileResult,
 } from "../../../../../features/profile/contract";
-import type {
-  ProfileDocumentExtractionResult,
-} from "../../../../../features/profile/extraction-contract";
+import type { ProfileDocumentExtractionResult } from "../../../../../features/profile/extraction-contract";
 import {
   createProfileDocumentExtractionService,
   createProfileService,
@@ -15,6 +13,7 @@ import type {
   ProfileSignalProfileField,
   ProfileSignalReviewQueueResult,
 } from "../../../../../features/profile/signal-contract";
+import { createAppProfileRouteServices } from "./profile-service-factory";
 
 export type AppProfileSearchParams = Record<
   string,
@@ -27,6 +26,13 @@ type EvidenceResult =
   | ProfileDocumentExtractionResult
   | ProfileSignalReviewQueueResult;
 
+interface RouteFailure {
+  code: string;
+  evidenceIds: readonly string[];
+  message: string;
+  recovery: string;
+}
+
 export interface AppProfileRouteStateViewModel {
   copy: {
     description: string;
@@ -37,6 +43,7 @@ export interface AppProfileRouteStateViewModel {
     purpose: string;
     title: string;
   };
+  errorCode: string | null;
   evidenceIds: readonly string[];
   recoveryActions: readonly {
     id: string;
@@ -84,7 +91,14 @@ export interface AppProfileSuccessViewModel {
   nextProfileFieldLabel: string;
   profile: Pick<
     ManualProfile,
-    "displayName" | "headline" | "homeMarket" | "relationshipGoal"
+    | "displayName"
+    | "headline"
+    | "homeMarket"
+    | "organization"
+    | "preferredIntroChannels"
+    | "relationshipGoal"
+    | "role"
+    | "targetRelationshipTypes"
   >;
   profileEvidenceIds: readonly string[];
   resumeDraft: AppProfileDraftViewModel;
@@ -169,6 +183,33 @@ function evidenceFromResult(result: EvidenceResult): string {
   return firstEvidence(result.data.provenance.evidenceIds);
 }
 
+function routeFailureFromResult(result: EvidenceResult): RouteFailure | null {
+  if (result.success === false) {
+    return {
+      code: result.error.code,
+      evidenceIds: result.error.evidenceIds,
+      message: result.error.message,
+      recovery: result.error.recovery,
+    };
+  }
+
+  return null;
+}
+
+function firstRouteFailure(
+  results: readonly EvidenceResult[],
+): RouteFailure | null {
+  for (const result of results) {
+    const failure = routeFailureFromResult(result);
+
+    if (failure) {
+      return failure;
+    }
+  }
+
+  return null;
+}
+
 function profileFieldLabel(
   field: ProfileCompletenessField | ProfileSignalProfileField | string | null,
 ): string {
@@ -245,15 +286,16 @@ function displayValue(value: string | readonly string[]): string {
   return typeof value === "string" ? value : value.join(", ");
 }
 
-function routeStateViewModel(
+async function routeStateViewModel(
   scenario: AppProfileRouteScenario,
-): AppProfileRouteStateViewModel {
-  const profileService = createProfileService();
-  const extractionService = createProfileDocumentExtractionService();
-  const signalService = createProfileSignalReviewQueueService();
+  failure?: RouteFailure,
+): Promise<AppProfileRouteStateViewModel> {
+  const profileService = createProfileService("mock");
+  const extractionService = createProfileDocumentExtractionService("mock");
+  const signalService = createProfileSignalReviewQueueService("mock");
 
   if (scenario === "empty") {
-    const emptyProfile = profileService.getProfile({ scenario: "empty" });
+    const emptyProfile = await profileService.getProfile({ scenario: "empty" });
 
     return {
       copy: {
@@ -280,6 +322,7 @@ function routeStateViewModel(
         ),
         title: bilingualText("资料准备度为空", "Profile readiness is empty"),
       },
+      errorCode: null,
       evidenceIds: [evidenceFromResult(emptyProfile)],
       recoveryActions: [
         {
@@ -297,11 +340,11 @@ function routeStateViewModel(
   }
 
   if (scenario === "pending") {
-    const pendingProfile = profileService.getProfile({ scenario: "pending" });
+    const pendingProfile = await profileService.getProfile({ scenario: "pending" });
     const pendingExtraction = extractionService.extractBusinessCardDraft({
       scenario: "pending",
     });
-    const pendingSuggestions = signalService.listUpdateSuggestions({
+    const pendingSuggestions = await signalService.listUpdateSuggestions({
       scenario: "pending",
     });
 
@@ -330,6 +373,7 @@ function routeStateViewModel(
         ),
         title: bilingualText("资料准备度正在加载", "Profile readiness is loading"),
       },
+      errorCode: null,
       evidenceIds: [
         evidenceFromResult(pendingProfile),
         evidenceFromResult(pendingExtraction),
@@ -353,9 +397,13 @@ function routeStateViewModel(
     };
   }
 
-  const failureState = signalService.listUpdateSuggestions({
-    scenario: "failure",
-  });
+  const failureState =
+    failure ??
+    routeFailureFromResult(
+      await signalService.listUpdateSuggestions({
+        scenario: "failure",
+      }),
+    );
 
   return {
     copy: {
@@ -385,10 +433,10 @@ function routeStateViewModel(
         "Profile readiness could not load",
       ),
     },
-    evidenceIds:
-      failureState.success === false
-        ? [failureState.error.code, firstEvidence(failureState.error.evidenceIds)]
-        : ["profile-route-expected-failure-not-returned"],
+    errorCode: failureState?.code ?? "PROFILE_ROUTE_FAILURE",
+    evidenceIds: failureState
+      ? [failureState.code, firstEvidence(failureState.evidenceIds)]
+      : ["profile-route-expected-failure-not-returned"],
     recoveryActions: [
       {
         id: "profile-failure-return",
@@ -427,28 +475,17 @@ function successViewModel(input: {
     input.actionRequested && input.requestedIntroChannels
       ? input.requestedIntroChannels
       : suggestedIntroChannels;
-  const editorPreview = createProfileService().updateProfile({
-    displayName: profile.displayName,
-    headline: profile.headline,
-    organization: profile.organization,
-    role: profile.role,
-    homeMarket: profile.homeMarket,
-    relationshipGoal: profile.relationshipGoal,
-    targetRelationshipTypes: profile.targetRelationshipTypes,
-    preferredFollowUpWindow: profile.preferredFollowUpWindow,
+  const editorProfile: ManualProfile = {
+    ...profile,
     preferredIntroChannels: selectedIntroChannels,
-  });
-  const editorProfile =
-    editorPreview.success && editorPreview.data.profile
-      ? editorPreview.data.profile
-      : profile;
+  };
 
   return {
     action: {
       actionSourceEvidence:
-        editorPreview.success && editorPreview.data.provenance.evidenceIds[0]
-          ? editorPreview.data.provenance.evidenceIds[0]
-          : "evidence:profile-editor-put-request",
+        input.actionRequested
+          ? "evidence:profile-editor-preview"
+          : firstEvidence(input.profileState.data.provenance.evidenceIds),
       preferredChannels: formatIntroChannelList(
         editorProfile.preferredIntroChannels,
       ),
@@ -496,7 +533,11 @@ function successViewModel(input: {
       displayName: profile.displayName,
       headline: profile.headline,
       homeMarket: profile.homeMarket,
+      organization: profile.organization,
+      preferredIntroChannels: profile.preferredIntroChannels,
       relationshipGoal: profile.relationshipGoal,
+      role: profile.role,
+      targetRelationshipTypes: profile.targetRelationshipTypes,
     },
     profileEvidenceIds: input.profileState.data.provenance.evidenceIds,
     resumeDraft: {
@@ -517,65 +558,59 @@ function successViewModel(input: {
   };
 }
 
-export function loadAppProfileRouteViewModel(
+export async function loadAppProfileRouteViewModel(
   searchParams?: AppProfileSearchParams,
-): AppProfileRouteViewModel {
+): Promise<AppProfileRouteViewModel> {
   const requestedScenario = readRouteScenario(searchParams);
 
   if (requestedScenario) {
     return {
       state: "route-state",
-      routeState: routeStateViewModel(requestedScenario),
+      routeState: await routeStateViewModel(requestedScenario),
     };
   }
 
-  const profileService = createProfileService();
-  const extractionService = createProfileDocumentExtractionService();
-  const signalService = createProfileSignalReviewQueueService();
-  const profileState = profileService.getProfile();
-  const resumeState = extractionService.extractResumeDraft();
-  const suggestionState = signalService.listUpdateSuggestions();
+  const services = createAppProfileRouteServices();
+  const [profileState, resumeState, suggestionState] = await Promise.all([
+    services.profileService.getProfile(),
+    services.extractionService.extractResumeDraft(),
+    services.signalService.listUpdateSuggestions(),
+  ]);
+  const serviceFailure = firstRouteFailure([
+    profileState,
+    resumeState,
+    suggestionState,
+  ]);
 
   if (
+    serviceFailure ||
     profileState.success === false ||
     resumeState.success === false ||
-    suggestionState.success === false ||
-    !profileState.data.profile
+    suggestionState.success === false
   ) {
     return {
-      state: "failure",
-      failure: {
-        description: bilingualText(
-          "Orbit 无法准备个人资料复核。",
-          "Orbit could not prepare the profile review.",
-        ),
-        emptyState: bilingualText(
-          "个人资料、文档草稿或更新建议返回了异常状态。",
-          "A profile, document draft, or update suggestion returned an unexpected state.",
-        ),
-        evidenceIds: [
-          evidenceFromResult(profileState),
-          evidenceFromResult(resumeState),
-          evidenceFromResult(suggestionState),
-        ],
-        eyebrow: bilingualText("个人资料", "Profile"),
-        guardrail: bilingualText(
-          "资料复核无法准备时，不能运行外部动作。",
-          "No outside action can run when profile review cannot be prepared.",
-        ),
-        nextStep: bilingualText(
-          "来源详情会说明为什么这个资料页面保持不变。",
-          "Source details explain why this profile screen stays unchanged.",
-        ),
-        purpose: bilingualText(
-          "来源检查不一致时停止资料决策。",
-          "Stop profile decisions when source checks are inconsistent.",
-        ),
-        title: bilingualText(
-          "资料准备度无法加载",
-          "Profile readiness could not load",
-        ),
-      },
+      state: "route-state",
+      routeState: await routeStateViewModel(
+        "failure",
+        serviceFailure ?? {
+          code: "PROFILE_ROUTE_FAILURE",
+          evidenceIds: ["evidence:profile-route-unexpected-failure"],
+          message: "A profile page service returned an unexpected failure.",
+          recovery: "Reload the profile page after the service is available.",
+        },
+      ),
+    };
+  }
+
+  if (!profileState.data.profile) {
+    return {
+      state: "route-state",
+      routeState: await routeStateViewModel("failure", {
+        code: "PROFILE_REQUIRED",
+        evidenceIds: profileState.data.provenance.evidenceIds,
+        message: "No profile payload was available for the profile page.",
+        recovery: "Load a profile record before rendering the profile success state.",
+      }),
     };
   }
 

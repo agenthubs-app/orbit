@@ -4,8 +4,8 @@
 
 - Keep `features/profile/extraction-contract.ts` as the shared DTO and error-code contract for resume and business-card extraction.
 - Keep `features/profile/mock-extraction-service.ts` as the mock boundary used by tests, dev routes, and demos.
-- Add a live service beside the mock service, for example `features/profile/live-extraction-service.ts`, that implements the same `ProfileDocumentExtractionService` interface.
-- Add provider adapters under this capability folder, for example `features/profile/profile-document-extraction-mock/providers/ocr-provider.ts`, `pdf-parser-provider.ts`, and `profile-extractor-provider.ts`.
+- `features/profile/live-extraction-service.ts` implements the same `ProfileDocumentExtractionService` interface as an explicit live policy provider. It returns empty resume/business-card payloads with `live-policy-no-op` provenance and does not call OCR, parsing, AI, storage, or external networks.
+- Future real extraction should add provider adapters under this capability folder, for example `features/profile/profile-document-extraction-mock/providers/ocr-provider.ts`, `pdf-parser-provider.ts`, and `profile-extractor-provider.ts`.
 - The route handlers `app/api/profile/extractions/resume/route.ts` and `app/api/profile/extractions/business-card/route.ts` must continue to return the shared API envelope.
 
 ## Switch Mechanism
@@ -13,7 +13,7 @@
 - Route handlers should resolve a service through the existing feature-mode pattern.
 - `mock` mode must keep using `createMockProfileDocumentExtractionService()`.
 - `hybrid` mode may run the mock service while logging that live extraction is unavailable.
-- `live` mode may call the live service only after provider adapters, replacement tests, and privacy review exist.
+- `live` mode resolves the policy-only service today. It may call real OCR/parser/provider adapters only after replacement tests and privacy review exist.
 - The switch must stay explicit. Pages and route handlers should not import provider adapters directly.
 
 ## Required Env Vars And Permissions
@@ -36,7 +36,7 @@
 ## Replacement Tests
 
 - Keep `tests/capabilities/profile-document-extraction-mock.test.ts` as the mock boundary test.
-- Add live-service contract tests that assert the live implementation satisfies `ProfileDocumentExtractionService`.
+- `tests/capabilities/profile-document-extraction-live-policy.test.ts` asserts the live policy implementation satisfies `ProfileDocumentExtractionService` without falling back to mock extraction.
 - Add route tests for `app/api/profile/extractions/resume/route.ts` and `app/api/profile/extractions/business-card/route.ts` in mock, hybrid, and live modes.
 - Add provider adapter tests with fixture documents and no real network access by default.
 - Add privacy tests that confirm raw document content and provider errors are not returned in API envelopes.

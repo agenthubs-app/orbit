@@ -75,8 +75,8 @@ export interface ProfileDocumentExtractionProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-profile-document-only";
-  extractionMethod: "fixture" | "rule-based-text-match";
+  privacy: "demo-profile-document-only" | "live-profile-document-policy-only";
+  extractionMethod: "fixture" | "rule-based-text-match" | "live-policy-no-op";
 }
 
 // FieldEvidence 把 suggested field 和原始文档片段关联起来。
