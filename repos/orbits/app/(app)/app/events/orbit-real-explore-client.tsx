@@ -230,7 +230,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
               </div>
               <div className="orbit-search-box">
                 <Icon color="var(--text-3)" name="search" size={18} style={{ left: 14, position: "absolute", top: 15 }} />
-                <input className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} style={{ paddingLeft: 42 }} value={query} />
+                <input aria-label={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} style={{ paddingLeft: 42 }} type="search" value={query} />
               </div>
             </div>
           </div>
@@ -277,7 +277,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
           </div>
           <div style={{ position: "relative" }}>
             <Icon color="var(--text-3)" name="search" size={17} style={{ left: 13, position: "absolute", top: 14 }} />
-            <input className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} style={{ height: 44, paddingLeft: 40 }} value={query} />
+            <input aria-label={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} style={{ height: 44, paddingLeft: 40 }} type="search" value={query} />
           </div>
           <div className="scroll noscroll" style={{ display: "flex", gap: 8, margin: "0 -18px", overflowX: "auto", padding: "14px 18px 4px" }}>
             {statusFilters.map((key) => <button key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setStatus(key)} style={{ flexShrink: 0 }} type="button">{statusLabels[key]}</button>)}

@@ -482,7 +482,7 @@ function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: Orbit
       <div className="orbit-party-network-toolbar">
         <div className="orbit-party-network-search">
           <Icon color="var(--text-3)" name="search" size={17} />
-          <input onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" })} value={query} />
+          <input aria-label={t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" })} onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" })} type="search" value={query} />
         </div>
         <button aria-label={t({ en: "Filter", zh: "筛选" })} className="btn btn-ghost orbit-party-network-filter hit-44" type="button">
           <Icon name="filter" size={18} />
@@ -516,7 +516,7 @@ function PartyAttendees({ t, viewModel }: { t: Translate; viewModel: OrbitPartyV
         </div>
         <div className="orbit-party-network-search orbit-party-attendees-search">
           <Icon color="var(--text-3)" name="search" size={17} />
-          <input onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search attendees", zh: "搜索参会者" })} value={query} />
+          <input aria-label={t({ en: "Search attendees", zh: "搜索参会者" })} onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search attendees", zh: "搜索参会者" })} type="search" value={query} />
         </div>
       </div>
       <div className="orbit-party-attendee-grid">

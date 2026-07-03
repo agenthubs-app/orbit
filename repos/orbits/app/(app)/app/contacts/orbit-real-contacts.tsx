@@ -170,10 +170,12 @@ function MobileCrmHeader({
       <div style={{ margin: "8px 0 14px", position: "relative" }}>
         <Icon name="search" size={17} color="var(--text-3)" style={{ left: 13, position: "absolute", top: 14 }} />
         <input
+          aria-label={resolvedPlaceholder}
           className="field"
           onChange={(event) => onQueryChange?.(event.target.value)}
           placeholder={resolvedPlaceholder}
           style={{ background: "var(--surface-2)", height: 44, paddingLeft: 40 }}
+          type="search"
           value={query}
         />
       </div>
@@ -291,7 +293,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
             <div style={{ alignItems: "center", display: "flex", gap: 16, marginBottom: 18 }}>
               <div style={{ flex: 1, maxWidth: 320, position: "relative" }}>
                 <Icon name="search" size={17} color="var(--text-3)" style={{ left: 13, position: "absolute", top: 14 }} />
-                <input className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search by name, company, title", zh: "按姓名、公司、职位搜索" })} style={{ height: 44, paddingLeft: 40 }} value={query} />
+                <input aria-label={t({ en: "Search by name, company, title", zh: "按姓名、公司、职位搜索" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search by name, company, title", zh: "按姓名、公司、职位搜索" })} style={{ height: 44, paddingLeft: 40 }} type="search" value={query} />
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 {filters.map(([key, label]) => (
@@ -688,7 +690,7 @@ function PickerSlot({
 }) {
   return (
     <div style={{ flex: 1 }}>
-      <label className="field-label">{label}</label>
+      <div className="field-label">{label}</div>
       {person ? (
         <button onClick={onPick} style={{ alignItems: "center", background: "var(--accent-softer)", border: "1px solid var(--accent-soft)", borderRadius: "var(--r-md)", cursor: "pointer", display: "flex", flexDirection: "column", fontFamily: "var(--ff)", gap: 8, padding: 14, width: "100%" }} type="button">
           <Avatar letter={crmInitial(person.displayName)} g="g-violet" size={48} />
@@ -742,7 +744,7 @@ function IntroComposerModal({
         <h2 className="h-title" style={{ margin: "4px 0 14px" }}>{picking === "a" ? t({ en: "Pick the first contact", zh: "选择第一位联系人" }) : t({ en: "Pick the second contact", zh: "选择第二位联系人" })}</h2>
         <div style={{ marginBottom: 14, position: "relative" }}>
           <Icon name="search" size={17} color="var(--text-3)" style={{ left: 13, position: "absolute", top: 14 }} />
-          <input autoFocus className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search contacts", zh: "搜索名片夹" })} style={{ paddingLeft: 40 }} value={query} />
+          <input aria-label={t({ en: "Search contacts", zh: "搜索名片夹" })} autoFocus className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search contacts", zh: "搜索名片夹" })} style={{ paddingLeft: 40 }} type="search" value={query} />
         </div>
         <div className="scroll" style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
           {selectable.map((item) => (
@@ -770,8 +772,8 @@ function IntroComposerModal({
           <div style={{ color: "var(--accent)", marginTop: 18 }}><Icon name="share" size={20} /></div>
           <PickerSlot label={t({ en: "Contact B", zh: "联系人 B" })} onPick={() => setPicking("b")} person={selectedB} t={t} />
         </div>
-        <label className="field-label" style={{ marginTop: 18 }}>{t({ en: "Intro note", zh: "引荐词" })}</label>
-        <textarea className="field" onChange={(event) => setBlurb(event.target.value)} placeholder={t({ en: "Leave blank to try AI generation; if no AI is configured, it will error clearly.", zh: "留空则尝试用 AI 生成；如果当前没配 AI，会明确报错。" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={blurb} />
+        <label className="field-label" htmlFor="intro-note" style={{ marginTop: 18 }}>{t({ en: "Intro note", zh: "引荐词" })}</label>
+        <textarea className="field" id="intro-note" onChange={(event) => setBlurb(event.target.value)} placeholder={t({ en: "Leave blank to try AI generation; if no AI is configured, it will error clearly.", zh: "留空则尝试用 AI 生成；如果当前没配 AI，会明确报错。" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={blurb} />
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
           <button className="btn btn-ghost" onClick={onClose} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
           <button className="btn btn-primary" disabled={!aId || !bId} type="submit"><Icon name="share" size={16} color="var(--on-dark)" />{t({ en: "Save introduction", zh: "保存引荐" })}</button>

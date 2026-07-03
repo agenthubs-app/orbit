@@ -105,8 +105,8 @@ function ChipGroup({
   values: string[];
 }) {
   return (
-    <div>
-      <label className="field-label">{label}{t({ en: ` (${values.length})`, zh: `（${values.length}）` })}</label>
+    <div role="group" aria-label={label}>
+      <div className="field-label">{label}{t({ en: ` (${values.length})`, zh: `（${values.length}）` })}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {options.map((option) => {
           const active = values.includes(option);
@@ -140,24 +140,24 @@ function ProfileFields({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 22 }}>
       <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        <div>
-          <label className="field-label">{t({ en: "Email", zh: "邮箱" })}</label>
+        <label>
+          <span className="field-label">{t({ en: "Email", zh: "邮箱" })}</span>
           <div style={{ position: "relative" }}>
             <Icon color="var(--text-3)" name="mail" size={16} style={{ left: 13, position: "absolute", top: 16 }} />
             <input className="field" readOnly style={{ background: "var(--surface-2)", color: "var(--text-2)", paddingLeft: 40 }} type="email" value={profile.email} />
           </div>
-        </div>
+        </label>
         {textFields(t).map(({ icon, key, label }) => (
-          <div key={key}>
-            <label className="field-label">{label}</label>
+          <label key={key}>
+            <span className="field-label">{label}</span>
             <div style={{ position: "relative" }}>
               <Icon color="var(--text-3)" name={icon} size={16} style={{ left: 13, position: "absolute", top: 16 }} />
               <input className="field" onChange={(event) => update(key, event.target.value)} style={{ paddingLeft: 40 }} value={profile[key]} />
             </div>
-          </div>
+          </label>
         ))}
-        <div>
-          <label className="field-label">{t({ en: "Industry", zh: "行业" })}</label>
+        <label>
+          <span className="field-label">{t({ en: "Industry", zh: "行业" })}</span>
           <div style={{ position: "relative" }}>
             <Icon color="var(--text-3)" name="list" size={16} style={{ left: 13, position: "absolute", top: 16 }} />
             <select key={selectRenderKey} className="field" onChange={(event) => update("industry", event.target.value)} style={{ paddingLeft: 40 }} value={profile.industry}>
@@ -165,13 +165,13 @@ function ProfileFields({
               {viewModel.industries.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </div>
-        </div>
+        </label>
       </div>
-      <div><label className="field-label">{t({ en: "One-line bio", zh: "一句话简介" })}</label><textarea className="field" onChange={(event) => update("bio", event.target.value)} style={{ fontFamily: "var(--ff)", height: 64, lineHeight: 1.5, padding: 12, resize: "none" }} value={profile.bio} /></div>
+      <label style={{ display: "block" }}><span className="field-label">{t({ en: "One-line bio", zh: "一句话简介" })}</span><textarea className="field" onChange={(event) => update("bio", event.target.value)} style={{ fontFamily: "var(--ff)", height: 64, lineHeight: 1.5, padding: 12, resize: "none" }} value={profile.bio} /></label>
       <ChipGroup label={t({ en: "I can offer (offering)", zh: "我能提供 (offering)" })} onToggle={toggleTag} options={viewModel.offeringTags} section="offering" t={t} values={profile.offering} />
       <ChipGroup label={t({ en: "I'm seeking (seeking)", zh: "我想寻求 (seeking)" })} onToggle={toggleTag} options={viewModel.seekingTags} section="seeking" t={t} values={profile.seeking} />
       <ChipGroup label={t({ en: "Topics to chat about (topics)", zh: "想聊的话题 (topics)" })} onToggle={toggleTag} options={viewModel.topics} section="topics" t={t} values={profile.topics} />
-      <div><label className="field-label">{t({ en: "Opener (intro)", zh: "开场白 (intro)" })}</label><textarea className="field" onChange={(event) => update("intro", event.target.value)} style={{ fontFamily: "var(--ff)", height: 56, lineHeight: 1.5, padding: 12, resize: "none" }} value={profile.intro} /></div>
+      <label style={{ display: "block" }}><span className="field-label">{t({ en: "Opener (intro)", zh: "开场白 (intro)" })}</span><textarea className="field" onChange={(event) => update("intro", event.target.value)} style={{ fontFamily: "var(--ff)", height: 56, lineHeight: 1.5, padding: 12, resize: "none" }} value={profile.intro} /></label>
     </div>
   );
 }
