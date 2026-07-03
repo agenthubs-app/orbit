@@ -1,5 +1,5 @@
-import { OrbitRealLandingPage } from "./(app)/app/orbit-real-landing-page";
+import { OrbitStarfieldHome } from "./(app)/app/orbit-starfield-home";
 
 export default function Page() {
-  return <OrbitRealLandingPage />;
+  return <OrbitStarfieldHome />;
 }

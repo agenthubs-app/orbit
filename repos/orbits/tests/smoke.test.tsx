@@ -28,7 +28,7 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
     "app/(app)/app/orbit-reference-styles.tsx",
     "app/(app)/app/orbit-reference-primitives.tsx",
     "app/(app)/app/orbit-lang-runtime.tsx",
-    "app/(app)/app/orbit-agent-hero.tsx",
+    "app/(app)/app/orbit-starfield-home.tsx",
   ]) {
     assert.ok(
       packageJson.scripts.lint.includes(`"${sourcePath}"`),
@@ -54,7 +54,7 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
     "app/(app)/app/orbit-reference-styles.tsx",
     "app/(app)/app/orbit-reference-primitives.tsx",
     "app/(app)/app/orbit-lang-runtime.tsx",
-    "app/(app)/app/orbit-agent-hero.tsx",
+    "app/(app)/app/orbit-starfield-home.tsx",
   ]) {
     assert.equal(
       fs.existsSync(path.join(projectRoot, filePath)),
@@ -79,12 +79,18 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
   });
 
   assert.match(html, /<main/);
-  assert.match(html, /data-orbit-real-page="landing"/);
-  assert.match(html, /orbit-landing-page/);
-  assert.match(html, /让对的人/);
+  assert.match(html, /data-orbit-real-page="starfield-home"/);
+  assert.match(html, /data-iorbit-motion="starfield-stop-machine"/);
+  assert.match(html, /data-iorbit-progress="0\.000"/);
+  assert.match(html, /iorbit-starfield-home/);
+  assert.match(html, /你的⼈脉|你的人脉/);
+  assert.match(html, /Relationship Starfield/);
   // Language toggle renders the zh/en switcher ("中" and "EN" in separate spans).
   assert.match(html, /中/);
   assert.match(html, /EN/);
+  assert.doesNotMatch(html, /orbit-landing-page/);
+  assert.doesNotMatch(html, /orbit-agent-hero/);
+  assert.doesNotMatch(html, /让对的人，进入你的商业轨道/);
   assert.doesNotMatch(html, /orbit-prototype-frame/);
   assert.doesNotMatch(html, /Event-grounded relationship workspace/);
   assert.doesNotMatch(html, /href="#relationship-starter"/);
