@@ -1,11 +1,11 @@
 import { useLocalSearchParams } from "expo-router";
-import { RefreshControl, Text } from "react-native";
+import { RefreshControl, StyleSheet, Text } from "react-native";
 import { contactDetailPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors } from "../../design/tokens";
+import { colors, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { contactDetailToSummary } from "../../view-models/contacts";
 
@@ -60,14 +60,22 @@ function ContactDetailCard({ data }: { data: unknown }) {
         detail={`${contact.role} ${contact.organization}`.trim()}
         title={contact.name}
       >
-        <Text>{contact.relationship}</Text>
+        <Text style={styles.bodyText}>{contact.relationship}</Text>
       </DataCard>
       <DataCard detail={contact.location} title="Current status">
-        <Text>{contact.status}</Text>
+        <Text style={styles.bodyText}>{contact.status}</Text>
       </DataCard>
       <DataCard detail={contact.lastInteractionAt} title="Next move">
-        <Text>{contact.nextAction}</Text>
+        <Text style={styles.bodyText}>{contact.nextAction}</Text>
       </DataCard>
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  bodyText: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 20
+  }
+});

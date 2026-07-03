@@ -21,19 +21,23 @@ export function MetricPill({ label, value }: MetricPillProps) {
 
 const styles = StyleSheet.create({
   label: {
-    color: colors.muted,
-    fontSize: typography.caption
+    color: colors.text2,
+    fontSize: typography.caption,
+    lineHeight: 16
   },
   pill: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    minWidth: 92,
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    minWidth: 88,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
   value: {
     color: colors.accent,
     fontSize: typography.body,
-    fontWeight: "800"
+    fontWeight: "700",
+    lineHeight: 20
   }
 });

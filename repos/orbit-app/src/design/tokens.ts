@@ -1,22 +1,55 @@
 export const colors = {
-  accent: "#0D7C66",
-  accentSoft: "#DDF4EF",
-  border: "#D6DBD3",
-  canvas: "#F7F8F6",
-  caution: "#B54708",
-  ink: "#111317",
-  muted: "#667085",
+  accent: "#6359E9",
+  accentHover: "#5249D6",
+  accentPress: "#463DBE",
+  accentRing: "rgba(99,89,233,0.32)",
+  accentSoft: "#EEEDFC",
+  accentSofter: "#F6F5FD",
+  amber: "#C97A12",
+  amberSoft: "#FBF0DE",
+  bg: "#FFFFFF",
+  bgSoft: "#F6F6F8",
+  bgSunken: "#FAFAFB",
+  border: "#ECECEF",
+  border2: "#E2E2E7",
+  borderStrong: "#D6D6DC",
+  canvas: "#F6F6F8",
+  caution: "#C97A12",
+  hairline: "rgba(20,20,28,0.06)",
+  ink: "#16161A",
+  live: "#15A06B",
+  liveSoft: "#E4F5EE",
+  muted: "#62626B",
+  onAccent: "#FFFFFF",
+  rose: "#E0415F",
+  roseSoft: "#FCE9ED",
+  sky: "#2D7FF0",
+  skySoft: "#E6F0FE",
   surface: "#FFFFFF",
-  tint: "#EEF2E8"
+  surface2: "#F8F8FA",
+  surface3: "#F1F1F4",
+  text: "#1D1D22",
+  text2: "#62626B",
+  text3: "#73737B",
+  text4: "#ABABB3",
+  tint: "#F6F5FD"
 } as const;
 
 export const radius = {
-  card: 8,
+  card: 18,
+  control: 10,
+  input: 10,
+  lg: 18,
+  md: 14,
   pill: 999,
-  sheet: 12
+  sheet: 24,
+  sm: 10,
+  xl: 24,
+  xs: 7
 } as const;
 
 export const spacing = {
+  xxs: 2,
   xs: 4,
   sm: 8,
   md: 12,
@@ -26,10 +59,33 @@ export const spacing = {
 } as const;
 
 export const typography = {
-  body: 16,
+  body: 15,
   caption: 12,
-  display: 32,
-  section: 20,
-  small: 14,
-  title: 26
+  display: 24,
+  section: 17,
+  small: 13,
+  title: 20
+} as const;
+
+export const shadows = {
+  card: {
+    elevation: 2,
+    shadowColor: "#12121C",
+    shadowOffset: { height: 2, width: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8
+  },
+  subtle: {
+    elevation: 1,
+    shadowColor: "#12121C",
+    shadowOffset: { height: 1, width: 0 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3
+  },
+  webCard: {
+    boxShadow: "0 1px 2px rgba(18,18,28,0.04), 0 2px 6px rgba(18,18,28,0.05)"
+  },
+  webSubtle: {
+    boxShadow: "0 1px 2px rgba(18,18,28,0.05)"
+  }
 } as const;

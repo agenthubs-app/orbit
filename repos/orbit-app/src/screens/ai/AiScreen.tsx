@@ -106,6 +106,7 @@ export function AiScreen() {
             multiline
             onChangeText={setDraftMessage}
             placeholder="What should I do next?"
+            placeholderTextColor={colors.text4}
             style={styles.input}
             value={draftMessage}
           />
@@ -147,7 +148,7 @@ export function AiScreen() {
               key={item.id}
               title={item.title}
             >
-              <Text>
+              <Text style={styles.bodyText}>
                 {item.preview ||
                   "Ask Orbit AI who to meet, what to prepare, or who needs follow-up."}
               </Text>
@@ -205,12 +206,12 @@ function LatestChatCard({
     <>
       {latestChat.assistantMessage ? (
         <DataCard detail="Latest reply" title="Orbit AI replied">
-          <Text>{latestChat.assistantMessage}</Text>
+          <Text style={styles.bodyText}>{latestChat.assistantMessage}</Text>
         </DataCard>
       ) : null}
       {latestChat.proposedToolIntents.map((intent) => (
         <DataCard detail={intent.reason} key={intent.id} title={intent.label}>
-          <Text>
+          <Text style={styles.bodyText}>
             {intent.requiresUserConfirmation
               ? "Review before Orbit AI takes action."
               : "Ready to use in this conversation."}
@@ -222,6 +223,11 @@ function LatestChatCard({
 }
 
 const styles = StyleSheet.create({
+  bodyText: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
   composer: {
     gap: spacing.md
   },
@@ -229,20 +235,20 @@ const styles = StyleSheet.create({
     opacity: 0.54
   },
   errorText: {
-    color: colors.caution,
+    color: colors.rose,
     fontSize: typography.small,
     lineHeight: 20
   },
   input: {
-    backgroundColor: colors.canvas,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    color: colors.ink,
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.input,
+    borderWidth: 1,
+    color: colors.text,
     fontSize: typography.body,
     minHeight: 96,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: spacing.md,
     textAlignVertical: "top"
   },
   metricsRow: {
@@ -251,19 +257,21 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   nextAction: {
-    backgroundColor: colors.tint,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
   },
   nextActionLabel: {
     color: colors.accent,
     fontSize: typography.caption,
-    fontWeight: "800",
+    fontWeight: "700",
     textTransform: "uppercase"
   },
   nextActionText: {
-    color: colors.ink,
+    color: colors.text,
     fontSize: typography.small,
     lineHeight: 20
   },
@@ -273,18 +281,18 @@ const styles = StyleSheet.create({
   sendButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
-    borderRadius: radius.card,
+    borderRadius: radius.control,
     justifyContent: "center",
     minHeight: 44,
-    paddingHorizontal: spacing.md
+    paddingHorizontal: spacing.lg
   },
   sendButtonText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: typography.small,
-    fontWeight: "800"
+    fontWeight: "600"
   },
   summaryText: {
-    color: colors.ink,
+    color: colors.text,
     fontSize: typography.small,
     lineHeight: 20
   }

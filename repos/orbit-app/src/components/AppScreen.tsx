@@ -42,31 +42,37 @@ export function AppScreen({
 
 const styles = StyleSheet.create({
   body: {
-    gap: spacing.md
+    gap: 14
   },
   content: {
-    gap: spacing.xl,
-    paddingBottom: spacing.xxl,
+    alignSelf: "center",
+    gap: spacing.lg,
+    maxWidth: 540,
+    paddingBottom: 96,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg
+    paddingTop: spacing.md,
+    width: "100%"
   },
   eyebrow: {
-    color: colors.accent,
+    color: colors.text3,
     fontSize: typography.caption,
-    fontWeight: "800",
+    fontWeight: "700",
+    letterSpacing: 0.6,
     textTransform: "uppercase"
   },
   header: {
-    gap: spacing.xs
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.xs
   },
   safeArea: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.bgSoft,
     flex: 1
   },
   title: {
     color: colors.ink,
-    fontSize: typography.title,
-    fontWeight: "800",
-    lineHeight: 32
+    fontSize: typography.display,
+    fontWeight: "700",
+    lineHeight: 29
   }
 });

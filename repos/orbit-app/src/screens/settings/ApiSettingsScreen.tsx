@@ -86,6 +86,7 @@ export function ApiSettingsScreen() {
             keyboardType="url"
             onChangeText={setDraftBaseUrl}
             placeholder="http://localhost:3000"
+            placeholderTextColor={colors.text4}
             style={styles.input}
             value={draftBaseUrl}
           />
@@ -149,18 +150,18 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   input: {
-    backgroundColor: colors.canvas,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    color: colors.ink,
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.input,
+    borderWidth: 1,
+    color: colors.text,
     fontSize: typography.body,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
+    minHeight: 48,
+    paddingHorizontal: 14,
     paddingVertical: spacing.sm
   },
   message: {
-    color: colors.muted,
+    color: colors.text2,
     fontSize: typography.small,
     lineHeight: 20
   },
@@ -170,29 +171,31 @@ const styles = StyleSheet.create({
   primaryButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
-    borderRadius: radius.card,
+    borderRadius: radius.control,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: spacing.md
   },
   primaryButtonText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: typography.small,
-    fontWeight: "800"
+    fontWeight: "600"
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: colors.tint,
-    borderRadius: radius.card,
+    backgroundColor: colors.accentSoft,
+    borderColor: "rgba(99,89,233,0.22)",
+    borderRadius: radius.control,
+    borderWidth: 1,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: spacing.md
   },
   secondaryButtonText: {
-    color: colors.ink,
+    color: colors.accent,
     fontSize: typography.small,
-    fontWeight: "800"
+    fontWeight: "600"
   }
 });

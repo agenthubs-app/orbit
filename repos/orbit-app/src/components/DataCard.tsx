@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radius, spacing, typography } from "../design/tokens";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { colors, radius, shadows, spacing, typography } from "../design/tokens";
 
 interface DataCardProps extends PropsWithChildren {
   detail?: string;
@@ -33,7 +33,7 @@ export function DataCard({ children, detail, onPress, title }: DataCardProps) {
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [pressed ? styles.pressed : null]}
+      style={({ pressed }) => [styles.pressable, pressed ? styles.pressed : null]}
     >
       {content}
     </Pressable>
@@ -48,25 +48,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.card,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     gap: spacing.md,
-    padding: spacing.lg
+    padding: spacing.lg,
+    ...(Platform.OS === "web" ? shadows.webCard : shadows.card)
   },
   detail: {
-    color: colors.muted,
+    color: colors.text3,
     fontSize: typography.small,
-    lineHeight: 20
+    lineHeight: 19
   },
   header: {
     gap: spacing.xs
   },
+  pressable: {
+    borderRadius: radius.card
+  },
   pressed: {
-    opacity: 0.72
+    opacity: 0.82,
+    transform: [{ translateY: 0.5 }]
   },
   title: {
     color: colors.ink,
     fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 22
+    fontWeight: "600",
+    lineHeight: 20
   }
 });

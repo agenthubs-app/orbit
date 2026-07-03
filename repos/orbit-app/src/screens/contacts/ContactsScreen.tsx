@@ -80,19 +80,19 @@ export function ContactsScreen() {
 
 const styles = StyleSheet.create({
   nextActionText: {
-    color: colors.muted,
+    color: colors.text2,
     fontSize: typography.small,
     lineHeight: 20
   },
   relationshipText: {
-    color: colors.ink,
+    color: colors.text,
     fontSize: typography.small,
     lineHeight: 20
   },
   valueText: {
     color: colors.accent,
     fontSize: typography.caption,
-    fontWeight: "800",
+    fontWeight: "700",
     textTransform: "uppercase"
   }
 });

@@ -18,16 +18,18 @@ export function SectionHeader({ detail, title }: SectionHeaderProps) {
 const styles = StyleSheet.create({
   container: {
     gap: spacing.xs,
-    marginTop: spacing.md
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xs
   },
   detail: {
-    color: colors.muted,
+    color: colors.text3,
     fontSize: typography.small,
-    lineHeight: 20
+    lineHeight: 19
   },
   title: {
     color: colors.ink,
     fontSize: typography.section,
-    fontWeight: "800"
+    fontWeight: "700",
+    lineHeight: 22
   }
 });

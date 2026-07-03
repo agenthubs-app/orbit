@@ -15,7 +15,7 @@ export function ErrorState({
     <DataCard title={title}>
       <Text
         style={{
-          color: colors.caution,
+          color: colors.rose,
           fontSize: typography.small,
           lineHeight: 20
         }}

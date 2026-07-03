@@ -1,12 +1,12 @@
 import { useRouter } from "expo-router";
-import { RefreshControl, Text } from "react-native";
+import { RefreshControl, StyleSheet, Text } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors } from "../../design/tokens";
+import { colors, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { eventsToSummaries } from "../../view-models/events";
 
@@ -52,10 +52,18 @@ export function EventsScreen() {
               }
               title={event.title}
             >
-              <Text>{event.status}</Text>
+              <Text style={styles.statusText}>{event.status}</Text>
             </DataCard>
           ))
         : null}
     </AppScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  statusText: {
+    color: colors.text2,
+    fontSize: typography.small,
+    lineHeight: 20
+  }
+});

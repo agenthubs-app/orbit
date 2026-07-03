@@ -1,10 +1,10 @@
-import { RefreshControl, Text } from "react-native";
+import { RefreshControl, StyleSheet, Text } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors } from "../../design/tokens";
+import { colors, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { profileToSummary } from "../../view-models/profile";
 
@@ -42,7 +42,15 @@ function ProfileCard({ data }: { data: unknown }) {
 
   return (
     <DataCard detail={profile.headline} title={profile.displayName}>
-      <Text>{profile.timezone}</Text>
+      <Text style={styles.bodyText}>{profile.timezone}</Text>
     </DataCard>
   );
 }
+
+const styles = StyleSheet.create({
+  bodyText: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 20
+  }
+});

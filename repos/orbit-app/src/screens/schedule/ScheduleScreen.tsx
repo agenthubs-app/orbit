@@ -63,14 +63,14 @@ export function ScheduleScreen() {
 
 const styles = StyleSheet.create({
   actionText: {
-    color: colors.ink,
+    color: colors.text,
     fontSize: typography.small,
     lineHeight: 20
   },
   priorityText: {
     color: colors.accent,
     fontSize: typography.caption,
-    fontWeight: "800",
+    fontWeight: "700",
     textTransform: "uppercase"
   }
 });

@@ -1,11 +1,11 @@
 import { useLocalSearchParams } from "expo-router";
-import { RefreshControl, Text } from "react-native";
+import { RefreshControl, StyleSheet, Text } from "react-native";
 import { eventDetailPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors } from "../../design/tokens";
+import { colors, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { eventDetailToSummary } from "../../view-models/events";
 
@@ -57,12 +57,20 @@ function EventDetailCard({ data }: { data: unknown }) {
         detail={`${event.startsAt} ${event.location}`.trim()}
         title={event.title}
       >
-        <Text>{event.description || event.status}</Text>
+        <Text style={styles.bodyText}>{event.description || event.status}</Text>
       </DataCard>
       <DataCard detail={event.relationshipContext} title="Relationship context">
-        <Text>{event.preparation}</Text>
+        <Text style={styles.bodyText}>{event.preparation}</Text>
       </DataCard>
       <DataCard detail={event.nextAction} title="Next move" />
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  bodyText: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 20
+  }
+});
