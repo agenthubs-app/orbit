@@ -2,7 +2,8 @@ import type { OrbitLanguage } from "../orbit-language-core";
 import { makeOrbitServerT } from "../orbit-language-server";
 import type { OrbitOrganizerPublicViewModel } from "../orbit-organizer-route-view-model";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
-import { productHref, PublicTopNav } from "../orbit-public-shell";
+import { productHref } from "../orbit-product-href";
+import { PublicTopNav } from "../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 
 type T = (copy: { en: string; zh: string }) => string;
