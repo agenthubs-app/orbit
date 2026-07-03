@@ -62,11 +62,11 @@ function ProfileMethods({
             <div
               key={key}
               onClick={() => setMethod(key)}
-              style={{ background: on ? "var(--accent-soft)" : "var(--surface)", border: `1.5px solid ${on ? "var(--accent)" : "var(--border-2)"}`, borderRadius: 14, cursor: "pointer", flex: 1, padding: 14 }}
+              style={{ background: on ? "var(--accent-soft)" : "var(--surface)", border: `1.5px solid ${on ? "var(--accent)" : "var(--border-2)"}`, borderRadius: "var(--r-md)", cursor: "pointer", flex: 1, padding: 14 }}
             >
               <Icon color={on ? "var(--accent)" : "var(--text-2)"} name={icon} size={20} />
               <div style={{ color: on ? "var(--accent)" : "var(--ink)", fontSize: 14, fontWeight: 600, marginTop: 10 }}>{label}</div>
-              <div style={{ color: on ? "var(--accent)" : "var(--text-3)", fontSize: 11.5, marginTop: 2, opacity: on ? 0.8 : 1 }}>{desc}</div>
+              <div style={{ color: on ? "var(--accent)" : "var(--text-3)", fontSize: 12, marginTop: 2, opacity: on ? 0.8 : 1 }}>{desc}</div>
             </div>
           );
         })}
@@ -74,15 +74,15 @@ function ProfileMethods({
       {method === "ai" ? (
         <div style={{ marginTop: 14 }}>
           <textarea className="field" onChange={(event) => setExtractText(event.target.value)} placeholder={t({ en: "Paste your business, experience, focus areas, or who you want to meet", zh: "粘贴业务、经历、关注方向或希望认识的人" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={extractText} />
-          <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 8 }}>{t({ en: "Extraction uses the company and title filled in below; results only fill the form, save after confirming.", zh: "会结合下方已填写的公司和职位提取，结果只填入表单，确认后再保存。" })}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 8 }}>{t({ en: "Extraction uses the company and title filled in below; results only fill the form, save after confirming.", zh: "会结合下方已填写的公司和职位提取，结果只填入表单，确认后再保存。" })}</div>
           <button className="btn btn-dark" disabled={extracting} onClick={onTextExtract} style={{ marginTop: 10 }} type="button"><Icon name="sparkle" size={16} />{extracting ? t({ en: "Extracting…", zh: "提取中…" }) : t({ en: "Extract to form", zh: "提取到表单" })}</button>
         </div>
       ) : null}
       {method === "scan" ? (
-        <button disabled={extracting} onClick={onFilePick} style={{ background: "var(--surface-2)", border: "1.5px dashed var(--border-strong)", borderRadius: 14, cursor: "pointer", fontFamily: "var(--ff)", marginTop: 14, padding: 24, textAlign: "center", width: "100%" }} type="button">
-          <div style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 999, color: "var(--accent)", display: "flex", height: 48, justifyContent: "center", margin: "0 auto 10px", width: 48 }}><Icon name="search" size={24} /></div>
-          <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 550 }}>{extracting ? t({ en: "Extracting…", zh: "正在提取…" }) : t({ en: "Tap to upload a business card or resume", zh: "点击上传名片或简历" })}</div>
-          <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 4 }}>{t({ en: "Supports JPG / PNG / PDF; results only fill the form, save after confirming.", zh: "支持 JPG / PNG / PDF，结果只填入表单，确认后再保存。" })}</div>
+        <button disabled={extracting} onClick={onFilePick} style={{ background: "var(--surface-2)", border: "1.5px dashed var(--border-strong)", borderRadius: "var(--r-md)", cursor: "pointer", fontFamily: "var(--ff)", marginTop: 14, padding: 24, textAlign: "center", width: "100%" }} type="button">
+          <div style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "flex", height: 48, justifyContent: "center", margin: "0 auto 10px", width: 48 }}><Icon name="search" size={24} /></div>
+          <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{extracting ? t({ en: "Extracting…", zh: "正在提取…" }) : t({ en: "Tap to upload a business card or resume", zh: "点击上传名片或简历" })}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{t({ en: "Supports JPG / PNG / PDF; results only fill the form, save after confirming.", zh: "支持 JPG / PNG / PDF，结果只填入表单，确认后再保存。" })}</div>
         </button>
       ) : null}
     </div>
@@ -107,7 +107,7 @@ function ChipGroup({
   return (
     <div>
       <label className="field-label">{label}{t({ en: ` (${values.length})`, zh: `（${values.length}）` })}</label>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {options.map((option) => {
           const active = values.includes(option);
 
@@ -229,11 +229,11 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   }, [profile, t]);
   const missingSeparator = t({ en: ", ", zh: "、" });
   const alert = message ? (
-    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: 10, color: "var(--live)", fontSize: 13, padding: "10px 12px" }}>{message}</div>
+    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live)", fontSize: 13, padding: "10px 12px" }}>{message}</div>
   ) : missing.length ? (
-    <div role="alert" style={{ background: "var(--amber-soft)", borderRadius: 10, color: "var(--amber)", fontSize: 13, padding: "10px 12px" }}>{t({ en: "Still missing: ", zh: "还差：" })}{missing.join(missingSeparator)}{t({ en: " (complete all to be matched)", zh: "（填全才能被匹配）" })}</div>
+    <div role="alert" style={{ background: "var(--amber-soft)", borderRadius: "var(--r-sm)", color: "var(--amber)", fontSize: 13, padding: "10px 12px" }}>{t({ en: "Still missing: ", zh: "还差：" })}{missing.join(missingSeparator)}{t({ en: " (complete all to be matched)", zh: "（填全才能被匹配）" })}</div>
   ) : (
-    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: 10, color: "var(--live)", fontSize: 13, padding: "10px 12px" }}>{t({ en: "Profile complete, ready to be matched", zh: "档案完整，可被匹配" })}</div>
+    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live)", fontSize: 13, padding: "10px 12px" }}>{t({ en: "Profile complete, ready to be matched", zh: "档案完整，可被匹配" })}</div>
   );
 
   function update<K extends keyof OrbitProfileView>(field: K, value: OrbitProfileView[K]) {
@@ -283,7 +283,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
             <div style={{ marginTop: 22 }}>{alert}</div>
             <ProfileFields profile={profile} selectRenderKey={selectRenderKey} t={t} toggleTag={toggleTag} update={update} viewModel={viewModel} />
           </div>
-          <div style={{ backdropFilter: "blur(14px)", background: "rgba(255,255,255,0.92)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", left: 0, padding: "14px 40px", position: "absolute", right: 0 }}>
+          <div style={{ backdropFilter: "blur(14px)", background: "var(--glass-bar)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", left: 0, padding: "14px 40px", position: "absolute", right: 0 }}>
             <button className="btn btn-ghost" onClick={() => orbitNavigate("/home")} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
             <button className="btn btn-primary" disabled={saving} type="submit"><Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save profile", zh: "保存档案" })}</button>
           </div>
@@ -294,7 +294,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
         <form onSubmit={onSubmit} style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
           <MobileBar onBack={() => orbitNavigate("/home")} right={<button className="btn btn-primary btn-sm" disabled={saving} type="submit">{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save", zh: "保存" })}</button>} title={t({ en: "Universal profile", zh: "通用档案" })} />
           <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "14px 18px 100px" }}>
-            <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: "0 0 16px" }}>{subText}</p>
+            <p style={{ color: "var(--text-2)", fontSize: 14, margin: "0 0 16px" }}>{subText}</p>
             <ProfileMethods {...methodsProps} />
             <div style={{ background: "var(--border)", height: 1, margin: "20px 0 0" }} />
             <div style={{ marginTop: 20 }}>{alert}</div>

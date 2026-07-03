@@ -1,8 +1,7 @@
-import { getOrbitServerLanguage } from "./orbit-language-server";
-import { OrbitRealLandingPage } from "./orbit-real-landing-page";
+import { OrbitStarfieldHome } from "./orbit-starfield-home";
 
-export default async function AppHomePage() {
-  const language = await getOrbitServerLanguage();
-
-  return <OrbitRealLandingPage language={language} />;
+// The starfield journey is the Orbit system's homepage: /app renders the same
+// page as /. The previous reference landing page has been removed.
+export default function AppHomePage() {
+  return <OrbitStarfieldHome />;
 }

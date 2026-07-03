@@ -228,18 +228,18 @@ export function OrbitAgentHero() {
           style={{
             alignItems: "center",
             background: "rgba(99,89,233,0.10)",
-            borderRadius: 999,
+            borderRadius: "var(--r-pill)",
             color: "var(--accent)",
             display: "inline-flex",
-            fontSize: 12.5,
-            fontWeight: 700,
-            gap: 9,
+            fontSize: 13,
+            fontWeight: 600,
+            gap: 10,
             height: 32,
             marginBottom: 18,
             padding: "0 14px",
           }}
         >
-          <span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--accent)" }} />
+          <span style={{ width: 8, height: 8, borderRadius: "var(--r-pill)", background: "var(--accent)" }} />
           {t({ en: "ORBIT AGENT · Your network & business copilot", zh: "ORBIT AGENT · 你的人脉与商业副驾" })}
         </div>
         <h1
@@ -303,11 +303,11 @@ export function OrbitAgentHero() {
                 style={{
                   alignItems: "center",
                   background: "var(--accent-soft)",
-                  borderRadius: 999,
+                  borderRadius: "var(--r-pill)",
                   color: "var(--accent)",
                   display: "inline-flex",
-                  fontSize: 12.5,
-                  fontWeight: 650,
+                  fontSize: 13,
+                  fontWeight: 600,
                   gap: 6,
                   height: 32,
                   padding: "0 12px",
@@ -342,7 +342,7 @@ export function OrbitAgentHero() {
             </button>
           </div>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 9, justifyContent: "center", marginTop: 16 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginTop: 16 }}>
           {suggests.map((suggest) => (
             <button
               className="hit-44"
@@ -351,16 +351,16 @@ export function OrbitAgentHero() {
               style={{
                 alignItems: "center",
                 backdropFilter: "blur(8px)",
-                background: "rgba(255,255,255,0.8)",
+                background: "var(--glass-chip)",
                 border: "1px solid var(--border-2)",
-                borderRadius: 999,
+                borderRadius: "var(--r-pill)",
                 color: "var(--text)",
                 cursor: "pointer",
                 display: "inline-flex",
                 fontFamily: "var(--ff)",
-                fontSize: 13.5,
-                fontWeight: 550,
-                gap: 7,
+                fontSize: 14,
+                fontWeight: 600,
+                gap: 8,
                 height: 38,
                 padding: "0 15px",
               }}

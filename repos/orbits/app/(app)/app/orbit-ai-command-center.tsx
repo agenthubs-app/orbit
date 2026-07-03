@@ -107,7 +107,7 @@ const orbitAiCommandStyles = `
   flex-direction: column;
   font-size: 0.7rem;
   font-weight: 650;
-  gap: 5px;
+  gap: 6px;
   justify-content: center;
   min-height: 58px;
   padding: 7px 3px;
@@ -132,7 +132,7 @@ const orbitAiCommandStyles = `
   color: rgba(255, 255, 255, 0.58);
   display: grid;
   font-size: 0.7rem;
-  gap: 7px;
+  gap: 8px;
   justify-items: center;
   line-height: 1.35;
   margin: 0;
@@ -358,7 +358,7 @@ const orbitAiCommandStyles = `
   background: var(--orbit-ai-canvas);
   color: var(--orbit-ai-copy);
   display: grid;
-  gap: 13px;
+  gap: 14px;
   grid-template-rows: auto 1fr;
   max-height: calc(100vh - 24px);
   overflow-y: auto;
@@ -452,9 +452,9 @@ const orbitAiCommandStyles = `
 }
 
 .orbit-ai-contact-node {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  color: #17211f;
+  background: var(--glass-chip);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
   height: 44px;
   left: var(--node-x);
   top: var(--node-y);
@@ -597,7 +597,7 @@ const orbitAiCommandStyles = `
 
   .orbit-ai-nav {
     display: flex;
-    gap: 7px;
+    gap: 8px;
     overflow-x: auto;
   }
 

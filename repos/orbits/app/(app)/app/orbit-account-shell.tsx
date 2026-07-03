@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { useOrbitLanguage } from "./orbit-language-context";
+import { useOrbitModalA11y } from "./orbit-modal-a11y";
 import { OrbitTopNav, productHref } from "./orbit-public-shell";
 import { Icon, Logo } from "./orbit-reference-primitives";
 
@@ -44,7 +45,7 @@ export function StatusBar({ dark = false }: { dark?: boolean }) {
       <span className="mono" style={{ fontSize: 14, fontWeight: 600 }}>9:41</span>
       <div style={{ alignItems: "center", display: "flex", gap: 6 }}>
         <span style={{ border: `2px solid ${color}`, borderRadius: 3, display: "inline-block", height: 12, width: 17 }} />
-        <span style={{ border: `2px solid ${color}`, borderRadius: 999, display: "inline-block", height: 12, width: 17 }} />
+        <span style={{ border: `2px solid ${color}`, borderRadius: "var(--r-pill)", display: "inline-block", height: 12, width: 17 }} />
         <span style={{ border: `1px solid ${color}`, borderRadius: 4, display: "inline-block", height: 12, width: 25 }} />
       </div>
     </div>
@@ -73,7 +74,7 @@ export function MobileBar({
       style={{
         alignItems: "center",
         backdropFilter: transparent ? "none" : "blur(14px)",
-        background: transparent ? "transparent" : "rgba(255,255,255,0.86)",
+        background: transparent ? "transparent" : "var(--glass-bar)",
         borderBottom: transparent ? "none" : "1px solid var(--border)",
         display: "flex",
         flexShrink: 0,
@@ -94,7 +95,7 @@ export function MobileBar({
             alignItems: "center",
             background: dark ? "rgba(0,0,0,0.3)" : "var(--surface-2)",
             border: "none",
-            borderRadius: 999,
+            borderRadius: "var(--r-pill)",
             color: dark ? "#fff" : "var(--ink)",
             cursor: "pointer",
             display: "flex",
@@ -128,56 +129,10 @@ export function ModalShell({
   step?: string;
 }) {
   const { t } = useOrbitLanguage();
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const previouslyFocused = useRef<HTMLElement | null>(null);
-
-  const focusable = useCallback(() => {
-    const root = cardRef.current;
-    if (!root) return [] as HTMLElement[];
-    return Array.from(
-      root.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ),
-    ).filter((node) => node.offsetParent !== null || node === document.activeElement);
-  }, []);
-
-  useEffect(() => {
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const items = focusable();
-    (items[0] ?? cardRef.current)?.focus();
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-
-      const nodes = focusable();
-      if (!nodes.length) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      const activeEl = document.activeElement;
-
-      if (event.shiftKey && activeEl === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && activeEl === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      previouslyFocused.current?.focus?.();
-    };
-  }, [focusable, onClose]);
+  const cardRef = useOrbitModalA11y(onClose);
 
   return (
-    <div className="orbit-modal-overlay" style={{ alignItems: "center", display: "flex", inset: 0, justifyContent: "center", position: "absolute", zIndex: 200 }}>
+    <div className="orbit-modal-overlay" style={{ alignItems: "center", display: "flex", inset: 0, justifyContent: "center", position: "absolute", zIndex: 100 }}>
       <div className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
       <div
         aria-label={label ?? t({ en: "Dialog", zh: "对话框" })}
@@ -192,7 +147,7 @@ export function ModalShell({
           <Logo size={22} />
           <div style={{ flex: 1 }} />
           {step ? <span className="mono" style={{ color: "var(--text-3)", fontSize: 12, whiteSpace: "nowrap" }}>{step}</span> : null}
-          <button type="button" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
+          <button type="button" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--text-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
             <Icon name="x" size={17} />
           </button>
         </div>

@@ -270,9 +270,22 @@ const globalStyles = `
   }
 `;
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  // Keep <html lang> in sync with the language the page actually renders in
+  // (screen-reader voice + the EN/zh display-serif swap key off this attr).
+  // Outside a request scope (tests, static rendering) fall back to zh.
+  let rawLanguage;
+  try {
+    const { cookies, headers } = await import("next/headers");
+    const requestHeaders = await headers();
+    const cookieStore = await cookies();
+    rawLanguage = requestHeaders.get("x-orbit-lang") ?? cookieStore.get("orbit-lang")?.value;
+  } catch {
+    rawLanguage = undefined;
+  }
+
   return (
-    <html lang="en">
+    <html lang={rawLanguage === "en" ? "en" : "zh-CN"}>
       <body>
         <style>{globalStyles}</style>
         {children}

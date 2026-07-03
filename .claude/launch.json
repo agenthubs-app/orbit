@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "repos/orbits", "run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "designs",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "3320", "--directory", "docs/designs"],
+      "port": 3320
+    }
+  ]
+}

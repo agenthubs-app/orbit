@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import RootLayout from "../app/layout";
 import Page from "../app/page";
 
-test("scaffold exposes the runnable Next.js App Router contract", () => {
+test("scaffold exposes the runnable Next.js App Router contract", async () => {
   const projectRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     "..",
@@ -23,7 +23,6 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
     /^eslint next\.config\.js --ext \.js && tsc --noEmit --incremental false --allowJs false --jsx react-jsx --target ES2017 --lib dom,dom\.iterable,esnext --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck /,
   );
   for (const sourcePath of [
-    "app/(app)/app/orbit-real-landing-page.tsx",
     "app/(app)/app/orbit-landing-route-view-model.ts",
     "app/(app)/app/orbit-reference-styles.tsx",
     "app/(app)/app/orbit-reference-primitives.tsx",
@@ -49,7 +48,6 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
     "app/layout.tsx",
     "app/page.tsx",
     "tests/smoke.test.tsx",
-    "app/(app)/app/orbit-real-landing-page.tsx",
     "app/(app)/app/orbit-landing-route-view-model.ts",
     "app/(app)/app/orbit-reference-styles.tsx",
     "app/(app)/app/orbit-reference-primitives.tsx",
@@ -72,22 +70,29 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
   }
 
   let html = "";
-  assert.doesNotThrow(() => {
-    html = renderToStaticMarkup(
-      React.createElement(RootLayout, null, React.createElement(Page)),
-    );
+  await assert.doesNotReject(async () => {
+    // RootLayout is an async Server Component (it resolves the request
+    // language for <html lang>); resolve it before static rendering.
+    const layoutElement = await RootLayout({ children: React.createElement(Page) });
+    html = renderToStaticMarkup(layoutElement);
   });
 
   assert.match(html, /<main/);
   assert.match(html, /data-orbit-real-page="starfield-home"/);
-  assert.match(html, /data-iorbit-motion="starfield-stop-machine"/);
-  assert.match(html, /data-iorbit-progress="0\.000"/);
-  assert.match(html, /iorbit-starfield-home/);
+  // Both reference trees SSR (desktop 星空旅程 + de-shelled mobile); a CSS
+  // breakpoint shows exactly one until matchMedia settles it after hydration.
+  assert.match(html, /sk-home-desktop/);
+  assert.match(html, /sk-home-mobile/);
+  assert.match(html, /data-screen-label="iOrbit 星空旅程"/);
+  assert.match(html, /data-screen-label="iOrbit 移动端"/);
+  assert.match(html, /id="skCanvas"/);
   assert.match(html, /你的⼈脉|你的人脉/);
-  assert.match(html, /Relationship Starfield/);
-  // Language toggle renders the zh/en switcher ("中" and "EN" in separate spans).
+  assert.match(html, /由 iOrbit 智能匹配引擎驱动/);
+  // Mobile nav renders the zh/en switcher ("中" and "EN" in separate spans).
   assert.match(html, /中/);
   assert.match(html, /EN/);
+  // The pre-reference responsive approximation must be fully gone.
+  assert.doesNotMatch(html, /iorbit-starfield-home/);
   assert.doesNotMatch(html, /orbit-landing-page/);
   assert.doesNotMatch(html, /orbit-agent-hero/);
   assert.doesNotMatch(html, /让对的人，进入你的商业轨道/);

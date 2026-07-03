@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { withOrbitLanguageHref, type OrbitLanguage } from "./orbit-language-core";
 
@@ -28,6 +28,12 @@ export function OrbitLanguageProvider({
   initialLanguage: OrbitLanguage;
 }) {
   const [language, setLanguageState] = useState<OrbitLanguage>(initialLanguage);
+
+  // Screen readers and the EN display-serif swap key off <html lang>; keep it
+  // aligned with the language the React tree actually renders.
+  useEffect(() => {
+    document.documentElement.lang = language === "en" ? "en" : "zh-CN";
+  }, [language]);
 
   const value = useMemo<OrbitLanguageContextValue>(() => {
     function preserveHref(href: string, nextLanguage = language) {

@@ -85,7 +85,7 @@ function AgentHistoryList({
   const groups = useMemo(() => [...new Set(history.map((item) => item.group))], [history]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {groups.map((group) => (
         <div key={group}>
           <div className="eyebrow" style={{ padding: "0 8px 6px" }}>
@@ -106,21 +106,21 @@ function AgentHistoryList({
                       alignItems: "center",
                       background: active ? "var(--accent-softer)" : "transparent",
                       border: "none",
-                      borderRadius: 10,
+                      borderRadius: "var(--r-sm)",
                       cursor: "pointer",
                       display: "flex",
                       fontFamily: "var(--ff)",
-                      gap: 9,
+                      gap: 10,
                       padding: "9px 10px",
                       textAlign: "left",
                       width: "100%",
                     }}
                   >
                     <Icon name="message" size={15} color={active ? "var(--accent)" : "var(--text-4)"} />
-                    <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 13.5, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.title}
                     </span>
-                    <span className="mono" style={{ color: "var(--text-4)", flexShrink: 0, fontSize: 10.5 }}>
+                    <span className="mono" style={{ color: "var(--text-4)", flexShrink: 0, fontSize: 11 }}>
                       {item.when}
                     </span>
                   </button>
@@ -162,16 +162,16 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
           zh: "说出你想做的事，我帮你从人脉里找对的人、从活动里找对的局，并告诉你该怎么开口。",
         })}
       </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 9, width: "min(420px, 100%)" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "min(420px, 100%)" }}>
         {viewModel.suggests.map((suggest) => (
           <button
             key={suggest.label}
             type="button"
             onClick={() => onPick(suggest.q)}
-            style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 13, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 11, padding: "13px 15px", textAlign: "left" }}
+            style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 13, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: "13px 15px", textAlign: "left" }}
           >
             <Icon name={suggest.icon} size={17} color="var(--accent)" />
-            <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 550 }}>{agentSuggestLabel(suggest.label, language)}</span>
+            <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{agentSuggestLabel(suggest.label, language)}</span>
             <div style={{ flex: 1 }} />
             <Icon name="arrow" size={16} color="var(--text-4)" />
           </button>
@@ -191,35 +191,35 @@ function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultVi
       <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
         <Avatar letter={connection.initial} g={connection.g} size={46} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "var(--ink)", fontSize: 15.5, fontWeight: 650 }}>{connection.displayName}</div>
-          <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 1 }}>
+          <div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{connection.displayName}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>
             {connection.title} · {connection.company}
           </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
-          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 750, lineHeight: 1 }}>{item.match}%</div>
-          <div className="mono" style={{ color: "var(--text-4)", fontSize: 9.5 }}>{t({ en: "Match", zh: "匹配度" })}</div>
+          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 600, lineHeight: 1 }}>{item.match}%</div>
+          <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Match", zh: "匹配度" })}</div>
         </div>
       </div>
       <div style={{ background: "var(--surface-3)", borderRadius: 99, height: 6, marginTop: 12, overflow: "hidden" }}>
         <span style={{ background: "var(--accent-grad-bar)", display: "block", height: "100%", width: `${item.match}%` }} />
       </div>
       <div style={{ alignItems: "center", display: "flex", gap: 6, marginTop: 11 }}>
-        <span style={{ alignItems: "center", background: status.soft, borderRadius: 999, color: status.color, display: "inline-flex", fontSize: 11.5, fontWeight: 600, gap: 6, height: 24, padding: "0 10px" }}>
-          <span style={{ background: status.color, borderRadius: 999, height: 6, width: 6 }} />
+        <span style={{ alignItems: "center", background: status.soft, borderRadius: "var(--r-pill)", color: status.color, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 6, height: 24, padding: "0 10px" }}>
+          <span style={{ background: status.color, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
           {status.label}
         </span>
         <span className="chip" style={{ height: 24 }}>{connection.industry}</span>
       </div>
       <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>
-      <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 9, marginTop: 11, padding: 11 }}>
+      <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 11, padding: 11 }}>
         <Icon name="message" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
-          <div style={{ color: "var(--accent)", fontSize: 11.5, fontWeight: 650 }}>{t({ en: "How to start", zh: "怎么开口" })}</div>
-          <div style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>{item.opener}</div>
+          <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "How to start", zh: "怎么开口" })}</div>
+          <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.opener}</div>
         </div>
       </div>
-      <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 12.5, fontWeight: 650, gap: 3, justifyContent: "flex-end", marginTop: 12 }}>
+      <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4, justifyContent: "flex-end", marginTop: 12 }}>
         {t({ en: "View contact", zh: "查看名片" })}
         <Icon name="chevR" size={14} />
       </div>
@@ -237,17 +237,17 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
 
   return (
     <button type="button" className="card card-hover" style={{ cursor: "pointer", display: "block", fontFamily: "var(--ff)", overflow: "hidden", padding: 0, textAlign: "left", width: "100%" }} onClick={() => navigate(`/events/${event.code}`)}>
-      <div style={{ display: "flex", gap: 13, padding: 15 }}>
+      <div style={{ display: "flex", gap: 14, padding: 15 }}>
         <Cover g={gradientFromString(event.code)} monogram={{ text: event.name.slice(0, 1), size: 22 }} style={{ borderRadius: 13, flexShrink: 0, height: 60, width: 60 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ alignItems: "flex-start", display: "flex", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: "var(--ink)", fontSize: 15.5, fontWeight: 650, lineHeight: 1.25 }}>{event.name}</div>
+              <div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{event.name}</div>
               <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>{dateLabel}</div>
             </div>
             <div style={{ flexShrink: 0, textAlign: "right" }}>
-              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 750, lineHeight: 1 }}>{item.score}</div>
-              <div className="mono" style={{ color: "var(--text-4)", fontSize: 9.5 }}>{t({ en: "Score", zh: "匹配分" })}</div>
+              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 600, lineHeight: 1 }}>{item.score}</div>
+              <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Score", zh: "匹配分" })}</div>
             </div>
           </div>
           <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 12, gap: 8, marginTop: 8 }}>
@@ -258,14 +258,14 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
       </div>
       <div style={{ padding: "0 15px 15px" }}>
         <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>{item.reason}</div>
-        <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 9, marginTop: 11, padding: 11 }}>
+        <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 11, padding: 11 }}>
           <Icon name="sparkle" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
           <div>
-            <div style={{ color: "var(--accent)", fontSize: 11.5, fontWeight: 650 }}>{t({ en: "How to network on site", zh: "怎么在现场社交" })}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>{item.howto}</div>
+            <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "How to network on site", zh: "怎么在现场社交" })}</div>
+            <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.howto}</div>
           </div>
         </div>
-        <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 12.5, fontWeight: 650, gap: 3, justifyContent: "flex-end", marginTop: 12 }}>
+        <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4, justifyContent: "flex-end", marginTop: 12 }}>
           {t({ en: "View event", zh: "查看活动" })}
           <Icon name="chevR" size={14} />
         </div>
@@ -308,7 +308,7 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
       />
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginTop: big ? 8 : 4 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 999, color: "var(--accent)", display: "inline-flex", fontSize: 12.5, fontWeight: 650, gap: 6, height: 32, padding: "0 12px" }}>
+          <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 6, height: 32, padding: "0 12px" }}>
             <Icon name="sparkle" size={14} />
             iOrbit
           </span>
@@ -332,7 +332,7 @@ function TypingDots() {
   return (
     <span style={{ display: "inline-flex", gap: 4 }}>
       {[0, 1, 2].map((index) => (
-        <span key={index} style={{ animation: `blink 1s ${index * 0.2}s infinite`, background: "var(--text-4)", borderRadius: 999, height: 6, width: 6 }} />
+        <span key={index} style={{ animation: `blink 1s ${index * 0.2}s infinite`, background: "var(--text-4)", borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
       ))}
     </span>
   );
@@ -447,21 +447,21 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       {messages.map((message, index) =>
         message.role === "user" ? (
           <div key={`user-${index}`} style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-            <div style={{ background: "var(--accent)", borderRadius: "16px 16px 4px 16px", color: "var(--on-dark)", fontSize: 14.5, lineHeight: 1.55, maxWidth: "82%", padding: "11px 15px" }}>{message.text}</div>
+            <div style={{ background: "var(--accent)", borderRadius: "16px 16px 4px 16px", color: "var(--on-dark)", fontSize: 15, lineHeight: 1.55, maxWidth: "82%", padding: "11px 15px" }}>{message.text}</div>
           </div>
         ) : (
-          <div key={`assistant-${index}`} style={{ display: "flex", gap: 11, marginBottom: 18 }}>
-            <span className="avatar g-indigo" style={{ borderRadius: 10, flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
+          <div key={`assistant-${index}`} style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+            <span className="avatar g-indigo" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
               <Icon name="sparkle" size={16} color="var(--on-dark)" />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               {message.note ? (
-                <div style={{ alignItems: "center", background: "var(--amber-soft)", borderRadius: 12, color: "var(--amber)", display: "inline-flex", fontSize: 13, fontWeight: 550, gap: 7, marginBottom: 10, padding: "7px 12px" }}>
+                <div style={{ alignItems: "center", background: "var(--amber-soft)", borderRadius: 12, color: "var(--amber)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 8, marginBottom: 10, padding: "7px 12px" }}>
                   <Icon name="eye" size={14} />
                   {message.note}
                 </div>
               ) : null}
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", fontSize: 14.5, lineHeight: 1.6, padding: "12px 15px" }}>{message.text}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", fontSize: 15, lineHeight: 1.6, padding: "12px 15px" }}>{message.text}</div>
               {inlinePanel ? (
                 <div style={{ marginTop: 12 }}>
                   <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panelTitle}</div>
@@ -473,8 +473,8 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         ),
       )}
       {thinking ? (
-        <div style={{ display: "flex", gap: 11, marginBottom: 18 }}>
-          <span className="avatar g-indigo" style={{ borderRadius: 10, flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+          <span className="avatar g-indigo" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
             <Icon name="sparkle" size={16} color="var(--on-dark)" />
           </span>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", padding: "14px 16px" }}>
@@ -511,7 +511,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <aside style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, width: 248 }}>
           <div style={{ padding: 14 }}>
-            <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 7, height: 40, justifyContent: "center", width: "100%" }}>
+            <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, height: 40, justifyContent: "center", width: "100%" }}>
               <Icon name="plus" size={16} color="var(--accent)" />
               {t({ en: "New chat", zh: "新对话" })}
             </button>
@@ -571,12 +571,12 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           <div onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
           <div style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}>
             <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
-              <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 700 }}>{t({ en: "Chat history", zh: "对话历史" })}</span>
+              <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{t({ en: "Chat history", zh: "对话历史" })}</span>
               <div style={{ flex: 1 }} />
-              <button type="button" className="hit-44" onClick={() => setHistOpen(false)} aria-label={t({ en: "Close", zh: "关闭" })} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 15, height: 30, justifyContent: "center", width: 30 }}><Icon name="x" size={16} /></button>
+              <button type="button" className="hit-44" onClick={() => setHistOpen(false)} aria-label={t({ en: "Close", zh: "关闭" })} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 15, height: 30, justifyContent: "center", width: 30 }}><Icon name="x" size={16} /></button>
             </div>
             <div style={{ padding: 12 }}>
-              <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 7, height: 40, justifyContent: "center", width: "100%" }}>
+              <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, height: 40, justifyContent: "center", width: "100%" }}>
                 <Icon name="plus" size={16} color="var(--accent)" />
                 {t({ en: "New chat", zh: "新对话" })}
               </button>
@@ -589,7 +589,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                 ["/home/schedule", "clock", t({ en: "Calendar", zh: "日程" })],
                 ["/home/cards", "wallet", t({ en: "Contacts", zh: "人脉" })],
               ].map(([href, icon, label]) => (
-                <button key={href} type="button" onClick={() => { setHistOpen(false); navigate(href); }} style={{ alignItems: "center", background: "none", border: "none", borderRadius: 9, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 550, gap: 11, padding: "9px 8px", textAlign: "left", width: "100%" }}>
+                <button key={href} type="button" onClick={() => { setHistOpen(false); navigate(href); }} style={{ alignItems: "center", background: "none", border: "none", borderRadius: 9, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 12, padding: "9px 8px", textAlign: "left", width: "100%" }}>
                   <Icon name={icon} size={17} color="var(--accent)" />
                   {label}
                 </button>

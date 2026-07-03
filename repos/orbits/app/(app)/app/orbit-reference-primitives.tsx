@@ -24,6 +24,7 @@ const iconPaths: Record<string, ReactNode> = {
   download: <><path d="M12 4v11M8 11.5l4 4 4-4M5 18v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1"/></>,
   eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></>,
   mail: <><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7 8 6 8-6"/></>,
+  menu: <><path d="M4 7h16M4 12h16M4 17h16"/></>,
   message: <><path d="M20 12a7.5 7.5 0 0 1-10.8 6.7L4 20l1.3-4.2A7.5 7.5 0 1 1 20 12Z"/></>,
   copy: <><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
   edit: <><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></>,
@@ -163,7 +164,7 @@ export function Logo({
   withText?: boolean;
 }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
       <svg aria-hidden fill="none" height={size} viewBox="0 0 28 28" width={size}>
         <circle cx="14" cy="14" opacity="0.35" r="12.5" stroke={color} strokeWidth="1.6" />
         <circle cx="14" cy="14" fill={color} r="4.4" />
@@ -175,7 +176,7 @@ export function Logo({
             color: textColor,
             fontFamily: "var(--ff-tight)",
             fontSize: size * 0.74,
-            fontWeight: 650,
+            fontWeight: 600,
             letterSpacing: "-0.03em",
           }}
         >
@@ -301,6 +302,42 @@ export function Cover({
         </div>
       ) : null}
       {children}
+    </div>
+  );
+}
+
+/**
+ * Standard form field: visible label (associated via htmlFor), the control,
+ * optional helper text, and an error line announced to screen readers. Pass
+ * the same `id` to the input inside `children`, plus `aria-invalid` and
+ * `className="field is-invalid"` when `error` is set.
+ */
+export function FormField({
+  children,
+  error,
+  helper,
+  id,
+  label,
+}: {
+  children: ReactNode;
+  error?: string;
+  helper?: string;
+  id: string;
+  label: string;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+      <label className="field-label" htmlFor={id}>{label}</label>
+      {children}
+      {helper && !error ? <span style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.4 }}>{helper}</span> : null}
+      <span aria-live="polite" role={error ? "alert" : undefined}>
+        {error ? (
+          <span className="field-error-text" id={`${id}-error`}>
+            <Icon name="x" size={13} />
+            {error}
+          </span>
+        ) : null}
+      </span>
     </div>
   );
 }
