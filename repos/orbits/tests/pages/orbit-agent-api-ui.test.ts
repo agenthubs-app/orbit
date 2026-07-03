@@ -36,18 +36,11 @@ test("Orbit agent submit controls remain hittable while blank prompts are guarde
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
-  const landingSource = readProjectFile(
-    "app/(app)/app/orbit-agent-hero.tsx",
-  );
 
   assert.match(agentSource, /type="submit"/);
   assert.match(agentSource, /aria-disabled=\{isBlank\}/);
   assert.match(agentSource, /data-orbit-agent-submit="true"/);
   assert.doesNotMatch(agentSource, /disabled=\{!value\.trim\(\)\}/);
-
-  assert.match(landingSource, /aria-disabled=\{isBlank\}/);
-  assert.match(landingSource, /data-orbit-agent-hero-submit="true"/);
-  assert.doesNotMatch(landingSource, /disabled=\{!text\.trim\(\)\}/);
 });
 
 test("Orbit agent gates responsive chat layout and exposes request state", () => {

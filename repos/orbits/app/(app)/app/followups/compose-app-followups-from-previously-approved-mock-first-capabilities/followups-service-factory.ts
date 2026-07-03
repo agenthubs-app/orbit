@@ -19,7 +19,7 @@ export interface AppFollowupsRouteServices {
 }
 
 // 三个子能力分开声明 capabilityId，便于以后只替换任务、草稿或通知中的某一块。
-export const appFollowupTaskServiceFactory =
+const appFollowupTaskServiceFactory =
   createModuleServiceFactory<FollowupTaskGenerationService>({
     capabilityId: "followup-tasks",
     implementations: {
@@ -30,7 +30,7 @@ export const appFollowupTaskServiceFactory =
     },
   });
 
-export const appFollowupDraftServiceFactory =
+const appFollowupDraftServiceFactory =
   createModuleServiceFactory<MessageDraftGeneratorService>({
     capabilityId: "followup-message-drafts",
     implementations: {
@@ -41,7 +41,7 @@ export const appFollowupDraftServiceFactory =
     },
   });
 
-export const appFollowupNotificationServiceFactory =
+const appFollowupNotificationServiceFactory =
   createModuleServiceFactory<ReminderScheduleNotificationService>({
     capabilityId: "followup-reminders",
     implementations: {

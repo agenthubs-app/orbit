@@ -31,14 +31,14 @@ Live 可以分阶段接入：先接真实 conversation store，再接外部消�
 
 ## API 与页面使用
 
-产品入口是 `/app/chat`，也会被 Orbit AI command center 触发。API 包括 conversation list、thread、messages、summary、extractions、rewrite、follow-up draft 和 privacy。页面显示可复核草稿，不直接发送。
+产品入口是 `/app/chat`，也会被 Orbit AI 的 agent/chat 体验复用。API 包括 conversation list、thread、messages、summary、extractions、rewrite、follow-up draft 和 privacy。页面显示可复核草稿，不直接发送。
 
 页面组合规则：
 
 - `chat-service-factory.ts` 聚合 Chat 子服务，但不渲染 UI。
 - `chat-route-view-model.ts` 是业务 contract 到 UI view model 的唯一转换点。
-- `chat-command-center.tsx` 和 `agent-artifact-side-panel.tsx` 只接收页面 view model，不 import `features/chat/*` 或 `features/orbit-ai/*` contract/service。
-- Orbit Agent 生成的 artifact 也先映射成 Chat 页面自己的 artifact surface view model，再传给 side panel。
+- `/app/chat/page.tsx` 只做 route adapter；`chat-view-model-adapter.ts` 把 Chat route model 映射成 `OrbitRealAgent` 需要的 view model。
+- 旧 route-owned diagnostic UI 已移除；真实 Chat UI 不直接 import `features/chat/*` 或 `features/orbit-ai/*` contract/service。
 
 ## 测试要求
 
@@ -47,7 +47,7 @@ Live 可以分阶段接入：先接真实 conversation store，再接外部消�
 - writing assist 测试确认 live AI provider 未被请求。
 - privacy 测试确认关闭分析时 summary/extraction 不运行。
 - 页面测试确认用户能看到隐私和本地预览边界。
-- 页面解耦测试确认 command center 和 side panel 不直接 import feature contract/service，业务依赖只出现在 route view model 或 service factory。
+- 页面解耦测试确认页面 presenter 不直接 import feature contract/service，业务依赖只出现在 route view model 或 service factory。
 
 ## 团队协作规则
 

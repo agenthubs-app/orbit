@@ -158,12 +158,10 @@ test("module architecture docs describe position, expected behavior, mock behavi
 
 test("product presenters consume route view models instead of Orbit AI service payloads", () => {
   const presenterFiles = [
-    "app/(app)/app/orbit-ai-command-center.tsx",
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/agent-artifact-side-panel.tsx",
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-command-center.tsx",
+    "app/(app)/app/agent/orbit-real-agent.tsx",
+    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter.ts",
   ];
   const routeViewModelFiles = [
-    "app/(app)/app/orbit-ai-route-view-model.ts",
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
   ];
 

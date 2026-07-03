@@ -5,7 +5,11 @@ import {
 
 export const runtime = "nodejs";
 
-const cacheControl = "public, max-age=3600, stale-while-revalidate=86400";
+const productionCacheControl = "public, max-age=3600, stale-while-revalidate=86400";
+
+function referenceStyleCacheControl(): string {
+  return process.env.NODE_ENV === "development" ? "no-store" : productionCacheControl;
+}
 
 function hasMatchingEtag(request: Request | undefined, etag: string): boolean {
   return (
@@ -20,7 +24,7 @@ function hasMatchingEtag(request: Request | undefined, etag: string): boolean {
 export function GET(request?: Request): Response {
   const etag = readReferenceStyleSheetEtag();
   const headers = {
-    "Cache-Control": cacheControl,
+    "Cache-Control": referenceStyleCacheControl(),
     ETag: etag,
   };
 

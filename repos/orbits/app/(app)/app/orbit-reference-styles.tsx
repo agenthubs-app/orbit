@@ -64,21 +64,7 @@ const reactReferenceIsolationStyles = `
   padding: 1px 6px;
 }
 
-[data-orbit-real-page="landing"] .orbit-landing-brand-explainer {
-  background: var(--surface) !important;
-  border-top: 0 !important;
-  margin-top: 48px !important;
-  padding-bottom: 72px !important;
-  padding-top: 58px !important;
-}
-
 @media (max-width: 640px) {
-  [data-orbit-real-page="landing"] .orbit-landing-brand-explainer {
-    margin-top: 34px !important;
-    padding-bottom: 52px !important;
-    padding-top: 44px !important;
-  }
-
   .orbit-live-checkin-page .orbit-party-checkin-hero {
     position: relative;
   }
@@ -829,9 +815,6 @@ const reactReferenceIsolationStyles = `
      horizontally if the extra history button doesn't fit, instead of shrinking
      the font out of alignment with every other page. */
 
-  [data-orbit-real-page="landing"] {
-    padding-bottom: 0 !important;
-  }
 }
 
 @media (max-width: 340px) {
@@ -1028,6 +1011,20 @@ const reactReferenceIsolationStyles = `
   gap: 14px;
   grid-area: rail;
   min-width: 0;
+}
+
+@media (min-width: 641px) and (max-width: 820px) {
+  [data-orbit-real-page="home"] .orbit-home-main-grid {
+    grid-template-areas:
+      "rail"
+      "events";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-orbit-real-page="home"] .orbit-home-hub-rail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
 }
 
 /* ===================================================================
@@ -1269,11 +1266,6 @@ export function readPrototypeScriptAsset(uuid: string) {
   return script;
 }
 
-function scriptContent(value: string) {
-  // 避免内联脚本文本中出现 </script> 提前结束 script 标签。
-  return value.replace(/<\/script/gi, "<\\/script");
-}
-
 export function readReferenceStyleSheet() {
   return `${readReferenceStyles()}\n${reactReferenceIsolationStyles}`;
 }
@@ -1289,18 +1281,6 @@ export function readReferenceStyleSheetEtag() {
   )}-${reactReferenceIsolationStyles.length}"`;
 
   return cachedStyleSheetEtag;
-}
-
-export function OrbitReferenceThreeRuntime() {
-  // 旧 prototype 的 Three runtime 仍从 bundle 中读取，避免重写 3D 依赖装配。
-  const threeScript = readPrototypeScriptAsset("4636af91-bda9-4959-bb19-8ab1c003d4e6");
-
-  return (
-    <>
-      <script dangerouslySetInnerHTML={{ __html: scriptContent(threeScript) }} />
-      <script dangerouslySetInnerHTML={{ __html: "window.__orbitPrototypeThreeReady = !!window.THREE;" }} />
-    </>
-  );
 }
 
 export function OrbitReferenceStyles() {

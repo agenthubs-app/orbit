@@ -1097,18 +1097,6 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "ownerArea": "app"
     },
     {
-      "id": "live-handoff-app-app-compose-app-from-previously-approved-mock-first-capabilities",
-      "titleZh": "App 页面组合交接：(app)/compose app from previously approved mock first capabilities",
-      "summaryZh": "记录 app 路由 (app)/compose app from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。",
-      "reviewEvidenceZh": "已核对页面目录存在：repos/orbits/app/(app)/compose-app-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。",
-      "sourcePath": "repos/orbits/app/(app)/compose-app-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-app-app-compose-app-from-previously-approved-mock-first-capabilities.zh.md",
-      "category": "implementation-handoff",
-      "status": "generated-evidence",
-      "freshness": "likely-current",
-      "ownerArea": "app"
-    },
-    {
       "id": "live-handoff-app-dev-capabilities-capability-debug-dashboard",
       "titleZh": "App 页面组合交接：dev/capabilities/capability debug dashboard",
       "summaryZh": "记录 app 路由 dev/capabilities/capability debug dashboard 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。",
@@ -1755,18 +1743,6 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "status": "generated-evidence",
       "freshness": "likely-current",
       "ownerArea": "shared:services"
-    },
-    {
-      "id": "live-handoff-shared-ui-app-shell",
-      "titleZh": "Shared Runtime 交接：ui",
-      "summaryZh": "记录 shared/ui 共享层从 mock 或本地实现迁移到 live/runtime provider 时的契约、替换点和验证要求。",
-      "reviewEvidenceZh": "已核对共享代码目录存在：repos/orbits/shared/ui/app-shell。具体数据结构和 API 仍以 shared 层源码与测试为准。",
-      "sourcePath": "repos/orbits/shared/ui/app-shell/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-shared-ui-app-shell.zh.md",
-      "category": "implementation-handoff",
-      "status": "generated-evidence",
-      "freshness": "likely-current",
-      "ownerArea": "shared:ui"
     }
   ],
   "topicPages": [

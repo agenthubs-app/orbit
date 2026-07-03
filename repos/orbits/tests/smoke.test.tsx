@@ -8,7 +8,47 @@ import { renderToStaticMarkup } from "react-dom/server";
 import RootLayout from "../app/layout";
 import Page from "../app/page";
 
-test("scaffold exposes the runnable Next.js App Router contract", () => {
+const liveDatabaseEnvKeys = [
+  "ORBIT_EVENT_DATABASE_URL",
+  "ORBIT_LIVE_DATABASE_URL",
+  "ORBIT_DATABASE_URL",
+] as const;
+
+async function withUnconfiguredLiveStorage<T>(
+  run: () => Promise<T>,
+): Promise<T> {
+  const previousMode = process.env.ORBIT_MODULE_MODE;
+  const previousDatabaseEnv = new Map<string, string | undefined>(
+    liveDatabaseEnvKeys.map((key) => [key, process.env[key]]),
+  );
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "live";
+    for (const key of liveDatabaseEnvKeys) {
+      delete process.env[key];
+    }
+
+    return await run();
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.ORBIT_MODULE_MODE;
+    } else {
+      process.env.ORBIT_MODULE_MODE = previousMode;
+    }
+
+    for (const key of liveDatabaseEnvKeys) {
+      const previousValue = previousDatabaseEnv.get(key);
+
+      if (previousValue === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = previousValue;
+      }
+    }
+  }
+}
+
+test("scaffold exposes the runnable Next.js App Router contract", async () => {
   const projectRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     "..",
@@ -25,12 +65,9 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
   for (const sourcePath of [
     "features/orbit-ai/gemini-provider.ts",
     "features/orbit-ai/live-conversation-service.ts",
-    "app/(app)/app/orbit-real-landing-page.tsx",
     "app/(app)/app/orbit-landing-route-view-model.ts",
     "app/(app)/app/orbit-reference-styles.tsx",
     "app/(app)/app/orbit-reference-primitives.tsx",
-    "app/(app)/app/orbit-lang-runtime.tsx",
-    "app/(app)/app/orbit-agent-hero.tsx",
   ]) {
     assert.ok(
       packageJson.scripts.lint.includes(`"${sourcePath}"`),
@@ -51,12 +88,9 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
     "app/layout.tsx",
     "app/page.tsx",
     "tests/smoke.test.tsx",
-    "app/(app)/app/orbit-real-landing-page.tsx",
     "app/(app)/app/orbit-landing-route-view-model.ts",
     "app/(app)/app/orbit-reference-styles.tsx",
     "app/(app)/app/orbit-reference-primitives.tsx",
-    "app/(app)/app/orbit-lang-runtime.tsx",
-    "app/(app)/app/orbit-agent-hero.tsx",
   ]) {
     assert.equal(
       fs.existsSync(path.join(projectRoot, filePath)),
@@ -74,26 +108,28 @@ test("scaffold exposes the runnable Next.js App Router contract", () => {
   }
 
   let html = "";
-  assert.doesNotThrow(() => {
-    html = renderToStaticMarkup(
-      React.createElement(RootLayout, null, React.createElement(Page)),
-    );
+  await withUnconfiguredLiveStorage(async () => {
+    await assert.doesNotReject(async () => {
+      const rootPage = await Page({
+        searchParams: Promise.resolve({ mode: "live" }),
+      });
+
+      html = renderToStaticMarkup(
+        React.createElement(RootLayout, null, rootPage),
+      );
+    });
   });
 
   assert.match(html, /<main/);
-  assert.match(html, /data-orbit-real-page="landing"/);
-  assert.match(html, /orbit-landing-page/);
-  assert.match(html, /让对的人/);
-  // Language toggle renders the zh/en switcher ("中" and "EN" in separate spans).
-  assert.match(html, /中/);
-  assert.match(html, /EN/);
+  assert.match(html, /app-root-home-route/);
+  assert.match(html, /Home could not load/);
   assert.doesNotMatch(html, /orbit-prototype-frame/);
   assert.doesNotMatch(html, /Event-grounded relationship workspace/);
   assert.doesNotMatch(html, /href="#relationship-starter"/);
   assert.doesNotMatch(html, /scaffold|Sprint 1|Framework ready/i);
   assert.doesNotMatch(html, /Relationship context starter/);
   assert.doesNotMatch(html, /Mika Tanaka|Tokyo Founder Demo Night|Kenji Sato/);
-  assert.doesNotMatch(html, /<details(?:\s|>)/i);
-  assert.match(html, /data-orbit-agent-hero-submit="true"/);
+  assert.match(html, /data-state-boundary="shared-ui-state-view"/);
+  assert.doesNotMatch(html, /data-orbit-real-page="landing"/);
   assert.doesNotMatch(html, /ready for your review|follow-up draft/i);
 });

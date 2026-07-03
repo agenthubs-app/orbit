@@ -1,11 +1,9 @@
 /**
  * 根路径 `/` 的页面入口。
  *
- * 这里只把公开落地页组件挂到 Next.js route 上；页面内容和交互逻辑
- * 由 `OrbitRealLandingPage` 维护。
+ * Web 版打开根路径时应进入和 `/app` 一致的个人主页，而不是公开落地页。
+ * 实际加载、live fallback 和页面渲染逻辑统一委托给 `/app` route adapter。
  */
-import { OrbitRealLandingPage } from "./(app)/app/orbit-real-landing-page";
+import AppHomePage from "./(app)/app/page";
 
-export default function Page() {
-  return <OrbitRealLandingPage />;
-}
+export default AppHomePage;

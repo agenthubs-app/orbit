@@ -191,7 +191,7 @@ export type AppChatRouteViewModel =
     };
 
 // querystring 可能来自 Next searchParams 或表单提交；数组值只取第一个。
-export function readAppChatSearchParam(
+function readAppChatSearchParam(
   searchParams: AppChatSearchParams | undefined,
   key: string,
 ): string | null {
@@ -205,7 +205,7 @@ export function readAppChatSearchParam(
 }
 
 // scenario 只服务状态演示/测试；正常页面不带 scenario 时走成功工作区。
-export function readAppChatRouteScenario(
+function readAppChatRouteScenario(
   searchParams: AppChatSearchParams | undefined,
 ): AppChatRouteScenario | null {
   const scenario = readAppChatSearchParam(searchParams, "scenario");

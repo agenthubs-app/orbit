@@ -83,7 +83,8 @@ test("core service factories expose default mock services and controlled live fa
 
 test("product entry and core API routes consume service factories instead of direct mocks", () => {
   const runtimeFiles = [
-    "app/(app)/app/orbit-ai-command-center.tsx",
+    "app/(app)/app/agent/page.tsx",
+    "app/(app)/app/chat/page.tsx",
     "app/api/app/bootstrap/route.ts",
     "app/api/contacts/route.ts",
     "app/api/events/route.ts",

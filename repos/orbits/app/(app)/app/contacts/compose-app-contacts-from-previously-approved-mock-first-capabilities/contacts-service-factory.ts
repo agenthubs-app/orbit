@@ -8,7 +8,7 @@ import {
 
 // Contacts 列表页当前只需要“搜索和过滤”这一项页面级能力。
 // 仍然通过 module-mode 包一层，后续接 local-remote/live 实现时不用改页面组件。
-export const appContactsListSearchAndFilterServiceFactory =
+const appContactsListSearchAndFilterServiceFactory =
   createModuleServiceFactory<ContactsListSearchAndFilterService>({
     capabilityId: "contacts",
     implementations: {

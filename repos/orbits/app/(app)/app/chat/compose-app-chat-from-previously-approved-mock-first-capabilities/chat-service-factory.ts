@@ -22,7 +22,7 @@ export interface AppChatRouteServices {
 }
 
 // 页面级 factory 使用 capabilityId 记录模块边界，后续接 live service 时集中替换这里。
-export const appChatConversationServiceFactory =
+const appChatConversationServiceFactory =
   createModuleServiceFactory<ChatConversationMessageService>({
     capabilityId: "chat-conversations",
     implementations: {
@@ -33,7 +33,7 @@ export const appChatConversationServiceFactory =
     },
   });
 
-export const appChatWritingAssistServiceFactory =
+const appChatWritingAssistServiceFactory =
   createModuleServiceFactory<ChatWritingAssistService>({
     capabilityId: "chat-writing-assist",
     implementations: {
@@ -44,7 +44,7 @@ export const appChatWritingAssistServiceFactory =
     },
   });
 
-export const appChatSummaryExtractionServiceFactory =
+const appChatSummaryExtractionServiceFactory =
   createModuleServiceFactory<ChatSummaryExtractionService>({
     capabilityId: "chat-summary-extraction",
     implementations: {
@@ -55,7 +55,7 @@ export const appChatSummaryExtractionServiceFactory =
     },
   });
 
-export const appChatPrivacyControlsServiceFactory =
+const appChatPrivacyControlsServiceFactory =
   createModuleServiceFactory<ChatPrivacyControlsService>({
     capabilityId: "chat-privacy-controls",
     implementations: {

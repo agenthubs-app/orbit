@@ -49,14 +49,16 @@ source-check scenario and must continue to expose `data-side-effects="none"`.
 - Route service switch: keep `app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-service-factory.ts` as the local module-mode adapter for `/app/contacts`.
 - Live provider to add later: `features/contacts/live-service.ts` behind the same `ContactsListSearchAndFilterService` interface and the route service factory.
 - API envelope boundary: keep `app/api/contacts/route.ts` and `app/api/contacts/search/route.ts` returning `{ success: true, data }` and `{ success: false, error }` envelopes.
-- Route adapter: keep `app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-command-center.tsx` consuming the typed service and not raw data files.
+- Route adapter: keep `app/(app)/app/contacts/page.tsx` and
+  `contacts-view-model-adapter.ts` consuming typed route payloads and not raw
+  data files.
 
 ## Switch Mechanism
 
 The route resolves contacts list/search/filter through
 `contacts-service-factory.ts`, which uses `createModuleServiceFactory` from
-`shared/services/module-mode.ts` and keeps the page/command-center off direct
-fixture imports. The factory now supports live mode through
+`shared/services/module-mode.ts` and keeps the page/view-model adapter off
+direct fixture imports. The factory now supports live mode through
 `features/contacts/live-service.ts`; pages continue to ask for list/search
 results through the service interface and do not import fixture files, provider
 SDKs, or database clients.

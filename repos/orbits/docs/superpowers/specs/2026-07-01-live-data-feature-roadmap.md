@@ -53,16 +53,16 @@ The following feature families are now wired to explicit remote live providers:
 - `chat-writing-assist`: live reads generated `conversations`, `messages`, `contacts`, and `connections` to produce deterministic polite rewrite, follow-up draft, appointment suggestion, and quick greeting assists without AI writing providers, external send, message persistence, audit-log writes, email, calendar, notification, device access, or external networks.
 - `chat-privacy-controls`: live reads generated `conversations`, `messages`, `contacts`, and `connections` to produce deterministic analysis opt-in, deletion preview, hidden private-note, and sensitive-share confirmation controls without AI providers, deletion workers, external share, privacy audit-log writes, database writes, email, calendar, notification, device access, or external networks.
 - `app-chat-route-services`: the `/app/chat` page-level service bundle can now resolve the four chat child services in live mode and await async live service results while preserving controlled failure states when live storage is unconfigured.
-- `app-contacts-route-services`: the `/app/contacts` page now mounts the capability-first contacts command center, resolves live contacts search, and awaits async live contacts service results while preserving controlled failure states when live storage is unconfigured.
+- `app-contacts-route-services`: the `/app/contacts` page now mounts the real contacts product UI, resolves live contacts search, and awaits async live contacts service results while preserving controlled failure states when live storage is unconfigured.
 - `app-contact-detail-route-services`: the contact detail route service can resolve live contact detail, connection evidence, and relationship value scoring, await async live results, and map generated contact ids to live connection ids before composing the page model.
 - `app-contact-detail-page`: the real `/app/contacts/[id]` route adapter now calls the contact detail live route service, maps the live route model into the existing detail UI view model, and renders a shared controlled failure boundary when live storage is unconfigured.
 - `app-contacts-subroutes`: the real `/app/contacts/pipeline`, `/app/contacts/graph`, and `/app/contacts/intros` routes now call the live-capable contacts route service, map its payload into the existing contacts UI view model through a shared adapter, and render shared controlled failure boundaries when live storage is unconfigured.
 - `app-contacts-new-route-services`: the real `/app/contacts/new` route adapter now resolves the acquisition and permission child services through module mode, awaits async live results, renders a capability-first acquisition workspace, and preserves a controlled failure boundary when live storage is unconfigured. The live first screen is read-only: it lists or derives acquisition context without creating a manual contact draft unless an explicit action is requested.
-- `app-home-route-services`: the real `/app/home` and `/app/home/events` routes now compose the live-capable events, contacts, and profile route payloads into the existing `OrbitHomeViewModel` UI shape. Home does not read storage directly, does not call the legacy `getOrbitHomeViewModel`, and renders a shared controlled failure boundary when any child route payload is unavailable. The web root `/` and product namespace root `/app` intentionally remain on the public landing experience so the approved web entry UI does not change.
-- `app-followups-route-services`: the `/app/followups` page now mounts the capability-first followups command center, resolves live follow-up tasks, live message drafts, and live reminders, and awaits async live task/reminder results while preserving controlled failure states when live storage is unconfigured.
-- `app-dashboard-route-services`: the `/app/dashboard` page now calls the live-capable dashboard route loader, maps dashboard aggregate, network distribution, opportunity reminder, and provenance audit payloads into `OrbitRealDashboard`, and awaits async live service results while preserving controlled failure states when live storage is unconfigured. The retained dashboard command center is no longer the default web page entry.
-- `app-agent-route-services`: the `/app/agent` page now mounts the capability-first agent command center, resolves live agent actions, live autonomy policy, live confirmation policy, live no-op sandbox, and live reminders, and awaits async live action/reminder results while preserving controlled failure states when live storage is unconfigured.
-- `app-events-route-services`: the `/app/events` page now mounts the capability-first events command center, resolves live event CRUD/import, live attendee recommendations, live event value recommendations, and live readiness, and awaits async live service results while preserving controlled failure states when live storage is unconfigured.
+- `app-home-route-services`: the real `/`, `/app`, `/app/home`, and `/app/home/events` routes now compose the live-capable events, contacts, and profile route payloads into the existing `OrbitHomeViewModel` UI shape. Home does not read storage directly, does not call the legacy `getOrbitHomeViewModel`, and renders a shared controlled failure boundary when any child route payload is unavailable. The web root `/` delegates to `/app`, and `/app` shares the personal Home hub so the approved web entry layout keeps the events list beside the profile/contact/schedule rail.
+- `app-followups-route-services`: the `/app/followups` page now mounts the real schedule product UI, resolves live follow-up tasks, live message drafts, and live reminders, and awaits async live task/reminder results while preserving controlled failure states when live storage is unconfigured.
+- `app-dashboard-route-services`: the `/app/dashboard` page now calls the live-capable dashboard route loader, maps dashboard aggregate, network distribution, opportunity reminder, and provenance audit payloads into `OrbitRealDashboard`, and awaits async live service results while preserving controlled failure states when live storage is unconfigured.
+- `app-agent-route`: the `/app/agent` page now mounts the real `OrbitRealAgent` chat experience; live safety-policy providers remain covered at the feature service layer.
+- `app-events-route-services`: the `/app/events` page now mounts the real events product UI, resolves live event CRUD/import, live attendee recommendations, live event value recommendations, and live readiness, and awaits async live service results while preserving controlled failure states when live storage is unconfigured.
 - `app-event-detail-route-services`: the event detail route service can resolve live event detail, attendee roster, event recommendations/opening lines, readiness, want-to-connect, encounter notes, and post-event review for generated event ids while preserving controlled failure states when live storage is unconfigured.
 - `app-event-detail-page`: the real `/app/events/[id]` route adapter now calls the event detail live route service, maps the live route model into the existing event detail UI view model, and renders a shared controlled failure boundary when live storage is unconfigured.
 - `api-runtime-mode-boundary`: shared API routes now resolve runtime mode from `ORBIT_MODULE_MODE` before the older `ORBIT_FEATURE_MODE` fallback, so response headers, health probes, and service factories agree on mock/hybrid/live mode.
@@ -312,10 +312,10 @@ Implementation evidence:
   live storage.
 - `tests/pages/app-profile-live-route-services.test.ts` proves `/app/profile`
   keeps the live route service bundle and now renders `OrbitRealProfile` instead
-  of the old command-center route.
+  of the removed route-owned diagnostic UI.
 - Browser verification for `/app/profile` showed the real profile editor on
   desktop and mobile with `data-orbit-real-page="profile"` and no
-  `.app-profile-route` command-center DOM.
+  route-owned diagnostic DOM.
 - Remote validation for `profile_orbit_generated_operator` returned
   `x-orbit-feature-mode: live` for both profile GET and PUT.
 
@@ -669,9 +669,8 @@ Implementation evidence:
 - `app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts`
   now awaits the existing `T | Promise<T>` chat service results, allowing the
   same page loader to consume mock and live service implementations.
-- `app/(app)/app/chat/page.tsx` now mounts the capability-first
-  `AppChatCommandCenter` instead of the older static Agent page view model, so
-  visiting `/app/chat` uses the live-capable chat route loader.
+- `app/(app)/app/chat/page.tsx` now maps the live-capable chat route model into
+  `OrbitRealAgent`; the old chat command-center UI has been removed.
 - `features/chat/storage/chat-conversation-live-record-provider.ts` exposes a
   shared configured chat record store; writing assist, summary/extraction, and
   privacy adapters reuse it instead of opening independent Postgres pools. This
@@ -691,8 +690,8 @@ Implementation evidence:
 ### Goal 19: App Contacts Page Live Service Bundle
 
 Wire the `/app/contacts` route-level service bundle to the live
-`contacts-list-search-filter` provider and mount the capability-first contacts
-command center from the actual page entry. Keep the page as a composition layer:
+`contacts-list-search-filter` provider and mount the real contacts product UI
+from the actual page entry. Keep the page as a composition layer:
 it chooses module mode, awaits contacts service results, and maps the contacts
 contract into UI view models; contacts retrieval, filtering, provenance, and
 storage mapping remain inside the contacts feature.
@@ -703,8 +702,8 @@ Success evidence:
   contacts search service.
 - `loadAppContactsRouteViewModel()` can run under `ORBIT_MODULE_MODE=live` and
   return a controlled failure when live storage is not configured.
-- `/app/contacts/page.tsx` mounts `AppContactsCommandCenter` instead of the
-  older static cards list view model.
+- `/app/contacts/page.tsx` mounts `OrbitRealCardsList` through
+  `contactsRouteToOrbitContactsViewModel`.
 - The page leaves contact writes, merges, OCR, external imports, messaging,
   email, calendar, notification, device, network, and AI side effects to their
   separate feature contracts and future explicit providers.
@@ -714,13 +713,12 @@ Implementation evidence:
 - `tests/pages/app-contacts-live-route-services.test.ts` proves the app contacts
   service resolves live mode, the route loader fails closed when storage is
   unconfigured, and the actual `/app/contacts` page renders the
-  capability-first command center.
+  real contacts product UI.
 - `app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-service-factory.ts`
   now passes the requested module mode through to the contacts feature factory.
 - `app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts`
-  and `contacts-command-center.tsx` now await the existing `T | Promise<T>`
-  contacts service result type.
-- `app/(app)/app/contacts/page.tsx` now mounts `AppContactsCommandCenter`.
+  now awaits the existing `T | Promise<T>` contacts service result type.
+- `app/(app)/app/contacts/page.tsx` now mounts `OrbitRealCardsList`.
 - Remote page-component validation with `ORBIT_MODULE_MODE=live` rendered
   `app-contacts-route` with source-backed contacts including `山田 千尋` and
   `Morning Light Foods`.
@@ -778,8 +776,8 @@ Success evidence:
 - `resolveAppFollowupsRouteServices("live")` resolves all three child services.
 - `loadAppFollowupsRouteViewModel()` can run under `ORBIT_MODULE_MODE=live` and
   return a controlled route-state failure when live storage is unconfigured.
-- `/app/followups/page.tsx` mounts `AppFollowupsCommandCenter` instead of the
-  older static schedule view model.
+- `/app/followups/page.tsx` mounts `OrbitRealSchedule` through
+  `followupsRouteToOrbitScheduleViewModel`.
 - The route loader can await live task/reminder service results while continuing
   to consume synchronous draft generation.
 
@@ -787,16 +785,14 @@ Implementation evidence:
 
 - `tests/pages/app-followups-live-route-services.test.ts` proves the app
   followups service bundle resolves live mode, fails closed without storage, and
-  renders the actual page through the capability-first command center.
+  renders the actual page through the real schedule UI.
 - `app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-service-factory.ts`
   now passes the requested module mode through to follow-up task, message draft,
   and reminder feature factories.
 - `app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model.ts`
   now awaits the existing `T | Promise<T>` task and reminder service result
   types.
-- `app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-command-center.tsx`
-  is now an async server component.
-- `app/(app)/app/followups/page.tsx` now mounts `AppFollowupsCommandCenter`.
+- `app/(app)/app/followups/page.tsx` now mounts `OrbitRealSchedule`.
 - Remote page/view-model validation with `ORBIT_MODULE_MODE=live` loaded a
   success state from the seeded remote database: 80 follow-up tasks, one live
   draft, four reminders, priority relationship `刘雨薇` at
@@ -854,7 +850,7 @@ Success evidence:
 - `loadAppDashboardRouteViewModel()` can run under `ORBIT_MODULE_MODE=live` and
   return a controlled route-state failure when live storage is unconfigured.
 - `/app/dashboard/page.tsx` mounts the real dashboard route adapter instead of
-  the older static party/dashboard view model or command-center evidence UI.
+  the older static party/dashboard view model or removed evidence UI.
 - The route loader can await live dashboard, distribution, opportunity, and
   audit service results.
 
@@ -862,7 +858,7 @@ Implementation evidence:
 
 - `tests/pages/app-dashboard-live-route-services.test.ts` proves the app
   dashboard service bundle resolves live mode, fails closed without storage,
-  renders the actual page through `OrbitRealDashboard`, and keeps command-center
+  renders the actual page through `OrbitRealDashboard`, and keeps raw
   evidence/provenance accordions out of the default success UI.
 - `app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-service-factory.ts`
   now passes the requested module mode through to dashboard aggregate, network
@@ -885,29 +881,26 @@ Implementation evidence:
   activity rows, three high-priority opportunities, three dormant high-value
   contacts, three network gaps, seven audited collections, zero active audit
   findings, and rendered `data-orbit-real-page="dashboard"` with zero
-  command-center `details` elements on desktop and mobile screenshots.
+  raw provenance `details` elements on desktop and mobile screenshots.
 - Verification: focused storage/dashboard/audit tests pass; remote validation no
   longer hits Supabase `max clients reached in session mode`.
 
 ### Goal 24: App Agent Page Live Service Bundle
 
-Wire the `/app/agent` route-level service bundle to live agent action queue,
-live reminder queue, and explicit live safety-policy services for autonomy
-settings, sensitive-action confirmation, and external-action sandboxing. The
-page remains a review surface: it selects module mode, awaits live reads, maps
-feature contracts into UI view models, and does not execute external actions.
+Keep explicit live safety-policy services for autonomy settings, sensitive
+action confirmation, and external-action sandboxing while `/app/agent` remains
+the real Orbit AI chat entry. The page uses the static chat view model and API
+conversation boundary; it does not own a separate route-level service bundle or
+execute external actions.
 
 Success evidence:
 
-- `resolveAppAgentRouteServices("live")` resolves all five child services.
 - `createAgentAutonomySettingsService("live")`,
   `createSensitiveActionConfirmationService("live")`, and
   `createExternalActionSandboxService("live")` resolve explicit live policy
   providers rather than mock fallback.
-- `loadAppAgentRouteViewModel()` can run under `ORBIT_MODULE_MODE=live` and
-  return a controlled route-state failure when live storage is unconfigured.
-- `/app/agent/page.tsx` mounts `AppAgentCommandCenter` instead of the older
-  static agent view model.
+- `/app/agent/page.tsx` mounts the real `OrbitRealAgent` chat experience from
+  the static agent view model.
 
 Implementation evidence:
 
@@ -915,23 +908,17 @@ Implementation evidence:
   autonomy settings, confirmation guard, and external action sandbox services
   return live-policy provenance and keep autonomous execution, provider calls,
   external side effects, and scheduled jobs disabled.
-- `tests/pages/app-agent-live-route-services.test.ts` proves the app agent
-  service bundle resolves live mode, fails closed without storage, and renders
-  the actual page through the capability-first command center.
+- `tests/pages/app-agent-live-route-services.test.ts` proves the real Orbit AI
+  chat route remains reachable and does not mount the removed command-center UI.
 - `features/agent/live-settings-service.ts`,
   `features/permissions/live-confirmation-service.ts`, and
   `features/agent/live-external-action-sandbox.ts` implement deterministic
   live policy/no-op providers.
-- `app/(app)/app/agent/compose-app-agent-from-previously-approved-mock-first-capabilities/agent-route-view-model.ts`
-  now awaits existing `T | Promise<T>` agent action and reminder service result
-  types.
-- `app/(app)/app/agent/compose-app-agent-from-previously-approved-mock-first-capabilities/agent-command-center.tsx`
-  is now an async server component.
-- `app/(app)/app/agent/page.tsx` now mounts `AppAgentCommandCenter`.
-- Remote page/view-model validation with `ORBIT_MODULE_MODE=live` returned a
-  success state from the remote database: 60 live agent actions, 40 live
-  notification queue entries, four live confirmation policy requirements,
-  medium autonomy policy, and rendered `app-agent-route` markup.
+- The old agent command-center and route-level service bundle have been
+  removed; policy/provider coverage remains at the feature service layer.
+- `app/(app)/app/agent/page.tsx` now mounts `OrbitRealAgent`.
+- Browser/page validation confirms `/app/agent` renders
+  `data-orbit-real-page="agent"` through `OrbitRealAgent`.
 
 ### Goal 25: App Events Page Live Service Bundle
 
@@ -948,8 +935,8 @@ Success evidence:
   store provider rather than mock fallback.
 - `loadAppEventsRouteViewModel()` can run under `ORBIT_MODULE_MODE=live` and
   return a controlled route-state failure when live storage is unconfigured.
-- `/app/events/page.tsx` mounts `AppEventsCommandCenter` instead of the older
-  landing/explore view model.
+- `/app/events/page.tsx` mounts `OrbitRealExploreClient` through
+  `eventsRouteToOrbitLandingViewModel`.
 
 Implementation evidence:
 
@@ -959,7 +946,7 @@ Implementation evidence:
   database reads explicitly, and keep accept actions write-free.
 - `tests/pages/app-events-live-route-services.test.ts` proves the app events
   service bundle resolves live mode, fails closed without storage, and renders
-  the actual page through the capability-first command center.
+  the actual page through the real events UI.
 - `features/recommendations/live-event-value-service.ts` implements deterministic
   live event value ranking from sourced event, attendee, and match
   recommendation records without event discovery feeds, calendar providers, AI,
@@ -972,7 +959,7 @@ Implementation evidence:
   exposes `resolveAppEventsRouteServices`.
 - `app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts`
   now awaits event value service results and action previews.
-- `app/(app)/app/events/page.tsx` now mounts `AppEventsCommandCenter`.
+- `app/(app)/app/events/page.tsx` now mounts `OrbitRealExploreClient`.
 - Events/recommendations configured live providers now reuse
   `createConfiguredPostgresLiveRecordStore(...)` so the composed live events page
   does not open independent Postgres pools for the same connection/workspace.
@@ -1002,8 +989,8 @@ Success evidence:
 - `loadAppProfileRouteViewModel()` can run under `ORBIT_MODULE_MODE=live` and
   return a controlled route-state failure with `PROFILE_LIVE_STORE_UNCONFIGURED`
   when live storage is unconfigured.
-- `/app/profile/page.tsx` mounts `AppProfileCommandCenter` instead of the older
-  static `OrbitRealProfile` view model.
+- `/app/profile/page.tsx` mounts `OrbitRealProfile` through
+  `profileRouteToOrbitProfileViewModel`.
 
 Implementation evidence:
 
@@ -1012,7 +999,7 @@ Implementation evidence:
   payloads with `live-policy-no-op` provenance.
 - `tests/pages/app-profile-live-route-services.test.ts` proves the app profile
   service bundle resolves live mode, fails closed without storage, and renders
-  the actual page through the capability-first command center.
+  the actual page through the real profile editor.
 - `features/profile/live-extraction-service.ts` implements the policy-only live
   document extraction boundary without OCR, parsing, AI, file storage, external
   networks, writes, or provider calls.
@@ -1022,7 +1009,7 @@ Implementation evidence:
 - `app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts`
   now awaits async live profile/signal services and renders live failures through
   route-state `StateView` data with `errorCode`.
-- `app/(app)/app/profile/page.tsx` now mounts `AppProfileCommandCenter`.
+- `app/(app)/app/profile/page.tsx` now mounts `OrbitRealProfile`.
 - Remote page/view-model validation with `ORBIT_MODULE_MODE=live` returned a
   success state from the remote database: profile owner `結城 航太郎`,
   completeness score 100, three profile update suggestions, and document
@@ -1037,7 +1024,7 @@ and proactive agent boundaries. Keep `orbit-agent-conversation` as the provider
 runtime for natural-language model calls. The old `orbit-ai-command` service is
 a read-only command surface: in live mode it should await live Events, Contacts,
 Followups, Dashboard, and Agent queue services, then summarize their sourced
-records into command-center stage items without executing external actions.
+records into command summaries without executing external actions.
 The proactive agent live implementation remains policy-only: it turns structured
 signals into Orbit AI chat-window assistant turns and never delivers push
 notifications, sends email, writes calendar records, writes live storage, or
@@ -1051,8 +1038,8 @@ Success evidence:
   policy provider instead of mock fallback.
 - `OrbitAiCommandService.getCommandCenter()` is async-compatible, so sync mock
   and async live child service reads share the same service interface.
-- The old `OrbitAiCommandCenter` route adapter awaits the view model and remains
-  no-side-effect.
+- The old Orbit AI route adapter has been removed; the command
+  service remains available for service/API-level composition and tests.
 
 Implementation evidence:
 
@@ -1205,9 +1192,9 @@ Implementation evidence:
   services to share one interface.
 - `features/bootstrap/service-factory.ts` registers the live implementation
   through the configured storage provider.
-- `app/(app)/compose-app-from-previously-approved-mock-first-capabilities/app-workbench.tsx`
-  now awaits bootstrap reads so the legacy app shell can run against live
-  storage.
+- The legacy AppWorkbench route has been removed; bootstrap live coverage now
+  stays at the feature service/API layer and the real Home composition lives
+  under `/app/home`.
 - `features/orbit-ai/mock-service.ts` pins its mock bootstrap dependency to
   `"mock"` so the mock Orbit AI command service remains synchronous even when
   process-level module mode is live.
@@ -1937,13 +1924,14 @@ Implementation evidence:
   `grid-template-columns: minmax(0, 1fr) clamp(220px, 30vw, 320px)` and keeps
   `grid-template-areas: "events rail"`.
 - `tests/pages/app-home-live-route-services.test.ts` proves the public web root
-  and product namespace root stay on `OrbitRealLandingPage`, the product Home
-  grid keeps the rail beside events on medium-width screens, and the concrete
-  hub entry hrefs stay on `/app/*` routes.
+  delegates to the `/app` Home route adapter, `/app` uses the same live Home
+  route model as `/app/home`, the product Home grid keeps the rail beside
+  events on medium-width screens, and the concrete hub entry hrefs stay on
+  `/app/*` routes.
 - Browser verification should confirm `/` and `/app` render
-  `data-orbit-real-page="landing"` on desktop and mobile widths, while
-  `/app/home` and `/app/home/events` render the live Home hub with no horizontal
-  overflow.
+  `data-orbit-route="app-root-home-route"` and `data-orbit-real-page="home"` on
+  desktop and mobile widths, while `/app/home` and `/app/home/events` render the
+  live Home hub with no horizontal overflow.
 - Browser verification should also confirm `/app/events`, `/app/schedule`, and
   `/app/contacts` remain reachable from the public web nav.
 

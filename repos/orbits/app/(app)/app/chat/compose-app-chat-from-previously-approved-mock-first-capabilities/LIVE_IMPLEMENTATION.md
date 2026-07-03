@@ -15,7 +15,7 @@ The future live service/provider files should replace the mock constructors behi
 
 ## Switch Mechanism
 
-The switch mechanism is `createModuleServiceFactory` in `app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts`. Add `hybrid` or `live` implementations to the four chat service factories only after live replacement tests exist. `/app/chat/page.tsx` and `chat-command-center.tsx` should continue to depend on `createAppChatRouteServices()` instead of importing provider files or fixture data.
+The switch mechanism is `createModuleServiceFactory` in `app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts`. Add `hybrid` or `live` implementations to the four chat service factories only after live replacement tests exist. `/app/chat/page.tsx`, `chat-route-view-model.ts`, and `chat-view-model-adapter.ts` should continue to depend on the route service bundle instead of importing provider files or fixture data.
 
 ## Required Env Vars Or Permissions
 

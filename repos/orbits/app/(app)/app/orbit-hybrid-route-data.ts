@@ -11,7 +11,6 @@ import type {
   TaskDTO,
   UserProfileDTO,
 } from "../../../shared/domain/contracts";
-import type { SourceType } from "../../../shared/domain/source-types";
 import {
   createOrbitLocalRemoteDatabase,
   type OrbitLocalRemoteDatabase,
@@ -21,7 +20,7 @@ import type {
   MockRuntimeFixtures,
 } from "../../../shared/mock/fixtures";
 
-export const orbitGradients = [
+const orbitGradients = [
   "g-indigo",
   "g-emerald",
   "g-sky",
@@ -221,10 +220,6 @@ export function evidenceSummaryFor(
   return summary ?? fallback;
 }
 
-export function contactsById(data: OrbitHybridRouteData): Map<string, ContactDTO> {
-  return new Map(data.contacts.map((contact) => [contact.id, contact]));
-}
-
 export function networkPeopleById(
   data: OrbitHybridRouteData,
 ): Map<string, NetworkPersonDTO> {
@@ -239,7 +234,7 @@ export function connectionsByContactId(
   );
 }
 
-export function intentForContact(
+function intentForContact(
   data: OrbitHybridRouteData,
   contactId: string,
 ): EventParticipantIntentDTO | undefined {
@@ -297,23 +292,6 @@ export function contactTopics(connection?: ConnectionDTO): string[] {
     : ["relationship context", "follow-up"];
 }
 
-export function contactStageLabel(stage: ContactDTO["stage"]): string {
-  switch (stage) {
-    case "active":
-      return "在推进";
-    case "needs_follow_up":
-    case "reviewing":
-      return "待联系";
-    case "nurture":
-      return "在推进";
-    case "archived":
-      return "已合作";
-    case "captured":
-    default:
-      return "待联系";
-  }
-}
-
 export function contactPipelineStatus(
   stage: ContactDTO["stage"],
 ): "to_contact" | "in_progress" | "partnered" {
@@ -329,18 +307,6 @@ export function contactPipelineStatus(
     default:
       return "to_contact";
   }
-}
-
-export function contactSourceKind(sourceType: SourceType): "exchange" | "scan" | "manual" {
-  if (sourceType === "business_card_ocr" || sourceType === "qr_scan") {
-    return "scan";
-  }
-
-  if (sourceType === "manual") {
-    return "manual";
-  }
-
-  return "exchange";
 }
 
 export function sortedEvents(data: OrbitHybridRouteData): EventDTO[] {
@@ -360,16 +326,6 @@ export function sortedContacts(data: OrbitHybridRouteData): ContactDTO[] {
 
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
-}
-
-export function formatDatePart(value: string): string {
-  const date = new Date(value);
-
-  if (!Number.isFinite(date.getTime())) {
-    return "";
-  }
-
-  return date.toISOString().slice(0, 10);
 }
 
 export function formatTimePart(value: string): string {

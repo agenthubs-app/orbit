@@ -20,7 +20,7 @@ export interface AppProfileRouteServices {
   signalService: ProfileSignalReviewQueueService;
 }
 
-export const appProfileProfileServiceFactory =
+const appProfileProfileServiceFactory =
   createModuleServiceFactory<ProfileService>({
     capabilityId: "app-profile:manual-profile",
     implementations: {
@@ -29,7 +29,7 @@ export const appProfileProfileServiceFactory =
     },
   });
 
-export const appProfileDocumentExtractionServiceFactory =
+const appProfileDocumentExtractionServiceFactory =
   createModuleServiceFactory<ProfileDocumentExtractionService>({
     capabilityId: "app-profile:document-extraction",
     implementations: {
@@ -40,7 +40,7 @@ export const appProfileDocumentExtractionServiceFactory =
     },
   });
 
-export const appProfileSignalServiceFactory =
+const appProfileSignalServiceFactory =
   createModuleServiceFactory<ProfileSignalReviewQueueService>({
     capabilityId: "app-profile:signal-review-queue",
     implementations: {

@@ -18,10 +18,9 @@ nested UI components do not import raw fixtures.
   `/app/dashboard?scenario=pending`, and `/app/dashboard?scenario=failure`
   render `data-state-boundary="shared-ui-state-view"` with route recovery
   actions.
-- Core action: `/app/dashboard?action=run-dashboard-review` renders
-  `data-action-evidence="dashboard-run-review-local-preview"` and
-  `data-side-effects="none"` after local opportunity recompute and provenance
-  audit review when using the retained command-center/debug surface.
+- Core action previews are no longer rendered by the default dashboard page.
+  Future dashboard actions should route through explicit feature services and
+  confirmation guards instead of reviving the removed command-center surface.
 - The recommended next move remains a route adapter composition of the
   opportunity and network gap DTOs; it does not write tasks, send messages, or
   trigger outside delivery from the page.
@@ -38,8 +37,6 @@ route services.
 - Keep `app/(app)/app/dashboard/orbit-real-dashboard.tsx` as the product UI.
 - Keep `app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-view-model-adapter.ts`
   as the route-to-product view-model adapter.
-- Keep `app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-command-center.tsx`
-  as a retained command-center/debug surface, not the default page entry.
 - Keep `app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-service-factory.ts`
   as the route service selector.
 - Add live dashboard aggregate implementation under

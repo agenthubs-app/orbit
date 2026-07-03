@@ -22,7 +22,7 @@ export interface AppDashboardRouteServices {
 }
 
 // 各子模块保持独立 capabilityId，方便未来只替换其中某个分析服务。
-export const appDashboardAggregateServiceFactory =
+const appDashboardAggregateServiceFactory =
   createModuleServiceFactory<DashboardAggregateService>({
     capabilityId: "app-dashboard-aggregate",
     implementations: {
@@ -31,7 +31,7 @@ export const appDashboardAggregateServiceFactory =
     },
   });
 
-export const appDashboardDistributionServiceFactory =
+const appDashboardDistributionServiceFactory =
   createModuleServiceFactory<NetworkDistributionAnalyticsService>({
     capabilityId: "app-dashboard-network-distributions",
     implementations: {
@@ -42,7 +42,7 @@ export const appDashboardDistributionServiceFactory =
     },
   });
 
-export const appDashboardOpportunityServiceFactory =
+const appDashboardOpportunityServiceFactory =
   createModuleServiceFactory<OpportunityReminderAnalyticsService>({
     capabilityId: "app-dashboard-opportunities",
     implementations: {
@@ -53,7 +53,7 @@ export const appDashboardOpportunityServiceFactory =
     },
   });
 
-export const appDashboardAuditServiceFactory =
+const appDashboardAuditServiceFactory =
   createModuleServiceFactory<SourceConsistencyProvenanceAuditService>({
     capabilityId: "app-dashboard-provenance-audit",
     implementations: {

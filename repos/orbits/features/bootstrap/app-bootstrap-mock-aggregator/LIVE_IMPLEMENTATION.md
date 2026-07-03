@@ -63,7 +63,9 @@ empty、pending 和 failure 必须继续作为明确 envelope 返回，不能藏
 
 - `tests/capabilities/app-bootstrap-live-store.test.ts` 覆盖 memory live store 聚合、未配置 live store fail-closed、factory live registration、API live envelope。
 - `tests/capabilities/app-bootstrap-mock-aggregator.test.ts` 继续锁定 mock provider-free 边界、debug view 和 API mock envelopes。
-- `tests/pages/app-workbench-page.test.tsx` 覆盖 `/app` 通过 service factory 消费 bootstrap payload。
+- `tests/pages/app-home-live-route-services.test.ts` 和真实 `/app/home` route 覆盖 live
+  Home 的页面组合边界；旧 `/app` workbench route 已移除，bootstrap 只保留为
+  feature service/API 聚合能力。
 
 ## 后续方向
 

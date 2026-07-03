@@ -4,14 +4,11 @@ import test from "node:test";
 
 import { getOrbitAdminViewModel, getOrbitPlatformViewModel } from "../../app/(app)/app/orbit-admin-platform-route-view-model";
 import { getOrbitAgentViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
-import { getOrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-route-view-model";
-import { getOrbitHomeViewModel } from "../../app/(app)/app/orbit-home-route-view-model";
 import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-route-view-model";
 import { getOrbitOrganizerPublicViewModel } from "../../app/(app)/app/orbit-organizer-route-view-model";
 import { getOrbitPartyViewModel } from "../../app/(app)/app/orbit-party-route-view-model";
 import { getOrbitProfileViewModel } from "../../app/(app)/app/orbit-profile-route-view-model";
 import { getOrbitRegisterViewModel } from "../../app/(app)/app/orbit-register-route-view-model";
-import { getOrbitScheduleViewModel } from "../../app/(app)/app/orbit-schedule-route-view-model";
 import type { MockRuntimeFixtures } from "../../shared/mock/fixtures";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
@@ -243,27 +240,11 @@ test("legacy app route view models read hybrid local remote route data", () => {
       landing.connections.some((connection) => connection.displayName === "Ava Route"),
     );
 
-    const contacts = getOrbitContactsViewModel();
-    assert.ok(
-      contacts.connections.some((connection) => connection.displayName === "Ava Route"),
-    );
-    assert.ok(
-      contacts.events.some((event) => event.name === "Hybrid Routes Investor Salon"),
-    );
-
     const party = getOrbitPartyViewModel();
     assert.equal(party.me.name, "Route Tester");
     assert.equal(party.eventName, "Hybrid Routes Investor Salon");
     assert.ok(
       party.recommendations.some((person) => person.name === "Ava Route"),
-    );
-
-    const schedule = getOrbitScheduleViewModel();
-    assert.ok(
-      schedule.connections.some((connection) => connection.displayName === "Ava Route"),
-    );
-    assert.ok(
-      schedule.schedules.some((item) => item.topic === "Review Ava route migration"),
     );
 
     const profile = getOrbitProfileViewModel();
@@ -284,10 +265,6 @@ test("legacy app route view models read hybrid local remote route data", () => {
         (item) => "connection" in item && item.connection.displayName === "Ava Route",
       ),
     );
-
-    const home = getOrbitHomeViewModel();
-    assert.equal(home.account.fullName, "Route Tester");
-    assert.equal(home.account.headline, "Hybrid Product Lead · Hybrid Routes Workspace");
 
     const register = getOrbitRegisterViewModel(hybridEvent?.code);
     assert.equal(register.event.name, "Hybrid Routes Investor Salon");

@@ -21,6 +21,9 @@ async function importProjectModule<TModule>(
 }
 
 test("/dev/knowledge renders the Orbit knowledge wiki", async () => {
+  const manifest = await importProjectModule<{
+    ORBIT_KNOWLEDGE_MANIFEST: { documents: unknown[] };
+  }>("shared/knowledge/knowledge-manifest.ts");
   const page = await importProjectModule<{
     default: (props?: {
       searchParams?: Promise<{ document?: string }>;
@@ -41,13 +44,17 @@ test("/dev/knowledge renders the Orbit knowledge wiki", async () => {
   assert.match(html, /页面目录/);
   assert.match(html, /最近更改/);
   assert.match(html, /搜索 Orbit Wiki/);
-  assert.match(html, /147 个文档/);
+  assert.match(
+    html,
+    new RegExp(`${manifest.ORBIT_KNOWLEDGE_MANIFEST.documents.length} 个文档`),
+  );
   assert.match(html, /审计依据|关联代码路径/);
   assert.match(
     html,
     /repos\/orbits\/features\/search\/relationship-natural-search-mock\/LIVE_IMPLEMENTATION\.md/,
   );
-  assert.match(html, /Shared Runtime 交接：ui/);
+  assert.match(html, /Shared Runtime 交接：services/);
+  assert.doesNotMatch(html, /live-handoff-shared-ui-app-shell/);
   assert.match(html, /知识主题/);
   assert.match(html, /开发历史/);
   assert.match(html, /排障经验/);

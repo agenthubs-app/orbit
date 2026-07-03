@@ -22,7 +22,7 @@ export interface AppEventsRouteServices {
 }
 
 // 每个 capabilityId 对应页面中的一个功能块，后续可按块替换 live 实现。
-export const appEventsCrudServiceFactory =
+const appEventsCrudServiceFactory =
   createModuleServiceFactory<EventCrudAndImportService>({
     capabilityId: "app-events:event-crud-import",
     implementations: {
@@ -31,7 +31,7 @@ export const appEventsCrudServiceFactory =
     },
   });
 
-export const appEventsAttendeeRecommendationServiceFactory =
+const appEventsAttendeeRecommendationServiceFactory =
   createModuleServiceFactory<EventRecommendationService>({
     capabilityId: "app-events:event-recommendations",
     implementations: {
@@ -40,7 +40,7 @@ export const appEventsAttendeeRecommendationServiceFactory =
     },
   });
 
-export const appEventsValueRecommendationServiceFactory =
+const appEventsValueRecommendationServiceFactory =
   createModuleServiceFactory<EventValueRecommendationService>({
     capabilityId: "app-events:event-value-recommendations",
     implementations: {
@@ -51,7 +51,7 @@ export const appEventsValueRecommendationServiceFactory =
     },
   });
 
-export const appEventsReadinessServiceFactory =
+const appEventsReadinessServiceFactory =
   createModuleServiceFactory<EventGoalAndReadinessService>({
     capabilityId: "app-events:event-readiness",
     implementations: {

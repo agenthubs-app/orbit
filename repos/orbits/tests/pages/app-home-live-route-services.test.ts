@@ -66,6 +66,11 @@ async function withUnconfiguredLiveStorage<T>(
 
 const homeRoutes = [
   {
+    importPath: "../../app/(app)/app/page",
+    marker: "app-root-home-route",
+    sourcePath: "app/(app)/app/page.tsx",
+  },
+  {
     importPath: "../../app/(app)/app/home/page",
     marker: "app-home-route",
     sourcePath: "app/(app)/app/home/page.tsx",
@@ -77,24 +82,11 @@ const homeRoutes = [
   },
 ] as const;
 
-test("web root stays on public landing instead of live app home", () => {
+test("web root delegates to the live app home route", () => {
   const pageSource = source("app/page.tsx");
 
-  assert.match(pageSource, /OrbitRealLandingPage/);
-  assert.doesNotMatch(pageSource, /loadAppHomeRouteViewModel/);
-  assert.doesNotMatch(pageSource, /HomeRouteStateBoundary/);
-  assert.doesNotMatch(pageSource, /OrbitRealHome/);
-  assert.doesNotMatch(pageSource, /web-root-home-route/);
-});
-
-test("app root stays on public landing instead of live app home", () => {
-  const pageSource = source("app/(app)/app/page.tsx");
-
-  assert.match(pageSource, /OrbitRealLandingPage/);
-  assert.doesNotMatch(pageSource, /loadAppHomeRouteViewModel/);
-  assert.doesNotMatch(pageSource, /HomeRouteStateBoundary/);
-  assert.doesNotMatch(pageSource, /OrbitRealHome/);
-  assert.doesNotMatch(pageSource, /app-root-home-route/);
+  assert.match(pageSource, /\.\/\(app\)\/app\/page/);
+  assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
 });
 
 for (const route of homeRoutes) {
@@ -127,7 +119,9 @@ test("app home desktop grid preserves web rail beside events on medium-width scr
   assert.match(styleSource, /\.orbit-home-main-grid/);
   assert.match(styleSource, /grid-template-areas: "events rail"/);
   assert.match(styleSource, /grid-template-columns: minmax\(0, 1fr\) clamp\(220px, 30vw, 320px\)/);
-  assert.doesNotMatch(styleSource, /grid-template-areas: "rail" "events"/);
+  assert.match(styleSource, /@media \(min-width: 641px\) and \(max-width: 820px\)/);
+  assert.match(styleSource, /"rail"\s+"events"/);
+  assert.match(styleSource, /repeat\(auto-fit, minmax\(180px, 1fr\)\)/);
   assert.doesNotMatch(styleSource, /@media \(max-width: 880px\)/);
 });
 

@@ -1,10 +1,10 @@
 # Compose App Home Live Implementation Notes
 
-`/app/home` and `/app/home/events` are Home composition routes. They do not own
-event, contact, profile, search, or storage logic. The web root `/` and product
-namespace root `/app` intentionally stay on the public landing experience so the
-approved web entry UI does not change while Home becomes live-capable under its
-own route.
+`/`, `/app`, `/app/home`, and `/app/home/events` are Home composition routes.
+They do not own event, contact, profile, search, or storage logic. The web root
+`/` delegates to the product namespace root `/app`, and `/app` shares the same
+live-capable Home route model as `/app/home` so the web entry keeps the approved
+personal hub with events and the profile/contact/schedule entry rail.
 
 ## Switch Mechanism
 
@@ -33,11 +33,12 @@ The adapter is intentionally thin:
 - Account display fields are adapted from the profile route payload.
 - Empty, pending, and failure child states become one shared Home route state.
 
-The web root `/` and product namespace root `/app` render
-`OrbitRealLandingPage` and must not call `loadAppHomeRouteViewModel()`. Home hub
-entry cards use concrete `/app/profile`, `/app/contacts`, and `/app/followups`
-hrefs; shared product href mapping must be idempotent for already-materialized
-`/app/...` paths so client-side clicks cannot produce `/app/app/...` 404s.
+The product namespace root `/app` calls `loadAppHomeRouteViewModel()` and marks
+its route boundary with `app-root-home-route`. The web root `/` imports that
+route adapter instead of rendering `OrbitRealLandingPage`. Home hub entry cards
+use concrete `/app/profile`, `/app/contacts`, and `/app/schedule` hrefs; shared
+product href mapping must be idempotent for already-materialized `/app/...`
+paths so client-side clicks cannot produce `/app/app/...` 404s.
 
 ## Web Layout Boundary
 
@@ -57,13 +58,14 @@ data.
 
 ## Replacement Tests
 
-- `tests/pages/app-home-live-route-services.test.ts` proves `/` and `/app`
-  stay on `OrbitRealLandingPage` and do not call `loadAppHomeRouteViewModel()`.
-- The same test proves `/app/home` and `/app/home/events` no longer import
+- `tests/pages/app-home-live-route-services.test.ts` proves `/` delegates to the
+  `/app` Home route adapter, and `/app`, `/app/home`, and `/app/home/events`
+  call `loadAppHomeRouteViewModel()`.
+- The same test proves Home routes no longer import
   `getOrbitHomeViewModel`, use `loadAppHomeRouteViewModel`, and render
   controlled live failures when storage is unconfigured.
 - The same test locks the concrete app route href mapping so `/app/profile`,
-  `/app/contacts`, `/app/followups`, and event detail paths stay unchanged when
+  `/app/contacts`, `/app/schedule`, and event detail paths stay unchanged when
   passed through `productHref()`.
 - The same test locks the desktop Home grid classes and proves medium-width web
   screens preserve the `"events rail"` layout instead of applying a
