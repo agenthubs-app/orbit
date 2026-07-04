@@ -83,7 +83,7 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
   const name = event.name;
   const content = (
     <>
-      <Cover g={gradientFromString(event.code || name)} monogram={{ size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
+      <Cover g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <h3 className="h-section" style={{ color: "var(--ink)", display: "block", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h3>
         <span style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: 8, marginTop: 3 }}>
@@ -135,7 +135,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
   const place = eventPlace(event, t);
   const content = (
     <>
-      <Cover className="orbit-account-event-cover" g={gradientFromString(event.code || name)} monogram={{ size: 46, text: name.slice(0, 1) }} style={{ opacity: event.status === "ended" ? 0.72 : 1 }}>
+      <Cover className="orbit-account-event-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 46, text: name.slice(0, 1) }} style={{ opacity: event.status === "ended" ? 0.72 : 1 }}>
         <span className="orbit-account-event-status"><StatusBadge language={language} status={event.status} /></span>
         <span className="orbit-card-date"><span style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
       </Cover>

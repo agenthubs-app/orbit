@@ -10,6 +10,7 @@ import type {
   OrbitAgentViewModel,
 } from "../orbit-agent-route-view-model";
 import { AccountTopNav } from "../orbit-account-shell";
+import { eventCoverPhoto } from "../orbit-landing-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, gradientFromString } from "../orbit-reference-primitives";
@@ -238,7 +239,7 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
   return (
     <button type="button" className="card card-hover" style={{ cursor: "pointer", display: "block", fontFamily: "var(--ff)", overflow: "hidden", padding: 0, textAlign: "left", width: "100%" }} onClick={() => navigate(`/events/${event.code}`)}>
       <div style={{ display: "flex", gap: 14, padding: 15 }}>
-        <Cover g={gradientFromString(event.code)} monogram={{ text: event.name.slice(0, 1), size: 22 }} style={{ borderRadius: 13, flexShrink: 0, height: 60, width: 60 }} />
+        <Cover g={gradientFromString(event.code)} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 22 }} style={{ borderRadius: 13, flexShrink: 0, height: 60, width: 60 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ alignItems: "flex-start", display: "flex", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>

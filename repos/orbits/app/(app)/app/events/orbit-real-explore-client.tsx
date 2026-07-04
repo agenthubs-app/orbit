@@ -142,7 +142,7 @@ function MapEventCard({ item }: { item: MappedEvent }) {
 
   return (
     <div className="card" style={{ alignItems: "center", boxShadow: "var(--sh-lg)", display: "flex", gap: 14, padding: 14 }}>
-      <Cover g={item.g} monogram={{ text: item.name.slice(0, 1), size: 26 }} style={{ borderRadius: 13, flexShrink: 0, height: 64, width: 64 }}>
+      <Cover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 26 }} style={{ borderRadius: 13, flexShrink: 0, height: 64, width: 64 }}>
         <div style={{ left: 6, position: "absolute", top: 6 }}><StatusBadge language={language} status={item.status} /></div>
       </Cover>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -165,7 +165,7 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
 
   return (
     <a className="card card-hover" href={preserveHref(productHref(`/events/${item.code}`))} style={{ display: "block", overflow: "hidden", textDecoration: "none" }}>
-      <Cover g={item.g} monogram={{ text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
+      <Cover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
         <div style={{ left: 11, position: "absolute", top: 11 }}><StatusBadge language={language} status={item.status} /></div>
         <div style={{ background: "var(--glass-chip)", borderRadius: 9, minWidth: 42, padding: "4px 8px", position: "absolute", right: 11, textAlign: "center", top: 11 }}>
           <div style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600 }}>{item.month}</div>
@@ -249,7 +249,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
                     const on = selectedItem?.id === item.id;
                     return (
                       <button key={item.id} className="card-hover" onClick={() => setSelectedId(item.id)} style={{ background: on ? "var(--accent-softer)" : "var(--surface)", border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, borderRadius: 13, cursor: "pointer", display: "flex", gap: 12, padding: 11, textAlign: "left" }} type="button">
-                        <Cover g={item.g} monogram={{ text: item.name.slice(0, 1), size: 22 }} style={{ borderRadius: 11, flexShrink: 0, height: 54, width: 54 }} />
+                        <Cover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 22 }} style={{ borderRadius: 11, flexShrink: 0, height: 54, width: 54 }} />
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span className="h-section" style={{ color: "var(--ink)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
                           <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginTop: 2 }}>{[item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`}` : item.time, item.place].filter(Boolean).join(" · ")}</span>

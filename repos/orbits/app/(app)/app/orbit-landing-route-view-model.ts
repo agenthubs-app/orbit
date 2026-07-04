@@ -149,6 +149,13 @@ const coverPhotoByTheme: Record<string, string> = {
   globe: "/orbit-covers/globe.jpg",
 };
 
+/** Real cover photo for an event code (via its theme), or undefined if the
+ * theme has no bundled photo. Lets any event-card call site show the same
+ * photography as the main list without threading imageUrl through view models. */
+export function eventCoverPhoto(code: string): string | undefined {
+  return coverPhotoByTheme[themeByCode[code] ?? "ai"];
+}
+
 function coverSvg(color: string, theme: string, letter: string) {
   const glyph = themeGlyphs[theme] ?? themeGlyphs.ai;
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 240'><defs><radialGradient id='h' cx='28%' cy='18%' r='95%'><stop offset='0' stop-color='#fff' stop-opacity='.34'/><stop offset='58%' stop-color='${color}' stop-opacity='0'/></radialGradient></defs><rect width='400' height='240' fill='${color}'/><rect width='400' height='240' fill='url(#h)'/><g fill='none' stroke='#fff' stroke-opacity='.2' stroke-width='1.3' stroke-dasharray='2 9'><circle cx='200' cy='120' r='150'/><circle cx='200' cy='120' r='112'/></g><g fill='none' stroke='#fff' stroke-opacity='.5' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'>${glyph}</g><text x='374' y='54' text-anchor='end' font-family='Inter Tight,Inter,sans-serif' font-size='30' font-weight='700' fill='#fff' fill-opacity='.18'>${letter}</text></svg>`;
