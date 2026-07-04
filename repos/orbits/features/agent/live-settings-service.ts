@@ -14,16 +14,16 @@ import {
   type AgentAutonomySettingsUpdateResult,
 } from "./settings-contract";
 import {
-  mockAgentAutonomyConfirmationRules,
-  mockAgentAutonomySettingsFixture,
-  mockAgentAutonomySettingsProvenance,
-  mockAgentAutonomyLevels,
-  mockEmptyAgentAutonomySettingsFixture,
-  mockPendingAgentAutonomySettingsFixture,
-  mockUpdatedHighAgentAutonomySettingsFixture,
-  mockUpdatedLowAgentAutonomySettingsFixture,
-  mockUpdatedMediumAgentAutonomySettingsFixture,
-} from "./settings-fixtures";
+  agentAutonomyConfirmationRules,
+  agentAutonomyLevels,
+  agentAutonomySettingsFixture,
+  agentAutonomySettingsProvenance,
+  emptyAgentAutonomySettingsFixture,
+  pendingAgentAutonomySettingsFixture,
+  updatedHighAgentAutonomySettingsFixture,
+  updatedLowAgentAutonomySettingsFixture,
+  updatedMediumAgentAutonomySettingsFixture,
+} from "./settings-policy";
 
 const supportedScenarios = new Set<AgentAutonomySettingsScenario>([
   "success",
@@ -46,7 +46,7 @@ function liveProvenance(
   },
 ): AgentAutonomySettingsProvenance {
   return {
-    ...mockAgentAutonomySettingsProvenance,
+    ...agentAutonomySettingsProvenance,
     source: LIVE_AGENT_AUTONOMY_SETTINGS_SOURCE,
     sourceLabel: input.sourceLabel,
     evidenceIds: input.evidenceIds,
@@ -83,7 +83,7 @@ function updateWithLiveProvenance(
   return {
     ...cloned,
     actorLabel: actorLabel?.trim() || cloned.actorLabel,
-    confirmationRules: mockAgentAutonomyConfirmationRules.filter(
+    confirmationRules: agentAutonomyConfirmationRules.filter(
       (rule) => rule.level === cloned.requestedLevel,
     ),
     provenance: liveProvenance({
@@ -100,7 +100,7 @@ function failure(
 ): AgentAutonomySettingsFailure {
   const definition = AGENT_AUTONOMY_SETTINGS_ERROR_DEFINITIONS[code];
   const provenance = liveProvenance({
-    collectedAt: mockAgentAutonomySettingsProvenance.collectedAt,
+    collectedAt: agentAutonomySettingsProvenance.collectedAt,
     evidenceIds: ["evidence:agent-autonomy:live-policy-failure"],
     generationMethod: "live-policy",
     sourceLabel: "Live agent autonomy settings policy failure",
@@ -144,12 +144,12 @@ function updateFixtureForLevel(
 ): AgentAutonomySettingsUpdatePayload {
   switch (level) {
     case "low":
-      return mockUpdatedLowAgentAutonomySettingsFixture;
+      return updatedLowAgentAutonomySettingsFixture;
     case "high":
-      return mockUpdatedHighAgentAutonomySettingsFixture;
+      return updatedHighAgentAutonomySettingsFixture;
     case "medium":
     default:
-      return mockUpdatedMediumAgentAutonomySettingsFixture;
+      return updatedMediumAgentAutonomySettingsFixture;
   }
 }
 
@@ -161,7 +161,7 @@ export function createLiveAgentAutonomySettingsService(): AgentAutonomySettingsS
           return {
             success: true,
             data: payloadWithLiveProvenance(
-              mockEmptyAgentAutonomySettingsFixture,
+              emptyAgentAutonomySettingsFixture,
               "Live empty agent autonomy policy",
             ),
           };
@@ -169,7 +169,7 @@ export function createLiveAgentAutonomySettingsService(): AgentAutonomySettingsS
           return {
             success: true,
             data: payloadWithLiveProvenance(
-              mockPendingAgentAutonomySettingsFixture,
+              pendingAgentAutonomySettingsFixture,
               "Live pending agent autonomy policy",
             ),
           };
@@ -181,10 +181,10 @@ export function createLiveAgentAutonomySettingsService(): AgentAutonomySettingsS
             success: true,
             data: {
               ...payloadWithLiveProvenance(
-                mockAgentAutonomySettingsFixture,
+                agentAutonomySettingsFixture,
                 "Live agent autonomy safety policy",
               ),
-              levels: mockAgentAutonomyLevels,
+              levels: agentAutonomyLevels,
             },
           };
       }

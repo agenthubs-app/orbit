@@ -222,3 +222,11 @@ test("permissions live confirmation runtime does not import mock service modules
     "features/permissions/live-confirmation-service.ts should depend on neutral confirmation policy modules, not mock service modules",
   );
 });
+
+test("agent live settings runtime does not import fixture modules", () => {
+  assert.doesNotMatch(
+    source("features/agent/live-settings-service.ts"),
+    /from\s+["']\.\/settings-fixtures["']/,
+    "features/agent/live-settings-service.ts should depend on neutral settings policy modules, not fixture modules",
+  );
+});
