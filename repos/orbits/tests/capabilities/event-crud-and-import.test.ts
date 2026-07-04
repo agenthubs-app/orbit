@@ -120,8 +120,8 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
   ]);
   assert.deepEqual(contract.EVENT_SOURCE_CAPTURE_METHODS, [
     "manual_form",
-    "calendar_sync_fixture",
-    "organizer_feed_fixture",
+    "calendar_sync",
+    "organizer_feed",
   ]);
   assert.deepEqual(contract.EVENT_CRUD_AND_IMPORT_ERROR_CODES, [
     "EVENTS_EVENT_ID_REQUIRED",
@@ -153,7 +153,7 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
   );
   assert.equal(
     fixtures.mockEventListFixture.events[0]?.sourceMetadata.captureMethod,
-    "calendar_sync_fixture",
+    "calendar_sync",
   );
   assert.equal(
     fixtures.mockEventListFixture.events[0]?.sourceMetadata.provider,

@@ -30,6 +30,7 @@ import {
   type OrbitLocalRemoteDatabase,
 } from "../../../shared/local-remote-store/orbit-database";
 import type { MockRuntimeFixtures } from "../../../shared/mock/fixtures";
+import { eventCaptureMethodForSourceType } from "./event-source-policy";
 import type { EventCrudAndImportService } from "./service";
 
 interface LocalRemoteEventGraph {
@@ -107,15 +108,7 @@ function normalizeCaptureMethod(
 }
 
 function captureMethodFor(event: EventDTO): EventCaptureMethod {
-  if (event.source.type === "calendar_signal") {
-    return "calendar_sync_fixture";
-  }
-
-  if (event.source.type === "event_import") {
-    return "organizer_feed_fixture";
-  }
-
-  return "manual_form";
+  return eventCaptureMethodForSourceType(event.source.type);
 }
 
 function statusFor(event: EventDTO): EventStatus {

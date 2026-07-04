@@ -18,8 +18,8 @@ export type EventStatus = (typeof EVENT_STATUS_VALUES)[number];
 
 export const EVENT_SOURCE_CAPTURE_METHODS = [
   "manual_form",
-  "calendar_sync_fixture",
-  "organizer_feed_fixture",
+  "calendar_sync",
+  "organizer_feed",
 ] as const;
 
 export type EventCaptureMethod =

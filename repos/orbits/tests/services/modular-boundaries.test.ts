@@ -238,3 +238,11 @@ test("agent live external action runtime does not import fixture modules", () =>
     "features/agent/live-external-action-sandbox.ts should depend on neutral external action policy modules, not fixture modules",
   );
 });
+
+test("events live CRUD runtime does not hard-code mock or fixture source markers", () => {
+  assert.doesNotMatch(
+    source("features/events/event-crud-and-import/live-service.ts"),
+    /(?:mock-|fixture)/,
+    "features/events/event-crud-and-import/live-service.ts should depend on neutral event source policy instead of hard-coded mock or fixture source markers",
+  );
+});

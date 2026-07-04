@@ -21,6 +21,10 @@ import {
   type ManualEventCreationResult,
 } from "./contract";
 import type { SourceType } from "../../../shared/domain/source-types";
+import {
+  eventCaptureMethodForSourceType,
+  isDemoEventProvider,
+} from "./event-source-policy";
 import type { EventCrudAndImportService } from "./service";
 
 type LiveEventStoreProviderResult<TResult> = TResult | Promise<TResult>;
@@ -88,11 +92,6 @@ const supportedStatuses = new Set<EventStatus>(EVENT_STATUS_VALUES);
 const supportedCaptureMethods = new Set<EventCaptureMethod>(
   EVENT_SOURCE_CAPTURE_METHODS,
 );
-const legacyListFixtureProviders = new Set([
-  "manual-event-form-fixture",
-  "mock-calendar-sync-fixture",
-  "mock-organizer-feed-fixture",
-]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
@@ -125,18 +124,6 @@ function normalizeCaptureMethod(
     : null;
 }
 
-function captureMethodFor(record: LiveEventStoreRecord): EventCaptureMethod {
-  if (record.source.type === "calendar_signal") {
-    return "calendar_sync_fixture";
-  }
-
-  if (record.source.type === "event_import") {
-    return "organizer_feed_fixture";
-  }
-
-  return "manual_form";
-}
-
 function originFor(
   record: LiveEventStoreRecord,
   liveDatabaseWriteExecuted: boolean,
@@ -145,7 +132,7 @@ function originFor(
     type: record.source.type,
     id: record.source.id,
     label: record.source.label ?? "Events live store",
-    captureMethod: captureMethodFor(record),
+    captureMethod: eventCaptureMethodForSourceType(record.source.type),
     provider: record.source.provider,
     providerRecordId: record.source.providerRecordId,
     importedAt: record.source.importedAt,
@@ -255,7 +242,7 @@ function containsDiagnosticMarker(value: string | null | undefined): boolean {
 }
 
 function isProductListRecord(record: LiveEventStoreRecord): boolean {
-  if (legacyListFixtureProviders.has(record.source.provider)) {
+  if (isDemoEventProvider(record.source.provider)) {
     return false;
   }
 
