@@ -16,13 +16,13 @@ import {
   type ExternalActionSandboxService,
 } from "./external-action-contract";
 import {
-  mockEmptyExternalActionAuditFixture,
-  mockExternalActionAuditRecords,
-  mockExternalActionSandboxActions,
-  mockExternalActionSandboxFailureProvenance,
-  mockExternalActionSandboxFixture,
-  mockPendingExternalActionSandboxFixture,
-} from "./external-action-fixtures";
+  emptyExternalActionAuditFixture,
+  externalActionAuditRecords,
+  externalActionSandboxActions,
+  externalActionSandboxFailureProvenance,
+  externalActionSandboxFixture,
+  pendingExternalActionSandboxFixture,
+} from "./external-action-policy";
 
 const LIVE_EXTERNAL_ACTION_SANDBOX_SOURCE =
   "live-policy:features/agent/live-external-action-sandbox.ts";
@@ -51,7 +51,7 @@ function liveProvenance(input: {
   sourceLabel: string;
 }): ExternalActionSandboxProvenance {
   return {
-    ...mockExternalActionSandboxFailureProvenance,
+    ...externalActionSandboxFailureProvenance,
     source: LIVE_EXTERNAL_ACTION_SANDBOX_SOURCE,
     sourceLabel: input.sourceLabel,
     evidenceIds: input.evidenceIds,
@@ -83,16 +83,16 @@ function liveAction(action: ExternalActionSandboxAction): ExternalActionSandboxA
   };
 }
 
-const liveActions = mockExternalActionSandboxActions.map(liveAction);
+const liveActions = externalActionSandboxActions.map(liveAction);
 
 function liveAuditRecord(
   action: ExternalActionSandboxAction,
 ): ExternalActionAuditRecord {
   return {
     ...clonePayload(
-      mockExternalActionAuditRecords.find(
+      externalActionAuditRecords.find(
         (record) => record.actionType === action.actionType,
-      ) ?? mockExternalActionAuditRecords[0],
+      ) ?? externalActionAuditRecords[0],
     ),
     actionId: action.actionId,
     auditId: `live-audit:external-action:${action.actionType}`,
@@ -263,7 +263,7 @@ function auditResult(input: ExternalActionAuditListInput = {}): ExternalActionAu
       return {
         success: true,
         data: liveAuditPayload(
-          mockEmptyExternalActionAuditFixture,
+          emptyExternalActionAuditFixture,
           "Live empty external action sandbox policy",
         ),
       };
@@ -271,7 +271,7 @@ function auditResult(input: ExternalActionAuditListInput = {}): ExternalActionAu
       return {
         success: true,
         data: liveAuditPayload(
-          mockPendingExternalActionSandboxFixture,
+          pendingExternalActionSandboxFixture,
           "Live pending external action sandbox policy",
         ),
       };
@@ -282,7 +282,7 @@ function auditResult(input: ExternalActionAuditListInput = {}): ExternalActionAu
       return {
         success: true,
         data: liveAuditPayload(
-          mockExternalActionSandboxFixture,
+          externalActionSandboxFixture,
           "Live external action sandbox policy",
         ),
       };

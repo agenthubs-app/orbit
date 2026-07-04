@@ -230,3 +230,11 @@ test("agent live settings runtime does not import fixture modules", () => {
     "features/agent/live-settings-service.ts should depend on neutral settings policy modules, not fixture modules",
   );
 });
+
+test("agent live external action runtime does not import fixture modules", () => {
+  assert.doesNotMatch(
+    source("features/agent/live-external-action-sandbox.ts"),
+    /from\s+["']\.\/external-action-fixtures["']/,
+    "features/agent/live-external-action-sandbox.ts should depend on neutral external action policy modules, not fixture modules",
+  );
+});
