@@ -1250,6 +1250,31 @@ body:has([data-orbit-real-page]) {
   white-space: nowrap;
 }
 
+/* ===================================================================
+   Starfield coordination: carry the homepage's warm gold secondary and
+   its restrained cosmic palette into every inner page, so product screens
+   read as the same night sky as the landing hero (not a cooler, flatter
+   violet-only variant).
+   =================================================================== */
+
+/* Eyebrow kickers ("EXPLORE · 东京", "DASHBOARD", "ACCOUNT" …) adopt the
+   homepage's warm gold — the same accent as its "RELATIONSHIP STARFIELD"
+   label — tying every section header back to the hero. */
+[data-orbit-real-page] .eyebrow {
+  color: var(--amber);
+}
+
+/* Avatars share the coordinated cosmic palette (muted, violet-leaning, with
+   one warm gold), keeping seven distinguishable people-tones without the
+   original neon green/blue/rose that clashed with the covers. */
+[data-orbit-real-page] .g-indigo { --av-a: #9C8EF5; --av-b: #6359E9; }
+[data-orbit-real-page] .g-violet { --av-a: #B892EC; --av-b: #7A4FD0; }
+[data-orbit-real-page] .g-rose { --av-a: #D68FC2; --av-b: #A85186; }
+[data-orbit-real-page] .g-amber { --av-a: #EDC57C; --av-b: #CF9438; }
+[data-orbit-real-page] .g-emerald { --av-a: #8FBFC4; --av-b: #47898F; }
+[data-orbit-real-page] .g-sky { --av-a: #8A9CEC; --av-b: #5063CE; }
+[data-orbit-real-page] .g-slate { --av-a: #9490AE; --av-b: #565478; }
+
 /* Language toggle — the homepage's segmented pill, shared by every surface
    (replaces the 16px-tall "中/EN" text button in the product nav). */
 [data-orbit-real-page] .orbit-lang-toggle {

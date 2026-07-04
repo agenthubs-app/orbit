@@ -54,14 +54,19 @@ const iconPaths: Record<string, ReactNode> = {
   zap: <><path d="M13 3 4 14h6l-1 7 9-11h-6l1-7Z"/></>,
 };
 
+// Event covers: one coordinated deep-space family (violet-centric depths plus
+// a single warm gold), not seven loud hues. Muted and pulled toward the
+// starfield palette so a list of cards reads as one night sky. Avatars reuse
+// the same seven hues (brighter, 2-stop) via the .g-* --av-a/--av-b overrides
+// in the starfield theme layer.
 const coverBg: Record<string, string> = {
-  "g-indigo": "radial-gradient(120% 120% at 15% 15%, #8B7BF0 0%, #6359E9 42%, #3B2FB0 100%)",
-  "g-violet": "radial-gradient(120% 120% at 20% 10%, #C18BF0 0%, #8B3FD6 45%, #5A1E9E 100%)",
-  "g-rose": "radial-gradient(120% 120% at 15% 20%, #F58BA8 0%, #E0415F 45%, #A01E3C 100%)",
-  "g-amber": "radial-gradient(120% 120% at 18% 12%, #F5C078 0%, #E08A2B 48%, #A85A12 100%)",
-  "g-emerald": "radial-gradient(120% 120% at 18% 15%, #6FE0AE 0%, #15A06B 48%, #0A6B47 100%)",
-  "g-sky": "radial-gradient(120% 120% at 18% 12%, #7BB8F5 0%, #2D7FF0 48%, #1452A8 100%)",
-  "g-slate": "radial-gradient(120% 120% at 20% 15%, #9AA4B8 0%, #4A5468 48%, #2A3142 100%)",
+  "g-indigo": "radial-gradient(120% 120% at 15% 15%, #9C8EF5 0%, #6359E9 46%, #2A2166 100%)",
+  "g-violet": "radial-gradient(120% 120% at 20% 10%, #B892EC 0%, #7A4FD0 46%, #2B1A56 100%)",
+  "g-rose": "radial-gradient(120% 120% at 15% 20%, #D68FC2 0%, #A85186 46%, #3C1E4E 100%)",
+  "g-amber": "radial-gradient(120% 120% at 18% 12%, #EDC57C 0%, #CB8E34 48%, #5C3C14 100%)",
+  "g-emerald": "radial-gradient(120% 120% at 18% 15%, #8FBFC4 0%, #47898F 48%, #17393E 100%)",
+  "g-sky": "radial-gradient(120% 120% at 18% 12%, #8A9CEC 0%, #5063CE 46%, #1C2358 100%)",
+  "g-slate": "radial-gradient(120% 120% at 20% 15%, #9490AE 0%, #565478 48%, #221F3A 100%)",
 };
 
 const coverKeys = Object.keys(coverBg);

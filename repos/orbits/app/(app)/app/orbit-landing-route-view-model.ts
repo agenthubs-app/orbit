@@ -63,14 +63,14 @@ export interface OrbitLandingViewModel {
 
 const agendaEventColors: Record<string, string> = {
   TBC26S: "#6359E9",
-  SAAS04: "#0E9E68",
-  SEMI26: "#4A5468",
-  FINTK8: "#2D7FF0",
-  AIFND: "#8B3FD6",
-  FASHN: "#E0415F",
-  D2C03: "#8B3FD6",
-  CONS5: "#E08A2B",
-  XB25: "#E08A2B",
+  SAAS04: "#47898F",
+  SEMI26: "#565478",
+  FINTK8: "#5063CE",
+  AIFND: "#7A4FD0",
+  FASHN: "#A85186",
+  D2C03: "#7A4FD0",
+  CONS5: "#CB8E34",
+  XB25: "#CB8E34",
 };
 
 const themeByCode: Record<string, string> = {
@@ -169,7 +169,7 @@ const eventDetailByCode: Record<string, {
   SAAS04: {
     address: "东京都港区六本木 6-10-1",
     agenda: defaultAgenda.slice(0, 3),
-    brandColor: "#0E9E68",
+    brandColor: "#47898F",
     cap: 60,
     descriptionZh: "40 人小规模深聊，分享出海定价、本地化与渠道打法。",
     endsAt: "2026-07-20T09:00:00.000Z",
