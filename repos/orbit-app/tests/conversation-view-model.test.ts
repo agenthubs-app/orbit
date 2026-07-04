@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   conversationPayloadToChatView,
-  conversationsToSummaries
+  conversationsToSummaries,
+  proactiveTurnPayloadToChatView
 } from "../src/view-models/conversations";
 
 test("conversationPayloadToChatView maps assistant reply messages and proposed tool intents", () => {
@@ -67,6 +68,56 @@ test("conversationPayloadToChatView uses safe defaults for empty payloads", () =
     assistantMessage: "",
     messages: [],
     proposedToolIntents: []
+  });
+});
+
+test("proactiveTurnPayloadToChatView maps in-chat proactive turns", () => {
+  const view = proactiveTurnPayloadToChatView({
+    message: {
+      content:
+        "Orbit needs attention: Daniel follow-up is due. The sourced draft is ready for review.",
+      conversationId: "live-orbit-ai-proactive-conversation",
+      createdAt: "2026-07-02T09:00:00.000Z",
+      deliverySurface: "orbit_ai_chat",
+      messageId: "proactive-live-message:signal-followup-daniel",
+      role: "assistant",
+      sourceSignalId: "signal-followup-daniel",
+      turnKind: "proactive"
+    },
+    provenance: {
+      generationMethod: "live-policy-proactive-turn"
+    },
+    suggestedActions: [
+      {
+        actionId: "review-followup",
+        label: "Review follow-up",
+        requiresConfirmation: true,
+        targetSurface: "orbit_ai_chat"
+      }
+    ]
+  });
+
+  assert.deepEqual(view, {
+    activeConversationId: "live-orbit-ai-proactive-conversation",
+    assistantMessage:
+      "Orbit needs attention: Daniel follow-up is due. The sourced draft is ready for review.",
+    messages: [
+      {
+        content:
+          "Orbit needs attention: Daniel follow-up is due. The sourced draft is ready for review.",
+        createdAt: "2026-07-02T09:00:00.000Z",
+        id: "proactive-live-message:signal-followup-daniel",
+        role: "assistant"
+      }
+    ],
+    proposedToolIntents: [
+      {
+        id: "review-followup",
+        label: "Review follow-up",
+        reason: "Suggested by Orbit AI.",
+        requiresUserConfirmation: true
+      }
+    ]
   });
 });
 

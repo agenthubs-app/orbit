@@ -99,6 +99,14 @@ function booleanField(
   return typeof value === "boolean" ? value : fallback;
 }
 
+function actionRequiresConfirmation(action: Record<string, unknown>): boolean {
+  return booleanField(
+    action,
+    "requiresUserConfirmation",
+    booleanField(action, "requiresConfirmation", true)
+  );
+}
+
 export function conversationPayloadToChatView(
   data: unknown
 ): ConversationChatView {
@@ -126,11 +134,44 @@ export function conversationPayloadToChatView(
       id: stringField(intent, "intentId", stringField(intent, "id", "intent")),
       label: stringField(intent, "label", "Suggested action"),
       reason: stringField(intent, "reason"),
-      requiresUserConfirmation: booleanField(
-        intent,
-        "requiresUserConfirmation",
-        true
-      )
+      requiresUserConfirmation: actionRequiresConfirmation(intent)
+    }))
+  };
+}
+
+export function proactiveTurnPayloadToChatView(
+  data: unknown
+): ConversationChatView {
+  const payload = isRecord(data) ? data : {};
+  const message = isRecord(payload.message) ? payload.message : {};
+  const suggestedActions = Array.isArray(payload.suggestedActions)
+    ? payload.suggestedActions
+    : [];
+  const content = stringField(message, "content");
+  const conversationId = stringField(message, "conversationId");
+
+  return {
+    activeConversationId: conversationId || null,
+    assistantMessage: content,
+    messages: content
+      ? [
+          {
+            content,
+            createdAt: stringField(message, "createdAt"),
+            id: stringField(
+              message,
+              "messageId",
+              stringField(message, "id", "message")
+            ),
+            role: stringField(message, "role", "assistant")
+          }
+        ]
+      : [],
+    proposedToolIntents: suggestedActions.filter(isRecord).map((action) => ({
+      id: stringField(action, "actionId", stringField(action, "id", "action")),
+      label: stringField(action, "label", "Suggested action"),
+      reason: stringField(action, "reason", "Suggested by Orbit AI."),
+      requiresUserConfirmation: actionRequiresConfirmation(action)
     }))
   };
 }

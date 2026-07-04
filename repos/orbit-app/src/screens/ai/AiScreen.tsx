@@ -28,6 +28,7 @@ import {
 import {
   conversationPayloadToChatView,
   conversationsToSummaries,
+  proactiveTurnPayloadToChatView,
   type ConversationChatView
 } from "../../view-models/conversations";
 
@@ -47,6 +48,7 @@ export function AiScreen() {
     null
   );
   const [sendError, setSendError] = useState<string | null>(null);
+  const [checkingProactiveTurn, setCheckingProactiveTurn] = useState(false);
   const [sending, setSending] = useState(false);
 
   async function sendMessage() {
@@ -81,6 +83,44 @@ export function AiScreen() {
       );
     } finally {
       setSending(false);
+    }
+  }
+
+  async function requestProactiveBrief() {
+    setCheckingProactiveTurn(true);
+    setSendError(null);
+
+    try {
+      const result = await client.post<unknown>(
+        ORBIT_API_ENDPOINTS.proactiveTurns,
+        {
+          body: {
+            signal: {
+              body:
+                "The user asked Orbit AI to check whether anything needs attention now.",
+              evidenceIds: ["evidence:orbit-app:manual-proactive-check"],
+              signalId: `orbit-app-manual-check:${Date.now()}`,
+              sourceModule: "system",
+              title: "Manual Orbit AI check-in",
+              type: "system_status"
+            }
+          }
+        }
+      );
+
+      if (result.success) {
+        setLatestChat(proactiveTurnPayloadToChatView(result.data));
+      } else {
+        setSendError(result.error.message);
+      }
+    } catch (error) {
+      setSendError(
+        error instanceof Error
+          ? error.message
+          : "Could not check for a proactive brief."
+      );
+    } finally {
+      setCheckingProactiveTurn(false);
     }
   }
 
@@ -122,6 +162,20 @@ export function AiScreen() {
           >
             <Text style={styles.sendButtonText}>
               {sending ? "Sending" : "Send"}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={checkingProactiveTurn}
+            onPress={requestProactiveBrief}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              checkingProactiveTurn ? styles.disabled : null,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {checkingProactiveTurn ? "Checking" : "Check proactive brief"}
             </Text>
           </Pressable>
           {sendError ? <Text style={styles.errorText}>{sendError}</Text> : null}
@@ -288,6 +342,21 @@ const styles = StyleSheet.create({
   },
   sendButtonText: {
     color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "600"
+  },
+  secondaryButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: spacing.lg
+  },
+  secondaryButtonText: {
+    color: colors.text2,
     fontSize: typography.small,
     fontWeight: "600"
   },

@@ -2,6 +2,7 @@ export const ORBIT_API_ENDPOINTS = {
   bootstrap: "/api/app/bootstrap",
   contacts: "/api/contacts",
   conversations: "/api/ai/conversations",
+  proactiveTurns: "/api/ai/proactive-turns",
   events: "/api/events",
   health: "/api/health",
   profile: "/api/profile",
