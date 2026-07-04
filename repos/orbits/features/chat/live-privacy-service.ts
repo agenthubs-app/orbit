@@ -547,7 +547,7 @@ export function createLiveChatPrivacyControlsService({
       return success(
         buildPayload({
           conversation: context.conversation,
-          generationMethod: "fixture",
+          generationMethod: "live-store-query",
           graph: context.graph,
           messages: context.messages,
           provider: context.provider,

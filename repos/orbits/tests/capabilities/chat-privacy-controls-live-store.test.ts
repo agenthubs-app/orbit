@@ -82,7 +82,7 @@ test("live chat privacy controls read generated chat context without AI, deletio
     controls.data.provenance.privacy,
     "live-chat-privacy-controls-preview",
   );
-  assert.equal(controls.data.provenance.generationMethod, "fixture");
+  assert.equal(controls.data.provenance.generationMethod, "live-store-query");
   assert.equal(controls.data.provenance.aiProviderRequested, false);
   assert.equal(controls.data.provenance.externalNetworkRequested, false);
   assert.equal(controls.data.provenance.liveDatabaseReadExecuted, true);

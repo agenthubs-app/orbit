@@ -219,6 +219,7 @@ export interface ChatPrivacyControlsProvenance {
     | "live-chat-privacy-controls-preview";
   generationMethod:
     | "fixture"
+    | "live-store-query"
     | "rule-based-analysis-toggle"
     | "rule-based-analysis-deletion"
     | "rule-based-sensitive-share"
