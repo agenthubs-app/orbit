@@ -897,9 +897,9 @@ Implementation evidence:
 
 Keep explicit live safety-policy services for autonomy settings, sensitive
 action confirmation, and external-action sandboxing while `/app/agent` remains
-the real Orbit AI chat entry. The page uses the static chat view model and API
-conversation boundary; it does not own a separate route-level service bundle or
-execute external actions.
+the real Orbit AI chat entry. The page reuses the live-capable chat route
+loader and maps that route payload into `OrbitRealAgent`; it does not own a
+separate route-level service bundle or execute external actions.
 
 Success evidence:
 
@@ -908,7 +908,10 @@ Success evidence:
   `createExternalActionSandboxService("live")` resolve explicit live policy
   providers rather than mock fallback.
 - `/app/agent/page.tsx` mounts the real `OrbitRealAgent` chat experience from
-  the static agent view model.
+  the live-capable chat route model.
+- `/app/agent/page.tsx` shows a controlled route failure when live chat storage
+  is unconfigured instead of silently falling back to the legacy hybrid agent
+  view model.
 
 Implementation evidence:
 
@@ -917,14 +920,18 @@ Implementation evidence:
   return live-policy provenance and keep autonomous execution, provider calls,
   external side effects, and scheduled jobs disabled.
 - `tests/pages/app-agent-live-route-services.test.ts` proves the real Orbit AI
-  chat route remains reachable and does not mount the removed command-center UI.
+  chat route remains reachable, reuses `loadAppChatRouteViewModel()` plus
+  `chatRouteToOrbitAgentViewModel()`, does not mount the removed command-center
+  UI, and renders a shared controlled failure state when live storage is
+  unconfigured.
 - `features/agent/live-settings-service.ts`,
   `features/permissions/live-confirmation-service.ts`, and
   `features/agent/live-external-action-sandbox.ts` implement deterministic
   live policy/no-op providers.
-- The old agent command-center and route-level service bundle have been
+- The old agent command-center and legacy static route adapter have been
   removed; policy/provider coverage remains at the feature service layer.
-- `app/(app)/app/agent/page.tsx` now mounts `OrbitRealAgent`.
+- `app/(app)/app/agent/page.tsx` now mounts `OrbitRealAgent` from the shared
+  live-capable chat route adapter.
 - Browser/page validation confirms `/app/agent` renders
   `data-orbit-real-page="agent"` through `OrbitRealAgent`.
 
