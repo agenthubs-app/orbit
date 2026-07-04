@@ -120,8 +120,9 @@ test("app home desktop grid preserves web rail beside events on medium-width scr
   assert.match(styleSource, /grid-template-areas: "events rail"/);
   assert.match(styleSource, /grid-template-columns: minmax\(0, 1fr\) clamp\(220px, 30vw, 320px\)/);
   assert.match(styleSource, /@media \(min-width: 641px\) and \(max-width: 820px\)/);
-  assert.match(styleSource, /"rail"\s+"events"/);
-  assert.match(styleSource, /repeat\(auto-fit, minmax\(180px, 1fr\)\)/);
+  assert.match(styleSource, /grid-template-columns: minmax\(0, 1fr\) clamp\(180px, 28vw, 220px\)/);
+  assert.doesNotMatch(styleSource, /"rail"\s+"events"/);
+  assert.doesNotMatch(styleSource, /repeat\(auto-fit, minmax\(180px, 1fr\)\)/);
   assert.doesNotMatch(styleSource, /@media \(max-width: 880px\)/);
 });
 

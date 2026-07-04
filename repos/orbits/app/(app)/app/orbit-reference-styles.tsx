@@ -1015,15 +1015,19 @@ const reactReferenceIsolationStyles = `
 
 @media (min-width: 641px) and (max-width: 820px) {
   [data-orbit-real-page="home"] .orbit-home-main-grid {
-    grid-template-areas:
-      "rail"
-      "events";
-    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(14px, 2.5vw, 20px);
+    grid-template-areas: "events rail";
+    grid-template-columns: minmax(0, 1fr) clamp(180px, 28vw, 220px);
   }
 
   [data-orbit-real-page="home"] .orbit-home-hub-rail {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  [data-orbit-real-page="home"] .orbit-home-hub-rail .card {
+    padding: 14px !important;
   }
 }
 

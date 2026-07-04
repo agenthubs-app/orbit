@@ -47,6 +47,9 @@ rail side by side for web users. Medium browser widths are still web layout, not
 mobile layout. The grid therefore uses `grid-template-areas: "events rail"` and
 `grid-template-columns: minmax(0, 1fr) clamp(220px, 30vw, 320px)` so the rail
 can shrink without moving above events or forcing horizontal overflow.
+The 641-820px web breakpoint keeps the same `"events rail"` areas and narrows
+the rail to `clamp(180px, 28vw, 220px)` instead of switching to a stacked
+`"rail" "events"` layout.
 
 ## Privacy And Side Effects
 
