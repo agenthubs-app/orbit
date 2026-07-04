@@ -156,14 +156,14 @@ Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限�
 
 `contacts.recommend` 是 provider planner 可选择的白名单工具名。Runtime 会把它映射为 `contact_recommendations` artifact，并把用户最新消息、conversation context 和 planner tool arguments 传给 artifact service。
 
-人脉推荐只推荐已有关系证据支持的人，不做开放网络发现。当前已实现的 `rules_v1` 会从 query、tool arguments 和上下文里抽取行业、合作意图、引荐意图等条件，再调用 relationship natural search service；候选必须带有 evidence ids 和 relationship path。
+人脉推荐只推荐已有关系证据支持的人，不做开放网络发现。当前实现会从 query、tool arguments 和上下文里抽取行业、合作意图、引荐意图等条件，再调用 relationship natural search service；候选必须带有 evidence ids 和 relationship path。
 
 长期边界是：`contacts.recommend` 的产品策略应归 Contacts 或 Recommendations。当前基础实现通过 `createContactsRecommendationSearchTool()` 调用 Relationship Search；Search 只负责根据 query、filters 和 evidence constraints 召回候选；Contacts/Recommendations 负责候选资格、排序、推荐理由和下一步动作；Orbit AI 负责选择工具、记录 trace、生成 artifact 和综合回复。
 
 `ORBIT_CONTACT_RECOMMENDATION_METHOD` 控制匹配方法：
 
-- `rules_v1`：默认且当前已实现。
-- `structured_extraction_v1`、`semantic_index_v1`、`graph_gated_rag_v1`：已声明的未来方法，当前返回可见的未实现状态，不静默 fallback。
+- `rules_v1`：默认方法，使用当前规则抽取和 Contacts/Search adapter。
+- `structured_extraction_v1`、`semantic_index_v1`、`graph_gated_rag_v1`：作为可选方法进入同一个 feature-owned retrieval 边界；当前不会静默 fallback 成 `rules_v1`，artifact metadata、trace reason 和 task id 会保留实际选中的 method。现阶段这些方法仍是 deterministic relationship retrieval，不调用 embedding/vector provider、外部 RAG、AI 排序或开放网络。
 - 非法值：返回 configuration error artifact 和 failed tool call trace。
 
 未来 RAG 必须是 graph-gated RAG：先被关系图、来源证据和现有链接约束，再做语义检索或生成排序；不能绕过 Orbit 的真实关系网络。

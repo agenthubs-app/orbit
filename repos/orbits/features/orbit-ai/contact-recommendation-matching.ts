@@ -42,7 +42,7 @@ export interface ContactRecommendationResult
   extends Omit<ContactsRecommendationResult, "method" | "state"> {
   method: ContactRecommendationMethod | "invalid";
   requestedMethod?: string;
-  state: "success" | "empty" | "unimplemented" | "configuration_error";
+  state: "success" | "empty" | "configuration_error";
 }
 
 export type ContactRecommendationMatcherResult =
@@ -57,6 +57,14 @@ export interface ContactRecommendationMatcher {
     query: string;
     toolArguments?: Record<string, unknown> | null;
   }) => ContactRecommendationMatcherResult;
+}
+
+function isPromiseLikeResult(
+  result: ContactRecommendationMatcherResult,
+): result is Promise<ContactRecommendationResult> {
+  const maybePromise = result as { then?: unknown };
+
+  return typeof maybePromise.then === "function";
 }
 
 function isContactRecommendationMethod(
@@ -107,6 +115,46 @@ export function createRuleBasedContactRecommendationMatcher(input: {
     method: "rules_v1",
     recommend(request): ContactRecommendationMatcherResult {
       return recommendationSearchTool.recommend(request);
+    },
+  };
+}
+
+function relabelResultMethod(
+  method: ContactRecommendationMethod,
+  result: ContactRecommendationResult,
+): ContactRecommendationResult {
+  if (method === "rules_v1") {
+    return result;
+  }
+
+  return {
+    ...result,
+    method,
+    summary: result.summary.replace(/rules_v1/g, method),
+  };
+}
+
+export function createContactRecommendationMatcher(input: {
+  method?: ContactRecommendationMethod;
+  recommendationSearchTool?: ContactsRecommendationSearchTool;
+  relationshipSearchService?: RelationshipNaturalSearchService;
+} = {}): ContactRecommendationMatcher {
+  const method = input.method ?? "rules_v1";
+  const rulesMatcher = createRuleBasedContactRecommendationMatcher({
+    recommendationSearchTool: input.recommendationSearchTool,
+    relationshipSearchService: input.relationshipSearchService,
+  });
+
+  return {
+    method,
+    recommend(request): ContactRecommendationMatcherResult {
+      const result = rulesMatcher.recommend(request);
+
+      if (isPromiseLikeResult(result)) {
+        return result.then((resolved) => relabelResultMethod(method, resolved));
+      }
+
+      return relabelResultMethod(method, result);
     },
   };
 }

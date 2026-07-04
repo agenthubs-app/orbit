@@ -417,7 +417,7 @@ test("Orbit AI contact recommendation matcher delegates candidate policy to feat
   ]);
 });
 
-test("env selects unimplemented methods without silently falling back to rules", async () => {
+test("graph gated contact recommendation method uses feature-owned relationship retrieval", async () => {
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config: {
       apiKey: string;
@@ -436,11 +436,16 @@ test("env selects unimplemented methods without silently falling back to rules",
               generatedView: {
                 emptyState?: string;
                 sections: readonly {
-                  items: readonly { metadata: readonly { value: string }[] }[];
+                  items: readonly {
+                    evidenceIds: readonly string[];
+                    metadata: readonly { label: string; value: string }[];
+                    title: string;
+                  }[];
                 }[];
                 summary: string;
               } | null;
               provenance: {
+                evidenceIds: readonly string[];
                 toolCalls: readonly { reason: string; status: string }[];
               };
             };
@@ -490,16 +495,31 @@ test("env selects unimplemented methods without silently falling back to rules",
     });
     const artifact = result.data?.artifacts[0];
     const view = artifact?.result.generatedView;
-    const artifactText = JSON.stringify(artifact);
+    const firstItem = view?.sections[0]?.items[0];
 
     assert.equal(result.success, true);
-    assert.match(view?.summary ?? "", /graph_gated_rag_v1/);
-    assert.match(view?.emptyState ?? "", /尚未实现/);
+    assert.equal(view?.emptyState, undefined);
+    assert.equal(firstItem?.title, "Omar Rahman");
+    assert.equal(
+      firstItem?.metadata.find((item) => item.label === "方法")?.value,
+      "graph_gated_rag_v1",
+    );
+    assert.ok(
+      firstItem?.evidenceIds.includes("evidence:relationship-search-omar"),
+    );
     assert.equal(
       artifact?.result.provenance.toolCalls[0]?.status,
-      "skipped",
+      "completed",
     );
-    assert.doesNotMatch(artifactText, /Omar Rahman/);
+    assert.match(
+      artifact?.result.provenance.toolCalls[0]?.reason ?? "",
+      /graph_gated_rag_v1/,
+    );
+    assert.ok(
+      artifact?.result.provenance.evidenceIds.includes(
+        "evidence:relationship-search-omar",
+      ),
+    );
   });
 });
 

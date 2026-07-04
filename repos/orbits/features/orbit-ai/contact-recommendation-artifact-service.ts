@@ -13,7 +13,7 @@ import {
 } from "./artifact-contract";
 import { createOrbitAgentArtifactPreviewService } from "./artifact-task-preview-service";
 import {
-  createRuleBasedContactRecommendationMatcher,
+  createContactRecommendationMatcher,
   resolveContactRecommendationMethod,
   type ContactRecommendationCandidate,
   type ContactRecommendationCriteria,
@@ -86,19 +86,6 @@ const emptyCriteria: ContactRecommendationCriteria = {
   valueTypes: [],
 };
 
-function unimplementedResultFor(
-  method: ContactRecommendationMethod,
-): ContactRecommendationResult {
-  return {
-    candidates: [],
-    criteria: emptyCriteria,
-    databaseQueryExecuted: false,
-    method,
-    state: "unimplemented",
-    summary: `${method} is selected but not implemented yet.`,
-  };
-}
-
 function configurationErrorResultFor(
   requestedMethod: string,
 ): ContactRecommendationResult {
@@ -154,6 +141,7 @@ function presentationFor(
 function candidateItemFor(
   candidate: ContactRecommendationCandidate,
   locale: ArtifactLocale,
+  method: ContactRecommendationResult["method"],
 ) {
   return {
     actions: [
@@ -184,7 +172,7 @@ function candidateItemFor(
       },
       {
         label: localize(locale, { en: "Method", zh: "方法" }),
-        value: "rules_v1",
+        value: method,
       },
       {
         label: localize(locale, { en: "Score", zh: "分数" }),
@@ -202,17 +190,12 @@ function generatedViewFor(
   locale: ArtifactLocale,
 ): OrbitAgentArtifactGeneratedView {
   const items = result.candidates.map((candidate) =>
-    candidateItemFor(candidate, locale),
+    candidateItemFor(candidate, locale, result.method),
   );
 
   return {
     emptyState:
-      result.state === "unimplemented"
-        ? localize(locale, {
-            en: `${result.method} is selected by ORBIT_CONTACT_RECOMMENDATION_METHOD, but that contact recommendation method is not implemented yet.`,
-            zh: `已通过 ORBIT_CONTACT_RECOMMENDATION_METHOD 选择 ${result.method}，但该人脉匹配方法尚未实现。`,
-          })
-        : result.state === "configuration_error"
+      result.state === "configuration_error"
           ? localize(locale, {
               en: `ORBIT_CONTACT_RECOMMENDATION_METHOD is set to ${result.requestedMethod}, which is not supported.`,
               zh: `ORBIT_CONTACT_RECOMMENDATION_METHOD 配置为 ${result.requestedMethod}，不是支持的人脉匹配方法。`,
@@ -242,12 +225,7 @@ function generatedViewFor(
             en: `${result.candidates.length} existing relationship path matched the request.`,
             zh: `已从已有关系中匹配到 ${result.candidates.length} 条可复核人脉路径。`,
           })
-        : result.state === "unimplemented"
-          ? localize(locale, {
-              en: `${result.method} is selected, but this method has not been implemented yet.`,
-              zh: `${result.method} 已被选择，但该方法尚未实现。`,
-            })
-          : result.state === "configuration_error"
+        : result.state === "configuration_error"
             ? localize(locale, {
                 en: `${result.requestedMethod} is not a supported contact recommendation method.`,
                 zh: `${result.requestedMethod} 不是支持的人脉匹配方法配置。`,
@@ -267,12 +245,7 @@ function toolTraceFor(
     {
       evidenceIds: evidenceIdsFor(result),
       reason:
-        result.state === "unimplemented"
-          ? localize(locale, {
-              en: `${result.method} was selected by ORBIT_CONTACT_RECOMMENDATION_METHOD, but no matcher is registered for it yet.`,
-              zh: `${result.method} 已通过 ORBIT_CONTACT_RECOMMENDATION_METHOD 选择，但还没有注册对应 matcher。`,
-            })
-          : result.state === "configuration_error"
+        result.state === "configuration_error"
             ? localize(locale, {
                 en: `${result.requestedMethod} is not a supported ORBIT_CONTACT_RECOMMENDATION_METHOD value.`,
                 zh: `${result.requestedMethod} 不是支持的 ORBIT_CONTACT_RECOMMENDATION_METHOD 值。`,
@@ -284,9 +257,7 @@ function toolTraceFor(
       status:
         result.state === "configuration_error"
           ? "failed"
-          : result.state === "unimplemented"
-            ? "skipped"
-            : "completed",
+          : "completed",
       toolCallId: `toolcall:contact-recommendations:${slugForMethod(result.method)}`,
       toolName: "contacts.recommend",
     },
@@ -401,8 +372,6 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
 } = {}): OrbitAgentArtifactTaskService {
   const fallbackService =
     input.fallbackService ?? createOrbitAgentArtifactPreviewService();
-  const matcher =
-    input.matcher ?? createRuleBasedContactRecommendationMatcher();
 
   return {
     createArtifactTask(request) {
@@ -420,14 +389,15 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
       const matchResult =
         methodResolution.success === false
           ? configurationErrorResultFor(methodResolution.requestedMethod)
-          : methodResolution.method === "rules_v1"
-            ? matcher.recommend({
-                contextMessages: request.contextMessages,
-                locale: request.locale,
-                query,
-                toolArguments: request.toolArguments,
-              })
-            : unimplementedResultFor(methodResolution.method);
+          : (input.matcher ??
+              createContactRecommendationMatcher({
+                method: methodResolution.method,
+              })).recommend({
+              contextMessages: request.contextMessages,
+              locale: request.locale,
+              query,
+              toolArguments: request.toolArguments,
+            });
 
       if (isPromiseLike(matchResult)) {
         return matchResult.then((resolved) => ({
