@@ -1952,6 +1952,14 @@ Implementation evidence:
   `/app/profile`, and `/app/contacts` at 1440px. Each route rendered its real
   product page marker and had no horizontal overflow or visible live failure
   state.
+- Follow-up mobile screenshot verification captured `/app/home`, `/app/events`,
+  `/app/contacts`, and `/app/followups` at 390px. The product nav entries
+  `活动`, `日程`, and `人脉` remained visible on every page, and the Home event
+  rows now keep long Japanese/English event titles readable with a mobile-only
+  two-line clamp instead of compressing them behind the status action.
+- `tests/pages/app-home-live-route-services.test.ts` also locks the mobile Home
+  event row guardrails: explicit row/copy/title/action classes, a
+  `max-width: 640px` two-line title clamp, and a full-width mobile action row.
 
 ## Execution Rules
 
@@ -1961,3 +1969,5 @@ Implementation evidence:
 - Verify each goal locally and against remote DB where applicable.
 - Do not leak connection strings or passwords.
 - Do not revert unrelated dirty worktree changes.
+- Use `docs/superpowers/specs/2026-07-04-codex-live-feature-execution-prompt.md`
+  when handing the remaining live-data work to a fresh Codex session.
