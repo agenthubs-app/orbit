@@ -76,7 +76,7 @@ test("events live seed writes all mock event datasets into live record storage",
   const events = await eventService.listEvents();
 
   assert.equal(events.success, true);
-  assert.equal(events.data.events.length, defaultMockFixtures.events.length + 3);
+  assert.equal(events.data.events.length, defaultMockFixtures.events.length);
   assert.equal(events.data.provenance.generationMethod, "live-store-query");
   assert.ok(
     events.data.events.some(
@@ -84,6 +84,16 @@ test("events live seed writes all mock event datasets into live record storage",
         event.id === "event_signup_01" &&
         event.title.includes("関西越境ビジネス申込テスト会"),
     ),
+  );
+  assert.equal(
+    events.data.events.some((event) => event.id === "demo-event-1"),
+    false,
+  );
+  assert.equal(
+    events.data.events.some(
+      (event) => event.id === "event:manual:founder-investor-salon",
+    ),
+    false,
   );
 
   const attendeeProvider = createEventCapabilityRecordProvider({

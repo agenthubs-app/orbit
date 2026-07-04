@@ -203,6 +203,80 @@ test("events recommendation tool ranks live events from an async Events service"
   assert.match(result.summary, /live Events data/i);
 });
 
+test("live event list hides legacy fixture and diagnostic records by default", async () => {
+  const records: LiveEventStoreRecord[] = [
+    {
+      ...liveRecord,
+      id: "event:generated:tokyo-ai",
+      title: "東京AI実装パートナー申込会",
+      source: {
+        ...liveRecord.source,
+        provider: "generated-relationship-fixtures",
+        providerRecordId: "event:generated:tokyo-ai",
+      },
+    },
+    {
+      ...liveRecord,
+      id: "demo-event-1",
+      title: "Climate founders dinner",
+      source: {
+        ...liveRecord.source,
+        provider: "mock-calendar-sync-fixture",
+        providerRecordId: "mock-calendar:climate-founders-dinner",
+      },
+    },
+    {
+      ...liveRecord,
+      id: "event:live-record:remote-storage-smoke-test",
+      title: "Remote Storage Smoke Test",
+      source: {
+        ...liveRecord.source,
+        label: "Manual smoke test for Supabase live storage",
+        provider: "shared-live-record-storage",
+        providerRecordId: "event:live-record:remote-storage-smoke-test",
+      },
+    },
+    {
+      ...liveRecord,
+      id: "event:live-record:customer-dinner",
+      title: "Customer dinner",
+      source: {
+        ...liveRecord.source,
+        label: "Customer-entered live event",
+        provider: "shared-live-record-storage",
+        providerRecordId: "event:live-record:customer-dinner",
+      },
+    },
+  ];
+  const service = createLiveEventCrudAndImportService({
+    provider: {
+      source: "live-store:mixed-events",
+      sourceLabel: "Mixed live events store",
+      listEvents: () => records,
+      getEvent: (eventId) =>
+        records.find((record) => record.id === eventId) ?? null,
+      createManualEvent: (input) => ({
+        ...liveRecord,
+        id: `event:live-record:${input.title}`,
+        title: input.title,
+      }),
+    },
+  });
+
+  const listed = await service.listEvents();
+  const diagnosticDetail = await service.getEvent({
+    eventId: "event:live-record:remote-storage-smoke-test",
+  });
+
+  assert.equal(listed.success, true);
+  assert.deepEqual(
+    listed.data.events.map((event) => event.id),
+    ["event:generated:tokyo-ai", "event:live-record:customer-dinner"],
+  );
+  assert.equal(diagnosticDetail.success, true);
+  assert.equal(diagnosticDetail.data.event.title, "Remote Storage Smoke Test");
+});
+
 test("configured storage event provider reuses the default Postgres provider", () => {
   const previousEventUrl = process.env.ORBIT_EVENT_DATABASE_URL;
   const previousLiveUrl = process.env.ORBIT_LIVE_DATABASE_URL;

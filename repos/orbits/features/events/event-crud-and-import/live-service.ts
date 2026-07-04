@@ -88,6 +88,11 @@ const supportedStatuses = new Set<EventStatus>(EVENT_STATUS_VALUES);
 const supportedCaptureMethods = new Set<EventCaptureMethod>(
   EVENT_SOURCE_CAPTURE_METHODS,
 );
+const legacyListFixtureProviders = new Set([
+  "manual-event-form-fixture",
+  "mock-calendar-sync-fixture",
+  "mock-organizer-feed-fixture",
+]);
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
@@ -245,6 +250,24 @@ function toImportedRecord(
   };
 }
 
+function containsDiagnosticMarker(value: string | null | undefined): boolean {
+  return /\b(smoke|diagnostic)\b/i.test(value ?? "");
+}
+
+function isProductListRecord(record: LiveEventStoreRecord): boolean {
+  if (legacyListFixtureProviders.has(record.source.provider)) {
+    return false;
+  }
+
+  return ![
+    record.id,
+    record.title,
+    record.source.id,
+    record.source.label,
+    record.source.providerRecordId,
+  ].some(containsDiagnosticMarker);
+}
+
 function evidenceIdsFor(events: readonly EventRecord[]): readonly string[] {
   const evidenceIds = events.flatMap((event) =>
     event.evidence.map((evidence) => evidence.evidenceId),
@@ -338,6 +361,7 @@ function listPayload(
   const statusFilter = normalizeStatusFilter(input.statusFilter);
   const captureMethod = normalizeCaptureMethod(input.sourceCaptureMethod);
   const events = records
+    .filter(isProductListRecord)
     .map((record) => toEventRecord(record))
     .filter((event) => {
       const statusMatches = statusFilter ? event.status === statusFilter : true;
