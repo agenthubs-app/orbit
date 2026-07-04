@@ -117,7 +117,8 @@ Success evidence:
 
 - Local test proves every fixture collection is represented, idempotently.
 - Remote seed writes every collection to Supabase.
-- Remote verify checks counts and key records.
+- Remote verify checks counts, every generated event payload name, and key
+  relationship records.
 - Existing events live seed remains valid.
 
 Implementation evidence:
@@ -129,17 +130,20 @@ Implementation evidence:
 - The same test now corrupts the `participant_001` attendee payload and proves
   `verifyGeneratedRelationshipFixturesInLiveStore` fails when a key relationship
   field no longer matches the generated fixture contract.
+- The same test now corrupts `event_02` and proves verification fails when any
+  generated event payload name no longer matches `defaultMockFixtures`, so the
+  Japanese event batch is validated beyond record-id presence.
 - Remote seed for `workspace:orbit-dev` wrote 8267 generated fixture live
   records across accounts, profiles, events, networkPeople,
   personRelationshipEdges, attendees, contacts, connections, evidence, tasks,
   conversations, messages, dashboards, agentActions, permissions,
   notifications, eventParticipantIntents, aiAnalyses, matchRecommendations,
   interactionMemories, and recommendationTests.
-- Remote verify passed with 8267 records and validates collection counts, stable
-  record IDs, and key record payload/relationship checks for `event_01`,
-  `event_signup_01`, `contact_001`, `evidence:event:01`, `participant_001`,
-  `intent_001`, `task_001`, `conversation_001`, `message_0001`, and
-  `agent_action_001`.
+- Remote verify passed with 8267 records, including 13/13 generated `events`
+  with payload names matching the Japanese/English fixture titles, and validates
+  key relationship checks for `event_signup_01`, `contact_001`,
+  `evidence:event:01`, `participant_001`, `intent_001`, `task_001`,
+  `conversation_001`, `message_0001`, and `agent_action_001`.
 
 ### Goal 2: Contacts Live Provider
 

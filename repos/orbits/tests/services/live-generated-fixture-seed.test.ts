@@ -208,3 +208,47 @@ test("generated fixture verification rejects corrupted key record payloads", asy
     );
   }
 });
+
+test("generated fixture verification rejects any corrupted generated event name", async () => {
+  const store = createMemoryLiveRecordStore();
+  const workspaceId =
+    "workspace:generated-fixture-live-seed-event-corruption-test";
+  const now = () => "2026-07-01T15:00:00.000Z";
+
+  await seedGeneratedRelationshipFixturesIntoLiveStore({
+    now,
+    store,
+    workspaceId,
+  });
+
+  const event = store.getRecord({
+    workspaceId,
+    collectionName: "events",
+    recordId: "event_02",
+  });
+
+  assert.ok(event);
+
+  store.upsertRecord({
+    ...event,
+    payload: {
+      ...event.payload,
+      name: "Corrupted event name",
+    },
+    updatedAt: now(),
+  });
+
+  const verification = await verifyGeneratedRelationshipFixturesInLiveStore({
+    store,
+    workspaceId,
+  });
+
+  assert.equal(verification.success, false);
+
+  if (verification.success === false) {
+    assert.match(
+      verification.failures.join("\n"),
+      /events event_02 name should match defaultMockFixtures/,
+    );
+  }
+});

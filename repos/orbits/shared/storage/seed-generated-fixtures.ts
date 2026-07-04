@@ -441,18 +441,9 @@ async function verifyKeyGeneratedFixtureRecords({
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }): Promise<void> {
-  await verifyRecord({
-    collectionName: "events",
+  await verifyGeneratedEventRecords({
     failures,
-    recordId: "event_01",
     store,
-    verify: (record) => {
-      if (stringField(record.payload, "name") !== defaultMockFixtures.events[0].name) {
-        return "events event_01 name should match defaultMockFixtures";
-      }
-
-      return null;
-    },
     workspaceId,
   });
 
@@ -563,6 +554,30 @@ async function verifyKeyGeneratedFixtureRecords({
         : "agentActions agent_action_001 confirmationRequired should be true",
     workspaceId,
   });
+}
+
+async function verifyGeneratedEventRecords({
+  failures,
+  store,
+  workspaceId,
+}: {
+  failures: string[];
+  store: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
+}): Promise<void> {
+  for (const event of defaultMockFixtures.events) {
+    await verifyRecord({
+      collectionName: "events",
+      failures,
+      recordId: event.id,
+      store,
+      verify: (record) =>
+        stringField(record.payload, "name") === event.name
+          ? null
+          : `events ${event.id} name should match defaultMockFixtures`,
+      workspaceId,
+    });
+  }
 }
 
 async function verifyRecord(input: {
