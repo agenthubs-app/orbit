@@ -1933,12 +1933,14 @@ Implementation evidence:
   route model as `/app/home`, the product Home grid keeps the rail beside
   events on medium-width screens, and the concrete hub entry hrefs stay on
   `/app/*` routes.
-- Browser verification should confirm `/` and `/app` render
-  `data-orbit-route="app-root-home-route"` and `data-orbit-real-page="home"` on
-  desktop and mobile widths, while `/app/home` and `/app/home/events` render the
-  live Home hub with no horizontal overflow.
-- Browser verification should also confirm `/app/events`, `/app/schedule`, and
-  `/app/contacts` remain reachable from the public web nav.
+- Browser screenshot verification with `ORBIT_MODULE_MODE=live` captured `/` at
+  1440px, 760px, 641px, and 390px widths. Every capture rendered
+  `data-orbit-real-page="home"` with no horizontal overflow; 1440px, 760px, and
+  641px also kept the profile/contact/schedule rail beside the event list.
+- Browser screenshot verification also captured `/app/events`, `/app/schedule`,
+  `/app/profile`, and `/app/contacts` at 1440px. Each route rendered its real
+  product page marker and had no horizontal overflow or visible live failure
+  state.
 
 ## Execution Rules
 
