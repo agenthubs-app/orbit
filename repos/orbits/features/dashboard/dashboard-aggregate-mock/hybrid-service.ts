@@ -16,7 +16,7 @@ import {
   type DashboardNewContact,
   type DashboardRecentActivity,
 } from "../contract";
-import { buildDashboardAggregateSummary } from "../fixtures";
+import { buildDashboardAggregateSummary } from "../summary";
 import type {
   ConnectionDTO,
   ContactDTO,

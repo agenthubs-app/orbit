@@ -11,13 +11,13 @@ import {
   type DashboardAggregateSummaryResult,
 } from "./contract";
 import {
-  buildDashboardAggregateSummary,
   mockDashboardAggregateFailureProvenance,
   mockDashboardAggregateFixture,
   mockDashboardAggregateSummaryFixture,
   mockEmptyDashboardAggregateFixture,
   mockPendingDashboardAggregateFixture,
 } from "./fixtures";
+import { buildDashboardAggregateSummary } from "./summary";
 import type { DashboardAggregateService } from "./service";
 
 // Dashboard mock service 汇总多个关系视图的只读数据：

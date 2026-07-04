@@ -206,3 +206,11 @@ test("search live runtime does not import fixture modules", () => {
     "features/search/live-service.ts should depend on neutral search filter/query modules, not fixture modules",
   );
 });
+
+test("dashboard live runtime does not import fixture modules", () => {
+  assert.doesNotMatch(
+    source("features/dashboard/live-service.ts"),
+    /from\s+["']\.\/fixtures["']/,
+    "features/dashboard/live-service.ts should depend on neutral dashboard summary modules, not fixture modules",
+  );
+});
