@@ -121,6 +121,52 @@ function checkBootstrap(data: Record<string, unknown>): CheckedRoute {
   };
 }
 
+function checkProfile(data: Record<string, unknown>): CheckedRoute {
+  const profile = requireRecord(data.profile, "/api/profile profile");
+  const completeness = requireRecord(
+    data.completeness,
+    "/api/profile completeness",
+  );
+  const provenance = requireRecord(data.provenance, "/api/profile provenance");
+  const displayName = String(profile.displayName ?? "").trim();
+  const score = Number(completeness.score);
+
+  if (
+    data.state !== "success" ||
+    displayName.length === 0 ||
+    !Number.isFinite(score) ||
+    score <= 0 ||
+    !String(provenance.source ?? "").includes("live-record-store:profiles")
+  ) {
+    throw new Error("/api/profile did not return a live database-backed profile.");
+  }
+
+  return {
+    path: "/api/profile",
+    detail: `${displayName} profile, ${score}% complete`,
+  };
+}
+
+function checkTasks(data: Record<string, unknown>): CheckedRoute {
+  const tasks = recordArray(data.tasks);
+  const provenance = requireRecord(data.provenance, "/api/tasks provenance");
+
+  if (
+    data.state !== "success" ||
+    tasks.length <= 0 ||
+    provenance.generationMethod !== "live-store-query" ||
+    provenance.liveDatabaseReadExecuted !== true ||
+    !String(provenance.source ?? "").includes("live-record-store:followups")
+  ) {
+    throw new Error("/api/tasks did not return live database-backed followup tasks.");
+  }
+
+  return {
+    path: "/api/tasks",
+    detail: `${tasks.length} tasks`,
+  };
+}
+
 function checkEvents(data: Record<string, unknown>): CheckedRoute {
   const eventRecords = recordArray(data.events);
   const events = eventRecords.length;
@@ -255,6 +301,8 @@ export async function runLiveRuntimeSmoke(
   }[] = [
     { check: checkHealth, path: "/api/health" },
     { check: checkBootstrap, path: "/api/app/bootstrap" },
+    { check: checkProfile, path: "/api/profile" },
+    { check: checkTasks, path: "/api/tasks" },
     { check: checkEvents, path: "/api/events" },
     { check: checkContacts, path: "/api/contacts" },
     {

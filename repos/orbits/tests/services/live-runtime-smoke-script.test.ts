@@ -34,6 +34,8 @@ test("live runtime smoke script is available as a safe npm command", () => {
   assert.match(source, /\/api\/health/);
   assert.match(source, /\/api\/ai\/proactive-turns/);
   assert.match(source, /\/api\/app\/bootstrap/);
+  assert.match(source, /\/api\/profile/);
+  assert.match(source, /\/api\/tasks/);
   assert.match(source, /\/api\/events/);
   assert.match(source, /\/api\/contacts/);
   assert.doesNotMatch(source, /ORBIT_EVENT_DATABASE_URL/);
@@ -98,6 +100,44 @@ test("live runtime smoke script validates live headers and seeded payloads", asy
       );
     }
 
+    if (pathName === "/api/profile") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            state: "success",
+            profile: {
+              id: "profile_live_generated_operator",
+              displayName: "結城 航太郎",
+            },
+            completeness: { score: 100 },
+            provenance: {
+              source: "postgres-live-record-store:profiles:workspace:orbit-dev",
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/tasks") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            state: "success",
+            tasks: [{ taskId: "task_001" }],
+            provenance: {
+              generationMethod: "live-store-query",
+              liveDatabaseReadExecuted: true,
+              source: "postgres-live-record-store:followups:workspace:orbit-dev",
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
     if (pathName === "/api/contacts") {
       return Response.json(
         {
@@ -153,6 +193,8 @@ test("live runtime smoke script validates live headers and seeded payloads", asy
   assert.deepEqual(calls, [
     "/api/health",
     "/api/app/bootstrap",
+    "/api/profile",
+    "/api/tasks",
     "/api/events",
     "/api/contacts",
     "/api/ai/proactive-turns",
@@ -162,9 +204,11 @@ test("live runtime smoke script validates live headers and seeded payloads", asy
     calls,
   );
   assert.match(result.checkedRoutes[1].detail, /66 contacts/);
-  assert.match(result.checkedRoutes[2].detail, /13 events/);
-  assert.match(result.checkedRoutes[3].detail, /1 contacts/);
-  assert.match(result.checkedRoutes[4].detail, /Orbit AI chat/);
+  assert.match(result.checkedRoutes[2].detail, /結城 航太郎/);
+  assert.match(result.checkedRoutes[3].detail, /1 tasks/);
+  assert.match(result.checkedRoutes[4].detail, /13 events/);
+  assert.match(result.checkedRoutes[5].detail, /1 contacts/);
+  assert.match(result.checkedRoutes[6].detail, /Orbit AI chat/);
 });
 
 test("live runtime smoke rejects legacy event records in product event lists", async () => {
@@ -217,6 +261,44 @@ test("live runtime smoke rejects legacy event records in product event lists", a
             provenance: {
               generationMethod: "live-store-query",
               source: "postgres-live-record-store:events:workspace:orbit-dev",
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/profile") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            state: "success",
+            profile: {
+              id: "profile_live_generated_operator",
+              displayName: "結城 航太郎",
+            },
+            completeness: { score: 100 },
+            provenance: {
+              source: "postgres-live-record-store:profiles:workspace:orbit-dev",
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/tasks") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            state: "success",
+            tasks: [{ taskId: "task_001" }],
+            provenance: {
+              generationMethod: "live-store-query",
+              liveDatabaseReadExecuted: true,
+              source: "postgres-live-record-store:followups:workspace:orbit-dev",
             },
           },
         },
@@ -323,6 +405,44 @@ test("live runtime smoke rejects incomplete generated event batches", async () =
             provenance: {
               generationMethod: "live-store-query",
               source: "postgres-live-record-store:events:workspace:orbit-dev",
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/profile") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            state: "success",
+            profile: {
+              id: "profile_live_generated_operator",
+              displayName: "結城 航太郎",
+            },
+            completeness: { score: 100 },
+            provenance: {
+              source: "postgres-live-record-store:profiles:workspace:orbit-dev",
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/tasks") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            state: "success",
+            tasks: [{ taskId: "task_001" }],
+            provenance: {
+              generationMethod: "live-store-query",
+              liveDatabaseReadExecuted: true,
+              source: "postgres-live-record-store:followups:workspace:orbit-dev",
             },
           },
         },
