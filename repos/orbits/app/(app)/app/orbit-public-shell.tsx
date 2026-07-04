@@ -12,13 +12,14 @@ export type OrbitNavActive = "home" | "events" | "schedule" | "cards" | "agent" 
 
 /**
  * Single source of truth for the top navigation across public AND account
- * surfaces. Both PublicTopNav and AccountTopNav render this, so spacing,
- * fonts, and structure are guaranteed identical on every page.
+ * surfaces. Both PublicTopNav and AccountTopNav render this, so it stays
+ * visually identical to the starfield homepage nav (orbit-starfield-desktop):
  *
- * Desktop: brand + iOrbit pill + text links + language toggle + Me pill.
+ * Desktop: brand wordmark + tagline · centered plain-text links
+ *   (iOrbit / 活动 / 日程 / 人脉) · plain 中/EN toggle + subtle "Me" pill.
  * Mobile (<=640px): brand + current page title on the left; iOrbit icon,
- * language toggle, and a hamburger opening a full-width menu panel on the
- * right (the in-bar links and Me pill are hidden by CSS).
+ *   language toggle, and a hamburger opening a full-width menu panel on the
+ *   right (the centered links and Me pill are hidden by CSS).
  */
 export function OrbitTopNav({
   active = "events",
@@ -67,15 +68,19 @@ export function OrbitTopNav({
   return (
     <>
       <header className="orbit-top-nav orbit-nav-menu">
-        <a aria-label="Orbit" className={`orbit-brand-link hit-44${active === "home" ? " is-active" : ""}`} href={preserveHref("/app")} style={{ textDecoration: "none" }}>
-          <Logo size={25} withText={false} />
-        </a>
-        <span className="orbit-nav-page-title">{t(pageLabels[active])}</span>
-        <a className={`orbit-agent-btn${isAgent ? " is-active" : ""}`} href={preserveHref("/app/agent")} style={{ marginRight: 4 }}>
-          <Icon name="sparkle" size={15} />
-          iOrbit
-        </a>
+        <div className="orbit-nav-lead">
+          <a aria-label="Orbit" className={`orbit-brand-link hit-44${active === "home" ? " is-active" : ""}`} href={preserveHref("/app")} style={{ textDecoration: "none" }}>
+            <Logo size={24} withText={false} />
+            <span className="orbit-brand-word">
+              <span className="orbit-brand-name">Orbit</span>
+              <span className="orbit-brand-sub mono">{t({ en: "Powered by the iOrbit matching engine", zh: "由 iOrbit 智能匹配引擎驱动" })}</span>
+            </span>
+          </a>
+          <span className="orbit-nav-page-title">{t(pageLabels[active])}</span>
+        </div>
+
         <nav aria-label={t({ en: "Primary", zh: "主导航" })} className="orbit-nav-links">
+          <a aria-current={isAgent ? "page" : undefined} className={`orbit-nav-link${isAgent ? " is-active" : ""}`} href={preserveHref("/app/agent")}>iOrbit</a>
           {links.map(([href, label, key]) => (
             <a
               aria-current={active === key ? "page" : undefined}
@@ -87,23 +92,35 @@ export function OrbitTopNav({
             </a>
           ))}
         </nav>
-        <div style={{ flex: 1 }} />
-        <div className="orbit-top-actions" style={{ alignItems: "center", display: "flex", gap: 14 }}>
-          <a aria-label="iOrbit" className={`orbit-nav-iorbit-icon hit-44${isAgent ? " is-active" : ""}`} href={preserveHref("/app/agent")}>
-            <Icon name="sparkle" size={18} />
-          </a>
-          <button
-            aria-label={t({ en: "Switch language", zh: "切换语言" })}
-            className="orbit-lang-toggle hit-44"
-            onClick={() => setLanguage(language === "en" ? "zh" : "en")}
-            type="button"
-          >
-            <span className={`mono${language === "zh" ? " is-active" : ""}`}>中</span>
-            <span className={`mono${language === "en" ? " is-active" : ""}`}>EN</span>
-          </button>
+
+        <div className="orbit-top-actions">
+          <span className="orbit-lang-toggle mono">
+            <button
+              aria-label={t({ en: "Switch to Chinese", zh: "切换到中文" })}
+              aria-pressed={language === "zh"}
+              className={language === "zh" ? "is-active" : ""}
+              onClick={() => setLanguage("zh")}
+              type="button"
+            >
+              中
+            </button>
+            <span className="orbit-lang-sep" aria-hidden="true">/</span>
+            <button
+              aria-label={t({ en: "Switch to English", zh: "切换到英文" })}
+              aria-pressed={language === "en"}
+              className={language === "en" ? "is-active" : ""}
+              onClick={() => setLanguage("en")}
+              type="button"
+            >
+              EN
+            </button>
+          </span>
           {rightExtra}
           <a className="orbit-me-link" href={preserveHref(meHref)}>
             {t({ en: "Me", zh: "我的" })}
+          </a>
+          <a aria-label="iOrbit" className={`orbit-nav-iorbit-icon hit-44${isAgent ? " is-active" : ""}`} href={preserveHref("/app/agent")}>
+            <Icon name="sparkle" size={18} />
           </a>
           <button
             aria-expanded={menuOpen}

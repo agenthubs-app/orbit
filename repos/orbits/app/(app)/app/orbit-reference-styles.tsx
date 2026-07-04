@@ -776,7 +776,7 @@ const reactReferenceIsolationStyles = `
   }
 
   [data-orbit-real-page] .orbit-top-nav .orbit-nav-links,
-  [data-orbit-real-page] .orbit-top-nav .orbit-agent-btn,
+  [data-orbit-real-page] .orbit-top-nav .orbit-brand-word,
   [data-orbit-real-page] .orbit-top-nav .orbit-me-link {
     display: none !important;
   }
@@ -790,6 +790,82 @@ const reactReferenceIsolationStyles = `
   [data-orbit-real-page="landing"] {
     padding-bottom: 0 !important;
   }
+}
+
+/* ===================================================================
+   Desktop top-nav — match the starfield homepage nav (orbit-starfield-
+   desktop #skNav) so the product pages and the landing share ONE nav
+   language: brand wordmark + tagline, centered plain-text links, plain
+   中/EN, subtle "Me" pill. Only applies >640px; the mobile hamburger
+   layout above is untouched.
+   =================================================================== */
+[data-orbit-real-page] .orbit-top-nav {
+  justify-content: space-between;
+}
+[data-orbit-real-page] .orbit-nav-lead {
+  align-items: center;
+  display: flex;
+  gap: 11px;
+  min-width: 0;
+}
+[data-orbit-real-page] .orbit-brand-link {
+  align-items: center;
+  display: inline-flex;
+  gap: 11px;
+}
+[data-orbit-real-page] .orbit-brand-word {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+[data-orbit-real-page] .orbit-brand-name {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+[data-orbit-real-page] .orbit-brand-sub {
+  color: var(--text-3);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  margin-top: 4px;
+}
+[data-orbit-real-page] .orbit-top-nav .orbit-nav-links {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+[data-orbit-real-page] .orbit-top-nav .orbit-nav-link {
+  background: none;
+  border: 0;
+  border-radius: 9px;
+  color: rgba(236, 234, 246, 0.72);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 15px;
+  text-decoration: none;
+  transition: color 0.14s, background 0.14s;
+}
+[data-orbit-real-page] .orbit-top-nav .orbit-nav-link:hover {
+  background: transparent;
+  color: var(--ink);
+}
+[data-orbit-real-page] .orbit-top-nav .orbit-nav-link.is-active {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+}
+[data-orbit-real-page] .orbit-top-nav .orbit-me-link {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-pill);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  height: auto;
+  padding: 7px 16px;
+}
+[data-orbit-real-page] .orbit-top-nav .orbit-me-link:hover {
+  background: rgba(255, 255, 255, 0.11);
 }
 
 [data-orbit-real-page] .chip {
@@ -1285,36 +1361,31 @@ body:has([data-orbit-real-page]) {
   color: color-mix(in srgb, var(--av-a, #8B7BF0) 74%, #FFFFFF);
 }
 
-/* Language toggle — the homepage's segmented pill, shared by every surface
-   (replaces the 16px-tall "中/EN" text button in the product nav). */
+/* Language toggle — plain "中 / EN" text, matching the starfield homepage nav
+   (orbit-starfield-desktop). Active language brightens; the rest stays muted. */
 [data-orbit-real-page] .orbit-lang-toggle {
   align-items: center;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-pill);
-  cursor: pointer;
   display: inline-flex;
   flex-shrink: 0;
-  gap: 2px;
-  height: 32px;
-  padding: 3px;
-}
-[data-orbit-real-page] .orbit-lang-toggle span {
-  align-items: center;
-  border-radius: var(--r-pill);
-  color: var(--text-3);
-  display: inline-flex;
+  font-family: var(--ff-mono);
   font-size: 12px;
-  font-weight: 600;
-  height: 24px;
-  justify-content: center;
-  line-height: 1;
-  min-width: 30px;
-  padding: 0 7px;
+  gap: 2px;
+  letter-spacing: 0.05em;
 }
-[data-orbit-real-page] .orbit-lang-toggle span.is-active {
-  background: var(--ink);
-  color: var(--bg);
+[data-orbit-real-page] .orbit-lang-toggle button {
+  background: none;
+  border: 0;
+  color: var(--text-3);
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 6px 3px;
+}
+[data-orbit-real-page] .orbit-lang-toggle button.is-active {
+  color: var(--ink);
+}
+[data-orbit-real-page] .orbit-lang-sep {
+  color: var(--text-4);
 }
 
 /* Button loading state — standard async affordance for every .btn variant.
