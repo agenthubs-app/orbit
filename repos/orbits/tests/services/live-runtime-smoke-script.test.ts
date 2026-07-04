@@ -160,3 +160,112 @@ test("live runtime smoke script validates live headers and seeded payloads", asy
   assert.match(result.checkedRoutes[3].detail, /1 contacts/);
   assert.match(result.checkedRoutes[4].detail, /Orbit AI chat/);
 });
+
+test("live runtime smoke rejects legacy event records in product event lists", async () => {
+  assert.equal(fs.existsSync(scriptPath), true);
+
+  const smokeModule = (await import(pathToFileURL(scriptPath).href)) as {
+    runLiveRuntimeSmoke: (options: {
+      baseUrl: string;
+      fetchImpl: typeof fetch;
+      log: (message: string) => void;
+    }) => Promise<{
+      checkedRoutes: readonly { path: string; detail: string }[];
+    }>;
+  };
+  const headers = {
+    "content-type": "application/json",
+    "x-orbit-feature-mode": "live",
+  };
+  const responseFor = (pathName: string): Response => {
+    if (pathName === "/api/health") {
+      return Response.json(
+        { success: true, data: { mode: "live", service: "health" } },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/app/bootstrap") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            connectionSummary: { totalContacts: 66 },
+            pendingTasks: [{ taskId: "task_001" }],
+            upcomingEvents: [{ eventId: "event_01" }],
+          },
+        },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/events") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            events: [
+              { id: "event_01" },
+              { id: "demo-event-1" },
+            ],
+            provenance: {
+              generationMethod: "live-store-query",
+              source: "postgres-live-record-store:events:workspace:orbit-dev",
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/contacts") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            contacts: [{ id: "contact_001" }],
+            provenance: { databaseQueryExecuted: true },
+          },
+        },
+        { headers },
+      );
+    }
+
+    if (pathName === "/api/ai/proactive-turns") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            message: {
+              deliverySurface: "orbit_ai_chat",
+              turnKind: "proactive",
+            },
+            provenance: {
+              generationMethod: "live-policy-proactive-turn",
+              safety: {
+                liveDatabaseWriteExecuted: false,
+                notificationDelivered: false,
+                pushProviderRequested: false,
+              },
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
+    return Response.json(
+      { success: false, error: { code: "NOT_FOUND" } },
+      { status: 404, headers },
+    );
+  };
+
+  await assert.rejects(
+    smokeModule.runLiveRuntimeSmoke({
+      baseUrl: "http://127.0.0.1:3000/",
+      fetchImpl: async (input) => responseFor(new URL(input.toString()).pathname),
+      log: () => undefined,
+    }),
+    /legacy event records/i,
+  );
+});

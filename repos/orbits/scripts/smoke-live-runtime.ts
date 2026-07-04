@@ -30,6 +30,10 @@ function arrayLength(value: unknown): number {
   return Array.isArray(value) ? value.length : 0;
 }
 
+function recordArray(value: unknown): readonly Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
 function requireRecord(value: unknown, label: string): Record<string, unknown> {
   if (!isRecord(value)) {
     throw new Error(`${label} did not return an object payload.`);
@@ -112,8 +116,20 @@ function checkBootstrap(data: Record<string, unknown>): CheckedRoute {
 }
 
 function checkEvents(data: Record<string, unknown>): CheckedRoute {
-  const events = arrayLength(data.events);
+  const eventRecords = recordArray(data.events);
+  const events = eventRecords.length;
   const provenance = requireRecord(data.provenance, "/api/events provenance");
+  const legacyEvents = eventRecords.filter((event) => {
+    const id = String(event.id ?? "");
+    const title = String(event.title ?? event.name ?? "");
+
+    return (
+      id === "demo-event-1" ||
+      id === "demo-event-2" ||
+      id === "event:manual:founder-investor-salon" ||
+      /\b(smoke|diagnostic)\b/i.test(`${id} ${title}`)
+    );
+  });
 
   if (
     events <= 0 ||
@@ -121,6 +137,14 @@ function checkEvents(data: Record<string, unknown>): CheckedRoute {
     !String(provenance.source ?? "").includes("live-record-store:events")
   ) {
     throw new Error("/api/events did not return live database-backed events.");
+  }
+
+  if (legacyEvents.length > 0) {
+    throw new Error(
+      `/api/events returned legacy event records: ${legacyEvents
+        .map((event) => String(event.id ?? event.title ?? "unknown"))
+        .join(", ")}`,
+    );
   }
 
   return {
