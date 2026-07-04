@@ -1912,7 +1912,7 @@ Success evidence:
 - `/`, `/app`, `/app/home`, and `/app/home/events` compose live route payloads through
   `loadAppHomeRouteViewModel()`.
 - Home hub cards still link to concrete app routes:
-  `/app/profile`, `/app/contacts`, and `/app/followups`.
+  `/app/profile`, `/app/contacts`, and `/app/schedule`.
 - Medium-width web screens keep `grid-template-areas: "events rail"` and do
   not use an `@media (max-width: 880px)` rule that moves `"rail"` above
   `"events"`.
