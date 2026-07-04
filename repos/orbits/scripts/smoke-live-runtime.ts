@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import { defaultMockFixtures } from "../shared/mock/fixtures";
 import { loadLocalEnv } from "./load-local-env";
 
 interface ApiEnvelope {
@@ -21,6 +22,11 @@ export interface LiveRuntimeSmokeOptions {
 export interface LiveRuntimeSmokeResult {
   checkedRoutes: readonly CheckedRoute[];
 }
+
+const expectedGeneratedEvents = defaultMockFixtures.events.map((event) => ({
+  id: event.id,
+  name: event.name,
+}));
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -119,6 +125,9 @@ function checkEvents(data: Record<string, unknown>): CheckedRoute {
   const eventRecords = recordArray(data.events);
   const events = eventRecords.length;
   const provenance = requireRecord(data.provenance, "/api/events provenance");
+  const eventById = new Map(
+    eventRecords.map((event) => [String(event.id ?? ""), event]),
+  );
   const legacyEvents = eventRecords.filter((event) => {
     const id = String(event.id ?? "");
     const title = String(event.title ?? event.name ?? "");
@@ -144,12 +153,38 @@ function checkEvents(data: Record<string, unknown>): CheckedRoute {
       `/api/events returned legacy event records: ${legacyEvents
         .map((event) => String(event.id ?? event.title ?? "unknown"))
         .join(", ")}`,
+      );
+  }
+
+  const missingGeneratedEvents = expectedGeneratedEvents.filter(
+    (event) => !eventById.has(event.id),
+  );
+  const mismatchedGeneratedEvents = expectedGeneratedEvents.filter((event) => {
+    const record = eventById.get(event.id);
+    const title = String(record?.title ?? record?.name ?? "");
+
+    return record !== undefined && title !== event.name;
+  });
+
+  if (missingGeneratedEvents.length > 0) {
+    throw new Error(
+      `/api/events missing generated event batch records: ${missingGeneratedEvents
+        .map((event) => event.id)
+        .join(", ")}`,
+    );
+  }
+
+  if (mismatchedGeneratedEvents.length > 0) {
+    throw new Error(
+      `/api/events returned generated event records with mismatched titles: ${mismatchedGeneratedEvents
+        .map((event) => event.id)
+        .join(", ")}`,
     );
   }
 
   return {
     path: "/api/events",
-    detail: `${events} events`,
+    detail: `${events} events, ${expectedGeneratedEvents.length}/${expectedGeneratedEvents.length} generated event batch`,
   };
 }
 
