@@ -811,6 +811,36 @@ const reactReferenceIsolationStyles = `
     padding: 0 9px;
   }
 
+  [data-orbit-real-page="home"] .orbit-mobile-only .orbit-home-event-row {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+    gap: 10px 14px !important;
+  }
+
+  [data-orbit-real-page="home"] .orbit-mobile-only .orbit-home-event-row-copy {
+    flex: 1 1 calc(100% - 66px) !important;
+    min-width: 0;
+  }
+
+  [data-orbit-real-page="home"] .orbit-mobile-only .orbit-home-event-row-title {
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    display: -webkit-box !important;
+    overflow-wrap: anywhere;
+    white-space: normal !important;
+  }
+
+  [data-orbit-real-page="home"] .orbit-mobile-only .orbit-home-event-row-meta,
+  [data-orbit-real-page="home"] .orbit-mobile-only .orbit-home-event-row-meta > span {
+    min-width: 0;
+  }
+
+  [data-orbit-real-page="home"] .orbit-mobile-only .orbit-home-event-row-action {
+    flex-basis: 100%;
+    justify-content: flex-end;
+    padding-left: 66px;
+  }
+
   /* Agent (iOrbit) shares the standard mobile top-nav sizing — the bar scrolls
      horizontally if the extra history button doesn't fit, instead of shrinking
      the font out of alignment with every other page. */

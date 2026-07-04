@@ -84,14 +84,14 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
   const content = (
     <>
       <Cover g={gradientFromString(event.code || name)} monogram={{ size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <h3 className="h-section" style={{ color: "var(--ink)", display: "block", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h3>
-        <span style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 12.5, gap: 8, marginTop: 3 }}>
+      <span className="orbit-home-event-row-copy" style={{ flex: 1, minWidth: 0 }}>
+        <h3 className="h-section orbit-home-event-row-title" style={{ color: "var(--ink)", display: "block", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h3>
+        <span className="orbit-home-event-row-meta" style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 12.5, gap: 8, marginTop: 3 }}>
           <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="clock" size={13} />{date.time}</span>
           {place ? <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="pin" size={13} />{place}</span> : null}
         </span>
       </span>
-      <span style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 10 }}>
+      <span className="orbit-home-event-row-action" style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 10 }}>
         {canEnter ? <span className="btn btn-soft btn-sm" style={{ height: 32, pointerEvents: "none" }}>{t({ en: "Enter event", zh: "进入活动" })}<Icon name="arrowUR" size={14} /></span> : <StatusBadge language={language} status={event.status} />}
         <Icon color="var(--text-4)" name="chevR" size={17} />
       </span>
@@ -100,10 +100,10 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
   const rowStyle = { alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, cursor: "pointer", display: "flex", gap: 14, padding: "12px 14px", textAlign: "left" as const, textDecoration: "none", width: "100%" };
 
   if (!canEnter) {
-    return <a className="card-hover" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={rowStyle}>{content}</a>;
+    return <a className="card-hover orbit-home-event-row" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={rowStyle}>{content}</a>;
   }
 
-  return <button className="card-hover" onClick={enterEvent} style={rowStyle} type="button">{content}</button>;
+  return <button className="card-hover orbit-home-event-row" onClick={enterEvent} style={rowStyle} type="button">{content}</button>;
 }
 
 function MyEventsBlock({ events, language, t }: { events: OrbitLandingEventView[]; language: OrbitLanguage; t: Translate }) {

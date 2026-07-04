@@ -126,6 +126,24 @@ test("app home desktop grid preserves web rail beside events on medium-width scr
   assert.doesNotMatch(styleSource, /@media \(max-width: 880px\)/);
 });
 
+test("app home mobile event rows keep long event titles readable", () => {
+  const homeUiSource = source("app/(app)/app/home/orbit-real-home.tsx");
+  const styleSource = source("app/(app)/app/orbit-reference-styles.tsx");
+
+  assert.match(homeUiSource, /className="card-hover orbit-home-event-row"/);
+  assert.match(homeUiSource, /className="orbit-home-event-row-copy"/);
+  assert.match(homeUiSource, /className="h-section orbit-home-event-row-title"/);
+  assert.match(homeUiSource, /className="orbit-home-event-row-action"/);
+  assert.match(
+    styleSource,
+    /@media \(max-width: 640px\)[\s\S]*\.orbit-home-event-row-title[\s\S]*-webkit-line-clamp: 2[\s\S]*white-space: normal/,
+  );
+  assert.match(
+    styleSource,
+    /@media \(max-width: 640px\)[\s\S]*\.orbit-home-event-row-action[\s\S]*flex-basis: 100%/,
+  );
+});
+
 test("app home hub entry cards link to live app routes", () => {
   const homeUiSource = source("app/(app)/app/home/orbit-real-home.tsx");
 
