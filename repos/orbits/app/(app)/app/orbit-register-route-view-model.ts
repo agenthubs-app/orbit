@@ -1,47 +1,13 @@
-import { getOrbitEventDetailViewModel, type OrbitLandingEventView } from "./orbit-landing-route-view-model";
+import { getOrbitEventDetailViewModel } from "./orbit-landing-route-view-model";
 import { getOrbitProfileViewModel } from "./orbit-profile-route-view-model";
+import {
+  orbitRegisterEmptyProfile,
+  type OrbitRegisterProfileForm,
+  type OrbitRegisterViewModel,
+} from "./register/register-view-model-contract";
 
-export interface OrbitRegisterProfileForm {
-  bio: string;
-  company: string;
-  industry: string;
-  intro: string;
-  level: string;
-  lineId: string;
-  name: string;
-  offering: string[];
-  phone: string;
-  seeking: string[];
-  title: string;
-  topics: string[];
-  wechatName: string;
-}
-
-export interface OrbitRegisterViewModel {
-  event: Pick<OrbitLandingEventView, "code" | "name" | "theme">;
-  industryOptions: string[];
-  levelOptions: string[];
-  offeringTags: string[];
-  profilePreview: OrbitRegisterProfileForm;
-  seekingTags: string[];
-  topics: string[];
-}
-
-export const orbitRegisterEmptyProfile: OrbitRegisterProfileForm = {
-  bio: "",
-  company: "",
-  industry: "",
-  intro: "",
-  level: "",
-  lineId: "",
-  name: "",
-  offering: [],
-  phone: "",
-  seeking: [],
-  title: "",
-  topics: [],
-  wechatName: "",
-};
+export { orbitRegisterEmptyProfile };
+export type { OrbitRegisterProfileForm, OrbitRegisterViewModel };
 
 export function getOrbitRegisterViewModel(code = ""): OrbitRegisterViewModel {
   const event = getOrbitEventDetailViewModel(code);

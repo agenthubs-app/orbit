@@ -5,7 +5,7 @@ import {
   orbitRegisterEmptyProfile,
   type OrbitRegisterProfileForm,
   type OrbitRegisterViewModel,
-} from "../orbit-register-route-view-model";
+} from "./register-view-model-contract";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
 
