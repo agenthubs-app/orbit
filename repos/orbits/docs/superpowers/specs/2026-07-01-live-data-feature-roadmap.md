@@ -1893,9 +1893,10 @@ Implementation evidence:
 - `tests/api/envelope.test.ts` proves `ORBIT_MODULE_MODE` precedence, health
   route mode reporting, invalid fallback behavior, and force-dynamic health
   routes.
-- Runtime curl smoke with `ORBIT_MODULE_MODE=live` returned
-  `x-orbit-feature-mode: live` from `/api/health`, `/api/events`, and
-  `/api/contacts`.
+- `npm run db:smoke:live-runtime` with `ORBIT_MODULE_MODE=live` verifies
+  `x-orbit-feature-mode: live` and live-backed payloads for `/api/health`,
+  `/api/app/bootstrap`, `/api/profile`, `/api/tasks`, `/api/events`,
+  `/api/contacts`, and `/api/ai/proactive-turns`.
 - `shared/api/create-the-shared-api-and-runtime-mode-boundary-used-by-all-capabilities/LIVE_IMPLEMENTATION.md`
   documents the switch and fallback rule.
 
