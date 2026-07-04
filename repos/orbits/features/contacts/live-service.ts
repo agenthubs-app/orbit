@@ -8,8 +8,8 @@ import {
 import {
   runContactsGraphQuery,
   type ContactsGraphQueryContext,
-} from "./contacts-list-search-and-filter-mock/hybrid-service";
-import type { LocalRemoteContactGraph } from "./contacts-list-search-and-filter-mock/providers/contact-local-remote-provider";
+} from "./contact-graph-query";
+import type { LocalRemoteContactGraph } from "./contact-graph-provider";
 import type { ContactsListSearchAndFilterService } from "./service";
 
 type LiveContactsProviderResult<TResult> = TResult | Promise<TResult>;

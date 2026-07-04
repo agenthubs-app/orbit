@@ -1,7 +1,7 @@
 // Contacts service factory 管理联系人列表搜索/过滤和单个联系人详情编辑预览。
-// 当前实现保持 mock-only：列表不读真实搜索索引，详情更新不写真实联系人存储。
+// mock/hybrid/live 通过同一个 factory 切换；live 列表读取共享 live record storage。
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
-import { createHybridContactsListSearchAndFilterService } from "./contacts-list-search-and-filter-mock/hybrid-service";
+import { createHybridContactsListSearchAndFilterService } from "./contact-graph-query";
 import { createLiveContactDetailTagStatusService } from "./live-detail-service";
 import { createLiveContactsListSearchAndFilterService } from "./live-service";
 import { createMockContactDetailTagStatusService } from "./mock-detail-service";

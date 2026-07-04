@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createHybridContactsListSearchAndFilterService } from "../../features/contacts/contacts-list-search-and-filter-mock/hybrid-service";
+import { createHybridContactsListSearchAndFilterService } from "../../features/contacts/contact-graph-query";
 import {
   createContactsListSearchAndFilterService,
   resolveContactsListSearchAndFilterService,

@@ -183,3 +183,18 @@ test("product presenters consume route view models instead of Orbit AI service p
     assert.doesNotMatch(contents, /WorkbenchSurface|<section|<article|<div/);
   }
 });
+
+test("contacts live runtime does not import mock capability directories", () => {
+  const liveRuntimeFiles = [
+    "features/contacts/live-service.ts",
+    "features/contacts/storage/contact-live-record-provider.ts",
+  ];
+
+  for (const path of liveRuntimeFiles) {
+    assert.doesNotMatch(
+      source(path),
+      /contacts-list-search-and-filter-mock/,
+      `${path} should depend on neutral contacts query/storage modules, not mock capability directories`,
+    );
+  }
+});

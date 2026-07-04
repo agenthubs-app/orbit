@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import type { LiveContactsGraphProvider } from "../../features/contacts/live-service";
-import type { LocalRemoteContactGraph } from "../../features/contacts/contacts-list-search-and-filter-mock/providers/contact-local-remote-provider";
+import type { LocalRemoteContactGraph } from "../../features/contacts/contact-graph-provider";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",

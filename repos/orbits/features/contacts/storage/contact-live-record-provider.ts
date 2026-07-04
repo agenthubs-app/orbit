@@ -19,7 +19,7 @@ import type {
 } from "../../../shared/storage/live-record-store";
 import type { ContactsListSearchFilterInput } from "../contract";
 import type { LiveContactsGraphProvider } from "../live-service";
-import type { LocalRemoteContactGraph } from "../contacts-list-search-and-filter-mock/providers/contact-local-remote-provider";
+import type { LocalRemoteContactGraph } from "../contact-graph-provider";
 
 export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
