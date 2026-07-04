@@ -136,6 +136,19 @@ const themeGlyphs: Record<string, string> = {
   globe: "<circle cx='200' cy='120' r='42'/><path d='M158 120h84M200 78c-15 12-15 72 0 84M200 78c15 12 15 72 0 84M168 98c20 10 44 10 64 0M168 142c20-10 44-10 64 0'/>",
 };
 
+// Real, theme-matched cover photography (bundled under /public, Unsplash
+// License — free for commercial use, no attribution required). Replaces the
+// flat generated color blocks; the generated SVG stays as a fallback for any
+// theme without a photo.
+const coverPhotoByTheme: Record<string, string> = {
+  ai: "/orbit-covers/ai.jpg",
+  chip: "/orbit-covers/chip.jpg",
+  cloud: "/orbit-covers/cloud.jpg",
+  fashion: "/orbit-covers/fashion.jpg",
+  finance: "/orbit-covers/finance.jpg",
+  globe: "/orbit-covers/globe.jpg",
+};
+
 function coverSvg(color: string, theme: string, letter: string) {
   const glyph = themeGlyphs[theme] ?? themeGlyphs.ai;
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 240'><defs><radialGradient id='h' cx='28%' cy='18%' r='95%'><stop offset='0' stop-color='#fff' stop-opacity='.34'/><stop offset='58%' stop-color='${color}' stop-opacity='0'/></radialGradient></defs><rect width='400' height='240' fill='${color}'/><rect width='400' height='240' fill='url(#h)'/><g fill='none' stroke='#fff' stroke-opacity='.2' stroke-width='1.3' stroke-dasharray='2 9'><circle cx='200' cy='120' r='150'/><circle cx='200' cy='120' r='112'/></g><g fill='none' stroke='#fff' stroke-opacity='.5' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'>${glyph}</g><text x='374' y='54' text-anchor='end' font-family='Inter Tight,Inter,sans-serif' font-size='30' font-weight='700' fill='#fff' fill-opacity='.18'>${letter}</text></svg>`;
@@ -195,7 +208,8 @@ function eventView(
 ): OrbitLandingEventView {
   const [mapX, mapY] = mapPositionByCode[code] ?? [50, 50];
   const color = agendaEventColors[code] ?? "#6359E9";
-  const logoUrl = coverSvg(color, themeByCode[code] ?? "ai", name.slice(0, 1));
+  const coverTheme = themeByCode[code] ?? "ai";
+  const logoUrl = coverPhotoByTheme[coverTheme] ?? coverSvg(color, coverTheme, name.slice(0, 1));
   const detail = eventDetailByCode[code] ?? {
     address: "",
     agenda: defaultAgenda.slice(0, 3),

@@ -1275,6 +1275,16 @@ body:has([data-orbit-real-page]) {
 [data-orbit-real-page] .g-sky { --av-a: #8A9CEC; --av-b: #5063CE; }
 [data-orbit-real-page] .g-slate { --av-a: #9490AE; --av-b: #565478; }
 
+/* Person initial-avatars: replace the strong two-tone gradient fill with a
+   quiet tinted disc + a light-hue initial. Keeps per-person color identity
+   without shouting. Icon tiles and photo avatars (svg/img children) keep the
+   bold fill, so only the "name placeholder" circles soften. */
+[data-orbit-real-page] .avatar:not(:has(svg)):not(:has(img)) {
+  background: color-mix(in srgb, var(--av-b, #6359E9) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--av-b, #6359E9) 30%, transparent);
+  color: color-mix(in srgb, var(--av-a, #8B7BF0) 74%, #FFFFFF);
+}
+
 /* Language toggle — the homepage's segmented pill, shared by every surface
    (replaces the 16px-tall "中/EN" text button in the product nav). */
 [data-orbit-real-page] .orbit-lang-toggle {

@@ -256,7 +256,11 @@ export function Cover({
         style={{
           position: "absolute",
           inset: 0,
-          background: imageUrl ? "linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.22))" : "transparent",
+          // Darken the top and bottom edges (where status / date / code badges
+          // sit) so they stay legible over bright photos; keep the middle clear.
+          background: imageUrl
+            ? "linear-gradient(180deg, rgba(6,5,13,0.42) 0%, rgba(6,5,13,0.06) 26%, rgba(6,5,13,0.10) 60%, rgba(6,5,13,0.62) 100%)"
+            : "transparent",
         }}
       />
       {!imageUrl ? (
