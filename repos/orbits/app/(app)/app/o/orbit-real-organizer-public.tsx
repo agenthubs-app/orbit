@@ -2,12 +2,56 @@ import type { OrbitLanguage } from "../orbit-language-core";
 import { makeOrbitServerT } from "../orbit-language-server";
 import type { OrbitOrganizerPublicViewModel } from "../orbit-organizer-route-view-model";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
-import { productHref, PublicTopNav } from "../orbit-public-shell";
+import { PublicTopNav } from "../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 
 type T = (copy: { en: string; zh: string }) => string;
 
 const tz = { timeZone: "Asia/Tokyo" };
+const organizerPublicStyles = `
+.orbit-organizer-public-title {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+@media (max-width: 640px) {
+  .orbit-organizer-public-inner {
+    padding: 0 22px 64px !important;
+  }
+
+  .orbit-organizer-public-header {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+    gap: 12px !important;
+  }
+
+  .orbit-organizer-public-avatar {
+    margin-top: -44px !important;
+  }
+
+  .orbit-organizer-public-copy {
+    flex: 0 0 100% !important;
+    order: 2;
+    padding-bottom: 0 !important;
+    width: 100%;
+  }
+
+  .orbit-organizer-public-title {
+    font-size: 2rem;
+    line-height: 1.08;
+  }
+
+  .orbit-organizer-public-badge {
+    margin-left: auto;
+    order: 1;
+  }
+
+  .orbit-organizer-public-stats {
+    gap: 16px !important;
+    justify-content: space-between;
+  }
+}
+`;
 
 function dateLocale(language: OrbitLanguage) {
   return language === "en" ? "en-US" : "zh-CN";
@@ -37,6 +81,12 @@ function SiteHeader() {
   return <PublicTopNav active="events" />;
 }
 
+function eventHref(event: OrbitLandingEventView) {
+  const code = encodeURIComponent(event.code || event.id);
+
+  return `/app/events/${code}`;
+}
+
 function EventCard({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: T }) {
   const name = event.name;
   const status = event.status || "unknown";
@@ -45,7 +95,7 @@ function EventCard({ event, language, t }: { event: OrbitLandingEventView; langu
   const actionLabel = status === "upcoming" || status === "active" ? t({ en: "RSVP", zh: "报名" }) : t({ en: "View", zh: "查看" });
 
   return (
-    <a className="orbit-card-link" href={productHref(`/events/${event.code}`)}>
+    <a className="orbit-card-link" href={eventHref(event)}>
       <article className="card card-hover orbit-event-card">
         <Cover className="orbit-card-cover" g={cover} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 46, text: name.slice(0, 1) }} style={{ height: undefined, opacity: status === "ended" ? 0.72 : 1 }}>
           <div style={{ left: 12, position: "absolute", top: 12 }}><StatusBadge language={language} status={status} /></div>
@@ -84,6 +134,7 @@ export function OrbitRealOrganizerPublic({ language = "zh", viewModel }: { langu
 
   return (
     <div className="orbit-shell" data-appscroll data-orbit-real-page="organizer-public">
+      <style>{organizerPublicStyles}</style>
       <SiteHeader />
       <main>
         <div style={{ height: 180, overflow: "hidden", position: "relative" }}>
@@ -91,16 +142,16 @@ export function OrbitRealOrganizerPublic({ language = "zh", viewModel }: { langu
           <div style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.25))", inset: 0, position: "absolute" }} />
           <a aria-label={t({ en: "Back to events", zh: "返回活动" })} className="hit-44" href="/app/events" style={{ alignItems: "center", background: "rgba(255,255,255,0.92)", border: "none", borderRadius: 999, boxShadow: "var(--sh-sm)", color: "var(--ink)", cursor: "pointer", display: "inline-flex", fontSize: 13.5, fontWeight: 550, gap: 6, height: 36, left: 24, padding: "0 14px", position: "absolute", textDecoration: "none", top: 18 }}><Icon name="back" size={16} />{t({ en: "Back", zh: "返回" })}</a>
         </div>
-        <div style={{ margin: "0 auto", maxWidth: 1080, padding: "0 40px 80px" }}>
-          <div style={{ alignItems: "flex-end", display: "flex", gap: 18, paddingTop: 14, position: "relative", zIndex: 1 }}>
-            <span style={{ display: "inline-flex", flexShrink: 0, marginTop: -56 }}><Avatar g="g-indigo" letter={viewModel.initial} ring="var(--bg)" size={88} /></span>
-            <div style={{ flex: 1, minWidth: 0, paddingBottom: 2 }}>
-              <h1 className="h-display" style={{ margin: 0 }}>{viewModel.name}</h1>
+        <div className="orbit-organizer-public-inner" style={{ margin: "0 auto", maxWidth: 1080, padding: "0 40px 80px" }}>
+          <div className="orbit-organizer-public-header" style={{ alignItems: "flex-end", display: "flex", gap: 18, paddingTop: 14, position: "relative", zIndex: 1 }}>
+            <span className="orbit-organizer-public-avatar" style={{ display: "inline-flex", flexShrink: 0, marginTop: -56 }}><Avatar g="g-indigo" letter={viewModel.initial} ring="var(--bg)" size={88} /></span>
+            <div className="orbit-organizer-public-copy" style={{ flex: 1, minWidth: 0, paddingBottom: 2 }}>
+              <h1 className="h-display orbit-organizer-public-title" style={{ margin: 0 }}>{viewModel.name}</h1>
               <div style={{ color: "var(--text-2)", fontSize: 13.5, marginTop: 4 }}>{viewModel.handle}</div>
             </div>
-            <span className="badge badge-live" style={{ height: 26, marginBottom: 4 }}><Icon name="check" size={13} />{t({ en: "Verified host", zh: "已认证主办方" })}</span>
+            <span className="badge badge-live orbit-organizer-public-badge" style={{ height: 26, marginBottom: 4 }}><Icon name="check" size={13} />{t({ en: "Verified host", zh: "已认证主办方" })}</span>
           </div>
-          <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
+          <div className="orbit-organizer-public-stats" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
             {stats.map((stat) => (
               <div key={stat.label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 26, fontWeight: 700 }}>{stat.value}</div><div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 1 }}>{stat.label}</div></div>
             ))}

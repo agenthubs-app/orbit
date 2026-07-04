@@ -1,26 +1,90 @@
 /**
  * 组织者公开页 route adapter。
  *
- * 从动态 slug 构建 public organizer view model，再交给公开页组件渲染。
+ * 从动态 slug 读取组织者活动，交给公开页组件渲染。
  */
+import { StateView } from "../../../../../shared/ui/state-view";
+import type { OrbitLanguage } from "../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
-import { getOrbitOrganizerPublicViewModel } from "../../orbit-organizer-route-view-model";
 import { OrbitRealOrganizerPublic } from "../orbit-real-organizer-public";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
+import {
+  loadAppOrganizerPublicRouteViewModel,
+  type AppOrganizerPublicRouteStateViewModel,
+  type AppOrganizerPublicSearchParams,
+} from "../compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model";
+
+async function getOrganizerPageLanguage(): Promise<OrbitLanguage> {
+  try {
+    return await getOrbitServerLanguage();
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("outside a request scope")
+    ) {
+      return "zh";
+    }
+
+    throw error;
+  }
+}
+
+function OrganizerPublicRouteStateBoundary({
+  routeState,
+}: {
+  routeState: AppOrganizerPublicRouteStateViewModel;
+}) {
+  return (
+    <div data-orbit-route="app-organizer-public-route-state">
+      <StateView
+        description={routeState.copy.description}
+        emptyState={routeState.copy.emptyState}
+        evidence={Array.from(routeState.evidenceIds)}
+        eyebrow={routeState.copy.eyebrow}
+        guardrail={routeState.copy.guardrail}
+        nextStep={routeState.copy.nextStep}
+        purpose={routeState.copy.purpose}
+        recoveryActions={routeState.recoveryActions.map((action) => ({
+          id: action.id,
+          label: action.label,
+          recoveryCopy: action.recoveryCopy,
+          href: action.href,
+        }))}
+        title={routeState.copy.title}
+      />
+    </div>
+  );
+}
 
 export default async function AppOrganizerPublicPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<AppOrganizerPublicSearchParams>;
 }) {
   const { slug } = await params;
-  const language = await getOrbitServerLanguage();
+  const routeModel = await loadAppOrganizerPublicRouteViewModel({
+    searchParams: await searchParams,
+    slug,
+  });
+  const language =
+    routeModel.state === "success" ? await getOrganizerPageLanguage() : "zh";
 
   return (
     <>
       <OrbitReferenceStyles />
-      <OrbitRealOrganizerPublic language={language} viewModel={localizeOrbitTree(getOrbitOrganizerPublicViewModel(slug), language)} />
+      {routeModel.state === "success" ? (
+        <div data-orbit-route="app-organizer-public-route">
+          <OrbitRealOrganizerPublic
+            language={language}
+            viewModel={localizeOrbitTree(routeModel.organizer, language)}
+          />
+        </div>
+      ) : (
+        <OrganizerPublicRouteStateBoundary routeState={routeModel.routeState} />
+      )}
       <OrbitVisualFreezeRuntime />
     </>
   );
