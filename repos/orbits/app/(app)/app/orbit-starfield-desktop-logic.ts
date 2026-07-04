@@ -339,8 +339,13 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
        painTxt.textContent=sf<1?SLO2.slice(0,sN):SLO2;
        painCaret.style.display=(sf<1&&show>0.05)?'inline':'none';
        pain.style.top=lerp(0.22*H,84,shrink).toFixed(0)+'px';
-       const fs=lerp(1,0.46,shrink);pain.style.fontSize='clamp('+(24*fs).toFixed(1)+'px,'+(3.8*fs).toFixed(2)+'vw,'+(42*fs).toFixed(1)+'px)';
-       pain.style.width='min('+lerp(860,640,shrink).toFixed(0)+'px,92vw)';
+       const fs=lerp(1,0.42,shrink);pain.style.fontSize='clamp('+(24*fs).toFixed(1)+'px,'+(3.8*fs).toFixed(2)+'vw,'+(42*fs).toFixed(1)+'px)';
+       // Docked: keep the slogan on a single line (fit to content, capped at
+       // viewport) instead of wrapping the long EN copy to two lines.
+       const oneLine=shrink>0.9;
+       pain.style.whiteSpace=oneLine?'nowrap':'normal';
+       pain.style.width=oneLine?'max-content':('min('+lerp(860,640,shrink).toFixed(0)+'px,92vw)');
+       pain.style.maxWidth='94vw';
        pain.style.lineHeight=lerp(1.5,1.4,shrink).toFixed(2);
        const dk=shrink>0.4;
        pain.style.color=dk?'#e8e6f4':'#f1eff9';
