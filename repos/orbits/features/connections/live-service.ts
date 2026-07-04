@@ -81,7 +81,7 @@ function sourceLinkFor(input: {
       "Live connection evidence",
     evidenceId: input.evidenceId,
     capturedAt: input.evidence?.occurredAt ?? input.connection.updatedAt,
-    confidence: input.evidence ? "explicit" : "inferred_from_fixture",
+    confidence: input.evidence ? "explicit" : "inferred_from_source_record",
   };
 }
 

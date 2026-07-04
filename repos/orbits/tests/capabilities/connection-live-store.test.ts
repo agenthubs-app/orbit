@@ -132,6 +132,65 @@ test("live connection evidence service reads generated relationship graph from s
   }
 });
 
+test("live connection evidence marks missing evidence as source-record inference", async () => {
+  const service = createLiveConnectionEvidenceService({
+    provider: {
+      source: "live-record-store:connections:missing-evidence",
+      sourceLabel: "Connections missing evidence storage",
+      readConnectionEvidenceGraph: () => ({
+        contacts: [
+          {
+            id: "contact:missing-evidence",
+            displayName: "Missing Evidence Contact",
+            organization: "Orbit Test",
+            role: "Founder",
+            location: "Tokyo",
+            source: {
+              type: "manual",
+              id: "source:contact:missing-evidence",
+              label: "Contact source",
+            },
+            evidenceIds: [],
+            createdAt: "2026-07-02T10:00:00.000Z",
+            updatedAt: "2026-07-02T10:00:00.000Z",
+          },
+        ],
+        connections: [
+          {
+            id: "connection:missing-evidence",
+            contactId: "contact:missing-evidence",
+            summary:
+              "Connection record references evidence not present in the live graph.",
+            relationshipStage: "new",
+            relationshipStrength: 50,
+            businessRelevanceScore: 50,
+            evidenceIds: ["evidence:missing-live-record"],
+            source: {
+              type: "manual",
+              id: "source:connection:missing-evidence",
+              label: "Connection source record",
+            },
+            createdAt: "2026-07-02T10:00:00.000Z",
+            updatedAt: "2026-07-02T10:00:00.000Z",
+          },
+        ],
+        evidence: [],
+        generatedAt: "2026-07-02T10:00:00.000Z",
+      }),
+    },
+  });
+
+  const result = await service.getConnection({
+    connectionId: "connection:missing-evidence",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(
+    result.data.connection?.sourceLinks[0]?.confidence,
+    "inferred_from_source_record",
+  );
+});
+
 test("live connection detail reads only records for the selected connection", async () => {
   const workspaceId = "workspace:connection-focused-detail";
   const rawStore = createMemoryLiveRecordStore<Record<string, unknown>>();

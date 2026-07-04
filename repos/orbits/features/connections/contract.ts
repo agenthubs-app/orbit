@@ -116,7 +116,7 @@ export interface ConnectionSourceLink extends SourceReferenceDTO {
   label: string;
   evidenceId: string;
   capturedAt: string;
-  confidence: "explicit" | "inferred_from_fixture";
+  confidence: "explicit" | "inferred_from_source_record";
 }
 
 // TimelineItem 是证据时间线的单条记录，说明某条关系判断来自哪里。
