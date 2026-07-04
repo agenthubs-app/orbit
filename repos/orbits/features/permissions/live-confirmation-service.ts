@@ -17,12 +17,12 @@ import {
   type SensitiveActionConfirmationService,
 } from "./confirmation-contract";
 import {
-  mockConfirmationGuardFixture,
-  mockConfirmationGuardProvenance,
-  mockConfirmationRequirements,
-  mockEmptyConfirmationGuardFixture,
-  mockPendingConfirmationGuardFixture,
-} from "./mock-confirmation-service";
+  confirmationPolicyEmptyGuardFixture,
+  confirmationPolicyGuardFixture,
+  confirmationPolicyGuardProvenance,
+  confirmationPolicyPendingGuardFixture,
+  confirmationPolicyRequirements,
+} from "./confirmation-policy";
 
 const LIVE_CONFIRMATION_GUARD_SOURCE =
   "live-policy:features/permissions/live-confirmation-service.ts";
@@ -56,7 +56,7 @@ function liveProvenance(input: {
   sourceLabel: string;
 }): ConfirmationGuardProvenance {
   return {
-    ...mockConfirmationGuardProvenance,
+    ...confirmationPolicyGuardProvenance,
     source: LIVE_CONFIRMATION_GUARD_SOURCE,
     sourceLabel: input.sourceLabel,
     evidenceIds: input.evidenceIds,
@@ -93,7 +93,7 @@ function liveRequirement(
   };
 }
 
-const liveRequirements = mockConfirmationRequirements.map(liveRequirement);
+const liveRequirements = confirmationPolicyRequirements.map(liveRequirement);
 
 function livePayload(
   payload: ConfirmationRequirementPayload,
@@ -253,7 +253,7 @@ export function createLiveSensitiveActionConfirmationService(): SensitiveActionC
           return {
             success: true,
             data: livePayload(
-              mockEmptyConfirmationGuardFixture,
+              confirmationPolicyEmptyGuardFixture,
               "Live empty sensitive action confirmation policy",
             ),
           };
@@ -261,7 +261,7 @@ export function createLiveSensitiveActionConfirmationService(): SensitiveActionC
           return {
             success: true,
             data: livePayload(
-              mockPendingConfirmationGuardFixture,
+              confirmationPolicyPendingGuardFixture,
               "Live pending sensitive action confirmation policy",
             ),
           };
@@ -272,7 +272,7 @@ export function createLiveSensitiveActionConfirmationService(): SensitiveActionC
           return {
             success: true,
             data: livePayload(
-              mockConfirmationGuardFixture,
+              confirmationPolicyGuardFixture,
               "Live sensitive action confirmation policy",
             ),
           };

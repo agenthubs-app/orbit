@@ -17,11 +17,9 @@ import {
   type ConfirmationDecisionScenario,
   type ConfirmationDecisionStatus,
   type ConfirmationDecisionSuccess,
-  type ConfirmationEvidence,
   type ConfirmationGuardErrorCode,
   type ConfirmationGuardFailure,
   type ConfirmationGuardInput,
-  type ConfirmationGuardProvenance,
   type ConfirmationGuardScenario,
   type ConfirmationRequirement,
   type ConfirmationRequirementPayload,
@@ -29,205 +27,35 @@ import {
   type ConfirmationRequirementSuccess,
   type SensitiveActionConfirmationService,
 } from "./confirmation-contract";
+import {
+  CONFIRMATION_GUARD_FIXTURE_SOURCE,
+  confirmationPolicyDecidedAt as fixtureDecidedAt,
+  confirmationPolicyEmptyGuardFixture,
+  confirmationPolicyEmptyGuardProvenance,
+  confirmationPolicyFailureGuardProvenance,
+  confirmationPolicyGuardFixture,
+  confirmationPolicyGuardProvenance,
+  confirmationPolicyPendingGuardFixture,
+  confirmationPolicyPendingGuardProvenance,
+  confirmationPolicyRequirements,
+} from "./confirmation-policy";
 
-export const CONFIRMATION_GUARD_FIXTURE_SOURCE =
-  "fixture:features/permissions/mock-confirmation-service.ts" as const;
+export { CONFIRMATION_GUARD_FIXTURE_SOURCE };
 
-// 固定时间戳让 UI snapshot 和 contract 测试稳定。
-const fixtureCollectedAt = "2026-06-24T15:00:00.000Z";
-const fixtureCreatedAt = "2026-06-24T15:05:00.000Z";
-const fixtureDecidedAt = "2026-06-24T15:10:00.000Z";
-
-export const mockConfirmationGuardProvenance: ConfirmationGuardProvenance = {
-  source: CONFIRMATION_GUARD_FIXTURE_SOURCE,
-  sourceLabel: "Mock sensitive action confirmation fixture",
-  evidenceIds: [
-    "evidence:message-draft-review",
-    "evidence:card-import-review",
-    "evidence:calendar-intent-review",
-    "evidence:profile-change-review",
-  ],
-  collectedAt: fixtureCollectedAt,
-  privacy: "demo-confirmation-guard-only",
-  generationMethod: "fixture",
-};
-
-export const mockEmptyConfirmationGuardProvenance: ConfirmationGuardProvenance = {
-  ...mockConfirmationGuardProvenance,
-  sourceLabel: "Mock empty confirmation guard rule",
-  evidenceIds: ["evidence:no-sensitive-action-selected"],
-  generationMethod: "rule-based-confirmation-guard",
-};
-
-export const mockPendingConfirmationGuardProvenance: ConfirmationGuardProvenance = {
-  ...mockConfirmationGuardProvenance,
-  sourceLabel: "Mock pending confirmation guard rule",
-  evidenceIds: ["evidence:message-draft-review"],
-  generationMethod: "rule-based-confirmation-guard",
-};
-
-export const mockConfirmationGuardFailureProvenance: ConfirmationGuardProvenance = {
-  ...mockConfirmationGuardProvenance,
-  sourceLabel: "Mock confirmation guard controlled failure rule",
-  evidenceIds: ["evidence:confirmation-controlled-failure"],
-  generationMethod: "rule-based-confirmation-guard",
-};
-
-const messageEvidence: ConfirmationEvidence = {
-  evidenceId: "evidence:message-draft-review",
-  sourceLabel: "Follow-up draft review",
-  excerpt:
-    "Draft message references the SaaS Summit conversation and waits for explicit approval.",
-  collectedAt: fixtureCollectedAt,
-};
-
-const contactEvidence: ConfirmationEvidence = {
-  evidenceId: "evidence:card-import-review",
-  sourceLabel: "Business-card import review",
-  excerpt:
-    "New contact fields are staged from a sourced card import before any contact write.",
-  collectedAt: fixtureCollectedAt,
-};
-
-const calendarEvidence: ConfirmationEvidence = {
-  evidenceId: "evidence:calendar-intent-review",
-  sourceLabel: "Calendar intent review",
-  excerpt:
-    "Meeting creation is represented as a confirmation request until the operator approves it.",
-  collectedAt: fixtureCollectedAt,
-};
-
-const profileEvidence: ConfirmationEvidence = {
-  evidenceId: "evidence:profile-change-review",
-  sourceLabel: "Profile update review",
-  excerpt:
-    "Profile field changes remain staged until an explicit confirmation resolves them.",
-  collectedAt: fixtureCollectedAt,
-};
-
-export const mockConfirmationRequirements: readonly ConfirmationRequirement[] = [
-  // 这四条 requirement 覆盖 outbound message、contact write、calendar write、
-  // profile write 四类敏感动作，帮助页面一次性展示多种确认风险。
-  {
-    id: "demo-confirmation-1",
-    status: "pending_confirmation",
-    action: {
-      kind: "send-message",
-      label: "Send message",
-      summary: "Send the drafted follow-up to Emi Tanaka after SaaS Summit.",
-      requestedBy: "Orbit operator",
-      targetLabel: "Emi Tanaka",
-      payloadPreview:
-        "Great meeting you at SaaS Summit. I can introduce you to the API partnerships team next week.",
-      replacesOutboundAction: true,
-      externalActionExecuted: false,
-      mockEffect: "No message is sent.",
-    },
-    confirmationQuestion: "Approve sending this follow-up message?",
-    riskLabel: "Outbound communication",
-    guardReason:
-      "Relationship messages must be explicitly confirmed before delivery.",
-    createdAt: fixtureCreatedAt,
-    evidence: [messageEvidence],
-    provenance: mockConfirmationGuardProvenance,
-  },
-  {
-    id: "demo-confirmation-2",
-    status: "pending_confirmation",
-    action: {
-      kind: "add-contact",
-      label: "Add contact",
-      summary: "Add Mateo Rivera from the Fintech Forum badge import.",
-      requestedBy: "Orbit operator",
-      targetLabel: "Mateo Rivera",
-      payloadPreview:
-        "Mateo Rivera, Partnerships Lead, ArcPay. Source: Fintech Forum badge.",
-      replacesOutboundAction: true,
-      externalActionExecuted: false,
-      mockEffect: "No contact is written.",
-    },
-    confirmationQuestion: "Approve adding this contact record?",
-    riskLabel: "Irreversible relationship write",
-    guardReason:
-      "New contacts need confirmation because they change the relationship graph.",
-    createdAt: fixtureCreatedAt,
-    evidence: [contactEvidence],
-    provenance: mockConfirmationGuardProvenance,
-  },
-  {
-    id: "demo-confirmation-3",
-    status: "pending_confirmation",
-    action: {
-      kind: "create-calendar-event",
-      label: "Create calendar event",
-      summary: "Create a 30 minute investor intro hold with Priya Shah.",
-      requestedBy: "Orbit operator",
-      targetLabel: "Priya Shah",
-      payloadPreview:
-        "Investor intro hold, Tuesday 10:30, context: requested warm intro.",
-      replacesOutboundAction: true,
-      externalActionExecuted: false,
-      mockEffect: "No calendar event is created.",
-    },
-    confirmationQuestion: "Approve creating this calendar event?",
-    riskLabel: "Calendar mutation",
-    guardReason:
-      "Calendar writes must stay behind an explicit confirmation boundary.",
-    createdAt: fixtureCreatedAt,
-    evidence: [calendarEvidence],
-    provenance: mockConfirmationGuardProvenance,
-  },
-  {
-    id: "demo-confirmation-4",
-    status: "pending_confirmation",
-    action: {
-      kind: "update-profile",
-      label: "Update profile",
-      summary: "Add Tokyo fintech expansion focus to the relationship profile.",
-      requestedBy: "Orbit operator",
-      targetLabel: "Orbit profile",
-      payloadPreview: "relationshipGoal: Tokyo fintech expansion",
-      replacesOutboundAction: true,
-      externalActionExecuted: false,
-      mockEffect: "No profile field is saved.",
-    },
-    confirmationQuestion: "Approve saving this profile update?",
-    riskLabel: "Profile mutation",
-    guardReason:
-      "Profile updates need confirmation before changing stored relationship context.",
-    createdAt: fixtureCreatedAt,
-    evidence: [profileEvidence],
-    provenance: mockConfirmationGuardProvenance,
-  },
-];
-
-export const mockConfirmationGuardFixture: ConfirmationRequirementPayload = {
-  state: "success",
-  requirements: mockConfirmationRequirements,
-  summary:
-    "Four sensitive relationship actions are staged behind deterministic confirmation requirements.",
-  provenance: mockConfirmationGuardProvenance,
-  nextAction:
-    "Approve or reject each action inside the mock guard before any live implementation can run.",
-};
-
-export const mockEmptyConfirmationGuardFixture: ConfirmationRequirementPayload = {
-  state: "empty",
-  requirements: [],
-  summary: "No sensitive action is waiting for confirmation.",
-  provenance: mockEmptyConfirmationGuardProvenance,
-  nextAction:
-    "Wait until a sensitive relationship action creates a sourced confirmation request.",
-};
-
-export const mockPendingConfirmationGuardFixture: ConfirmationRequirementPayload = {
-  state: "pending",
-  requirements: [mockConfirmationRequirements[0]],
-  summary: "One outbound message is waiting for explicit confirmation.",
-  provenance: mockPendingConfirmationGuardProvenance,
-  nextAction:
-    "Review the message draft before approving or rejecting the action.",
-};
+export const mockConfirmationGuardProvenance =
+  confirmationPolicyGuardProvenance;
+export const mockEmptyConfirmationGuardProvenance =
+  confirmationPolicyEmptyGuardProvenance;
+export const mockPendingConfirmationGuardProvenance =
+  confirmationPolicyPendingGuardProvenance;
+export const mockConfirmationGuardFailureProvenance =
+  confirmationPolicyFailureGuardProvenance;
+export const mockConfirmationRequirements = confirmationPolicyRequirements;
+export const mockConfirmationGuardFixture = confirmationPolicyGuardFixture;
+export const mockEmptyConfirmationGuardFixture =
+  confirmationPolicyEmptyGuardFixture;
+export const mockPendingConfirmationGuardFixture =
+  confirmationPolicyPendingGuardFixture;
 
 export const mockConfirmationApprovedFixture: ConfirmationDecisionPayload = {
   state: "approved",

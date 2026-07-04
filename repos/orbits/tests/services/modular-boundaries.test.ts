@@ -214,3 +214,11 @@ test("dashboard live runtime does not import fixture modules", () => {
     "features/dashboard/live-service.ts should depend on neutral dashboard summary modules, not fixture modules",
   );
 });
+
+test("permissions live confirmation runtime does not import mock service modules", () => {
+  assert.doesNotMatch(
+    source("features/permissions/live-confirmation-service.ts"),
+    /from\s+["']\.\/mock-confirmation-service["']/,
+    "features/permissions/live-confirmation-service.ts should depend on neutral confirmation policy modules, not mock service modules",
+  );
+});
