@@ -19,6 +19,8 @@ export const AI_PROVIDER_ERROR_CODES = [
   "AI_PROVIDER_EMPTY",
   "AI_PROVIDER_PENDING",
   "AI_PROVIDER_MOCK_FAILED",
+  "AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED",
+  "AI_PROVIDER_LIVE_PROVIDER_UNSUPPORTED",
 ] as const;
 
 export type PromptTemplateId =
@@ -97,6 +99,22 @@ export const AI_PROVIDER_ERROR_DEFINITIONS = {
       "The mock AI provider boundary is pinned to a controlled failure scenario.",
     recovery:
       "Render the controlled failure state and do not retry live model providers, network, device, database, email, calendar, or notification services.",
+  },
+  AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED: {
+    code: "AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live AI provider boundary is not configured.",
+    recovery:
+      "Set an approved ORBIT_AI_PROVIDER and provider credentials before enabling live model calls; do not fall back to mock output in live mode.",
+  },
+  AI_PROVIDER_LIVE_PROVIDER_UNSUPPORTED: {
+    code: "AI_PROVIDER_LIVE_PROVIDER_UNSUPPORTED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The requested live AI provider is not supported by this boundary.",
+    recovery:
+      "Use an approved provider id and keep the request inside a controlled failure envelope until the adapter exists.",
   },
 } as const satisfies Record<AiProviderErrorCode, AiProviderErrorDefinition>;
 
@@ -194,13 +212,20 @@ export function aiProviderFailureContext(
   failure: AiProviderFailure,
   mode: FeatureMode,
 ): ApiErrorContext {
+  const isLiveBoundary =
+    failure.error.provenance.privacy === "live-ai-provider-boundary";
+
   return {
     aiProviderErrorCode: failure.error.code,
     boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
     mode,
     privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
     provenance:
-      "Mock AI provider failure came from deterministic fixture rules.",
-    service: "ai-provider-mock-and-provenance-boundary",
+      isLiveBoundary
+        ? "Live AI provider boundary failed closed before any provider, network, device, database, email, calendar, or notification request."
+        : "Mock AI provider failure came from deterministic fixture rules.",
+    service: isLiveBoundary
+      ? "ai-provider-live-boundary"
+      : "ai-provider-mock-and-provenance-boundary",
   };
 }

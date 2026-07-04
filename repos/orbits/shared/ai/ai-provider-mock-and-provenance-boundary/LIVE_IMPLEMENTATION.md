@@ -4,8 +4,16 @@
 
 - Keep the public contract in `shared/ai/provider.ts`.
 - Keep provenance helpers in `shared/ai/provenance.ts`.
-- Replace `shared/ai/mock-provider.ts` with a provider factory that can select a mock adapter or a live adapter without changing route payload shapes.
-- Add live provider adapters under `shared/ai/providers/`, for example `shared/ai/providers/anthropic.ts`, `shared/ai/providers/deepseek.ts`, and `shared/ai/providers/openai.ts`.
+- `shared/ai/service-factory.ts` now selects between the deterministic mock
+  provider and a live fail-closed boundary without changing route payload
+  shapes.
+- `shared/ai/live-service.ts` is intentionally fail-closed until an approved
+  provider adapter exists. It returns typed live provider failures with
+  provenance and does not call model providers, networks, devices, databases,
+  email, calendar, or notification services.
+- Future live provider adapters should live under `shared/ai/providers/`, for
+  example `shared/ai/providers/anthropic.ts`,
+  `shared/ai/providers/deepseek.ts`, and `shared/ai/providers/openai.ts`.
 - Keep the API routes `app/api/ai/mock/message-draft/route.ts` and `app/api/ai/runs/[id]/route.ts` as envelope-only callers of the selected service.
 
 ## Switch mechanism
@@ -15,6 +23,10 @@
 - `ORBIT_AI_PROVIDER_MODE=live` may select a live adapter only when `ORBIT_AI_PROVIDER` is set to an approved provider id.
 - Supported live values should be explicit, for example `anthropic`, `deepseek`, or `openai`.
 - Unknown provider ids must fail closed with a typed API failure envelope instead of falling back silently.
+- With the current fail-closed live boundary, `ORBIT_MODULE_MODE=live` resolves
+  the AI provider factory successfully, but API requests return
+  `AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED` or
+  `AI_PROVIDER_LIVE_PROVIDER_UNSUPPORTED` until a provider adapter is added.
 
 ## Required env vars and permissions
 
@@ -38,6 +50,8 @@
 
 - Contract tests for prompt template id, input hash, output, fallback behavior, and run provenance fields.
 - Mock no-network guard tests covering `shared/ai/mock-provider.ts`, route handlers, and the dev capability page.
+- Live fail-closed tests proving the factory resolves in live mode and API
+  routes return stable envelopes instead of `NOT_IMPLEMENTED`.
 - Live adapter tests with provider clients mocked at the adapter boundary.
 - API envelope tests for success, empty, pending, controlled failure, provider failure, missing run, and unknown provider id.
 - Privacy tests proving raw private relationship context is not written to logs or returned in error context.

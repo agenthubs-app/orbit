@@ -67,6 +67,10 @@ The following feature families are now wired to explicit remote live providers:
 - `app-event-detail-page`: the real `/app/events/[id]` route adapter now calls the event detail live route service, maps the live route model into the existing event detail UI view model, and renders a shared controlled failure boundary when live storage is unconfigured.
 - `api-runtime-mode-boundary`: shared API routes now resolve runtime mode from `ORBIT_MODULE_MODE` before the older `ORBIT_FEATURE_MODE` fallback, so response headers, health probes, and service factories agree on mock/hybrid/live mode.
 - `web-home-entry-layout`: the product Home routes keep the approved desktop entry layout across medium and wide browser widths. The Home event list stays beside the profile/contact/schedule entry rail, and the rail width now uses responsive constraints rather than moving above events in web view.
+- `ai-provider`: the legacy shared AI provider boundary now has an explicit live
+  fail-closed service. It returns typed live provider failures and provenance
+  instead of `NOT_IMPLEMENTED` or mock fallback until approved model adapters and
+  credentials are added.
 
 Configured Postgres live providers that participate in composed app pages should reuse `createConfiguredPostgresLiveRecordStore(...)` instead of opening independent pools for the same connection/workspace. This avoids exhausting Supabase session-mode pool limits when one page composes several live child services.
 

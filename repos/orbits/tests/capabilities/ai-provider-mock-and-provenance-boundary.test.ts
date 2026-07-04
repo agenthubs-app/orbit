@@ -39,6 +39,35 @@ function assertNoLiveProviderCalls(filePath: string): void {
   assert.doesNotMatch(source, /sendgrid|postmark|gmail|calendar\.google/i);
 }
 
+async function withEnv<TResult>(
+  env: Record<string, string | undefined>,
+  run: () => Promise<TResult>,
+): Promise<TResult> {
+  const previous = Object.fromEntries(
+    Object.keys(env).map((key) => [key, process.env[key]]),
+  ) as Record<string, string | undefined>;
+
+  try {
+    for (const [key, value] of Object.entries(env)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+
+    return await run();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
 test("AI provider contract exports typed provenance errors and service interface", async () => {
   const provider = await importProjectModule<{
     AI_PROVIDER_PROMPT_TEMPLATE_IDS: readonly string[];
@@ -130,9 +159,16 @@ test("AI provider contract exports typed provenance errors and service interface
     "AI_PROVIDER_EMPTY",
     "AI_PROVIDER_PENDING",
     "AI_PROVIDER_MOCK_FAILED",
+    "AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED",
+    "AI_PROVIDER_LIVE_PROVIDER_UNSUPPORTED",
   ]);
   assert.equal(
     provider.AI_PROVIDER_ERROR_DEFINITIONS.AI_PROVIDER_MOCK_FAILED.appCode,
+    "SERVICE_UNAVAILABLE",
+  );
+  assert.equal(
+    provider.AI_PROVIDER_ERROR_DEFINITIONS
+      .AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED.appCode,
     "SERVICE_UNAVAILABLE",
   );
   assert.match(
@@ -298,6 +334,68 @@ test("mock AI provider service is deterministic and never calls live providers",
   }
 });
 
+test("AI provider factory resolves live mode as a fail-closed provider boundary", async () => {
+  const serviceFactory = await importProjectModule<{
+    resolveAiProviderService: (mode?: string) => {
+      success: boolean;
+      mode?: string;
+      service?: {
+        draftMessage: (input?: {
+          relationshipContext?: string | null;
+          recipientName?: string | null;
+        }) => {
+          success: boolean;
+          error?: {
+            code: string;
+            provenance: {
+              providerMode: string;
+              liveAiProviderRequested: false;
+              externalNetworkRequested: false;
+            };
+          };
+        };
+        getRun: (input: { runId?: string | null }) => {
+          success: boolean;
+          error?: {
+            code: string;
+            provenance: {
+              providerMode: string;
+              liveAiProviderRequested: false;
+              externalNetworkRequested: false;
+            };
+          };
+        };
+      };
+      error?: { code: string };
+    };
+  }>("shared/ai/service-factory.ts");
+
+  const resolution = serviceFactory.resolveAiProviderService("live");
+
+  assert.equal(
+    resolution.success,
+    true,
+    resolution.success === false ? resolution.error?.code : "",
+  );
+  assert.equal(resolution.mode, "live");
+  assert.ok(resolution.service);
+
+  const draft = resolution.service.draftMessage({
+    recipientName: "Maya Chen",
+    relationshipContext: "Maya asked for a short follow-up.",
+  });
+  const run = resolution.service.getRun({ runId: "demo-ai-run-1" });
+
+  assert.equal(draft.success, false);
+  assert.equal(draft.error?.code, "AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED");
+  assert.equal(draft.error?.provenance.providerMode, "live-provider-unconfigured");
+  assert.equal(draft.error?.provenance.liveAiProviderRequested, false);
+  assert.equal(draft.error?.provenance.externalNetworkRequested, false);
+  assert.equal(run.success, false);
+  assert.equal(run.error?.code, "AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED");
+  assert.equal(run.error?.provenance.providerMode, "live-provider-unconfigured");
+});
+
 test("AI provider API routes return stable envelopes with empty and failure paths", async () => {
   const draftRoute = await importProjectModule<{
     POST: (request: Request) => Promise<Response>;
@@ -460,6 +558,85 @@ test("AI provider API routes return stable envelopes with empty and failure path
       },
     },
   });
+});
+
+test("AI provider API routes fail closed in live mode instead of returning NOT_IMPLEMENTED", async () => {
+  await withEnv(
+    {
+      ORBIT_AI_PROVIDER: undefined,
+      ORBIT_FEATURE_MODE: undefined,
+      ORBIT_MODULE_MODE: "live",
+    },
+    async () => {
+      const draftRoute = await importProjectModule<{
+        POST: (request: Request) => Promise<Response>;
+      }>("app/api/ai/mock/message-draft/route.ts");
+      const runRoute = await importProjectModule<{
+        GET: (
+          request: Request,
+          context: { params: Promise<{ id: string }> },
+        ) => Promise<Response>;
+      }>("app/api/ai/runs/[id]/route.ts");
+
+      const draftResponse = await draftRoute.POST(
+        new Request("https://orbit.local/api/ai/mock/message-draft", {
+          body: JSON.stringify({
+            recipientName: "Maya Chen",
+            relationshipContext: "Maya asked for a short follow-up.",
+          }),
+          method: "POST",
+        }),
+      );
+      const runResponse = await runRoute.GET(
+        new Request("https://orbit.local/api/ai/runs/demo-ai-run-1"),
+        { params: Promise.resolve({ id: "demo-ai-run-1" }) },
+      );
+      const draftEnvelope = (await draftResponse.json()) as {
+        success: false;
+        error: {
+          code: string;
+          message: string;
+          context: {
+            aiProviderErrorCode: string;
+            mode: string;
+            provenance: string;
+            service: string;
+          };
+        };
+      };
+      const runEnvelope = (await runResponse.json()) as {
+        success: false;
+        error: {
+          code: string;
+          context: {
+            aiProviderErrorCode: string;
+            mode: string;
+            service: string;
+          };
+        };
+      };
+
+      assert.equal(draftResponse.status, 503);
+      assert.equal(draftResponse.headers.get("x-orbit-feature-mode"), "live");
+      assert.equal(draftEnvelope.success, false);
+      assert.equal(draftEnvelope.error.code, "SERVICE_UNAVAILABLE");
+      assert.equal(
+        draftEnvelope.error.context.aiProviderErrorCode,
+        "AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED",
+      );
+      assert.equal(draftEnvelope.error.context.mode, "live");
+      assert.match(draftEnvelope.error.context.provenance, /Live AI provider/i);
+      assert.equal(draftEnvelope.error.context.service, "ai-provider-live-boundary");
+      assert.equal(runResponse.status, 503);
+      assert.equal(runResponse.headers.get("x-orbit-feature-mode"), "live");
+      assert.equal(
+        runEnvelope.error.context.aiProviderErrorCode,
+        "AI_PROVIDER_LIVE_PROVIDER_UNCONFIGURED",
+      );
+      assert.equal(runEnvelope.error.context.mode, "live");
+      assert.equal(runEnvelope.error.context.service, "ai-provider-live-boundary");
+    },
+  );
 });
 
 test("AI provider provenance debug route renders all states and live replacement handoff", async () => {
