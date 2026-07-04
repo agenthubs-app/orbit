@@ -77,6 +77,16 @@ test("/app/party routes use a live-capable party loader instead of the legacy hy
   }
 });
 
+test("/app/party/checkin uses the same live-capable party loader without component fallback", () => {
+  const checkinPageSource = source("app/(app)/app/party/checkin/page.tsx");
+  const partyComponentSource = source("app/(app)/app/dashboard/orbit-real-party.tsx");
+
+  assert.match(checkinPageSource, /loadAppPartyRouteViewModel/);
+  assert.match(checkinPageSource, /StateView/);
+  assert.match(checkinPageSource, /OrbitRealPartyCheckin/);
+  assert.doesNotMatch(partyComponentSource, /getOrbitPartyViewModel/);
+});
+
 test("app party route loader returns a real party model in mock mode", async () => {
   await withMockParty(async () => {
     const { loadAppPartyRouteViewModel } = await import(
@@ -95,6 +105,26 @@ test("app party route loader returns a real party model in mock mode", async () 
       assert.ok(routeModel.party.recommendations.length > 0);
       assert.ok(routeModel.party.tableMates.length > 0);
     }
+  });
+});
+
+test("app party check-in page renders the mock success page from the party loader", async () => {
+  await withMockParty(async () => {
+    const Page = (await import("../../app/(app)/app/party/checkin/page"))
+      .default as (props?: {
+      searchParams?: Promise<Record<string, string | undefined>>;
+    }) => Promise<React.ReactElement>;
+    const html = renderToStaticMarkup(
+      await Page({
+        searchParams: Promise.resolve({
+          eventId: "demo-event-1",
+          mode: "mock",
+        }),
+      }),
+    );
+
+    assert.match(html, /data-orbit-route="app-party-checkin-route"/);
+    assert.match(html, /签到|Check in/);
   });
 });
 
@@ -117,6 +147,24 @@ test("app party page renders a controlled live failure when storage is unconfigu
     );
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
     assert.match(html, /app-party-route-state/);
+  });
+});
+
+test("app party check-in page renders a controlled live failure", async () => {
+  await withUnconfiguredLiveParty(async () => {
+    const Page = (await import("../../app/(app)/app/party/checkin/page"))
+      .default as (props?: {
+      searchParams?: Promise<Record<string, string | undefined>>;
+    }) => Promise<React.ReactElement>;
+    const html = renderToStaticMarkup(
+      await Page({
+        searchParams: Promise.resolve({ eventId: "event_01", mode: "live" }),
+      }),
+    );
+
+    assert.match(html, /Party could not load/);
+    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
+    assert.match(html, /app-party-checkin-route-state/);
   });
 });
 

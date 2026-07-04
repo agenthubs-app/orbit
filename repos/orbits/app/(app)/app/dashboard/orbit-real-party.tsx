@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
-import { getOrbitPartyViewModel, type OrbitPartyPersonView, type OrbitPartyViewModel } from "../orbit-party-route-view-model";
+import type { OrbitPartyPersonView, OrbitPartyViewModel } from "../orbit-party-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { PublicTopNav } from "../orbit-public-shell";
 import { Icon, Logo } from "../orbit-reference-primitives";
@@ -725,9 +725,8 @@ function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; pers
   );
 }
 
-export function OrbitRealPartyCheckin() {
+export function OrbitRealPartyCheckin({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const { t } = useOrbitLanguage();
-  const viewModel = getOrbitPartyViewModel();
   const [checkedIn, setCheckedIn] = useState(false);
   const [redirectIn, setRedirectIn] = useState(3);
   const [returnedToParty, setReturnedToParty] = useState(false);
