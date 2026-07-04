@@ -215,11 +215,17 @@ export function orbitAiProactiveAgentFailureContext(
   mode: FeatureMode,
 ): ApiErrorContext {
   return {
+    boundary: "developer-admin",
     evidenceIds: failure.error.evidenceIds.join(","),
+    mode,
     orbitAiProactiveAgentErrorCode: failure.error.code,
+    privacy: "no-relationship-data",
     recovery: failure.error.recovery,
-    runtimeBoundary: RUNTIME_BOUNDARY_HEADER_VALUES[mode],
-    service: "orbit-ai-proactive-agent-mock",
+    runtimeBoundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
+    service:
+      mode === "live"
+        ? "orbit-ai-proactive-agent-live-policy"
+        : "orbit-ai-proactive-agent-mock",
     source: failure.error.provenance.source,
   };
 }

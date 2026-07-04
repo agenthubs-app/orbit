@@ -1,10 +1,27 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import test from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createLiveOrbitAiProactiveAgentService } from "../../features/orbit-ai/live-proactive-service";
 import { resolveOrbitAiProactiveAgentService } from "../../features/orbit-ai/proactive-service-factory";
 import { createLiveOrbitAiCommandService } from "../../features/orbit-ai/live-command-service";
 import { resolveOrbitAiCommandService } from "../../features/orbit-ai/service-factory";
+
+const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const proactiveTurnsRoutePath = join(
+  projectRoot,
+  "app/api/ai/proactive-turns/route.ts",
+);
+
+function restoreModuleMode(previousMode: string | undefined): void {
+  if (previousMode === undefined) {
+    delete process.env.ORBIT_MODULE_MODE;
+  } else {
+    process.env.ORBIT_MODULE_MODE = previousMode;
+  }
+}
 
 test("Orbit AI command and proactive agent register explicit live services", () => {
   const command = resolveOrbitAiCommandService("live");
@@ -180,4 +197,94 @@ test("live Orbit AI proactive agent creates in-chat turns without notification d
   assert.equal(result.data.provenance.safety.pushProviderRequested, false);
   assert.equal(result.data.provenance.safety.liveDatabaseWriteExecuted, false);
   assert.match(result.data.nextAction, /Orbit AI chat/i);
+});
+
+test("Orbit AI proactive turns API returns live in-chat assistant turns", async () => {
+  assert.equal(existsSync(proactiveTurnsRoutePath), true);
+
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "live";
+
+    const route = (await import(pathToFileURL(proactiveTurnsRoutePath).href)) as {
+      POST: (request: Request) => Promise<Response>;
+      dynamic: string;
+    };
+    const response = await route.POST(
+      new Request("http://orbit.test/api/ai/proactive-turns", {
+        body: JSON.stringify({
+          signal: {
+            body: "The source-backed task is ready for review.",
+            evidenceIds: ["evidence:followup:daniel"],
+            signalId: "signal:followup:daniel-api",
+            sourceModule: "followups",
+            title: "Daniel follow-up is due",
+            type: "followup_due",
+          },
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      }),
+    );
+    const body = await response.json();
+
+    assert.equal(route.dynamic, "force-dynamic");
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-orbit-feature-mode"), "live");
+    assert.equal(body.success, true);
+    assert.equal(body.data.message.role, "assistant");
+    assert.equal(body.data.message.turnKind, "proactive");
+    assert.equal(body.data.message.deliverySurface, "orbit_ai_chat");
+    assert.equal(
+      body.data.message.sourceSignalId,
+      "signal:followup:daniel-api",
+    );
+    assert.equal(
+      body.data.provenance.generationMethod,
+      "live-policy-proactive-turn",
+    );
+    assert.equal(body.data.provenance.safety.notificationDelivered, false);
+    assert.equal(body.data.provenance.safety.pushProviderRequested, false);
+    assert.equal(body.data.provenance.safety.liveDatabaseWriteExecuted, false);
+  } finally {
+    restoreModuleMode(previousModuleMode);
+  }
+});
+
+test("Orbit AI proactive turns API fails closed for missing signals", async () => {
+  assert.equal(existsSync(proactiveTurnsRoutePath), true);
+
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "live";
+
+    const route = (await import(pathToFileURL(proactiveTurnsRoutePath).href)) as {
+      POST: (request: Request) => Promise<Response>;
+    };
+    const response = await route.POST(
+      new Request("http://orbit.test/api/ai/proactive-turns", {
+        body: JSON.stringify({}),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      }),
+    );
+    const body = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(response.headers.get("x-orbit-feature-mode"), "live");
+    assert.equal(body.success, false);
+    assert.equal(body.error.code, "VALIDATION_ERROR");
+    assert.equal(
+      body.error.context.orbitAiProactiveAgentErrorCode,
+      "ORBIT_AI_PROACTIVE_AGENT_SIGNAL_REQUIRED",
+    );
+  } finally {
+    restoreModuleMode(previousModuleMode);
+  }
 });

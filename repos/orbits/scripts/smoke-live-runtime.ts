@@ -48,10 +48,14 @@ async function readLiveEnvelope(
   options: {
     baseUrl: string;
     fetchImpl: typeof fetch;
+    requestInit?: RequestInit;
     path: string;
   },
 ): Promise<Record<string, unknown>> {
-  const response = await options.fetchImpl(new URL(options.path, options.baseUrl));
+  const response = await options.fetchImpl(
+    new URL(options.path, options.baseUrl),
+    options.requestInit,
+  );
   const featureMode = response.headers.get("x-orbit-feature-mode");
 
   if (featureMode !== "live") {
@@ -144,6 +148,39 @@ function checkContacts(data: Record<string, unknown>): CheckedRoute {
   };
 }
 
+function checkProactiveTurn(data: Record<string, unknown>): CheckedRoute {
+  const message = requireRecord(
+    data.message,
+    "/api/ai/proactive-turns message",
+  );
+  const provenance = requireRecord(
+    data.provenance,
+    "/api/ai/proactive-turns provenance",
+  );
+  const safety = requireRecord(
+    provenance.safety,
+    "/api/ai/proactive-turns safety",
+  );
+
+  if (
+    message.deliverySurface !== "orbit_ai_chat" ||
+    message.turnKind !== "proactive" ||
+    provenance.generationMethod !== "live-policy-proactive-turn" ||
+    safety.notificationDelivered !== false ||
+    safety.pushProviderRequested !== false ||
+    safety.liveDatabaseWriteExecuted !== false
+  ) {
+    throw new Error(
+      "/api/ai/proactive-turns did not return a safe Orbit AI chat proactive turn.",
+    );
+  }
+
+  return {
+    path: "/api/ai/proactive-turns",
+    detail: "Orbit AI chat proactive turn",
+  };
+}
+
 export async function runLiveRuntimeSmoke(
   options: LiveRuntimeSmokeOptions = {},
 ): Promise<LiveRuntimeSmokeResult> {
@@ -152,19 +189,45 @@ export async function runLiveRuntimeSmoke(
   );
   const fetchImpl = options.fetchImpl ?? fetch;
   const log = options.log ?? console.log;
-  const checks: readonly [
-    string,
-    (data: Record<string, unknown>) => CheckedRoute,
-  ][] = [
-    ["/api/health", checkHealth],
-    ["/api/app/bootstrap", checkBootstrap],
-    ["/api/events", checkEvents],
-    ["/api/contacts", checkContacts],
+  const checks: readonly {
+    check: (data: Record<string, unknown>) => CheckedRoute;
+    path: string;
+    requestInit?: RequestInit;
+  }[] = [
+    { check: checkHealth, path: "/api/health" },
+    { check: checkBootstrap, path: "/api/app/bootstrap" },
+    { check: checkEvents, path: "/api/events" },
+    { check: checkContacts, path: "/api/contacts" },
+    {
+      check: checkProactiveTurn,
+      path: "/api/ai/proactive-turns",
+      requestInit: {
+        body: JSON.stringify({
+          signal: {
+            body: "Live runtime smoke verifies proactive turns stay inside Orbit AI chat.",
+            evidenceIds: ["evidence:live-runtime-smoke:proactive"],
+            signalId: "signal:live-runtime-smoke:proactive",
+            sourceModule: "system",
+            title: "Live runtime smoke proactive turn",
+            type: "system_status",
+          },
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      },
+    },
   ];
   const checkedRoutes: CheckedRoute[] = [];
 
-  for (const [path, check] of checks) {
-    const data = await readLiveEnvelope({ baseUrl, fetchImpl, path });
+  for (const { check, path, requestInit } of checks) {
+    const data = await readLiveEnvelope({
+      baseUrl,
+      fetchImpl,
+      path,
+      requestInit,
+    });
     const checkedRoute = check(data);
     checkedRoutes.push(checkedRoute);
     log(`- ${checkedRoute.path}: ${checkedRoute.detail}`);

@@ -26,6 +26,7 @@ test("live runtime smoke script is available as a safe npm command", () => {
   assert.match(source, /ORBIT_LIVE_BASE_URL/);
   assert.match(source, /x-orbit-feature-mode/);
   assert.match(source, /\/api\/health/);
+  assert.match(source, /\/api\/ai\/proactive-turns/);
   assert.match(source, /\/api\/app\/bootstrap/);
   assert.match(source, /\/api\/events/);
   assert.match(source, /\/api\/contacts/);
@@ -104,6 +105,29 @@ test("live runtime smoke script validates live headers and seeded payloads", asy
       );
     }
 
+    if (pathName === "/api/ai/proactive-turns") {
+      return Response.json(
+        {
+          success: true,
+          data: {
+            message: {
+              deliverySurface: "orbit_ai_chat",
+              turnKind: "proactive",
+            },
+            provenance: {
+              generationMethod: "live-policy-proactive-turn",
+              safety: {
+                liveDatabaseWriteExecuted: false,
+                notificationDelivered: false,
+                pushProviderRequested: false,
+              },
+            },
+          },
+        },
+        { headers },
+      );
+    }
+
     return Response.json(
       { success: false, error: { code: "NOT_FOUND" } },
       { status: 404, headers },
@@ -125,6 +149,7 @@ test("live runtime smoke script validates live headers and seeded payloads", asy
     "/api/app/bootstrap",
     "/api/events",
     "/api/contacts",
+    "/api/ai/proactive-turns",
   ]);
   assert.deepEqual(
     result.checkedRoutes.map((route) => route.path),
@@ -133,4 +158,5 @@ test("live runtime smoke script validates live headers and seeded payloads", asy
   assert.match(result.checkedRoutes[1].detail, /66 contacts/);
   assert.match(result.checkedRoutes[2].detail, /1 events/);
   assert.match(result.checkedRoutes[3].detail, /1 contacts/);
+  assert.match(result.checkedRoutes[4].detail, /Orbit AI chat/);
 });
