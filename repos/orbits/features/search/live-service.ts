@@ -27,7 +27,7 @@ import { createBasicRulesRelationshipSearchBackend } from "./backends/basic-rule
 import {
   emptyRelationshipNaturalSearchAppliedFilters,
   relationshipNaturalSearchAvailableFilters,
-} from "./fixtures";
+} from "./filter-options";
 import type {
   ConnectionDTO,
   ContactDTO,

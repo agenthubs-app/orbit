@@ -198,3 +198,11 @@ test("contacts live runtime does not import mock capability directories", () => 
     );
   }
 });
+
+test("search live runtime does not import fixture modules", () => {
+  assert.doesNotMatch(
+    source("features/search/live-service.ts"),
+    /from\s+["']\.\/fixtures["']/,
+    "features/search/live-service.ts should depend on neutral search filter/query modules, not fixture modules",
+  );
+});
