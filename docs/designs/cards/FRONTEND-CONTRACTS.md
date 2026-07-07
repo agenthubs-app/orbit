@@ -2,7 +2,8 @@
 
 > 一份文档覆盖 5 屏新界面**全部前端相关的类型、组件 props、view-model、服务接口、API 形态、新增/扩展字段**。
 > 标注：`[现有]` 真实仓库已有，直接用；`[扩展]` 在现有类型上加字段；`[新增]` 需新建。TS 语法为契约描述，落地时放入对应 `contract.ts` / `*-route-view-model.ts` / 组件文件。
-> 配套：[IMPL-PLAN.md](IMPL-PLAN.md)。数据全部先 mock（mock-to-live 边界）。
+> 配套：[IMPL-PLAN.md](IMPL-PLAN.md)。
+> **本轮 UI-only**：其中 **view-model 类型 + 组件 props 是本轮要落地的前端**；数据用 view-model 上的**静态演示值**（不写后端）。凡标 `service` / `API` 的块**仅作"将来数据来源"标注，本轮不实现**——UI 层用静态 view-model 占位、交互用组件内 `useState`。
 
 ---
 
