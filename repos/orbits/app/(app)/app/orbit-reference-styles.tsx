@@ -802,6 +802,15 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page] .orbit-top-nav {
   justify-content: space-between;
 }
+/* Match the homepage nav's taller, roomier bar on desktop (mobile keeps its
+   own compact 56px bar from the <=640px block above). */
+@media (min-width: 641px) {
+  [data-orbit-real-page] .orbit-top-nav {
+    height: auto;
+    min-height: 0;
+    padding: 18px clamp(20px, 5vw, 56px);
+  }
+}
 [data-orbit-real-page] .orbit-nav-lead {
   align-items: center;
   display: flex;
@@ -1226,10 +1235,17 @@ body:has([data-orbit-real-page]) {
 /* Prototype chrome that hardcodes light glass/white surfaces (not token
    driven) — restated in the homepage's dark-glass language. Text inside
    these is token colored, so only the surfaces need the remap. */
-[data-orbit-real-page] .orbit-top-nav,
 [data-orbit-real-page] .orbit-organizer-topnav {
   background: rgba(10, 8, 18, 0.66);
   border-bottom: 1px solid var(--border);
+}
+/* Product top-nav uses the exact glass of the starfield homepage nav
+   (orbit-starfield #skNav): lighter, more transparent, softer hairline. */
+[data-orbit-real-page] .orbit-top-nav {
+  background: rgba(8, 7, 16, 0.26);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(150, 145, 200, 0.07);
 }
 [data-orbit-real-page] .orbit-mobile-bar,
 [data-orbit-real-page] .orbit-sticky-cta,
