@@ -238,7 +238,7 @@ const strengthMeta: Record<OrbitContactView["strength"], { cls: string; label: {
   dormant: { cls: "nc-st-dormant", label: { en: "Dormant", zh: "沉睡" } },
 };
 
-function SourceBadge({ source, t }: { source: OrbitContactView["source"]; t: Translate }) {
+export function SourceBadge({ source, t }: { source: OrbitContactView["source"]; t: Translate }) {
   const meta = sourceMeta[source];
   return (
     <span className={`nc-src ${meta.cls}`}><Icon name={meta.icon} size={12} />{t(meta.label)}</span>
@@ -252,7 +252,7 @@ function StrengthTag({ strength, t }: { strength: OrbitContactView["strength"]; 
   );
 }
 
-function Basis({
+export function Basis({
   kind,
   copy,
   evidenceId,
@@ -960,8 +960,12 @@ function sourceLabel(source: OrbitContactView["source"], t: Translate): string {
     exchange: t({ en: "Event exchange", zh: "活动交换" }),
     manual: t({ en: "Added manually", zh: "手动添加" }),
     scan: t({ en: "Card scan", zh: "名片扫描" }),
+    qr: t({ en: "QR scan", zh: "现场扫码" }),
+    event: t({ en: "Event import", zh: "活动导入" }),
+    referral: t({ en: "Referral", zh: "朋友推荐" }),
+    contact: t({ en: "Contacts import", zh: "通讯录导入" }),
   };
-  return labels[source];
+  return labels[source] ?? source;
 }
 
 type AiActionKind = "intro_blurb" | "message_draft" | "reminder";
