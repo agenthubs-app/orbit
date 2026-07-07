@@ -1736,6 +1736,24 @@ const orbitNamecardStyles = `
 [data-orbit-real-page] .nc-pcard .nc-foot { grid-column:2 / -1; margin-top:11px; padding-top:11px; border-top:1px solid var(--hairline); display:flex; align-items:center; gap:10px; }
 [data-orbit-real-page] .nc-pcard .nc-act { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text); }
 [data-orbit-real-page] .nc-pcard .nc-act svg { color:var(--accent); }
+
+/* toast + email compose sheet (shared interaction feedback) */
+.nc-toast-host { position:fixed; left:0; right:0; bottom:26px; display:flex; flex-direction:column; align-items:center; gap:8px; z-index:4000; pointer-events:none; }
+.nc-toast { display:inline-flex; align-items:center; gap:9px; max-width:80%; padding:11px 16px; border-radius:var(--r-pill); background:var(--surface-3); border:1px solid var(--border-2); box-shadow:var(--sh-pop); color:var(--text); font-size:13px; font-weight:500; opacity:0; transform:translateY(8px); transition:opacity .18s, transform .18s; }
+.nc-toast.show { opacity:1; transform:translateY(0); }
+.nc-toast svg { width:15px; height:15px; color:var(--accent); flex-shrink:0; }
+.nc-scrim { position:fixed; inset:0; background:var(--scrim); backdrop-filter:blur(2px); opacity:0; transition:opacity .2s; z-index:3900; }
+.nc-scrim.show { opacity:1; }
+.nc-sheet { position:fixed; top:0; right:0; bottom:0; width:min(460px, 94%); background:var(--surface); border-left:1px solid var(--border-2); box-shadow:var(--sh-pop); z-index:3950; transform:translateX(100%); transition:transform .24s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
+.nc-sheet.show { transform:translateX(0); }
+.nc-sheet-head { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--hairline); }
+.nc-sheet-head h3 { margin:0; font-size:16px; color:var(--ink); }
+.nc-sheet-body { padding:16px 18px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:12px; }
+.nc-sheet-body .field { background:var(--surface); border:1px solid var(--border-2); border-radius:var(--r-sm); color:var(--text); font: inherit; font-size:15px; padding:0 14px; height:48px; width:100%; }
+.nc-sheet-body textarea.field { height:auto; min-height:150px; padding:12px 14px; line-height:1.5; resize:vertical; }
+.nc-sheet-foot { padding:14px 18px; border-top:1px solid var(--hairline); display:flex; gap:10px; }
+.nc-sheet-close { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--r-sm); background:var(--surface-2); border:1px solid var(--border-2); color:var(--text-2); cursor:pointer; }
+.nc-flabel { display:block; font-size:13px; font-weight:600; color:var(--text-2); margin:0 0 6px; }
 `;
 
 export function OrbitReferenceStyles() {

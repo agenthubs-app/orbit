@@ -14,6 +14,7 @@ import type {
 } from "../orbit-contacts-route-view-model";
 import { AccountTopNav, MobileBar, ModalShell, orbitNavigate, StatusBar } from "../orbit-account-shell";
 import { CrmSidebar } from "./orbit-crm-sidebar";
+import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
@@ -355,6 +356,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
+      <OrbitCardsInteractions />
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>

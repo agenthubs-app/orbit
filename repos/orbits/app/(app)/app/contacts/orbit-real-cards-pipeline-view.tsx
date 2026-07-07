@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { AccountTopNav } from "../orbit-account-shell";
 import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
+import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
@@ -620,6 +621,7 @@ export function OrbitRealCardsPipelineView() {
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts-pipeline">
+      <OrbitCardsInteractions />
       <style dangerouslySetInnerHTML={{ __html: LOCAL_STYLES }} />
 
       {/* ===================== DESKTOP ===================== */}
@@ -630,7 +632,6 @@ export function OrbitRealCardsPipelineView() {
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 22 }}>
               <div>
-                <div className="eyebrow" style={{ marginBottom: 8 }}>{t({ en: "Follow-up pipeline", zh: "跟进管线" })}</div>
                 <h1 className="h-display">{t({ en: "Pipeline", zh: "跟进管线" })}</h1>
                 <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 6 }}>{t({ en: "24 relationships in motion · 8 tasks due today", zh: "24 段关系待推进 · 8 项今日待办" })}</div>
               </div>

@@ -10,6 +10,7 @@ import type {
 } from "../orbit-contacts-route-view-model";
 import { AccountTopNav } from "../orbit-account-shell";
 import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
+import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
@@ -308,6 +309,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
+      <OrbitCardsInteractions />
       {/* ============ DESKTOP ============ */}
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />

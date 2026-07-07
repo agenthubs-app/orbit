@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { AccountTopNav } from "../orbit-account-shell";
 import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
+import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { Basis } from "./orbit-real-contacts";
@@ -650,6 +651,7 @@ export function OrbitRealCardsDashboard() {
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
+      <OrbitCardsInteractions />
       <style>{dashboardCss}</style>
 
       {/* ===================== DESKTOP ===================== */}

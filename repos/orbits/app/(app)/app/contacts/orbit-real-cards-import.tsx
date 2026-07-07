@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AccountTopNav } from "../orbit-account-shell";
 import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
+import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
 import { Basis } from "./orbit-real-contacts";
@@ -316,6 +317,7 @@ export function OrbitRealCardsImport() {
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
+      <OrbitCardsInteractions />
       <style>{LOCAL_STYLE}</style>
 
       {/* ============ DESKTOP ============ */}
@@ -325,8 +327,7 @@ export function OrbitRealCardsImport() {
           <SharedCrmSidebar active="import" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ marginBottom: 22 }}>
-              <div className="eyebrow">{t({ en: "PRD §7 · Contact intake", zh: "PRD §7 · 人脉导入" })}</div>
-              <h1 className="h-display" style={{ margin: "6px 0 0" }}>{t({ en: "Import hub", zh: "导入中心" })}</h1>
+              <h1 className="h-display" style={{ margin: "0" }}>{t({ en: "Import hub", zh: "导入中心" })}</h1>
               <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>
                 {t({ en: "Pick a source, or review the scanned card draft", zh: "选择来源，或复核右侧名片扫描草稿" })}
               </div>
