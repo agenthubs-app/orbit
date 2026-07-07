@@ -19,7 +19,7 @@ import { Avatar, Cover, gradientFromString, Icon } from "../orbit-reference-prim
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
-type CrmMode = "list" | "pipeline" | "graph" | "intros" | "scan";
+type CrmMode = "list" | "pipeline" | "graph" | "intros" | "dashboard" | "scan";
 
 function crmNavItems(t: Translate): { href: string; icon: string; key: CrmMode; label: string }[] {
   return [
@@ -27,6 +27,7 @@ function crmNavItems(t: Translate): { href: string; icon: string; key: CrmMode; 
     { key: "pipeline", href: "/home/cards/pipeline", icon: "list", label: t({ en: "Pipeline", zh: "跟进管线" }) },
     { key: "graph", href: "/home/cards/graph", icon: "users", label: t({ en: "Network graph", zh: "人脉图谱" }) },
     { key: "intros", href: "/home/cards/intros", icon: "share", label: t({ en: "Introductions", zh: "引荐记录" }) },
+    { key: "dashboard", href: "/home/cards/dashboard", icon: "grid", label: t({ en: "Dashboard", zh: "人脉表盘" }) },
     { key: "scan", href: "/home/cards/scan", icon: "ticket", label: t({ en: "Scan card", zh: "扫名片" }) },
   ];
 }
@@ -65,6 +66,7 @@ function crmRole(contact: Pick<OrbitContactView, "company" | "title">, t: Transl
 
 function crmHref(prototypeHref: string) {
   if (prototypeHref === "/home/cards/scan") return "/app/contacts/new";
+  if (prototypeHref === "/home/cards/dashboard") return "/app/contacts/dashboard";
   return productHref(prototypeHref);
 }
 
