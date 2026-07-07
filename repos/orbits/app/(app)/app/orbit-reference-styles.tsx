@@ -1687,6 +1687,57 @@ export function OrbitReferenceThreeRuntime() {
   );
 }
 
+// 名片夹 UI 复刻 — 新增组件类（nc- 前缀，零撞名；复用现有 token）。
+// 现有类（card / card-hover / chip / btn / field / avatar / 标题 / eyebrow / mono）照用不变。
+const orbitNamecardStyles = `
+[data-orbit-real-page] .nc-src { display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 9px; border-radius:var(--r-pill); font-size:11.5px; font-weight:600; white-space:nowrap; }
+[data-orbit-real-page] .nc-src svg { width:12px; height:12px; }
+[data-orbit-real-page] .nc-src-scan { background:var(--accent-soft); color:var(--accent); }
+[data-orbit-real-page] .nc-src-qr { background:var(--sky-soft); color:var(--sky); }
+[data-orbit-real-page] .nc-src-event { background:var(--amber-soft); color:var(--amber); }
+[data-orbit-real-page] .nc-src-contact { background:var(--surface-3); color:var(--text-2); }
+[data-orbit-real-page] .nc-src-referral { background:var(--rose-soft); color:var(--rose); }
+
+[data-orbit-real-page] .nc-tag { display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:var(--r-pill); font-size:12px; font-weight:500; background:var(--surface-2); color:var(--text-2); border:1px solid var(--hairline); }
+[data-orbit-real-page] .nc-tag-value { background:var(--accent-softer); color:var(--accent); border-color:transparent; }
+
+[data-orbit-real-page] .nc-strength { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; white-space:nowrap; }
+[data-orbit-real-page] .nc-strength .nc-dot { width:8px; height:8px; border-radius:50%; }
+[data-orbit-real-page] .nc-st-strong { color:var(--live); } [data-orbit-real-page] .nc-st-strong .nc-dot { background:var(--live); }
+[data-orbit-real-page] .nc-st-medium { color:var(--sky); } [data-orbit-real-page] .nc-st-medium .nc-dot { background:var(--sky); }
+[data-orbit-real-page] .nc-st-weak { color:var(--amber); } [data-orbit-real-page] .nc-st-weak .nc-dot { background:var(--amber); }
+[data-orbit-real-page] .nc-st-dormant { color:var(--text-3); } [data-orbit-real-page] .nc-st-dormant .nc-dot { background:var(--text-3); }
+
+[data-orbit-real-page] .nc-status { display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; white-space:nowrap; }
+[data-orbit-real-page] .nc-status .nc-dot { width:7px; height:7px; border-radius:50%; }
+[data-orbit-real-page] .nc-ps-to_contact { background:var(--amber-soft); color:var(--amber); } [data-orbit-real-page] .nc-ps-to_contact .nc-dot { background:var(--amber); }
+[data-orbit-real-page] .nc-ps-in_progress { background:var(--sky-soft); color:var(--sky); } [data-orbit-real-page] .nc-ps-in_progress .nc-dot { background:var(--sky); }
+[data-orbit-real-page] .nc-ps-partnered { background:var(--live-soft); color:var(--live); } [data-orbit-real-page] .nc-ps-partnered .nc-dot { background:var(--live); }
+
+[data-orbit-real-page] .nc-basis { position:relative; display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0; border:0; background:transparent; border-radius:50%; color:var(--text-4); cursor:pointer; vertical-align:middle; }
+[data-orbit-real-page] .nc-basis svg { width:13px; height:13px; }
+[data-orbit-real-page] .nc-basis-ai { color:rgba(52,201,142,.75); } [data-orbit-real-page] .nc-basis-ai:hover, [data-orbit-real-page] .nc-basis-ai.is-open { color:var(--live); }
+[data-orbit-real-page] .nc-basis-rule { color:rgba(139,123,240,.72); } [data-orbit-real-page] .nc-basis-rule:hover, [data-orbit-real-page] .nc-basis-rule.is-open { color:var(--accent); }
+[data-orbit-real-page] .nc-basis-evidence { color:rgba(111,168,248,.72); } [data-orbit-real-page] .nc-basis-evidence:hover, [data-orbit-real-page] .nc-basis-evidence.is-open { color:var(--sky); }
+[data-orbit-real-page] .nc-basis-you { color:var(--text-4); } [data-orbit-real-page] .nc-basis-you:hover, [data-orbit-real-page] .nc-basis-you.is-open { color:var(--text-2); }
+[data-orbit-real-page] .nc-basis-pop { display:none; position:absolute; bottom:calc(100% + 8px); left:0; z-index:60; width:264px; padding:12px 13px; border-radius:var(--r-md); background:var(--surface-3); border:1px solid var(--border-2); box-shadow:var(--sh-pop); color:var(--text-2); font-size:12px; font-weight:400; line-height:1.55; text-align:left; cursor:default; white-space:normal; }
+[data-orbit-real-page] .nc-basis-pop.below { bottom:auto; top:calc(100% + 8px); }
+[data-orbit-real-page] .nc-basis-pop.right { left:auto; right:0; }
+[data-orbit-real-page] .nc-basis-pop .mm { display:inline-block; margin-bottom:6px; padding:1px 8px; border-radius:var(--r-pill); font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+[data-orbit-real-page] .nc-basis-pop b { color:var(--text); font-weight:600; }
+[data-orbit-real-page] .nc-basis-pop .ev { display:inline-flex; align-items:center; gap:5px; margin-top:8px; color:var(--sky); font-family:var(--ff-mono); font-size:11px; }
+[data-orbit-real-page] .nc-basis-pop .ev svg { width:12px; height:12px; }
+[data-orbit-real-page] .nc-basis:hover .nc-basis-pop, [data-orbit-real-page] .nc-basis:focus-within .nc-basis-pop, [data-orbit-real-page] .nc-basis.is-open .nc-basis-pop { display:block; }
+
+[data-orbit-real-page] .nc-nlsearch { position:relative; }
+[data-orbit-real-page] .nc-nlsearch .field { height:54px; padding-left:46px; background:var(--surface-2); }
+[data-orbit-real-page] .nc-nlsearch .nc-lead { position:absolute; left:15px; top:50%; transform:translateY(-50%); color:var(--accent); pointer-events:none; }
+[data-orbit-real-page] .nc-pcard { display:grid; grid-template-columns:56px 1fr auto; gap:14px; padding:15px 16px; align-items:start; text-decoration:none; }
+[data-orbit-real-page] .nc-pcard .nc-foot { grid-column:2 / -1; margin-top:11px; padding-top:11px; border-top:1px solid var(--hairline); display:flex; align-items:center; gap:10px; }
+[data-orbit-real-page] .nc-pcard .nc-act { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text); }
+[data-orbit-real-page] .nc-pcard .nc-act svg { color:var(--accent); }
+`;
+
 export function OrbitReferenceStyles() {
-  return <style dangerouslySetInnerHTML={{ __html: `${readReferenceStyles()}\n${reactReferenceIsolationStyles}` }} />;
+  return <style dangerouslySetInnerHTML={{ __html: `${readReferenceStyles()}\n${reactReferenceIsolationStyles}\n${orbitNamecardStyles}` }} />;
 }

@@ -221,6 +221,72 @@ function StageDot({
   );
 }
 
+const sourceMeta: Record<OrbitContactView["source"], { icon: string; cls: string; label: { en: string; zh: string } }> = {
+  scan: { icon: "scan", cls: "nc-src-scan", label: { en: "Scanned", zh: "名片扫描" } },
+  exchange: { icon: "scan", cls: "nc-src-scan", label: { en: "Exchanged", zh: "名片交换" } },
+  qr: { icon: "qr", cls: "nc-src-qr", label: { en: "QR scan", zh: "现场扫码" } },
+  event: { icon: "calendar", cls: "nc-src-event", label: { en: "Event", zh: "活动导入" } },
+  contact: { icon: "user", cls: "nc-src-contact", label: { en: "Imported", zh: "通讯录" } },
+  referral: { icon: "share", cls: "nc-src-referral", label: { en: "Referral", zh: "朋友推荐" } },
+  manual: { icon: "user", cls: "nc-src-contact", label: { en: "Manual", zh: "手动" } },
+};
+
+const strengthMeta: Record<OrbitContactView["strength"], { cls: string; label: { en: string; zh: string } }> = {
+  strong: { cls: "nc-st-strong", label: { en: "Strong", zh: "强关系" } },
+  medium: { cls: "nc-st-medium", label: { en: "Medium", zh: "中关系" } },
+  weak: { cls: "nc-st-weak", label: { en: "Weak", zh: "弱关系" } },
+  dormant: { cls: "nc-st-dormant", label: { en: "Dormant", zh: "沉睡" } },
+};
+
+function SourceBadge({ source, t }: { source: OrbitContactView["source"]; t: Translate }) {
+  const meta = sourceMeta[source];
+  return (
+    <span className={`nc-src ${meta.cls}`}><Icon name={meta.icon} size={12} />{t(meta.label)}</span>
+  );
+}
+
+function StrengthTag({ strength, t }: { strength: OrbitContactView["strength"]; t: Translate }) {
+  const meta = strengthMeta[strength];
+  return (
+    <span className={`nc-strength ${meta.cls}`}><span className="nc-dot" />{t(meta.label)}</span>
+  );
+}
+
+function Basis({
+  kind,
+  copy,
+  evidenceId,
+  align,
+  t,
+}: {
+  kind: "ai" | "rule" | "evidence" | "you";
+  copy: { en: string; zh: string };
+  evidenceId?: string;
+  align?: "right" | "below";
+  t: Translate;
+}) {
+  const icon = kind === "ai" ? "sparkle" : kind === "evidence" ? "checkCircle" : kind === "rule" ? "target" : "user";
+  const mm = { ai: { en: "AI", zh: "AI 推断" }, rule: { en: "Rule", zh: "统计规则" }, evidence: { en: "Evidence", zh: "证据直采" }, you: { en: "You set", zh: "你设定" } }[kind];
+  const mmBg = { ai: "var(--live-soft)", rule: "var(--accent-soft)", evidence: "var(--sky-soft)", you: "var(--surface-2)" }[kind];
+  return (
+    <span
+      className={`nc-basis nc-basis-${kind}`}
+      tabIndex={0}
+      role="button"
+      aria-label={t({ en: "Show basis", zh: "查看依据" })}
+      onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}
+    >
+      <Icon name={icon} size={13} />
+      <span className={`nc-basis-pop${align ? ` ${align}` : ""}`}>
+        <span className="mm" style={{ background: mmBg }}>{t(mm)}</span>
+        <br />
+        {t(copy)}
+        {evidenceId ? <span className="ev"><Icon name="checkCircle" size={12} />{evidenceId}</span> : null}
+      </span>
+    </span>
+  );
+}
+
 function PersonCard({
   item,
   t,
@@ -231,21 +297,31 @@ function PersonCard({
   viewModel: OrbitContactsViewModel;
 }) {
   return (
-    <a
-      className="card-hover"
-      href={`/app/contacts/${item.id}`}
-      style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", display: "flex", gap: 14, padding: "14px 16px", textDecoration: "none" }}
-    >
-      <Avatar letter={crmInitial(item.displayName)} g="g-violet" size={44} />
-      <div style={{ flex: 1, minWidth: 0 }}>
+    <a className="card card-hover nc-pcard" href={`/app/contacts/${item.id}`}>
+      <Avatar letter={crmInitial(item.displayName)} g={item.g || "g-violet"} size={56} />
+      <div style={{ minWidth: 0 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
           <h3 className="h-section" style={{ color: "var(--ink)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h3>
+          <SourceBadge source={item.source} t={t} />
         </div>
-        <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(item, t)}</div>
+        <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(item, t)}{item.industry ? ` · ${item.industry}` : ""}</div>
+        {item.valueTags.length ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {item.valueTags.map((tag) => <span className="nc-tag nc-tag-value" key={tag}>{tag}</span>)}
+          </div>
+        ) : null}
       </div>
-      <div style={{ alignItems: "flex-end", display: "flex", flexDirection: "column", flexShrink: 0, gap: 8 }}>
+      <div className="nc-right" style={{ alignItems: "flex-end", display: "flex", flexDirection: "column", flexShrink: 0, gap: 9 }}>
         <StageDot status={item.pipelineStatus} viewModel={viewModel} withLabel />
+        <StrengthTag strength={item.strength} t={t} />
       </div>
+      {item.nextAction ? (
+        <div className="nc-foot">
+          <span className="nc-act"><Icon name={item.dormant ? "bell" : "arrow"} size={16} />{t({ en: "Suggested", zh: "建议" })}：{item.nextAction.text}</span>
+          <Basis kind={item.dormant ? "rule" : "ai"} copy={{ en: item.nextAction.reason, zh: item.nextAction.reason }} evidenceId={item.nextAction.evidenceId} t={t} />
+          <span style={{ color: "var(--text-3)", fontSize: 13, marginLeft: "auto" }}>· {item.lastInteraction}</span>
+        </div>
+      ) : null}
     </a>
   );
 }
@@ -283,25 +359,36 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
             <CrmNav active="list" counts={counts} t={t} />
           </div>
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
-            <div style={{ alignItems: "flex-end", display: "flex", justifyContent: "space-between", marginBottom: 22 }}>
+            <div style={{ alignItems: "flex-end", display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 22 }}>
               <div>
                 <h1 className="h-display" style={{ margin: 0 }}>{t({ en: "All contacts", zh: "全部人脉" })}</h1>
-                <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 4 }}>{subtitle}</div>
+                <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>{subtitle}</div>
               </div>
-              <a className="btn btn-ghost btn-sm" href="/app/contacts/new"><Icon name="ticket" size={16} />{t({ en: "Scan card", zh: "扫名片" })}</a>
+              <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+                <a className="btn btn-ghost btn-sm" href="/app/contacts/new"><Icon name="scan" size={16} />{t({ en: "Scan", zh: "扫名片" })}</a>
+                <a className="btn btn-primary btn-sm" href="/app/contacts/new"><Icon name="download" size={16} />{t({ en: "Import", zh: "导入人脉" })}</a>
+              </div>
             </div>
-            <div style={{ alignItems: "center", display: "flex", gap: 16, marginBottom: 18 }}>
-              <div style={{ flex: 1, maxWidth: 320, position: "relative" }}>
-                <Icon name="search" size={17} color="var(--text-3)" style={{ left: 13, position: "absolute", top: 14 }} />
-                <input aria-label={t({ en: "Search by name, company, title", zh: "按姓名、公司、职位搜索" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search by name, company, title", zh: "按姓名、公司、职位搜索" })} style={{ height: 44, paddingLeft: 40 }} type="search" value={query} />
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {filters.map(([key, label]) => (
-                  <button className={`chip${stage === key ? " is-active" : ""}`} key={key} onClick={() => setStage(key)} type="button">
-                    {label}<span className="mono">{counts[key] || 0}</span>
-                  </button>
-                ))}
-              </div>
+            <div className="nc-nlsearch">
+              <span className="nc-lead"><Icon name="sparkle" size={22} /></span>
+              <input aria-label={t({ en: "Search contacts", zh: "搜索人脉" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Find people who know restaurant owners…", zh: "帮我找认识餐饮老板的人…" })} style={{ paddingRight: 116 }} type="search" value={query} />
+              <button className="btn btn-soft btn-sm" style={{ position: "absolute", right: 8, top: 8 }} type="button">{t({ en: "Ask", zh: "智能搜索" })}</button>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              {[{ en: "Who can intro an investor?", zh: "谁能介绍投资人？" }, { en: "Founders met in 3 months", zh: "近三个月认识的创始人" }, { en: "High-value to follow up", zh: "待跟进的高价值关系" }].map((ex, i) => (
+                <button className="chip" key={i} onClick={() => setQuery(t(ex))} type="button">{t(ex)}</button>
+              ))}
+            </div>
+            <div style={{ alignItems: "center", display: "flex", gap: 8, flexWrap: "wrap", margin: "20px 0 16px" }}>
+              {filters.map(([key, label]) => (
+                <button className={`chip${stage === key ? " is-active" : ""}`} key={key} onClick={() => setStage(key)} type="button">
+                  {label}<span className="mono" style={{ marginLeft: 5 }}>{counts[key] || 0}</span>
+                </button>
+              ))}
+              <span style={{ width: 1, height: 20, background: "var(--hairline)", margin: "0 2px" }} />
+              {[{ en: "Prospect", zh: "潜在客户" }, { en: "Investor", zh: "投资人" }, { en: "Connector", zh: "资源介绍人" }].map((vt, i) => (
+                <button className="chip" key={i} type="button">{t(vt)}</button>
+              ))}
             </div>
             {!filtered.length ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 14, padding: 18 }}>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</div> : null}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
