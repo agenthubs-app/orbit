@@ -215,15 +215,57 @@ def _parse_porcelain_paths(status: str) -> list[str]:
     return sorted(dict.fromkeys(paths))
 
 
+def _parse_name_status_paths(diff: str) -> list[str]:
+    paths: list[str] = []
+    for line in diff.splitlines():
+        if not line:
+            continue
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        status = parts[0]
+        if status.startswith(("R", "C")) and len(parts) >= 3:
+            paths.extend(value for value in (parts[1], parts[2]) if value)
+        else:
+            paths.append(parts[1])
+    return sorted(dict.fromkeys(paths))
+
+
+def _committed_paths_after_baseline(isolated_app: Path) -> list[str]:
+    baseline = _run_checked(
+        ["git", "rev-list", "--max-parents=0", "HEAD"],
+        isolated_app,
+    ).stdout.splitlines()[0].strip()
+    if not baseline:
+        return []
+    diff = _run_checked(
+        ["git", "diff", "--name-status", "--find-renames", f"{baseline}..HEAD"],
+        isolated_app,
+    )
+    return _parse_name_status_paths(diff.stdout)
+
+
 def sync_isolated_app_changes(isolated_app: Path, app_dir: Path) -> list[str]:
     # Codex 在临时 git repo 中改文件；同步时只复制 git 可见变更。
     # 运行产物和 ignored 目录不会被带回真实 app repo。
     status = _run_checked(["git", "status", "--porcelain=v1", "-uall"], isolated_app)
-    changed_paths = _parse_porcelain_paths(status.stdout)
+    changed_paths = sorted(
+        dict.fromkeys(
+            [
+                *_parse_porcelain_paths(status.stdout),
+                *_committed_paths_after_baseline(isolated_app),
+            ]
+        )
+    )
     synced: list[str] = []
+    ignored_paths = {"next-env.d.ts"}
     ignored_roots = (".git/", ".next/", ".turbo/", "node_modules/")
     for rel in changed_paths:
-        if rel in {".git", ".next", ".turbo", "node_modules"} or rel.startswith(ignored_roots):
+        if (
+            rel in {".git", ".next", ".turbo", "node_modules"}
+            or rel in ignored_paths
+            or rel.startswith(ignored_roots)
+        ):
             continue
         source = isolated_app / rel
         target = app_dir / rel

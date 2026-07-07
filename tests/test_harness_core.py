@@ -393,6 +393,7 @@ def test_sync_isolated_app_changes_copies_git_visible_changes(tmp_path):
     isolated_app.mkdir()
     for root in (app_dir, isolated_app):
         (root / ".gitignore").write_text("node_modules\n.next\n")
+        (root / "next-env.d.ts").write_text('import "./.next/types/routes.d.ts";\n')
         (root / "keep.txt").write_text("before")
         (root / "delete.txt").write_text("remove me")
     subprocess.run(["git", "init", "-q"], cwd=isolated_app, check=True)
@@ -404,6 +405,7 @@ def test_sync_isolated_app_changes_copies_git_visible_changes(tmp_path):
     (isolated_app / "keep.txt").write_text("after")
     (isolated_app / "delete.txt").unlink()
     (isolated_app / "new.txt").write_text("new")
+    (isolated_app / "next-env.d.ts").write_text('import "./.next/dev/types/routes.d.ts";\n')
     (isolated_app / "node_modules").mkdir()
     (isolated_app / "node_modules" / "ignored.txt").write_text("ignored")
 
@@ -414,6 +416,49 @@ def test_sync_isolated_app_changes_copies_git_visible_changes(tmp_path):
     assert (app_dir / "new.txt").read_text() == "new"
     assert not (app_dir / "delete.txt").exists()
     assert not (app_dir / "node_modules").exists()
+    assert (app_dir / "next-env.d.ts").read_text() == 'import "./.next/types/routes.d.ts";\n'
+
+
+def test_sync_isolated_app_changes_copies_committed_changes_after_baseline(tmp_path):
+    # Codex sometimes commits inside the isolated repo before exiting. The real app
+    # still needs the delta from the synthetic baseline commit to the isolated HEAD.
+    import subprocess
+
+    from harness.codex_runner import sync_isolated_app_changes
+
+    app_dir = tmp_path / "app"
+    isolated_app = tmp_path / "isolated"
+    app_dir.mkdir()
+    isolated_app.mkdir()
+    for root in (app_dir, isolated_app):
+        (root / ".gitignore").write_text("node_modules\n.next\n")
+        (root / "next-env.d.ts").write_text('import "./.next/types/routes.d.ts";\n')
+        (root / "keep.txt").write_text("before")
+        (root / "delete.txt").write_text("remove me")
+    subprocess.run(["git", "init", "-q"], cwd=isolated_app, check=True)
+    subprocess.run(["git", "config", "user.email", "harness@example.invalid"], cwd=isolated_app, check=True)
+    subprocess.run(["git", "config", "user.name", "Orbit Harness"], cwd=isolated_app, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=isolated_app, check=True)
+    subprocess.run(["git", "commit", "-q", "--no-gpg-sign", "-m", "baseline"], cwd=isolated_app, check=True)
+
+    (isolated_app / "keep.txt").write_text("after")
+    (isolated_app / "delete.txt").unlink()
+    (isolated_app / "new.txt").write_text("new")
+    (isolated_app / "next-env.d.ts").write_text('import "./.next/dev/types/routes.d.ts";\n')
+    subprocess.run(["git", "add", "-A"], cwd=isolated_app, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "--no-gpg-sign", "-m", "generator changes"],
+        cwd=isolated_app,
+        check=True,
+    )
+
+    synced = sync_isolated_app_changes(isolated_app, app_dir)
+
+    assert synced == ["delete.txt", "keep.txt", "new.txt"]
+    assert (app_dir / "keep.txt").read_text() == "after"
+    assert (app_dir / "new.txt").read_text() == "new"
+    assert not (app_dir / "delete.txt").exists()
+    assert (app_dir / "next-env.d.ts").read_text() == 'import "./.next/types/routes.d.ts";\n'
 
 
 def test_generator_codex_uses_isolated_app(tmp_path, monkeypatch):
