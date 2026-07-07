@@ -876,6 +876,14 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page] .orbit-top-nav .orbit-me-link:hover {
   background: rgba(255, 255, 255, 0.11);
 }
+/* Right-actions spacing must equal the homepage nav's 14px gap; otherwise the
+   language toggle touches the "Me" pill and the space-between centering shifts
+   the links a few px off the homepage's positions. */
+[data-orbit-real-page] .orbit-top-nav .orbit-top-actions {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
 
 [data-orbit-real-page] .chip {
   align-items: center;
