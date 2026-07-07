@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 
 import { AccountTopNav } from "../orbit-account-shell";
+import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
 import { Basis } from "./orbit-real-contacts";
@@ -321,9 +322,7 @@ export function OrbitRealCardsImport() {
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}>
-            <Sidebar t={t} />
-          </div>
+          <SharedCrmSidebar active="import" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ marginBottom: 22 }}>
               <div className="eyebrow">{t({ en: "PRD §7 · Contact intake", zh: "PRD §7 · 人脉导入" })}</div>

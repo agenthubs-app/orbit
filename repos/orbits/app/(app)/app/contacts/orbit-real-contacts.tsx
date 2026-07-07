@@ -13,6 +13,7 @@ import type {
   OrbitIntroView,
 } from "../orbit-contacts-route-view-model";
 import { AccountTopNav, MobileBar, ModalShell, orbitNavigate, StatusBar } from "../orbit-account-shell";
+import { CrmSidebar } from "./orbit-crm-sidebar";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
@@ -357,9 +358,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}>
-            <CrmNav active="list" counts={counts} t={t} />
-          </div>
+          <CrmSidebar active="list" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 22 }}>
               <div>
@@ -712,9 +711,7 @@ export function OrbitRealCardsGraph({ viewModel }: { viewModel: OrbitContactsVie
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}>
-            <CrmNav active="graph" t={t} />
-          </div>
+          <CrmSidebar active="graph" />
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 20, justifyContent: "space-between", padding: "24px 32px 16px" }}>
               <div>
@@ -905,9 +902,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", padding: "22px 14px" }}>
-            <CrmNav active="intros" t={t} />
-          </div>
+          <CrmSidebar active="intros" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 20, justifyContent: "space-between", marginBottom: 22 }}>
               <div>

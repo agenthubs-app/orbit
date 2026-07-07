@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { AccountTopNav } from "../orbit-account-shell";
+import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { Basis } from "./orbit-real-contacts";
@@ -655,9 +656,7 @@ export function OrbitRealCardsDashboard() {
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", overflowY: "auto", padding: "22px 14px" }}>
-            <SideNav t={t} />
-          </div>
+          <SharedCrmSidebar active="dashboard" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             {/* header */}
             <div style={{ alignItems: "flex-end", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 22 }}>

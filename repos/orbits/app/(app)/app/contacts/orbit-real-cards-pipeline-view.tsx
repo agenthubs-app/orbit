@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { AccountTopNav } from "../orbit-account-shell";
+import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
@@ -625,7 +626,7 @@ export function OrbitRealCardsPipelineView() {
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <CrmSidebar t={t} />
+          <SharedCrmSidebar active="pipeline" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 22 }}>
               <div>
