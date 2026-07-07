@@ -106,6 +106,26 @@ function StatusPill({ status, viewModel, t }: { status: OrbitContactPipelineStat
   return <span className={`nc-status nc-ps-${status}`}><span className="nc-dot" />{label}</span>;
 }
 
+// settable relationship stage — lets you advance the pipeline from the profile too
+function StatusPicker({ status, viewModel, onSet, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; onSet: (next: OrbitContactPipelineStatus) => void; t: Translate }) {
+  return (
+    <span className="nc-status-pick">
+      <span className="nc-sp-lbl">{t({ en: "Stage", zh: "关系阶段" })}</span>
+      {viewModel.pipelineStatuses.map((item) => (
+        <button
+          aria-pressed={status === item.value}
+          className={status === item.value ? "is-on" : ""}
+          key={item.value}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); onSet(item.value); }}
+          type="button"
+        >
+          {status === item.value ? <span className="nc-dot" /> : null}{item.label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 // —— sidebar (replicates the prototype `.crm-side`) ——
 function SideLink({ href, icon, label, count }: { href: string; icon: string; label: string; count?: number }) {
   return (
@@ -297,15 +317,21 @@ function NextStepCard({ t, compact }: { t: Translate; compact?: boolean }) {
 export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: string; viewModel: OrbitContactsViewModel }) {
   const { t } = useOrbitLanguage();
   const contact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
-  const [toast, setToast] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [status, setStatus] = useState<OrbitContactPipelineStatus>(contact.pipelineStatus);
 
   useEffect(() => {
     if (!toast) return;
-    const timer = window.setTimeout(() => setToast(false), 2400);
+    const timer = window.setTimeout(() => setToast(null), 2400);
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const draftEmail = () => setToast(true);
+  const draftEmail = () => setToast(t({ en: "Email draft started", zh: "已开始起草邮件" }));
+  const setStage = (next: OrbitContactPipelineStatus) => {
+    setStatus(next);
+    const label = viewModel.pipelineStatuses.find((item) => item.value === next)?.label ?? "";
+    setToast(t({ en: `Stage updated → ${label}`, zh: `已更新关系阶段 → ${label}` }));
+  };
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
@@ -327,7 +353,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                 </div>
                 <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 10 }}>{crmRole(contact, t)}</div>
                 <div className="nc-hero-meta">
-                  <StatusPill status={contact.pipelineStatus} viewModel={viewModel} t={t} />
+                  <StatusPicker status={status} viewModel={viewModel} onSet={setStage} t={t} />
                   <StrengthTag strength={contact.strength} t={t} />
                   {contact.met ? (
                     <span style={{ color: "var(--text-3)", fontSize: 13 }}>· {t({ en: "Met at", zh: "认识于" })} {contact.met}</span>
@@ -373,7 +399,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
               </div>
               <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>{crmRole(contact, t)}</div>
               <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                <StatusPill status={contact.pipelineStatus} viewModel={viewModel} t={t} />
+                <StatusPicker status={status} viewModel={viewModel} onSet={setStage} t={t} />
                 <StrengthTag strength={contact.strength} t={t} />
               </div>
             </div>
@@ -409,7 +435,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             zIndex: 200,
           }}
         >
-          {t({ en: "Email draft started", zh: "已开始起草邮件" })}
+          {toast}
         </div>
       ) : null}
 
@@ -423,6 +449,13 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 [data-orbit-real-page] .nc-hero-id { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 [data-orbit-real-page] .nc-hero-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; }
 [data-orbit-real-page] .nc-hero-cta { display:flex; align-items:center; gap:10px; padding-top:4px; }
+
+[data-orbit-real-page] .nc-status-pick { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
+[data-orbit-real-page] .nc-status-pick .nc-sp-lbl { font-size:12px; font-weight:600; color:var(--text-3); }
+[data-orbit-real-page] .nc-status-pick button { display:inline-flex; align-items:center; gap:5px; height:26px; padding:0 11px; border-radius:var(--r-pill); border:1px solid var(--border); background:var(--surface-2); color:var(--text-3); font-size:12.5px; font-weight:600; cursor:pointer; transition:background .15s, color .15s, border-color .15s; }
+[data-orbit-real-page] .nc-status-pick button:hover { color:var(--text); border-color:var(--border-2); }
+[data-orbit-real-page] .nc-status-pick button.is-on { background:var(--accent-soft); border-color:var(--accent-ring); color:var(--accent); }
+[data-orbit-real-page] .nc-status-pick button .nc-dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
 
 [data-orbit-real-page] .nc-cols { display:grid; grid-template-columns:1fr 1.25fr; gap:24px; align-items:start; }
 [data-orbit-real-page] .nc-stack { display:flex; flex-direction:column; gap:16px; }

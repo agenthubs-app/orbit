@@ -9,6 +9,11 @@ import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
+import type {
+  OrbitContactPipelineStatus,
+  OrbitContactView,
+  OrbitContactsViewModel,
+} from "../orbit-contacts-route-view-model";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -42,111 +47,6 @@ const P: Record<string, Person> = {
   sarah: { g: "g-rose", ini: "S", name: "Sarah Kim", org: { en: "Loop Events · Organizer", zh: "Loop Events · 活动主办方" }, pn: "Sarah", qn: "Sarah Kim" },
   wei: { g: "g-amber", ini: "伟", name: "陈伟 · Wei Chen", org: { en: "Weilai F&B · Founder", zh: "味来餐饮 · 创始人" }, pn: "陈伟", qn: "陈伟" },
 };
-
-// ---- kanban card data ----
-interface KCard {
-  basisAlign?: "right";
-  basisCopy: Copy;
-  basisKind: "ai" | "rule";
-  due: Copy;
-  evidenceId?: string;
-  next: Copy;
-  nextIcon: string;
-  p: Person;
-  pri: Priority;
-  src?: Src;
-  strength?: Strength;
-  tag: Copy;
-  tagIcon: string;
-  valueTag?: Copy;
-}
-
-interface KColumn {
-  cdot: string;
-  cards: KCard[];
-  count: number;
-  label: Copy;
-}
-
-const columns: KColumn[] = [
-  {
-    cdot: "nc-cdot-amber",
-    count: 3,
-    label: { en: "To contact", zh: "待联系" },
-    cards: [
-      {
-        p: P.wei, src: "event", nextIcon: "message",
-        next: { en: "Suggested: greet & recap the channel-partnership chat", zh: "建议：会后打招呼，回顾展位聊到的渠道合作" },
-        basisKind: "ai", evidenceId: "evidence:booth-note-weichen",
-        basisCopy: { en: "Basis: booth note mentions channel partnership; industry=F&B matches your goal.", zh: "依据：展位对话记录提到渠道合作，且行业=餐饮匹配你目标。" },
-        tagIcon: "message", tag: { en: "Greeting", zh: "打招呼" }, due: { en: "Today", zh: "今天" }, pri: "high",
-      },
-      {
-        p: P.ken, src: "qr", nextIcon: "message",
-        next: { en: "Suggested: new connector — open the line first", zh: "建议：新认识的资源介绍人，先建立联系" },
-        basisKind: "ai", evidenceId: "evidence:qr-scan-tanaka",
-        basisCopy: { en: "Basis: added via QR scan, value type=connector, no prior touch yet.", zh: "依据：现场扫码新增，价值类型=资源介绍人，尚无往来记录。" },
-        tagIcon: "message", tag: { en: "Greeting", zh: "打招呼" }, due: { en: "Today", zh: "今天" }, pri: "med",
-      },
-      {
-        p: P.liu, src: "contact", strength: "dormant", nextIcon: "refresh",
-        next: { en: "Suggested: 5 months silent — reactivate via the summit", zh: "建议：已 5 个月未联系，用峰会话题重新激活" },
-        basisKind: "rule",
-        basisCopy: { en: "Basis: last interaction > 150d → flagged dormant, reactivation nudge.", zh: "依据：最近互动 > 150 天 → 判定沉睡，触发重新激活提醒。" },
-        tagIcon: "refresh", tag: { en: "Reactivate", zh: "重新激活" }, due: { en: "In 3d", zh: "3 天后" }, pri: "low",
-      },
-    ],
-  },
-  {
-    cdot: "nc-cdot-sky",
-    count: 3,
-    label: { en: "In progress", zh: "沟通中" },
-    cards: [
-      {
-        p: P.hana, src: "scan", strength: "strong", nextIcon: "mail",
-        next: { en: "Promised the product deck — she wants JP manufacturing leads", zh: "已承诺发送产品资料，对方在找日本制造业客户" },
-        basisKind: "ai", evidenceId: "evidence:summary-hana-0705",
-        basisCopy: { en: "Basis: summary noted a promise to send the deck, 2 days unfulfilled.", zh: "依据：交流摘要记录“承诺发产品资料”，2 天未兑现。" },
-        tagIcon: "mail", tag: { en: "Send deck", zh: "发资料" }, due: { en: "Today", zh: "今天" }, pri: "high",
-      },
-      {
-        p: P.emily, src: "qr", valueTag: { en: "High value", zh: "高价值" }, nextIcon: "calendar",
-        next: { en: "Interested in the seed round — book a 30-min call", zh: "对种子轮有兴趣，建议预约 30 分钟深聊" },
-        basisKind: "ai", evidenceId: "evidence:qr-exchange-emily",
-        basisCopy: { en: "Basis: yesterday's on-site talk signaled investing interest; tagged high value.", zh: "依据：昨日现场对话表达投资意向，标记高价值。" },
-        tagIcon: "calendar", tag: { en: "Schedule", zh: "约会议" }, due: { en: "Tomorrow", zh: "明天" }, pri: "high",
-      },
-      {
-        p: P.hana, valueTag: { en: "Partnership", zh: "潜在合作" }, nextIcon: "calendar",
-        next: { en: "After the deck lands, set a product-team alignment call", zh: "资料发出后，安排双方产品团队对齐会" },
-        basisKind: "ai", evidenceId: "evidence:pipeline-hana-partner",
-        basisCopy: { en: "Basis: value type=partnership; next step inferred after the deck task closes.", zh: "依据：价值类型=潜在合作，“发资料”完成后的下一步顺序推断。" },
-        tagIcon: "calendar", tag: { en: "Schedule", zh: "约会议" }, due: { en: "In 3d", zh: "3 天后" }, pri: "med",
-      },
-    ],
-  },
-  {
-    cdot: "nc-cdot-live",
-    count: 2,
-    label: { en: "Partnered", zh: "已合作" },
-    cards: [
-      {
-        p: P.sarah, src: "referral", strength: "medium", nextIcon: "check",
-        next: { en: "Co-hosted — keep quarterly touch & swap guest lists", zh: "已合作办展，保持季度联系并交换活动名单" },
-        basisKind: "rule", basisAlign: "right",
-        basisCopy: { en: "Basis: partnered ties follow a quarterly cadence; ~90d since last touch.", zh: "依据：已合作关系按季度维护节奏，距上次联系将满 90 天。" },
-        tagIcon: "refresh", tag: { en: "Quarterly", zh: "季度维护" }, due: { en: "In 2w", zh: "2 周后" }, pri: "low",
-      },
-      {
-        p: P.ken, valueTag: { en: "Connector", zh: "资源介绍人" }, nextIcon: "star",
-        next: { en: "Introduced Sarah — thank him & return a warm lead", zh: "已引荐 Sarah，发感谢并回报一条对口资源" },
-        basisKind: "ai", basisAlign: "right", evidenceId: "evidence:intro-tanaka-sarah",
-        basisCopy: { en: "Basis: intro log shows he connected you to Sarah; reciprocity still open.", zh: "依据：引荐记录显示他促成了 Sarah 的连接，互惠尚未回报。" },
-        tagIcon: "message", tag: { en: "Thank-you", zh: "致谢" }, due: { en: "This week", zh: "本周" }, pri: "med",
-      },
-    ],
-  },
-];
 
 // ---- after-event triage queue ----
 interface Triage {
@@ -247,45 +147,59 @@ function ValueTag({ copy, t }: { copy: Copy; t: Translate }) {
   return <span className="nc-tag nc-tag-value">{t(copy)}</span>;
 }
 
-function TaskTag({ icon, label, t }: { icon: string; label: Copy; t: Translate }) {
-  return (
-    <span className="nc-tag">
-      <Icon name={icon} size={13} style={{ marginRight: 4 }} />
-      {t(label)}
-    </span>
-  );
-}
+const ellip: CSSProperties = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
-const priClass: Record<Priority, string> = { high: "nc-pri-high", low: "nc-pri-low", med: "nc-pri-med" };
-
-function KanbanCard({ card, t }: { card: KCard; t: Translate }) {
+// ---- real-data kanban card: opens the contact + sets the relationship stage ----
+function PipelineCard({
+  contact,
+  effStatus,
+  onSetStatus,
+  statuses,
+  t,
+}: {
+  contact: OrbitContactView;
+  effStatus: OrbitContactPipelineStatus;
+  onSetStatus: (id: string, status: OrbitContactPipelineStatus) => void;
+  statuses: { label: string; value: OrbitContactPipelineStatus }[];
+  t: Translate;
+}) {
+  const showStrength = contact.strength === "strong" || contact.strength === "dormant";
   return (
-    <div className="nc-kcard">
+    <a className="nc-kcard" href={`/app/contacts/${contact.id}`}>
       <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
-        <Avatar g={card.p.g} letter={card.p.ini} size={44} />
+        <Avatar g={contact.g || "g-violet"} letter={contact.initial} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="nc-knm" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.p.name}</div>
-          <div className="nc-korg" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(card.p.org)}</div>
+          <div className="nc-knm" style={ellip}>{contact.displayName}</div>
+          <div className="nc-korg" style={ellip}>{contact.company}{contact.title ? ` · ${contact.title}` : ""}</div>
         </div>
       </div>
-      {card.src || card.strength || card.valueTag ? (
-        <div className="nc-krow1">
-          {card.src ? <SourceBadge source={card.src} t={t} /> : null}
-          {card.strength ? <StrengthTag strength={card.strength} t={t} /> : null}
-          {card.valueTag ? <ValueTag copy={card.valueTag} t={t} /> : null}
+      <div className="nc-krow1">
+        <SourceBadge source={contact.source} t={t} />
+        {showStrength ? <StrengthTag strength={contact.strength === "dormant" ? "dormant" : "strong"} t={t} /> : null}
+        {contact.valueTags[0] ? <span className="nc-tag nc-tag-value">{contact.valueTags[0]}</span> : null}
+      </div>
+      {contact.nextAction ? (
+        <div className="nc-knext">
+          <Icon name={contact.dormant ? "refresh" : "arrow"} size={16} />
+          <span style={{ flex: 1 }}>{contact.nextAction.text}</span>
+          <Basis copy={{ en: contact.nextAction.reason, zh: contact.nextAction.reason }} evidenceId={contact.nextAction.evidenceId} kind={contact.dormant ? "rule" : "ai"} t={t} />
         </div>
       ) : null}
-      <div className="nc-knext">
-        <Icon name={card.nextIcon} size={16} />
-        <span style={{ flex: 1 }}>{t(card.next)}</span>
-        <Basis align={card.basisAlign} copy={card.basisCopy} evidenceId={card.evidenceId} kind={card.basisKind} t={t} />
+      <div className="nc-kstage" onClick={(event) => event.stopPropagation()}>
+        <span className="nc-kstage-lbl">{t({ en: "Stage", zh: "阶段" })}</span>
+        {statuses.map((status) => (
+          <button
+            aria-pressed={effStatus === status.value}
+            className={effStatus === status.value ? "is-on" : ""}
+            key={status.value}
+            onClick={(event) => { event.preventDefault(); event.stopPropagation(); onSetStatus(contact.id, status.value); }}
+            type="button"
+          >
+            {status.label}
+          </button>
+        ))}
       </div>
-      <div className="nc-kfoot">
-        <TaskTag icon={card.tagIcon} label={card.tag} t={t} />
-        <span className="nc-kdue">{t(card.due)}</span>
-        <span className={`nc-pri ${priClass[card.pri]}`} />
-      </div>
-    </div>
+    </a>
   );
 }
 
@@ -504,6 +418,12 @@ const LOCAL_STYLES = `
 [data-orbit-real-page="contacts-pipeline"] .nc-pri-med { background:var(--amber); }
 [data-orbit-real-page="contacts-pipeline"] .nc-pri-low { background:var(--text-3); }
 
+[data-orbit-real-page="contacts-pipeline"] .nc-kstage { display:flex; align-items:center; gap:5px; margin-top:11px; padding-top:11px; border-top:1px solid var(--hairline); }
+[data-orbit-real-page="contacts-pipeline"] .nc-kstage-lbl { font-size:11px; font-weight:600; color:var(--text-4); letter-spacing:.04em; margin-right:1px; }
+[data-orbit-real-page="contacts-pipeline"] .nc-kstage button { flex:1; min-width:0; height:26px; padding:0 6px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--surface-2); color:var(--text-3); font-size:11.5px; font-weight:600; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:background .15s, color .15s, border-color .15s; }
+[data-orbit-real-page="contacts-pipeline"] .nc-kstage button:hover { color:var(--text); border-color:var(--border-2); }
+[data-orbit-real-page="contacts-pipeline"] .nc-kstage button.is-on { background:var(--accent-soft); border-color:var(--accent-ring); color:var(--accent); }
+
 [data-orbit-real-page="contacts-pipeline"] .nc-chip-sm { height:24px; font-size:12px; padding:0 9px; }
 
 [data-orbit-real-page="contacts-pipeline"] .nc-ae-sub { font-size:13px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; margin:0 0 10px; }
@@ -595,12 +515,20 @@ function AfterEventSection({ current, onDraft, setCurrent, t }: { current: numbe
   );
 }
 
-export function OrbitRealCardsPipelineView() {
+const cdotByStatus: Record<OrbitContactPipelineStatus, string> = {
+  to_contact: "nc-cdot-amber",
+  in_progress: "nc-cdot-sky",
+  partnered: "nc-cdot-live",
+};
+
+export function OrbitRealCardsPipelineView({ viewModel }: { viewModel: OrbitContactsViewModel }) {
   const { t } = useOrbitLanguage();
   const [mView, setMView] = useState<"pipeline" | "todo" | "after">("pipeline");
   const [current, setCurrent] = useState(0);
   const [mCurrent, setMCurrent] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  // per-relationship stage overrides (demo — resets on reload)
+  const [statusMap, setStatusMap] = useState<Record<string, OrbitContactPipelineStatus>>({});
 
   useEffect(() => {
     if (!toast) return;
@@ -609,6 +537,19 @@ export function OrbitRealCardsPipelineView() {
   }, [toast]);
 
   const draft = (name: string) => setToast(t({ en: `Draft started for ${name} — confirm before sending.`, zh: `已为 ${name} 起草邮件草稿，外发前请确认。` }));
+
+  const effStatusOf = (contact: OrbitContactView) => statusMap[contact.id] ?? contact.pipelineStatus;
+  const setStatus = (id: string, status: OrbitContactPipelineStatus) => {
+    setStatusMap((map) => ({ ...map, [id]: status }));
+    const label = viewModel.pipelineStatuses.find((item) => item.value === status)?.label ?? "";
+    setToast(t({ en: `Stage updated → ${label}`, zh: `已更新阶段 → ${label}` }));
+  };
+  const liveColumns = viewModel.pipelineStatuses.map((status) => ({
+    cdot: cdotByStatus[status.value],
+    cards: viewModel.connections.filter((contact) => effStatusOf(contact) === status.value),
+    label: status.label,
+    value: status.value,
+  }));
 
   const mTotal = triageQueue.length;
   const mReminders = [reminders[0], reminders[2]];
@@ -632,8 +573,8 @@ export function OrbitRealCardsPipelineView() {
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 22 }}>
               <div>
-                <h1 className="h-display">{t({ en: "Pipeline", zh: "跟进管线" })}</h1>
-                <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 6 }}>{t({ en: "24 relationships in motion · 8 tasks due today", zh: "24 段关系待推进 · 8 项今日待办" })}</div>
+                <h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Pipeline", zh: "跟进管线" })}</h1>
+                <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>{t({ en: "Move cards to update stage · tap a card to open the contact", zh: "拖动/切换卡片更新阶段 · 点卡片打开联系人" })}</div>
               </div>
               <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
                 <span className="nc-evt">
@@ -646,15 +587,24 @@ export function OrbitRealCardsPipelineView() {
             </div>
 
             <div className="nc-kanban">
-              {columns.map((column) => (
-                <section className="nc-kcol" key={column.label.en}>
+              {liveColumns.map((column) => (
+                <section className="nc-kcol" key={column.value}>
                   <header className="nc-kcol-head">
                     <span className={`nc-cdot ${column.cdot}`} />
-                    <span className="nc-clab">{t(column.label)}</span>
-                    <span className="nc-ccount">{column.count}</span>
+                    <span className="nc-clab">{column.label}</span>
+                    <span className="nc-ccount">{column.cards.length}</span>
                   </header>
                   <div className="nc-kcards">
-                    {column.cards.map((card, index) => <KanbanCard card={card} key={card.p.qn + index} t={t} />)}
+                    {column.cards.map((contact) => (
+                      <PipelineCard
+                        contact={contact}
+                        effStatus={effStatusOf(contact)}
+                        key={contact.id}
+                        onSetStatus={setStatus}
+                        statuses={viewModel.pipelineStatuses}
+                        t={t}
+                      />
+                    ))}
                   </div>
                 </section>
               ))}
@@ -680,15 +630,24 @@ export function OrbitRealCardsPipelineView() {
               <span className="nc-evt" style={{ height: 32, marginBottom: 6 }}>
                 <Icon name="ticket" size={14} />{t({ en: "AI Summit 2026", zh: "AI 峰会 2026" })}
               </span>
-              {columns.map((column) => (
-                <div key={column.label.en}>
+              {liveColumns.map((column) => (
+                <div key={column.value}>
                   <div className="nc-mgrp">
                     <span className={`nc-cdot ${column.cdot}`} />
-                    <span className="nc-lab">{t(column.label)}</span>
-                    <span className="nc-n">{column.count}</span>
+                    <span className="nc-lab">{column.label}</span>
+                    <span className="nc-n">{column.cards.length}</span>
                   </div>
                   <div className="nc-kcards">
-                    {column.cards.map((card, index) => <KanbanCard card={card} key={card.p.qn + index} t={t} />)}
+                    {column.cards.map((contact) => (
+                      <PipelineCard
+                        contact={contact}
+                        effStatus={effStatusOf(contact)}
+                        key={contact.id}
+                        onSetStatus={setStatus}
+                        statuses={viewModel.pipelineStatuses}
+                        t={t}
+                      />
+                    ))}
                   </div>
                 </div>
               ))}
