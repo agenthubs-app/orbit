@@ -19,7 +19,7 @@ test("configured postgres live record store reuses one sql client for the same d
         query: async () => ({ rows: [] }),
       };
 
-      assert.equal(options.max, 4);
+      assert.equal(options.max, 1);
       createdClients.push(client);
 
       return client;
@@ -40,4 +40,39 @@ test("configured postgres live record store reuses one sql client for the same d
   assert.equal(first.store, second.store);
   assert.equal(first.client, second.client);
   assert.equal(createdClients.length, 1);
+});
+
+test("configured postgres live record store deduplicates concurrent identical read queries", async () => {
+  const env = {
+    ORBIT_DATABASE_URL:
+      "postgresql://orbit:test@example.invalid:5432/orbit_test_read_dedupe",
+    ORBIT_WORKSPACE_ID: "workspace:configured-live-record-store-read-dedupe-test",
+  };
+  let queryCount = 0;
+  const storeConfig = createConfiguredPostgresLiveRecordStore({
+    createClient: () => ({
+      close: async () => undefined,
+      query: async () => {
+        queryCount += 1;
+
+        return { rows: [] };
+      },
+    }),
+    env,
+  });
+
+  assert.ok(storeConfig);
+
+  await Promise.all([
+    storeConfig.store.listRecords({
+      workspaceId: storeConfig.workspaceId,
+      collectionName: "contacts",
+    }),
+    storeConfig.store.listRecords({
+      workspaceId: storeConfig.workspaceId,
+      collectionName: "contacts",
+    }),
+  ]);
+
+  assert.equal(queryCount, 1);
 });

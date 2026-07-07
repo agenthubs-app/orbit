@@ -2,7 +2,11 @@ import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
 } from "./live-database-config";
-import type { LiveRecordStoreLike } from "./live-record-store";
+import type {
+  LiveRecordGetQuery,
+  LiveRecordListQuery,
+  LiveRecordStoreLike,
+} from "./live-record-store";
 import {
   createPgLiveRecordSqlClient,
   createPostgresLiveRecordStore,
@@ -33,7 +37,75 @@ interface CachedConfiguredPostgresLiveRecordStore {
 }
 
 const cachedStores = new Map<string, CachedConfiguredPostgresLiveRecordStore>();
-const DEFAULT_POOL_MAX = 4;
+const DEFAULT_POOL_MAX = 1;
+
+function normalizeReadQuery(
+  query: LiveRecordGetQuery | LiveRecordListQuery,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(query)
+      .filter(([, value]) => value !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => [
+        key,
+        Array.isArray(value) ? [...value].sort() : value,
+      ]),
+  );
+}
+
+function createReadDedupeKey(
+  operation: "getRecord" | "listRecords",
+  query: LiveRecordGetQuery | LiveRecordListQuery,
+): string {
+  return `${operation}\u0000${JSON.stringify(normalizeReadQuery(query))}`;
+}
+
+function createReadDedupedLiveRecordStore<
+  TPayload extends Record<string, unknown>,
+>(store: LiveRecordStoreLike<TPayload>): LiveRecordStoreLike<TPayload> {
+  const inflightReads = new Map<string, Promise<unknown>>();
+
+  function once<TValue>(key: string, read: () => TValue | Promise<TValue>) {
+    const existingRead = inflightReads.get(key) as Promise<TValue> | undefined;
+
+    if (existingRead) {
+      return existingRead;
+    }
+
+    const nextRead = Promise.resolve()
+      .then(read)
+      .finally(() => {
+        inflightReads.delete(key);
+      });
+
+    inflightReads.set(key, nextRead);
+
+    return nextRead;
+  }
+
+  return {
+    deleteRecord(input) {
+      inflightReads.clear();
+
+      return store.deleteRecord(input);
+    },
+    getRecord(query) {
+      return once(createReadDedupeKey("getRecord", query), () =>
+        store.getRecord(query),
+      );
+    },
+    listRecords(query) {
+      return once(createReadDedupeKey("listRecords", query), () =>
+        store.listRecords(query),
+      );
+    },
+    upsertRecord(record) {
+      inflightReads.clear();
+
+      return store.upsertRecord(record);
+    },
+  };
+}
 
 export function createConfiguredPostgresLiveRecordStore<
   TPayload extends Record<string, unknown> = Record<string, unknown>,
@@ -59,9 +131,11 @@ export function createConfiguredPostgresLiveRecordStore<
     connectionString: config.connectionString,
     max,
   });
-  const store = createPostgresLiveRecordStore<Record<string, unknown>>({
-    client,
-  });
+  const store = createReadDedupedLiveRecordStore(
+    createPostgresLiveRecordStore<Record<string, unknown>>({
+      client,
+    }),
+  );
   const configuredStore = {
     client,
     store,

@@ -59,7 +59,7 @@ The following feature families are now wired to explicit remote live providers:
 - `app-contacts-subroutes`: the real `/app/contacts/pipeline`, `/app/contacts/graph`, and `/app/contacts/intros` routes now call the live-capable contacts route service, map its payload into the existing contacts UI view model through a shared adapter, and render shared controlled failure boundaries when live storage is unconfigured.
 - `app-contacts-new-route-services`: the real `/app/contacts/new` route adapter now resolves the acquisition and permission child services through module mode, awaits async live results, renders a capability-first acquisition workspace, and preserves a controlled failure boundary when live storage is unconfigured. The live first screen is read-only: it lists or derives acquisition context without creating a manual contact draft unless an explicit action is requested.
 - `app-home-route-services`: the real `/`, `/app`, `/app/home`, and `/app/home/events` routes now compose the live-capable events, contacts, and profile route payloads into the existing `OrbitHomeViewModel` UI shape. Home does not read storage directly, does not call the legacy `getOrbitHomeViewModel`, and renders a shared controlled failure boundary when any child route payload is unavailable. The web root `/` delegates to `/app`, and `/app` shares the personal Home hub so the approved web entry layout keeps the events list beside the profile/contact/schedule rail.
-- `app-followups-route-services`: the `/app/followups` page now mounts the real schedule product UI, resolves live follow-up tasks, live message drafts, and live reminders, and awaits async live task/reminder results while preserving controlled failure states when live storage is unconfigured.
+- `app-followups-route-services`: the `/app/followups` page now mounts the real schedule product UI, resolves live follow-up tasks, live message drafts, and live reminders, and awaits live task/reminder reads in parallel while preserving controlled failure states when live storage is unconfigured.
 - `app-dashboard-route-services`: the `/app/dashboard` page now calls the live-capable dashboard route loader, maps dashboard aggregate, network distribution, opportunity reminder, and provenance audit payloads into `OrbitRealDashboard`, and awaits async live service results while preserving controlled failure states when live storage is unconfigured.
 - `app-agent-route`: the `/app/agent` page now mounts the real `OrbitRealAgent` chat experience; live safety-policy providers remain covered at the feature service layer.
 - `app-events-route-services`: the `/app/events` page now mounts the real events product UI, resolves live event CRUD/import, live attendee recommendations, live event value recommendations, and live readiness, and awaits async live service results while preserving controlled failure states when live storage is unconfigured.
@@ -72,7 +72,7 @@ The following feature families are now wired to explicit remote live providers:
   instead of `NOT_IMPLEMENTED` or mock fallback until approved model adapters and
   credentials are added.
 
-Configured Postgres live providers that participate in composed app pages should reuse `createConfiguredPostgresLiveRecordStore(...)` instead of opening independent pools for the same connection/workspace. This avoids exhausting Supabase session-mode pool limits when one page composes several live child services.
+Configured Postgres live providers that participate in composed app pages should reuse `createConfiguredPostgresLiveRecordStore(...)` instead of opening independent pools for the same connection/workspace. This avoids exhausting Supabase session-mode pool limits when one page composes several live child services. The default configured pool size is `1` for session-mode safety across multiple Next route bundles; callers may still pass an explicit `max` when they are running against a database mode that supports more concurrent sessions. The configured store also deduplicates concurrent identical `getRecord` and `listRecords` reads in-flight; it does not keep a long-lived read cache, so writes continue to flow through the underlying live store without stale TTL behavior.
 
 Implementation evidence:
 
@@ -85,6 +85,9 @@ Implementation evidence:
 - `tests/storage/live-provider-pool-reuse.test.ts` locks this boundary so new
   composed live providers cannot accidentally reintroduce per-feature Postgres
   pools.
+- `tests/storage/configured-live-record-store.test.ts` locks the configured
+  store's concurrent read dedupe boundary so duplicate page-level live reads do
+  not issue duplicate SQL while the first matching read is still in-flight.
 
 Hybrid local-remote services remain available for backwards-compatible local
 development and comparison flows:

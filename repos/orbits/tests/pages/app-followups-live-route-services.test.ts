@@ -6,7 +6,10 @@ import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { loadAppFollowupsRouteViewModel } from "../../app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model";
-import { resolveAppFollowupsRouteServices } from "../../app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-service-factory";
+import {
+  resolveAppFollowupsRouteServices,
+  type AppFollowupsRouteServices,
+} from "../../app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-service-factory";
 import { followupsRouteToOrbitScheduleViewModel } from "../../app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-view-model-adapter";
 
 const liveDatabaseEnvKeys = [
@@ -18,6 +21,12 @@ const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 async function withUnconfiguredLiveFollowups<T>(
@@ -83,6 +92,139 @@ test("app followups route loader returns a controlled live failure when storage 
       );
     }
   });
+});
+
+test("app followups route loader starts task and notification reads in parallel", async () => {
+  const delayMs = 80;
+  let taskStartedAt: number | null = null;
+  let notificationStartedAt: number | null = null;
+  const services: AppFollowupsRouteServices = {
+    draftService: {
+      createDraft: () => ({
+        success: true,
+        data: {
+          drafts: [],
+          nextAction: "No draft needed for the parallel loader test.",
+          provenance: {
+            aiProviderRequested: false,
+            calendarProviderRequested: false,
+            collectedAt: "2026-07-07T00:00:00.000Z",
+            deviceRequested: false,
+            emailProviderRequested: false,
+            evidenceIds: [],
+            externalNetworkRequested: false,
+            externalSendRequested: false,
+            generationMethod: "rule-based-state",
+            liveDatabaseReadExecuted: false,
+            liveDatabaseWriteExecuted: false,
+            notificationDelivered: false,
+            privacy: "demo-message-draft-generator-only",
+            productionAuditLogWriteExecuted: false,
+            source: "test:followups-parallel-draft",
+            sourceLabel: "Followups parallel loader test",
+          },
+          state: "success",
+          summary: "No drafts.",
+        },
+      }),
+      updateDraft: () => {
+        throw new Error("updateDraft should not be called by the route loader");
+      },
+    },
+    notificationService: {
+      generateReminders: () => {
+        throw new Error(
+          "generateReminders should not be called by the route loader",
+        );
+      },
+      listNotifications: async () => {
+        notificationStartedAt = performance.now();
+        await delay(delayMs);
+
+        return {
+          success: true,
+          data: {
+            groupedLowPriorityReminders: [],
+            nextAction: "No notifications needed for the parallel loader test.",
+            notificationQueue: [],
+            provenance: {
+              collectedAt: "2026-07-07T00:00:00.000Z",
+              cronJobRequested: false,
+              deviceRequested: false,
+              emailDeliveryRequested: false,
+              evidenceIds: [],
+              externalNetworkRequested: false,
+              generationMethod: "rule-based-state",
+              liveDatabaseReadExecuted: false,
+              liveDatabaseWriteExecuted: false,
+              notificationProviderRequested: false,
+              privacy: "demo-reminder-schedule-notification-only",
+              productionAuditLogWriteExecuted: false,
+              pushNotificationRequested: false,
+              smsDeliveryRequested: false,
+              source: "test:followups-parallel-notifications",
+              sourceLabel: "Followups parallel loader test",
+            },
+            reminders: [],
+            state: "success",
+            summary: "No notifications.",
+          },
+        };
+      },
+    },
+    taskService: {
+      generateTasks: () => {
+        throw new Error("generateTasks should not be called by the route loader");
+      },
+      listTasks: async () => {
+        taskStartedAt = performance.now();
+        await delay(delayMs);
+
+        return {
+          success: true,
+          data: {
+            nextAction: "No tasks needed for the parallel loader test.",
+            provenance: {
+              aiProviderRequested: false,
+              backgroundSchedulerRequested: false,
+              calendarProviderRequested: false,
+              collectedAt: "2026-07-07T00:00:00.000Z",
+              deviceRequested: false,
+              emailProviderRequested: false,
+              evidenceIds: [],
+              externalNetworkRequested: false,
+              generationMethod: "rule-based-state",
+              liveDatabaseReadExecuted: false,
+              liveDatabaseWriteExecuted: false,
+              liveTaskPersistenceRequested: false,
+              notificationDelivered: false,
+              privacy: "demo-followup-task-generation-only",
+              productionAuditLogWriteExecuted: false,
+              source: "test:followups-parallel-tasks",
+              sourceLabel: "Followups parallel loader test",
+            },
+            state: "success",
+            summary: "No tasks.",
+            tasks: [],
+            triggers: [],
+          },
+        };
+      },
+    },
+  };
+
+  const viewModel = await loadAppFollowupsRouteViewModel(undefined, services);
+
+  assert.equal(viewModel.state, "success");
+
+  if (taskStartedAt === null || notificationStartedAt === null) {
+    throw new Error("Injected task and notification services must both run");
+  }
+
+  assert.ok(
+    Math.abs(notificationStartedAt - taskStartedAt) < delayMs / 2,
+    "task and notification reads should start in the same async window",
+  );
 });
 
 test("/app/followups page renders the live-capable product schedule UI", async () => {
