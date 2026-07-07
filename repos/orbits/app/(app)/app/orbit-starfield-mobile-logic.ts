@@ -359,7 +359,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
       // slogan: type ~1s, hold ~2s, then shrink & dock at the TOP with a subtle backing (clear of cards)
       {const sf=seg(p,0.30,0.36);const sN=Math.round(sf*SLO2.length);
        const shrink=smooth(p,0.50,0.58);
-       const show=smooth(p,0.30,0.35)*(1-smooth(p,0.88,0.93));setOp(pain,show);
+       const show=smooth(p,0.30,0.35)*(1-smooth(p,0.86,0.91));setOp(pain,show);
        painTxt.textContent=sf<1?SLO2.slice(0,sN):SLO2;
        painCaret.style.display=(sf<1&&show>0.05)?'inline':'none';
        pain.style.top=lerp(0.20*H,104,shrink).toFixed(0)+'px';
@@ -376,7 +376,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
        pain.style.boxShadow=dk?'0 12px 34px -18px rgba(0,0,0,0.7)':'none';
        pain.style.zIndex='8';}
       // all 6 cards orbit "你" together, sitting on the OUTER side of each star — near big & solid, far small & blurred
-      const ocClose=1-smooth(p,0.92,0.97);
+      const ocClose=1-smooth(p,0.86,0.91);
       const appear=smooth(p,0.66,0.76)*ocClose;
       // orbit page (mobile): one connector-popped card at a time, rotating around "你"
       {const mc=$('skMobCard');if(mc){
@@ -392,12 +392,12 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
       const stepW=Math.min(W-40,338);
       const stepGap=Math.min(H*0.078,66);
       const stepsTop=(H-HINTBAND)-stepGap*3;
-      stepEls.forEach((el,i)=>{const a=smooth(p,0.74+i*0.02,0.80+i*0.02)*(1-smooth(p,0.93,0.99));
+      stepEls.forEach((el,i)=>{const a=smooth(p,0.74+i*0.02,0.80+i*0.02)*(1-smooth(p,0.87,0.91));
         el.style.width=stepW+'px';
         const x=(W-stepW)/2,y=stepsTop+i*stepGap;
         el.style.opacity=a.toFixed(3);el.style.transform='translate('+x.toFixed(1)+'px,'+(y+(1-a)*12).toFixed(1)+'px)';});
       // organizer
-      const oa=smooth(p,0.90,1.0);setOp(org,oa);org.style.pointerEvents=oa>0.5?'auto':'none';
+      const oa=smooth(p,0.91,1.0);setOp(org,oa);org.style.pointerEvents=oa>0.5?'auto':'none';
     };
 
     // ===== STOP MACHINE =====

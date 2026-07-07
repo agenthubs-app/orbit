@@ -335,7 +335,7 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
       // slogan: type ~1s, hold ~2s, then shrink & dock at the TOP with a subtle backing (clear of cards)
       {const sf=seg(p,0.30,0.36);const sN=Math.round(sf*SLO2.length);
        const shrink=smooth(p,0.50,0.58);
-       const show=smooth(p,0.30,0.35)*(1-smooth(p,0.88,0.93));setOp(pain,show);
+       const show=smooth(p,0.30,0.35)*(1-smooth(p,0.86,0.91));setOp(pain,show);
        painTxt.textContent=sf<1?SLO2.slice(0,sN):SLO2;
        painCaret.style.display=(sf<1&&show>0.05)?'inline':'none';
        pain.style.top=lerp(0.22*H,84,shrink).toFixed(0)+'px';
@@ -357,7 +357,7 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
        pain.style.boxShadow=dk?'0 12px 34px -18px rgba(0,0,0,0.7)':'none';
        pain.style.zIndex='8';}
       // all 6 cards orbit "你" together, sitting on the OUTER side of each star — near big & solid, far small & blurred
-      const ocClose=1-smooth(p,0.92,0.97);
+      const ocClose=1-smooth(p,0.86,0.91);
       const appear=smooth(p,0.64,0.74)*ocClose;
       relCards.forEach((el,i)=>{const s=C.rel[i];if(!s){el.style.opacity='0';return;}
         const dep=s.dep!=null?s.dep:0.5;            // 0 far(up,small,faint) .. 1 near(down,big,solid)
@@ -373,9 +373,9 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
         s._lx=x+cw/2;s._ly=y+chh/2;s._cv=a;});
       // step stars
       const stGap=Math.min(W*0.26,300);
-      stepEls.forEach((el,i)=>{const a=smooth(p,0.74+i*0.015,0.80+i*0.015)*(1-smooth(p,0.93,0.99));const x=clamp(cx+(i-1)*stGap-105,14,W-224);const y=H-Math.min(H*0.20,180);el.style.opacity=a.toFixed(3);el.style.transform='translate('+x.toFixed(1)+'px,'+(y+(1-a)*14).toFixed(1)+'px)';});
+      stepEls.forEach((el,i)=>{const a=smooth(p,0.74+i*0.015,0.80+i*0.015)*(1-smooth(p,0.87,0.91));const x=clamp(cx+(i-1)*stGap-105,14,W-224);const y=H-Math.min(H*0.20,180);el.style.opacity=a.toFixed(3);el.style.transform='translate('+x.toFixed(1)+'px,'+(y+(1-a)*14).toFixed(1)+'px)';});
       // organizer
-      const oa=smooth(p,0.90,1.0);setOp(org,oa);org.style.pointerEvents=oa>0.5?'auto':'none';
+      const oa=smooth(p,0.91,1.0);setOp(org,oa);org.style.pointerEvents=oa>0.5?'auto':'none';
     };
 
     // ===== STOP MACHINE =====
