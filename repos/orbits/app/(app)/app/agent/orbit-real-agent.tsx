@@ -489,14 +489,10 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   return (
     <div data-orbit-real-page="agent" style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}>
       <div className="orbit-desktop-only">
-        <AccountTopNav
-          active="agent"
-          rightExtra={(
-            <button aria-label={t({ en: "New chat", zh: "新对话" })} className="orbit-top-icon-btn" onClick={newChat} type="button">
-              <Icon name="plus" size={18} />
-            </button>
-          )}
-        />
+        {/* No rightExtra here: the "New chat" action already lives in the
+            sidebar below, so the desktop top-nav stays identical to the
+            homepage / other product pages (brand · links · 中/EN · Me). */}
+        <AccountTopNav active="agent" />
       </div>
       <div className="orbit-mobile-only" style={{ flexShrink: 0 }}>
         <AccountTopNav
