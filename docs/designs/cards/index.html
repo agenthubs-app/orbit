@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>名片夹原型 · Business Card Holder Prototypes — Orbit</title>
+<link rel="stylesheet" href="orbit-cards-framework.css">
+<style data-page>
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 56px 24px 96px; }
+  .hero { margin-bottom: 40px; }
+  .hero .kicker { color: var(--accent); font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+  .hero h1 { font-family: var(--ff-tight); font-size: clamp(30px, 5vw, 46px); color: var(--ink); margin: 12px 0 14px; line-height: 1.08; }
+  .hero p { color: var(--text-2); font-size: 16px; line-height: 1.7; max-width: 720px; margin: 0; }
+  .hero .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .scard { padding: 22px; display: flex; flex-direction: column; gap: 14px; min-height: 190px; }
+  .scard .no { font-family: var(--ff-mono); font-size: 13px; color: var(--text-4); }
+  .scard .tile { width: 44px; height: 44px; border-radius: var(--r-md); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+  .scard h3 { margin: 0; font-size: 19px; color: var(--ink); }
+  .scard .en { color: var(--text-3); font-size: 13px; font-weight: 500; }
+  .scard p { margin: 0; color: var(--text-2); font-size: 13.5px; line-height: 1.6; flex: 1; }
+  .scard .prd { display: flex; gap: 6px; flex-wrap: wrap; }
+  .scard .go { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 14px; font-weight: 600; }
+  .scard.feature .tile { background: var(--accent-grad); color: #fff; }
+  .foot { margin-top: 40px; color: var(--text-4); font-size: 12.5px; line-height: 1.7; }
+  .foot code { font-family: var(--ff-mono); color: var(--text-2); }
+  .langfix { position: fixed; top: 20px; right: 24px; z-index: 10; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3.2" height="7" rx="1"/><rect x="10.4" y="7" width="3.2" height="11" rx="1"/><rect x="15.8" y="13" width="3.2" height="5" rx="1"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h5l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+<symbol id="i-branch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.2v9.6"/><path d="M18 10.2c0 4-4 3.8-8 4.8"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 11 15.8 7"/><path d="M8.2 13l7.6 4"/></symbol>
+</defs></svg>
+
+<div class="langfix">
+  <div class="lang"><button class="on" onclick="document.documentElement.lang='zh'">中</button><button onclick="document.documentElement.lang='en'">EN</button></div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="kicker">Orbit · 名片夹 Prototypes</div>
+    <h1><span class="t"><b class="zh">名片夹 — 把零散人脉变成关系资产</b><b class="en">Card Holder — turn scattered contacts into relationship assets</b></span></h1>
+    <p><span class="t"><b class="zh">基于《Orbit 复杂版产品设计文档》(PRD) 的名片夹功能优化原型。5 个界面，每个含桌面与移动两版，严格复用产品现有的星空暗色设计系统。框架层 (orbit-cards-framework.css) 与组件页分离，所有字段与后端接口已在页内注释标注。</b><b class="en">Design-uplift prototypes for Orbit's Card Holder, based on the product PRD. Five screens, each with desktop + mobile, faithfully reusing the existing starfield dark design system. Framework CSS is separated from component pages; every field and backend interface is annotated inline.</b></span></p>
+    <div class="meta">
+      <span class="chip chip-accent"><span class="t"><b class="zh">星空暗色主题</b><b class="en">Starfield dark</b></span></span>
+      <span class="chip"><span class="t"><b class="zh">中英双语</b><b class="en">Bilingual</b></span></span>
+      <span class="chip"><span class="t"><b class="zh">桌面 + 移动</b><b class="en">Desktop + Mobile</b></span></span>
+      <span class="chip"><span class="t"><b class="zh">字段 / 接口已标注</b><b class="en">Fields & APIs mapped</b></span></span>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <a class="card card-hover scard" href="01-wallet.html">
+      <div class="row between middle"><div class="tile"><svg class="icon icon-22"><use href="#i-wallet"/></svg></div><span class="no">01 / 05</span></div>
+      <div><h3>名片夹主列表 <span class="en">Card Wallet</span></h3></div>
+      <p><span class="t"><b class="zh">升级人脉卡片信息层次：来源徽标、关系强度、价值标签、下一步动作；自然语言搜索「帮我找认识餐饮老板的人」。</b><b class="en">Richer contact cards — source, strength, value tags, next action; natural-language search.</b></span></p>
+      <div class="prd"><span class="tag">PRD §8.2</span><span class="tag">§8.5</span><span class="tag">§20.2</span></div>
+      <span class="go"><span class="t"><b class="zh">查看</b><b class="en">Open</b></span><svg class="icon icon-16"><use href="#i-arrow-right"/></svg></span>
+    </a>
+
+    <a class="card card-hover scard feature" href="02-connection.html">
+      <div class="row between middle"><div class="tile"><svg class="icon icon-22"><use href="#i-user"/></svg></div><span class="no">02 / 05</span></div>
+      <div><h3>卡片详情 + 连接画像 <span class="en">Connection Profile</span></h3></div>
+      <p><span class="t"><b class="zh">Orbit 区别于通讯录的关键：关系类型 / 12 阶段进度、双向价值分析、带来源证据的互动时间线、下一步建议。</b><b class="en">What sets Orbit apart: relationship type/stage, two-way value, evidence-backed timeline, next step.</b></span></p>
+      <div class="prd"><span class="tag">PRD §14</span><span class="tag">§8.2</span><span class="tag">§20.3</span></div>
+      <span class="go"><span class="t"><b class="zh">查看</b><b class="en">Open</b></span><svg class="icon icon-16"><use href="#i-arrow-right"/></svg></span>
+    </a>
+
+    <a class="card card-hover scard" href="03-dashboard.html">
+      <div class="row between middle"><div class="tile"><svg class="icon icon-22"><use href="#i-chart"/></svg></div><span class="no">03 / 05</span></div>
+      <div><h3>人脉表盘 <span class="en">Network Dashboard</span></h3></div>
+      <p><span class="t"><b class="zh">关系资产总览、行业与价值类型分布、关系强度分布、机会提醒、基于目标的人脉缺口分析。</b><b class="en">Asset overview, industry/value distributions, strength split, opportunities, goal-based gaps.</b></span></p>
+      <div class="prd"><span class="tag">PRD §15</span><span class="tag">§16</span></div>
+      <span class="go"><span class="t"><b class="zh">查看</b><b class="en">Open</b></span><svg class="icon icon-16"><use href="#i-arrow-right"/></svg></span>
+    </a>
+
+    <a class="card card-hover scard feature" href="04-import.html">
+      <div class="row between middle"><div class="tile"><svg class="icon icon-22"><use href="#i-camera"/></svg></div><span class="no">04 / 05</span></div>
+      <div><h3>导入中心 + 名片复核 <span class="en">Import & Card Review</span></h3></div>
+      <p><span class="t"><b class="zh">当前完全无 UI 的核心补齐：名片扫描 OCR → 逐字段复核（置信度 + 来源证据）→ 确认入库，确认前不写联系人库。</b><b class="en">The missing core: card OCR → field-by-field review (confidence + evidence) → confirm; nothing written until confirmed.</b></span></p>
+      <div class="prd"><span class="tag">PRD §7</span><span class="tag">business-card-review</span></div>
+      <span class="go"><span class="t"><b class="zh">查看</b><b class="en">Open</b></span><svg class="icon icon-16"><use href="#i-arrow-right"/></svg></span>
+    </a>
+
+    <a class="card card-hover scard" href="05-followup.html">
+      <div class="row between middle"><div class="tile"><svg class="icon icon-22"><use href="#i-branch"/></svg></div><span class="no">05 / 05</span></div>
+      <div><h3>跟进管线 / 活动后跟进 <span class="en">Follow-up Pipeline</span></h3></div>
+      <p><span class="t"><b class="zh">三列状态看板 + 活动后整理：新联系人整理、交流摘要、AI 打招呼文案、跟进提醒——解决「认识很多人却没沉淀」。</b><b class="en">Status kanban + after-event: contact triage, summary, AI greeting, reminders — fixing "met many, kept none".</b></span></p>
+      <div class="prd"><span class="tag">PRD §8.4</span><span class="tag">§12</span><span class="tag">§20.6</span></div>
+      <span class="go"><span class="t"><b class="zh">查看</b><b class="en">Open</b></span><svg class="icon icon-16"><use href="#i-arrow-right"/></svg></span>
+    </a>
+
+    <div class="card scard" style="justify-content:center;align-items:center;text-align:center;border-style:dashed">
+      <div class="tile" style="background:var(--surface-3);color:var(--text-3)"><svg class="icon icon-22"><use href="#i-share"/></svg></div>
+      <p style="flex:none"><span class="t"><b class="zh">人脉图谱 / 引荐记录 现有版本尚可，本轮暂不重做（可后续迭代）。</b><b class="en">Network graph / intros are acceptable as-is — deferred to a later round.</b></span></p>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <div><span class="t"><b class="zh">工程结构（框架 / 组件分离）：</b><b class="en">Structure (framework / component split):</b></span></div>
+    <div><code>orbit-cards-framework.css</code> — <span class="t"><b class="zh">设计 token + 基础组件类 + 画板/双语机制（所有页共用）</b><b class="en">design tokens + base component classes + board/i18n mechanics (shared)</b></span></div>
+    <div><code>01–05*.html</code> — <span class="t"><b class="zh">各界面组件页，字段与接口在页内注释标注　·　</b><b class="en">component pages, fields & APIs annotated inline　·　</b></span><code>SPEC.md</code> <span class="t"><b class="zh">= 完整设计规范</b><b class="en">= full design spec</b></span></div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>名片夹 · 全部人脉 / Card Wallet — Orbit</title>
+<link rel="stylesheet" href="orbit-cards-framework.css">
+<style data-page>
+  /* ---- 01 wallet: page-level only ---- */
+  .nl-search { position: relative; }
+  .nl-search .field { height: 54px; padding-left: 46px; font-size: 15px; background: var(--surface-2); }
+  .nl-search .lead { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--accent); }
+  .nl-search .go { position: absolute; right: 8px; top: 8px; }
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .examples .chip { cursor: pointer; }
+
+  .pcard { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; padding: 15px 16px; align-items: start; }
+  .pcard .foot { grid-column: 2 / -1; margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--hairline); display: flex; align-items: center; gap: 10px; }
+  .pcard .foot .act { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); }
+  .pcard .foot .act .icon { color: var(--accent); }
+  .pcard .right { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; }
+  .tagrow { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+  /* mobile compact card */
+  .mcard { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; padding: 13px 14px; align-items: center; }
+  .mcard .sub { font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+  .mcard .mtags { display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<!-- ===== inline icon sprite (shared across 01–05) ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 6"/><path d="M17 14.2a5.2 5.2 0 0 1 3.5 4.8"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 11 15.8 7"/><path d="M8.2 13l7.6 4"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.6" cy="6" r="1.1"/><circle cx="3.6" cy="12" r="1.1"/><circle cx="3.6" cy="18" r="1.1"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 21h18"/><rect x="5" y="11" width="3.2" height="7" rx="1"/><rect x="10.4" y="7" width="3.2" height="11" rx="1"/><rect x="15.8" y="13" width="3.2" height="5" rx="1"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7.5 11 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h5l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.5-3.5"/></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3.5 13.6 9 19 10.5 13.6 12 12 17.5 10.4 12 5 10.5 10.4 9z"/><path d="M18.5 5.5v2.6M6 15.4v2M20 6.8h-2.4M7.4 16.4H5.2"/></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4z"/><path d="M14 6.5v11"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h3l1.5 4-2 1.5a11 11 0 0 0 5 5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+<symbol id="i-building" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 9.5h16M8 3v4M16 3v4"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.2"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><path d="M14 14h2v2M18 14v0M14 18v0M18 18v2h-2"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M9 15 15 9"/><path d="M10.5 6.5 12 5a4 4 0 0 1 5.7 5.7l-1.5 1.5"/><path d="M13.5 17.5 12 19a4 4 0 0 1-5.7-5.7l1.5-1.5"/></symbol>
+<symbol id="i-message" viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-10.5 6.9L4 20l1.4-4.2A7.5 7.5 0 1 1 20 11.5z"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2 2 0 0 0-3-3L5 17z"/><path d="m14 6 3 3"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.5 7-11a7 7 0 0 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 3.5 5 9a5 5 0 0 1-10 0c0-1.6.6-2.8 1.3-3.7C9 10 9.6 11.5 11 12c-.5-3 1-6 1-9z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+<symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7M3 12.5h18"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m7.5 8 4.5-4.5L16.5 8"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+<symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.2v9.6"/><path d="M18 10.2c0 4-4 3.8-8 4.8"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17.4v.2"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13 6 5h12l2 8"/><path d="M4 13v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5h-5a3 3 0 0 1-6 0z"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+</defs></svg>
+
+<div class="gallery">
+  <div class="gallery-head">
+    <h1 class="gallery-title">名片夹 · 全部人脉　<span class="serif" style="color:var(--text-3);font-size:18px">Card Wallet</span></h1>
+    <p class="gallery-sub">01 / 05　PRD §8.2 人脉卡片 · §8.5 人脉搜索 · §20.2 人脉对象　—　桌面 + 移动</p>
+  </div>
+
+  <div class="board-row">
+
+    <!-- ================= DESKTOP ================= -->
+    <div class="board-wrap">
+      <div class="board-label"><span class="dot"></span>Desktop · 1280</div>
+      <div class="board is-desktop">
+        <div class="board-canvas">
+
+          <!-- top nav -->
+          <header class="orbit-top-nav">
+            <div class="orbit-nav-lead">
+              <a class="orbit-brand-link" href="#">
+                <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.5" stroke="var(--accent)" stroke-width="1.6" opacity="0.35"/><circle cx="14" cy="14" r="4.4" fill="var(--accent)"/><circle cx="24.2" cy="10" r="2.5" fill="var(--accent)"/></svg>
+                <span class="orbit-brand-word"><span class="orbit-brand-name">Orbit</span><span class="orbit-brand-sub"><span class="t"><b class="zh">由 iOrbit 智能匹配引擎驱动</b><b class="en">Powered by the iOrbit matching engine</b></span></span></span>
+              </a>
+            </div>
+            <nav class="orbit-nav-links">
+              <a class="orbit-nav-link" href="#">iOrbit</a>
+              <a class="orbit-nav-link" href="#"><span class="t"><b class="zh">活动</b><b class="en">Events</b></span></a>
+              <a class="orbit-nav-link" href="#"><span class="t"><b class="zh">日程</b><b class="en">Calendar</b></span></a>
+              <a class="orbit-nav-link is-active" href="01-wallet.html"><span class="t"><b class="zh">人脉</b><b class="en">Contacts</b></span></a>
+            </nav>
+            <div class="orbit-top-actions">
+              <span class="orbit-lang-toggle"><button class="is-active">中</button><span class="orbit-lang-sep">/</span><button>EN</button></span>
+              <a class="orbit-me-link" href="#"><span class="t"><b class="zh">我的</b><b class="en">Me</b></span></a>
+              <a class="orbit-nav-iorbit" href="#" aria-label="iOrbit"><svg class="icon"><use href="#i-sparkles"/></svg></a>
+            </div>
+          </header>
+
+          <div class="layout">
+            <!-- CRM sidebar -->
+            <aside class="crm-side">
+              <div class="grp"><span class="t"><b class="zh">名片夹</b><b class="en">Wallet</b></span></div>
+              <nav class="crm-nav">
+                <a href="01-wallet.html" class="active"><svg class="icon"><use href="#i-wallet"/></svg><span class="t"><b class="zh">全部人脉</b><b class="en">All contacts</b></span><span class="n">128</span></a>
+                <a href="05-followup.html"><svg class="icon"><use href="#i-branch"/></svg><span class="t"><b class="zh">跟进管线</b><b class="en">Pipeline</b></span><span class="n">24</span></a>
+                <a href="#"><svg class="icon"><use href="#i-share"/></svg><span class="t"><b class="zh">人脉图谱</b><b class="en">Graph</b></span></a>
+                <a href="#"><svg class="icon"><use href="#i-users"/></svg><span class="t"><b class="zh">引荐记录</b><b class="en">Intros</b></span><span class="n">6</span></a>
+                <a href="03-dashboard.html"><svg class="icon"><use href="#i-chart"/></svg><span class="t"><b class="zh">人脉表盘</b><b class="en">Dashboard</b></span></a>
+              </nav>
+              <div class="grp" style="margin-top:22px"><span class="t"><b class="zh">采集</b><b class="en">Capture</b></span></div>
+              <nav class="crm-nav">
+                <a href="04-import.html"><svg class="icon"><use href="#i-download"/></svg><span class="t"><b class="zh">导入中心</b><b class="en">Import hub</b></span></a>
+                <a href="04-import.html"><svg class="icon"><use href="#i-camera"/></svg><span class="t"><b class="zh">扫名片</b><b class="en">Scan card</b></span></a>
+              </nav>
+            </aside>
+
+            <!-- content -->
+            <main class="content">
+              <div class="content-head">
+                <div>
+                  <h1 class="h-display"><span class="t"><b class="zh">全部人脉</b><b class="en">All contacts</b></span></h1>
+                  <div class="dim-13 mt-6"><span class="t"><b class="zh">128 位联系人 · 来自 12 场活动</b><b class="en">128 contacts · from 12 events</b></span></div>
+                </div>
+                <div class="row gap-10">
+                  <a class="btn btn-ghost btn-sm" href="04-import.html"><svg class="icon icon-16"><use href="#i-camera"/></svg><span class="t"><b class="zh">扫名片</b><b class="en">Scan</b></span></a>
+                  <a class="btn btn-primary btn-sm" href="04-import.html"><svg class="icon icon-16"><use href="#i-download"/></svg><span class="t"><b class="zh">导入人脉</b><b class="en">Import</b></span></a>
+                </div>
+              </div>
+
+              <!-- natural-language search (PRD §8.5 → contacts.search({query, nlIntent})) -->
+              <div class="nl-search">
+                <svg class="icon icon-22 lead"><use href="#i-sparkles"/></svg>
+                <input class="field" placeholder="帮我找认识餐饮老板的人…" aria-label="自然语言搜索人脉">
+                <button class="btn btn-soft btn-sm go"><span class="t"><b class="zh">智能搜索</b><b class="en">Ask</b></span></button>
+              </div>
+              <div class="examples">
+                <span class="chip"><span class="t"><b class="zh">谁能介绍投资人？</b><b class="en">Who can intro an investor?</b></span></span>
+                <span class="chip"><span class="t"><b class="zh">近三个月认识的创始人</b><b class="en">Founders met in 3 months</b></span></span>
+                <span class="chip"><span class="t"><b class="zh">待跟进的高价值关系</b><b class="en">High-value to follow up</b></span></span>
+              </div>
+
+              <!-- filter chips -->
+              <div class="row wrap gap-8 mt-20 chipgroup" style="margin-bottom:16px">
+                <span class="chip is-active"><span class="t"><b class="zh">全部</b><b class="en">All</b></span><span class="count">128</span></span>
+                <span class="chip"><span class="dot" style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></span><span class="t"><b class="zh">待联系</b><b class="en">To contact</b></span><span class="count">41</span></span>
+                <span class="chip"><span class="dot" style="width:7px;height:7px;border-radius:50%;background:var(--sky)"></span><span class="t"><b class="zh">沟通中</b><b class="en">In progress</b></span><span class="count">63</span></span>
+                <span class="chip"><span class="dot" style="width:7px;height:7px;border-radius:50%;background:var(--live)"></span><span class="t"><b class="zh">已合作</b><b class="en">Partnered</b></span><span class="count">24</span></span>
+                <span style="width:1px;height:20px;background:var(--hairline);margin:0 2px"></span>
+                <span class="chip"><span class="t"><b class="zh">潜在客户</b><b class="en">Prospect</b></span></span>
+                <span class="chip"><span class="t"><b class="zh">投资人</b><b class="en">Investor</b></span></span>
+                <span class="chip"><span class="t"><b class="zh">资源介绍人</b><b class="en">Connector</b></span></span>
+              </div>
+
+              <!-- person cards -->
+              <div class="col gap-10">
+
+                <!-- CARD template → OrbitContactView + [需扩展] strength/valueTags/nextAction -->
+                <a class="card card-hover pcard" href="02-connection.html">
+                  <div class="avatar avatar-56 g-violet">花</div>
+                  <div class="grow">
+                    <div class="row middle gap-8"><h3 class="h-section ell">佐藤花 · Hana Sato</h3><span class="badge src-scan"><svg class="icon"><use href="#i-camera"/></svg><span class="t"><b class="zh">名片扫描</b><b class="en">Scanned</b></span></span></div>
+                    <div class="dim-13 mt-4"><span class="t"><b class="zh">Aki Robotics · 机器人合作负责人</b><b class="en">Aki Robotics · Head of Robotics Partnerships</b></span></div>
+                    <div class="tagrow"><span class="tag tag-value"><span class="t"><b class="zh">潜在合作</b><b class="en">Partnership</b></span></span><span class="tag tag-value"><span class="t"><b class="zh">技术资源</b><b class="en">Tech</b></span></span></div>
+                    <div class="foot"><span class="act"><svg class="icon icon-16"><use href="#i-arrow-right"/></svg><span class="t"><b class="zh">建议：发送合作资料</b><b class="en">Suggested: send partnership deck</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">依据：你在沙龙承诺发合作资料，关系停在"已发现需求"，3 天未动作。</b><b class="en">Basis: you promised the deck at the salon; stuck at "need identified", idle 3 days.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:summary-hana-0612</span></span></span></span><span class="subtle dim-13" style="margin-left:auto">· <span class="t"><b class="zh">3 天前互动</b><b class="en">3d ago</b></span></span></div>
+                  </div>
+                  <div class="right">
+                    <span class="status-pill ps-in_progress"><span class="dot"></span><span class="t"><b class="zh">沟通中</b><b class="en">In progress</b></span></span>
+                    <span class="strength st-strong"><span class="dot"></span><span class="t"><b class="zh">强关系</b><b class="en">Strong</b></span></span>
+                  </div>
+                </a>
+
+                <a class="card card-hover pcard" href="02-connection.html">
+                  <div class="avatar avatar-56 g-amber">伟</div>
+                  <div class="grow">
+                    <div class="row middle gap-8"><h3 class="h-section ell">陈伟 · Wei Chen</h3><span class="badge src-event"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">活动导入</b><b class="en">Event</b></span></span></div>
+                    <div class="dim-13 mt-4"><span class="t"><b class="zh">味来餐饮 · 创始人 · 餐饮</b><b class="en">Weilai F&amp;B · Founder · Food</b></span></div>
+                    <div class="tagrow"><span class="tag tag-value"><span class="t"><b class="zh">潜在客户</b><b class="en">Prospect</b></span></span><span class="tag tag-value"><span class="t"><b class="zh">本地商户</b><b class="en">Local merchant</b></span></span></div>
+                    <div class="foot"><span class="act"><svg class="icon icon-16"><use href="#i-message"/></svg><span class="t"><b class="zh">建议：事后打招呼</b><b class="en">Suggested: send greeting</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">依据：对方行业=餐饮，匹配你目标"找餐饮客户"；活动认识后还没打招呼。</b><b class="en">Basis: industry=F&amp;B matches your goal "find F&amp;B clients"; met at the event, no greeting yet.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:event-ai-summit-2026</span></span></span></span><span class="subtle dim-13" style="margin-left:auto">· <span class="t"><b class="zh">AI 峰会 2026</b><b class="en">AI Summit 2026</b></span></span></div>
+                  </div>
+                  <div class="right">
+                    <span class="status-pill ps-to_contact"><span class="dot"></span><span class="t"><b class="zh">待联系</b><b class="en">To contact</b></span></span>
+                    <span class="strength st-medium"><span class="dot"></span><span class="t"><b class="zh">中关系</b><b class="en">Medium</b></span></span>
+                  </div>
+                </a>
+
+                <a class="card card-hover pcard" href="02-connection.html">
+                  <div class="avatar avatar-56 g-sky">E</div>
+                  <div class="grow">
+                    <div class="row middle gap-8"><h3 class="h-section ell">Emily Wong</h3><span class="badge src-qr"><svg class="icon"><use href="#i-qr"/></svg><span class="t"><b class="zh">现场扫码</b><b class="en">QR scan</b></span></span></div>
+                    <div class="dim-13 mt-4"><span class="t"><b class="zh">Northlight Capital · 投资合伙人 · 投资</b><b class="en">Northlight Capital · Partner · Venture</b></span></div>
+                    <div class="tagrow"><span class="tag tag-value"><span class="t"><b class="zh">投资人</b><b class="en">Investor</b></span></span><span class="tag tag-value"><span class="t"><b class="zh">高价值</b><b class="en">High value</b></span></span></div>
+                    <div class="foot"><span class="act"><svg class="icon icon-16"><use href="#i-calendar"/></svg><span class="t"><b class="zh">建议：预约 30 分钟会议</b><b class="en">Suggested: book a 30-min call</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">依据：昨天现场对话记录到投资意向，且你目标含"融资"。</b><b class="en">Basis: yesterday's on-site note flagged investing interest, and your goal mentions funding.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:qr-exchange-emily</span></span></span></span><span class="subtle dim-13" style="margin-left:auto">· <span class="t"><b class="zh">昨天互动</b><b class="en">Yesterday</b></span></span></div>
+                  </div>
+                  <div class="right">
+                    <span class="status-pill ps-in_progress"><span class="dot"></span><span class="t"><b class="zh">沟通中</b><b class="en">In progress</b></span></span>
+                    <span class="strength st-strong"><span class="dot"></span><span class="t"><b class="zh">强关系</b><b class="en">Strong</b></span></span>
+                  </div>
+                </a>
+
+                <a class="card card-hover pcard" href="02-connection.html">
+                  <div class="avatar avatar-56 g-slate">洋</div>
+                  <div class="grow">
+                    <div class="row middle gap-8"><h3 class="h-section ell">刘洋 · Yang Liu</h3><span class="badge src-contact"><svg class="icon"><use href="#i-user"/></svg><span class="t"><b class="zh">通讯录</b><b class="en">Imported</b></span></span></div>
+                    <div class="dim-13 mt-4"><span class="t"><b class="zh">DevScale · 技术总监 · AI/技术</b><b class="en">DevScale · Eng Director · AI/Tech</b></span></div>
+                    <div class="tagrow"><span class="tag tag-value"><span class="t"><b class="zh">技术人才</b><b class="en">Tech talent</b></span></span><span class="tag"><svg class="icon icon-14" style="stroke:var(--text-3)"><use href="#i-flame"/></svg><span class="t"><b class="zh">沉睡</b><b class="en">Dormant</b></span></span></div>
+                    <div class="foot"><span class="act"><svg class="icon icon-16"><use href="#i-bell"/></svg><span class="t"><b class="zh">建议：重新激活 · 已 5 个月未联系</b><b class="en">Suggested: reactivate · 5 months silent</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">依据：最近互动 &gt;150 天且价值分为高 → 沉睡高价值，建议重新激活。</b><b class="en">Basis: last touch &gt;150d with a high value score → dormant high-value; revive.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:last-touch-liu-0130</span></span></span></span></div>
+                  </div>
+                  <div class="right">
+                    <span class="status-pill ps-to_contact"><span class="dot"></span><span class="t"><b class="zh">待联系</b><b class="en">To contact</b></span></span>
+                    <span class="strength st-dormant"><span class="dot"></span><span class="t"><b class="zh">沉睡</b><b class="en">Dormant</b></span></span>
+                  </div>
+                </a>
+
+                <a class="card card-hover pcard" href="02-connection.html">
+                  <div class="avatar avatar-56 g-rose">S</div>
+                  <div class="grow">
+                    <div class="row middle gap-8"><h3 class="h-section ell">Sarah Kim</h3><span class="badge src-referral"><svg class="icon"><use href="#i-share"/></svg><span class="t"><b class="zh">朋友推荐</b><b class="en">Referral</b></span></span></div>
+                    <div class="dim-13 mt-4"><span class="t"><b class="zh">Loop Events · 活动主办方</b><b class="en">Loop Events · Organizer</b></span></div>
+                    <div class="tagrow"><span class="tag tag-value"><span class="t"><b class="zh">活动合作</b><b class="en">Event partner</b></span></span><span class="tag tag-value"><span class="t"><b class="zh">背书资源</b><b class="en">Endorsement</b></span></span></div>
+                    <div class="foot"><span class="act"><svg class="icon icon-16"><use href="#i-check"/></svg><span class="t"><b class="zh">已合作 · 保持季度联系</b><b class="en">Partnered · keep quarterly touch</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">依据：由田中健引荐且已进入合作，距上次联系近一季度，建议保持季度触达。</b><b class="en">Basis: introduced by Ken Tanaka and partnered; ~a quarter since last touch — keep quarterly.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:intro-ken-tanaka</span></span></span></span><span class="subtle dim-13" style="margin-left:auto"><span class="t"><b class="zh">由 田中健 引荐</b><b class="en">via Ken Tanaka</b></span></span></div>
+                  </div>
+                  <div class="right">
+                    <span class="status-pill ps-partnered"><span class="dot"></span><span class="t"><b class="zh">已合作</b><b class="en">Partnered</b></span></span>
+                    <span class="strength st-medium"><span class="dot"></span><span class="t"><b class="zh">中关系</b><b class="en">Medium</b></span></span>
+                  </div>
+                </a>
+
+              </div>
+            </main>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MOBILE ================= -->
+    <div class="board-wrap">
+      <div class="board-label"><span class="dot"></span>Mobile · 390</div>
+      <div class="board is-mobile">
+        <div class="board-canvas">
+
+          <header class="orbit-top-nav is-m">
+            <div class="orbit-nav-lead">
+              <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.5" stroke="var(--accent)" stroke-width="1.6" opacity="0.35"/><circle cx="14" cy="14" r="4.4" fill="var(--accent)"/><circle cx="24.2" cy="10" r="2.5" fill="var(--accent)"/></svg>
+              <span class="orbit-nav-page-title"><span class="t"><b class="zh">人脉</b><b class="en">Contacts</b></span></span>
+            </div>
+            <div class="orbit-top-actions">
+              <a class="orbit-nav-iorbit" href="#" aria-label="iOrbit"><svg class="icon"><use href="#i-sparkles"/></svg></a>
+              <span class="orbit-lang-toggle"><button class="is-active">中</button><span class="orbit-lang-sep">/</span><button>EN</button></span>
+              <button class="orbit-nav-menu-btn" aria-label="menu"><svg class="icon"><use href="#i-menu"/></svg></button>
+            </div>
+          </header>
+
+          <div class="m-body">
+            <!-- NL search -->
+            <div class="nl-search" style="margin-bottom:14px">
+              <svg class="icon icon-22 lead"><use href="#i-sparkles"/></svg>
+              <input class="field" style="height:50px" placeholder="帮我找认识餐饮老板的人…" aria-label="搜索">
+            </div>
+
+            <!-- filter chips scroll -->
+            <div class="row gap-8 chipgroup" style="overflow-x:auto;padding-bottom:4px;margin-bottom:14px">
+              <span class="chip is-active"><span class="t"><b class="zh">全部</b><b class="en">All</b></span><span class="count">128</span></span>
+              <span class="chip"><span class="t"><b class="zh">待联系</b><b class="en">To contact</b></span><span class="count">41</span></span>
+              <span class="chip"><span class="t"><b class="zh">沟通中</b><b class="en">In progress</b></span><span class="count">63</span></span>
+              <span class="chip"><span class="t"><b class="zh">已合作</b><b class="en">Partnered</b></span><span class="count">24</span></span>
+            </div>
+
+            <div class="col gap-10">
+              <a class="card card-hover mcard" href="02-connection.html">
+                <div class="avatar avatar-44 g-violet">花</div>
+                <div class="grow">
+                  <div class="row middle gap-6"><span class="h-section ell" style="font-size:15px">佐藤花</span><span class="badge src-scan"><svg class="icon"><use href="#i-camera"/></svg></span></div>
+                  <div class="sub ell"><span class="t"><b class="zh">Aki Robotics · 合作负责人</b><b class="en">Aki Robotics · Partnerships</b></span></div>
+                  <div class="mtags"><span class="tag tag-value"><span class="t"><b class="zh">潜在合作</b><b class="en">Partnership</b></span></span><span class="strength st-strong"><span class="dot"></span><span class="t"><b class="zh">强</b><b class="en">Strong</b></span></span></div>
+                </div>
+                <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+              </a>
+              <a class="card card-hover mcard" href="02-connection.html">
+                <div class="avatar avatar-44 g-amber">伟</div>
+                <div class="grow">
+                  <div class="row middle gap-6"><span class="h-section ell" style="font-size:15px">陈伟</span><span class="badge src-event"><svg class="icon"><use href="#i-calendar"/></svg></span></div>
+                  <div class="sub ell"><span class="t"><b class="zh">味来餐饮 · 创始人</b><b class="en">Weilai F&amp;B · Founder</b></span></div>
+                  <div class="mtags"><span class="tag tag-value"><span class="t"><b class="zh">潜在客户</b><b class="en">Prospect</b></span></span><span class="strength st-medium"><span class="dot"></span><span class="t"><b class="zh">中</b><b class="en">Med</b></span></span></div>
+                </div>
+                <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+              </a>
+              <a class="card card-hover mcard" href="02-connection.html">
+                <div class="avatar avatar-44 g-sky">E</div>
+                <div class="grow">
+                  <div class="row middle gap-6"><span class="h-section ell" style="font-size:15px">Emily Wong</span><span class="badge src-qr"><svg class="icon"><use href="#i-qr"/></svg></span></div>
+                  <div class="sub ell"><span class="t"><b class="zh">Northlight · 投资合伙人</b><b class="en">Northlight · Partner</b></span></div>
+                  <div class="mtags"><span class="tag tag-value"><span class="t"><b class="zh">投资人</b><b class="en">Investor</b></span></span><span class="strength st-strong"><span class="dot"></span><span class="t"><b class="zh">强</b><b class="en">Strong</b></span></span></div>
+                </div>
+                <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+              </a>
+              <a class="card card-hover mcard" href="02-connection.html">
+                <div class="avatar avatar-44 g-slate">洋</div>
+                <div class="grow">
+                  <div class="row middle gap-6"><span class="h-section ell" style="font-size:15px">刘洋</span><span class="badge src-contact"><svg class="icon"><use href="#i-user"/></svg></span></div>
+                  <div class="sub ell"><span class="t"><b class="zh">DevScale · 技术总监</b><b class="en">DevScale · Eng Director</b></span></div>
+                  <div class="mtags"><span class="tag tag-value"><span class="t"><b class="zh">技术人才</b><b class="en">Tech</b></span></span><span class="strength st-dormant"><span class="dot"></span><span class="t"><b class="zh">沉睡</b><b class="en">Dormant</b></span></span></div>
+                </div>
+                <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- bottom tabs -->
+          <nav class="m-tabs">
+            <a href="01-wallet.html" class="active"><svg class="icon"><use href="#i-wallet"/></svg><span class="t"><b class="zh">名片夹</b><b class="en">Cards</b></span></a>
+            <a href="#"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">活动</b><b class="en">Events</b></span></a>
+            <a href="03-dashboard.html"><svg class="icon"><use href="#i-chart"/></svg><span class="t"><b class="zh">表盘</b><b class="en">Board</b></span></a>
+            <a href="05-followup.html"><svg class="icon"><use href="#i-bell"/></svg><span class="t"><b class="zh">待办</b><b class="en">To-do</b></span></a>
+            <a href="#"><svg class="icon"><use href="#i-user"/></svg><span class="t"><b class="zh">我</b><b class="en">Me</b></span></a>
+          </nav>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="orbit-cards-proto.js"></script>
+</body>
+</html>

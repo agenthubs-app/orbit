@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>跟进管线 · 活动后跟进 / Pipeline — Orbit</title>
+<link rel="stylesheet" href="orbit-cards-framework.css">
+<style data-page>
+  /* ---- 05 followup: page-level only ---- */
+
+  /* event filter chip (source event) */
+  .evt-chip { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:var(--r-pill);
+    background:var(--amber-soft); color:var(--amber); font-size:13px; font-weight:600; border:1px solid transparent; }
+  .evt-chip .icon { color:var(--amber); }
+  .evt-chip .x { color:var(--amber); opacity:.7; margin-left:2px; }
+
+  /* ---- Kanban ---- */
+  .kanban { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:start; }
+  .kcol { background:var(--surface-2); border:1px solid var(--hairline); border-radius:var(--r-md); padding:12px; }
+  .kcol-head { display:flex; align-items:center; gap:8px; padding:2px 4px 12px; }
+  .kcol-head .cdot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .kcol-head .clab { font-size:13.5px; font-weight:700; color:var(--ink); }
+  .kcol-head .ccount { margin-left:auto; font-family:var(--ff-mono); font-size:12px; color:var(--text-2);
+    background:var(--surface-3); border-radius:var(--r-pill); padding:2px 9px; }
+  .cdot-amber{ background:var(--amber);} .cdot-sky{ background:var(--sky);} .cdot-live{ background:var(--live);}
+  .kcards { display:flex; flex-direction:column; gap:10px; }
+
+  .kcard { display:block; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md);
+    padding:13px; box-shadow:var(--sh-xs); cursor:pointer; text-decoration:none; color:inherit;
+    transition:box-shadow .18s, transform .18s, border-color .18s; }
+  .kcard:hover { border-color:var(--border-2); box-shadow:var(--sh-md); transform:translateY(-2px); }
+  .kcard .knm { font-size:14px; font-weight:700; color:var(--ink); }
+  .kcard .korg { font-size:12px; color:var(--text-3); margin-top:1px; }
+  .kcard .krow1 { display:flex; align-items:center; gap:6px; margin-top:9px; flex-wrap:wrap; }
+  .knext { display:flex; gap:7px; align-items:flex-start; font-size:12.5px; line-height:1.4; color:var(--text-2);
+    margin-top:10px; padding:8px 10px; background:var(--surface-2); border-radius:var(--r-sm); }
+  .knext .icon { color:var(--accent); flex-shrink:0; margin-top:1px; }
+  .kfoot { display:flex; align-items:center; gap:8px; margin-top:11px; }
+  .kfoot .kdue { margin-left:auto; font-family:var(--ff-mono); font-size:12px; color:var(--text-3); }
+  .tag .icon { width:13px; height:13px; margin-right:4px; }
+  .pri { width:9px; height:9px; border-radius:50%; flex-shrink:0; box-shadow:0 0 0 3px var(--surface); }
+  .pri-high{ background:var(--rose);} .pri-med{ background:var(--amber);} .pri-low{ background:var(--text-3);}
+
+  /* ---- After-event drawer ---- */
+  .ae-grid { display:grid; grid-template-columns:1.05fr 1fr; gap:16px; }
+  .ae-sub { font-size:13px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; margin:0 0 10px; }
+  .ae-sub .icon { color:var(--accent); }
+  .stack { display:flex; padding-left:10px; }
+  .stack .avatar { margin-left:-10px; border:2px solid var(--surface); box-shadow:none; }
+  .gdraft { font-size:13px; line-height:1.6; color:var(--text); margin:10px 0 0;
+    padding:12px; background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-sm); }
+  .gdraft .lnk { color:var(--accent); }
+
+  .rem { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--r-md);
+    background:var(--surface-2); border:1px solid var(--hairline); }
+  .rem .ic { flex-shrink:0; }
+  .rem .body { flex:1; min-width:0; font-size:13px; color:var(--text); line-height:1.4; }
+  .rem .body .sub { font-size:12px; color:var(--text-3); margin-top:2px; }
+  .rem .acts { display:flex; gap:6px; flex-shrink:0; }
+  .rem button.chip { cursor:pointer; }
+
+  /* ---- After-event triage: queue + per-contact card ---- */
+  .ae2 { display:grid; grid-template-columns:258px 1fr; gap:16px; align-items:start; }
+  .aeq { display:flex; flex-direction:column; gap:6px; }
+  .aeq-h { font-size:11px; font-weight:600; color:var(--text-4); letter-spacing:.08em; text-transform:uppercase; padding:0 4px 4px; }
+  .qrow { display:grid; grid-template-columns:34px 1fr auto; align-items:center; gap:10px; width:100%; text-align:left; background:var(--surface-2); border:1px solid transparent; border-radius:var(--r-md); padding:9px 11px; cursor:pointer; }
+  .qrow:hover { background:var(--surface-3); }
+  .qrow.is-cur { background:var(--accent-softer); border-color:var(--accent-ring); }
+  .qrow .qn { font-size:13.5px; font-weight:600; color:var(--ink); }
+  .qrow .qs { font-size:11.5px; color:var(--text-3); margin-top:1px; }
+  .qbadge { font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+  .qbadge .d { width:6px; height:6px; border-radius:50%; }
+  .aet { padding:16px; }
+  .aet-nav { display:flex; align-items:center; gap:4px; }
+  .aet-nav button { width:30px; height:30px; min-width:0; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--r-sm); background:var(--surface-2); border:1px solid var(--border-2); color:var(--text-2); cursor:pointer; }
+  .aet-block { margin-top:15px; }
+  .aet-lbl { font-size:12px; font-weight:600; color:var(--text-2); margin-bottom:7px; display:flex; align-items:center; gap:6px; }
+  .aet-ctx { font-size:13px; color:var(--text-2); line-height:1.6; background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-sm); padding:10px 12px; }
+  /* mobile horizontal queue pager */
+  .qpager { display:flex; gap:12px; overflow-x:auto; padding:2px 2px 8px; margin-bottom:12px; }
+  .qav { display:flex; flex-direction:column; align-items:center; gap:5px; width:52px; flex-shrink:0; background:none; border:0; cursor:pointer; padding:0; }
+  .qav .avwrap { position:relative; }
+  .qav.is-cur .avwrap .avatar { box-shadow:0 0 0 2px var(--accent); }
+  .qav .sdot { position:absolute; right:-1px; bottom:-1px; width:10px; height:10px; border-radius:50%; border:2px solid var(--bg); }
+  .qav .qnm { font-size:10.5px; color:var(--text-3); max-width:52px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qav.is-cur .qnm { color:var(--text); font-weight:600; }
+
+  /* ---- Mobile ---- */
+  .m-grp { display:flex; align-items:center; gap:8px; margin:16px 2px 10px; }
+  .m-grp .cdot { width:8px; height:8px; border-radius:50%; }
+  .m-grp .lab { font-size:13px; font-weight:700; color:var(--ink); }
+  .m-grp .n { margin-left:auto; font-family:var(--ff-mono); font-size:12px; color:var(--text-3); }
+</style>
+</head>
+<body>
+
+<!-- ===== inline icon sprite (shared across 01–05) ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 6"/><path d="M17 14.2a5.2 5.2 0 0 1 3.5 4.8"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 11 15.8 7"/><path d="M8.2 13l7.6 4"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.6" cy="6" r="1.1"/><circle cx="3.6" cy="12" r="1.1"/><circle cx="3.6" cy="18" r="1.1"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 21h18"/><rect x="5" y="11" width="3.2" height="7" rx="1"/><rect x="10.4" y="7" width="3.2" height="11" rx="1"/><rect x="15.8" y="13" width="3.2" height="5" rx="1"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7.5 11 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h5l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.5-3.5"/></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3.5 13.6 9 19 10.5 13.6 12 12 17.5 10.4 12 5 10.5 10.4 9z"/><path d="M18.5 5.5v2.6M6 15.4v2M20 6.8h-2.4M7.4 16.4H5.2"/></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4z"/><path d="M14 6.5v11"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h3l1.5 4-2 1.5a11 11 0 0 0 5 5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+<symbol id="i-building" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 9.5h16M8 3v4M16 3v4"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><path d="M14 14h2v2M18 14v0M14 18v0M18 18v2h-2"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M9 15 15 9"/><path d="M10.5 6.5 12 5a4 4 0 0 1 5.7 5.7l-1.5 1.5"/><path d="M13.5 17.5 12 19a4 4 0 0 1-5.7-5.7l1.5-1.5"/></symbol>
+<symbol id="i-message" viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-10.5 6.9L4 20l1.4-4.2A7.5 7.5 0 1 1 20 11.5z"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2 2 0 0 0-3-3L5 17z"/><path d="m14 6 3 3"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.5 7-11a7 7 0 0 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 3.5 5 9a5 5 0 0 1-10 0c0-1.6.6-2.8 1.3-3.7C9 10 9.6 11.5 11 12c-.5-3 1-6 1-9z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+<symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7M3 12.5h18"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m7.5 8 4.5-4.5L16.5 8"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+<symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.2v9.6"/><path d="M18 10.2c0 4-4 3.8-8 4.8"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17.4v.2"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.2"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13 6 5h12l2 8"/><path d="M4 13v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5h-5a3 3 0 0 1-6 0z"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M21 4 3 11l7 3 3 7z"/><path d="M21 4 10 14"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.6-5.7L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.6 5.7L4 16"/><path d="M4 20v-4h4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+</defs></svg>
+
+<div class="gallery">
+  <div class="gallery-head">
+    <h1 class="gallery-title">跟进管线 · 活动后跟进　<span class="serif" style="color:var(--text-3);font-size:18px">Follow-up Pipeline</span></h1>
+    <p class="gallery-sub">05 / 05　PRD §8.4 管线状态 · §12 活动后整理 · §20.6 待办对象　—　桌面 + 移动</p>
+  </div>
+
+  <div class="board-row">
+
+    <!-- ================= DESKTOP ================= -->
+    <div class="board-wrap">
+      <div class="board-label"><span class="dot"></span>Desktop · 1280</div>
+      <div class="board is-desktop">
+        <div class="board-canvas">
+
+          <!-- top nav -->
+          <header class="orbit-top-nav">
+            <div class="orbit-nav-lead">
+              <a class="orbit-brand-link" href="#">
+                <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.5" stroke="var(--accent)" stroke-width="1.6" opacity="0.35"/><circle cx="14" cy="14" r="4.4" fill="var(--accent)"/><circle cx="24.2" cy="10" r="2.5" fill="var(--accent)"/></svg>
+                <span class="orbit-brand-word"><span class="orbit-brand-name">Orbit</span><span class="orbit-brand-sub"><span class="t"><b class="zh">由 iOrbit 智能匹配引擎驱动</b><b class="en">Powered by the iOrbit matching engine</b></span></span></span>
+              </a>
+            </div>
+            <nav class="orbit-nav-links">
+              <a class="orbit-nav-link" href="#">iOrbit</a>
+              <a class="orbit-nav-link" href="#"><span class="t"><b class="zh">活动</b><b class="en">Events</b></span></a>
+              <a class="orbit-nav-link" href="#"><span class="t"><b class="zh">日程</b><b class="en">Calendar</b></span></a>
+              <a class="orbit-nav-link is-active" href="01-wallet.html"><span class="t"><b class="zh">人脉</b><b class="en">Contacts</b></span></a>
+            </nav>
+            <div class="orbit-top-actions">
+              <span class="orbit-lang-toggle"><button class="is-active">中</button><span class="orbit-lang-sep">/</span><button>EN</button></span>
+              <a class="orbit-me-link" href="#"><span class="t"><b class="zh">我的</b><b class="en">Me</b></span></a>
+              <a class="orbit-nav-iorbit" href="#" aria-label="iOrbit"><svg class="icon"><use href="#i-sparkles"/></svg></a>
+            </div>
+          </header>
+
+          <div class="layout">
+            <!-- CRM sidebar -->
+            <aside class="crm-side">
+              <div class="grp"><span class="t"><b class="zh">名片夹</b><b class="en">Wallet</b></span></div>
+              <nav class="crm-nav">
+                <a href="01-wallet.html"><svg class="icon"><use href="#i-wallet"/></svg><span class="t"><b class="zh">全部人脉</b><b class="en">All contacts</b></span><span class="n">128</span></a>
+                <a href="05-followup.html" class="active"><svg class="icon"><use href="#i-branch"/></svg><span class="t"><b class="zh">跟进管线</b><b class="en">Pipeline</b></span><span class="n">24</span></a>
+                <a href="#"><svg class="icon"><use href="#i-share"/></svg><span class="t"><b class="zh">人脉图谱</b><b class="en">Graph</b></span></a>
+                <a href="#"><svg class="icon"><use href="#i-users"/></svg><span class="t"><b class="zh">引荐记录</b><b class="en">Intros</b></span><span class="n">6</span></a>
+                <a href="03-dashboard.html"><svg class="icon"><use href="#i-chart"/></svg><span class="t"><b class="zh">人脉表盘</b><b class="en">Dashboard</b></span></a>
+              </nav>
+              <div class="grp" style="margin-top:22px"><span class="t"><b class="zh">采集</b><b class="en">Capture</b></span></div>
+              <nav class="crm-nav">
+                <a href="04-import.html"><svg class="icon"><use href="#i-download"/></svg><span class="t"><b class="zh">导入中心</b><b class="en">Import hub</b></span></a>
+                <a href="04-import.html"><svg class="icon"><use href="#i-camera"/></svg><span class="t"><b class="zh">扫名片</b><b class="en">Scan card</b></span></a>
+              </nav>
+            </aside>
+
+            <!-- content -->
+            <main class="content">
+              <div class="content-head">
+                <div>
+                  <div class="eyebrow" style="margin-bottom:8px"><span class="t"><b class="zh">跟进管线</b><b class="en">Follow-up pipeline</b></span></div>
+                  <h1 class="h-display"><span class="t"><b class="zh">跟进管线</b><b class="en">Pipeline</b></span></h1>
+                  <div class="dim-13 mt-6"><span class="t"><b class="zh">24 段关系待推进 · 8 项今日待办</b><b class="en">24 relationships in motion · 8 tasks due today</b></span></div>
+                </div>
+                <div class="row middle gap-10">
+                  <!-- source event filter (activity → attendee list) -->
+                  <span class="evt-chip">
+                    <svg class="icon icon-16"><use href="#i-ticket"/></svg>
+                    <span class="t"><b class="zh">来源活动：AI 峰会 2026</b><b class="en">Event: AI Summit 2026</b></span>
+                    <svg class="icon icon-14 x"><use href="#i-x"/></svg>
+                  </span>
+                  <!-- single primary CTA -->
+                  <button class="btn btn-primary"><svg class="icon icon-16"><use href="#i-sparkles"/></svg><span class="t"><b class="zh">一键整理活动后联系人</b><b class="en">Organize after-event contacts</b></span></button>
+                </div>
+              </div>
+
+              <!-- ===== 3-column KANBAN (pipeline statuses, sync with orbit-real-contacts) ===== -->
+              <div class="kanban">
+
+                <!-- COLUMN 1 · 待联系 / To contact (ps-to_contact amber) -->
+                <section class="kcol">
+                  <header class="kcol-head">
+                    <span class="cdot cdot-amber"></span>
+                    <span class="clab"><span class="t"><b class="zh">待联系</b><b class="en">To contact</b></span></span>
+                    <span class="ccount">3</span>
+                  </header>
+                  <div class="kcards">
+
+                    <!-- pipelineStatus:to_contact [现有] · Task{type:greeting,dueAt,priority:high,status:open} [现有:followups] -->
+                    <a class="kcard" href="02-connection.html">
+                      <div class="row middle gap-10">
+                        <div class="avatar avatar-44 g-amber">伟</div>
+                        <div class="grow">
+                          <div class="knm ell">陈伟 · Wei Chen</div>
+                          <div class="korg ell"><span class="t"><b class="zh">味来餐饮 · 创始人</b><b class="en">Weilai F&amp;B · Founder</b></span></div>
+                        </div>
+                      </div>
+                      <div class="krow1"><span class="badge src-event"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">活动导入</b><b class="en">Event</b></span></span></div>
+                      <!-- nextAction [需扩展] -->
+                      <div class="knext"><svg class="icon icon-16"><use href="#i-message"/></svg><span class="t"><b class="zh">建议：会后打招呼，回顾展位聊到的渠道合作</b><b class="en">Suggested: greet & recap the channel-partnership chat</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：展位对话记录提到渠道合作，且行业=餐饮匹配你目标。</b><b class="en"><b>Basis</b>: booth note mentions channel partnership; industry=F&amp;B matches your goal.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:booth-note-weichen</span></span></span></div>
+                      <div class="kfoot">
+                        <span class="tag"><svg class="icon"><use href="#i-message"/></svg><span class="t"><b class="zh">打招呼</b><b class="en">Greeting</b></span></span>
+                        <span class="kdue"><span class="t"><b class="zh">今天</b><b class="en">Today</b></span></span>
+                        <span class="pri pri-high" title="高优先 / High"></span>
+                      </div>
+                    </a>
+
+                    <!-- Task{type:greeting,priority:medium} -->
+                    <a class="kcard" href="02-connection.html">
+                      <div class="row middle gap-10">
+                        <div class="avatar avatar-44 g-emerald">健</div>
+                        <div class="grow">
+                          <div class="knm ell">田中健 · Ken Tanaka</div>
+                          <div class="korg ell"><span class="t"><b class="zh">Loop Events · 商务拓展</b><b class="en">Loop Events · BizDev</b></span></div>
+                        </div>
+                      </div>
+                      <div class="krow1"><span class="badge src-qr"><svg class="icon"><use href="#i-qr"/></svg><span class="t"><b class="zh">现场扫码</b><b class="en">QR scan</b></span></span></div>
+                      <div class="knext"><svg class="icon icon-16"><use href="#i-message"/></svg><span class="t"><b class="zh">建议：新认识的资源介绍人，先建立联系</b><b class="en">Suggested: new connector — open the line first</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：现场扫码新增，价值类型=资源介绍人，尚无往来记录。</b><b class="en"><b>Basis</b>: added via QR scan, value type=connector, no prior touch yet.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:qr-scan-tanaka</span></span></span></div>
+                      <div class="kfoot">
+                        <span class="tag"><svg class="icon"><use href="#i-message"/></svg><span class="t"><b class="zh">打招呼</b><b class="en">Greeting</b></span></span>
+                        <span class="kdue"><span class="t"><b class="zh">今天</b><b class="en">Today</b></span></span>
+                        <span class="pri pri-med" title="中优先 / Medium"></span>
+                      </div>
+                    </a>
+
+                    <!-- Task{type:reactivate} · dormant relationship -->
+                    <a class="kcard" href="02-connection.html">
+                      <div class="row middle gap-10">
+                        <div class="avatar avatar-44 g-slate">洋</div>
+                        <div class="grow">
+                          <div class="knm ell">刘洋 · Yang Liu</div>
+                          <div class="korg ell"><span class="t"><b class="zh">DevScale · 技术总监</b><b class="en">DevScale · Eng Director</b></span></div>
+                        </div>
+                      </div>
+                      <div class="krow1"><span class="badge src-contact"><svg class="icon"><use href="#i-user"/></svg><span class="t"><b class="zh">通讯录</b><b class="en">Imported</b></span></span><span class="strength st-dormant"><span class="dot"></span><span class="t"><b class="zh">沉睡</b><b class="en">Dormant</b></span></span></div>
+                      <div class="knext"><svg class="icon icon-16"><use href="#i-refresh"/></svg><span class="t"><b class="zh">建议：已 5 个月未联系，用峰会话题重新激活</b><b class="en">Suggested: 5 months silent — reactivate via the summit</b></span><span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh"><b>依据</b>：最近互动 &gt; 150 天 → 判定沉睡，触发重新激活提醒。</b><b class="en"><b>Basis</b>: last interaction &gt; 150d → flagged dormant, reactivation nudge.</b></span></span></span></div>
+                      <div class="kfoot">
+                        <span class="tag"><svg class="icon"><use href="#i-refresh"/></svg><span class="t"><b class="zh">重新激活</b><b class="en">Reactivate</b></span></span>
+                        <span class="kdue"><span class="t"><b class="zh">3 天后</b><b class="en">In 3d</b></span></span>
+                        <span class="pri pri-low" title="低优先 / Low"></span>
+                      </div>
+                    </a>
+
+                  </div>
+                </section>
+
+                <!-- COLUMN 2 · 沟通中 / In progress (ps-in_progress sky) -->
+                <section class="kcol">
+                  <header class="kcol-head">
+                    <span class="cdot cdot-sky"></span>
+                    <span class="clab"><span class="t"><b class="zh">沟通中</b><b class="en">In progress</b></span></span>
+                    <span class="ccount">3</span>
+                  </header>
+                  <div class="kcards">
+
+                    <!-- pipelineStatus:in_progress · Task{type:send_material,priority:high} -->
+                    <a class="kcard" href="02-connection.html">
+                      <div class="row middle gap-10">
+                        <div class="avatar avatar-44 g-violet">花</div>
+                        <div class="grow">
+                          <div class="knm ell">佐藤花 · Hana Sato</div>
+                          <div class="korg ell"><span class="t"><b class="zh">Aki Robotics · 合作负责人</b><b class="en">Aki Robotics · Partnerships</b></span></div>
+                        </div>
+                      </div>
+                      <div class="krow1"><span class="badge src-scan"><svg class="icon"><use href="#i-camera"/></svg><span class="t"><b class="zh">名片扫描</b><b class="en">Scanned</b></span></span><span class="strength st-strong"><span class="dot"></span><span class="t"><b class="zh">强</b><b class="en">Strong</b></span></span></div>
+                      <div class="knext"><svg class="icon icon-16"><use href="#i-mail"/></svg><span class="t"><b class="zh">已承诺发送产品资料，对方在找日本制造业客户</b><b class="en">Promised the product deck — she wants JP manufacturing leads</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：交流摘要记录"承诺发产品资料"，2 天未兑现。</b><b class="en"><b>Basis</b>: summary noted a promise to send the deck, 2 days unfulfilled.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:summary-hana-0705</span></span></span></div>
+                      <div class="kfoot">
+                        <span class="tag"><svg class="icon"><use href="#i-mail"/></svg><span class="t"><b class="zh">发资料</b><b class="en">Send deck</b></span></span>
+                        <span class="kdue"><span class="t"><b class="zh">今天</b><b class="en">Today</b></span></span>
+                        <span class="pri pri-high" title="高优先 / High"></span>
+                      </div>
+                    </a>
+
+                    <!-- Task{type:schedule,priority:high} · high-value investor -->
+                    <a class="kcard" href="02-connection.html">
+                      <div class="row middle gap-10">
+                        <div class="avatar avatar-44 g-sky">E</div>
+                        <div class="grow">
+                          <div class="knm ell">Emily Wong</div>
+                          <div class="korg ell"><span class="t"><b class="zh">Northlight Capital · 投资合伙人</b><b class="en">Northlight Capital · Partner</b></span></div>
+                        </div>
+                      </div>
+                      <div class="krow1"><span class="badge src-qr"><svg class="icon"><use href="#i-qr"/></svg><span class="t"><b class="zh">现场扫码</b><b class="en">QR scan</b></span></span><span class="tag tag-value"><span class="t"><b class="zh">高价值</b><b class="en">High value</b></span></span></div>
+                      <div class="knext"><svg class="icon icon-16"><use href="#i-calendar"/></svg><span class="t"><b class="zh">对种子轮有兴趣，建议预约 30 分钟深聊</b><b class="en">Interested in the seed round — book a 30-min call</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：昨日现场对话表达投资意向，标记高价值。</b><b class="en"><b>Basis</b>: yesterday's on-site talk signaled investing interest; tagged high value.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:qr-exchange-emily</span></span></span></div>
+                      <div class="kfoot">
+                        <span class="tag"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">约会议</b><b class="en">Schedule</b></span></span>
+                        <span class="kdue"><span class="t"><b class="zh">明天</b><b class="en">Tomorrow</b></span></span>
+                        <span class="pri pri-high" title="高优先 / High"></span>
+                      </div>
+                    </a>
+
+                    <!-- Task{type:schedule,priority:medium} · second open task for 佐藤花 -->
+                    <a class="kcard" href="02-connection.html">
+                      <div class="row middle gap-10">
+                        <div class="avatar avatar-44 g-violet">花</div>
+                        <div class="grow">
+                          <div class="knm ell">佐藤花 · Hana Sato</div>
+                          <div class="korg ell"><span class="t"><b class="zh">Aki Robotics · 合作负责人</b><b class="en">Aki Robotics · Partnerships</b></span></div>
+                        </div>
+                      </div>
+                      <div class="krow1"><span class="tag tag-value"><span class="t"><b class="zh">潜在合作</b><b class="en">Partnership</b></span></span></div>
+                      <div class="knext"><svg class="icon icon-16"><use href="#i-calendar"/></svg><span class="t"><b class="zh">资料发出后，安排双方产品团队对齐会</b><b class="en">After the deck lands, set a product-team alignment call</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：价值类型=潜在合作，"发资料"完成后的下一步顺序推断。</b><b class="en"><b>Basis</b>: value type=partnership; next step inferred after the deck task closes.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:pipeline-hana-partner</span></span></span></div>
+                      <div class="kfoot">
+                        <span class="tag"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">约会议</b><b class="en">Schedule</b></span></span>
+                        <span class="kdue"><span class="t"><b class="zh">3 天后</b><b class="en">In 3d</b></span></span>
+                        <span class="pri pri-med" title="中优先 / Medium"></span>
+                      </div>
+                    </a>
+
+                  </div>
+                </section>
+
+                <!-- COLUMN 3 · 已合作 / Partnered (ps-partnered live) -->
+                <section class="kcol">
+                  <header class="kcol-head">
+                    <span class="cdot cdot-live"></span>
+                    <span class="clab"><span class="t"><b class="zh">已合作</b><b class="en">Partnered</b></span></span>
+                    <span class="ccount">2</span>
+                  </header>
+                  <div class="kcards">
+
+                    <!-- pipelineStatus:partnered · maintenance cadence -->
+                    <a class="kcard" href="02-connection.html">
+                      <div class="row middle gap-10">
+                        <div class="avatar avatar-44 g-rose">S</div>
+                        <div class="grow">
+                          <div class="knm ell">Sarah Kim</div>
+                          <div class="korg ell"><span class="t"><b class="zh">Loop Events · 活动主办方</b><b class="en">Loop Events · Organizer</b></span></div>
+                        </div>
+                      </div>
+                      <div class="krow1"><span class="badge src-referral"><svg class="icon"><use href="#i-share"/></svg><span class="t"><b class="zh">朋友推荐</b><b class="en">Referral</b></span></span><span class="strength st-medium"><span class="dot"></span><span class="t"><b class="zh">中</b><b class="en">Medium</b></span></span></div>
+                      <div class="knext"><svg class="icon icon-16"><use href="#i-check"/></svg><span class="t"><b class="zh">已合作办展，保持季度联系并交换活动名单</b><b class="en">Co-hosted — keep quarterly touch & swap guest lists</b></span><span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop right"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh"><b>依据</b>：已合作关系按季度维护节奏，距上次联系将满 90 天。</b><b class="en"><b>Basis</b>: partnered ties follow a quarterly cadence; ~90d since last touch.</b></span></span></span></div>
+                      <div class="kfoot">
+                        <span class="tag"><svg class="icon"><use href="#i-refresh"/></svg><span class="t"><b class="zh">季度维护</b><b class="en">Quarterly</b></span></span>
+                        <span class="kdue"><span class="t"><b class="zh">2 周后</b><b class="en">In 2w</b></span></span>
+                        <span class="pri pri-low" title="低优先 / Low"></span>
+                      </div>
+                    </a>
+
+                    <!-- partnered · thank-you follow-through -->
+                    <a class="kcard" href="02-connection.html">
+                      <div class="row middle gap-10">
+                        <div class="avatar avatar-44 g-emerald">健</div>
+                        <div class="grow">
+                          <div class="knm ell">田中健 · Ken Tanaka</div>
+                          <div class="korg ell"><span class="t"><b class="zh">Loop Events · 商务拓展</b><b class="en">Loop Events · BizDev</b></span></div>
+                        </div>
+                      </div>
+                      <div class="krow1"><span class="tag tag-value"><span class="t"><b class="zh">资源介绍人</b><b class="en">Connector</b></span></span></div>
+                      <div class="knext"><svg class="icon icon-16"><use href="#i-star"/></svg><span class="t"><b class="zh">已引荐 Sarah，发感谢并回报一条对口资源</b><b class="en">Introduced Sarah — thank him & return a warm lead</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop right"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：引荐记录显示他促成了 Sarah 的连接，互惠尚未回报。</b><b class="en"><b>Basis</b>: intro log shows he connected you to Sarah; reciprocity still open.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:intro-tanaka-sarah</span></span></span></div>
+                      <div class="kfoot">
+                        <span class="tag"><svg class="icon"><use href="#i-message"/></svg><span class="t"><b class="zh">致谢</b><b class="en">Thank-you</b></span></span>
+                        <span class="kdue"><span class="t"><b class="zh">本周</b><b class="en">This week</b></span></span>
+                        <span class="pri pri-med" title="中优先 / Medium"></span>
+                      </div>
+                    </a>
+
+                  </div>
+                </section>
+
+              </div>
+
+              <!-- ===== AFTER-EVENT DRAWER (PRD §12) — full-width card below kanban ===== -->
+              <section class="card card-pad" style="margin-top:20px">
+                <div class="row middle between" style="margin-bottom:6px">
+                  <div>
+                    <div class="eyebrow" style="margin-bottom:6px"><span class="t"><b class="zh">活动后整理</b><b class="en">After-event triage</b></span></div>
+                    <h2 class="h-title"><span class="t"><b class="zh">活动后整理 · AI 峰会 2026</b><b class="en">After AI Summit 2026</b></span></h2>
+                  </div>
+                  <div class="row middle gap-10">
+                    <span class="status-pill ps-to_contact"><span class="dot"></span><span class="t"><b class="zh">5 位新联系人 · 3 待整理</b><b class="en">5 new · 3 to triage</b></span></span>
+                    <button class="btn btn-ghost btn-sm"><svg class="icon icon-16"><use href="#i-sparkles"/></svg><span class="t"><b class="zh">为全部各起草一封</b><b class="en">One email each</b></span></button>
+                  </div>
+                </div>
+                <div class="dim-13" style="margin-bottom:14px"><span class="t"><b class="zh">逐位整理：确认标签 · 记一句交流摘要 · 起草个性化邮件。每封单独确认，不群发。</b><b class="en">Triage one by one: confirm tags · jot a summary · draft a personal email — each confirmed individually, no blast.</b></span></div>
+
+                <div class="ae2">
+                  <!-- LEFT · §12.2 新联系人整理 = 整理队列 -->
+                  <div class="aeq">
+                    <div class="aeq-h"><span class="t"><b class="zh">新联系人 · 逐一处理</b><b class="en">New · one by one</b></span></div>
+                    <button class="qrow is-cur">
+                      <div class="avatar g-violet" style="width:34px;height:34px;font-size:13px">花</div>
+                      <div><div class="qn">佐藤花</div><div class="qs"><span class="t"><b class="zh">名片扫描 · 待发资料</b><b class="en">Scanned · owe deck</b></span></div></div>
+                      <span class="qbadge" style="color:var(--amber)"><span class="d" style="background:var(--amber)"></span><span class="t"><b class="zh">待整理</b><b class="en">To do</b></span></span>
+                    </button>
+                    <button class="qrow">
+                      <div class="avatar g-amber" style="width:34px;height:34px;font-size:13px">伟</div>
+                      <div><div class="qn">陈伟</div><div class="qs"><span class="t"><b class="zh">活动导入 · 餐饮潜客</b><b class="en">Event · F&amp;B lead</b></span></div></div>
+                      <span class="qbadge" style="color:var(--amber)"><span class="d" style="background:var(--amber)"></span><span class="t"><b class="zh">待整理</b><b class="en">To do</b></span></span>
+                    </button>
+                    <button class="qrow">
+                      <div class="avatar g-sky" style="width:34px;height:34px;font-size:13px">E</div>
+                      <div><div class="qn">Emily Wong</div><div class="qs"><span class="t"><b class="zh">现场扫码 · 待约会议</b><b class="en">QR · owe a call</b></span></div></div>
+                      <span class="qbadge" style="color:var(--amber)"><span class="d" style="background:var(--amber)"></span><span class="t"><b class="zh">待整理</b><b class="en">To do</b></span></span>
+                    </button>
+                    <button class="qrow">
+                      <div class="avatar g-emerald" style="width:34px;height:34px;font-size:13px">健</div>
+                      <div><div class="qn">田中健</div><div class="qs"><span class="t"><b class="zh">现场扫码 · 资源介绍人</b><b class="en">QR · connector</b></span></div></div>
+                      <span class="qbadge" style="color:var(--live)"><span class="d" style="background:var(--live)"></span><span class="t"><b class="zh">已整理</b><b class="en">Done</b></span></span>
+                    </button>
+                    <button class="qrow">
+                      <div class="avatar g-slate" style="width:34px;height:34px;font-size:13px">敏</div>
+                      <div><div class="qn">林敏</div><div class="qs"><span class="t"><b class="zh">推荐关系 · 已建立</b><b class="en">Referral · linked</b></span></div></div>
+                      <span class="qbadge" style="color:var(--live)"><span class="d" style="background:var(--live)"></span><span class="t"><b class="zh">已整理</b><b class="en">Done</b></span></span>
+                    </button>
+                  </div>
+
+                  <!-- RIGHT · 当前联系人整理卡（佐藤花） -->
+                  <div class="aet card-flat">
+                    <div class="row middle between">
+                      <div class="row middle gap-12">
+                        <a href="02-connection.html" class="avatar avatar-56 g-violet">花</a>
+                        <div>
+                          <div class="h-section" style="font-size:15px">佐藤花 · Hana Sato</div>
+                          <div class="dim-13 mt-4"><span class="t"><b class="zh">Aki Robotics · 合作负责人</b><b class="en">Aki Robotics · Partnerships</b></span></div>
+                        </div>
+                      </div>
+                      <div class="row middle gap-8">
+                        <span class="mono" style="font-size:12px;color:var(--text-3)">1 / 5</span>
+                        <div class="aet-nav">
+                          <button aria-label="prev"><svg class="icon icon-16" style="transform:rotate(180deg)"><use href="#i-chevron-right"/></svg></button>
+                          <button aria-label="next"><svg class="icon icon-16"><use href="#i-chevron-right"/></svg></button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 来源上下文 · auto · read-only · provenance -->
+                    <div class="aet-block">
+                      <div class="aet-lbl"><svg class="icon icon-14" style="stroke:var(--text-3)"><use href="#i-pin"/></svg><span class="t"><b class="zh">来源与场景</b><b class="en">Where you met</b></span><span class="basis basis-evidence" tabindex="0"><svg class="icon"><use href="#i-shield"/></svg><span class="basis-pop"><span class="mm basis-evidence" style="background:var(--sky-soft)"><span class="t"><b class="zh">证据直采</b><b class="en">Evidence</b></span></span><br><span class="t"><b class="zh">来自现场名片扫描 + 主办方匹配记录，自动带入、只读。</b><b class="en">From on-site card scan + host matching record — auto, read-only.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:event-ai-summit-2026</span></span></span></div>
+                      <div class="aet-ctx"><span class="t"><b class="zh">AI 峰会 2026 · 现场名片扫描 · 匹配理由：双方都在找制造业渠道</b><b class="en">AI Summit 2026 · on-site card scan · matched: you both seek manufacturing channels</b></span></div>
+                    </div>
+
+                    <!-- 建议标签/价值 · editable · AI -->
+                    <div class="aet-block">
+                      <div class="aet-lbl"><svg class="icon icon-14" style="stroke:var(--text-3)"><use href="#i-star"/></svg><span class="t"><b class="zh">建议标签 / 价值</b><b class="en">Suggested tags</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">依据：你的 seeking × 对方 offering 推断，可增删。</b><b class="en">Basis: your seeking × her offering — editable.</b></span></span></span></div>
+                      <div class="row wrap gap-6">
+                        <span class="tag tag-value"><span class="t"><b class="zh">潜在合作</b><b class="en">Partnership</b></span></span>
+                        <span class="tag tag-value"><span class="t"><b class="zh">技术资源</b><b class="en">Tech</b></span></span>
+                        <span class="chip chip-sm"><svg class="icon icon-14"><use href="#i-plus"/></svg><span class="t"><b class="zh">加标签</b><b class="en">Add</b></span></span>
+                      </div>
+                    </div>
+
+                    <!-- 交流摘要 memo · per-contact · 存入连接画像 -->
+                    <div class="aet-block">
+                      <div class="aet-lbl"><svg class="icon icon-14" style="stroke:var(--text-3)"><use href="#i-pencil"/></svg><span class="t"><b class="zh">交流摘要 · 关于佐藤花</b><b class="en">Summary · about Hana</b></span></div>
+                      <textarea class="field" style="min-height:74px">聊了机器人渠道合作，对方想找日本制造业客户，我承诺发送产品资料</textarea>
+                      <div class="dim-13 mt-6"><span class="t"><b class="zh">这条会存入 TA 的连接画像时间线，并参与价值分析。</b><b class="en">Saved to her connection profile timeline; feeds value analysis.</b></span></div>
+                    </div>
+
+                    <!-- 后续 -->
+                    <div class="aet-block row gap-8">
+                      <button class="btn btn-primary btn-sm grow" style="justify-content:center" data-to="佐藤花 · Hana Sato"><svg class="icon icon-16"><use href="#i-mail"/></svg><span class="t"><b class="zh">起草个性化邮件</b><b class="en">Draft email</b></span></button>
+                      <button class="btn btn-ghost btn-sm"><svg class="icon icon-16"><use href="#i-bell"/></svg><span class="t"><b class="zh">设跟进提醒</b><b class="en">Remind</b></span></button>
+                    </div>
+                    <div class="note note-amber mt-12"><svg class="icon icon-16"><use href="#i-shield"/></svg><span class="t"><b class="zh">邮件按 TA 的摘要单独生成、外发前需你确认——不是群发。</b><b class="en">The email is personalized from her summary and confirmed before sending — not a blast.</b></span></div>
+                  </div>
+                </div>
+
+                <!-- §12.5 跟进提醒 -->
+                <div class="ae-sub" style="margin:20px 0 12px"><svg class="icon icon-16"><use href="#i-bell"/></svg><span class="t"><b class="zh">跟进提醒</b><b class="en">Follow-up reminders</b></span></div>
+                <div class="col gap-8">
+
+                  <!-- reminder: 某人未发资料 -->
+                  <div class="rem">
+                    <svg class="icon icon-22 ic" style="stroke:var(--amber)"><use href="#i-mail"/></svg>
+                    <div class="body">
+                      <span class="t"><b class="zh">你答应给 佐藤花 发产品资料，还没发出</b><b class="en">You promised Hana Sato a product deck — not sent yet</b></span>
+                      <span class="basis basis-ai" tabindex="0" style="margin-left:4px"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>触发依据</b>：交流摘要检出承诺"发产品资料"，2 天未兑现。</b><b class="en"><b>Trigger</b>: summary detected a promise to send the deck, unfulfilled for 2 days.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:summary-hana-0705</span></span></span>
+                      <div class="sub"><span class="t"><b class="zh">承诺于 2 天前 · AI 峰会 2026</b><b class="en">Promised 2 days ago · AI Summit 2026</b></span></div>
+                    </div>
+                    <div class="acts">
+                      <button class="chip chip-sm"><svg class="icon icon-14"><use href="#i-clock"/></svg><span class="t"><b class="zh">稍后</b><b class="en">Snooze</b></span></button>
+                      <button class="chip chip-sm chip-accent"><svg class="icon icon-14"><use href="#i-check"/></svg><span class="t"><b class="zh">完成</b><b class="en">Done</b></span></button>
+                    </div>
+                  </div>
+
+                  <!-- reminder: 某人适合约会议 -->
+                  <div class="rem">
+                    <svg class="icon icon-22 ic" style="stroke:var(--sky)"><use href="#i-calendar"/></svg>
+                    <div class="body">
+                      <span class="t"><b class="zh">Emily Wong 对种子轮有兴趣，适合尽快约会议</b><b class="en">Emily Wong is warm on the seed round — book a call soon</b></span>
+                      <span class="basis basis-ai" tabindex="0" style="margin-left:4px"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>触发依据</b>：昨日对话表达投资意向 + 高价值 → 建议尽快跟进。</b><b class="en"><b>Trigger</b>: yesterday's talk signaled interest + high value → nudge to follow up.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:qr-exchange-emily</span></span></span>
+                      <div class="sub"><span class="t"><b class="zh">高价值 · 昨天互动</b><b class="en">High value · engaged yesterday</b></span></div>
+                    </div>
+                    <div class="acts">
+                      <button class="chip chip-sm"><svg class="icon icon-14"><use href="#i-clock"/></svg><span class="t"><b class="zh">稍后</b><b class="en">Snooze</b></span></button>
+                      <button class="chip chip-sm chip-accent"><svg class="icon icon-14"><use href="#i-check"/></svg><span class="t"><b class="zh">完成</b><b class="en">Done</b></span></button>
+                    </div>
+                  </div>
+
+                  <!-- reminder: 某关系超 30 天未推进 -->
+                  <div class="rem">
+                    <svg class="icon icon-22 ic" style="stroke:var(--rose)"><use href="#i-alert"/></svg>
+                    <div class="body">
+                      <span class="t"><b class="zh">与 刘洋 的关系已超 30 天未推进，建议重新激活</b><b class="en">Yang Liu has stalled 30+ days — time to reactivate</b></span>
+                      <span class="basis basis-rule" tabindex="0" style="margin-left:4px"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop right"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh"><b>触发依据</b>：管线阶段停滞 &gt; 30 天 → 自动生成推进提醒。</b><b class="en"><b>Trigger</b>: pipeline stage idle &gt; 30 days → auto reminder to advance.</b></span></span></span>
+                      <div class="sub"><span class="t"><b class="zh">沉睡 · 上次互动 5 个月前</b><b class="en">Dormant · last touch 5 months ago</b></span></div>
+                    </div>
+                    <div class="acts">
+                      <button class="chip chip-sm"><svg class="icon icon-14"><use href="#i-clock"/></svg><span class="t"><b class="zh">稍后</b><b class="en">Snooze</b></span></button>
+                      <button class="chip chip-sm chip-accent"><svg class="icon icon-14"><use href="#i-check"/></svg><span class="t"><b class="zh">完成</b><b class="en">Done</b></span></button>
+                    </div>
+                  </div>
+
+                </div>
+              </section>
+
+            </main>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MOBILE ================= -->
+    <div class="board-wrap">
+      <div class="board-label"><span class="dot"></span>Mobile · 390</div>
+      <div class="board is-mobile">
+        <div class="board-canvas">
+
+          <header class="orbit-top-nav is-m">
+            <div class="orbit-nav-lead">
+              <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.5" stroke="var(--accent)" stroke-width="1.6" opacity="0.35"/><circle cx="14" cy="14" r="4.4" fill="var(--accent)"/><circle cx="24.2" cy="10" r="2.5" fill="var(--accent)"/></svg>
+              <span class="orbit-nav-page-title"><span class="t"><b class="zh">人脉</b><b class="en">Contacts</b></span></span>
+            </div>
+            <div class="orbit-top-actions">
+              <a class="orbit-nav-iorbit" href="#" aria-label="iOrbit"><svg class="icon"><use href="#i-sparkles"/></svg></a>
+              <span class="orbit-lang-toggle"><button class="is-active">中</button><span class="orbit-lang-sep">/</span><button>EN</button></span>
+              <button class="orbit-nav-menu-btn" aria-label="menu"><svg class="icon"><use href="#i-menu"/></svg></button>
+            </div>
+          </header>
+
+          <div class="m-body">
+
+            <!-- segmented control switches .m-view panels via proto.js -->
+            <div class="m-seg" style="margin-bottom:14px">
+              <a href="#" class="active" data-view="pipeline"><span class="t"><b class="zh">管线</b><b class="en">Pipeline</b></span></a>
+              <a href="#" data-view="todo"><span class="t"><b class="zh">待办</b><b class="en">To-do</b></span></a>
+              <a href="#" data-view="after"><span class="t"><b class="zh">活动后</b><b class="en">Event</b></span></a>
+            </div>
+
+            <div class="m-view" data-view="pipeline">
+            <!-- source event filter -->
+            <span class="evt-chip" style="height:32px;margin-bottom:6px">
+              <svg class="icon icon-14"><use href="#i-ticket"/></svg>
+              <span class="t"><b class="zh">AI 峰会 2026</b><b class="en">AI Summit 2026</b></span>
+            </span>
+
+            <!-- 待联系 group -->
+            <div class="m-grp"><span class="cdot cdot-amber"></span><span class="lab"><span class="t"><b class="zh">待联系</b><b class="en">To contact</b></span></span><span class="n">3</span></div>
+            <div class="kcards">
+              <a class="kcard" href="02-connection.html">
+                <div class="row middle gap-10">
+                  <div class="avatar avatar-44 g-amber">伟</div>
+                  <div class="grow"><div class="knm ell">陈伟 · Wei Chen</div><div class="korg ell"><span class="t"><b class="zh">味来餐饮 · 创始人</b><b class="en">Weilai F&amp;B · Founder</b></span></div></div>
+                </div>
+                <div class="kfoot">
+                  <span class="tag"><svg class="icon"><use href="#i-message"/></svg><span class="t"><b class="zh">打招呼</b><b class="en">Greeting</b></span></span>
+                  <span class="kdue"><span class="t"><b class="zh">今天</b><b class="en">Today</b></span></span>
+                  <span class="pri pri-high"></span>
+                </div>
+              </a>
+              <a class="kcard" href="02-connection.html">
+                <div class="row middle gap-10">
+                  <div class="avatar avatar-44 g-slate">洋</div>
+                  <div class="grow"><div class="knm ell">刘洋 · Yang Liu</div><div class="korg ell"><span class="t"><b class="zh">DevScale · 技术总监</b><b class="en">DevScale · Eng Director</b></span></div></div>
+                </div>
+                <div class="kfoot">
+                  <span class="tag"><svg class="icon"><use href="#i-refresh"/></svg><span class="t"><b class="zh">重新激活</b><b class="en">Reactivate</b></span></span>
+                  <span class="kdue"><span class="t"><b class="zh">3 天后</b><b class="en">In 3d</b></span></span>
+                  <span class="pri pri-low"></span>
+                </div>
+              </a>
+            </div>
+
+            <!-- 沟通中 group -->
+            <div class="m-grp"><span class="cdot cdot-sky"></span><span class="lab"><span class="t"><b class="zh">沟通中</b><b class="en">In progress</b></span></span><span class="n">3</span></div>
+            <div class="kcards">
+              <a class="kcard" href="02-connection.html">
+                <div class="row middle gap-10">
+                  <div class="avatar avatar-44 g-violet">花</div>
+                  <div class="grow"><div class="knm ell">佐藤花 · Hana Sato</div><div class="korg ell"><span class="t"><b class="zh">Aki Robotics · 合作负责人</b><b class="en">Aki Robotics · Partnerships</b></span></div></div>
+                </div>
+                <div class="kfoot">
+                  <span class="tag"><svg class="icon"><use href="#i-mail"/></svg><span class="t"><b class="zh">发资料</b><b class="en">Send deck</b></span></span>
+                  <span class="kdue"><span class="t"><b class="zh">今天</b><b class="en">Today</b></span></span>
+                  <span class="pri pri-high"></span>
+                </div>
+              </a>
+              <a class="kcard" href="02-connection.html">
+                <div class="row middle gap-10">
+                  <div class="avatar avatar-44 g-sky">E</div>
+                  <div class="grow"><div class="knm ell">Emily Wong</div><div class="korg ell"><span class="t"><b class="zh">Northlight · 投资合伙人</b><b class="en">Northlight · Partner</b></span></div></div>
+                </div>
+                <div class="kfoot">
+                  <span class="tag"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">约会议</b><b class="en">Schedule</b></span></span>
+                  <span class="kdue"><span class="t"><b class="zh">明天</b><b class="en">Tomorrow</b></span></span>
+                  <span class="pri pri-high"></span>
+                </div>
+              </a>
+            </div>
+
+            <!-- 已合作 group -->
+            <div class="m-grp"><span class="cdot cdot-live"></span><span class="lab"><span class="t"><b class="zh">已合作</b><b class="en">Partnered</b></span></span><span class="n">2</span></div>
+            <div class="kcards">
+              <a class="kcard" href="02-connection.html">
+                <div class="row middle gap-10">
+                  <div class="avatar avatar-44 g-rose">S</div>
+                  <div class="grow"><div class="knm ell">Sarah Kim</div><div class="korg ell"><span class="t"><b class="zh">Loop Events · 活动主办方</b><b class="en">Loop Events · Organizer</b></span></div></div>
+                </div>
+                <div class="kfoot">
+                  <span class="tag"><svg class="icon"><use href="#i-refresh"/></svg><span class="t"><b class="zh">季度维护</b><b class="en">Quarterly</b></span></span>
+                  <span class="kdue"><span class="t"><b class="zh">2 周后</b><b class="en">In 2w</b></span></span>
+                  <span class="pri pri-low"></span>
+                </div>
+              </a>
+            </div>
+
+            </div><!-- /m-view pipeline -->
+
+            <!-- 待办 view · §12.5 跟进提醒 -->
+            <div class="m-view" data-view="todo" hidden>
+              <div class="ae-sub" style="margin:2px 2px 10px"><svg class="icon icon-16"><use href="#i-bell"/></svg><span class="t"><b class="zh">跟进提醒</b><b class="en">Reminders</b></span></div>
+              <div class="col gap-8">
+                <div class="rem">
+                  <svg class="icon icon-22 ic" style="stroke:var(--amber)"><use href="#i-mail"/></svg>
+                  <div class="body">
+                    <span class="t"><b class="zh">答应给 佐藤花 发的资料还没发</b><b class="en">Deck for Hana Sato still unsent</b></span>
+                    <span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop below"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">依据：交流摘要检出"承诺发资料"，2 天未兑现。</b><b class="en">Basis: summary flagged a promise, 2 days idle.</b></span></span></span>
+                    <div class="sub"><span class="t"><b class="zh">承诺于 2 天前</b><b class="en">Promised 2 days ago</b></span></div>
+                  </div>
+                  <button class="chip chip-sm chip-accent"><svg class="icon icon-14"><use href="#i-check"/></svg></button>
+                </div>
+                <div class="rem">
+                  <svg class="icon icon-22 ic" style="stroke:var(--rose)"><use href="#i-alert"/></svg>
+                  <div class="body">
+                    <span class="t"><b class="zh">与 刘洋 已超 30 天未推进</b><b class="en">Yang Liu stalled 30+ days</b></span>
+                    <span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop below"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh">依据：阶段停滞 &gt; 30 天 → 自动提醒。</b><b class="en">Basis: stage idle &gt; 30 days → auto reminder.</b></span></span></span>
+                    <div class="sub"><span class="t"><b class="zh">沉睡 · 建议重新激活</b><b class="en">Dormant · reactivate</b></span></div>
+                  </div>
+                  <button class="chip chip-sm chip-accent"><svg class="icon icon-14"><use href="#i-check"/></svg></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 活动后 view · §12.2 整理队列 + 逐位整理 -->
+            <div class="m-view" data-view="after" hidden>
+              <div class="h-section" style="font-size:15px"><span class="t"><b class="zh">活动后整理 · AI 峰会 2026</b><b class="en">After AI Summit 2026</b></span></div>
+              <div class="dim-13" style="margin:4px 0 12px"><span class="t"><b class="zh">5 位新联系人 · 3 待整理 · 逐位处理</b><b class="en">5 new · 3 to triage · one by one</b></span></div>
+
+              <!-- horizontal queue pager -->
+              <div class="qpager">
+                <button class="qav is-cur"><span class="avwrap"><span class="avatar g-violet" style="width:40px;height:40px;font-size:15px">花</span><span class="sdot" style="background:var(--amber)"></span></span><span class="qnm">佐藤花</span></button>
+                <button class="qav"><span class="avwrap"><span class="avatar g-amber" style="width:40px;height:40px;font-size:15px">伟</span><span class="sdot" style="background:var(--amber)"></span></span><span class="qnm">陈伟</span></button>
+                <button class="qav"><span class="avwrap"><span class="avatar g-sky" style="width:40px;height:40px;font-size:15px">E</span><span class="sdot" style="background:var(--amber)"></span></span><span class="qnm">Emily</span></button>
+                <button class="qav"><span class="avwrap"><span class="avatar g-emerald" style="width:40px;height:40px;font-size:15px">健</span><span class="sdot" style="background:var(--live)"></span></span><span class="qnm">田中健</span></button>
+                <button class="qav"><span class="avwrap"><span class="avatar g-slate" style="width:40px;height:40px;font-size:15px">敏</span><span class="sdot" style="background:var(--live)"></span></span><span class="qnm">林敏</span></button>
+              </div>
+
+              <!-- current contact triage card -->
+              <div class="aet card-flat">
+                <div class="row middle between">
+                  <div class="row middle gap-10" style="min-width:0">
+                    <a href="02-connection.html" class="avatar avatar-44 g-violet">花</a>
+                    <div style="min-width:0">
+                      <div class="h-section ell" style="font-size:14.5px">佐藤花 · Hana Sato</div>
+                      <div class="dim-13 ell"><span class="t"><b class="zh">Aki Robotics · 合作负责人</b><b class="en">Aki Robotics · Partnerships</b></span></div>
+                    </div>
+                  </div>
+                  <div class="row middle gap-6" style="flex-shrink:0">
+                    <span class="mono" style="font-size:12px;color:var(--text-3);white-space:nowrap">1/5</span>
+                    <div class="aet-nav">
+                      <button aria-label="prev"><svg class="icon icon-16" style="transform:rotate(180deg)"><use href="#i-chevron-right"/></svg></button>
+                      <button aria-label="next"><svg class="icon icon-16"><use href="#i-chevron-right"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="aet-block">
+                  <div class="aet-lbl"><svg class="icon icon-14" style="stroke:var(--text-3)"><use href="#i-pin"/></svg><span class="t"><b class="zh">来源与场景</b><b class="en">Where you met</b></span><span class="basis basis-evidence" tabindex="0"><svg class="icon"><use href="#i-shield"/></svg><span class="basis-pop below"><span class="mm basis-evidence" style="background:var(--sky-soft)"><span class="t"><b class="zh">证据直采</b><b class="en">Evidence</b></span></span><br><span class="t"><b class="zh">现场名片扫描 + 主办方匹配，自动带入、只读。</b><b class="en">On-site scan + host match — auto, read-only.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:event-ai-summit-2026</span></span></span></div>
+                  <div class="aet-ctx"><span class="t"><b class="zh">AI 峰会 2026 · 现场名片扫描 · 匹配理由：都在找制造业渠道</b><b class="en">AI Summit 2026 · card scan · both seek mfg channels</b></span></div>
+                </div>
+
+                <div class="aet-block">
+                  <div class="aet-lbl"><svg class="icon icon-14" style="stroke:var(--text-3)"><use href="#i-star"/></svg><span class="t"><b class="zh">建议标签 / 价值</b><b class="en">Suggested tags</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop below"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">依据：你的 seeking × 对方 offering 推断，可增删。</b><b class="en">Basis: your seeking × her offering — editable.</b></span></span></span></div>
+                  <div class="row wrap gap-6">
+                    <span class="tag tag-value"><span class="t"><b class="zh">潜在合作</b><b class="en">Partnership</b></span></span>
+                    <span class="tag tag-value"><span class="t"><b class="zh">技术资源</b><b class="en">Tech</b></span></span>
+                    <span class="chip chip-sm"><svg class="icon icon-14"><use href="#i-plus"/></svg><span class="t"><b class="zh">加标签</b><b class="en">Add</b></span></span>
+                  </div>
+                </div>
+
+                <div class="aet-block">
+                  <div class="aet-lbl"><svg class="icon icon-14" style="stroke:var(--text-3)"><use href="#i-pencil"/></svg><span class="t"><b class="zh">交流摘要 · 关于佐藤花</b><b class="en">Summary · about Hana</b></span></div>
+                  <textarea class="field" style="min-height:70px">聊了机器人渠道合作，对方想找日本制造业客户，我承诺发送产品资料</textarea>
+                  <div class="dim-13 mt-6"><span class="t"><b class="zh">存入 TA 的连接画像时间线，并参与价值分析。</b><b class="en">Saved to her connection profile; feeds value analysis.</b></span></div>
+                </div>
+
+                <div class="aet-block col gap-8">
+                  <button class="btn btn-primary btn-sm btn-block" data-to="佐藤花 · Hana Sato"><svg class="icon icon-16"><use href="#i-mail"/></svg><span class="t"><b class="zh">起草个性化邮件</b><b class="en">Draft email</b></span></button>
+                  <button class="btn btn-ghost btn-sm btn-block"><svg class="icon icon-16"><use href="#i-bell"/></svg><span class="t"><b class="zh">设跟进提醒</b><b class="en">Set reminder</b></span></button>
+                </div>
+                <div class="note note-amber mt-12"><svg class="icon icon-16"><use href="#i-shield"/></svg><span class="t"><b class="zh">邮件按 TA 的摘要单独生成、外发前需确认——不是群发。</b><b class="en">Personalized from her summary, confirmed before sending — no blast.</b></span></div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- bottom tabs (待办 active) -->
+          <nav class="m-tabs">
+            <a href="01-wallet.html"><svg class="icon"><use href="#i-wallet"/></svg><span class="t"><b class="zh">名片夹</b><b class="en">Cards</b></span></a>
+            <a href="#"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">活动</b><b class="en">Events</b></span></a>
+            <a href="03-dashboard.html"><svg class="icon"><use href="#i-chart"/></svg><span class="t"><b class="zh">表盘</b><b class="en">Board</b></span></a>
+            <a href="05-followup.html" class="active"><svg class="icon"><use href="#i-bell"/></svg><span class="t"><b class="zh">待办</b><b class="en">To-do</b></span></a>
+            <a href="#"><svg class="icon"><use href="#i-user"/></svg><span class="t"><b class="zh">我</b><b class="en">Me</b></span></a>
+          </nav>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="orbit-cards-proto.js"></script>
+
+</body>
+</html>

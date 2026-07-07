@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>导入中心 · 名片复核 / Import & Card Review — Orbit</title>
+<link rel="stylesheet" href="orbit-cards-framework.css">
+<style data-page>
+  /* ---- 04 import + business-card review: page-level only ---- */
+
+  /* two-column import layout */
+  .imp-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 24px; align-items: start; }
+  .imp-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .imp-h .eyebrow { display: block; }
+
+  /* source entry cards (PRD §7.2) */
+  .source-card { display: grid; grid-template-columns: 42px 1fr auto; gap: 13px; padding: 13px 14px; align-items: center; }
+  .source-card + .source-card { margin-top: 10px; }
+  .source-card.is-selected { border-color: var(--accent); box-shadow: var(--sh-sm), 0 0 0 3px var(--accent-softer); }
+  .src-tile { width: 42px; height: 42px; border-radius: var(--r-sm); display: grid; place-items: center; }
+  .src-tile .icon { width: 20px; height: 20px; }
+  .tl-scan     { background: var(--accent-soft); color: var(--accent); }
+  .tl-qr       { background: var(--sky-soft); color: var(--sky); }
+  .tl-event    { background: var(--amber-soft); color: var(--amber); }
+  .tl-contact  { background: var(--surface-3); color: var(--text-2); }
+  .tl-referral { background: var(--rose-soft); color: var(--rose); }
+  .source-card .desc { font-size: 12.5px; color: var(--text-3); margin-top: 3px; }
+  .source-card .hint { margin-top: 8px; }
+  .trust { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: var(--r-pill); font-size: 11.5px; font-weight: 600; }
+  .trust .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .trust-high { background: var(--live-soft); color: var(--live); } .trust-high .dot { background: var(--live); }
+  .trust-med  { background: var(--amber-soft); color: var(--amber); } .trust-med .dot { background: var(--amber); }
+  .trust-low  { background: var(--surface-3); color: var(--text-3); } .trust-low .dot { background: var(--text-3); }
+
+  /* review panel */
+  .review-panel { padding: 18px; }
+  .rp-top { display: grid; grid-template-columns: 132px 1fr; gap: 16px; align-items: start; }
+
+  /* faux scanned business-card thumbnail (no real image) */
+  .scanned-card { aspect-ratio: 3.3 / 2; padding: 12px 13px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  .scanned-card::after { content: ""; position: absolute; right: -20px; top: -20px; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle, var(--accent-softer), transparent 70%); }
+  .scanned-card .sc-name { font-family: var(--ff-tight); font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.1; }
+  .scanned-card .sc-role { font-size: 9.5px; color: var(--text-2); margin-top: 2px; }
+  .scanned-card .sc-lines { display: flex; flex-direction: column; gap: 4px; }
+  .scanned-card .sc-lines i { display: block; height: 4px; border-radius: 2px; background: var(--border-2); }
+  .scanned-card .sc-lines i:nth-child(1){ width: 78%; } .scanned-card .sc-lines i:nth-child(2){ width: 60%; }
+  .scanned-card .sc-org { font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+
+  /* scan-state legend (BusinessCardScanOcrState) */
+  .scan-legend { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--r-pill); padding: 3px; gap: 2px; }
+  .scan-legend span { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: 11px; font-weight: 600; color: var(--text-3); }
+  .scan-legend span .d { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .scan-legend span.on { background: var(--live-soft); color: var(--live); }
+
+  /* review rows (BusinessCardReviewField) */
+  .review-row { border: 1px solid var(--border); border-left-width: 3px; border-radius: var(--r-md); padding: 11px 13px; background: var(--surface); }
+  .review-row + .review-row { margin-top: 9px; }
+  .review-row.st-accepted { border-left-color: var(--live); background: linear-gradient(90deg, var(--live-soft), transparent 42%), var(--surface); }
+  .review-row.st-needs { border-left-color: var(--amber); background: linear-gradient(90deg, var(--amber-soft), transparent 42%), var(--surface); }
+  .rr-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .rr-label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+  .rr-ocr { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--r-sm); background: var(--bg-sunken); border: 1px dashed var(--border-2); font-size: 13px; color: var(--text-2); margin-bottom: 7px; }
+  .rr-ocr .lbl { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-4); font-weight: 700; }
+  .rr-ocr .val { color: var(--text); }
+  .review-row .conf .bars i { height: 5px; }
+  .review-row .conf .bars i:nth-child(2){ height: 8px; } .review-row .conf .bars i:nth-child(3){ height: 11px; }
+  .rr-field .field { height: 40px; font-size: 14px; }
+  .evi { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-3); }
+  .evi .icon { width: 13px; height: 13px; color: var(--accent); }
+  .evi .mono { font-size: 10.5px; color: var(--text-4); }
+
+  /* accept / edit state control */
+  .state-ctl { display: inline-flex; gap: 4px; margin-left: auto; }
+  .state-ctl button { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: var(--r-xs); border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text-2); font-size: 12px; font-weight: 600; }
+  .state-ctl button .icon { width: 13px; height: 13px; }
+  .state-ctl button.on-accept { background: var(--live-soft); color: var(--live); border-color: transparent; }
+  .state-ctl button.on-edit { background: var(--amber-soft); color: var(--amber); border-color: transparent; }
+
+  /* confirm footer bar */
+  .confirm-bar { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }
+  .confirm-q { font-family: var(--ff-tight); font-size: 16px; color: var(--ink); margin: 10px 0 12px; }
+  .provenance { font-size: 11.5px; color: var(--text-3); margin-top: 6px; }
+
+  /* mobile compact review */
+  .m-scanned { display: grid; grid-template-columns: 108px 1fr; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .m-review .review-row { padding: 10px 11px; }
+  .m-sources a { display: grid; grid-template-columns: 34px 1fr auto; gap: 11px; align-items: center; padding: 11px 12px; }
+  .m-sources a + a { margin-top: 8px; }
+  .m-sources .src-tile { width: 34px; height: 34px; }
+  .m-sources .src-tile .icon { width: 17px; height: 17px; }
+</style>
+</head>
+<body>
+
+<!-- ===== inline icon sprite (shared across 01–05) ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 6"/><path d="M17 14.2a5.2 5.2 0 0 1 3.5 4.8"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 11 15.8 7"/><path d="M8.2 13l7.6 4"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.6" cy="6" r="1.1"/><circle cx="3.6" cy="12" r="1.1"/><circle cx="3.6" cy="18" r="1.1"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 21h18"/><rect x="5" y="11" width="3.2" height="7" rx="1"/><rect x="10.4" y="7" width="3.2" height="11" rx="1"/><rect x="15.8" y="13" width="3.2" height="5" rx="1"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7.5 11 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h5l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.5-3.5"/></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3.5 13.6 9 19 10.5 13.6 12 12 17.5 10.4 12 5 10.5 10.4 9z"/><path d="M18.5 5.5v2.6M6 15.4v2M20 6.8h-2.4M7.4 16.4H5.2"/></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4z"/><path d="M14 6.5v11"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h3l1.5 4-2 1.5a11 11 0 0 0 5 5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+<symbol id="i-building" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 9.5h16M8 3v4M16 3v4"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.2"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><path d="M14 14h2v2M18 14v0M14 18v0M18 18v2h-2"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M9 15 15 9"/><path d="M10.5 6.5 12 5a4 4 0 0 1 5.7 5.7l-1.5 1.5"/><path d="M13.5 17.5 12 19a4 4 0 0 1-5.7-5.7l1.5-1.5"/></symbol>
+<symbol id="i-message" viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-10.5 6.9L4 20l1.4-4.2A7.5 7.5 0 1 1 20 11.5z"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2 2 0 0 0-3-3L5 17z"/><path d="m14 6 3 3"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.5 7-11a7 7 0 0 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 3.5 5 9a5 5 0 0 1-10 0c0-1.6.6-2.8 1.3-3.7C9 10 9.6 11.5 11 12c-.5-3 1-6 1-9z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+<symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7M3 12.5h18"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m7.5 8 4.5-4.5L16.5 8"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+<symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.2v9.6"/><path d="M18 10.2c0 4-4 3.8-8 4.8"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17.4v.2"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13 6 5h12l2 8"/><path d="M4 13v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5h-5a3 3 0 0 1-6 0z"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+</defs></svg>
+
+<div class="gallery">
+  <div class="gallery-head">
+    <h1 class="gallery-title">导入中心 · 名片复核　<span class="serif" style="color:var(--text-3);font-size:18px">Import &amp; Card Review</span></h1>
+    <p class="gallery-sub">04 / 05　PRD §7 人脉导入 · acquisition <span class="mono">business-card-review-contract.ts</span>　—　桌面 + 移动</p>
+  </div>
+
+  <div class="board-row">
+
+    <!-- ================= DESKTOP ================= -->
+    <div class="board-wrap">
+      <div class="board-label"><span class="dot"></span>Desktop · 1280</div>
+      <div class="board is-desktop">
+        <div class="board-canvas">
+
+          <!-- top nav -->
+          <header class="orbit-top-nav">
+            <div class="orbit-nav-lead">
+              <a class="orbit-brand-link" href="#">
+                <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.5" stroke="var(--accent)" stroke-width="1.6" opacity="0.35"/><circle cx="14" cy="14" r="4.4" fill="var(--accent)"/><circle cx="24.2" cy="10" r="2.5" fill="var(--accent)"/></svg>
+                <span class="orbit-brand-word"><span class="orbit-brand-name">Orbit</span><span class="orbit-brand-sub"><span class="t"><b class="zh">由 iOrbit 智能匹配引擎驱动</b><b class="en">Powered by the iOrbit matching engine</b></span></span></span>
+              </a>
+            </div>
+            <nav class="orbit-nav-links">
+              <a class="orbit-nav-link" href="#">iOrbit</a>
+              <a class="orbit-nav-link" href="#"><span class="t"><b class="zh">活动</b><b class="en">Events</b></span></a>
+              <a class="orbit-nav-link" href="#"><span class="t"><b class="zh">日程</b><b class="en">Calendar</b></span></a>
+              <a class="orbit-nav-link is-active" href="01-wallet.html"><span class="t"><b class="zh">人脉</b><b class="en">Contacts</b></span></a>
+            </nav>
+            <div class="orbit-top-actions">
+              <span class="orbit-lang-toggle"><button class="is-active">中</button><span class="orbit-lang-sep">/</span><button>EN</button></span>
+              <a class="orbit-me-link" href="#"><span class="t"><b class="zh">我的</b><b class="en">Me</b></span></a>
+              <a class="orbit-nav-iorbit" href="#" aria-label="iOrbit"><svg class="icon"><use href="#i-sparkles"/></svg></a>
+            </div>
+          </header>
+
+          <div class="layout">
+            <!-- CRM sidebar -->
+            <aside class="crm-side">
+              <div class="grp"><span class="t"><b class="zh">名片夹</b><b class="en">Wallet</b></span></div>
+              <nav class="crm-nav">
+                <a href="01-wallet.html"><svg class="icon"><use href="#i-wallet"/></svg><span class="t"><b class="zh">全部人脉</b><b class="en">All contacts</b></span><span class="n">128</span></a>
+                <a href="05-followup.html"><svg class="icon"><use href="#i-branch"/></svg><span class="t"><b class="zh">跟进管线</b><b class="en">Pipeline</b></span><span class="n">24</span></a>
+                <a href="#"><svg class="icon"><use href="#i-share"/></svg><span class="t"><b class="zh">人脉图谱</b><b class="en">Graph</b></span></a>
+                <a href="#"><svg class="icon"><use href="#i-users"/></svg><span class="t"><b class="zh">引荐记录</b><b class="en">Intros</b></span><span class="n">6</span></a>
+                <a href="03-dashboard.html"><svg class="icon"><use href="#i-chart"/></svg><span class="t"><b class="zh">人脉表盘</b><b class="en">Dashboard</b></span></a>
+              </nav>
+              <div class="grp" style="margin-top:22px"><span class="t"><b class="zh">采集</b><b class="en">Capture</b></span></div>
+              <nav class="crm-nav">
+                <a href="04-import.html" class="active"><svg class="icon"><use href="#i-download"/></svg><span class="t"><b class="zh">导入中心</b><b class="en">Import hub</b></span></a>
+                <a href="04-import.html"><svg class="icon"><use href="#i-camera"/></svg><span class="t"><b class="zh">扫名片</b><b class="en">Scan card</b></span></a>
+              </nav>
+            </aside>
+
+            <!-- content -->
+            <main class="content">
+              <div class="content-head">
+                <div>
+                  <div class="eyebrow"><span class="t"><b class="zh">PRD §7 · 人脉导入</b><b class="en">PRD §7 · Contact intake</b></span></div>
+                  <h1 class="h-display mt-6"><span class="t"><b class="zh">导入中心</b><b class="en">Import hub</b></span></h1>
+                  <div class="dim-13 mt-6"><span class="t"><b class="zh">选择来源，或复核右侧名片扫描草稿</b><b class="en">Pick a source, or review the scanned card draft</b></span></div>
+                </div>
+              </div>
+
+              <div class="imp-grid">
+
+                <!-- ============ LEFT · source entries (PRD §7.2) ============ -->
+                <section>
+                  <div class="imp-h">
+                    <div>
+                      <div class="eyebrow"><span class="t"><b class="zh">来源入口</b><b class="en">Add contacts</b></span></div>
+                      <div class="h-section mt-4"><span class="t"><b class="zh">从哪里导入？</b><b class="en">Where from?</b></span></div>
+                    </div>
+                  </div>
+
+                  <!-- 1 · 名片扫描 · createBusinessCardScanOcrService().scanBusinessCard() · SELECTED -->
+                  <div class="card card-hover source-card is-selected">
+                    <span class="src-tile tl-scan"><svg class="icon"><use href="#i-camera"/></svg></span>
+                    <div class="grow">
+                      <div class="row middle gap-8"><span class="h-section" style="font-size:15px"><span class="t"><b class="zh">名片扫描</b><b class="en">Scan business card</b></span></span><span class="badge src-scan"><span class="t"><b class="zh">当前</b><b class="en">Active</b></span></span></div>
+                      <div class="desc"><span class="t"><b class="zh">拍照或上传，OCR 自动识别</b><b class="en">Photo or upload · OCR extraction</b></span></div>
+                      <div class="hint"><span class="trust trust-med"><span class="dot"></span><span class="t"><b class="zh">可信度 中 · 需逐字段复核</b><b class="en">Medium · field review</b></span></span></div>
+                    </div>
+                    <svg class="icon" style="stroke:var(--accent)"><use href="#i-chevron-right"/></svg>
+                  </div>
+
+                  <!-- 2 · 现场扫码 · qr-scan-connect-mock -->
+                  <div class="card card-hover source-card">
+                    <span class="src-tile tl-qr"><svg class="icon"><use href="#i-qr"/></svg></span>
+                    <div class="grow">
+                      <div class="h-section" style="font-size:15px"><span class="t"><b class="zh">现场扫码</b><b class="en">QR connect</b></span></div>
+                      <div class="desc"><span class="t"><b class="zh">双方扫码，可信度高</b><b class="en">Both scan · mutually confirmed</b></span></div>
+                      <div class="hint"><span class="trust trust-high"><span class="dot"></span><span class="t"><b class="zh">可信度 高</b><b class="en">High trust</b></span></span></div>
+                    </div>
+                    <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+                  </div>
+
+                  <!-- 3 · 活动名单导入 · event-attendee-import-mock -->
+                  <div class="card card-hover source-card">
+                    <span class="src-tile tl-event"><svg class="icon"><use href="#i-calendar"/></svg></span>
+                    <div class="grow">
+                      <div class="h-section" style="font-size:15px"><span class="t"><b class="zh">活动名单导入</b><b class="en">Event attendees</b></span></div>
+                      <div class="desc"><span class="t"><b class="zh">导入参会者，区分关系状态</b><b class="en">Import attendees · tag relationship state</b></span></div>
+                      <div class="hint"><span class="trust trust-med"><span class="dot"></span><span class="t"><b class="zh">批量 · 待确认</b><b class="en">Batch · pending</b></span></span></div>
+                    </div>
+                    <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+                  </div>
+
+                  <!-- 4 · 通讯录导入 · external-contacts-import-mock -->
+                  <div class="card card-hover source-card">
+                    <span class="src-tile tl-contact"><svg class="icon"><use href="#i-user"/></svg></span>
+                    <div class="grow">
+                      <div class="h-section" style="font-size:15px"><span class="t"><b class="zh">通讯录导入</b><b class="en">Contacts import</b></span></div>
+                      <div class="desc"><span class="t"><b class="zh">手机 / Google / CSV</b><b class="en">Phone / Google / CSV</b></span></div>
+                      <div class="hint"><span class="trust trust-low"><span class="dot"></span><span class="t"><b class="zh">可信度 低 · 需核对</b><b class="en">Low · needs vetting</b></span></span></div>
+                    </div>
+                    <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+                  </div>
+
+                  <!-- 5 · 推荐关系 · referral confirm mock -->
+                  <div class="card card-hover source-card">
+                    <span class="src-tile tl-referral"><svg class="icon"><use href="#i-share"/></svg></span>
+                    <div class="grow">
+                      <div class="h-section" style="font-size:15px"><span class="t"><b class="zh">推荐关系</b><b class="en">Referral</b></span></div>
+                      <div class="desc"><span class="t"><b class="zh">需中间人知情</b><b class="en">Requires intermediary consent</b></span></div>
+                      <div class="hint"><span class="trust trust-med"><span class="dot"></span><span class="t"><b class="zh">需知情同意</b><b class="en">Consent required</b></span></span></div>
+                    </div>
+                    <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+                  </div>
+
+                  <!-- draft-only guarantee (contactWriteExecuted=false across all sources) -->
+                  <div class="note mt-16">
+                    <svg class="icon icon-16"><use href="#i-lock"/></svg>
+                    <span class="t"><b class="zh">所有来源先生成待确认 contact draft，确认前不写入联系人库。</b><b class="en">Every source creates a draft first; nothing is written to your contacts until you confirm.</b></span>
+                  </div>
+                </section>
+
+                <!-- ============ RIGHT · business-card review panel ============ -->
+                <!-- business-card-review-contract.ts · mockBusinessCardReviewDraft (status: pending_review) -->
+                <section class="card review-panel">
+
+                  <!-- top strip: scanned thumbnail + OCR status + scan-state legend -->
+                  <div class="row between start" style="margin-bottom:14px">
+                    <div class="eyebrow"><span class="t"><b class="zh">名片复核</b><b class="en">Card review</b></span></div>
+                    <!-- scan states: BusinessCardScanOcrState — success/empty/pending/failure -->
+                    <div class="chipgroup row gap-6" role="group" aria-label="scan states">
+                      <span class="chip chip-sm is-active"><span class="t"><b class="zh">成功</b><b class="en">Success</b></span></span>
+                      <span class="chip chip-sm"><span class="t"><b class="zh">空</b><b class="en">Empty</b></span></span>
+                      <span class="chip chip-sm"><span class="t"><b class="zh">处理中</b><b class="en">Pending</b></span></span>
+                      <span class="chip chip-sm"><span class="t"><b class="zh">失败</b><b class="en">Failure</b></span></span>
+                    </div>
+                  </div>
+
+                  <div class="rp-top">
+                    <!-- faux scanned business card (no real image) -->
+                    <div class="card-flat scanned-card">
+                      <div>
+                        <div class="sc-org">Aki Robotics</div>
+                      </div>
+                      <div>
+                        <div class="sc-name">Hana Sato</div>
+                        <div class="sc-role">Head of Robotics Partnerships</div>
+                      </div>
+                      <div class="sc-lines"><i></i><i></i></div>
+                    </div>
+                    <div>
+                      <div class="row middle gap-8">
+                        <span class="badge src-scan"><svg class="icon"><use href="#i-camera"/></svg><span class="t"><b class="zh">OCR 完成</b><b class="en">OCR complete</b></span></span>
+                        <span class="status-pill ps-to_contact"><span class="dot"></span><span class="t"><b class="zh">待复核</b><b class="en">Pending review</b></span></span>
+                      </div>
+                      <!-- provenance -->
+                      <div class="provenance"><span class="t"><b class="zh">机器人投资沙龙 · business card OCR draft</b><b class="en">Robotics investor salon · business card OCR draft</b></span><span class="basis basis-evidence" tabindex="0" style="margin-left:5px"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop below"><span class="mm basis-evidence" style="background:var(--sky-soft)"><span class="t"><b class="zh">依据</b><b class="en">Basis</b></span></span><br><span class="t"><b class="zh">依据：本地 OCR 识别草稿，确认前不写库（contactWriteExecuted=false）</b><b class="en">Basis: local OCR draft; nothing written until confirmed</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:business-card-review-source-hana</span></span></span></div>
+                      <div class="provenance"><span class="mono">source:business-card-review:hana-sato</span></div>
+                      <div class="h-section mt-12" style="font-size:15px"><span class="t"><b class="zh">请复核识别字段</b><b class="en">Review extracted fields</b></span></div>
+                      <div class="dim-13 mt-4"><span class="t"><b class="zh">接受或编辑每个字段后即可确认</b><b class="en">Accept or edit each field, then confirm</b></span></div>
+                    </div>
+                  </div>
+
+                  <!-- ===== 5 field-review rows · BusinessCardReviewFieldMap ===== -->
+                  <div style="margin-top:14px">
+
+                    <!-- displayName · high · accepted -->
+                    <div class="rev">
+                      <div class="rev-k"><span class="t"><b class="zh">姓名</b><b class="en">Name</b></span></div>
+                      <div class="rev-v"><span class="cdot" style="background:var(--live)" title="high confidence"></span><input class="rev-input" value="Hana Sato" aria-label="Name"></div>
+                      <div class="rev-meta">
+                        <span class="basis basis-evidence" tabindex="0"><svg class="icon"><use href="#i-shield"/></svg><span class="basis-pop right"><span class="mm basis-evidence" style="background:var(--sky-soft)"><span class="t"><b class="zh">证据直采</b><b class="en">Evidence</b></span></span><br><span class="t"><b class="zh">OCR 识别 · 置信度 高</b><b class="en">OCR extracted · confidence high</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:business-card-review-fields-hana</span></span></span>
+                        <button class="rev-state ok"><svg class="icon"><use href="#i-check"/></svg><span class="t"><b class="zh">已确认</b><b class="en">Reviewed</b></span></button>
+                      </div>
+                    </div>
+
+                    <!-- role · high · accepted -->
+                    <div class="rev">
+                      <div class="rev-k"><span class="t"><b class="zh">职位</b><b class="en">Role</b></span></div>
+                      <div class="rev-v"><span class="cdot" style="background:var(--live)" title="high confidence"></span><input class="rev-input" value="Head of Robotics Partnerships" aria-label="Role"></div>
+                      <div class="rev-meta">
+                        <span class="basis basis-evidence" tabindex="0"><svg class="icon"><use href="#i-shield"/></svg><span class="basis-pop right"><span class="mm basis-evidence" style="background:var(--sky-soft)"><span class="t"><b class="zh">证据直采</b><b class="en">Evidence</b></span></span><br><span class="t"><b class="zh">OCR 识别 · 置信度 高</b><b class="en">OCR extracted · confidence high</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:business-card-review-fields-hana</span></span></span>
+                        <button class="rev-state ok"><svg class="icon"><use href="#i-check"/></svg><span class="t"><b class="zh">已确认</b><b class="en">Reviewed</b></span></button>
+                      </div>
+                    </div>
+
+                    <!-- organization · high · accepted -->
+                    <div class="rev">
+                      <div class="rev-k"><span class="t"><b class="zh">公司</b><b class="en">Organization</b></span></div>
+                      <div class="rev-v"><span class="cdot" style="background:var(--live)" title="high confidence"></span><input class="rev-input" value="Aki Robotics" aria-label="Organization"></div>
+                      <div class="rev-meta">
+                        <span class="basis basis-evidence" tabindex="0"><svg class="icon"><use href="#i-shield"/></svg><span class="basis-pop right"><span class="mm basis-evidence" style="background:var(--sky-soft)"><span class="t"><b class="zh">证据直采</b><b class="en">Evidence</b></span></span><br><span class="t"><b class="zh">OCR 识别 · 置信度 高</b><b class="en">OCR extracted · confidence high</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:business-card-review-fields-hana</span></span></span>
+                        <button class="rev-state ok"><svg class="icon"><use href="#i-check"/></svg><span class="t"><b class="zh">已确认</b><b class="en">Reviewed</b></span></button>
+                      </div>
+                    </div>
+
+                    <!-- email · medium · needs_review -->
+                    <div class="rev">
+                      <div class="rev-k"><span class="t"><b class="zh">邮箱</b><b class="en">Email</b></span></div>
+                      <div class="rev-v"><span class="cdot" style="background:var(--amber)" title="medium confidence"></span><input class="rev-input" value="hana.sato@akirobotics.example" aria-label="Email"></div>
+                      <div class="rev-meta">
+                        <span class="basis basis-evidence" tabindex="0"><svg class="icon"><use href="#i-shield"/></svg><span class="basis-pop right"><span class="mm basis-evidence" style="background:var(--sky-soft)"><span class="t"><b class="zh">证据直采</b><b class="en">Evidence</b></span></span><br><span class="t"><b class="zh">OCR 识别 · 置信度 中，建议核对</b><b class="en">OCR extracted · confidence medium, please verify</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:business-card-review-fields-hana</span></span></span>
+                        <button class="rev-state todo"><svg class="icon"><use href="#i-alert"/></svg><span class="t"><b class="zh">待确认</b><b class="en">Review</b></span></button>
+                      </div>
+                    </div>
+
+                    <!-- phone · medium · needs_review -->
+                    <div class="rev">
+                      <div class="rev-k"><span class="t"><b class="zh">电话</b><b class="en">Phone</b></span></div>
+                      <div class="rev-v"><span class="cdot" style="background:var(--amber)" title="medium confidence"></span><input class="rev-input" value="+81-3-5555-0198" aria-label="Phone"></div>
+                      <div class="rev-meta">
+                        <span class="basis basis-evidence" tabindex="0"><svg class="icon"><use href="#i-shield"/></svg><span class="basis-pop right"><span class="mm basis-evidence" style="background:var(--sky-soft)"><span class="t"><b class="zh">证据直采</b><b class="en">Evidence</b></span></span><br><span class="t"><b class="zh">OCR 识别 · 置信度 中，建议核对</b><b class="en">OCR extracted · confidence medium, please verify</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:business-card-review-fields-hana</span></span></span>
+                        <button class="rev-state todo"><svg class="icon"><use href="#i-alert"/></svg><span class="t"><b class="zh">待确认</b><b class="en">Review</b></span></button>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <!-- field: relationshipContext (editable) -->
+                  <div style="margin-top:14px">
+                    <label class="field-label"><span class="t"><b class="zh">认识场景 · relationshipContext</b><b class="en">How you met · relationshipContext</b></span></label>
+                    <textarea class="field" aria-label="relationship context">Business card captured after a robotics investor salon conversation about partner distribution.</textarea>
+                  </div>
+
+                  <!-- field: suggestedNextAction (readonly note) -->
+                  <div class="note mt-12">
+                    <svg class="icon icon-16"><use href="#i-sparkles"/></svg>
+                    <span><b style="color:var(--text-2)"><span class="t"><b class="zh">建议下一步 · suggestedNextAction：</b><b class="en">Suggested next action · suggestedNextAction:</b></span></b>
+                    <span class="t"><b class="zh">复核字段后确认名片候选人。</b><b class="en">Review the extracted fields, then confirm the business card candidate.</b></span></span>
+                  </div>
+
+                  <!-- footer: no-write guarantee + confirmation + primary CTA (confirmReviewedDraft) -->
+                  <div class="confirm-bar">
+                    <!-- side-effect flags all false until confirm -->
+                    <div class="note note-live">
+                      <svg class="icon icon-16"><use href="#i-shield"/></svg>
+                      <span><span class="t"><b class="zh">确认前无联系人写入</b><b class="en">No contact is written before you confirm</b></span> · <span class="mono">contactWriteExecuted=false · ocrProviderCalled=false</span></span>
+                    </div>
+
+                    <div class="confirm-q">
+                      <span class="t"><b class="zh">确认加入 佐藤花（Hana Sato）？</b><b class="en">Confirm adding Hana Sato?</b></span>
+                    </div>
+
+                    <div class="row between gap-12 wrap">
+                      <!-- gating helper: 2 rows still needs_review -->
+                      <span class="trust trust-med"><svg class="icon icon-14"><use href="#i-alert"/></svg><span class="t"><b class="zh">还有 2 个字段待复核</b><b class="en">2 fields still need review</b></span></span>
+                      <div class="row gap-10">
+                        <button class="btn btn-ghost"><svg class="icon icon-16"><use href="#i-inbox"/></svg><span class="t"><b class="zh">暂存草稿</b><b class="en">Save draft</b></span></button>
+                        <!-- confirmReviewedDraft() — disabled until all fields reviewed -->
+                        <button class="btn btn-primary is-disabled" disabled><svg class="icon icon-16"><use href="#i-check"/></svg><span class="t"><b class="zh">确认加入人脉</b><b class="en">Confirm &amp; add</b></span></button>
+                      </div>
+                    </div>
+                  </div>
+
+                </section>
+
+              </div>
+            </main>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MOBILE ================= -->
+    <div class="board-wrap">
+      <div class="board-label"><span class="dot"></span>Mobile · 390</div>
+      <div class="board is-mobile">
+        <div class="board-canvas">
+
+          <header class="m-top">
+            <div class="row middle gap-10">
+              <a href="04-import.html" class="row middle" style="color:var(--text-2)"><svg class="icon"><use href="#i-chevron-left"/></svg></a>
+              <div class="h"><span class="t"><b class="zh">名片复核</b><b class="en">Card review</b></span></div>
+            </div>
+            <div class="lang"><button class="on" onclick="document.documentElement.lang='zh'">中</button><button onclick="document.documentElement.lang='en'">EN</button></div>
+          </header>
+
+          <div class="m-body m-review">
+
+            <!-- scanned thumbnail + OCR status -->
+            <div class="m-scanned">
+              <div class="card-flat scanned-card">
+                <div><div class="sc-org">Aki Robotics</div></div>
+                <div>
+                  <div class="sc-name">Hana Sato</div>
+                  <div class="sc-role">Head of Robotics Partnerships</div>
+                </div>
+                <div class="sc-lines"><i></i><i></i></div>
+              </div>
+              <div>
+                <span class="badge src-scan"><svg class="icon"><use href="#i-camera"/></svg><span class="t"><b class="zh">OCR 完成</b><b class="en">OCR complete</b></span></span>
+                <div class="provenance mt-8"><span class="t"><b class="zh">机器人投资沙龙 · OCR 草稿</b><b class="en">Robotics salon · OCR draft</b></span></div>
+                <!-- scan states: BusinessCardScanOcrState -->
+                <div class="chipgroup row gap-6 mt-8" role="group" aria-label="scan states">
+                  <span class="chip chip-sm is-active"><span class="t"><b class="zh">成功</b><b class="en">OK</b></span></span>
+                  <span class="chip chip-sm"><span class="t"><b class="zh">空</b><b class="en">Empty</b></span></span>
+                  <span class="chip chip-sm"><span class="t"><b class="zh">失败</b><b class="en">Fail</b></span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="h-section" style="font-size:15px"><span class="t"><b class="zh">请复核识别字段</b><b class="en">Review extracted fields</b></span></div>
+            <div class="dim-13 mt-4" style="margin-bottom:12px"><span class="t"><b class="zh">接受或编辑每个字段后即可确认</b><b class="en">Accept or edit, then confirm</b></span></div>
+
+            <!-- displayName · high · accepted -->
+            <div class="rev">
+              <div class="rev-k"><span class="t"><b class="zh">姓名</b><b class="en">Name</b></span></div>
+              <div class="rev-v"><span class="cdot" style="background:var(--live)"></span><input class="rev-input" value="Hana Sato" aria-label="Name"></div>
+              <div class="rev-meta"><button class="rev-state ok"><svg class="icon"><use href="#i-check"/></svg><span class="t"><b class="zh">已确认</b><b class="en">OK</b></span></button></div>
+            </div>
+            <!-- role · high · accepted -->
+            <div class="rev">
+              <div class="rev-k"><span class="t"><b class="zh">职位</b><b class="en">Role</b></span></div>
+              <div class="rev-v"><span class="cdot" style="background:var(--live)"></span><input class="rev-input" value="Head of Robotics Partnerships" aria-label="Role"></div>
+              <div class="rev-meta"><button class="rev-state ok"><svg class="icon"><use href="#i-check"/></svg><span class="t"><b class="zh">已确认</b><b class="en">OK</b></span></button></div>
+            </div>
+            <!-- organization · high · accepted -->
+            <div class="rev">
+              <div class="rev-k"><span class="t"><b class="zh">公司</b><b class="en">Organization</b></span></div>
+              <div class="rev-v"><span class="cdot" style="background:var(--live)"></span><input class="rev-input" value="Aki Robotics" aria-label="Organization"></div>
+              <div class="rev-meta"><button class="rev-state ok"><svg class="icon"><use href="#i-check"/></svg><span class="t"><b class="zh">已确认</b><b class="en">OK</b></span></button></div>
+            </div>
+            <!-- email · medium · needs_review -->
+            <div class="rev">
+              <div class="rev-k"><span class="t"><b class="zh">邮箱</b><b class="en">Email</b></span></div>
+              <div class="rev-v"><span class="cdot" style="background:var(--amber)"></span><input class="rev-input" value="hana.sato@akirobotics.example" aria-label="Email"></div>
+              <div class="rev-meta"><button class="rev-state todo"><svg class="icon"><use href="#i-alert"/></svg><span class="t"><b class="zh">待确认</b><b class="en">Review</b></span></button></div>
+            </div>
+            <!-- phone · medium · needs_review -->
+            <div class="rev">
+              <div class="rev-k"><span class="t"><b class="zh">电话</b><b class="en">Phone</b></span></div>
+              <div class="rev-v"><span class="cdot" style="background:var(--amber)"></span><input class="rev-input" value="+81-3-5555-0198" aria-label="Phone"></div>
+              <div class="rev-meta"><button class="rev-state todo"><svg class="icon"><use href="#i-alert"/></svg><span class="t"><b class="zh">待确认</b><b class="en">Review</b></span></button></div>
+            </div>
+
+            <!-- relationshipContext -->
+            <div style="margin-top:14px">
+              <label class="field-label"><span class="t"><b class="zh">认识场景</b><b class="en">How you met</b></span></label>
+              <textarea class="field" aria-label="relationship context">Business card captured after a robotics investor salon conversation about partner distribution.</textarea>
+            </div>
+
+            <!-- footer: no-write guarantee + confirm CTA -->
+            <div class="note note-live mt-16">
+              <svg class="icon icon-16"><use href="#i-shield"/></svg>
+              <span><span class="t"><b class="zh">确认前无联系人写入</b><b class="en">Nothing written before confirm</b></span> · <span class="mono">contactWriteExecuted=false</span></span>
+            </div>
+            <div class="confirm-q" style="text-align:center;font-size:15px"><span class="t"><b class="zh">确认加入 佐藤花？</b><b class="en">Confirm adding Hana Sato?</b></span></div>
+            <div class="row center" style="margin-bottom:10px"><span class="trust trust-med"><svg class="icon icon-14"><use href="#i-alert"/></svg><span class="t"><b class="zh">还有 2 个字段待复核</b><b class="en">2 fields still need review</b></span></span></div>
+            <!-- confirmReviewedDraft() — disabled until all fields reviewed -->
+            <button class="btn btn-primary btn-block is-disabled" disabled><svg class="icon icon-16"><use href="#i-check"/></svg><span class="t"><b class="zh">确认加入人脉</b><b class="en">Confirm &amp; add</b></span></button>
+            <button class="btn btn-ghost btn-block mt-8"><svg class="icon icon-16"><use href="#i-inbox"/></svg><span class="t"><b class="zh">暂存草稿</b><b class="en">Save draft</b></span></button>
+
+            <!-- collapsed: other sources (PRD §7.2) -->
+            <hr class="divider" style="margin:20px 0 14px">
+            <div class="row between middle" style="margin-bottom:10px">
+              <div class="eyebrow"><span class="t"><b class="zh">其他来源</b><b class="en">Other sources</b></span></div>
+              <svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg>
+            </div>
+            <div class="m-sources">
+              <a class="card card-hover" href="04-import.html"><span class="src-tile tl-qr"><svg class="icon"><use href="#i-qr"/></svg></span><div class="grow"><div style="font-size:14px;font-weight:600;color:var(--ink)"><span class="t"><b class="zh">现场扫码</b><b class="en">QR connect</b></span></div><div class="desc"><span class="t"><b class="zh">可信度高</b><b class="en">High trust</b></span></div></div><svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg></a>
+              <a class="card card-hover" href="04-import.html"><span class="src-tile tl-event"><svg class="icon"><use href="#i-calendar"/></svg></span><div class="grow"><div style="font-size:14px;font-weight:600;color:var(--ink)"><span class="t"><b class="zh">活动名单导入</b><b class="en">Event attendees</b></span></div><div class="desc"><span class="t"><b class="zh">导入参会者</b><b class="en">Import attendees</b></span></div></div><svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg></a>
+              <a class="card card-hover" href="04-import.html"><span class="src-tile tl-contact"><svg class="icon"><use href="#i-user"/></svg></span><div class="grow"><div style="font-size:14px;font-weight:600;color:var(--ink)"><span class="t"><b class="zh">通讯录导入</b><b class="en">Contacts import</b></span></div><div class="desc"><span class="t"><b class="zh">手机 / Google / CSV</b><b class="en">Phone / Google / CSV</b></span></div></div><svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg></a>
+              <a class="card card-hover" href="04-import.html"><span class="src-tile tl-referral"><svg class="icon"><use href="#i-share"/></svg></span><div class="grow"><div style="font-size:14px;font-weight:600;color:var(--ink)"><span class="t"><b class="zh">推荐关系</b><b class="en">Referral</b></span></div><div class="desc"><span class="t"><b class="zh">需中间人知情</b><b class="en">Needs consent</b></span></div></div><svg class="icon" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg></a>
+            </div>
+
+          </div>
+
+          <!-- bottom tabs -->
+          <nav class="m-tabs">
+            <a href="01-wallet.html" class="active"><svg class="icon"><use href="#i-wallet"/></svg><span class="t"><b class="zh">名片夹</b><b class="en">Cards</b></span></a>
+            <a href="#"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">活动</b><b class="en">Events</b></span></a>
+            <a href="03-dashboard.html"><svg class="icon"><use href="#i-chart"/></svg><span class="t"><b class="zh">表盘</b><b class="en">Board</b></span></a>
+            <a href="05-followup.html"><svg class="icon"><use href="#i-bell"/></svg><span class="t"><b class="zh">待办</b><b class="en">To-do</b></span></a>
+            <a href="#"><svg class="icon"><use href="#i-user"/></svg><span class="t"><b class="zh">我</b><b class="en">Me</b></span></a>
+          </nav>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="orbit-cards-proto.js"></script>
+</body>
+</html>

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>名片夹 · 人脉表盘 / Network Dashboard — Orbit</title>
+<link rel="stylesheet" href="orbit-cards-framework.css">
+<style data-page>
+  /* ---- 03 dashboard: page-level ---- */
+  .sec-title { display:flex; align-items:center; gap:10px; margin:26px 0 14px; }
+  .sec-title h2 { font-size:16px; color:var(--ink); margin:0; font-weight:700; }
+  .hero { display:grid; grid-template-columns:1.12fr .88fr; gap:18px; }
+  @media (max-width:520px){ .hero { grid-template-columns:1fr; } }
+
+  /* orbit map */
+  .orbit-card { padding:18px 18px 16px; display:flex; flex-direction:column; }
+  .orbit-stage { position:relative; width:100%; }
+  .orbit-svg { display:block; width:100%; height:auto; }
+  .orbit-ring { animation:orbBreath 7s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
+  .orbit-ring:nth-of-type(2){ animation-delay:1.2s } .orbit-ring:nth-of-type(3){ animation-delay:2.4s }
+  @keyframes orbBreath { 0%,100%{ opacity:.45 } 50%{ opacity:.85 } }
+  .orbit-sweep { animation:orbSpin 48s linear infinite; transform-origin:center; transform-box:fill-box; }
+  @keyframes orbSpin { to { transform:rotate(360deg) } }
+  .orbit-sector-hit { fill:transparent; cursor:pointer; transition:fill .16s; }
+  .orbit-sector-hit:hover { fill:rgba(139,123,240,.06); }
+  @media (prefers-reduced-motion:reduce){ .orbit-ring,.orbit-sweep{ animation:none } }
+
+  .ring-legend { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; margin-top:14px; }
+  .ring-legend .rl { display:flex; align-items:center; gap:9px; cursor:pointer; padding:6px 8px; border-radius:var(--r-sm); }
+  .ring-legend .rl:hover { background:var(--surface-2); }
+  .ring-legend .rl .rd { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .ring-legend .rl .rn { margin-left:auto; font-family:var(--ff-mono); font-size:13px; color:var(--text); }
+  .ring-legend .rl .rt { font-size:12.5px; color:var(--text-2); }
+
+  /* action queue */
+  .aq { display:flex; flex-direction:column; }
+  .aq-item { display:grid; grid-template-columns:38px 1fr auto; gap:11px; align-items:center; padding:13px 4px; border-bottom:1px solid var(--hairline); }
+  .aq-item:last-child { border-bottom:0; }
+  .aq-item .why { font-size:12px; color:var(--text-3); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+
+  /* stat tiles */
+  .tiles { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; }
+  @media (max-width:520px){ .tiles { grid-template-columns:repeat(2,1fr); } }
+  .tiles .card { position:relative; }
+  .tiles .stat .k { justify-content:space-between; }
+
+  /* donut */
+  .donut-wrap { display:flex; align-items:center; gap:22px; }
+  .donut { --sz:150px; width:var(--sz); height:var(--sz); border-radius:50%; position:relative; flex-shrink:0;
+    background:conic-gradient(from -90deg,
+      var(--accent) 0 115.3deg, var(--live) 115.3deg 202.5deg, var(--sky) 202.5deg 267.2deg,
+      var(--amber) 267.2deg 323.4deg, var(--rose) 323.4deg 360deg); }
+  .donut::after { content:""; position:absolute; inset:26px; border-radius:50%; background:var(--surface); }
+  .donut .mid { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1; }
+  .donut .mid .v { font-family:var(--ff-mono); font-size:26px; font-weight:600; color:var(--ink); }
+  .donut .mid .l { font-size:11px; color:var(--text-3); }
+  .leg { display:flex; flex-direction:column; gap:9px; flex:1; }
+  .leg .li { display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; align-items:center; font-size:13px; cursor:pointer; color:var(--text-2); }
+  .leg .li:hover { color:var(--ink); }
+  .leg .sw { width:10px; height:10px; border-radius:3px; }
+  .leg .li .c { font-family:var(--ff-mono); color:var(--text); }
+  .leg .li .p { font-family:var(--ff-mono); color:var(--text-3); font-size:12px; width:38px; text-align:right; }
+
+  .cap { font-size:11.5px; color:var(--text-3); display:flex; align-items:center; gap:6px; margin-top:2px; }
+  .mobile-orbit .orbit-svg { max-width:330px; margin:0 auto; }
+</style>
+</head>
+<body>
+
+<!-- ===== icon sprite ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 6"/><path d="M17 14.2a5.2 5.2 0 0 1 3.5 4.8"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 11 15.8 7"/><path d="M8.2 13l7.6 4"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 21h18"/><rect x="5" y="11" width="3.2" height="7" rx="1"/><rect x="10.4" y="7" width="3.2" height="11" rx="1"/><rect x="15.8" y="13" width="3.2" height="5" rx="1"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7.5 11 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h5l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+<symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.2v9.6"/><path d="M18 10.2c0 4-4 3.8-8 4.8"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 9.5h16M8 3v4M16 3v4"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3.5 13.6 9 19 10.5 13.6 12 12 17.5 10.4 12 5 10.5 10.4 9z"/><path d="M18.5 5.5v2.6M6 15.4v2M20 6.8h-2.4M7.4 16.4H5.2"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 3.5 5 9a5 5 0 0 1-10 0c0-1.6.6-2.8 1.3-3.7C9 10 9.6 11.5 11 12c-.5-3 1-6 1-9z"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17.4v.2"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M4 11a8 8 0 0 1 13.5-5.5L20 8"/><path d="M20 4v4h-4"/><path d="M20 13a8 8 0 0 1-13.5 5.5L4 16"/><path d="M4 20v-4h4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.2"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+</defs></svg>
+
+<div class="gallery">
+  <div class="gallery-head">
+    <h1 class="gallery-title">名片夹 · 人脉表盘　<span class="serif" style="color:var(--text-3);font-size:18px">Network Dashboard</span></h1>
+    <p class="gallery-sub">03 / 05　PRD §15 关系资产 · §16 价值分析　—　发光轨道主视觉 · 每个信息可溯源 · 邮件式行动　—　桌面 + 移动</p>
+  </div>
+
+  <div class="board-row">
+
+    <!-- ================= DESKTOP ================= -->
+    <div class="board-wrap">
+      <div class="board-label"><span class="dot"></span>Desktop · 1280</div>
+      <div class="board is-desktop">
+        <div class="board-canvas">
+
+          <header class="orbit-top-nav">
+            <div class="orbit-nav-lead">
+              <a class="orbit-brand-link" href="#">
+                <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.5" stroke="var(--accent)" stroke-width="1.6" opacity="0.35"/><circle cx="14" cy="14" r="4.4" fill="var(--accent)"/><circle cx="24.2" cy="10" r="2.5" fill="var(--accent)"/></svg>
+                <span class="orbit-brand-word"><span class="orbit-brand-name">Orbit</span><span class="orbit-brand-sub"><span class="t"><b class="zh">由 iOrbit 智能匹配引擎驱动</b><b class="en">Powered by the iOrbit matching engine</b></span></span></span>
+              </a>
+            </div>
+            <nav class="orbit-nav-links">
+              <a class="orbit-nav-link" href="#">iOrbit</a>
+              <a class="orbit-nav-link" href="#"><span class="t"><b class="zh">活动</b><b class="en">Events</b></span></a>
+              <a class="orbit-nav-link" href="#"><span class="t"><b class="zh">日程</b><b class="en">Calendar</b></span></a>
+              <a class="orbit-nav-link is-active" href="01-wallet.html"><span class="t"><b class="zh">人脉</b><b class="en">Contacts</b></span></a>
+            </nav>
+            <div class="orbit-top-actions">
+              <span class="orbit-lang-toggle"><button class="is-active">中</button><span class="orbit-lang-sep">/</span><button>EN</button></span>
+              <a class="orbit-me-link" href="#"><span class="t"><b class="zh">我的</b><b class="en">Me</b></span></a>
+              <a class="orbit-nav-iorbit" href="#" aria-label="iOrbit"><svg class="icon"><use href="#i-sparkles"/></svg></a>
+            </div>
+          </header>
+
+          <div class="layout">
+            <aside class="crm-side">
+              <div class="grp"><span class="t"><b class="zh">名片夹</b><b class="en">Wallet</b></span></div>
+              <nav class="crm-nav">
+                <a href="01-wallet.html"><svg class="icon"><use href="#i-wallet"/></svg><span class="t"><b class="zh">全部人脉</b><b class="en">All contacts</b></span><span class="n">128</span></a>
+                <a href="05-followup.html"><svg class="icon"><use href="#i-branch"/></svg><span class="t"><b class="zh">跟进管线</b><b class="en">Pipeline</b></span><span class="n">24</span></a>
+                <a href="#"><svg class="icon"><use href="#i-share"/></svg><span class="t"><b class="zh">人脉图谱</b><b class="en">Graph</b></span></a>
+                <a href="#"><svg class="icon"><use href="#i-users"/></svg><span class="t"><b class="zh">引荐记录</b><b class="en">Intros</b></span><span class="n">6</span></a>
+                <a href="03-dashboard.html" class="active"><svg class="icon"><use href="#i-chart"/></svg><span class="t"><b class="zh">人脉表盘</b><b class="en">Dashboard</b></span></a>
+              </nav>
+              <div class="grp" style="margin-top:22px"><span class="t"><b class="zh">采集</b><b class="en">Capture</b></span></div>
+              <nav class="crm-nav">
+                <a href="04-import.html"><svg class="icon"><use href="#i-download"/></svg><span class="t"><b class="zh">导入中心</b><b class="en">Import hub</b></span></a>
+                <a href="04-import.html"><svg class="icon"><use href="#i-camera"/></svg><span class="t"><b class="zh">扫名片</b><b class="en">Scan card</b></span></a>
+              </nav>
+            </aside>
+
+            <main class="content">
+              <div class="content-head">
+                <div>
+                  <h1 class="h-display"><span class="t"><b class="zh">人脉表盘</b><b class="en">Network dashboard</b></span></h1>
+                  <div class="dim-13 mt-6"><span class="t"><b class="zh">你的关系资产 · 更新于今天</b><b class="en">Your relationship assets · updated today</b></span></div>
+                </div>
+                <div class="row gap-10 middle">
+                  <!-- 目标 chip：来源于用户画像目标，可点回设置。§20.1 currentGoal -->
+                  <a class="chip chip-accent" href="#" style="height:36px"><svg class="icon icon-16"><use href="#i-target"/></svg><span class="t"><b class="zh">当前目标：找餐饮行业客户</b><b class="en">Goal: find F&amp;B clients</b></span></a>
+                  <span class="basis basis-you" tabindex="0" style="height:36px;padding:0 10px">
+                    <svg class="icon"><use href="#i-info"/></svg><span class="t"><b class="zh">依据</b><b class="en">Basis</b></span>
+                    <span class="basis-pop below right"><span class="mm basis-you" style="background:var(--surface-2)"><span class="t"><b class="zh">你设定</b><b class="en">You set</b></span></span><br><span class="t"><b class="zh"><b>来自你的画像目标</b>，6/20 在引导问题中设定，可在画像页修改。所有基于目标的分析（缺口/机会/匹配）都回指这里。</b><b class="en"><b>From your profile goal</b>, set on 6/20 in onboarding. Edit it in Profile. Every goal-driven insight links back here.</b></span></span>
+                  </span>
+                  <a class="btn btn-ghost btn-sm" href="#"><svg class="icon icon-16"><use href="#i-download"/></svg><span class="t"><b class="zh">导出</b><b class="en">Export</b></span></a>
+                </div>
+              </div>
+
+              <!-- HERO: orbit map + this-week action queue -->
+              <div class="hero">
+                <!-- 关系星图 -->
+                <div class="card orbit-card">
+                  <div class="row between middle" style="margin-bottom:4px">
+                    <div class="row middle gap-8"><svg class="icon icon-16" style="stroke:var(--accent)"><use href="#i-share"/></svg><h2 style="font-size:15px;color:var(--ink);margin:0;font-weight:700"><span class="t"><b class="zh">关系星图</b><b class="en">Relationship map</b></span></h2></div>
+                    <div class="row gap-6 chipgroup">
+                      <span class="chip is-active chip-sm"><span class="t"><b class="zh">按行业</b><b class="en">Industry</b></span></span>
+                      <span class="chip chip-sm"><span class="t"><b class="zh">按价值</b><b class="en">Value</b></span></span>
+                    </div>
+                  </div>
+                  <!-- 编码依据：半径=关系近度(强度/阶段)，扇区角度=行业，光点=一位联系人，亮度/大小=价值分 -->
+                  <div class="cap" style="margin-bottom:8px">
+                    <span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="t"><b class="zh">编码依据</b><b class="en">Encoding</b></span>
+                      <span class="basis-pop"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh"><b>半径</b>=关系近度(强度+阶段)　<b>扇区角度</b>=行业　<b>光点</b>=一位联系人　<b>大小/亮度</b>=价值分。上千人脉时光点转为密度显示，仅高亮关键人。</b><b class="en"><b>Radius</b>=closeness　<b>angle sector</b>=industry　<b>dot</b>=a contact　<b>size/glow</b>=value score. At thousands, dots become density; only key people are highlighted.</b></span></span>
+                    </span>
+                    <span class="t"><b class="zh">共 128 位 · 每个光点都是真实联系人</b><b class="en">128 contacts · every dot is a real person</b></span>
+                  </div>
+
+                  <div class="orbit-stage">
+                    <svg class="orbit-svg" viewBox="0 0 460 460" data-orbit></svg>
+                  </div>
+
+                  <!-- ring legend = 关系强度分布 readout（与星图同源） -->
+                  <div class="ring-legend">
+                    <div class="rl drill"><span class="rd" style="background:var(--live)"></span><span class="rt"><span class="t"><b class="zh">核心圈 · 强</b><b class="en">Core · strong</b></span></span><span class="rn">46</span><svg class="icon icon-14" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg></div>
+                    <div class="rl drill"><span class="rd" style="background:var(--sky)"></span><span class="rt"><span class="t"><b class="zh">进行圈 · 中</b><b class="en">Active · medium</b></span></span><span class="rn">39</span><svg class="icon icon-14" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg></div>
+                    <div class="rl drill"><span class="rd" style="background:var(--accent)"></span><span class="rt"><span class="t"><b class="zh">外圈 · 弱/待确认</b><b class="en">Outer · weak</b></span></span><span class="rn">34</span><svg class="icon icon-14" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg></div>
+                    <div class="rl drill"><span class="rd" style="background:var(--text-3)"></span><span class="rt"><span class="t"><b class="zh">沉睡带</b><b class="en">Dormant</b></span></span><span class="rn">9</span><svg class="icon icon-14" style="stroke:var(--text-4)"><use href="#i-chevron-right"/></svg></div>
+                  </div>
+                  <div class="drill-hint" style="margin-top:8px;justify-content:center"><svg class="icon"><use href="#i-target"/></svg><span class="t"><b class="zh">点击扇区或轨道 → 查看该组名单</b><b class="en">Click a sector or ring → view that group</b></span></div>
+                </div>
+
+                <!-- 本周行动队列 -->
+                <div class="card card-pad">
+                  <div class="row between middle" style="margin-bottom:6px">
+                    <div class="row middle gap-8"><svg class="icon icon-16" style="stroke:var(--accent)"><use href="#i-sparkles"/></svg><h2 style="font-size:15px;color:var(--ink);margin:0;font-weight:700"><span class="t"><b class="zh">本周行动队列</b><b class="en">This week</b></span></h2></div>
+                    <span class="chip chip-sm"><span class="t"><b class="zh">4 项</b><b class="en">4</b></span></span>
+                  </div>
+                  <div class="dim-13" style="margin-bottom:6px"><span class="t"><b class="zh">每条都有依据，一键处理</b><b class="en">Each with a reason — act in one tap</b></span></div>
+                  <div class="aq">
+                    <!-- opportunities[]{reason,evidence} — AI 推断且附证据 -->
+                    <div class="aq-item">
+                      <div class="avatar g-sky" style="width:38px;height:38px;font-size:14px">E</div>
+                      <div class="grow">
+                        <div class="h-section ell" style="font-size:14px">Emily Wong</div>
+                        <div class="why"><span class="t"><b class="zh">昨天表达投资意向</b><b class="en">Signaled investing interest</b></span>
+                          <span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：昨日现场对话记录 + 你目标含"融资"。<b>建议</b>：约 30 分钟深聊。</b><b class="en"><b>Basis</b>: yesterday's on-site note + your goal. <b>Suggest</b>: book a 30-min call.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:qr-exchange-emily</span></span></span>
+                        </div>
+                      </div>
+                      <button class="btn btn-soft btn-sm"><svg class="icon icon-16"><use href="#i-calendar"/></svg><span class="t"><b class="zh">约会议</b><b class="en">Book</b></span></button>
+                    </div>
+                    <div class="aq-item">
+                      <div class="avatar g-violet" style="width:38px;height:38px;font-size:14px">花</div>
+                      <div class="grow">
+                        <div class="h-section ell" style="font-size:14px">佐藤花 · Hana</div>
+                        <div class="why"><span class="t"><b class="zh">承诺发资料未兑现</b><b class="en">Promised deck, not sent</b></span>
+                          <span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：沙龙交流摘要"承诺发合作资料"，3 天未动作。</b><b class="en"><b>Basis</b>: salon summary noted a promise, 3 days idle.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:summary-hana-0612</span></span></span>
+                        </div>
+                      </div>
+                      <button class="btn btn-soft btn-sm"><svg class="icon icon-16"><use href="#i-mail"/></svg><span class="t"><b class="zh">起草邮件</b><b class="en">Draft</b></span></button>
+                    </div>
+                    <div class="aq-item">
+                      <div class="avatar g-amber" style="width:38px;height:38px;font-size:14px">伟</div>
+                      <div class="grow">
+                        <div class="h-section ell" style="font-size:14px">陈伟 · Wei Chen</div>
+                        <div class="why"><span class="t"><b class="zh">目标相关 · 餐饮潜在客户</b><b class="en">Goal-relevant · F&amp;B prospect</b></span>
+                          <span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：对方行业=餐饮，匹配你目标"找餐饮客户"；活动认识未打招呼。</b><b class="en"><b>Basis</b>: industry=F&amp;B matches your goal; met at event, no greeting yet.</b></span><span class="ev"><svg class="icon"><use href="#i-shield"/></svg>evidence:event-ai-summit-2026</span></span></span>
+                        </div>
+                      </div>
+                      <button class="btn btn-soft btn-sm"><svg class="icon icon-16"><use href="#i-mail"/></svg><span class="t"><b class="zh">起草邮件</b><b class="en">Draft</b></span></button>
+                    </div>
+                    <div class="aq-item">
+                      <div class="avatar g-slate" style="width:38px;height:38px;font-size:14px">洋</div>
+                      <div class="grow">
+                        <div class="h-section ell" style="font-size:14px">刘洋 · Yang Liu</div>
+                        <div class="why"><span class="t"><b class="zh">沉睡高价值 · 5 个月未联系</b><b class="en">Dormant high-value · 5mo silent</b></span>
+                          <span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="t"><b class="zh">规则</b><b class="en">Rule</b></span><span class="basis-pop"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh"><b>依据</b>：最近互动 &gt; 150 天 且 价值分 ≥ 高阈值 → 沉睡高价值。</b><b class="en"><b>Basis</b>: last interaction &gt; 150d and value ≥ high → dormant high-value.</b></span></span></span>
+                        </div>
+                      </div>
+                      <button class="btn btn-soft btn-sm"><svg class="icon icon-16"><use href="#i-refresh"/></svg><span class="t"><b class="zh">重新激活</b><b class="en">Revive</b></span></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 关系资产总览 -->
+              <div class="sec-title"><svg class="icon icon-16" style="stroke:var(--text-3)"><use href="#i-chart"/></svg><h2><span class="t"><b class="zh">关系资产总览</b><b class="en">Asset overview</b></span></h2><span class="dim-13"><span class="t"><b class="zh">· 每个数字可点开算法与名单</b><b class="en">· tap any figure for method & list</b></span></span></div>
+              <div class="tiles">
+                <div class="card stat drill">
+                  <div class="k"><span class="t"><b class="zh">总人脉</b><b class="en">Total</b></span><span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop below"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh">已确认联系人计数。</b><b class="en">Count of confirmed contacts.</b></span></span></span></div>
+                  <div class="v">128</div>
+                </div>
+                <div class="card stat drill">
+                  <div class="k"><span class="t"><b class="zh">核心人脉</b><b class="en">Core</b></span><span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop below"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh">强关系 且 近30天有互动。</b><b class="en">Strong ties active in 30d.</b></span></span></span></div>
+                  <div class="v">18</div>
+                </div>
+                <div class="card stat drill">
+                  <div class="k"><span class="t"><b class="zh">高价值</b><b class="en">High value</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop below"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">价值分 ≥ 高阈值（§16.3）。</b><b class="en">Value score ≥ high (§16.3).</b></span></span></span></div>
+                  <div class="v">34</div>
+                </div>
+                <div class="card stat drill">
+                  <div class="k"><span class="t"><b class="zh">本月新增</b><b class="en">New / mo</b></span><span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop below"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh">本月确认入库的联系人。</b><b class="en">Confirmed this month.</b></span></span></span></div>
+                  <div class="v">12</div><div class="d up">▲ +12</div>
+                </div>
+                <div class="card stat drill">
+                  <div class="k"><span class="t"><b class="zh">待跟进</b><b class="en">Follow-up</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop below"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">有未兑现承诺或阶段停滞。</b><b class="en">Open promise or stalled stage.</b></span></span></span></div>
+                  <div class="v">24</div>
+                </div>
+                <div class="card stat drill">
+                  <div class="k"><span class="t"><b class="zh">沉睡关系</b><b class="en">Dormant</b></span><span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="basis-pop below right"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh">超 150 天无互动。</b><b class="en">No interaction &gt; 150d.</b></span></span></span></div>
+                  <div class="v">9</div><div class="d down">▼ −3</div>
+                </div>
+              </div>
+
+              <!-- distributions -->
+              <div class="sec-title"><svg class="icon icon-16" style="stroke:var(--text-3)"><use href="#i-chart"/></svg><h2><span class="t"><b class="zh">结构分布</b><b class="en">Structure</b></span></h2></div>
+              <div class="row gap-16 start" style="align-items:stretch">
+                <!-- 行业分布 -->
+                <div class="card card-pad grow">
+                  <div class="row between middle">
+                    <h3 class="h-section" style="font-size:15px"><span class="t"><b class="zh">行业分布</b><b class="en">Industry</b></span></h3>
+                    <span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="t"><b class="zh">分类依据</b><b class="en">Source</b></span><span class="basis-pop right"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">统计规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh"><b>依据</b>：每位联系人的"行业"字段（来自名片 OCR / 画像 / 导入）聚合计数。</b><b class="en"><b>Source</b>: each contact's industry field (from card OCR / profile / import).</b></span></span></span>
+                  </div>
+                  <div class="cap" style="margin-bottom:12px"><span class="t"><b class="zh">点条形查看该行业名单</b><b class="en">Click a bar to view contacts</b></span></div>
+                  <div class="col gap-12">
+                    <div class="hbar drill"><span class="lab">AI / 技术</span><span class="track"><span style="width:100%"></span></span><span class="num">32</span></div>
+                    <div class="hbar drill"><span class="lab"><span class="t"><b class="zh">创业者</b><b class="en">Founders</b></span></span><span class="track"><span style="width:75%"></span></span><span class="num">24</span></div>
+                    <div class="hbar drill"><span class="lab"><span class="t"><b class="zh">投资</b><b class="en">Venture</b></span></span><span class="track"><span style="width:47%"></span></span><span class="num">15</span></div>
+                    <div class="hbar drill"><span class="lab"><span class="t"><b class="zh">零售</b><b class="en">Retail</b></span></span><span class="track"><span style="width:34%"></span></span><span class="num">11</span></div>
+                    <div class="hbar drill"><span class="lab" style="color:var(--amber)"><span class="t"><b class="zh">餐饮 ★</b><b class="en">F&amp;B ★</b></span></span><span class="track"><span style="width:28%;background:linear-gradient(90deg,var(--amber),#c98f3e)"></span></span><span class="num" style="color:var(--amber)">9</span></div>
+                    <div class="hbar drill"><span class="lab"><span class="t"><b class="zh">主办方</b><b class="en">Organizers</b></span></span><span class="track"><span style="width:22%"></span></span><span class="num">7</span></div>
+                  </div>
+                </div>
+                <!-- 价值类型分布 -->
+                <div class="card card-pad grow">
+                  <div class="row between middle">
+                    <h3 class="h-section" style="font-size:15px"><span class="t"><b class="zh">价值类型分布</b><b class="en">Value types</b></span></h3>
+                    <span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg><span class="t"><b class="zh">分类依据</b><b class="en">Source</b></span><span class="basis-pop right"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：价值评分（§16.3：你的 seeking × 对方 offering + 关系强度）得出每人主价值类型。可在联系人页修改。</b><b class="en"><b>Source</b>: value scoring (§16.3) → each contact's primary value type. Editable per contact.</b></span></span></span>
+                  </div>
+                  <div class="cap" style="margin-bottom:14px"><span class="t"><b class="zh">点图例查看该类名单</b><b class="en">Click a slice to view</b></span></div>
+                  <div class="donut-wrap">
+                    <div class="donut"><div class="mid"><span class="v mono">128</span><span class="l"><span class="t"><b class="zh">已分类</b><b class="en">typed</b></span></span></div></div>
+                    <div class="leg">
+                      <div class="li drill"><span class="sw" style="background:var(--accent)"></span><span class="t"><b class="zh">潜在客户</b><b class="en">Prospect</b></span><span class="c">41</span><span class="p">32%</span></div>
+                      <div class="li drill"><span class="sw" style="background:var(--live)"></span><span class="t"><b class="zh">合作伙伴</b><b class="en">Partner</b></span><span class="c">31</span><span class="p">24%</span></div>
+                      <div class="li drill"><span class="sw" style="background:var(--sky)"></span><span class="t"><b class="zh">投资人</b><b class="en">Investor</b></span><span class="c">23</span><span class="p">18%</span></div>
+                      <div class="li drill"><span class="sw" style="background:var(--amber)"></span><span class="t"><b class="zh">资源介绍人</b><b class="en">Connector</b></span><span class="c">20</span><span class="p">16%</span></div>
+                      <div class="li drill"><span class="sw" style="background:var(--rose)"></span><span class="t"><b class="zh">技术顾问</b><b class="en">Advisor</b></span><span class="c">13</span><span class="p">10%</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 人脉缺口 -->
+              <div class="sec-title"><svg class="icon icon-16" style="stroke:var(--amber)"><use href="#i-target"/></svg><h2><span class="t"><b class="zh">人脉缺口</b><b class="en">Network gaps</b></span></h2></div>
+              <div class="card card-pad" style="margin-bottom:8px">
+                <div class="row start gap-12">
+                  <div class="note note-amber" style="flex:1">
+                    <svg class="icon icon-16"><use href="#i-alert"/></svg>
+                    <div>
+                      <div style="color:var(--text);font-weight:600;margin-bottom:3px"><span class="t"><b class="zh">按你的目标「找餐饮客户」，餐饮人脉仅占 7%（9/128）——明显偏低。</b><b class="en">For your goal "find F&amp;B clients", F&amp;B contacts are only 7% (9/128) — a clear shortfall.</b></span>
+                        <span class="basis basis-ai" tabindex="0" style="margin-left:4px"><svg class="icon"><use href="#i-sparkles"/></svg><span class="basis-pop"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh"><b>依据</b>：目标(画像) × 行业分布 差值。目标变了这里就变。</b><b class="en"><b>Basis</b>: goal (profile) × industry distribution gap. Changes with your goal.</b></span></span></span>
+                      </div>
+                      <div><span class="t"><b class="zh">建议补充：餐饮经营者 · 本地商户 · 餐饮活动主办方。</b><b class="en">Suggested: restaurant owners · local merchants · F&amp;B event organizers.</b></span></div>
+                    </div>
+                  </div>
+                  <div class="col gap-8" style="width:190px;flex-shrink:0">
+                    <a class="btn btn-soft btn-sm btn-block" href="#"><svg class="icon icon-16"><use href="#i-calendar"/></svg><span class="t"><b class="zh">找餐饮活动</b><b class="en">Find F&amp;B events</b></span></a>
+                    <a class="btn btn-ghost btn-sm btn-block" href="#"><svg class="icon icon-16"><use href="#i-share"/></svg><span class="t"><b class="zh">请人引荐</b><b class="en">Ask for intro</b></span></a>
+                  </div>
+                </div>
+              </div>
+
+            </main>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MOBILE ================= -->
+    <div class="board-wrap">
+      <div class="board-label"><span class="dot"></span>Mobile · 390</div>
+      <div class="board is-mobile">
+        <div class="board-canvas">
+
+          <header class="orbit-top-nav is-m">
+            <div class="orbit-nav-lead">
+              <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.5" stroke="var(--accent)" stroke-width="1.6" opacity="0.35"/><circle cx="14" cy="14" r="4.4" fill="var(--accent)"/><circle cx="24.2" cy="10" r="2.5" fill="var(--accent)"/></svg>
+              <span class="orbit-nav-page-title"><span class="t"><b class="zh">人脉</b><b class="en">Contacts</b></span></span>
+            </div>
+            <div class="orbit-top-actions">
+              <a class="orbit-nav-iorbit" href="#" aria-label="iOrbit"><svg class="icon"><use href="#i-sparkles"/></svg></a>
+              <span class="orbit-lang-toggle"><button class="is-active">中</button><span class="orbit-lang-sep">/</span><button>EN</button></span>
+              <button class="orbit-nav-menu-btn" aria-label="menu"><svg class="icon"><use href="#i-menu"/></svg></button>
+            </div>
+          </header>
+
+          <div class="m-body">
+            <div class="row middle gap-8" style="flex-wrap:wrap">
+              <a class="chip chip-accent" href="#" style="height:34px"><svg class="icon icon-16"><use href="#i-target"/></svg><span class="t"><b class="zh">目标：找餐饮客户</b><b class="en">Goal: F&amp;B clients</b></span></a>
+              <span class="basis basis-you" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="t"><b class="zh">来自画像</b><b class="en">From profile</b></span><span class="basis-pop below"><span class="mm basis-you" style="background:var(--surface-2)"><span class="t"><b class="zh">你设定</b><b class="en">You</b></span></span><br><span class="t"><b class="zh">6/20 在引导问题中设定，可在画像页改。</b><b class="en">Set 6/20 in onboarding; edit in Profile.</b></span></span></span>
+            </div>
+
+            <!-- orbit map -->
+            <div class="card orbit-card mobile-orbit" style="margin-top:14px">
+              <div class="row between middle" style="margin-bottom:6px">
+                <div class="row middle gap-8"><svg class="icon icon-16" style="stroke:var(--accent)"><use href="#i-share"/></svg><h2 style="font-size:14px;color:var(--ink);margin:0;font-weight:700"><span class="t"><b class="zh">关系星图</b><b class="en">Relationship map</b></span></h2></div>
+                <span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="t"><b class="zh">编码</b><b class="en">Encoding</b></span><span class="basis-pop below right"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh">半径=近度 扇区=行业 光点=一人 大小=价值。</b><b class="en">radius=closeness, angle=industry, dot=a contact, size=value.</b></span></span></span>
+              </div>
+              <div class="orbit-stage"><svg class="orbit-svg" viewBox="0 0 360 360" data-orbit></svg></div>
+              <div class="ring-legend" style="grid-template-columns:1fr 1fr">
+                <div class="rl"><span class="rd" style="background:var(--live)"></span><span class="rt"><span class="t"><b class="zh">核心 强</b><b class="en">Core</b></span></span><span class="rn">46</span></div>
+                <div class="rl"><span class="rd" style="background:var(--sky)"></span><span class="rt"><span class="t"><b class="zh">进行 中</b><b class="en">Active</b></span></span><span class="rn">39</span></div>
+                <div class="rl"><span class="rd" style="background:var(--accent)"></span><span class="rt"><span class="t"><b class="zh">外圈 弱</b><b class="en">Outer</b></span></span><span class="rn">34</span></div>
+                <div class="rl"><span class="rd" style="background:var(--text-3)"></span><span class="rt"><span class="t"><b class="zh">沉睡</b><b class="en">Dormant</b></span></span><span class="rn">9</span></div>
+              </div>
+            </div>
+
+            <!-- action queue -->
+            <div class="card card-pad" style="margin-top:14px">
+              <div class="row middle gap-8" style="margin-bottom:8px"><svg class="icon icon-16" style="stroke:var(--accent)"><use href="#i-sparkles"/></svg><h2 style="font-size:14px;color:var(--ink);margin:0;font-weight:700"><span class="t"><b class="zh">本周行动队列</b><b class="en">This week</b></span></h2></div>
+              <div class="aq">
+                <div class="aq-item" style="grid-template-columns:34px 1fr auto">
+                  <div class="avatar g-sky" style="width:34px;height:34px;font-size:13px">E</div>
+                  <div class="grow"><div class="h-section" style="font-size:13.5px">Emily Wong</div><div class="why"><span class="t"><b class="zh">投资意向</b><b class="en">Investing</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg>AI<span class="basis-pop below"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">昨日对话 + 你的目标。</b><b class="en">Yesterday's note + goal.</b></span></span></span></div></div>
+                  <button class="btn btn-soft btn-sm"><span class="t"><b class="zh">约</b><b class="en">Book</b></span></button>
+                </div>
+                <div class="aq-item" style="grid-template-columns:34px 1fr auto">
+                  <div class="avatar g-violet" style="width:34px;height:34px;font-size:13px">花</div>
+                  <div class="grow"><div class="h-section" style="font-size:13.5px">佐藤花</div><div class="why"><span class="t"><b class="zh">承诺发资料</b><b class="en">Promised deck</b></span><span class="basis basis-ai" tabindex="0"><svg class="icon"><use href="#i-sparkles"/></svg>AI<span class="basis-pop below"><span class="mm basis-ai" style="background:var(--live-soft)">AI</span><br><span class="t"><b class="zh">摘要记录，3 天未动。</b><b class="en">Summary noted, 3d idle.</b></span></span></span></div></div>
+                  <button class="btn btn-soft btn-sm"><svg class="icon icon-16"><use href="#i-mail"/></svg></button>
+                </div>
+                <div class="aq-item" style="grid-template-columns:34px 1fr auto">
+                  <div class="avatar g-slate" style="width:34px;height:34px;font-size:13px">洋</div>
+                  <div class="grow"><div class="h-section" style="font-size:13.5px">刘洋</div><div class="why"><span class="t"><b class="zh">沉睡高价值</b><b class="en">Dormant high-value</b></span><span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="t"><b class="zh">规则</b><b class="en">Rule</b></span><span class="basis-pop below"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh">&gt;150 天未联系 且 高价值。</b><b class="en">&gt;150d silent & high value.</b></span></span></span></div></div>
+                  <button class="btn btn-soft btn-sm"><svg class="icon icon-16"><use href="#i-refresh"/></svg></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- overview tiles -->
+            <div class="tiles" style="margin-top:14px">
+              <div class="card stat"><div class="k"><span class="t"><b class="zh">总人脉</b><b class="en">Total</b></span></div><div class="v">128</div></div>
+              <div class="card stat"><div class="k"><span class="t"><b class="zh">高价值</b><b class="en">High value</b></span></div><div class="v">34</div></div>
+              <div class="card stat"><div class="k"><span class="t"><b class="zh">待跟进</b><b class="en">Follow-up</b></span></div><div class="v">24</div></div>
+              <div class="card stat"><div class="k"><span class="t"><b class="zh">沉睡</b><b class="en">Dormant</b></span></div><div class="v">9</div></div>
+            </div>
+
+            <!-- industry -->
+            <div class="card card-pad" style="margin-top:14px">
+              <div class="row between middle"><h3 class="h-section" style="font-size:14px"><span class="t"><b class="zh">行业分布</b><b class="en">Industry</b></span></h3><span class="basis basis-rule" tabindex="0"><svg class="icon"><use href="#i-info"/></svg><span class="t"><b class="zh">依据</b><b class="en">Src</b></span><span class="basis-pop below right"><span class="mm basis-rule" style="background:var(--accent-soft)"><span class="t"><b class="zh">规则</b><b class="en">Rule</b></span></span><br><span class="t"><b class="zh">联系人行业字段聚合。</b><b class="en">Aggregated industry field.</b></span></span></span></div>
+              <div class="col gap-10" style="margin-top:12px">
+                <div class="hbar"><span class="lab">AI / 技术</span><span class="track"><span style="width:100%"></span></span><span class="num">32</span></div>
+                <div class="hbar"><span class="lab"><span class="t"><b class="zh">创业者</b><b class="en">Founders</b></span></span><span class="track"><span style="width:75%"></span></span><span class="num">24</span></div>
+                <div class="hbar"><span class="lab" style="color:var(--amber)"><span class="t"><b class="zh">餐饮 ★</b><b class="en">F&amp;B ★</b></span></span><span class="track"><span style="width:28%;background:linear-gradient(90deg,var(--amber),#c98f3e)"></span></span><span class="num" style="color:var(--amber)">9</span></div>
+              </div>
+            </div>
+
+            <!-- gap -->
+            <div class="note note-amber" style="margin-top:14px">
+              <svg class="icon icon-16"><use href="#i-alert"/></svg>
+              <div><span class="t"><b class="zh">餐饮人脉仅 7%，低于目标所需。建议补充餐饮经营者 / 本地商户。</b><b class="en">F&amp;B is only 7% — below your goal. Add restaurant owners / local merchants.</b></span>
+                <div style="margin-top:8px"><a class="btn btn-soft btn-sm" href="#"><span class="t"><b class="zh">找餐饮活动</b><b class="en">Find F&amp;B events</b></span></a></div>
+              </div>
+            </div>
+          </div>
+
+          <nav class="m-tabs">
+            <a href="01-wallet.html"><svg class="icon"><use href="#i-wallet"/></svg><span class="t"><b class="zh">名片夹</b><b class="en">Cards</b></span></a>
+            <a href="#"><svg class="icon"><use href="#i-calendar"/></svg><span class="t"><b class="zh">活动</b><b class="en">Events</b></span></a>
+            <a href="03-dashboard.html" class="active"><svg class="icon"><use href="#i-chart"/></svg><span class="t"><b class="zh">表盘</b><b class="en">Board</b></span></a>
+            <a href="05-followup.html"><svg class="icon"><use href="#i-bell"/></svg><span class="t"><b class="zh">待办</b><b class="en">To-do</b></span></a>
+            <a href="#"><svg class="icon"><use href="#i-user"/></svg><span class="t"><b class="zh">我</b><b class="en">Me</b></span></a>
+          </nav>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ===== 关系星图 generator =====
+   每个光点 = 一位真实联系人。半径=关系近度(强度环)，扇区角度=行业，大小/亮度=价值分。
+   上千人脉时应改为按密度采样 + 计数，仅渲染关键人；此处 128 人全量渲染示意。 */
+(function(){
+  var SVGNS='http://www.w3.org/2000/svg';
+  var SECTORS=[
+    {label:'AI/技术',w:32},{label:'创业者',w:24},{label:'投资',w:15},
+    {label:'零售',w:11},{label:'餐饮',w:9,hot:true},{label:'主办方',w:7},{label:'其他',w:30}
+  ];
+  var RINGS=[
+    {rf:0.30,color:'#34C98E',n:46},
+    {rf:0.52,color:'#6FA8F8',n:39},
+    {rf:0.74,color:'#8B7BF0',n:34},
+    {rf:0.95,color:'#73737B',n:9,dim:true}
+  ];
+  var KEY=[
+    {ring:0,sector:'AI/技术',ini:'花',tone:'#B892EC'},
+    {ring:0,sector:'投资',ini:'E',tone:'#8A9CEC'},
+    {ring:3,sector:'AI/技术',ini:'洋',tone:'#9490AE'}
+  ];
+  var seed=20260707; function rnd(){ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; }
+  function el(tag,attrs){ var e=document.createElementNS(SVGNS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+  var totalW=SECTORS.reduce(function(a,s){return a+s.w;},0);
+  function sectorRange(label){ var cur=-90; for(var i=0;i<SECTORS.length;i++){ var span=SECTORS[i].w/totalW*360; if(SECTORS[i].label===label) return [cur,cur+span,cur+span/2]; cur+=span; } return [0,0,0]; }
+  function pick(){ var r=rnd()*totalW, acc=0; for(var i=0;i<SECTORS.length;i++){ acc+=SECTORS[i].w; if(r<=acc) return SECTORS[i].label; } return SECTORS[SECTORS.length-1].label; }
+
+  document.querySelectorAll('[data-orbit]').forEach(function(svg){
+    var vb=svg.getAttribute('viewBox').split(' ').map(Number); var S=vb[2]; var cx=S/2, cy=S/2; var maxR=S*0.40;
+    var defs=el('defs',{});
+    var g=el('radialGradient',{id:'ctr'+S,cx:'50%',cy:'50%',r:'50%'});
+    g.appendChild(el('stop',{offset:'0%','stop-color':'#B4A7FF','stop-opacity':'1'}));
+    g.appendChild(el('stop',{offset:'100%','stop-color':'#6359E9','stop-opacity':'0.12'}));
+    defs.appendChild(g);
+    var f=el('filter',{id:'glow'+S,x:'-60%',y:'-60%',width:'220%',height:'220%'});
+    f.appendChild(el('feGaussianBlur',{stdDeviation:'2.4',result:'b'}));
+    var mg=el('feMerge',{}); mg.appendChild(el('feMergeNode',{in:'b'})); mg.appendChild(el('feMergeNode',{in:'SourceGraphic'})); f.appendChild(mg);
+    defs.appendChild(f); svg.appendChild(defs);
+
+    var sweep=el('circle',{cx:cx,cy:cy,r:maxR*0.66,fill:'none',stroke:'#8B7BF0','stroke-width':maxR*0.7,'stroke-dasharray':(maxR*0.7)+' '+(maxR*9),opacity:'0.05'});
+    sweep.setAttribute('class','orbit-sweep'); svg.appendChild(sweep);
+
+    var cur=-90;
+    SECTORS.forEach(function(s){
+      var a=cur*Math.PI/180;
+      svg.appendChild(el('line',{x1:cx,y1:cy,x2:cx+Math.cos(a)*maxR,y2:cy+Math.sin(a)*maxR,stroke:'rgba(150,145,200,0.10)','stroke-width':1}));
+      var mid=cur+s.w/totalW*180; var am=mid*Math.PI/180; var lr=maxR*1.14;
+      var tx=cx+Math.cos(am)*lr, ty=cy+Math.sin(am)*lr;
+      /* anchor so labels grow INWARD (toward center) and never overflow the viewBox */
+      var t=el('text',{x:tx,y:ty,'font-size':S*0.027,'font-weight':'600',fill:s.hot?'#E0B472':'#8A86A6','text-anchor':(Math.cos(am)>0.3?'end':(Math.cos(am)<-0.3?'start':'middle')),'dominant-baseline':'middle','font-family':"'Noto Sans SC',sans-serif"});
+      t.textContent=s.label; svg.appendChild(t);
+      cur+=s.w/totalW*360;
+    });
+
+    RINGS.forEach(function(ring){
+      var rc=el('circle',{cx:cx,cy:cy,r:maxR*ring.rf,fill:'none',stroke:ring.color,'stroke-width':1,opacity:ring.dim?0.28:0.5});
+      rc.setAttribute('class','orbit-ring'); svg.appendChild(rc);
+    });
+
+    RINGS.forEach(function(ring){
+      for(var i=0;i<ring.n;i++){
+        var lab=pick(); var rg=sectorRange(lab); var pad=(rg[1]-rg[0])*0.12;
+        var ang=(rg[0]+pad + rnd()*((rg[1]-rg[0])-2*pad))*Math.PI/180;
+        var rad=maxR*ring.rf + (rnd()-0.5)*S*0.045;
+        var x=cx+Math.cos(ang)*rad, y=cy+Math.sin(ang)*rad;
+        var sz=(ring.dim?1.3:1.6)+rnd()*1.4;
+        var d=el('circle',{cx:x,cy:y,r:sz,fill:ring.color,opacity:ring.dim?0.42:(0.55+rnd()*0.4)});
+        svg.appendChild(d);
+      }
+    });
+
+    KEY.forEach(function(k){
+      var ring=RINGS[k.ring]; var rg=sectorRange(k.sector); var ang=rg[2]*Math.PI/180;
+      var rad=maxR*ring.rf; var x=cx+Math.cos(ang)*rad, y=cy+Math.sin(ang)*rad;
+      svg.appendChild(el('circle',{cx:x,cy:y,r:S*0.03,fill:k.tone,opacity:'0.95',filter:'url(#glow'+S+')'}));
+      var ini=el('text',{x:x,y:y+0.5,'font-size':S*0.03,'font-weight':'700',fill:'#0B0A15','text-anchor':'middle','dominant-baseline':'middle','font-family':"'Noto Sans SC',sans-serif"});
+      ini.textContent=k.ini; svg.appendChild(ini);
+    });
+
+    cur=-90;
+    SECTORS.forEach(function(s){
+      var a0=cur*Math.PI/180, a1=(cur+s.w/totalW*360)*Math.PI/180;
+      var x0=cx+Math.cos(a0)*maxR, y0=cy+Math.sin(a0)*maxR, x1=cx+Math.cos(a1)*maxR, y1=cy+Math.sin(a1)*maxR;
+      var large=(s.w/totalW*360)>180?1:0;
+      var p=el('path',{d:'M'+cx+' '+cy+' L'+x0+' '+y0+' A'+maxR+' '+maxR+' 0 '+large+' 1 '+x1+' '+y1+' Z'});
+      p.setAttribute('class','orbit-sector-hit'); var tt=el('title',{}); tt.textContent=s.label; p.appendChild(tt);
+      svg.appendChild(p); cur+=s.w/totalW*360;
+    });
+
+    svg.appendChild(el('circle',{cx:cx,cy:cy,r:S*0.06,fill:'url(#ctr'+S+')'}));
+    svg.appendChild(el('circle',{cx:cx,cy:cy,r:S*0.038,fill:'#7A69E6',stroke:'#B4A7FF','stroke-width':1.2}));
+    var me=el('text',{x:cx,y:cy+0.5,'font-size':S*0.032,'font-weight':'700',fill:'#fff','text-anchor':'middle','dominant-baseline':'middle','font-family':"'Noto Sans SC',sans-serif"});
+    me.textContent='你'; me.setAttribute('data-me','1'); svg.appendChild(me);
+  });
+  function syncMe(){ var en=document.documentElement.lang==='en'; document.querySelectorAll('text[data-me]').forEach(function(t){ t.textContent=en?'You':'你'; }); }
+  new MutationObserver(syncMe).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
+})();
+</script>
+<script src="orbit-cards-proto.js"></script>
+
+</body>
+</html>
