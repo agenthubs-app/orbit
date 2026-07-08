@@ -666,32 +666,43 @@ export async function loadAppChatRouteViewModel(
     };
   }
 
-  const threadResult = await resolveChatResult(
-    services.conversationService.getMessageThread({
-      conversationId: conversation.conversationId,
-    }),
-  );
-  const assistResult = await resolveChatResult(
-    services.writingAssistService.draftFollowup({
-      contextNote: conversation.oneToOneContext.recommendedFollowup,
-      conversationId: conversation.conversationId,
-      organization: conversation.organization,
-      participantName: conversation.participantName,
-    }),
-  );
-  const summaryResult = await resolveChatResult(
-    services.summaryExtractionService.summarizeConversation({
-      conversationId: conversation.conversationId,
-    }),
-  );
-  const extractionResult = await resolveChatResult(
-    services.summaryExtractionService.extractConversationSignals({
-      conversationId: conversation.conversationId,
-    }),
-  );
-  const privacyResult = await resolveChatResult(
-    services.privacyControlsService.getPrivacyControls(),
-  );
+  // These five reads only depend on the selected conversation id and are
+  // otherwise independent. Run them concurrently: in live mode each is a
+  // separate store round-trip, so sequencing them stacked latency into the
+  // 6–14s page opens. Behaviour is unchanged — same results, same failure
+  // handling below.
+  const [
+    threadResult,
+    assistResult,
+    summaryResult,
+    extractionResult,
+    privacyResult,
+  ] = await Promise.all([
+    resolveChatResult(
+      services.conversationService.getMessageThread({
+        conversationId: conversation.conversationId,
+      }),
+    ),
+    resolveChatResult(
+      services.writingAssistService.draftFollowup({
+        contextNote: conversation.oneToOneContext.recommendedFollowup,
+        conversationId: conversation.conversationId,
+        organization: conversation.organization,
+        participantName: conversation.participantName,
+      }),
+    ),
+    resolveChatResult(
+      services.summaryExtractionService.summarizeConversation({
+        conversationId: conversation.conversationId,
+      }),
+    ),
+    resolveChatResult(
+      services.summaryExtractionService.extractConversationSignals({
+        conversationId: conversation.conversationId,
+      }),
+    ),
+    resolveChatResult(services.privacyControlsService.getPrivacyControls()),
+  ]);
   const results: ChatRouteResult[] = [
     conversationsResult,
     threadResult,
