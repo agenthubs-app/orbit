@@ -1,5 +1,4 @@
 import {
-  createEventsRecommendationTool,
   type EventsRecommendationCandidate,
   type EventsRecommendationTool,
   type EventsRecommendationToolResult,
@@ -19,6 +18,12 @@ import {
   type OrbitAgentArtifactToolCallTrace,
 } from "./artifact-contract";
 import { createOrbitAgentArtifactPreviewService } from "./artifact-task-preview-service";
+import {
+  createOrbitAiEventRecommendationService,
+  ORBIT_AI_EVENT_RECOMMENDATION_READY_SCORE_THRESHOLD,
+  type OrbitAiEventRecommendation,
+  type OrbitAiEventRecommendationResult,
+} from "./event-recommendation-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
 
 export const ORBIT_AGENT_EVENT_RECOMMENDATION_ARTIFACT_SOURCE =
@@ -96,7 +101,7 @@ function presentationFor(
     preferredSurface: "side_panel",
     subtitle: localize(locale, {
       en: "Loaded from the Events service",
-      zh: "来自 Events 服务",
+      zh: "来自活动服务",
     }),
     title: localize(locale, {
       en: "Recommended events",
@@ -110,6 +115,33 @@ function presentationFor(
     ...presentation,
     title: presentation?.title?.trim() || defaults.title,
   };
+}
+
+function localizedSourceLabel(label: string, locale: ArtifactLocale): string {
+  const labels: Record<string, Record<ArtifactLocale, string>> = {
+    "Attendee intent notes": {
+      en: "Attendee intent notes",
+      zh: "参会者意图记录",
+    },
+    "Event topic record": {
+      en: "Event topic record",
+      zh: "活动主题记录",
+    },
+    "Profile fit summary": {
+      en: "Profile fit summary",
+      zh: "画像匹配摘要",
+    },
+    "Relationship opportunity graph": {
+      en: "Relationship opportunity graph",
+      zh: "关系机会图谱",
+    },
+    "Schedule timing record": {
+      en: "Schedule timing record",
+      zh: "日程时间记录",
+    },
+  };
+
+  return labels[label]?.[locale] ?? label;
 }
 
 function dateLabel(value: string): string {
@@ -225,6 +257,148 @@ function generatedViewFor(
   };
 }
 
+function confidenceLabelForGoalRecommendation(
+  recommendation: OrbitAiEventRecommendation,
+  locale: ArtifactLocale,
+): string {
+  if (recommendation.confidence === "high") {
+    return localize(locale, {
+      en: `High confidence · ${recommendation.score}`,
+      zh: `高可信 · ${recommendation.score}`,
+    });
+  }
+
+  return localize(locale, {
+    en: `Evidence fit · ${recommendation.score}`,
+    zh: `证据匹配 · ${recommendation.score}`,
+  });
+}
+
+function peopleLabelForGoalRecommendation(
+  recommendation: OrbitAiEventRecommendation,
+): string {
+  return recommendation.peopleToMeet
+    .slice(0, 3)
+    .map((person) => `${person.name} (${person.role})`)
+    .join(", ");
+}
+
+function evidenceBodyForGoalRecommendation(
+  recommendation: OrbitAiEventRecommendation,
+  locale: ArtifactLocale,
+): string {
+  const people = recommendation.peopleToMeet
+    .slice(0, 3)
+    .map((person) => `${person.name}: ${person.reason}`)
+    .join(" ");
+  const evidence = recommendation.evidenceSnippets
+    .slice(0, 3)
+    .map(
+      (snippet) =>
+        `${localizedSourceLabel(snippet.sourceLabel, locale)}: ${snippet.snippet}`,
+    )
+    .join(" ");
+
+  return localize(locale, {
+    en: `People to meet: ${people} Timing: ${recommendation.timing} Evidence: ${evidence}`,
+    zh: `建议认识的人：${people} 时间：${recommendation.timing} 证据：${evidence}`,
+  });
+}
+
+function generatedViewForGoalRecommendation(
+  result: OrbitAiEventRecommendationResult,
+  locale: ArtifactLocale,
+): OrbitAgentArtifactGeneratedView {
+  const items = result.recommendations.map((recommendation) => ({
+    actions: [
+      {
+        actionId: `event:review:${recommendation.eventId}`,
+        href: recommendation.detailHref,
+        label: localize(locale, {
+          en: "Review event",
+          zh: "复核活动",
+        }),
+        requiresConfirmation: true,
+      },
+    ],
+    body: evidenceBodyForGoalRecommendation(recommendation, locale),
+    confidenceLabel: confidenceLabelForGoalRecommendation(
+      recommendation,
+      locale,
+    ),
+    evidenceIds: recommendation.evidenceIds,
+    id: `event-recommendation:${recommendation.eventId}`,
+    metadata: [
+      {
+        label: localize(locale, { en: "Event", zh: "活动" }),
+        value: recommendation.eventId,
+      },
+      {
+        label: localize(locale, { en: "Timing", zh: "时间" }),
+        value: recommendation.timing,
+      },
+      {
+        label: localize(locale, { en: "Start", zh: "开始" }),
+        value: recommendation.startsAt,
+      },
+      {
+        label: localize(locale, { en: "End", zh: "结束" }),
+        value: recommendation.endsAt,
+      },
+      {
+        label: localize(locale, { en: "Location", zh: "地点" }),
+        value: recommendation.venue,
+      },
+      {
+        label: localize(locale, { en: "People", zh: "建议认识" }),
+        value: peopleLabelForGoalRecommendation(recommendation),
+      },
+      {
+        label: localize(locale, { en: "Source", zh: "来源" }),
+        value: recommendation.evidenceSnippets[0]
+          ? localizedSourceLabel(recommendation.evidenceSnippets[0].sourceLabel, locale)
+          : "Orbit",
+      },
+      {
+        label: localize(locale, { en: "Score", zh: "匹配分" }),
+        value: String(recommendation.score),
+      },
+    ],
+    reason: recommendation.whyThisEvent,
+    subtitle: `${recommendation.venue} · ${dateLabel(recommendation.startsAt)}`,
+    title: recommendation.title,
+  }));
+
+  return {
+    emptyState:
+      result.readiness.state === "needs_more_context"
+        ? localize(locale, {
+            en: "Add a clearer attendee, event topic, schedule, relationship, or profile-fit goal before showing event recommendations as ready.",
+            zh: "请补充更明确的参会人、活动主题、时间、关系或画像目标后，再展示可用活动推荐。",
+          })
+        : result.readiness.state === "no_recommendation"
+          ? localize(locale, {
+              en: "No source-backed event cleared the ready threshold for this goal.",
+              zh: "没有有来源证据的活动达到这次目标的可展示阈值。",
+            })
+          : undefined,
+    sections: [
+      {
+        body: localize(locale, {
+          en: `Ready threshold: ${ORBIT_AI_EVENT_RECOMMENDATION_READY_SCORE_THRESHOLD}. Recommendations use attendee intent, event topic, schedule timing, relationship opportunities, and profile fit.`,
+          zh: `可展示阈值：${ORBIT_AI_EVENT_RECOMMENDATION_READY_SCORE_THRESHOLD}。推荐会使用参会意图、活动主题、时间、关系机会和画像匹配。`,
+        }),
+        items,
+        title: localize(locale, {
+          en: "Goal-based event recommendations",
+          zh: "按目标匹配的活动推荐",
+        }),
+      },
+    ],
+    summary: result.summary,
+  };
+}
+
 function toolTraceFor(
   result: EventsRecommendationToolResult,
   locale: ArtifactLocale,
@@ -263,6 +437,18 @@ function provenanceFor(
   };
 }
 
+function evidenceIdsForGoalRecommendation(
+  result: OrbitAiEventRecommendationResult,
+): readonly string[] {
+  const evidenceIds = result.recommendations.flatMap(
+    (recommendation) => recommendation.evidenceIds,
+  );
+
+  return evidenceIds.length > 0
+    ? Array.from(new Set(evidenceIds))
+    : ["evidence:orbit-agent:event-recommendations:goal-service:empty"];
+}
+
 function taskFor(input: {
   conversationId?: string | null;
   presentation: OrbitAgentArtifactPresentation;
@@ -280,6 +466,62 @@ function taskFor(input: {
     status: input.status,
     taskId: "task:event-recommendations:live-events",
     updatedAt: fallbackGeneratedAt,
+  };
+}
+
+function resultForGoalRecommendation(input: {
+  locale: ArtifactLocale;
+  presentation: OrbitAgentArtifactPresentation;
+  recommendationResult: OrbitAiEventRecommendationResult;
+  task: OrbitAgentArtifactTask;
+}): OrbitAgentArtifactResult {
+  const evidenceIds = evidenceIdsForGoalRecommendation(
+    input.recommendationResult,
+  );
+
+  return {
+    artifactId: input.task.artifactId,
+    generatedView: generatedViewForGoalRecommendation(
+      input.recommendationResult,
+      input.locale,
+    ),
+    kind: "event_recommendations",
+    nextAction:
+      input.recommendationResult.readiness.state === "ready"
+        ? localize(input.locale, {
+            en: "Open an event detail page and verify attendee, topic, timing, relationship, and profile-fit evidence before registration, calendar holds, messages, or notifications.",
+            zh: "请打开活动详情页并复核参会人、主题、时间、关系和画像证据，再决定是否报名、占日历、发消息或通知。",
+          })
+        : localize(input.locale, {
+            en: "Clarify the event discovery goal before presenting recommendations as ready.",
+            zh: "请先明确活动发现目标，再把推荐标记为可用。",
+          }),
+    presentation: input.presentation,
+    provenance: {
+      evidenceIds,
+      generatedAt: fallbackGeneratedAt,
+      generationMethod: "artifact-producer-generated-view",
+      source: ORBIT_AGENT_EVENT_RECOMMENDATION_ARTIFACT_SOURCE,
+      sourceModules: ["orbit-ai", "events"],
+      toolCalls: [
+        {
+          evidenceIds,
+          reason: localize(input.locale, {
+            en: "goal_relevance_v1 ranked source-backed events by attendee intent, event topic, schedule timing, relationship opportunities, and profile fit; no registration, calendar write, notification, or external action ran.",
+            zh: "goal_relevance_v1 已按参会意图、活动主题、时间、关系机会和画像匹配对有来源活动排序；未报名、未写日历、未发通知、未执行外部动作。",
+          }),
+          status: "completed",
+          toolCallId: "toolcall:event-recommendations:goal-relevance-v1",
+          toolName: "events.recommend",
+        },
+      ],
+    },
+    safety: {
+      ...safety,
+      liveDatabaseReadExecuted: false,
+    },
+    status: input.task.status,
+    taskId: input.task.taskId,
   };
 }
 
@@ -315,6 +557,14 @@ function resultFor(input: {
   };
 }
 
+function maxRecommendationsFor(toolArguments: Record<string, unknown> | null | undefined) {
+  const limit = toolArguments?.limit;
+
+  return typeof limit === "number" && Number.isFinite(limit)
+    ? Math.max(1, Math.floor(limit))
+    : undefined;
+}
+
 function payloadFor(input: {
   query: string;
   recommendationResult: EventsRecommendationToolResult;
@@ -340,6 +590,31 @@ function payloadFor(input: {
   };
 }
 
+function payloadForGoalRecommendation(input: {
+  query: string;
+  recommendationResult: OrbitAiEventRecommendationResult;
+  request: OrbitAgentArtifactTaskRequest;
+}): OrbitAgentArtifactPayload {
+  const locale = normalizeLocale(input.request.locale);
+  const presentation = presentationFor(locale, input.request.presentation);
+  const task = taskFor({
+    conversationId: input.request.conversationId,
+    presentation,
+    query: input.query,
+    status: "ready",
+  });
+
+  return {
+    result: resultForGoalRecommendation({
+      locale,
+      presentation,
+      recommendationResult: input.recommendationResult,
+      task,
+    }),
+    task,
+  };
+}
+
 function success(payload: OrbitAgentArtifactPayload): OrbitAgentArtifactResultEnvelope {
   return {
     data: payload,
@@ -353,8 +628,6 @@ export function createOrbitAgentEventRecommendationArtifactService(input: {
 } = {}): OrbitAgentArtifactTaskService {
   const fallbackService =
     input.fallbackService ?? createOrbitAgentArtifactPreviewService();
-  const recommendationTool =
-    input.recommendationTool ?? createEventsRecommendationTool();
 
   return {
     createArtifactTask(request) {
@@ -368,7 +641,26 @@ export function createOrbitAgentEventRecommendationArtifactService(input: {
         return fallbackService.createArtifactTask(request);
       }
 
-      const recommendationResult = recommendationTool.recommend({
+      if (!input.recommendationTool) {
+        const recommendationResult =
+          createOrbitAiEventRecommendationService().recommendEvents({
+            contextMessages: request.contextMessages,
+            goal: query,
+            locale: request.locale,
+            maxRecommendations: maxRecommendationsFor(request.toolArguments),
+            toolArguments: request.toolArguments,
+          });
+
+        return success(
+          payloadForGoalRecommendation({
+            query,
+            recommendationResult,
+            request,
+          }),
+        );
+      }
+
+      const recommendationResult = input.recommendationTool.recommend({
         query,
         toolArguments: request.toolArguments,
       });

@@ -210,7 +210,7 @@ test("mock Orbit Agent conversation can orchestrate an artifact for event recomm
   });
 
   assert.equal(result.success, true);
-  assert.equal(result.data?.proposedToolIntents[0]?.toolFamily, "relationship_chat");
+  assert.equal(result.data?.proposedToolIntents[0]?.toolFamily, "events");
   assert.equal(result.data?.proposedToolIntents[0]?.requiresUserConfirmation, true);
   assert.match(result.data?.assistantMessage ?? "", /活动推荐|侧边栏|确认/);
   assert.equal(result.data?.artifacts.length, 1);

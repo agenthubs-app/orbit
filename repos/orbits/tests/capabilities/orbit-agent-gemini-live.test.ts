@@ -1657,6 +1657,10 @@ test("live Orbit Agent localizes live event artifact copy from the request local
   );
   assert.equal(
     artifact?.result.generatedView?.sections[0]?.items[0]?.metadata[0]?.label,
+    "活动",
+  );
+  assert.equal(
+    artifact?.result.generatedView?.sections[0]?.items[0]?.metadata[1]?.label,
     "时间",
   );
   assert.match(artifact?.result.nextAction ?? "", /复核/);

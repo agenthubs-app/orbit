@@ -14,6 +14,10 @@ import {
   type OrbitAgentConversationResult,
   type OrbitAgentConversationScenario,
   type OrbitAgentConversationSummary,
+  type OrbitAgentConversationHistoryTurn,
+  type OrbitAgentRoutingDecision,
+  type OrbitAgentRoutingIntent,
+  type OrbitAgentRoutingToolFamily,
   type OrbitAgentConversationTimingSpan,
   type OrbitAgentProposedToolIntent,
   type OrbitAgentSafetyLedger,
@@ -470,14 +474,33 @@ function assistantMessage(content: string): OrbitAgentConversationMessage {
   };
 }
 
+function historyMessages(
+  history: readonly OrbitAgentConversationHistoryTurn[] | undefined,
+): OrbitAgentConversationMessage[] {
+  return (history ?? []).slice(-6).map((turn, index) => ({
+    content: turn.content,
+    conversationId: liveConversationId,
+    createdAt: "2026-06-27T00:00:30.000Z",
+    evidenceIds: ["evidence:orbit-agent:conversation-history"],
+    messageId: `orbit-agent-live-history-${index + 1}`,
+    role: turn.role,
+  }));
+}
+
 function localBoundaryPayload(input: {
   assistant: string;
+  history?: readonly OrbitAgentConversationHistoryTurn[];
   label: string;
   message: string;
   nextAction: string;
+  routingDecision?: OrbitAgentRoutingDecision;
   source: OrbitAgentConversationProvenance["source"];
 }): OrbitAgentConversationPayload {
-  const messages = [userMessage(input.message), assistantMessage(input.assistant)];
+  const messages = [
+    ...historyMessages(input.history),
+    userMessage(input.message),
+    assistantMessage(input.assistant),
+  ];
   const safety = safetyLedger({
     aiProviderRequested: false,
     domainToolCallsExecuted: false,
@@ -498,6 +521,7 @@ function localBoundaryPayload(input: {
       safety,
       source: input.source,
     }),
+    routingDecision: input.routingDecision,
     state: "success",
   };
 }
@@ -679,6 +703,59 @@ export function createLiveOrbitAgentLocalBoundaryPayload(
   return null;
 }
 
+// 意图路由现在完全由模型 planner 决定。这个 mapper 只负责把模型 intent
+// 翻译成既有的展示契约（routing decision），让前端“是否需要工具”、no-tool 气泡
+// 标记和 dev trace 继续工作。它不做任何路由判断，只是模型意图的呈现层。
+export function routingDecisionFromPlannerIntent(
+  intent: GeminiOrbitAgentIntent,
+): OrbitAgentRoutingDecision {
+  const mapping: Record<
+    GeminiOrbitAgentIntent,
+    {
+      intent: OrbitAgentRoutingIntent;
+      toolFamily: OrbitAgentRoutingToolFamily | null;
+    }
+  > = {
+    contact_recommendations: {
+      intent: "contact_discovery",
+      toolFamily: "contacts",
+    },
+    event_recommendations: {
+      intent: "event_discovery",
+      toolFamily: "events",
+    },
+    followup_queue: {
+      intent: "followup_context",
+      toolFamily: "followups",
+    },
+    general_chat: {
+      intent: "general_conversation",
+      toolFamily: null,
+    },
+    relationship_chat_context: {
+      intent: "followup_context",
+      toolFamily: "followups",
+    },
+  };
+  const mapped = mapping[intent];
+  const needsTool = intent !== "general_chat";
+
+  return {
+    confidence: 0.86,
+    detectedToolFamilies: mapped.toolFamily ? [mapped.toolFamily] : [],
+    intent: mapped.intent,
+    needsTool,
+    reason: needsTool
+      ? "The configured model provider classified this as Orbit relationship work and selected the matching reviewable capability."
+      : "The configured model provider classified this as ordinary conversation, so no Orbit tool is proposed.",
+    safety: {
+      externalSideEffectsAllowed: false,
+      toolCallsExecuted: false,
+    },
+    toolFamily: mapped.toolFamily,
+  };
+}
+
 export function toolNameForIntent(
   intent: GeminiOrbitAgentIntent,
 ): GeminiOrbitAgentToolName | null {
@@ -853,6 +930,7 @@ export function conversationForRuntimeSuccess(input: {
   maxLoopSteps: number;
   message: string;
   plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
+  routingDecision?: OrbitAgentRoutingDecision;
   shouldSynthesizeAfterTools: boolean;
   timings: readonly OrbitAgentConversationTimingSpan[];
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
@@ -904,6 +982,7 @@ export function conversationForRuntimeSuccess(input: {
       safety,
       source: input.plannerResult.data.source,
     }),
+    routingDecision: input.routingDecision,
     state: "success",
   };
 }
@@ -975,6 +1054,12 @@ export async function runLiveOrbitAgentRuntime(
     };
   }
 
+  // 意图路由完全交给模型：general_chat 会自然带空 toolRequests 流经工具管线，
+  // 得到模型自由回复；其它 intent 走既有工具/合成链路。
+  const routingDecision = routingDecisionFromPlannerIntent(
+    plannerResult.data.intent,
+  );
+
   const toolMappingStartedAt = nowMs();
   const toolRequests = toolRequestsForPlannerResult(plannerResult);
   timings.push(timingSpan("tool_mapping", toolMappingStartedAt));
@@ -1034,6 +1119,7 @@ export async function runLiveOrbitAgentRuntime(
     maxLoopSteps: runtime.maxLoopSteps,
     message,
     plannerResult,
+    routingDecision,
     shouldSynthesizeAfterTools,
     timings,
     toolRequests,

@@ -10,7 +10,7 @@ import {
 } from "./provider";
 import { buildLiveAiProviderBoundaryProvenance } from "./provenance";
 
-export interface LiveAiProviderEnv {
+export interface LiveAiProviderEnv extends Record<string, string | undefined> {
   ORBIT_AI_PROVIDER?: string;
 }
 

@@ -125,6 +125,7 @@ export interface OrbitAgentArtifactTask {
 // actions 只是待确认按钮；requiresConfirmation=true 时绝不能当成已执行动作。
 export interface OrbitAgentArtifactGeneratedViewAction {
   actionId: string;
+  href?: string;
   label: string;
   requiresConfirmation: boolean;
 }

@@ -39,6 +39,11 @@ export interface OrbitAgentConversationInput {
   scenario?: OrbitAgentConversationScenario | string | null;
 }
 
+export interface OrbitAgentConversationHistoryTurn {
+  role: Exclude<OrbitAgentMessageRole, "system">;
+  content: string;
+}
+
 export interface OrbitAgentConversationLookupInput
   extends OrbitAgentConversationInput {
   conversationId?: string | null;
@@ -46,6 +51,7 @@ export interface OrbitAgentConversationLookupInput
 
 export interface OrbitAgentSendMessageInput extends OrbitAgentConversationInput {
   conversationId?: string | null;
+  history?: readonly OrbitAgentConversationHistoryTurn[];
   message?: string | null;
   locale?: "zh" | "en" | string | null;
 }
@@ -65,6 +71,36 @@ export interface OrbitAgentProposedToolIntent {
   label: string;
   reason: string;
   requiresUserConfirmation: boolean;
+}
+
+export type OrbitAgentRoutingToolFamily =
+  | "calendar"
+  | "contacts"
+  | "events"
+  | "followups"
+  | "todo";
+
+export type OrbitAgentRoutingIntent =
+  | "calendar_staging"
+  | "clarification"
+  | "contact_discovery"
+  | "event_discovery"
+  | "followup_context"
+  | "general_conversation"
+  | "todo_synthesis"
+  | "unsafe_side_effect";
+
+export interface OrbitAgentRoutingDecision {
+  confidence: number;
+  detectedToolFamilies: readonly OrbitAgentRoutingToolFamily[];
+  intent: OrbitAgentRoutingIntent;
+  needsTool: boolean;
+  reason: string;
+  safety: {
+    externalSideEffectsAllowed: false;
+    toolCallsExecuted: false;
+  };
+  toolFamily: OrbitAgentRoutingToolFamily | null;
 }
 
 // safety ledger 是每次 conversation payload 的安全审计摘要。
@@ -134,6 +170,7 @@ export interface OrbitAgentConversationPayload {
   artifacts: readonly OrbitAgentArtifactPayload[];
   proposedToolIntents: readonly OrbitAgentProposedToolIntent[];
   provenance: OrbitAgentConversationProvenance;
+  routingDecision?: OrbitAgentRoutingDecision;
   nextAction: string;
   diagnostics?: OrbitAgentConversationDiagnostics;
 }

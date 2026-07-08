@@ -153,6 +153,101 @@ export interface OrbitAiProactiveAgentService {
   ) => OrbitAiProactiveAgentResult;
 }
 
+export interface OrbitAiProactiveCalendarPersonContext {
+  name: string;
+  context: string;
+}
+
+export interface OrbitAiProactiveCalendarActivity {
+  activityId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  people: readonly OrbitAiProactiveCalendarPersonContext[];
+  recommendedPreparation: string;
+  relationshipContext: string;
+  sourceLabel: string;
+  evidenceIds: readonly string[];
+}
+
+export interface OrbitAiProactiveCalendarSafetyLedger {
+  calendarProviderRequested: false;
+  calendarUpdateExecuted: false;
+  emailProviderRequested: false;
+  externalNetworkRequested: false;
+  externalSideEffectsExecuted: false;
+  notificationDelivered: false;
+  pushProviderRequested: false;
+  smsProviderRequested: false;
+}
+
+export interface OrbitAiProactiveCalendarMessage {
+  activityId: string;
+  body: string;
+  conversationHref: string;
+  conversationId: string;
+  dedupeKey: string;
+  deliverySurface: "orbit_in_app_inbox";
+  evidenceIds: readonly string[];
+  messageId: string;
+  peopleContext: string;
+  preparationPrompt: string;
+  sourceLabel: string;
+  subject: string;
+  timeLabel: string;
+}
+
+export interface OrbitAiProactiveCalendarConversation {
+  activityId: string;
+  activityTitle: string;
+  conversationId: string;
+  firstAssistantResponse: string;
+  initialPrompt: string;
+  peopleContext: string;
+  preparationPrompt: string;
+  relationshipContext: string;
+  sourceLabel: string;
+  sourceMessageId: string;
+  timeLabel: string;
+}
+
+export interface OrbitAiProactiveCalendarProvenance {
+  collectedAt: string;
+  evidenceIds: readonly string[];
+  generationMethod: "local-calendar-window-rule";
+  privacy: "local-proactive-calendar-message-only";
+  safety: OrbitAiProactiveCalendarSafetyLedger;
+  source: string;
+  sourceLabel: string;
+  windowEndsAt: string;
+  windowStartsAt: string;
+}
+
+export interface OrbitAiProactiveCalendarMessagePayload {
+  conversations: readonly OrbitAiProactiveCalendarConversation[];
+  messages: readonly OrbitAiProactiveCalendarMessage[];
+  provenance: OrbitAiProactiveCalendarProvenance;
+}
+
+export interface OrbitAiProactiveCalendarMessageSuccess {
+  success: true;
+  data: OrbitAiProactiveCalendarMessagePayload;
+}
+
+export interface OrbitAiProactiveCalendarMessageInput {
+  activities: readonly OrbitAiProactiveCalendarActivity[];
+  deliveredDedupeKeys?: readonly string[];
+}
+
+export type OrbitAiProactiveCalendarMessageResult =
+  OrbitAiProactiveCalendarMessageSuccess;
+
+export interface OrbitAiProactiveCalendarMessageService {
+  createMessagesForUpcomingActivities: (
+    input: OrbitAiProactiveCalendarMessageInput,
+  ) => OrbitAiProactiveCalendarMessageResult;
+}
+
 export interface OrbitAiProactiveAgentErrorDefinition {
   code: OrbitAiProactiveAgentErrorCode;
   appCode: AppErrorCode;

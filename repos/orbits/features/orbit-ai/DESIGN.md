@@ -14,6 +14,8 @@ Orbit AI 是产品里的对话式编排层。它接收自然语言输入，决�
 - `orbit-agent-conversation`：产品 chat agent 能力。mock 模式走稳定 fixture，live 模式走 provider planner、内部 tool/artifact mapping 和可选 synthesis。入口是 `createOrbitAgentConversationService()`。
 - `orbit-agent-artifact-task`：把 planner 选出的内部工具请求转换成可复核 artifact。入口是 `createOrbitAgentArtifactTaskService()`。
 - `orbit-ai-proactive-agent`：把 Calendar、Events、Contacts、Followups 或系统状态发出的结构化 signal 转换成 Orbit AI 聊天窗口里的主动管家消息。入口是 `createOrbitAiProactiveAgentService()`。
+- `orbit-ai-todo-summary`：把对话下一步、活动时间、日程、生日、引荐机会和关系提醒整理成带来源的关系待办摘要。入口是 `createOrbitAiTodoSummaryService()`，评估与 mock-to-live 路径见 `TODO_SUMMARY_EVALUATION.md`。
+- `orbit-ai-calendar-action`：把已有 artifact 卡片里的标题、时间、人或活动链接、原因和来源整理成“加入日历”的本地预览。入口是 `createOrbitAiCalendarActionService()`；当前默认不写日历、不写记录、不发通知、不发消息、不请求外部网络。mock-to-live 路径见 `CALENDAR_ACTION_LIVE_IMPLEMENTATION.md`。
 
 这些入口都在 `features/orbit-ai/service-factory.ts`。调用方只应该通过 service factory 获取服务，不直接导入 mock service、live provider 或 raw fixture。
 
@@ -109,6 +111,10 @@ Search/Relationship Search 是底层 retrieval substrate，不是业务工具 ow
 Mock command service 使用本地规则匹配 prompt，返回稳定 intent 和 panel。它不调用 live AI provider，不请求外部网络，不写对话存储。
 
 Mock conversation service 接受自由文本，不要求每句话都绑定工具。Mock artifact task service 只生成可查看的本地推荐或上下文结果，不执行报名、发信、日历、通知、资料写入或数据库写入。
+
+Calendar action service 只根据已有 artifact 生成本地预览。只有卡片同时具备明确标题、时间、人或活动链接、原因和来源时，才会出现加入日历的待确认入口；联系人推荐、活动推荐、跟进队列和待办摘要都走同一个 gate，其中待办摘要额外保留 `todo_summary` 作为未来独立 artifact kind 的显式别名。预览和取消都必须保留 no-side-effect ledger。当前预览还必须带 `completionBoundary`，明确确认暂不可用、尚未创建日历事件，并把下一步限制在查看来源或取消预览。
+
+产品页渲染 calendar action 时，入口文案必须随当前语言本地化，例如中文为「预览加入日历」。可见预览先展示日历级字段：标题、日期、开始时间、结束时间、时区、地点、数据来源、仅本地预览、未确认和尚未创建日历事件；原因、artifact source 与 evidence ids 收进「查看依据」折叠区。数据来源用用户可读中文，例如「参会者意图记录」「活动主题记录」「画像匹配摘要」「已保存关系对话」；raw source id 只能放在诊断/data attribute，不直接作为可见文案。折叠的次要结果只保留只读摘要，不输出隐藏的查看活动或加入日历链接，避免用户和浏览器验证看到不可见但可聚焦的动作。
 
 无法识别的 prompt 应返回可恢复建议，而不是假装完成。
 

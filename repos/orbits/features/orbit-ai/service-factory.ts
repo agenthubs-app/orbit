@@ -2,6 +2,10 @@ import { createModuleServiceFactory, type ModuleMode } from "../../shared/servic
 import { createLiveOrbitAiCommandService } from "./live-command-service";
 import { createLiveOrbitAgentConversationService } from "./live-conversation-service";
 import { createOrbitAgentLiveArtifactTaskService } from "./live-artifact-task-service";
+import {
+  createOrbitAiCalendarActionService as createLocalOrbitAiCalendarActionService,
+  type OrbitAiCalendarActionService,
+} from "./calendar-action-service";
 import { createMockOrbitAgentArtifactTaskService } from "./mock-artifact-task-service";
 import { createMockOrbitAgentConversationService } from "./mock-conversation-service";
 import { createMockOrbitAiCommandService } from "./mock-service";
@@ -99,4 +103,8 @@ export function createOrbitAgentConversationService(
   }
 
   return resolution.service;
+}
+
+export function createOrbitAiCalendarActionService(): OrbitAiCalendarActionService {
+  return createLocalOrbitAiCalendarActionService();
 }
