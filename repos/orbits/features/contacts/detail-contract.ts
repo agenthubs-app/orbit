@@ -121,7 +121,12 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
 
 export type ContactDetailSourceType = Extract<
   SourceType,
-  "manual" | "event_import" | "email_signal" | "calendar_signal" | "referral"
+  | "manual"
+  | "event_import"
+  | "email_signal"
+  | "calendar_signal"
+  | "referral"
+  | "qr_scan"
 >;
 
 export interface ContactDetailSourceReference extends SourceReferenceDTO {

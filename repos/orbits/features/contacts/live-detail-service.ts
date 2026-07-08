@@ -51,7 +51,31 @@ const contactDetailSourceTypes = new Set<ContactDetailSourceType>([
   "email_signal",
   "calendar_signal",
   "referral",
+  "qr_scan",
 ]);
+
+const sourceTypeLabels: Record<ContactDetailSourceType, string> = {
+  calendar_signal: "Calendar signal",
+  email_signal: "Email signal",
+  event_import: "Event import",
+  manual: "Manual note",
+  qr_scan: "QR scan",
+  referral: "Referral",
+};
+
+const relationshipTokenLabels: Record<string, string> = {
+  commercial_opportunity: "commercial opportunity",
+  community_context: "community context",
+  cross_border_ecommerce: "cross-border ecommerce",
+  education_training: "education and training",
+  knowledge_exchange: "knowledge exchange",
+  legal_accounting: "legal and accounting",
+  referral_path: "referral path",
+  retail_omnichannel: "retail omnichannel",
+  strategic_fit: "strategic fit",
+  tourism_hospitality: "tourism and hospitality",
+  venture_capital: "investment interest",
+};
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
@@ -66,6 +90,53 @@ function uniqueStrings(values: readonly (string | undefined)[]): string[] {
       ),
     ),
   );
+}
+
+function labelRelationshipToken(value: string): string {
+  const normalized = value.trim();
+  return (
+    relationshipTokenLabels[normalized] ??
+    normalized.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim()
+  );
+}
+
+function labelRelationshipText(value: string): string {
+  return value.replace(/\b[a-z][a-z0-9]+(?:_[a-z0-9]+)+\b/g, (token) =>
+    labelRelationshipToken(token),
+  );
+}
+
+function labelRelationshipValues(values: readonly string[]): string[] {
+  return uniqueStrings(values.map((value) => labelRelationshipToken(value)));
+}
+
+function sourceLabelFor(input: {
+  displayName: string;
+  source: ContactDTO["source"];
+  sourceType: ContactDetailSourceType;
+}): string {
+  const label = input.source.label?.trim();
+
+  if (input.sourceType === "qr_scan") {
+    if (!label) {
+      return "QR scan";
+    }
+
+    const namedEvent = label.replace(/\s*QR scan$/i, "").trim();
+    const directPerson = label.replace(/^Direct QR scan for\s+/i, "").trim();
+
+    if (namedEvent && namedEvent !== label && namedEvent !== input.displayName) {
+      return `QR scan at ${namedEvent}`;
+    }
+
+    if (directPerson && directPerson !== label) {
+      return `QR scan for ${directPerson}`;
+    }
+
+    return label.includes("QR scan") ? label : `QR scan at ${label}`;
+  }
+
+  return label || sourceTypeLabels[input.sourceType];
 }
 
 function failure<TCode extends ContactDetailTagStatusErrorCode>(
@@ -133,10 +204,16 @@ function sourceFor(input: {
   contact: ContactDTO;
   evidenceId: string;
 }): ContactDetailSourceReference {
+  const sourceType = contactDetailSourceTypeFor(input.contact.source.type);
+
   return {
-    type: contactDetailSourceTypeFor(input.contact.source.type),
+    type: sourceType,
     id: input.contact.source.id,
-    label: input.contact.source.label ?? input.contact.source.id,
+    label: sourceLabelFor({
+      displayName: input.contact.displayName,
+      source: input.contact.source,
+      sourceType,
+    }),
     evidenceId: input.evidenceId,
   };
 }
@@ -218,19 +295,22 @@ function publicProfileFor(input: {
   evidenceIds: readonly string[];
   source: ContactDetailSourceReference;
 }): ContactDetailPublicProfile {
-  const sharedTopics = input.connection?.sharedTopics ?? [];
-  const suggestedActions = input.connection?.suggestedActions ?? [];
+  const sharedTopics = labelRelationshipValues(input.connection?.sharedTopics ?? []);
+  const suggestedActions = (input.connection?.suggestedActions ?? []).map(
+    (action) => labelRelationshipText(action),
+  );
+  const offering = labelRelationshipValues(input.connection?.valueTypes ?? []);
 
   return {
     bio:
-      input.contact.profileSnippet ??
-      input.connection?.summary ??
+      labelRelationshipText(input.contact.profileSnippet ?? "") ||
+      labelRelationshipText(input.connection?.summary ?? "") ||
       "Live contact profile is available from shared relationship records.",
     selfIntroduction:
-      input.contact.profileSnippet ??
+      labelRelationshipText(input.contact.profileSnippet ?? "") ||
       "Generated from live contact and relationship context.",
     industry: sharedTopics[0] ?? "relationship context",
-    offering: input.connection?.valueTypes ?? [],
+    offering,
     seeking: suggestedActions,
     topics: sharedTopics,
     conversationPrompts: suggestedActions.slice(0, 2),
@@ -313,8 +393,8 @@ function detailFor(input: {
   });
   const evidenceRecords = evidenceFor(evidenceIds, input.evidence);
   const relationshipContext =
-    input.connection?.summary ??
-    input.contact.profileSnippet ??
+    labelRelationshipText(input.connection?.summary ?? "") ||
+    labelRelationshipText(input.contact.profileSnippet ?? "") ||
     "Live relationship context is available for this contact.";
 
   return {
@@ -335,7 +415,7 @@ function detailFor(input: {
       evidenceId: record.id,
       source,
       field: "relationship_context",
-      excerpt: record.summary,
+      excerpt: labelRelationshipText(record.summary),
       capturedAt: record.occurredAt,
       createdBy: "mock-contact-detail-tag-status-service",
     })),
@@ -361,7 +441,7 @@ function detailFor(input: {
       source,
     }),
     nextAction:
-      input.connection?.suggestedActions[0] ??
+      labelRelationshipText(input.connection?.suggestedActions[0] ?? "") ||
       "Review the live contact detail before taking action.",
     updatedAt: input.contact.updatedAt,
     tagWriteExecuted: false,

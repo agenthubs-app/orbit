@@ -103,7 +103,7 @@ export default async function AppContactDetailPage({
         <OrbitRealCardDetail
           contactId={id}
           viewModel={localizeOrbitTree(
-            contactDetailRouteToOrbitContactsViewModel(routeModel),
+            contactDetailRouteToOrbitContactsViewModel(routeModel, language),
             language,
           )}
         />
