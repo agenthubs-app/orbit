@@ -1,0 +1,197 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const projectRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../..",
+);
+
+function readProjectFile(relativePath: string): string {
+  return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
+}
+
+async function importProjectModule<TModule>(
+  relativePath: string,
+): Promise<TModule> {
+  return (await import(pathToFileURL(path.join(projectRoot, relativePath)).href)) as TModule;
+}
+
+test("/app/agent consumes GET q event-discovery prompts and renders linked event recommendations", async () => {
+  const serviceModule = await importProjectModule<{
+    createMockOrbitAgentConversationService: () => {
+      sendMessage: (input: {
+        locale?: "en" | "zh";
+        message?: string | null;
+      }) => {
+        success: boolean;
+        data?: {
+          artifacts: readonly {
+            result: {
+              generatedView: {
+                sections: readonly {
+                  items: readonly {
+                    actions: readonly {
+                      href?: string;
+                      label: string;
+                      requiresConfirmation: boolean;
+                    }[];
+                    body?: string;
+                    confidenceLabel?: string;
+                    metadata: readonly { label: string; value: string }[];
+                    reason?: string;
+                    title: string;
+                  }[];
+                }[];
+                summary: string;
+              } | null;
+            };
+            task: { kind: string; query: string };
+          }[];
+        };
+      };
+    };
+  }>("features/orbit-ai/mock-conversation-service.ts");
+
+  const prompt =
+    "Recommend events where I can meet investors for seed fundraising and founder feedback.";
+  const result = serviceModule.createMockOrbitAgentConversationService().sendMessage({
+    locale: "en",
+    message: prompt,
+  });
+  const artifact = result.data?.artifacts[0];
+  const items = artifact?.result.generatedView?.sections[0]?.items ?? [];
+  const first = items[0];
+  const metadataText = first?.metadata
+    .map((item) => `${item.label}: ${item.value}`)
+    .join(" ");
+
+  assert.equal(result.success, true);
+  assert.equal(artifact?.task.kind, "event_recommendations");
+  assert.equal(artifact?.task.query, prompt);
+  assert.ok(items.length >= 2);
+  assert.equal(first?.title, "Seed Investor and Founder Matching Salon");
+  assert.match(first?.reason ?? "", /why this event/i);
+  assert.match(first?.body ?? "", /People to meet/i);
+  assert.match(first?.body ?? "", /Timing/i);
+  assert.match(first?.confidenceLabel ?? "", /confidence|fit/i);
+  assert.match(metadataText ?? "", /Score/i);
+  assert.match(metadataText ?? "", /Timing/i);
+  assert.match(metadataText ?? "", /People/i);
+  assert.equal(
+    first?.actions[0]?.href,
+    "/app/events/demo-event-1?sourceEventId=event_001",
+  );
+  assert.equal(first?.actions[0]?.requiresConfirmation, true);
+});
+
+test("/app/agent UI source exposes event recommendation cards, reasons, people, timing, confidence, and detail anchors", () => {
+  const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
+  const agentSource = readProjectFile(
+    "app/(app)/app/agent/orbit-real-agent.tsx",
+  );
+
+  assert.match(pageSource, /searchParams/);
+  assert.match(pageSource, /initialSubmittedGoal/);
+  assert.match(pageSource, /initialConversationData/);
+  assert.match(agentSource, /data-orbit-event-recommendation-card/);
+  assert.match(agentSource, /data-orbit-event-why/);
+  assert.match(agentSource, /data-orbit-event-people-to-meet/);
+  assert.match(agentSource, /data-orbit-event-timing/);
+  assert.match(agentSource, /confidenceLabel/);
+  assert.match(agentSource, /href=\{preserveHref\(productHref\(action\.href\)\)\}/);
+});
+
+test("/app/agent makes event discovery explicit before a user submits a goal", () => {
+  const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
+  const agentSource = readProjectFile(
+    "app/(app)/app/agent/orbit-real-agent.tsx",
+  );
+
+  assert.match(pageSource, /firstSearchParam/);
+  assert.match(
+    pageSource,
+    /typeof first === "string" && first\.trim\(\) \? first\.trim\(\) : null/,
+  );
+  assert.match(agentSource, /data-orbit-event-discovery-goal/);
+  assert.match(agentSource, /Meet investors/);
+  assert.match(agentSource, /Find China-market partners/);
+  assert.match(agentSource, /Hire AI talent/);
+  assert.match(agentSource, /data-orbit-agent-event-example-prompt/);
+  assert.match(agentSource, /Ask Orbit/);
+  assert.doesNotMatch(agentSource, /Find contacts/);
+});
+
+test("recommended event detail links resolve through the app event service", async () => {
+  const eventModule = await importProjectModule<{
+    createMockEventCrudAndImportService: () => {
+      getEvent: (input: { eventId: string }) => {
+        success: boolean;
+        data?: { event: { id: string; title: string } };
+        error?: { code: string };
+      };
+    };
+  }>("features/events/event-crud-and-import/mock-service.ts");
+
+  const result = eventModule
+    .createMockEventCrudAndImportService()
+    .getEvent({ eventId: "event_001" });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.event.id, "event_001");
+  assert.match(result.data?.event.title ?? "", /Investor|Founder/i);
+});
+
+test("recommended event detail action reaches the composed app event detail route", async () => {
+  const serviceModule = await importProjectModule<{
+    createMockOrbitAgentConversationService: () => {
+      sendMessage: (input: {
+        locale?: "en" | "zh";
+        message?: string | null;
+      }) => {
+        data?: {
+          artifacts: readonly {
+            result: {
+              generatedView: {
+                sections: readonly {
+                  items: readonly {
+                    actions: readonly { href?: string }[];
+                  }[];
+                }[];
+              } | null;
+            };
+          }[];
+        };
+      };
+    };
+  }>("features/orbit-ai/mock-conversation-service.ts");
+  const routeModule = await importProjectModule<{
+    loadAppEventDetailRoute: (input: { eventId: string; mode?: string }) => Promise<{
+      canonicalEvent?: { id: string; title: string };
+      routeState: string;
+    }>;
+  }>(
+    "app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
+  );
+  const prompt =
+    "Recommend events where I can meet investors for seed fundraising and founder feedback.";
+  const result = serviceModule.createMockOrbitAgentConversationService().sendMessage({
+    locale: "en",
+    message: prompt,
+  });
+  const href =
+    result.data?.artifacts[0]?.result.generatedView?.sections[0]?.items[0]
+      ?.actions[0]?.href ?? "";
+  const eventId = href.match(/^\/app\/events\/([^?]+)/)?.[1] ?? "";
+
+  const routeModel = await routeModule.loadAppEventDetailRoute({
+    eventId,
+    mode: "mock",
+  });
+
+  assert.equal(routeModel.routeState, "success");
+  assert.equal(routeModel.canonicalEvent?.id, "demo-event-1");
+  assert.match(href, /sourceEventId=event_001/);
+});
