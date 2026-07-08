@@ -13,6 +13,7 @@
 
 import type { OrbitLanguage } from "./orbit-language-core";
 import type {
+  OrbitEventAgendaItem,
   OrbitLandingEventView,
   OrbitLandingViewModel,
 } from "./orbit-landing-route-view-model";
@@ -249,6 +250,33 @@ const EVENT_SUMMARY: Record<string, LocalizedText> = {
   },
 };
 
+// A clean, generic agenda per language. Replaces the seed adapters' agenda,
+// which packed the raw relationshipContext blob (ids + JA:/ZH:/EN: + operator
+// metadata) into the "当晚议程" section.
+const AGENDA_BY_LANG: Record<OrbitLanguage, OrbitEventAgendaItem[]> = {
+  zh: [
+    { time: "10:00", label: "开场与背景", description: "活动目标与今日议题概览。" },
+    { time: "10:30", label: "主题环节", description: "围绕核心议题的分享与讨论。" },
+    { time: "11:30", label: "交流与对接", description: "结构化的相互介绍与后续跟进。" },
+  ],
+  en: [
+    { time: "10:00", label: "Welcome & framing", description: "Overview of the goal and today's topics." },
+    { time: "10:30", label: "Main session", description: "Sharing and discussion on the core topic." },
+    { time: "11:30", label: "Networking", description: "Structured introductions and follow-ups." },
+  ],
+  ja: [
+    { time: "10:00", label: "開会・背景共有", description: "目的と本日のテーマの概要。" },
+    { time: "10:30", label: "メインセッション", description: "中心テーマに関する共有と議論。" },
+    { time: "11:30", label: "ネットワーキング", description: "体系的な紹介とフォローアップ。" },
+  ],
+};
+
+const ATTENDEE_ROLE_BY_LANG: Record<OrbitLanguage, string> = {
+  zh: "参会者",
+  en: "Attendee",
+  ja: "参加者",
+};
+
 function presentEvent(
   event: OrbitLandingEventView,
   language: OrbitLanguage,
@@ -272,6 +300,14 @@ function presentEvent(
     industry: preset.industry,
     theme: preset.theme,
     tags: [...preset.tags],
+    agenda: AGENDA_BY_LANG[language] ?? AGENDA_BY_LANG.zh,
+    stats: {
+      ...event.stats,
+      attendees: event.stats.attendees.map((attendee) => ({
+        ...attendee,
+        role: ATTENDEE_ROLE_BY_LANG[language] ?? ATTENDEE_ROLE_BY_LANG.zh,
+      })),
+    },
     ...(summary ? { summaryZh: summary, descriptionZh: summary } : {}),
   };
 }
