@@ -1,0 +1,374 @@
+{
+  "version": "sprint-96-demo-visual-assets",
+  "generatedAt": "2026-07-08T00:00:00.000Z",
+  "assets": [
+    {
+      "alt": "Relationship scene for Japan-China Investor Founder Signup Salon.",
+      "assetId": "orbit-demo-event-event-signup-03",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-signup-03",
+      "recordId": "event_signup_03",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-signup-03.svg"
+    },
+    {
+      "alt": "Relationship scene for Tokyo AI Implementation Partner Registration Meetup.",
+      "assetId": "orbit-demo-event-event-signup-02",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-signup-02",
+      "recordId": "event_signup_02",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-signup-02.svg"
+    },
+    {
+      "alt": "Relationship scene for Kansai Cross-Border Business Signup Lab.",
+      "assetId": "orbit-demo-event-event-signup-01",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-signup-01",
+      "recordId": "event_signup_01",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-signup-01.svg"
+    },
+    {
+      "alt": "Relationship scene for Chinese Business Community Sponsorship Salon.",
+      "assetId": "orbit-demo-event-event-05",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-05",
+      "recordId": "event_05",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-05.svg"
+    },
+    {
+      "alt": "Relationship scene for Seed Investor and Founder Matching Salon.",
+      "assetId": "orbit-demo-event-event-04",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-04",
+      "recordId": "event_04",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-04.svg"
+    },
+    {
+      "alt": "Relationship scene for Bad Match Filtering Review.",
+      "assetId": "orbit-demo-event-event-10",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-10",
+      "recordId": "event_10",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-10.svg"
+    },
+    {
+      "alt": "Relationship scene for Cross-Border Ecommerce Channel Meetup.",
+      "assetId": "orbit-demo-event-event-03",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-03",
+      "recordId": "event_03",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-03.svg"
+    },
+    {
+      "alt": "Relationship scene for Duplicate Contact Merge Clinic.",
+      "assetId": "orbit-demo-event-event-09",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-09",
+      "recordId": "event_09",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-09.svg"
+    },
+    {
+      "alt": "Relationship scene for Japan-China AI Workflow PoC Roundtable.",
+      "assetId": "orbit-demo-event-event-02",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-02",
+      "recordId": "event_02",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-02.svg"
+    },
+    {
+      "alt": "Relationship scene for Dormant Relationship Reactivation Lab.",
+      "assetId": "orbit-demo-event-event-08",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-08",
+      "recordId": "event_08",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-08.svg"
+    },
+    {
+      "alt": "Relationship scene for Tokyo Inbound Restaurant Growth Forum.",
+      "assetId": "orbit-demo-event-event-01",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-01",
+      "recordId": "event_01",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-01.svg"
+    },
+    {
+      "alt": "Relationship scene for Post-Event Follow-Up Strategy Session.",
+      "assetId": "orbit-demo-event-event-07",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-07",
+      "recordId": "event_07",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-07.svg"
+    },
+    {
+      "alt": "Relationship scene for Business Card Profile Generation Workshop.",
+      "assetId": "orbit-demo-event-event-06",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-06",
+      "recordId": "event_06",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-06.svg"
+    },
+    {
+      "alt": "Relationship scene for Climate founders dinner.",
+      "assetId": "orbit-demo-event-demo-event-1",
+      "kind": "event-scene",
+      "promptId": "prompt-event-demo-event-1",
+      "recordId": "demo-event-1",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/demo-event-1.svg"
+    },
+    {
+      "alt": "Relationship scene for Storage pilot operator breakfast.",
+      "assetId": "orbit-demo-event-demo-event-2",
+      "kind": "event-scene",
+      "promptId": "prompt-event-demo-event-2",
+      "recordId": "demo-event-2",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/demo-event-2.svg"
+    },
+    {
+      "alt": "Relationship scene for Founder investor salon.",
+      "assetId": "orbit-demo-event-event-manual-founder-investor-salon",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-manual-founder-investor-salon",
+      "recordId": "event:manual:founder-investor-salon",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-manual-founder-investor-salon.svg"
+    },
+    {
+      "alt": "Relationship scene for Seed Investor and Founder Matching Salon.",
+      "assetId": "orbit-demo-event-event-001",
+      "kind": "event-scene",
+      "promptId": "prompt-event-event-001",
+      "recordId": "event_001",
+      "recordType": "event",
+      "sourceLabel": "Local relationship scene",
+      "src": "/orbit-demo-assets/events/event-001.svg"
+    },
+    {
+      "alt": "Relationship portrait for 西村 大地.",
+      "assetId": "orbit-demo-avatar-contact-039",
+      "displayName": "西村 大地",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-039",
+      "recordId": "contact_039",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-039.svg"
+    },
+    {
+      "alt": "Relationship portrait for 青木 瑞希.",
+      "assetId": "orbit-demo-avatar-contact-037",
+      "displayName": "青木 瑞希",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-037",
+      "recordId": "contact_037",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-037.svg"
+    },
+    {
+      "alt": "Relationship portrait for 曹子睿.",
+      "assetId": "orbit-demo-avatar-contact-077",
+      "displayName": "曹子睿",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-077",
+      "recordId": "contact_077",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-077.svg"
+    },
+    {
+      "alt": "Relationship portrait for 郑思远.",
+      "assetId": "orbit-demo-avatar-contact-117",
+      "displayName": "郑思远",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-117",
+      "recordId": "contact_117",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-117.svg"
+    },
+    {
+      "alt": "Relationship portrait for 遠藤 悠斗.",
+      "assetId": "orbit-demo-avatar-contact-036",
+      "displayName": "遠藤 悠斗",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-036",
+      "recordId": "contact_036",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-036.svg"
+    },
+    {
+      "alt": "Relationship portrait for 韩梓豪.",
+      "assetId": "orbit-demo-avatar-contact-075",
+      "displayName": "韩梓豪",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-075",
+      "recordId": "contact_075",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-075.svg"
+    },
+    {
+      "alt": "Relationship portrait for Kenji Watanabe.",
+      "assetId": "orbit-demo-avatar-contact-kenji-watanabe",
+      "displayName": "Kenji Watanabe",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-kenji-watanabe",
+      "recordId": "contact:kenji-watanabe",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-kenji-watanabe.svg"
+    },
+    {
+      "alt": "Relationship portrait for Kenji Watanabe.",
+      "assetId": "orbit-demo-avatar-demo-contact-1",
+      "displayName": "Kenji Watanabe",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-demo-contact-1",
+      "recordId": "demo-contact-1",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/demo-contact-1.svg"
+    },
+    {
+      "alt": "Relationship portrait for Kenji Watanabe.",
+      "assetId": "orbit-demo-avatar-contact-001",
+      "displayName": "Kenji Watanabe",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-001",
+      "recordId": "contact_001",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-001.svg"
+    },
+    {
+      "alt": "Relationship portrait for Hana Sato.",
+      "assetId": "orbit-demo-avatar-contact-hana-sato",
+      "displayName": "Hana Sato",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-hana-sato",
+      "recordId": "contact:hana-sato",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-hana-sato.svg"
+    },
+    {
+      "alt": "Relationship portrait for Omar Rahman.",
+      "assetId": "orbit-demo-avatar-contact-omar-rahman",
+      "displayName": "Omar Rahman",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-omar-rahman",
+      "recordId": "contact:omar-rahman",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-omar-rahman.svg"
+    },
+    {
+      "alt": "Relationship portrait for Mina Tan.",
+      "assetId": "orbit-demo-avatar-contact-mina-tan",
+      "displayName": "Mina Tan",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-contact-mina-tan",
+      "recordId": "contact:mina-tan",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/contact-mina-tan.svg"
+    },
+    {
+      "alt": "Relationship portrait for Aiko Mori.",
+      "assetId": "orbit-demo-avatar-attendee-demo-1",
+      "displayName": "Aiko Mori",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-attendee-demo-1",
+      "recordId": "attendee:demo-1",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/attendee-demo-1.svg"
+    },
+    {
+      "alt": "Relationship portrait for Luis Ortega.",
+      "assetId": "orbit-demo-avatar-attendee-demo-2",
+      "displayName": "Luis Ortega",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-attendee-demo-2",
+      "recordId": "attendee:demo-2",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/attendee-demo-2.svg"
+    },
+    {
+      "alt": "Relationship portrait for Priya Shah.",
+      "assetId": "orbit-demo-avatar-attendee-demo-3",
+      "displayName": "Priya Shah",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-attendee-demo-3",
+      "recordId": "attendee:demo-3",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/attendee-demo-3.svg"
+    },
+    {
+      "alt": "Relationship portrait for Mina Park.",
+      "assetId": "orbit-demo-avatar-attendee-mina-park",
+      "displayName": "Mina Park",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-attendee-mina-park",
+      "recordId": "attendee:mina-park",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/attendee-mina-park.svg"
+    },
+    {
+      "alt": "Relationship portrait for Leo Grant.",
+      "assetId": "orbit-demo-avatar-attendee-leo-grant",
+      "displayName": "Leo Grant",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-attendee-leo-grant",
+      "recordId": "attendee:leo-grant",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/attendee-leo-grant.svg"
+    },
+    {
+      "alt": "Relationship portrait for Sam Rivera.",
+      "assetId": "orbit-demo-avatar-attendee-sam-rivera",
+      "displayName": "Sam Rivera",
+      "kind": "avatar",
+      "promptId": "prompt-avatar-attendee-sam-rivera",
+      "recordId": "attendee:sam-rivera",
+      "recordType": "person",
+      "sourceLabel": "Local relationship portrait",
+      "src": "/orbit-demo-assets/avatars/attendee-sam-rivera.svg"
+    }
+  ]
+}
