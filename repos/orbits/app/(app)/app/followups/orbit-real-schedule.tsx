@@ -330,7 +330,7 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
   const monthCalendarProps = useMemo(
     () => ({
       connections: viewModel.connections,
-      language,
+      language: language === "ja" ? "en" : language,
       schedules: viewModel.schedules,
       selected,
       setSelected,
@@ -360,7 +360,7 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
           </div>
           <div style={{ alignItems: "start", display: "grid", gap: 26, gridTemplateColumns: "minmax(0,1fr) 380px" }}>
             <MonthCalendar {...monthCalendarProps} />
-            <ScheduleListPanel connections={viewModel.connections} language={language} schedules={viewModel.schedules} selected={selected} t={t} view={view} />
+            <ScheduleListPanel connections={viewModel.connections} language={language === "ja" ? "en" : language} schedules={viewModel.schedules} selected={selected} t={t} view={view} />
           </div>
         </div>
       </div>
@@ -378,7 +378,7 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
         </div>
         <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", gap: 20, minHeight: 0, overflowY: "auto", padding: "14px 18px 36px" }}>
           <MonthCalendar {...monthCalendarProps} compact />
-          <ScheduleListPanel compact connections={viewModel.connections} language={language} schedules={viewModel.schedules} selected={selected} t={t} view={view} />
+          <ScheduleListPanel compact connections={viewModel.connections} language={language === "ja" ? "en" : language} schedules={viewModel.schedules} selected={selected} t={t} view={view} />
         </div>
       </div>
       {addOpen ? <AddScheduleModal connections={viewModel.connections} onClose={() => setAddOpen(false)} t={t} /> : null}

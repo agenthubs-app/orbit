@@ -10,7 +10,7 @@ interface OrbitLanguageContextValue {
   language: OrbitLanguage;
   preserveHref: (href: string, nextLanguage?: OrbitLanguage) => string;
   setLanguage: (nextLanguage: OrbitLanguage) => void;
-  t: (copy: { en: string; zh: string }) => string;
+  t: (copy: { en: string; zh: string; ja?: string }) => string;
 }
 
 const OrbitLanguageContext = createContext<OrbitLanguageContextValue | null>(null);
@@ -50,9 +50,11 @@ export function OrbitLanguageProvider({
       );
     }
 
-    function t(copy: { en: string; zh: string }) {
-      // 调用方传入双语 copy，这里只做简单选择，不承载翻译表。
-      return copy[language];
+    function t(copy: { en: string; zh: string; ja?: string }) {
+      // 调用方传入多语 copy，这里只做简单选择，不承载翻译表。
+      // ja 缺省时回退英文（产品 chrome 尚未全量日文；活动数据是完整三语）。
+      if (language === "ja") return copy.ja ?? copy.en;
+      return language === "zh" ? copy.zh : copy.en;
     }
 
     return { language, preserveHref, setLanguage, t };
@@ -70,7 +72,7 @@ export function useOrbitLanguage() {
       language: "zh" as OrbitLanguage,
       preserveHref: (href: string) => href,
       setLanguage: () => undefined,
-      t: (copy: { en: string; zh: string }) => copy.zh,
+      t: (copy: { en: string; zh: string; ja?: string }) => copy.zh,
     };
   }
 

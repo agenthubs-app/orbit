@@ -1,7 +1,9 @@
-export type OrbitLanguage = "en" | "zh";
+export type OrbitLanguage = "en" | "zh" | "ja";
 
 export function normalizeOrbitLanguage(value: string | null | undefined): OrbitLanguage {
-  return value === "en" ? "en" : "zh";
+  if (value === "en") return "en";
+  if (value === "ja") return "ja";
+  return "zh";
 }
 
 export function withOrbitLanguageHref(href: string, language: OrbitLanguage): string {
@@ -11,10 +13,11 @@ export function withOrbitLanguageHref(href: string, language: OrbitLanguage): st
   const [pathname, query = ""] = path.split("?");
   const params = new URLSearchParams(query);
 
-  if (language === "en") {
-    params.set("lang", "en");
-  } else {
+  // zh is the default (no param); en/ja are explicit.
+  if (language === "zh") {
     params.delete("lang");
+  } else {
+    params.set("lang", language);
   }
 
   const search = params.toString();

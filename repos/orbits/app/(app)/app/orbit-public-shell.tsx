@@ -84,13 +84,19 @@ export function OrbitTopNav({
         <button
           aria-label={t({ en: "Switch language", zh: "切换语言" })}
           className="mono orbit-lang-button"
-          onClick={() => setLanguage(language === "en" ? "zh" : "en")}
+          onClick={() =>
+            setLanguage(
+              language === "zh" ? "en" : language === "en" ? "ja" : "zh",
+            )
+          }
           style={{ background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", fontSize: 12.5, padding: 0 }}
           type="button"
         >
           <span style={{ color: language === "zh" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "zh" ? 700 : 500 }}>中</span>
           <span style={{ color: "var(--text-4)", padding: "0 1px" }}>/</span>
           <span style={{ color: language === "en" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "en" ? 700 : 500 }}>EN</span>
+          <span style={{ color: "var(--text-4)", padding: "0 1px" }}>/</span>
+          <span style={{ color: language === "ja" ? "var(--accent)" : "var(--text-3)", fontWeight: language === "ja" ? 700 : 500 }}>日</span>
         </button>
         {rightExtra}
         <a className="orbit-me-link" href={preserveHref(meHref)}>

@@ -70,7 +70,7 @@ function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEv
 
 function EventCard({ event }: { event: OrbitLandingEventView }) {
   const { language, preserveHref, t } = useOrbitLanguage();
-  const mapped = mapEvent(event, language);
+  const mapped = mapEvent(event, language === "ja" ? "en" : language);
   const actionLabel = event.status === "upcoming" || event.status === "active" ? t({ en: "Register", zh: "报名" }) : t({ en: "View", zh: "查看" });
   const cardTime = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", ...tz }).format(new Date(event.startsAt));
 
@@ -203,7 +203,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
     const matchesQuery = !query || event.name.includes(query) || event.code.includes(query) || event.theme.includes(query);
     return matchesStatus && matchesTopic && matchesQuery;
   }), [events, query, status, topic]);
-  const mapItems = useMemo(() => filtered.map((event) => mapEvent(event, language)), [filtered, language]);
+  const mapItems = useMemo(() => filtered.map((event) => mapEvent(event, language === "ja" ? "en" : language)), [filtered, language]);
   const located = mapItems.filter((item) => Number.isFinite(item.pos.x) && Number.isFinite(item.pos.y));
   const canShowMap = located.length > 0;
   const effMode = mode === "map" && canShowMap ? "map" : "list";

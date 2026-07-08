@@ -172,7 +172,7 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
             style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 13, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: "13px 15px", textAlign: "left" }}
           >
             <Icon name={suggest.icon} size={17} color="var(--accent)" />
-            <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{agentSuggestLabel(suggest.label, language)}</span>
+            <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{agentSuggestLabel(suggest.label, language === "ja" ? "en" : language)}</span>
             <div style={{ flex: 1 }} />
             <Icon name="arrow" size={16} color="var(--text-4)" />
           </button>
@@ -466,7 +466,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               {inlinePanel ? (
                 <div style={{ marginTop: 12 }}>
                   <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panelTitle}</div>
-                  <PanelCards language={language} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} navigate={navigate} t={t} />
+                  <PanelCards language={language === "ja" ? "en" : language} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} navigate={navigate} t={t} />
                 </div>
               ) : null}
             </div>
@@ -548,7 +548,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               </div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 24px" }}>
-              <PanelCards language={language} panel={panel} navigate={navigate} t={t} />
+              <PanelCards language={language === "ja" ? "en" : language} panel={panel} navigate={navigate} t={t} />
             </div>
           </aside>
         ) : null}

@@ -26,6 +26,7 @@ import {
   type AppEventDetailBoundaryModel,
 } from "../compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import { OrbitRealEventDetail } from "./orbit-real-event-detail";
+import { presentOrbitEvent } from "../../orbit-event-presentation";
 
 export type AppEventDetailPageSearchParams = Record<
   string,
@@ -474,7 +475,10 @@ export default async function AppEventDetailPage({
         <>
           <OrbitRealEventDetail
             event={localizeOrbitTree(
-              eventDetailRouteToOrbitLandingEventView(routeModel),
+              presentOrbitEvent(
+                eventDetailRouteToOrbitLandingEventView(routeModel),
+                language,
+              ),
               language,
             )}
           />

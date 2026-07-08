@@ -4,6 +4,7 @@
  * 负责组合 live-capable route payload，实际 hub 布局由 `OrbitRealHome` 渲染。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
+import { presentOrbitEvents } from "../orbit-event-presentation";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import {
@@ -32,7 +33,13 @@ export default async function AppPersonalHomePage({
         <div data-orbit-route="app-home-route">
           <OrbitRealHome
             mode="hub"
-            viewModel={localizeOrbitTree(routeModel.home, language ?? "zh")}
+            viewModel={localizeOrbitTree(
+              {
+                ...routeModel.home,
+                events: presentOrbitEvents(routeModel.home.events, language ?? "zh"),
+              },
+              language ?? "zh",
+            )}
           />
         </div>
       ) : (

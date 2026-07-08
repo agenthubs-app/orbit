@@ -6,6 +6,7 @@
 import { StateView } from "../../../../../shared/ui/state-view";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
+import { presentOrbitEvents } from "../../orbit-event-presentation";
 import { OrbitRealOrganizerPublic } from "../orbit-real-organizer-public";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
@@ -79,7 +80,13 @@ export default async function AppOrganizerPublicPage({
         <div data-orbit-route="app-organizer-public-route">
           <OrbitRealOrganizerPublic
             language={language}
-            viewModel={localizeOrbitTree(routeModel.organizer, language)}
+            viewModel={localizeOrbitTree(
+              {
+                ...routeModel.organizer,
+                events: presentOrbitEvents(routeModel.organizer.events, language),
+              },
+              language,
+            )}
           />
         </div>
       ) : (

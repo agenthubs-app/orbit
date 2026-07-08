@@ -9,6 +9,7 @@ import {
 } from "./compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { eventsRouteToOrbitLandingViewModel } from "./compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { OrbitRealExploreClient } from "./orbit-real-explore-client";
+import { applyOrbitEventPresentation } from "../orbit-event-presentation";
 
 interface AppEventsPageProps {
   searchParams?: Promise<AppEventsSearchParams>;
@@ -56,7 +57,10 @@ export default async function AppEventsPage({
         <div data-orbit-route="app-events-route">
           <OrbitRealExploreClient
             viewModel={localizeOrbitTree(
-              eventsRouteToOrbitLandingViewModel(routeModel),
+              applyOrbitEventPresentation(
+                eventsRouteToOrbitLandingViewModel(routeModel),
+                language ?? "zh",
+              ),
               language ?? "zh",
             )}
           />
