@@ -215,6 +215,48 @@ test("contacts recommendation search adapter owns candidate retrieval policy abo
   assert.match(result.candidates[0]?.sourceLabel ?? "", /Manual climate/i);
 });
 
+test("contacts recommendation search rewrites Chinese domain queries to searchable keywords", async () => {
+  const contactsModule = await importProjectModule<{
+    createContactsRecommendationSearchTool: (input: {
+      relationshipSearchService: {
+        queryRelationships: (input: { query?: string }) => {
+          success: true;
+          data: { results: readonly unknown[]; provenance: Record<string, unknown> };
+        };
+      };
+    }) => {
+      recommend: (input: {
+        contextMessages?: readonly { content: string; role: string }[];
+        query: string;
+        toolArguments?: Record<string, unknown> | null;
+      }) => { criteria: { businessIntent: string | null; searchQuery: string } };
+    };
+  }>("features/contacts/contact-recommendation-search.ts");
+
+  function searchQueryFor(query: string): { searchQuery: string; businessIntent: string | null } {
+    const tool = contactsModule.createContactsRecommendationSearchTool({
+      relationshipSearchService: {
+        queryRelationships: () => ({
+          success: true,
+          data: { results: [], provenance: {} },
+        }),
+      },
+    });
+
+    return tool.recommend({ query, contextMessages: [], toolArguments: null }).criteria;
+  }
+
+  // "餐饮/restaurant" is present in the seeded relationship data, so a Chinese
+  // dining query must rewrite to the substring-matchable "restaurant" keyword
+  // instead of leaving raw Chinese that the backend tokenizer would drop.
+  const dining = searchQueryFor("我想找做餐饮的人合作一个项目，能给我推荐一下人选吗?");
+  assert.equal(dining.searchQuery, "restaurant");
+  assert.equal(dining.businessIntent, "explore_partnership");
+
+  assert.equal(searchQueryFor("推荐几个餐厅老板").searchQuery, "restaurant");
+  assert.equal(searchQueryFor("有没有做旅游文旅的人").searchQuery, "tourism");
+});
+
 test("contacts recommendation search adapter awaits async relationship search services", async () => {
   const contactsModule = await importProjectModule<{
     createContactsRecommendationSearchTool: (input: {

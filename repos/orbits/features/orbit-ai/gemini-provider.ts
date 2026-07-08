@@ -792,6 +792,135 @@ async function fetchProviderResponse(
   }
 }
 
+export type OrbitAgentModelTextResult =
+  | {
+      success: true;
+      model: string;
+      provider: OrbitAgentModelProvider;
+      source: OrbitAgentProviderSource;
+      text: string;
+    }
+  | {
+      success: false;
+      error: {
+        code: "MODEL_API_KEY_MISSING" | "MODEL_REQUEST_FAILED";
+        message: string;
+        provider: OrbitAgentModelProvider;
+        source: OrbitAgentProviderSource;
+      };
+    };
+
+// 通用文本调用：给一段 system instruction 和 user 文本，返回模型纯文本输出。
+// 复用与 planner 相同的 provider 解析、请求体、超时和输出提取，供翻译/抽词等
+// 不需要 planner JSON schema 的场景使用。同样 fail closed：缺 key 或请求失败返回结构化失败。
+export async function runOrbitAgentModelText(input: {
+  config?: GeminiOrbitAgentProviderConfig;
+  systemInstruction: string;
+  userText: string;
+}): Promise<OrbitAgentModelTextResult> {
+  const config = input.config ?? {};
+  const provider = resolveProvider(config);
+  const fetchImplementation = config.fetchImplementation ?? fetch;
+  const timeoutMs = readRequestTimeoutMs(config.requestTimeoutMs);
+
+  if (!provider.apiKey) {
+    return {
+      error: {
+        code: "MODEL_API_KEY_MISSING",
+        message: `${provider.provider} API key is not configured.`,
+        provider: provider.provider,
+        source: provider.source,
+      },
+      success: false,
+    };
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetchProviderResponse({
+      fetchImplementation,
+      init: {
+        body: JSON.stringify(
+          providerRequestBody({
+            inputText: input.userText,
+            model: provider.model,
+            provider: provider.provider,
+            systemInstructionText: input.systemInstruction,
+          }),
+        ),
+        headers: providerHeaders(provider),
+        method: "POST",
+      },
+      provider: provider.provider,
+      timeoutMs,
+      url: provider.endpoint,
+    });
+  } catch (error) {
+    return {
+      error: {
+        code: "MODEL_REQUEST_FAILED",
+        message: requestErrorMessage(error, provider.provider),
+        provider: provider.provider,
+        source: provider.source,
+      },
+      success: false,
+    };
+  }
+
+  let responseBody: unknown;
+
+  try {
+    responseBody = (await response.json()) as unknown;
+  } catch (error) {
+    return {
+      error: {
+        code: "MODEL_REQUEST_FAILED",
+        message: requestErrorMessage(error, provider.provider),
+        provider: provider.provider,
+        source: provider.source,
+      },
+      success: false,
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      error: {
+        code: "MODEL_REQUEST_FAILED",
+        message:
+          readProviderErrorMessage(responseBody) ??
+          `${provider.provider} request failed with HTTP ${response.status}.`,
+        provider: provider.provider,
+        source: provider.source,
+      },
+      success: false,
+    };
+  }
+
+  const outputText = readProviderOutputText(provider.provider, responseBody);
+
+  if (!outputText) {
+    return {
+      error: {
+        code: "MODEL_REQUEST_FAILED",
+        message: `${provider.provider} response did not include output text.`,
+        provider: provider.provider,
+        source: provider.source,
+      },
+      success: false,
+    };
+  }
+
+  return {
+    model: provider.model,
+    provider: provider.provider,
+    source: provider.source,
+    success: true,
+    text: outputText,
+  };
+}
+
 // 对外提供两个阶段：
 // plan = 结构化路由/工具计划；synthesize = 基于 artifact 摘要写最终回复。
 // 这两个阶段都会 fail closed：缺 key、请求失败、输出不合规都返回结构化失败。

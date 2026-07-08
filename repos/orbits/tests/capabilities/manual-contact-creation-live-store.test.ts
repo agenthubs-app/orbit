@@ -96,6 +96,48 @@ test("manual contact live creation persists a central contactDraft without conta
   assert.equal(centralDrafts.data.drafts[0]?.displayName, "佐藤 明");
 });
 
+test("manual contact live creation stores bilingual searchable note when translation is enabled", async () => {
+  const store = createStore();
+  const provider = createStorageContactAcquisitionDraftProvider({
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  let translateCalls = 0;
+  const service = createLiveManualContactCreationService({
+    now: () => NOW,
+    provider,
+    // translate-on-ingest：注入一个确定性 translator 模拟"模型把中文 note 翻成英文"。
+    normalizationService: {
+      translateToEnglish: async () => {
+        translateCalls += 1;
+        return {
+          englishText: "Restaurant owner exploring project partnerships.",
+          translated: true,
+        };
+      },
+    },
+  });
+
+  const result = await service.createManualContactDraft({
+    displayName: "曾伟",
+    role: "创始人",
+    organization: "味道餐饮",
+    note: "曾伟是做餐饮的，想找项目合作。",
+  });
+  const savedDrafts = listCollection(store, "contactDrafts");
+  const savedPayload = savedDrafts[0]?.payload as
+    | { note?: unknown; relationshipContext?: unknown }
+    | undefined;
+
+  assert.equal(result.success, true);
+  assert.equal(translateCalls, 1);
+  // 落库 note 是双语 "原文 / English"：英文子串可被关系检索命中，中文原文仍保留供展示。
+  assert.match(String(savedPayload?.note ?? ""), /restaurant/i);
+  assert.match(String(savedPayload?.note ?? ""), /餐饮/);
+  assert.match(String(savedPayload?.relationshipContext ?? ""), /restaurant/i);
+  assert.match(String(result.data.draft?.relationshipContext ?? ""), /restaurant/i);
+});
+
 test("manual contact live confirmation updates only the contactDrafts collection", async () => {
   const store = createStore();
   const provider = createStorageContactAcquisitionDraftProvider({

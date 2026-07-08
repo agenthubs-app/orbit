@@ -11,6 +11,7 @@ import { createLiveEmailCalendarSignalService } from "./live-email-calendar-serv
 import { createLiveEventAttendeeImportService } from "./live-event-attendee-import-service";
 import { createLiveExternalContactsImportService } from "./live-external-import-service";
 import { createLiveManualContactCreationService } from "./live-manual-service";
+import { createOrbitLanguageNormalizationService } from "../orbit-ai/language-normalization-service";
 import { createLiveDuplicateMergeService } from "./live-merge-service";
 import { createLiveReferralRecommendationService } from "./live-referral-service";
 import { createLiveBusinessCardReviewService } from "./live-business-card-review-service";
@@ -89,6 +90,9 @@ export const manualContactCreationServiceFactory =
       live: () =>
         createLiveManualContactCreationService({
           provider: createConfiguredStorageContactAcquisitionDraftProvider(),
+          // translate-on-ingest：手动录入的中文/日文 note 翻成英文合成双语可搜索文本。
+          // 缺 provider key 时抽词/翻译均返回未处理，自动回退到只存原文。
+          normalizationService: createOrbitLanguageNormalizationService(),
         }),
       mock: () => createMockManualContactCreationService(),
     },

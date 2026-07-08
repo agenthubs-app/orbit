@@ -3,6 +3,7 @@ import { createOrbitAgentContactRecommendationArtifactService } from "./contact-
 import { createOrbitAgentEventRecommendationArtifactService } from "./event-recommendation-artifact-service";
 import { createOrbitAgentFollowupReviewArtifactService } from "./followup-review-artifact-service";
 import { createOrbitAgentArtifactPreviewService } from "./artifact-task-preview-service";
+import { createOrbitLanguageNormalizationService } from "./language-normalization-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
 
 // Live conversation 和 dev trace 必须共享同一个 artifact 组合逻辑。
@@ -22,5 +23,8 @@ export function createOrbitAgentLiveArtifactTaskService(): OrbitAgentArtifactTas
 
   return createOrbitAgentContactRecommendationArtifactService({
     fallbackService: eventService,
+    // live 路径启用"模型抽英文检索词"：任意语言 query → 英文关键词 → 现有子串搜索。
+    // 缺 provider key 时抽词返回空，自动回退到确定性正则词表。
+    normalizationService: createOrbitLanguageNormalizationService(),
   });
 }

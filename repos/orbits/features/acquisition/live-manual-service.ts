@@ -23,10 +23,38 @@ import type {
   ContactDraftEvidence,
 } from "./contract";
 import type { LiveContactAcquisitionDraftProvider } from "./storage/contact-draft-live-record-provider";
+import {
+  composeBilingualSearchText,
+  type EnglishTranslationResult,
+} from "../orbit-ai/language-normalization-service";
+
+// translate-on-ingest 依赖：只需要把一段文本翻成英文。用结构化接口而不是直接依赖
+// orbit-ai 服务实例，保持 acquisition 与 orbit-ai 解耦（真正的实现由工厂注入）。
+export interface ManualContactNoteTranslator {
+  translateToEnglish: (text: string) => Promise<EnglishTranslationResult>;
+}
 
 export interface LiveManualContactCreationServiceOptions {
   now?: () => string;
   provider?: LiveContactAcquisitionDraftProvider | null;
+  // 录入时把中文/日文 note 翻成英文，合成 "原文 / English" 可搜索文本，供关系检索的
+  // 英文子串匹配命中。缺 provider key（或已是英文）时不翻译，只存原文，绝不阻塞写入。
+  normalizationService?: ManualContactNoteTranslator | null;
+}
+
+// 录入侧翻译：把原文 note 合成 "原文 / English"。fail-closed —— 无 translator 或
+// 未翻译时原样返回，写入永远不会因为翻译失败而中断。
+async function searchableNoteFor(
+  note: string,
+  normalizationService?: ManualContactNoteTranslator | null,
+): Promise<string> {
+  if (!normalizationService) {
+    return note;
+  }
+
+  const { englishText } = await normalizationService.translateToEnglish(note);
+
+  return composeBilingualSearchText(note, englishText);
 }
 
 type StoredManualContactDraft = ContactAcquisitionDraft & {
@@ -474,6 +502,7 @@ function confirmedContactDraft(input: {
 export function createLiveManualContactCreationService({
   now = () => new Date().toISOString(),
   provider,
+  normalizationService,
 }: LiveManualContactCreationServiceOptions = {}): ManualContactCreationService {
   return {
     async createManualContactDraft(
@@ -534,10 +563,13 @@ export function createLiveManualContactCreationService({
         );
       }
 
+      // displayName/organization 仍从原文 note 用正则派生（正则依赖英文 "from" 结构，
+      // 不能喂翻译后的文本）；只有落库的 note 换成可搜索的双语文本。
       const displayName = displayNameFrom(input);
       const organization = organizationFrom(input);
       const role = roleFrom(input);
       const source = sourceFor(input.source, displayName);
+      const searchableNote = await searchableNoteFor(note, normalizationService);
       const contactDraft = contactDraftFromManualInput({
         generatedAt,
         provider,
@@ -545,7 +577,7 @@ export function createLiveManualContactCreationService({
         displayName,
         role,
         organization,
-        note,
+        note: searchableNote,
         tags: tagsFor(input.tags),
         followUpHint: nonEmpty(input.followUpHint) ?? "",
       });

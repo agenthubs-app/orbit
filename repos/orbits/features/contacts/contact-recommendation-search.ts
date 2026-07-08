@@ -102,7 +102,12 @@ function extractRuleCriteria(input: {
   const valueTypes: RelationshipNaturalSearchValueType[] = [];
   const helpTypes: string[] = [];
   let businessIntent: RelationshipNaturalSearchBusinessIntent | null = null;
-  let searchQuery = input.query;
+  // 模型抽取的英文检索词（`toolArguments.searchTerms`）优先作为 searchQuery。
+  // 有它时，下面的中文正则领域分支不会覆盖它（它们只在 searchQuery === input.query
+  // 时改写），正则仅继续补充 industry/intent/valueType 等过滤条件。没有模型词时，
+  // 回退到原来的正则词表逻辑。
+  const modelSearchTerms = readText(input.toolArguments?.searchTerms);
+  let searchQuery = modelSearchTerms ?? input.query;
 
   if (
     includesAny(text, [
@@ -126,6 +131,101 @@ function extractRuleCriteria(input: {
     industries.push("climate");
     valueTypes.push("strategic_intro", "commercial_opportunity");
     searchQuery = searchQuery === input.query ? "climate intro" : searchQuery;
+  }
+
+  // 以下领域词表对应 live 库 seed 的关系数据实际词汇（restaurant/ecommerce/retail/
+  // saas/investor/manufacturing/marketing/tourism/education/ai）。把中文/英文说法改写
+  // 成能在后端子串匹配命中的英文关键词，避免中文原样进入后端（后端会剥离中日文分词）。
+  if (
+    includesAny(text, [
+      /restaurant/i,
+      /\bdining\b/i,
+      /\bfood\b/i,
+      /f\s*&\s*b/i,
+      /hospitality/i,
+      /catering/i,
+      /餐饮|餐廳|餐厅|餐馆|餐館|美食|饮食|飲食|食材|门店|門店|连锁/,
+    ])
+  ) {
+    valueTypes.push("commercial_opportunity");
+    searchQuery = searchQuery === input.query ? "restaurant" : searchQuery;
+  }
+
+  if (
+    includesAny(text, [
+      /tourism/i,
+      /travel/i,
+      /inbound/i,
+      /旅游|旅遊|旅行|文旅|入境|訪日|访日|观光|觀光/,
+    ])
+  ) {
+    searchQuery = searchQuery === input.query ? "tourism" : searchQuery;
+  }
+
+  if (
+    includesAny(text, [
+      /e-?commerce/i,
+      /retail/i,
+      /直播电商|跨境电商|电商|零售|带货|新零售/,
+    ])
+  ) {
+    valueTypes.push("commercial_opportunity");
+    searchQuery = searchQuery === input.query ? "ecommerce" : searchQuery;
+  }
+
+  if (
+    includesAny(text, [
+      /saas/i,
+      /enterprise software/i,
+      /企业服务|企业软件|軟體|中台/,
+    ])
+  ) {
+    industries.push("enterprise_saas");
+    searchQuery = searchQuery === input.query ? "saas" : searchQuery;
+  }
+
+  if (
+    includesAny(text, [
+      /investor/i,
+      /investment/i,
+      /venture/i,
+      /fundrais/i,
+      /\bseed\b/i,
+      /投资人|投资|融资|天使|风投|创投/,
+    ])
+  ) {
+    valueTypes.push("strategic_intro");
+    searchQuery = searchQuery === input.query ? "investor" : searchQuery;
+  }
+
+  if (includesAny(text, [/marketing/i, /\bgrowth\b/i, /营销|市场推广|增长|获客/])) {
+    searchQuery = searchQuery === input.query ? "marketing" : searchQuery;
+  }
+
+  if (
+    includesAny(text, [
+      /manufactur/i,
+      /supply chain/i,
+      /factory/i,
+      /制造|供应链|工厂|生产/,
+    ])
+  ) {
+    searchQuery = searchQuery === input.query ? "manufacturing" : searchQuery;
+  }
+
+  if (includesAny(text, [/education/i, /edtech/i, /教育|培训|课程/])) {
+    searchQuery = searchQuery === input.query ? "education" : searchQuery;
+  }
+
+  if (
+    includesAny(text, [
+      /\bai\b/i,
+      /machine learning/i,
+      /\bml\b/i,
+      /人工智能|机器学习|大模型|算法/,
+    ])
+  ) {
+    searchQuery = searchQuery === input.query ? "ai" : searchQuery;
   }
 
   if (
