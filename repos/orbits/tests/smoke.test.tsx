@@ -7,6 +7,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import RootLayout from "../app/layout";
 import Page from "../app/page";
+import { getOrbitLandingViewModel } from "../app/(app)/app/orbit-landing-route-view-model";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -74,10 +75,7 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
       `expected lint script to type-check ${sourcePath}`,
     );
   }
-  assert.equal(
-    packageJson.scripts.test,
-    'node --test --import tsx "tests/**/*.test.{ts,tsx}"',
-  );
+  assert.equal(packageJson.scripts.test, "node scripts/run-node-tests.mjs");
 
   for (const filePath of [
     "package.json",
@@ -85,6 +83,8 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
     "next.config.js",
     "tsconfig.json",
     "next-env.d.ts",
+    "scripts/run-node-tests.mjs",
+    "scripts/TEST_RUNNER.md",
     "app/layout.tsx",
     "app/page.tsx",
     "tests/smoke.test.tsx",
@@ -121,15 +121,27 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
   });
 
   assert.match(html, /<main/);
-  assert.match(html, /app-root-home-route/);
-  assert.match(html, /Home could not load/);
+  assert.match(html, /data-orbit-agent-hero="root"/);
+  assert.match(html, /data-orbit-activity-overview="root"/);
+  assert.match(html, /data-orbit-event-context="root"/);
+  assert.match(html, /href="\/app\/events/);
+  assert.match(html, /href="\/app\/contacts/);
+  for (const event of getOrbitLandingViewModel().events.slice(0, 3)) {
+    assert.match(html, new RegExp(`href="/app/events/${event.id}"`));
+  }
+  assert.match(html, /aria-label="查看西村 大地的人脉上下文"/);
+  assert.doesNotMatch(html, /JA:/);
+  assert.doesNotMatch(html, /ZH:/);
+  assert.doesNotMatch(html, /EN:/);
+  assert.doesNotMatch(html, /app-root-home-route/);
+  assert.doesNotMatch(html, /Home could not load/);
   assert.doesNotMatch(html, /orbit-prototype-frame/);
   assert.doesNotMatch(html, /Event-grounded relationship workspace/);
   assert.doesNotMatch(html, /href="#relationship-starter"/);
   assert.doesNotMatch(html, /scaffold|Sprint 1|Framework ready/i);
   assert.doesNotMatch(html, /Relationship context starter/);
   assert.doesNotMatch(html, /Mika Tanaka|Tokyo Founder Demo Night|Kenji Sato/);
-  assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-  assert.doesNotMatch(html, /data-orbit-real-page="landing"/);
+  assert.doesNotMatch(html, /data-state-boundary="shared-ui-state-view"/);
+  assert.match(html, /data-orbit-real-page="landing"/);
   assert.doesNotMatch(html, /ready for your review|follow-up draft/i);
 });

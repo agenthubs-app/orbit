@@ -13,7 +13,7 @@ export function productHref(prototypeHref: string) {
     prototypeHref.startsWith("/app/") ||
     prototypeHref.startsWith("/app?")
   ) return prototypeHref;
-  if (prototypeHref === "/") return "/app";
+  if (prototypeHref === "/") return "/";
   if (prototypeHref === "/explore") return "/app/events";
   if (prototypeHref === "/agent") return "/app/agent";
   if (prototypeHref.startsWith("/agent?")) return `/app/agent?${prototypeHref.split("?")[1]}`;
@@ -57,8 +57,11 @@ export function OrbitTopNav({
 
   return (
     <header className="orbit-top-nav">
-      <a aria-label="Orbit" className={`orbit-brand-link${active === "home" ? " is-active" : ""}`} href={preserveHref("/app")} style={{ textDecoration: "none" }}>
+      <a aria-label={t({ en: "Back to Orbit home", zh: "返回 Orbit 首页" })} className={`orbit-brand-link${active === "home" ? " is-active" : ""}`} href={preserveHref("/")} style={{ textDecoration: "none" }}>
         <Logo size={25} withText={false} />
+        <span style={{ clipPath: "inset(50%)", height: 1, overflow: "hidden", position: "absolute", whiteSpace: "nowrap", width: 1 }}>
+          {t({ en: "Back to Orbit home", zh: "返回 Orbit 首页" })}
+        </span>
       </a>
       <a className={`orbit-agent-btn${isAgent ? " is-active" : ""}`} href={preserveHref("/app/agent")} style={{ marginRight: 4 }}>
         <Icon name="sparkle" size={15} />

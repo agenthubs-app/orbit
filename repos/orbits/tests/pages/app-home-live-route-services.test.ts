@@ -82,11 +82,111 @@ const homeRoutes = [
   },
 ] as const;
 
-test("web root delegates to the live app home route", () => {
+test("web root owns the integrated Orbit Agent landing route", () => {
   const pageSource = source("app/page.tsx");
 
-  assert.match(pageSource, /\.\/\(app\)\/app\/page/);
-  assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
+  assert.match(pageSource, /OrbitRealLandingPage/);
+  assert.match(pageSource, /getOrbitLandingViewModel/);
+  assert.doesNotMatch(pageSource, /\.\/\(app\)\/app\/page/);
+  assert.doesNotMatch(pageSource, /OrbitRealHome/);
+});
+
+test("web root renders Orbit Agent before activity and event context", async () => {
+  const pageModule = (await import("../../app/page")) as { default: RoutePage };
+
+  await withUnconfiguredLiveStorage(async () => {
+    const html = renderToStaticMarkup(
+      await pageModule.default({
+        searchParams: Promise.resolve({ mode: "live" }),
+      }),
+    );
+
+    const heroIndex = html.indexOf('data-orbit-agent-hero="root"');
+    const activityIndex = html.indexOf('data-orbit-activity-overview="root"');
+    const eventsIndex = html.indexOf('data-orbit-event-context="root"');
+
+    assert.notEqual(heroIndex, -1);
+    assert.notEqual(activityIndex, -1);
+    assert.notEqual(eventsIndex, -1);
+    assert.ok(heroIndex < activityIndex);
+    assert.ok(activityIndex < eventsIndex);
+    assert.match(html, /href="\/app\/events/);
+    assert.match(html, /href="\/app\/contacts/);
+    assert.doesNotMatch(html, /app-root-home-route/);
+    assert.doesNotMatch(html, /Home could not load/);
+    assert.doesNotMatch(html, /data-orbit-real-page="home-events"/);
+  });
+});
+
+test("web root event cards link to distinct event detail ids", async () => {
+  const pageModule = (await import("../../app/page")) as { default: RoutePage };
+  const viewModelModule = await import("../../app/(app)/app/orbit-landing-route-view-model");
+
+  await withUnconfiguredLiveStorage(async () => {
+    const html = renderToStaticMarkup(
+      await pageModule.default({
+        searchParams: Promise.resolve({ mode: "live" }),
+      }),
+    );
+    const expectedHrefs = viewModelModule
+      .getOrbitLandingViewModel()
+      .events.slice(0, 3)
+      .map((event) => `/app/events/${event.id}`);
+    const cardHrefs = Array.from(
+      html.matchAll(/<a(?=[^>]*class="orbit-root-event-card")[^>]*href="([^"]+)"/g),
+      (match) => match[1],
+    );
+
+    assert.equal(cardHrefs.length, expectedHrefs.length);
+    assert.deepEqual(cardHrefs, expectedHrefs);
+    assert.equal(new Set(cardHrefs).size, cardHrefs.length);
+  });
+});
+
+test("web root contact links name the relationship context action", async () => {
+  const pageModule = (await import("../../app/page")) as { default: RoutePage };
+  const viewModelModule = await import("../../app/(app)/app/orbit-landing-route-view-model");
+
+  await withUnconfiguredLiveStorage(async () => {
+    const html = renderToStaticMarkup(
+      await pageModule.default({
+        searchParams: Promise.resolve({ mode: "live" }),
+      }),
+    );
+    const [primaryConnection] = viewModelModule.getOrbitLandingViewModel().connections;
+
+    assert.ok(primaryConnection);
+    assert.match(
+      html,
+      new RegExp(`aria-label="查看${primaryConnection.displayName}的人脉上下文"`),
+    );
+  });
+});
+
+test("web root event summaries render only the active language copy", async () => {
+  const pageModule = (await import("../../app/page")) as { default: RoutePage };
+
+  await withUnconfiguredLiveStorage(async () => {
+    const html = renderToStaticMarkup(
+      await pageModule.default({
+        searchParams: Promise.resolve({ mode: "live" }),
+      }),
+    );
+
+    assert.doesNotMatch(html, /JA:/);
+    assert.doesNotMatch(html, /ZH:/);
+    assert.doesNotMatch(html, /EN:/);
+  });
+});
+
+test("root home routing documentation records the public and personal route boundary", () => {
+  const docSource = source("docs/architecture/root-home-routing.md");
+
+  assert.match(docSource, /`\/`/);
+  assert.match(docSource, /Orbit Agent/);
+  assert.match(docSource, /`\/app\/home`/);
+  assert.match(docSource, /`\/app\/home\/events`/);
+  assert.match(docSource, /no-write live safety/);
 });
 
 for (const route of homeRoutes) {
@@ -168,6 +268,15 @@ test("product route href mapping is idempotent for concrete app paths", async ()
   assert.equal(productHref("/app/events/EVT01"), "/app/events/EVT01");
   assert.equal(productHref("/home/schedule"), "/app/schedule");
   assert.equal(productHref("/home/cards"), "/app/contacts");
+});
+
+test("shared home navigation keeps Orbit home on the integrated web root", async () => {
+  const shellSource = source("app/(app)/app/orbit-public-shell.tsx");
+  const { productHref } = await import("../../app/(app)/app/orbit-public-shell");
+
+  assert.equal(productHref("/"), "/");
+  assert.match(shellSource, /href=\{preserveHref\("\/"\)\}/);
+  assert.doesNotMatch(shellSource, /href=\{preserveHref\("\/app"\)\}/);
 });
 
 test("app home live storage providers reuse the configured postgres record store", () => {
