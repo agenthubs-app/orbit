@@ -24,6 +24,7 @@ const iconPaths: Record<string, ReactNode> = {
   download: <><path d="M12 4v11M8 11.5l4 4 4-4M5 18v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1"/></>,
   eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></>,
   mail: <><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7 8 6 8-6"/></>,
+  menu: <><path d="M4 7h16M4 12h16M4 17h16"/></>,
   message: <><path d="M20 12a7.5 7.5 0 0 1-10.8 6.7L4 20l1.3-4.2A7.5 7.5 0 1 1 20 12Z"/></>,
   copy: <><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
   edit: <><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></>,
@@ -53,14 +54,19 @@ const iconPaths: Record<string, ReactNode> = {
   zap: <><path d="M13 3 4 14h6l-1 7 9-11h-6l1-7Z"/></>,
 };
 
+// Event covers: one coordinated deep-space family (violet-centric depths plus
+// a single warm gold), not seven loud hues. Muted and pulled toward the
+// starfield palette so a list of cards reads as one night sky. Avatars reuse
+// the same seven hues (brighter, 2-stop) via the .g-* --av-a/--av-b overrides
+// in the starfield theme layer.
 const coverBg: Record<string, string> = {
-  "g-indigo": "radial-gradient(120% 120% at 15% 15%, #8B7BF0 0%, #6359E9 42%, #3B2FB0 100%)",
-  "g-violet": "radial-gradient(120% 120% at 20% 10%, #C18BF0 0%, #8B3FD6 45%, #5A1E9E 100%)",
-  "g-rose": "radial-gradient(120% 120% at 15% 20%, #F58BA8 0%, #E0415F 45%, #A01E3C 100%)",
-  "g-amber": "radial-gradient(120% 120% at 18% 12%, #F5C078 0%, #E08A2B 48%, #A85A12 100%)",
-  "g-emerald": "radial-gradient(120% 120% at 18% 15%, #6FE0AE 0%, #15A06B 48%, #0A6B47 100%)",
-  "g-sky": "radial-gradient(120% 120% at 18% 12%, #7BB8F5 0%, #2D7FF0 48%, #1452A8 100%)",
-  "g-slate": "radial-gradient(120% 120% at 20% 15%, #9AA4B8 0%, #4A5468 48%, #2A3142 100%)",
+  "g-indigo": "radial-gradient(120% 120% at 15% 15%, #9C8EF5 0%, #6359E9 46%, #2A2166 100%)",
+  "g-violet": "radial-gradient(120% 120% at 20% 10%, #B892EC 0%, #7A4FD0 46%, #2B1A56 100%)",
+  "g-rose": "radial-gradient(120% 120% at 15% 20%, #D68FC2 0%, #A85186 46%, #3C1E4E 100%)",
+  "g-amber": "radial-gradient(120% 120% at 18% 12%, #EDC57C 0%, #CB8E34 48%, #5C3C14 100%)",
+  "g-emerald": "radial-gradient(120% 120% at 18% 15%, #8FBFC4 0%, #47898F 48%, #17393E 100%)",
+  "g-sky": "radial-gradient(120% 120% at 18% 12%, #8A9CEC 0%, #5063CE 46%, #1C2358 100%)",
+  "g-slate": "radial-gradient(120% 120% at 20% 15%, #9490AE 0%, #565478 48%, #221F3A 100%)",
 };
 
 const coverKeys = Object.keys(coverBg);
@@ -110,6 +116,47 @@ export function Icon({
   );
 }
 
+export function IconButton({
+  ariaLabel,
+  className = "",
+  iconColor,
+  name,
+  onClick,
+  size = 20,
+  stroke,
+  style,
+  title,
+  type = "button",
+  variant = "default",
+}: {
+  ariaLabel: string;
+  className?: string;
+  iconColor?: string;
+  name: string;
+  onClick?: () => void;
+  size?: number;
+  stroke?: number;
+  style?: CSSProperties;
+  title?: string;
+  type?: "button" | "submit";
+  variant?: "default" | "plain";
+}) {
+  const base = variant === "plain" ? "icon-btn icon-btn-plain" : "icon-btn";
+
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={`${base}${className ? ` ${className}` : ""}`}
+      onClick={onClick}
+      style={style}
+      title={title ?? ariaLabel}
+      type={type}
+    >
+      <Icon color={iconColor} name={name} size={size} stroke={stroke} />
+    </button>
+  );
+}
+
 export function Logo({
   color = "var(--accent)",
   size = 25,
@@ -122,7 +169,7 @@ export function Logo({
   withText?: boolean;
 }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
       <svg aria-hidden fill="none" height={size} viewBox="0 0 28 28" width={size}>
         <circle cx="14" cy="14" opacity="0.35" r="12.5" stroke={color} strokeWidth="1.6" />
         <circle cx="14" cy="14" fill={color} r="4.4" />
@@ -134,7 +181,7 @@ export function Logo({
             color: textColor,
             fontFamily: "var(--ff-tight)",
             fontSize: size * 0.74,
-            fontWeight: 650,
+            fontWeight: 600,
             letterSpacing: "-0.03em",
           }}
         >
@@ -209,7 +256,11 @@ export function Cover({
         style={{
           position: "absolute",
           inset: 0,
-          background: imageUrl ? "linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.22))" : "transparent",
+          // Darken the top and bottom edges (where status / date / code badges
+          // sit) so they stay legible over bright photos; keep the middle clear.
+          background: imageUrl
+            ? "linear-gradient(180deg, rgba(6,5,13,0.42) 0%, rgba(6,5,13,0.06) 26%, rgba(6,5,13,0.10) 60%, rgba(6,5,13,0.62) 100%)"
+            : "transparent",
         }}
       />
       {!imageUrl ? (
@@ -260,6 +311,42 @@ export function Cover({
         </div>
       ) : null}
       {children}
+    </div>
+  );
+}
+
+/**
+ * Standard form field: visible label (associated via htmlFor), the control,
+ * optional helper text, and an error line announced to screen readers. Pass
+ * the same `id` to the input inside `children`, plus `aria-invalid` and
+ * `className="field is-invalid"` when `error` is set.
+ */
+export function FormField({
+  children,
+  error,
+  helper,
+  id,
+  label,
+}: {
+  children: ReactNode;
+  error?: string;
+  helper?: string;
+  id: string;
+  label: string;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+      <label className="field-label" htmlFor={id}>{label}</label>
+      {children}
+      {helper && !error ? <span style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.4 }}>{helper}</span> : null}
+      <span aria-live="polite" role={error ? "alert" : undefined}>
+        {error ? (
+          <span className="field-error-text" id={`${id}-error`}>
+            <Icon name="x" size={13} />
+            {error}
+          </span>
+        ) : null}
+      </span>
     </div>
   );
 }
