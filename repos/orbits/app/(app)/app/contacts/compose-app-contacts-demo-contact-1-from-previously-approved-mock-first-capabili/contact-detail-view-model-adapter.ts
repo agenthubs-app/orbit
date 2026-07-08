@@ -55,7 +55,7 @@ function sourceFor(
   return source.type === "manual" ? "manual" : "exchange";
 }
 
-const relationshipTokenLabels: Record<OrbitLanguage, Record<string, string>> = {
+const relationshipTokenLabels: Record<"en" | "zh", Record<string, string>> = {
   en: {
     commercial_opportunity: "commercial opportunity",
     community_context: "community context",
@@ -78,7 +78,7 @@ const relationshipTokenLabels: Record<OrbitLanguage, Record<string, string>> = {
   },
 };
 
-const relationshipPhraseLabels: Record<OrbitLanguage, readonly [RegExp, string][]> = {
+const relationshipPhraseLabels: Record<"en" | "zh", readonly [RegExp, string][]> = {
   en: [
     [/relationship context for\s*/gi, "Relationship context: "],
     [/investment interest/gi, "investment interest"],
@@ -113,6 +113,37 @@ const relationshipPhraseLabels: Record<OrbitLanguage, readonly [RegExp, string][
     [/Founder/gi, "创始人"],
   ],
 };
+
+// 联系人标签是 `前缀:值` token（如 topic:storage-pilots）。展示端只显示可读的值，
+// 已知值给出中/英文案，未知值回退到把连字符换成空格。
+const tagValueLabels: Record<string, Record<string, string>> = {
+  en: {
+    "warm-follow-up": "warm follow-up",
+    nurture: "nurture",
+    "climate-founders-dinner": "climate founders dinner",
+    "storage-pilots": "storage pilots",
+    community: "community",
+    "venture-ecosystem": "venture ecosystem",
+    "external-import": "external import",
+    "event-import": "event import",
+  },
+  zh: {
+    "warm-follow-up": "热跟进",
+    nurture: "待培育",
+    "climate-founders-dinner": "气候创始人晚宴",
+    "storage-pilots": "储能试点",
+    community: "社群",
+    "venture-ecosystem": "创投生态",
+    "external-import": "外部导入",
+    "event-import": "活动导入",
+  },
+};
+
+function tagLabel(tag: string, language: OrbitLanguage): string {
+  const value = tag.includes(":") ? tag.slice(tag.indexOf(":") + 1) : tag;
+
+  return tagValueLabels[language === "ja" ? "en" : language]?.[value] ?? value.replace(/[-_]+/g, " ");
+}
 
 function scriptCounts(text: string): { han: number; kana: number; latin: number } {
   return {
@@ -153,11 +184,12 @@ function displaySegment(value: string, language: OrbitLanguage): string {
 }
 
 function displayText(value: string, language: OrbitLanguage): string {
+  const langKey = language === "ja" ? "en" : language;
   const localizedValue = displaySegment(value, language);
   const withoutRawTokens = localizedValue.replace(/\b[a-z][a-z0-9]+(?:_[a-z0-9]+)+\b/g, (token) =>
-    relationshipTokenLabels[language][token] ?? token.replace(/[_-]+/g, " "),
+    relationshipTokenLabels[langKey][token] ?? token.replace(/[_-]+/g, " "),
   );
-  const withLabels = relationshipPhraseLabels[language].reduce(
+  const withLabels = relationshipPhraseLabels[langKey].reduce(
     (copy, [pattern, replacement]) => copy.replace(pattern, replacement),
     withoutRawTokens,
   );
@@ -304,6 +336,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
       model.contact.id.slice(0, 1).toUpperCase(),
     lastEventId: eventId,
     lineId: "",
+    location: displayText(model.contact.location, language),
     met: displayText(model.contact.source.label, language),
     note:
       displayText(
@@ -324,9 +357,22 @@ export function contactDetailRouteToOrbitContactsViewModel(
     strength: strengthFromScore(
       model.assessment.priorityScore.value || model.connection.strengthScore,
     ),
-    valueTags: [],
-    nextAction: null,
-    lastInteraction: "",
+    valueTags: model.contact.tags.map((tag) => tagLabel(tag, language)),
+    nextAction: model.contact.nextAction
+      ? {
+          text: displayText(model.contact.nextAction, language),
+          reason: displayText(
+            model.contact.lastInteraction.summary ||
+              model.contact.relationshipContext,
+            language,
+          ),
+          evidenceId: model.contact.lastInteraction.evidenceIds[0],
+        }
+      : null,
+    lastInteraction: displayText(
+      model.contact.lastInteraction.summary,
+      language,
+    ),
     dormant: false,
   };
 

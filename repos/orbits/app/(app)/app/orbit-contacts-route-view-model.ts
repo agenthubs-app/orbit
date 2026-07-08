@@ -11,6 +11,7 @@ export interface OrbitContactView {
   industry: string;
   initial: string;
   lineId: string;
+  location?: string;
   lastEventId: string;
   met: string;
   note: string;

@@ -314,6 +314,24 @@ test("contact detail view model selects one display language from multilingual l
       `${enContact.note} ${enContact.encounters[0]?.context.publicProfile.bio} ${enContact.seeking}`,
       /日本語|北星餐饮|中文/,
     );
+
+    // 详情页信息完整化：这些字段以前被 adapter 置空/未映射，现在必须带进 view model
+    // 供 presenter 渲染（个人资料卡、标签、下一步、最近互动、所在地）。
+    assert.ok(Array.isArray(zhContact.valueTags));
+    assert.ok(
+      Array.isArray(zhContact.encounters[0]?.context.publicProfile.topics),
+    );
+    assert.ok(
+      Array.isArray(
+        zhContact.encounters[0]?.context.publicProfile.conversationPrompts,
+      ),
+    );
+    assert.equal(typeof zhContact.location, "string");
+    assert.equal(typeof zhContact.lastInteraction, "string");
+    // nextAction 由 suggestedActions 派生，必须按当前语言单语呈现。
+    assert.match(zhContact.nextAction?.text ?? "", /中文下一步/);
+    assert.doesNotMatch(zhContact.nextAction?.text ?? "", /日本語|English/);
+    assert.match(enContact.nextAction?.text ?? "", /English next action/);
   }
 });
 

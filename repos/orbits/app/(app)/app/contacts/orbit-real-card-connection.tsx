@@ -195,8 +195,69 @@ function ContactCard({ contact, t }: { contact: OrbitContactView; t: Translate }
       {contact.phone ? <Frow icon="phone" k={t({ en: "Phone", zh: "电话" })}><span className="mono">{contact.phone}</span></Frow> : null}
       {contact.lineId ? <Frow icon="message" k="LINE"><span className="mono">{contact.lineId}</span></Frow> : null}
       {contact.industry ? <Frow icon="briefcase" k={t({ en: "Industry", zh: "行业" })}>{contact.industry}</Frow> : null}
-      {contact.met ? <Frow icon="pin" k={t({ en: "Met via", zh: "认识来源" })}>{contact.met}</Frow> : null}
-      {contact.lastInteraction ? <Frow icon="clock" k={t({ en: "Last event", zh: "最近互动" })}>{contact.lastInteraction}</Frow> : null}
+      {contact.location ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{contact.location}</Frow> : null}
+      {contact.met ? <Frow icon="checkCircle" k={t({ en: "Met via", zh: "认识来源" })}>{contact.met}</Frow> : null}
+      {contact.lastInteraction ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>{contact.lastInteraction}</Frow> : null}
+    </div>
+  );
+}
+
+// 个人资料卡：渲染联系人真实的公开画像（简介、自我介绍、关注话题、对话切入点）
+// 与关系背景。数据来自 view model（adapter 已按当前语言清洗），全部缺失时不渲染。
+function AboutCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
+  const profile = contact.encounters[0]?.context.publicProfile;
+  const bio = profile?.bio?.trim() ?? "";
+  const intro = profile?.intro?.trim() ?? "";
+  const topics = (profile?.topics ?? []).filter(Boolean);
+  const prompts = (profile?.conversationPrompts ?? []).filter(Boolean);
+  const relationship = contact.note?.trim() ?? "";
+
+  if (!bio && !intro && !topics.length && !prompts.length && !relationship) {
+    return null;
+  }
+
+  return (
+    <div className="card nc-card-pad">
+      <CardTitle icon="user">{t({ en: "Profile", zh: "个人资料" })}</CardTitle>
+      {relationship ? (
+        <div className="nc-about-rel">
+          <span className="nc-about-k">{t({ en: "Relationship context", zh: "关系背景" })}</span>
+          <p className="nc-about-p">{relationship}</p>
+        </div>
+      ) : null}
+      {bio ? (
+        <div className="nc-about-sec">
+          <span className="nc-about-k">{t({ en: "Bio", zh: "简介" })}</span>
+          <p className="nc-about-p">{bio}</p>
+        </div>
+      ) : null}
+      {intro ? (
+        <div className="nc-about-sec">
+          <span className="nc-about-k">{t({ en: "Self-introduction", zh: "自我介绍" })}</span>
+          <p className="nc-about-p">{intro}</p>
+        </div>
+      ) : null}
+      {topics.length ? (
+        <div className="nc-about-sec">
+          <span className="nc-about-k">{t({ en: "Topics", zh: "关注话题" })}</span>
+          <div className="nc-about-chips">
+            {topics.map((topic) => <span className="nc-tag" key={topic}>{topic}</span>)}
+          </div>
+        </div>
+      ) : null}
+      {prompts.length ? (
+        <div className="nc-about-sec">
+          <span className="nc-about-k">{t({ en: "Conversation starters", zh: "对话切入点" })}</span>
+          <div className="nc-about-prompts">
+            {prompts.map((prompt) => (
+              <div className="nc-about-prompt" key={prompt}>
+                <Icon name="sparkle" size={14} />
+                <span>{prompt}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -215,27 +276,43 @@ function TagsCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
 
 function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
   const name = contact.displayName || t({ en: "them", zh: "对方" });
+  const profile = contact.encounters[0]?.context.publicProfile;
+  // 对方的 offering = 对方能给我的；对方的 seeking = 对方想要的（即我能给对方的）。
+  const theyOffer = (profile?.offering ?? []).filter(Boolean);
+  const theySeek = (profile?.seeking ?? []).filter(Boolean);
+  const hasReal = theyOffer.length > 0 || theySeek.length > 0;
+  const give = hasReal ? theySeek : valueAToB.map((item) => t(item));
+  const get = hasReal ? theyOffer : valueBToA.map((item) => t(item));
+
   return (
     <div className="card nc-card-pad">
       <div className="nc-cardtitle">
         <Icon name="share" size={16} />
         <h2 className="h-section">{t({ en: "Two-way value", zh: "双向价值分析" })}</h2>
-        <Basis kind="ai" copy={{ en: "Basis: inferred from both profiles; editable", zh: "依据：由双方画像 offering/seeking 推断，可编辑" }} t={t} />
+        <Basis
+          kind={hasReal ? "evidence" : "ai"}
+          copy={
+            hasReal
+              ? { en: "Basis: both profiles' offering / seeking", zh: "依据：双方画像的 offering / seeking" }
+              : { en: "Basis: inferred from both profiles; editable", zh: "依据：由双方画像 offering/seeking 推断，可编辑" }
+          }
+          t={t}
+        />
       </div>
       <div className="nc-vblock nc-give">
         <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `You → ${name}`, zh: "我能为对方提供" })}</div>
         <div className="nc-vlist">
-          {valueAToB.map((item) => (
-            <div className="nc-vitem" key={item.en}><Icon name="check" size={16} />{t(item)}</div>
-          ))}
+          {give.length ? give.map((item, index) => (
+            <div className="nc-vitem" key={`give-${index}`}><Icon name="check" size={16} />{item}</div>
+          )) : <div className="nc-vitem nc-vitem-empty">{t({ en: "No stated needs yet", zh: "暂无对方的需求信息" })}</div>}
         </div>
       </div>
       <div className="nc-vblock nc-get">
         <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `${name} → You`, zh: "对方能为我提供" })}</div>
         <div className="nc-vlist">
-          {valueBToA.map((item) => (
-            <div className="nc-vitem" key={item.en}><Icon name="check" size={16} />{t(item)}</div>
-          ))}
+          {get.length ? get.map((item, index) => (
+            <div className="nc-vitem" key={`get-${index}`}><Icon name="check" size={16} />{item}</div>
+          )) : <div className="nc-vitem nc-vitem-empty">{t({ en: "No stated offerings yet", zh: "暂无对方的资源信息" })}</div>}
         </div>
       </div>
     </div>
@@ -268,15 +345,29 @@ function ProfileCard({ t }: { t: Translate }) {
   );
 }
 
-function TimelineCard({ t }: { t: Translate }) {
+type TimelineItem = { time: string; body: string; evidenceId?: string; muted?: boolean };
+
+function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
+  // 有真实 notes 时用真实互动记录；否则回退到演示时间线。
+  const realItems: TimelineItem[] = (contact.notes ?? [])
+    .filter((note) => note.body?.trim())
+    .map((note) => ({ time: note.createdAt, body: note.body, evidenceId: note.id }));
+  const demoItems: TimelineItem[] = timelineDemo.map((item) => ({
+    time: t(item.time),
+    body: t(item.body),
+    evidenceId: item.evidenceId,
+    muted: item.muted,
+  }));
+  const items = realItems.length ? realItems : demoItems;
+
   return (
     <div className="card nc-card-pad">
       <CardTitle icon="clock">{t({ en: "Timeline", zh: "互动时间线" })}</CardTitle>
       <div className="nc-timeline">
-        {timelineDemo.map((item) => (
-          <div className={`nc-tl-item${item.muted ? " is-muted" : ""}`} key={item.body.en} style={item.muted ? { paddingBottom: 0 } : undefined}>
-            <div className="nc-tl-time mono">{t(item.time)}</div>
-            <div className="nc-tl-body" style={item.muted ? { color: "var(--text-3)" } : undefined}>{t(item.body)}</div>
+        {items.map((item, index) => (
+          <div className={`nc-tl-item${item.muted ? " is-muted" : ""}`} key={`${item.body}-${index}`} style={item.muted ? { paddingBottom: 0 } : undefined}>
+            <div className="nc-tl-time mono">{item.time}</div>
+            <div className="nc-tl-body" style={item.muted ? { color: "var(--text-3)" } : undefined}>{item.body}</div>
             {item.evidenceId ? (
               <a className="nc-tl-src" href="#" onClick={(event) => event.preventDefault()}>
                 <Icon name="checkCircle" size={13} />
@@ -291,15 +382,29 @@ function TimelineCard({ t }: { t: Translate }) {
   );
 }
 
-function NextStepCard({ t, compact }: { t: Translate; compact?: boolean }) {
+function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: Translate; compact?: boolean }) {
+  const real = contact.nextAction;
+  const text = real?.text?.trim();
+  const reason = real?.reason?.trim();
+
   return (
     <div className="card nc-card-pad">
       <CardTitle icon="sparkle">{t({ en: "Next step", zh: "下一步建议" })}</CardTitle>
       <div className="nc-note">
         <Icon name="sparkle" size={16} />
-        <span>{t(nextStep)}</span>
+        <span>{text || t(nextStep)}</span>
         {!compact ? (
-          <Basis kind="ai" align="right" copy={{ en: "Basis: open promise + stage 'needs discovered'", zh: "依据：承诺发资料未兑现 + 关系停在“已发现需求”" }} t={t} />
+          <Basis
+            kind={reason ? "evidence" : "ai"}
+            align="right"
+            evidenceId={real?.evidenceId}
+            copy={
+              reason
+                ? { en: `Basis: ${reason}`, zh: `依据：${reason}` }
+                : { en: "Basis: open promise + stage 'needs discovered'", zh: "依据：承诺发资料未兑现 + 关系停在“已发现需求”" }
+            }
+            t={t}
+          />
         ) : null}
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
@@ -368,14 +473,15 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 
             <div className="nc-cols">
               <div className="nc-stack">
+                <AboutCard contact={contact} t={t} />
                 <ContactCard contact={contact} t={t} />
                 <TagsCard contact={contact} t={t} />
                 <TwoWayCard contact={contact} t={t} />
               </div>
               <div className="nc-stack">
                 <ProfileCard t={t} />
-                <TimelineCard t={t} />
-                <NextStepCard t={t} />
+                <TimelineCard contact={contact} t={t} />
+                <NextStepCard contact={contact} t={t} />
               </div>
             </div>
           </div>
@@ -408,12 +514,13 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
           <button className="btn btn-primary btn-block" onClick={draftEmail} style={{ margin: "16px 0" }} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <AboutCard contact={contact} t={t} />
             <ContactCard contact={contact} t={t} />
             <TagsCard contact={contact} t={t} />
             <TwoWayCard contact={contact} t={t} />
             <ProfileCard t={t} />
-            <TimelineCard t={t} />
-            <NextStepCard compact t={t} />
+            <TimelineCard contact={contact} t={t} />
+            <NextStepCard compact contact={contact} t={t} />
           </div>
         </div>
       </div>
@@ -506,6 +613,16 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 [data-orbit-real-page] .nc-note > svg { color:var(--accent); flex-shrink:0; margin-top:1px; }
 
 [data-orbit-real-page] .nc-mhero { display:grid; grid-template-columns:56px 1fr; gap:14px; align-items:center; margin-bottom:14px; }
+
+[data-orbit-real-page] .nc-about-rel { padding:10px 12px; border-radius:var(--r-md); background:var(--accent-softer); }
+[data-orbit-real-page] .nc-about-sec { margin-top:14px; }
+[data-orbit-real-page] .nc-about-k { display:block; font-size:12px; font-weight:600; color:var(--text-3); margin-bottom:5px; }
+[data-orbit-real-page] .nc-about-p { font-size:13.5px; color:var(--text); line-height:1.6; margin:0; white-space:pre-wrap; }
+[data-orbit-real-page] .nc-about-chips { display:flex; flex-wrap:wrap; gap:6px; }
+[data-orbit-real-page] .nc-about-prompts { display:flex; flex-direction:column; gap:8px; }
+[data-orbit-real-page] .nc-about-prompt { display:grid; grid-template-columns:16px 1fr; gap:8px; align-items:start; font-size:13px; color:var(--text-2); line-height:1.45; }
+[data-orbit-real-page] .nc-about-prompt svg { color:var(--accent); margin-top:2px; flex-shrink:0; }
+[data-orbit-real-page] .nc-vitem.nc-vitem-empty { display:block; color:var(--text-3); font-size:13px; }
 ` }} />
     </main>
   );
