@@ -216,7 +216,8 @@ export function Avatar({
       }}
       title={title}
     >
-      {letter || "O"}
+      <span className="avatar-orbit" aria-hidden="true" />
+      <span className="avatar-letter">{letter || "O"}</span>
     </span>
   );
 }

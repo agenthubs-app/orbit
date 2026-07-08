@@ -90,9 +90,30 @@ html[data-theme="light"] body:has([data-orbit-real-page]) {
 .orbit-theme-toggle:focus-visible { outline: 3px solid var(--accent-ring, rgba(139,123,240,0.42)); outline-offset: 2px; }
 `;
 
-// Server-safe: emits the light-theme stylesheet + toggle chrome once per app tree.
+// Animated avatars (item 4): a subtle orbiting sheen on every Avatar primitive,
+// so the whole network reads as "alive" without changing the letter-avatar look.
+// Motion-reduced users get a static avatar.
+const AVATAR_MOTION_CSS = `
+.avatar { position: relative; overflow: hidden; isolation: isolate; }
+.avatar .avatar-letter { position: relative; z-index: 1; }
+.avatar .avatar-orbit {
+  position: absolute;
+  inset: -28%;
+  z-index: 0;
+  pointer-events: none;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.42) 34deg, transparent 96deg);
+  animation: orbit-avatar-spin 5.5s linear infinite;
+  opacity: 0.5;
+}
+@keyframes orbit-avatar-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .avatar .avatar-orbit { animation: none; opacity: 0; }
+}
+`;
+
+// Server-safe: emits the light-theme stylesheet + avatar motion + toggle chrome once per app tree.
 export function OrbitThemeStyles() {
-  return <style data-orbit-theme-styles>{LIGHT_THEME_CSS}</style>;
+  return <style data-orbit-theme-styles>{`${LIGHT_THEME_CSS}\n${AVATAR_MOTION_CSS}`}</style>;
 }
 
 type OrbitTheme = "light" | "dark";
