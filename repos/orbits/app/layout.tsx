@@ -275,9 +275,16 @@ const globalStyles = `
   }
 `;
 
+// Sets the product theme before first paint to avoid a flash. Default is dark
+// (the new-UI identity); honours a saved choice or the OS light preference.
+const themeInitScript = `(function(){try{var t=localStorage.getItem('orbit-theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         <style>{globalStyles}</style>
         {children}

@@ -9,6 +9,7 @@ import { cookies, headers } from "next/headers";
 
 import { OrbitLanguageProvider } from "./orbit-language-context";
 import { normalizeOrbitLanguage } from "./orbit-language-core";
+import { OrbitThemeStyles, OrbitThemeToggle } from "./orbit-theme";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const requestHeaders = await headers();
@@ -17,5 +18,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     requestHeaders.get("x-orbit-lang") ?? cookieStore.get("orbit-lang")?.value,
   );
 
-  return <OrbitLanguageProvider initialLanguage={language}>{children}</OrbitLanguageProvider>;
+  return (
+    <OrbitLanguageProvider initialLanguage={language}>
+      <OrbitThemeStyles />
+      {children}
+      <OrbitThemeToggle />
+    </OrbitLanguageProvider>
+  );
 }
