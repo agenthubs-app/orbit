@@ -179,6 +179,76 @@ const EVENT_PRESENTATION: Record<string, EventPresentation> = {
   },
 };
 
+// Clean one-line summaries per language, replacing the raw seed description blob
+// (which concatenated ids/evidence and JA:/ZH:/EN: metadata) on the detail page.
+const EVENT_SUMMARY: Record<string, LocalizedText> = {
+  event_01: {
+    en: "A small forum for restaurant operators and community marketers on booking flows, reviews and repeat visits.",
+    zh: "面向餐饮经营者与社群营销人的小型交流会，聚焦预约转化、口碑与复购。",
+    ja: "飲食店オーナーとコミュニティマーケター向けの小規模フォーラム。予約導線・口コミ・リピートを議論。",
+  },
+  event_02: {
+    en: "A roundtable pairing Japan-China teams to scope AI workflow-automation proofs of concept.",
+    zh: "日中团队圆桌，共同界定 AI 业务自动化的 PoC 方案。",
+    ja: "日中チームでAI業務自動化のPoCを策定するラウンドテーブル。",
+  },
+  event_03: {
+    en: "A meetup for operators opening cross-border ecommerce channels and partnerships.",
+    zh: "面向跨境电商渠道拓展与合作的运营者交流会。",
+    ja: "越境ECのチャネル開拓とパートナー連携のためのミートアップ。",
+  },
+  event_04: {
+    en: "A matching salon connecting seed-stage founders with operator-investors.",
+    zh: "连接种子期创业者与运营型投资人的配对沙龙。",
+    ja: "シード期の創業者とオペレーター投資家をつなぐマッチング会。",
+  },
+  event_05: {
+    en: "A salon for the Chinese business community in Japan on sponsorship and partnerships.",
+    zh: "在日华人商业社群的赞助与合作沙龙。",
+    ja: "在日華人ビジネスコミュニティのスポンサーシップと連携の会。",
+  },
+  event_06: {
+    en: "A hands-on workshop turning scanned business cards into rich relationship profiles.",
+    zh: "将名片扫描转化为丰富人脉档案的实操工作坊。",
+    ja: "名刺スキャンから充実した人脈プロフィールを生成する実践ワークショップ。",
+  },
+  event_07: {
+    en: "A working session to plan source-backed follow-ups after an event.",
+    zh: "会后跟进策略工作会，规划有据可循的后续动作。",
+    ja: "イベント後のフォローアップを設計する作戦会議。",
+  },
+  event_08: {
+    en: "A lab on reactivating dormant, high-value relationships without cold outreach.",
+    zh: "重新激活沉睡高价值关系的实验室，避免冷启动式打扰。",
+    ja: "休眠した高価値の関係を再活性化するラボ。",
+  },
+  event_09: {
+    en: "A clinic for reviewing and merging duplicate contacts with source evidence.",
+    zh: "带来源证据地审阅并合并重复联系人的诊断会。",
+    ja: "重複コンタクトを証拠付きで確認・統合するクリニック。",
+  },
+  event_10: {
+    en: "A review of how low-quality matches are filtered before recommendations.",
+    zh: "复盘在推荐前如何过滤低质量匹配。",
+    ja: "推薦前に低品質マッチをどう除外するかのレビュー会。",
+  },
+  event_signup_01: {
+    en: "A signup test lab for Kansai cross-border business programs.",
+    zh: "关西跨境商务项目的报名测试会。",
+    ja: "関西の越境ビジネス向け申込テスト会。",
+  },
+  event_signup_02: {
+    en: "A registration meetup for Tokyo AI implementation partners.",
+    zh: "东京 AI 落地伙伴的报名会。",
+    ja: "東京のAI実装パートナー向け申込会。",
+  },
+  event_signup_03: {
+    en: "A signup salon for Japan-China investors and founders.",
+    zh: "日中投资人与创业者的报名沙龙。",
+    ja: "日中の投資家・創業者向け申込サロン。",
+  },
+};
+
 function presentEvent(
   event: OrbitLandingEventView,
   language: OrbitLanguage,
@@ -189,6 +259,10 @@ function presentEvent(
   }
 
   const title = preset.title[language] ?? preset.title.zh;
+  const summaryText = EVENT_SUMMARY[event.id] ?? EVENT_SUMMARY[event.code];
+  const summary = summaryText
+    ? summaryText[language] ?? summaryText.zh
+    : undefined;
 
   return {
     ...event,
@@ -198,6 +272,7 @@ function presentEvent(
     industry: preset.industry,
     theme: preset.theme,
     tags: [...preset.tags],
+    ...(summary ? { summaryZh: summary, descriptionZh: summary } : {}),
   };
 }
 
