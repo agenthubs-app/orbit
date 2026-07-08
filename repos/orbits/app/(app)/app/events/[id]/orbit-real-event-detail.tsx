@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../../orbit-language-context";
@@ -154,10 +154,15 @@ function OrganizerRailCard({ event, mobile = false, t }: { event: OrbitLandingEv
   );
 }
 
+const ATTENDEE_PREVIEW_COUNT = 12;
+
 function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate }) {
+  const [showAllAttendees, setShowAllAttendees] = useState(false);
   const youRsvped = Boolean(event.stats.youRsvped);
   const canSeeAttendees = youRsvped || event.status === "ended";
-  const attendees = event.stats.attendees;
+  const allAttendees = event.stats.attendees;
+  const attendees = showAllAttendees ? allAttendees : allAttendees.slice(0, ATTENDEE_PREVIEW_COUNT);
+  const hiddenAttendeeCount = allAttendees.length - attendees.length;
 
   return (
     <>
@@ -231,9 +236,18 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
                   </div>
                 </div>
               ))}
-              {event.stats.count > attendees.length ? <div className="card-flat" style={{ padding: 12, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-2)", fontWeight: 600 }}>+{event.stats.count - attendees.length}</div> : null}
+              {!showAllAttendees && hiddenAttendeeCount > 0 ? (
+                <button type="button" onClick={() => setShowAllAttendees(true)} className="card-flat" style={{ padding: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "var(--accent)", fontWeight: 600, cursor: "pointer", border: "1px dashed var(--border-strong)", background: "transparent" }}>
+                  +{hiddenAttendeeCount} · {t({ en: "Show all", zh: "展开全部" })}
+                </button>
+              ) : null}
             </div>
           )}
+          {canSeeAttendees && showAllAttendees && allAttendees.length > ATTENDEE_PREVIEW_COUNT ? (
+            <button type="button" onClick={() => setShowAllAttendees(false)} style={{ marginTop: 12, background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+              {t({ en: "Show less", zh: "收起" })}
+            </button>
+          ) : null}
         </div>
       </section>
 

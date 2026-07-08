@@ -24,6 +24,7 @@ import {
   EVENT_CONTENT,
   type EventLocalizedText,
 } from "./orbit-event-content";
+import { rosterForEvent } from "./orbit-event-roster";
 
 function pick(text: EventLocalizedText, language: OrbitLanguage): string {
   return text[language] ?? text.zh;
@@ -63,12 +64,6 @@ const AGENDA_BY_LANG: Record<OrbitLanguage, OrbitEventAgendaItem[]> = {
   ],
 };
 
-const ATTENDEE_ROLE_BY_LANG: Record<OrbitLanguage, string> = {
-  zh: "参会者",
-  en: "Attendee",
-  ja: "参加者",
-};
-
 function presentEvent(
   event: OrbitLandingEventView,
   language: OrbitLanguage,
@@ -85,6 +80,10 @@ function presentEvent(
     label: pick(section.label, language),
   }));
 
+  // Full deterministic roster (10-100) so the detail page shows a real crowd;
+  // the component reveals a subset with an expand control.
+  const attendees = rosterForEvent(event.id, language);
+
   return {
     ...event,
     name: pick(content.title, language),
@@ -97,12 +96,11 @@ function presentEvent(
     about,
     summaryZh: summary,
     descriptionZh: summary,
+    participantCount: attendees.length,
     stats: {
       ...event.stats,
-      attendees: event.stats.attendees.map((attendee) => ({
-        ...attendee,
-        role: ATTENDEE_ROLE_BY_LANG[language] ?? ATTENDEE_ROLE_BY_LANG.zh,
-      })),
+      attendees,
+      count: attendees.length,
     },
   };
 }
