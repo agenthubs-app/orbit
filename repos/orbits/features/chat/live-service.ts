@@ -244,7 +244,8 @@ function oneToOneContext(
       connection?.summary ??
       "Review live storage messages before follow-up.",
     recommendedFollowup:
-      "Review source evidence before recording another live-storage message.",
+      connection?.suggestedActions[0] ??
+      "Review the sourced relationship context before any follow-up.",
     source,
     evidenceIds: conversation.evidenceIds,
   };

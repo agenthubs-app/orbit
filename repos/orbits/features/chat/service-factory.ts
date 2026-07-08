@@ -9,6 +9,7 @@ import { createLiveChatPrivacyControlsService } from "./live-privacy-service";
 import { createLiveChatSummaryExtractionService } from "./live-summary-service";
 import { createMockChatWritingAssistService } from "./mock-assist-service";
 import { createMockChatPrivacyControlsService } from "./mock-privacy-service";
+import { createMockAsyncRelationshipConversationService } from "./mock-service";
 import { createMockChatConversationMessageService } from "./mock-service";
 import { createMockChatSummaryExtractionService } from "./mock-summary-service";
 import { createConfiguredStorageChatConversationMessageProvider } from "./storage/chat-conversation-live-record-provider";
@@ -17,7 +18,10 @@ import { createConfiguredStorageChatSummaryExtractionProvider } from "./storage/
 import { createConfiguredStorageChatWritingAssistProvider } from "./storage/chat-writing-assist-live-record-provider";
 import type { ChatWritingAssistService } from "./assist-contract";
 import type { ChatPrivacyControlsService } from "./privacy-contract";
-import type { ChatConversationMessageService } from "./service";
+import type {
+  AsyncRelationshipConversationService,
+  ChatConversationMessageService,
+} from "./service";
 import type { ChatSummaryExtractionService } from "./summary-contract";
 
 export const chatConversationMessageServiceFactory =
@@ -66,6 +70,14 @@ export const chatPrivacyControlsServiceFactory =
           provider: createConfiguredStorageChatPrivacyControlsProvider(),
         }),
       mock: () => createMockChatPrivacyControlsService(),
+    },
+  });
+
+export const asyncRelationshipConversationServiceFactory =
+  createModuleServiceFactory<AsyncRelationshipConversationService>({
+    capabilityId: "async-relationship-conversation",
+    implementations: {
+      mock: () => createMockAsyncRelationshipConversationService(),
     },
   });
 
@@ -133,6 +145,24 @@ export function createChatPrivacyControlsService(
   mode?: ModuleMode | string,
 ): ChatPrivacyControlsService {
   const resolution = resolveChatPrivacyControlsService(mode);
+
+  if (resolution.success === false) {
+    throw new Error(resolution.error.message);
+  }
+
+  return resolution.service;
+}
+
+export function resolveAsyncRelationshipConversationService(
+  mode?: ModuleMode | string,
+) {
+  return asyncRelationshipConversationServiceFactory.create(mode);
+}
+
+export function createAsyncRelationshipConversationService(
+  mode?: ModuleMode | string,
+): AsyncRelationshipConversationService {
+  const resolution = resolveAsyncRelationshipConversationService(mode);
 
   if (resolution.success === false) {
     throw new Error(resolution.error.message);

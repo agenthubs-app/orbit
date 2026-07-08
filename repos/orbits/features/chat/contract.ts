@@ -343,6 +343,229 @@ export type ChatConversationMessageResult =
   | ChatMessageThreadResult
   | ChatSendMessageResult;
 
+export const ASYNC_CONVERSATION_ERROR_CODES = [
+  "ASYNC_CONVERSATION_NOT_FOUND",
+  "ASYNC_CONVERSATION_ACTION_NOT_FOUND",
+] as const;
+
+export type AsyncConversationErrorCode =
+  (typeof ASYNC_CONVERSATION_ERROR_CODES)[number];
+
+export type AsyncConversationSenderRole = "orbit_user" | "contact";
+
+export type AsyncConversationMessageDeliveryState =
+  | "received_snapshot"
+  | "local_draft_snapshot";
+
+export type AsyncConversationExternalSendStatus = "not_requested";
+
+export type AsyncConversationActionStatus = "staged_local_preview";
+
+export interface AsyncConversationInput {
+  conversationId?: string | null;
+  userId?: string | null;
+}
+
+export interface AsyncConversationStageActionInput
+  extends AsyncConversationInput {
+  actionId?: string | null;
+}
+
+export interface AsyncConversationNoSideEffects {
+  externalMessageSent: false;
+  notificationDelivered: false;
+  calendarEntryCreated: false;
+  savedRecordCreated: false;
+  networkRequestMade: false;
+}
+
+export interface AsyncConversationCurrentUser {
+  userId: string;
+  displayName: string;
+  timezone: string;
+}
+
+export interface AsyncConversationInboxItem {
+  conversationId: string;
+  contactId: string;
+  participantName: string;
+  organization: string;
+  subject: string;
+  preview: string;
+  lastCorrespondenceAt: string;
+  unreadCount: number;
+  nextActionLabel: string;
+  sourceContextLabels: readonly string[];
+}
+
+export interface AsyncConversationInbox {
+  conversations: readonly AsyncConversationInboxItem[];
+  title: string;
+}
+
+export interface AsyncConversationMessage {
+  messageId: string;
+  senderName: string;
+  senderRole: AsyncConversationSenderRole;
+  body: string;
+  occurredAt: string;
+  deliveryState: AsyncConversationMessageDeliveryState;
+  sourceContextLabel: string;
+  evidenceIds: readonly string[];
+}
+
+export interface AsyncConversationThread {
+  conversationId: string;
+  threadId: string;
+  subject: string;
+  correspondenceMode: "asynchronous";
+  realtimeTransportEnabled: false;
+  messages: readonly AsyncConversationMessage[];
+  summary: string;
+  sourceContextLabels: readonly string[];
+}
+
+export interface AsyncConversationDraftReply {
+  draftId: string;
+  body: string;
+  tone: string;
+  sourceContextLabel: string;
+  externalSendStatus: AsyncConversationExternalSendStatus;
+  evidenceIds: readonly string[];
+}
+
+export interface AsyncConversationNextAction {
+  actionId: string;
+  title: string;
+  description: string;
+  stageHref: string;
+  sourceContextLabel: string;
+  followUpTaskId: string;
+  eventId: string;
+  scheduleWindowId: string;
+}
+
+export interface AsyncConversationContactContext {
+  contactId: string;
+  displayName: string;
+  organization: string;
+  role: string;
+  sourceContextLabel: string;
+}
+
+export interface AsyncConversationConnectionContext {
+  connectionId: string;
+  contactId: string;
+  relationshipReason: string;
+  relationshipStage: string;
+  sourceContextLabel: string;
+  evidenceIds: readonly string[];
+}
+
+export interface AsyncConversationEventContext {
+  eventId: string;
+  name: string;
+  occurredAt: string;
+  location: string;
+  sourceContextLabel: string;
+}
+
+export interface AsyncConversationScheduleWindow {
+  windowId: string;
+  label: string;
+  startsAt: string;
+  endsAt: string;
+  timezone: string;
+  availabilityState: "available_for_staging";
+  sourceContextLabel: string;
+}
+
+export interface AsyncConversationScheduleContext {
+  timezone: string;
+  sourceContextLabel: string;
+  windows: readonly AsyncConversationScheduleWindow[];
+}
+
+export interface AsyncConversationFollowUpTaskContext {
+  taskId: string;
+  title: string;
+  dueLabel: string;
+  status: "open";
+  sourceContextLabel: string;
+}
+
+export interface AsyncConversationProvenance {
+  source: string;
+  sourceLabel: string;
+  evidenceIds: readonly string[];
+  generatedBy: "mock-async-conversation-service";
+  privacy: "local-relationship-correspondence-preview";
+}
+
+export interface AsyncConversationWorkspacePayload {
+  state: "success";
+  currentUser: AsyncConversationCurrentUser;
+  inbox: AsyncConversationInbox;
+  selectedThread: AsyncConversationThread;
+  draftReply: AsyncConversationDraftReply;
+  nextActions: readonly AsyncConversationNextAction[];
+  contact: AsyncConversationContactContext;
+  connection: AsyncConversationConnectionContext;
+  event: AsyncConversationEventContext;
+  schedule: AsyncConversationScheduleContext;
+  followUpTask: AsyncConversationFollowUpTaskContext;
+  sideEffects: AsyncConversationNoSideEffects;
+  provenance: AsyncConversationProvenance;
+}
+
+export interface AsyncConversationStage {
+  actionId: string;
+  conversationId: string;
+  status: AsyncConversationActionStatus;
+  previewBody: string;
+  noSideEffectStatement: string;
+  sourceContextLabel: string;
+  stagedAt: string;
+}
+
+export interface AsyncConversationStagePayload {
+  state: "staged";
+  stage: AsyncConversationStage;
+  draftReply: AsyncConversationDraftReply;
+  nextAction: AsyncConversationNextAction;
+  sideEffects: AsyncConversationNoSideEffects;
+  provenance: AsyncConversationProvenance;
+}
+
+export interface AsyncConversationFailure {
+  success: false;
+  error: {
+    code: AsyncConversationErrorCode;
+    appCode: AppErrorCode;
+    message: string;
+    recovery: string;
+    evidenceIds: readonly string[];
+  };
+}
+
+export interface AsyncConversationWorkspaceSuccess {
+  success: true;
+  data: AsyncConversationWorkspacePayload;
+}
+
+export interface AsyncConversationStageSuccess {
+  success: true;
+  data: AsyncConversationStagePayload;
+}
+
+export type AsyncConversationWorkspaceResult =
+  | AsyncConversationWorkspaceSuccess
+  | AsyncConversationFailure;
+
+export type AsyncConversationStageResult =
+  | AsyncConversationStageSuccess
+  | AsyncConversationFailure;
+
 export function chatConversationMockFailureToAppError(
   failure: ChatConversationMockFailure,
 ): AppError {

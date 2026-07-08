@@ -6,6 +6,10 @@ import type {
   ChatMessageThreadResult,
   ChatSendMessageInput,
   ChatSendMessageResult,
+  AsyncConversationInput,
+  AsyncConversationStageActionInput,
+  AsyncConversationStageResult,
+  AsyncConversationWorkspaceResult,
 } from "./contract";
 import {
   chatConversationMockFailureContext,
@@ -34,6 +38,22 @@ export interface ChatConversationMessageService {
   ) => ChatConversationMessageServiceResult<ChatSendMessageResult>;
 }
 
+export type AsyncRelationshipConversationServiceResult<TResult> =
+  | TResult
+  | Promise<TResult>;
+
+// AsyncRelationshipConversationService models relationship correspondence snapshots.
+// It stages local previews only: no websocket, external send, notification, calendar,
+// saved-record, or network side effect may happen through this interface.
+export interface AsyncRelationshipConversationService {
+  getCorrespondenceWorkspace: (
+    input?: AsyncConversationInput,
+  ) => AsyncRelationshipConversationServiceResult<AsyncConversationWorkspaceResult>;
+  stageConversationAction: (
+    input: AsyncConversationStageActionInput,
+  ) => AsyncRelationshipConversationServiceResult<AsyncConversationStageResult>;
+}
+
 export {
   chatConversationMockFailureContext,
   chatConversationMockFailureToAppError,
@@ -47,4 +67,8 @@ export type {
   ChatMessageThreadResult,
   ChatSendMessageInput,
   ChatSendMessageResult,
+  AsyncConversationInput,
+  AsyncConversationStageActionInput,
+  AsyncConversationStageResult,
+  AsyncConversationWorkspaceResult,
 };

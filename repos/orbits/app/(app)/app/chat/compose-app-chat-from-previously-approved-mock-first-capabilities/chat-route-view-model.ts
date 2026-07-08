@@ -6,6 +6,9 @@ import type {
   ChatMessageThreadResult,
   ChatSendMessagePayload,
   ChatSendMessageResult,
+  AsyncConversationFailure,
+  AsyncConversationStagePayload,
+  AsyncConversationWorkspacePayload,
 } from "../../../../../features/chat/contract";
 import type {
   ChatWritingAssistPayload,
@@ -25,6 +28,10 @@ import {
   type OrbitAgentArtifactSurfaceViewModel,
 } from "../../../../../features/orbit-ai/artifact-view-model";
 import { createOrbitAgentConversationService } from "../../../../../features/orbit-ai/service-factory";
+import {
+  loadOrbitAiProactiveCalendarMessagesForApp,
+} from "../../../../../features/orbit-ai/proactive-calendar-service";
+import { createAsyncRelationshipConversationService } from "../../../../../features/chat/service-factory";
 import { createAppChatRouteServices } from "./chat-service-factory";
 
 // Chat route view-model 是传统 chat 页的总装层。
@@ -744,4 +751,333 @@ export async function loadAppChatRouteViewModel(
       thread: threadResult.data,
     }),
   };
+}
+
+export interface AppAsyncChatInboxItemViewModel {
+  conversationId: string;
+  href: string;
+  isSelected: boolean;
+  lastCorrespondenceLabel: string;
+  nextActionLabel: string;
+  organization: string;
+  participantName: string;
+  preview: string;
+  sourceContextLabels: readonly string[];
+  subject: string;
+  unreadLabel: string;
+}
+
+export interface AppProactiveAgentInboxItemViewModel {
+  href: string;
+  messageId: string;
+  peopleContext: string;
+  preparationPrompt: string;
+  sourceLabel: string;
+  subject: string;
+  timeLabel: string;
+}
+
+export interface AppAsyncChatMessageViewModel {
+  body: string;
+  messageId: string;
+  senderLabel: string;
+  sourceContextLabel: string;
+  timestampLabel: string;
+}
+
+export interface AppAsyncChatContextItemViewModel {
+  label: string;
+  value: string;
+}
+
+export interface AppAsyncChatNextActionViewModel {
+  description: string;
+  href: string;
+  sourceContextLabel: string;
+  title: string;
+}
+
+export interface AppAsyncChatStageViewModel {
+  calendarLabel: string;
+  networkLabel: string;
+  noSideEffectStatement: string;
+  previewBody: string;
+  sendLabel: string;
+  status: string;
+}
+
+export interface AppAsyncChatDraftControlViewModel {
+  action: string;
+  label: string;
+  sideEffectLabel: string;
+}
+
+export interface AppAsyncChatNoticeViewModel {
+  calendarLabel: string;
+  code: string;
+  evidenceIds: readonly string[];
+  message: string;
+  networkLabel: string;
+  recovery: string;
+  sendLabel: string;
+  title: string;
+}
+
+export interface AppAsyncChatCommandCenterViewModel {
+  chatState: string;
+  contextItems: readonly AppAsyncChatContextItemViewModel[];
+  draftBody: string;
+  draftControls: readonly AppAsyncChatDraftControlViewModel[];
+  draftMeta: string;
+  inbox: readonly AppAsyncChatInboxItemViewModel[];
+  nextActions: readonly AppAsyncChatNextActionViewModel[];
+  notice: AppAsyncChatNoticeViewModel | null;
+  proactiveInbox: readonly AppProactiveAgentInboxItemViewModel[];
+  scheduleItems: readonly AppAsyncChatContextItemViewModel[];
+  selectedConversationId: string;
+  selectedSubtitle: string;
+  selectedTitle: string;
+  sourceContextLabels: readonly string[];
+  stage: AppAsyncChatStageViewModel | null;
+  threadMessages: readonly AppAsyncChatMessageViewModel[];
+  threadSummary: string;
+}
+
+function asyncShortTimestamp(value: string): string {
+  return value.replace("T", " ").slice(0, 16);
+}
+
+function asyncInboxViewModel(
+  workspace: AsyncConversationWorkspacePayload,
+): readonly AppAsyncChatInboxItemViewModel[] {
+  const selectedId = workspace.selectedThread.conversationId;
+
+  return workspace.inbox.conversations.map((conversation) => ({
+    conversationId: conversation.conversationId,
+    href: `/app/chat?conversation=${conversation.conversationId}`,
+    isSelected: conversation.conversationId === selectedId,
+    lastCorrespondenceLabel: asyncShortTimestamp(conversation.lastCorrespondenceAt),
+    nextActionLabel: conversation.nextActionLabel,
+    organization: conversation.organization,
+    participantName: conversation.participantName,
+    preview: conversation.preview,
+    sourceContextLabels: conversation.sourceContextLabels,
+    subject: conversation.subject,
+    unreadLabel:
+      conversation.unreadCount > 0
+        ? `${conversation.unreadCount} relationship signal`
+        : "No unread signal",
+  }));
+}
+
+function asyncProactiveInboxViewModel(): readonly AppProactiveAgentInboxItemViewModel[] {
+  const result = loadOrbitAiProactiveCalendarMessagesForApp();
+
+  return result.data.messages.map((message) => ({
+    href: message.conversationHref,
+    messageId: message.messageId,
+    peopleContext: message.peopleContext,
+    preparationPrompt: message.preparationPrompt,
+    sourceLabel: message.sourceLabel,
+    subject: message.subject.replace(/^Upcoming:\s*/, ""),
+    timeLabel: message.timeLabel,
+  }));
+}
+
+function asyncThreadMessagesViewModel(
+  workspace: AsyncConversationWorkspacePayload,
+): readonly AppAsyncChatMessageViewModel[] {
+  return workspace.selectedThread.messages.map((message) => ({
+    body: message.body,
+    messageId: message.messageId,
+    senderLabel:
+      message.senderRole === "orbit_user"
+        ? `You · ${message.senderName}`
+        : `${message.senderName}`,
+    sourceContextLabel: message.sourceContextLabel,
+    timestampLabel: asyncShortTimestamp(message.occurredAt),
+  }));
+}
+
+function asyncContextItemsViewModel(
+  workspace: AsyncConversationWorkspacePayload,
+): readonly AppAsyncChatContextItemViewModel[] {
+  return [
+    {
+      label: "Contact",
+      value: `${workspace.contact.displayName}, ${workspace.contact.role} at ${workspace.contact.organization}`,
+    },
+    {
+      label: "Connection",
+      value: workspace.connection.relationshipReason,
+    },
+    {
+      label: "Event",
+      value: `${workspace.event.name} · ${workspace.event.location}`,
+    },
+    {
+      label: "Follow-up task",
+      value: `${workspace.followUpTask.title} · ${workspace.followUpTask.dueLabel}`,
+    },
+  ];
+}
+
+function asyncScheduleItemsViewModel(
+  workspace: AsyncConversationWorkspacePayload,
+): readonly AppAsyncChatContextItemViewModel[] {
+  return workspace.schedule.windows.map((window) => ({
+    label: window.label,
+    value: `${window.availabilityState.replaceAll("_", " ")} · ${window.sourceContextLabel}`,
+  }));
+}
+
+function asyncNextActionsViewModel(
+  workspace: AsyncConversationWorkspacePayload,
+): readonly AppAsyncChatNextActionViewModel[] {
+  return workspace.nextActions.map((action) => ({
+    description: action.description,
+    href: action.stageHref,
+    sourceContextLabel: action.sourceContextLabel,
+    title: action.title,
+  }));
+}
+
+function asyncDraftControlsViewModel(): readonly AppAsyncChatDraftControlViewModel[] {
+  return [
+    {
+      action: "edit-draft",
+      label: "Edit draft",
+      sideEffectLabel: "Local text only",
+    },
+    {
+      action: "copy-reply",
+      label: "Copy reply",
+      sideEffectLabel: "No message sent",
+    },
+    {
+      action: "mark-reviewed",
+      label: "Mark reviewed",
+      sideEffectLabel: "No record saved",
+    },
+  ];
+}
+
+function asyncStageViewModel(
+  stage: AsyncConversationStagePayload | null,
+): AppAsyncChatStageViewModel | null {
+  if (!stage) {
+    return null;
+  }
+
+  return {
+    calendarLabel: stage.sideEffects.calendarEntryCreated
+      ? "Calendar entry: created"
+      : "Calendar entry: not created",
+    networkLabel: stage.sideEffects.networkRequestMade
+      ? "Network: used"
+      : "Network: not used",
+    noSideEffectStatement: stage.stage.noSideEffectStatement,
+    previewBody: stage.stage.previewBody,
+    sendLabel: stage.sideEffects.externalMessageSent
+      ? "External send: requested"
+      : "External send: not requested",
+    status: stage.stage.status,
+  };
+}
+
+function asyncNoticeViewModel(
+  failure: AsyncConversationFailure,
+): AppAsyncChatNoticeViewModel {
+  return {
+    calendarLabel: "Calendar entry: not created",
+    code: failure.error.code,
+    evidenceIds: failure.error.evidenceIds,
+    message: failure.error.message,
+    networkLabel: "Network: not used",
+    recovery: failure.error.recovery,
+    sendLabel: "External send: not requested",
+    title:
+      failure.error.code === "ASYNC_CONVERSATION_NOT_FOUND"
+        ? "Conversation not found"
+        : "Action not found",
+  };
+}
+
+function asyncCommandCenterViewModel(input: {
+  notice: AppAsyncChatNoticeViewModel | null;
+  stage: AsyncConversationStagePayload | null;
+  workspace: AsyncConversationWorkspacePayload;
+}): AppAsyncChatCommandCenterViewModel {
+  const workspace = input.workspace;
+
+  return {
+    chatState: input.notice?.code ?? "ready",
+    contextItems: asyncContextItemsViewModel(workspace),
+    draftBody: workspace.draftReply.body,
+    draftControls: asyncDraftControlsViewModel(),
+    draftMeta: `${workspace.draftReply.tone} · ${workspace.draftReply.sourceContextLabel}`,
+    inbox: asyncInboxViewModel(workspace),
+    nextActions: asyncNextActionsViewModel(workspace),
+    notice: input.notice,
+    proactiveInbox: asyncProactiveInboxViewModel(),
+    scheduleItems: asyncScheduleItemsViewModel(workspace),
+    selectedConversationId: workspace.selectedThread.conversationId,
+    selectedSubtitle: `${workspace.contact.organization} · ${workspace.selectedThread.subject}`,
+    selectedTitle: workspace.contact.displayName,
+    sourceContextLabels: workspace.selectedThread.sourceContextLabels,
+    stage: asyncStageViewModel(input.stage),
+    threadMessages: asyncThreadMessagesViewModel(workspace),
+    threadSummary: workspace.selectedThread.summary,
+  };
+}
+
+export async function loadAppAsyncChatCommandCenterViewModel(
+  searchParams?: AppChatSearchParams,
+): Promise<AppAsyncChatCommandCenterViewModel> {
+  const conversationId = readAppChatSearchParam(searchParams, "conversation");
+  const action = readAppChatSearchParam(searchParams, "action");
+  const service = createAsyncRelationshipConversationService("mock");
+  const workspaceResult = await resolveChatResult(
+    service.getCorrespondenceWorkspace({
+      conversationId,
+      userId: "test-user-orbit",
+    }),
+  );
+  const requestedConversationFound = workspaceResult.success === true;
+  const fallbackWorkspaceResult =
+    workspaceResult.success === true
+      ? workspaceResult
+      : await resolveChatResult(
+          service.getCorrespondenceWorkspace({
+            userId: "test-user-orbit",
+          }),
+        );
+
+  if (fallbackWorkspaceResult.success === false) {
+    throw new Error(fallbackWorkspaceResult.error.message);
+  }
+
+  const notice =
+    workspaceResult.success === false
+      ? asyncNoticeViewModel(workspaceResult)
+      : null;
+  const stageResult =
+    action === "stage-reply" && requestedConversationFound
+      ? await resolveChatResult(
+          service.stageConversationAction({
+            actionId: fallbackWorkspaceResult.data.nextActions[0]?.actionId ?? null,
+            conversationId: fallbackWorkspaceResult.data.selectedThread.conversationId,
+            userId: fallbackWorkspaceResult.data.currentUser.userId,
+          }),
+        )
+      : null;
+  const stage = stageResult?.success === true ? stageResult.data : null;
+  const stageNotice =
+    stageResult?.success === false ? asyncNoticeViewModel(stageResult) : null;
+
+  return asyncCommandCenterViewModel({
+    notice: notice ?? stageNotice,
+    stage,
+    workspace: fallbackWorkspaceResult.data,
+  });
 }

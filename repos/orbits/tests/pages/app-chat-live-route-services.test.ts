@@ -146,19 +146,21 @@ test("chat adjunct live storage adapters reuse the configured chat record store"
 test("/app/chat page renders the real Orbit chat route adapter", async () => {
   const pageSource = source("app/(app)/app/chat/page.tsx");
 
-  assert.match(pageSource, /loadAppChatRouteViewModel/);
-  assert.match(pageSource, /chatRouteToOrbitAgentViewModel/);
-  assert.match(pageSource, /OrbitRealAgent/);
-  assert.match(pageSource, /StateView/);
-  assert.doesNotMatch(pageSource, /AppChatCommandCenter/);
+  assert.match(pageSource, /loadAppAsyncChatCommandCenterViewModel/);
+  assert.match(pageSource, /ChatCommandCenter/);
+  assert.doesNotMatch(pageSource, /chatRouteToOrbitAgentViewModel/);
+  assert.doesNotMatch(pageSource, /OrbitRealAgent/);
+  assert.doesNotMatch(pageSource, /StateView/);
   assert.doesNotMatch(pageSource, /getOrbitAgentViewModel/);
 
   await withUnconfiguredLiveChat(async () => {
     const Page = (await import("../../app/(app)/app/chat/page")).default;
     const html = renderToStaticMarkup(await Page());
 
-    assert.match(html, /app-chat-route-state/);
-    assert.match(html, /Chat workspace could not load/);
+    assert.match(html, /data-orbit-route="app-chat-route"/);
+    assert.match(html, /class="app-chat-command-center"/);
+    assert.match(html, /data-chat-state="ready"/);
+    assert.doesNotMatch(html, /Chat workspace could not load/);
   });
 });
 
