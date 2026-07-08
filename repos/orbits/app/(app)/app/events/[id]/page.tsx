@@ -27,6 +27,8 @@ import {
 } from "../compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import { OrbitRealEventDetail } from "./orbit-real-event-detail";
 import { presentOrbitEvent } from "../../orbit-event-presentation";
+import { loadAppEventsRouteViewModel } from "../compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
+import { eventsRouteToOrbitLandingViewModel } from "../compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 
 export type AppEventDetailPageSearchParams = Record<
   string,
@@ -468,10 +470,25 @@ export default async function AppEventDetailPage({
       ? registrationGuideResult.guide
       : null;
 
+  // Only a few events have full seeded detail (roster/readiness/etc.). For the
+  // rest, fall back to a basic detail built from the events-list data so every
+  // listed event opens a normal page (like the UI branch) instead of the
+  // "no event workspace" route-state boundary.
+  const detailSuccess = routeModel.routeState === "success";
+  const eventsListModel = detailSuccess
+    ? null
+    : await loadAppEventsRouteViewModel();
+  const fallbackEvent =
+    eventsListModel && eventsListModel.state === "success"
+      ? eventsRouteToOrbitLandingViewModel(eventsListModel).events.find(
+          (event) => event.id === id || event.code === id,
+        ) ?? null
+      : null;
+
   return (
     <>
       <OrbitReferenceStyles />
-      {routeModel.routeState === "success" ? (
+      {detailSuccess ? (
         <>
           <OrbitRealEventDetail
             event={localizeOrbitTree(
@@ -486,6 +503,13 @@ export default async function AppEventDetailPage({
             <RegistrationProfileGuidePreview guide={registrationGuide} />
           ) : null}
         </>
+      ) : fallbackEvent ? (
+        <OrbitRealEventDetail
+          event={localizeOrbitTree(
+            presentOrbitEvent(fallbackEvent, language),
+            language,
+          )}
+        />
       ) : (
         <EventDetailRouteStateView
           eventId={id}
