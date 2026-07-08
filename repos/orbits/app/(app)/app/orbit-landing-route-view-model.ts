@@ -98,6 +98,38 @@ const themeGlyphs: Record<string, string> = {
   globe: "<circle cx='200' cy='120' r='42'/><path d='M158 120h84M200 78c-15 12-15 72 0 84M200 78c15 12 15 72 0 84M168 98c20 10 44 10 64 0M168 142c20-10 44-10 64 0'/>",
 };
 
+const themeByCode: Record<string, string> = {
+  TBC26S: "ai",
+  SAAS04: "cloud",
+  SEMI26: "chip",
+  FINTK8: "finance",
+  AIFND: "ai",
+  FASHN: "fashion",
+  D2C03: "fashion",
+  CONS5: "globe",
+  XB25: "globe",
+};
+
+// Real, theme-matched cover photography (bundled under /public, Unsplash
+// License — free for commercial use, no attribution required). Replaces the
+// flat generated color blocks; the generated SVG stays as a fallback for any
+// theme without a photo.
+const coverPhotoByTheme: Record<string, string> = {
+  ai: "/orbit-covers/ai.jpg",
+  chip: "/orbit-covers/chip.jpg",
+  cloud: "/orbit-covers/cloud.jpg",
+  fashion: "/orbit-covers/fashion.jpg",
+  finance: "/orbit-covers/finance.jpg",
+  globe: "/orbit-covers/globe.jpg",
+};
+
+/** Real cover photo for an event code (via its theme), or undefined if the
+ * theme has no bundled photo. Lets any event-card call site show the same
+ * photography as the main list without threading imageUrl through view models. */
+export function eventCoverPhoto(code: string): string | undefined {
+  return coverPhotoByTheme[themeByCode[code] ?? "ai"];
+}
+
 function colorForEvent(event: EventDTO, index: number): string {
   return brandColors[(hashString(event.id) + index) % brandColors.length];
 }

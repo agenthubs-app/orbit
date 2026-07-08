@@ -10,9 +10,26 @@ import type {
   OrbitContactNoteView,
   OrbitContactPipelineStatus,
   OrbitContactsViewModel,
+  OrbitContactStrength,
   OrbitContactView,
 } from "../../orbit-contacts-route-view-model";
 import type { OrbitLanguage } from "../../orbit-language-core";
+
+function strengthFromScore(score: number): OrbitContactStrength {
+  if (score >= 75) {
+    return "strong";
+  }
+
+  if (score >= 45) {
+    return "medium";
+  }
+
+  if (score >= 20) {
+    return "weak";
+  }
+
+  return "dormant";
+}
 
 function pipelineStatusFor(
   status: ContactDetailStatusOption,
@@ -304,6 +321,13 @@ export function contactDetailRouteToOrbitContactsViewModel(
     stage: model.contact.status,
     title: displayText(model.contact.role, language),
     wechat: "",
+    strength: strengthFromScore(
+      model.assessment.priorityScore.value || model.connection.strengthScore,
+    ),
+    valueTags: [],
+    nextAction: null,
+    lastInteraction: "",
+    dormant: false,
   };
 
   return {

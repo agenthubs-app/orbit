@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
-import type { OrbitPartyPersonView, OrbitPartyViewModel } from "../orbit-party-route-view-model";
+import { getOrbitPartyViewModel, type OrbitPartyPersonView, type OrbitPartyViewModel } from "../orbit-party-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { PublicTopNav } from "../orbit-public-shell";
 import { Icon, Logo } from "../orbit-reference-primitives";
@@ -261,7 +261,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
           {t({ en: "Good evening, ", zh: "晚上好，" })}
           {viewModel.me.initial}
         </h1>
-        <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>{`${viewModel.eventName} · ${viewModel.eventVenue}`}</div>
+        <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>{`Tokyo Business Connect · ${t({ en: "Tokyo Midtown Hall B", zh: "东京中城 Hall B" })}`}</div>
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button className="btn btn-primary" onClick={() => navigateTo("/app/party/checkin")} style={{ flex: "1 1 0%" }}>
             <Icon color="var(--on-dark)" name="ticket" size={16} />
@@ -287,7 +287,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
         </button>
       </div>
       <div className="card" style={{ padding: 18 }}>
-        <div style={{ alignItems: "center", display: "flex", gap: 13 }}>
+        <div style={{ alignItems: "center", display: "flex", gap: 14 }}>
           <span className={`avatar ${first.g}`} style={{ fontSize: 24, height: 56, width: 56 }}>
             {first.initial}
           </span>
@@ -300,7 +300,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
                 {t({ en: "Match", zh: "匹配" })} {first.score}
               </span>
             </div>
-            <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 2 }}>
+            <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>
               {first.title} · {first.company}
             </div>
           </div>
@@ -308,15 +308,15 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
         <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 14, padding: 13 }}>
           <Icon color="var(--accent)" name="sparkle" size={17} style={{ flexShrink: 0, height: 17, marginTop: 1, width: 17 }} />
           <div>
-            <div style={{ color: "var(--accent)", fontSize: 12.5, fontWeight: 600 }}>{t({ en: "Why recommended", zh: "为什么推荐" })}</div>
+            <div style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600 }}>{t({ en: "Why recommended", zh: "为什么推荐" })}</div>
             <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 3 }}>{first.reason}</div>
           </div>
         </div>
         <div style={{ marginTop: 12 }}>
           <div style={{ color: "var(--ink)", fontSize: 12, fontWeight: 600, marginBottom: 7 }}>{t({ en: "Icebreakers", zh: "破冰问题" })}</div>
           {first.icebreakers.map((question, index) => (
-            <div key={question} style={{ display: "flex", gap: 9, marginBottom: 7 }}>
-              <span className="mono" style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: 999, color: "var(--text-3)", display: "flex", flexShrink: 0, fontSize: 10, height: 22, justifyContent: "center", width: 22 }}>
+            <div key={question} style={{ display: "flex", gap: 10, marginBottom: 7 }}>
+              <span className="mono" style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: "var(--r-pill)", color: "var(--text-3)", display: "flex", flexShrink: 0, fontSize: 11, height: 22, justifyContent: "center", width: 22 }}>
                 0{index + 1}
               </span>
               <span style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5 }}>{question}</span>
@@ -333,7 +333,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
         {viewModel.agenda.map((item, index) => (
           <div key={item.time} style={{ display: "flex", gap: 14, paddingBottom: index < viewModel.agenda.length - 1 ? 16 : 0 }}>
             <div style={{ alignItems: "center", display: "flex", flexDirection: "column" }}>
-              <span style={{ background: index === 2 ? "var(--accent)" : "var(--surface)", border: `2px solid ${index === 2 ? "var(--accent)" : "var(--border-strong)"}`, borderRadius: 999, height: 11, width: 11 }} />
+              <span style={{ background: index === 2 ? "var(--accent)" : "var(--surface)", border: `2px solid ${index === 2 ? "var(--accent)" : "var(--border-strong)"}`, borderRadius: "var(--r-pill)", height: 11, width: 11 }} />
               {index < viewModel.agenda.length - 1 ? <span style={{ background: "var(--border-2)", flex: 1, marginTop: 4, width: 2 }} /> : null}
             </div>
             <div style={{ marginTop: -3 }}>
@@ -341,14 +341,14 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
                 <span className="mono" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600 }}>
                   {item.time}
                 </span>
-                <span style={{ color: "var(--ink)", fontSize: 14.5, fontWeight: 600 }}>{item.label}</span>
+                <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{item.label}</span>
                 {index === 2 ? (
                   <span className="badge badge-live" style={{ height: 20 }}>
                     {t({ en: "Live", zh: "进行中" })}
                   </span>
                 ) : null}
               </div>
-              <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>{item.description}</div>
+              <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 3 }}>{item.description}</div>
             </div>
           </div>
         ))}
@@ -482,7 +482,7 @@ function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: Orbit
       <div className="orbit-party-network-toolbar">
         <div className="orbit-party-network-search">
           <Icon color="var(--text-3)" name="search" size={17} />
-          <input onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" })} value={query} />
+          <input aria-label={t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" })} onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" })} type="search" value={query} />
         </div>
         <button aria-label={t({ en: "Filter", zh: "筛选" })} className="btn btn-ghost orbit-party-network-filter hit-44" type="button">
           <Icon name="filter" size={18} />
@@ -516,7 +516,7 @@ function PartyAttendees({ t, viewModel }: { t: Translate; viewModel: OrbitPartyV
         </div>
         <div className="orbit-party-network-search orbit-party-attendees-search">
           <Icon color="var(--text-3)" name="search" size={17} />
-          <input onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search attendees", zh: "搜索参会者" })} value={query} />
+          <input aria-label={t({ en: "Search attendees", zh: "搜索参会者" })} onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search attendees", zh: "搜索参会者" })} type="search" value={query} />
         </div>
       </div>
       <div className="orbit-party-attendee-grid">
@@ -569,7 +569,7 @@ function PartyAgenda({ t, viewModel }: { t: Translate; viewModel: OrbitPartyView
         <div>
           <div className="eyebrow">AGENDA</div>
           <h1 className="h-display orbit-party-network-title">{t({ en: "Agenda", zh: "流程议程" })}</h1>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{`${viewModel.eventName} · ${t({ en: "Agenda", zh: "流程" })}`}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{`Tokyo Business Connect · ${t({ en: "Tonight's agenda", zh: "今晚流程" })}`}</div>
         </div>
         <span className="badge badge-ended">{t({ en: "Ended", zh: "已结束" })}</span>
       </div>
@@ -688,8 +688,8 @@ function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; pers
   }, [onClose]);
 
   return (
-    <div onClick={onClose} style={{ alignItems: "flex-end", background: "var(--scrim)", display: "flex", inset: 0, justifyContent: "center", padding: 16, position: "fixed", zIndex: 50 }}>
-      <div className="card" onClick={(event) => event.stopPropagation()} style={{ borderRadius: 24, maxHeight: "88vh", overflowY: "auto", width: "min(100%, 460px)" }}>
+    <div onClick={onClose} style={{ alignItems: "flex-end", background: "var(--scrim)", display: "flex", inset: 0, justifyContent: "center", padding: 16, position: "fixed", zIndex: 100 }}>
+      <div className="card" onClick={(event) => event.stopPropagation()} style={{ borderRadius: "var(--r-xl)", maxHeight: "88vh", overflowY: "auto", width: "min(100%, 460px)" }}>
         <div style={{ background: "var(--surface)", padding: "16px 18px 0", position: "sticky", top: 0 }}>
           <button aria-label={t({ en: "Back to graph", zh: "返回图谱" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
             <Icon name="chevL" size={16} />
@@ -725,7 +725,7 @@ function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; pers
   );
 }
 
-export function OrbitRealPartyCheckin({ viewModel }: { viewModel: OrbitPartyViewModel }) {
+export function OrbitRealPartyCheckin({ viewModel }: { viewModel?: OrbitPartyViewModel } = {}) {
   const { t } = useOrbitLanguage();
   const [checkedIn, setCheckedIn] = useState(false);
   const [redirectIn, setRedirectIn] = useState(3);
@@ -760,7 +760,7 @@ export function OrbitRealPartyCheckin({ viewModel }: { viewModel: OrbitPartyView
   }
 
   if (returnedToParty) {
-    return <OrbitRealParty viewModel={viewModel} />;
+    return <OrbitRealParty viewModel={viewModel ?? getOrbitPartyViewModel()} />;
   }
 
   if (checkedIn) {
@@ -779,7 +779,7 @@ export function OrbitRealPartyCheckin({ viewModel }: { viewModel: OrbitPartyView
             </div>
             <div className="eyebrow">CHECK-IN COMPLETE</div>
             <h1 className="h-title">{t({ en: "Check-in complete", zh: "签到完毕" })}</h1>
-            <p className="orbit-party-done-event">{viewModel.eventName}</p>
+            <p className="orbit-party-done-event">Tokyo Business Connect</p>
             <div className="orbit-party-done-meta">
               <span className="badge badge-live">
                 <Icon name="check" size={13} />
@@ -868,7 +868,7 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
             <Icon name="chevL" size={18} />
           </button>
           <div style={{ display: "grid", gap: 4, justifyItems: "center" }}>
-            <div className="eyebrow" style={{ fontSize: 10 }}>
+            <div className="eyebrow" style={{ fontSize: 11 }}>
               STEP 02 / 02
             </div>
             <div style={{ color: "var(--ink)", fontSize: 12 }}>{t({ en: "Social graph", zh: "社交图谱" })}</div>
@@ -877,8 +877,8 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
             {t({ en: "ZH / JA", zh: "中 / 日" })}
           </span>
         </div>
-        <div style={{ background: "linear-gradient(180deg, var(--surface) 0%, var(--bg-sunken) 100%)", border: "1px solid var(--border)", borderRadius: 18, boxShadow: "var(--sh-lg)", marginTop: 16, padding: 22 }}>
-          <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontFamily: "var(--ff-mono)", fontSize: 10, justifyContent: "space-between", letterSpacing: "0.22em", textTransform: "uppercase" }}>
+        <div style={{ background: "linear-gradient(180deg, var(--surface) 0%, var(--bg-sunken) 100%)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-lg)", marginTop: 16, padding: 22 }}>
+          <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontFamily: "var(--ff-mono)", fontSize: 11, justifyContent: "space-between", letterSpacing: "0.22em", textTransform: "uppercase" }}>
             <span>SOCIAL GRAPH</span>
             <span className="badge badge-live">
               <span className="dot dot-live" />

@@ -5,6 +5,7 @@ import type {
 import type {
   OrbitContactPipelineStatus,
   OrbitContactsViewModel,
+  OrbitContactStrength,
   OrbitContactView,
 } from "../../orbit-contacts-route-view-model";
 
@@ -51,6 +52,32 @@ function pipelineStatusFor(
 
 function eventIdFor(contact: AppContactListItemViewModel): string {
   return `source:${contact.sourceLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "contact"}`;
+}
+
+function strengthFor(contact: AppContactListItemViewModel): OrbitContactStrength {
+  const highValue = contact.relationshipValueLabels.some((label) =>
+    /commercial|strategic|invest/i.test(label),
+  );
+
+  if (highValue) {
+    return "strong";
+  }
+
+  return contact.needsAttention ? "weak" : "medium";
+}
+
+function nextActionFor(
+  contact: AppContactListItemViewModel,
+): OrbitContactView["nextAction"] {
+  if (!contact.nextAction) {
+    return null;
+  }
+
+  return {
+    text: contact.nextAction,
+    reason: contact.relationshipContextCopy || contact.valueRationale || contact.nextAction,
+    evidenceId: contact.evidenceIds[0],
+  };
 }
 
 function contactToOrbitView(
@@ -108,6 +135,11 @@ function contactToOrbitView(
     stage: contact.statusLabel,
     title: contact.role,
     wechat: "",
+    strength: strengthFor(contact),
+    valueTags: Array.from(contact.relationshipValueLabels).slice(0, 3),
+    nextAction: nextActionFor(contact),
+    lastInteraction: "",
+    dormant: false,
   };
 }
 

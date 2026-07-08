@@ -139,9 +139,10 @@ export function OrbitRealAccountAuth({
             {isForgot && forgotStep === 2 ? (
               <>
                 <div className="orbit-account-auth-field">
-                  <span className="field-label">{t({ en: "Verification code", zh: "验证码" })}</span>
+                  <label className="field-label" htmlFor="orbit-auth-code">{t({ en: "Verification code", zh: "验证码" })}</label>
                   <input
                     className="field mono"
+                    id="orbit-auth-code"
                     inputMode="numeric"
                     maxLength={6}
                     onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
@@ -150,11 +151,12 @@ export function OrbitRealAccountAuth({
                   />
                 </div>
                 <div className="orbit-account-auth-field">
-                  <label className="field-label">{t({ en: "New password", zh: "新密码" })}</label>
+                  <label className="field-label" htmlFor="orbit-auth-new-password">{t({ en: "New password", zh: "新密码" })}</label>
                   <span style={{ display: "flex", gap: 8 }}>
                     <input
                       autoComplete="new-password"
                       className="field"
+                      id="orbit-auth-new-password"
                       minLength={6}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder={t({ en: "Set a password of at least 6 characters", zh: "设置至少 6 位密码" })}
@@ -176,7 +178,7 @@ export function OrbitRealAccountAuth({
             ) : !isForgot ? (
               <div className="orbit-account-auth-field">
                 <span style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between" }}>
-                  <label className="field-label" style={{ marginBottom: 0 }}>{t({ en: "Password", zh: "密码" })}</label>
+                  <label className="field-label" htmlFor="orbit-auth-password" style={{ marginBottom: 0 }}>{t({ en: "Password", zh: "密码" })}</label>
                   {!isSignup ? (
                     <a
                       href={`/app/account/forgot-password?next=${encodeURIComponent(query.next)}`}
@@ -186,7 +188,7 @@ export function OrbitRealAccountAuth({
                       }}
                       style={{
                         color: "var(--accent)",
-                        fontSize: 12.5,
+                        fontSize: 13,
                         fontWeight: 600,
                         textDecoration: "none",
                       }}
@@ -199,6 +201,7 @@ export function OrbitRealAccountAuth({
                   <input
                     autoComplete={isSignup ? "new-password" : "current-password"}
                     className="field"
+                    id="orbit-auth-password"
                     minLength={isSignup ? 6 : undefined}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder={isSignup ? t({ en: "Set a password of at least 6 characters", zh: "设置至少 6 位密码" }) : t({ en: "Enter your password", zh: "输入密码" })}
@@ -221,7 +224,7 @@ export function OrbitRealAccountAuth({
             {error ? <div className="orbit-alert error" role="alert">{error}</div> : null}
             {message ? <div className="orbit-alert notice">{message}</div> : null}
 
-            <button className="btn btn-primary btn-block btn-lg" disabled={submitting} type="submit">
+            <button aria-busy={submitting || undefined} className={`btn btn-primary btn-block btn-lg${submitting ? " is-loading" : ""}`} disabled={submitting} type="submit">
               {submitting ? viewModel.busyLabel : primary}
               {!submitting ? <Icon color="var(--on-dark)" name="arrow" size={17} /> : null}
             </button>

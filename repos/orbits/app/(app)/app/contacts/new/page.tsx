@@ -10,6 +10,7 @@ import {
   loadAppContactsNewRouteViewModel,
   type AppContactsNewSearchParams,
 } from "./compose-app-contacts-new-from-previously-approved-mock-first-capabilities/contacts-new-route-services";
+import { OrbitRealCardsImport } from "../orbit-real-cards-import";
 
 interface AppContactsNewPageProps {
   searchParams?: Promise<AppContactsNewSearchParams>;
@@ -188,7 +189,7 @@ export default async function AppContactScanPage({
       {viewModel.state === "route-state" ? (
         <AcquisitionStateBoundary routeState={viewModel.routeState} />
       ) : (
-        <AcquisitionWorkspace workspace={viewModel.workspace} />
+        <OrbitRealCardsImport />
       )}
     </>
   );

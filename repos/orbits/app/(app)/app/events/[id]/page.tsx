@@ -477,10 +477,6 @@ export default async function AppEventDetailPage({
               eventDetailRouteToOrbitLandingEventView(routeModel),
               language,
             )}
-            relationshipContext={localizeOrbitTree(
-              eventDetailRouteToRelationshipContextView(routeModel),
-              language,
-            )}
           />
           {registrationGuide ? (
             <RegistrationProfileGuidePreview guide={registrationGuide} />

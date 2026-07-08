@@ -17,7 +17,7 @@ import {
   loadAppContactDetailRoute,
   type AppContactDetailBoundaryModel,
 } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
-import { OrbitRealCardDetail } from "../orbit-real-contacts";
+import { OrbitRealCardConnection } from "../orbit-real-card-connection";
 
 export type AppContactDetailPageSearchParams = Record<
   string,
@@ -100,7 +100,7 @@ export default async function AppContactDetailPage({
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
       {routeModel.routeState === "success" ? (
-        <OrbitRealCardDetail
+        <OrbitRealCardConnection
           contactId={id}
           viewModel={localizeOrbitTree(
             contactDetailRouteToOrbitContactsViewModel(routeModel, language),

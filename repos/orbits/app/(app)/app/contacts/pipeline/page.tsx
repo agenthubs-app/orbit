@@ -13,7 +13,7 @@ import {
   loadAppContactsRouteViewModel,
   type AppContactsSearchParams,
 } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import { OrbitRealCardsPipeline } from "../orbit-real-contacts";
+import { OrbitRealCardsPipelineView } from "../orbit-real-cards-pipeline-view";
 
 interface AppContactsPipelinePageProps {
   searchParams?: Promise<AppContactsSearchParams>;
@@ -30,7 +30,7 @@ export default async function AppContactsPipelinePage({
       <OrbitVisualFreezeRuntime />
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-contacts-pipeline-route">
-          <OrbitRealCardsPipeline
+          <OrbitRealCardsPipelineView
             viewModel={contactsRouteToOrbitContactsViewModel(routeModel.payload)}
           />
         </div>

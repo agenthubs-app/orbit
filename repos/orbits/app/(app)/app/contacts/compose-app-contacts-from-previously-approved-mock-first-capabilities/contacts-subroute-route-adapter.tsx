@@ -2,6 +2,7 @@ import { StateView } from "../../../../../shared/ui/state-view";
 import type {
   OrbitContactView,
   OrbitContactsViewModel,
+  OrbitContactStrength,
   OrbitIntroStatus,
   OrbitContactPipelineStatus,
 } from "../../orbit-contacts-route-view-model";
@@ -55,6 +56,34 @@ function sourceKindForContact(
   }
 
   return "exchange";
+}
+
+function strengthForContact(
+  contact: AppContactListItemViewModel,
+): OrbitContactStrength {
+  const highValue = contact.relationshipValueLabels.some((label) =>
+    /commercial|strategic|invest/i.test(label),
+  );
+
+  if (highValue) {
+    return "strong";
+  }
+
+  return contact.needsAttention ? "weak" : "medium";
+}
+
+function nextActionForContact(
+  contact: AppContactListItemViewModel,
+): OrbitContactView["nextAction"] {
+  if (!contact.nextAction) {
+    return null;
+  }
+
+  return {
+    text: contact.nextAction,
+    reason: contact.relationshipContextCopy || contact.valueRationale || contact.nextAction,
+    evidenceId: contact.evidenceIds[0],
+  };
 }
 
 function contactToOrbitView(
@@ -125,6 +154,11 @@ function contactToOrbitView(
     stage: contact.statusLabel,
     title: contact.role,
     wechat: "",
+    strength: strengthForContact(contact),
+    valueTags: Array.from(contact.relationshipValueLabels).slice(0, 3),
+    nextAction: nextActionForContact(contact),
+    lastInteraction: "",
+    dormant: false,
   };
 }
 

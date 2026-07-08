@@ -19,11 +19,20 @@ export interface OrbitContactView {
   phone: string;
   pipelineStatus: OrbitContactPipelineStatus;
   seeking: string;
-  source: "exchange" | "scan" | "manual";
+  source: OrbitContactSource;
   stage: string;
   title: string;
   wechat: string;
+  // —— 名片夹复刻新增（静态演示数据）——
+  strength: OrbitContactStrength;
+  valueTags: string[];
+  nextAction: { text: string; reason: string; evidenceId?: string } | null;
+  lastInteraction: string;
+  dormant: boolean;
 }
+
+export type OrbitContactStrength = "strong" | "medium" | "weak" | "dormant";
+export type OrbitContactSource = "exchange" | "scan" | "manual" | "qr" | "event" | "referral" | "contact";
 
 export interface OrbitContactNoteView {
   body: string;

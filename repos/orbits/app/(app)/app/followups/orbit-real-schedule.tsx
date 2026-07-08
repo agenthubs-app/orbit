@@ -64,26 +64,26 @@ function SchedRow({
   const status = scheduleStatusColor(schedule.status);
 
   return (
-    <div className="card" style={{ alignItems: "flex-start", display: "flex", gap: 13, opacity: dim ? 0.55 : 1, padding: 14 }}>
+    <div className="card" style={{ alignItems: "flex-start", display: "flex", gap: 14, opacity: dim ? 0.55 : 1, padding: 14 }}>
       <div style={{ flexShrink: 0, textAlign: "center", width: 50 }}>
-        <div className="mono" style={{ color: "var(--ink)", fontSize: 16, fontWeight: 700 }}>{schedule.time}</div>
-        <div style={{ color: "var(--text-3)", fontSize: 10.5, marginTop: 2 }}>{schedule.dur}</div>
+        <div className="mono" style={{ color: "var(--ink)", fontSize: 16, fontWeight: 600 }}>{schedule.time}</div>
+        <div style={{ color: "var(--text-3)", fontSize: 11, marginTop: 2 }}>{schedule.dur}</div>
       </div>
       <div style={{ alignSelf: "stretch", background: "var(--border)", width: 1 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ alignItems: "center", display: "flex", gap: 9 }}>
+        <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
           <Avatar letter={connection.initial} g={connection.g} size={30} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{connection.displayName}</div>
-            <div style={{ color: "var(--text-3)", fontSize: 11.5 }}>{connection.title} · {connection.company}</div>
+            <div style={{ color: "var(--text-3)", fontSize: 12 }}>{connection.title} · {connection.company}</div>
           </div>
-          <span style={{ alignItems: "center", background: status.soft, borderRadius: 999, color: status.c, display: "inline-flex", fontSize: 11.5, fontWeight: 600, gap: 5, height: 22, padding: "0 9px" }}>
-            <span style={{ background: status.c, borderRadius: 999, height: 6, width: 6 }} />
+          <span style={{ alignItems: "center", background: status.soft, borderRadius: "var(--r-pill)", color: status.c, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 6, height: 22, padding: "0 9px" }}>
+            <span style={{ background: status.c, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
             {schedule.status}
           </span>
         </div>
         <div style={{ color: "var(--text-2)", fontSize: 13, marginTop: 9 }}>{schedule.topic}</div>
-        <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 12, gap: 5, marginTop: 7 }}>
+        <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 12, gap: 6, marginTop: 7 }}>
           <Icon name="pin" size={12} />
           {schedule.place}
         </div>
@@ -144,20 +144,20 @@ function MonthCalendar({
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <h2 className="h-title" style={{ color: "var(--ink)" }}>{language === "en" ? `${MON_EN[m]} ${y}` : `${y} 年 ${m + 1} 月`}</h2>
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" className="hit-44" onClick={() => shift(-1)} aria-label={t({ en: "Previous month", zh: "上个月" })} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 34, justifyContent: "center", width: 34 }}>
+          <button type="button" className="hit-44" onClick={() => shift(-1)} aria-label={t({ en: "Previous month", zh: "上个月" })} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-sm)", color: "var(--text-2)", cursor: "pointer", display: "flex", height: 34, justifyContent: "center", width: 34 }}>
             <Icon name="chevL" size={18} />
           </button>
-          <button type="button" onClick={() => setView({ y: today.y, m: today.m })} style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10, color: "var(--text-2)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 550, height: 34, padding: "0 12px" }}>
+          <button type="button" onClick={() => setView({ y: today.y, m: today.m })} style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-sm)", color: "var(--text-2)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, height: 34, padding: "0 12px" }}>
             {t({ en: "Today", zh: "今天" })}
           </button>
-          <button type="button" className="hit-44" onClick={() => shift(1)} aria-label={t({ en: "Next month", zh: "下个月" })} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 10, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 34, justifyContent: "center", width: 34 }}>
+          <button type="button" className="hit-44" onClick={() => shift(1)} aria-label={t({ en: "Next month", zh: "下个月" })} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-sm)", color: "var(--text-2)", cursor: "pointer", display: "flex", height: 34, justifyContent: "center", width: 34 }}>
             <Icon name="chevR" size={18} />
           </button>
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 6 }}>
         {(language === "en" ? WEEKDAYS_EN : WEEKDAYS).map((weekday, index) => (
-          <div key={weekday} style={{ color: index === 0 || index === 6 ? "var(--rose)" : "var(--text-3)", fontSize: 11.5, fontWeight: 600, paddingBottom: 6, textAlign: "center" }}>{weekday}</div>
+          <div key={weekday} style={{ color: index === 0 || index === 6 ? "var(--rose)" : "var(--text-3)", fontSize: 12, fontWeight: 600, paddingBottom: 6, textAlign: "center" }}>{weekday}</div>
         ))}
       </div>
       <div style={{ display: "grid", gap: compact ? 3 : 5, gridTemplateColumns: "repeat(7, 1fr)" }}>
@@ -173,15 +173,15 @@ function MonthCalendar({
               type="button"
               className="hit-44"
               onClick={() => setSelected({ y, m, d: day })}
-              style={{ background: selectedCell ? "var(--accent-softer)" : todayCell ? "var(--surface-2)" : "transparent", border: `1px solid ${selectedCell ? "var(--accent)" : "transparent"}`, borderRadius: 12, cursor: "pointer", display: "flex", flexDirection: "column", fontFamily: "var(--ff)", gap: 3, minHeight: compact ? 46 : 76, overflow: "hidden", padding: compact ? "5px 3px" : "7px 7px", textAlign: "left" }}
+              style={{ background: selectedCell ? "var(--accent-softer)" : todayCell ? "var(--surface-2)" : "transparent", border: `1px solid ${selectedCell ? "var(--accent)" : "transparent"}`, borderRadius: 12, cursor: "pointer", display: "flex", flexDirection: "column", fontFamily: "var(--ff)", gap: 4, minHeight: compact ? 46 : 76, overflow: "hidden", padding: compact ? "5px 3px" : "7px 7px", textAlign: "left" }}
             >
               <span style={{ alignItems: "center", display: "flex", justifyContent: compact ? "center" : "flex-start" }}>
-                <span style={{ alignItems: "center", background: todayCell ? "var(--accent)" : "transparent", borderRadius: 999, color: todayCell ? "var(--on-dark)" : selectedCell ? "var(--accent)" : "var(--ink)", display: "flex", fontFamily: "var(--ff-tight)", fontSize: 14, fontWeight: todayCell ? 800 : 600, height: 24, justifyContent: "center", width: 24 }}>{day}</span>
+                <span style={{ alignItems: "center", background: todayCell ? "var(--accent)" : "transparent", borderRadius: "var(--r-pill)", color: todayCell ? "var(--on-dark)" : selectedCell ? "var(--accent)" : "var(--ink)", display: "flex", fontFamily: "var(--ff-tight)", fontSize: 14, fontWeight: todayCell ? 800 : 600, height: 24, justifyContent: "center", width: 24 }}>{day}</span>
               </span>
               {compact ? (
                 events.length ? (
-                  <span style={{ display: "flex", gap: 3, justifyContent: "center" }}>
-                    {events.slice(0, 3).map((event, eventIndex) => <span key={`${event.id}-${eventIndex}`} style={{ background: scheduleStatusColor(event.status).c, borderRadius: 999, height: 5, width: 5 }} />)}
+                  <span style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                    {events.slice(0, 3).map((event, eventIndex) => <span key={`${event.id}-${eventIndex}`} style={{ background: scheduleStatusColor(event.status).c, borderRadius: "var(--r-pill)", height: 5, width: 5 }} />)}
                   </span>
                 ) : null
               ) : (
@@ -189,12 +189,12 @@ function MonthCalendar({
                   {events.slice(0, 2).map((event) => {
                     const status = scheduleStatusColor(event.status);
                     return (
-                      <span key={event.id} style={{ background: status.soft, borderRadius: 5, color: status.c, display: "block", fontSize: 10.5, fontWeight: 600, lineHeight: 1.45, overflow: "hidden", padding: "1px 5px", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span key={event.id} style={{ background: status.soft, borderRadius: 5, color: status.c, display: "block", fontSize: 11, fontWeight: 600, lineHeight: 1.45, overflow: "hidden", padding: "1px 5px", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {event.time} {connectionById(connections, event.cid).displayName}
                       </span>
                     );
                   })}
-                  {events.length > 2 ? <span style={{ color: "var(--text-3)", fontSize: 10, paddingLeft: 4 }}>+{events.length - 2}</span> : null}
+                  {events.length > 2 ? <span style={{ color: "var(--text-3)", fontSize: 11, paddingLeft: 4 }}>+{events.length - 2}</span> : null}
                 </span>
               )}
             </button>
@@ -233,7 +233,7 @@ function ScheduleListPanel({
         <h3 className="h-section" style={{ margin: 0 }}>{language === "en" ? `${MON_EN[view.m]} schedule` : `${view.m + 1} 月安排`}</h3>
         <span className="mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{t({ en: `${list.length} meetings`, zh: `${list.length} 场` })}</span>
       </div>
-      {list.length === 0 ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 13.5, padding: 20, textAlign: "center" }}>{t({ en: "No meetings this month. Pick a date on the calendar to schedule one.", zh: "本月暂无约见。点左侧日历安排一场。" })}</div> : null}
+      {list.length === 0 ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 14, padding: 20, textAlign: "center" }}>{t({ en: "No meetings this month. Pick a date on the calendar to schedule one.", zh: "本月暂无约见。点左侧日历安排一场。" })}</div> : null}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         {groups.map((dateStr) => {
           const date = new Date(dateStr);
@@ -243,7 +243,7 @@ function ScheduleListPanel({
           return (
             <div key={dateStr}>
               <div style={{ alignItems: "center", display: "flex", gap: 10, margin: "0 0 10px" }}>
-                <span style={{ alignItems: "center", color: selectedDay ? "var(--accent)" : "var(--ink)", display: "inline-flex", fontFamily: "var(--ff-tight)", fontSize: 15, fontWeight: 700, gap: 7 }}>
+                <span style={{ alignItems: "center", color: selectedDay ? "var(--accent)" : "var(--ink)", display: "inline-flex", fontFamily: "var(--ff-tight)", fontSize: 15, fontWeight: 600, gap: 8 }}>
                   {language === "en" ? `${MON_EN[view.m]} ${day}` : `${view.m + 1}月${day}日`}
                   <span style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 500 }}>{language === "en" ? weekday(dateStr) : `周${weekday(dateStr)}`}</span>
                 </span>
@@ -277,15 +277,15 @@ function AddScheduleModal({
   return (
     <ModalShell onClose={onClose} maxW={520} step={t({ en: "Schedule a meeting", zh: "安排约见" })}>
       <h2 className="h-title" style={{ margin: "4px 0 6px" }}>{t({ en: "Schedule a meeting", zh: "安排约见" })}</h2>
-      <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: "0 0 18px" }}>{t({ en: "Pick someone from your contacts, set up a meeting, and it syncs to your relationship history automatically.", zh: "从名片夹选择一个人，约一次见面，自动同步到你们的交往记录。" })}</p>
-      <label className="field-label">{t({ en: "Select a contact", zh: "选择联系人" })}</label>
-      <div className="scroll" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 220, overflowY: "auto" }}>
+      <p style={{ color: "var(--text-2)", fontSize: 14, margin: "0 0 18px" }}>{t({ en: "Pick someone from your contacts, set up a meeting, and it syncs to your relationship history automatically.", zh: "从名片夹选择一个人，约一次见面，自动同步到你们的交往记录。" })}</p>
+      <div className="field-label" id="followup-contact-label">{t({ en: "Select a contact", zh: "选择联系人" })}</div>
+      <div aria-labelledby="followup-contact-label" className="scroll" role="group" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 220, overflowY: "auto" }}>
         {connections.map((connection) => (
           <button
             key={connection.id}
             type="button"
             onClick={() => setCid(connection.id)}
-            style={{ alignItems: "center", background: cid === connection.id ? "var(--accent-softer)" : "var(--surface)", border: `1px solid ${cid === connection.id ? "var(--accent)" : "var(--border)"}`, borderRadius: 12, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 11, padding: 11, textAlign: "left" }}
+            style={{ alignItems: "center", background: cid === connection.id ? "var(--accent-softer)" : "var(--surface)", border: `1px solid ${cid === connection.id ? "var(--accent)" : "var(--border)"}`, borderRadius: 12, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: 11, textAlign: "left" }}
           >
             <Avatar letter={connection.initial} g={connection.g} size={36} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -298,17 +298,17 @@ function AddScheduleModal({
       </div>
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
         <div>
-          <label className="field-label">{t({ en: "Date", zh: "日期" })}</label>
-          <input className="field" defaultValue="2026-06-28" />
+          <label className="field-label" htmlFor="followup-date">{t({ en: "Date", zh: "日期" })}</label>
+          <input className="field" defaultValue="2026-06-28" id="followup-date" />
         </div>
         <div>
-          <label className="field-label">{t({ en: "Time", zh: "时间" })}</label>
-          <input className="field" defaultValue="15:00" />
+          <label className="field-label" htmlFor="followup-time">{t({ en: "Time", zh: "时间" })}</label>
+          <input className="field" defaultValue="15:00" id="followup-time" />
         </div>
       </div>
       <div style={{ marginTop: 12 }}>
-        <label className="field-label">{t({ en: "Topic", zh: "议题" })}</label>
-        <input className="field" placeholder={t({ en: "What you'd like to talk about", zh: "想聊的事情" })} />
+        <label className="field-label" htmlFor="followup-topic">{t({ en: "Topic", zh: "议题" })}</label>
+        <input className="field" id="followup-topic" placeholder={t({ en: "What you'd like to talk about", zh: "想聊的事情" })} />
       </div>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
         <button className="btn btn-ghost" onClick={onClose}>{t({ en: "Cancel", zh: "取消" })}</button>
@@ -351,7 +351,7 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
             <div>
               <div className="eyebrow">SCHEDULE</div>
               <h1 className="h-display" style={{ margin: "2px 0 0" }}>{t({ en: "Schedule", zh: "日程安排" })}</h1>
-              <div style={{ color: "var(--text-3)", fontSize: 13.5, marginTop: 4 }}>{t({ en: "Pick someone from your contacts to meet, with relationship history synced automatically", zh: "从名片夹选人约见，自动同步交往记录" })}</div>
+              <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 4 }}>{t({ en: "Pick someone from your contacts to meet, with relationship history synced automatically", zh: "从名片夹选人约见，自动同步交往记录" })}</div>
             </div>
             <button className="btn btn-primary" onClick={() => setAddOpen(true)}>
               <Icon name="plus" size={16} color="var(--on-dark)" />
