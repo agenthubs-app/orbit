@@ -67,6 +67,48 @@ html[data-theme="light"] body:has([data-orbit-real-page]) {
   background: radial-gradient(130% 100% at 50% 14%, #ffffff 0%, #f4f7f5 42%, #eef2f0 100%) fixed #f4f7f5;
 }
 
+/* Chrome surfaces that hardcode dark glass (not token-driven) — restated in
+   light glass so bars/badges/sidebars don't read as grey blocks in light mode. */
+html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav {
+  background: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid var(--hairline);
+}
+html[data-theme="light"] [data-orbit-real-page] .orbit-organizer-topnav {
+  background: rgba(255, 255, 255, 0.78);
+}
+html[data-theme="light"] [data-orbit-real-page] .orbit-mobile-bar,
+html[data-theme="light"] [data-orbit-real-page] .orbit-sticky-cta,
+html[data-theme="light"] [data-orbit-real-page] .orbit-subpage-header,
+html[data-theme="light"] [data-orbit-real-page] .orbit-host-mobile-next-bar,
+html[data-theme="light"] [data-orbit-real-page] .orbit-host-mobile-create-bar {
+  background: rgba(255, 255, 255, 0.88);
+}
+html[data-theme="light"] [data-orbit-real-page] .orbit-graph-legend,
+html[data-theme="light"] [data-orbit-real-page] .orbit-party-icon-button,
+html[data-theme="light"] [data-orbit-real-page] .orbit-organizer-back {
+  background: var(--surface-2);
+}
+html[data-theme="light"] [data-orbit-real-page] .orbit-card-date,
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-event-date,
+html[data-theme="light"] [data-orbit-real-page] .orbit-organizer-date {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-secondary,
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-phase-card,
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-info-card,
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-small-link.is-button,
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-registered-card,
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-empty,
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-loading,
+html[data-theme="light"] [data-orbit-real-page] .orbit-landing-mobile-event-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+html[data-theme="light"] [data-orbit-real-page] .orbit-platform-sidebar {
+  background: var(--surface-2);
+}
+
 .orbit-theme-toggle {
   position: fixed;
   right: 18px;
