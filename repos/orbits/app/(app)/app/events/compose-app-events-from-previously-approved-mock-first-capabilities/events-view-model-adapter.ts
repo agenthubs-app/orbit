@@ -6,6 +6,7 @@ import type {
   OrbitLandingEventView,
   OrbitLandingViewModel,
 } from "../../orbit-landing-route-view-model";
+import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 
 type AppEventsSuccessRouteViewModel = Extract<
   AppEventsRouteViewModel,
@@ -64,6 +65,7 @@ function eventChoiceToLandingEvent(
   const description = [event.relationshipValue, event.nextAction]
     .filter(Boolean)
     .join(" ");
+  const sceneAsset = getDemoEventSceneAsset(event.id);
 
   return {
     address: event.venue,
@@ -88,13 +90,13 @@ function eventChoiceToLandingEvent(
     cap: Math.max(20, attendees.length + 20),
     code: event.id,
     descriptionZh: description,
-    detailLogoUrl: "",
+    detailLogoUrl: sceneAsset?.src ?? "",
     endsAt: event.endsAt,
     feeLabel: "Source-backed",
     host: "Orbit",
     id: event.id,
     industry: "Relationship",
-    logoUrl: "",
+    logoUrl: sceneAsset?.src ?? "",
     mapX: 38 + ((index * 11) % 34),
     mapY: 36 + ((index * 7) % 32),
     name: event.title,

@@ -60,6 +60,7 @@ export const APP_EVENT_DETAIL_COMPOSED_CAPABILITIES = [
 ] as const;
 
 const defaultWantConnectTargetContactId = "contact:priya-shah";
+const canonicalEventRelationshipContextFallbackIds = new Set(["event_001"]);
 
 export type AppEventDetailRouteScenario = "empty" | "pending" | "failure";
 export type AppEventDetailRouteAction = "want-to-connect";
@@ -317,6 +318,15 @@ function normalizeAction(action?: string | null): AppEventDetailRouteAction | nu
   }
 
   return null;
+}
+
+function relationshipContextEventIdFor(eventId: string): string {
+  // Orbit AI 推荐的 event_001 有自己的 canonical event detail record；
+  // 关系上下文仍复用现有 demo-event-1 capability payload，直到 live provider
+  // 为该推荐活动补齐 roster/recommendation/readiness 等同构记录。
+  return canonicalEventRelationshipContextFallbackIds.has(eventId)
+    ? APP_EVENT_DETAIL_EVENT_ID
+    : eventId;
 }
 
 function createBoundaryModel(
@@ -677,34 +687,35 @@ export async function loadAppEventDetailRoute({
   }
 
   const routeScenario = normalizeScenario(scenario);
+  const relationshipContextEventId = relationshipContextEventIdFor(eventId);
   const eventResult = await services.events.getEvent({
     eventId,
     scenario: routeScenario,
   });
   const attendeeRosterResult = await services.attendeeRoster.getAttendeeRoster({
-    eventId,
+    eventId: relationshipContextEventId,
     scenario: routeScenario,
   });
   const recommendationResult = await services.recommendations.listEventRecommendations({
-    eventId,
+    eventId: relationshipContextEventId,
     limit: 3,
     scenario: routeScenario,
   });
   const readinessResult = await services.readiness.getReadiness({
-    eventId,
+    eventId: relationshipContextEventId,
     scenario: routeScenario,
   });
   const wantConnectMatchesResult = await services.wantConnect.listMatches({
-    eventId,
+    eventId: relationshipContextEventId,
     scenario: routeScenario,
   });
   const encounterNoteResult = await services.encounterNotes.createEncounterNote({
     contactId: defaultWantConnectTargetContactId,
-    eventId,
+    eventId: relationshipContextEventId,
     scenario: routeScenario,
   });
   const postEventReviewResult = await services.postEventReview.getPostEventReview({
-    eventId,
+    eventId: relationshipContextEventId,
     scenario: routeScenario,
   });
   const baseResults = [
@@ -758,7 +769,7 @@ export async function loadAppEventDetailRoute({
 
   const openingLineResult = await services.recommendations.composeOpeningLine({
     attendeeId: topRecommendation.attendee.attendeeId,
-    eventId,
+    eventId: relationshipContextEventId,
     scenario: routeScenario,
     style: "warm_context",
   });
@@ -782,7 +793,7 @@ export async function loadAppEventDetailRoute({
       ? buildWantConnectActionResult(
           await services.wantConnect.createWantToConnectIntent({
             actorContactId: "contact:operator",
-            eventId,
+            eventId: relationshipContextEventId,
             targetContactId: selectWantConnectTargetContactId(
               wantConnectMatchesResult.data,
               targetContactId,

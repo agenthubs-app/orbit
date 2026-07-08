@@ -29,6 +29,7 @@ import {
   mockEventFailureProvenance,
   mockEventListFixture,
   mockEventRecords,
+  mockOrbitAiRecommendedEventDetailRecord,
   mockImportedEventRecords,
   mockManualEventCreationFixture,
   mockPendingEventListFixture,
@@ -323,7 +324,10 @@ export function createMockEventCrudAndImportService(): EventCrudAndImportService
         return failure("EVENTS_EVENT_ID_REQUIRED");
       }
 
-      const event = mockEventRecords.find((record) => record.id === eventId);
+      const event =
+        eventId === mockOrbitAiRecommendedEventDetailRecord.id
+          ? mockOrbitAiRecommendedEventDetailRecord
+          : mockEventRecords.find((record) => record.id === eventId);
 
       if (!event) {
         return failure("EVENTS_EVENT_NOT_FOUND");

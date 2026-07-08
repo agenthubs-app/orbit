@@ -180,6 +180,25 @@ export const mockEventRecords: readonly EventRecord[] = [
   }),
 ];
 
+export const mockOrbitAiRecommendedEventDetailRecord = createEventRecord({
+  id: "event_001",
+  title: "Seed Investor and Founder Matching Salon",
+  description:
+    "Source-backed salon for meeting seed investors and collecting founder feedback before outreach.",
+  venue: "Orbit Relationship Room",
+  startsAt: "2026-07-09T09:00:00+09:00",
+  endsAt: "2026-07-09T12:00:00+09:00",
+  status: "confirmed",
+  sourceMetadata: mockEventOrigins.manual,
+  evidenceId: "evidence:events-manual-note",
+  relationshipContext:
+    "Orbit AI event recommendation evidence links this salon to investor warm-intro and founder feedback goals.",
+  recommendedPreparation:
+    "Review attendee intent, event topic, schedule timing, relationship opportunities, and profile-fit evidence before attending.",
+  nextAction:
+    "Review source-backed reasons before registration, calendar holds, messages, or notifications.",
+});
+
 export const mockImportedEventRecords: readonly ImportedEventRecord[] = [
   {
     id: "imported-event-record:calendar-climate-founders",

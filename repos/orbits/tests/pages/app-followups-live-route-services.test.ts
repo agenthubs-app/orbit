@@ -253,15 +253,17 @@ test("/app/schedule compatibility route renders the same live schedule UI", asyn
   );
 
   const pageSource = source(scheduleRoutePath);
-  assert.match(pageSource, /AppFollowupsPage/);
+  assert.match(pageSource, /loadAppScheduleRouteViewModel/);
+  assert.match(pageSource, /AppScheduleSuccessView/);
   assert.doesNotMatch(pageSource, /AppFollowupsCommandCenter/);
 
   await withUnconfiguredLiveFollowups(async () => {
     const Page = (await import("../../app/(app)/app/schedule/page")).default;
     const html = renderToStaticMarkup(await Page());
 
-    assert.match(html, /shared-ui-state-view/);
-    assert.match(html, /Follow-ups could not load/);
+    assert.match(html, /data-orbit-route="app-schedule-route"/);
+    assert.match(html, /关系安排|Schedule/);
+    assert.doesNotMatch(html, /Follow-ups could not load/);
   });
 });
 

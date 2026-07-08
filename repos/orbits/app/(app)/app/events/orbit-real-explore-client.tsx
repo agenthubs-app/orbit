@@ -6,6 +6,7 @@ import type { OrbitLandingEventView, OrbitLandingViewModel } from "../orbit-land
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref, PublicTopNav } from "../orbit-public-shell";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
+import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 
 const tz = { timeZone: "Asia/Tokyo" };
 const statusFilters = ["all", "upcoming", "active", "ended"] as const;
@@ -14,6 +15,9 @@ interface MappedEvent {
   code: string;
   day: string;
   g: string;
+  imageAlt: string;
+  imageAssetId: string;
+  imageSourceLabel: string;
   id: string;
   imageUrl: string;
   month: string;
@@ -51,12 +55,17 @@ function eventTopics(event: OrbitLandingEventView) {
 function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEvent {
   const date = formatEventDate(event, language);
   const name = event.name || event.code || (language === "en" ? "Untitled event" : "未命名活动");
+  const sceneAsset = getDemoEventSceneAsset(event.id);
+
   return {
     code: event.code,
     day: date.day,
     g: gradientFromString(event.code || name),
+    imageAlt: sceneAsset?.alt ?? name,
+    imageAssetId: sceneAsset?.assetId ?? "",
+    imageSourceLabel: sceneAsset?.sourceLabel ?? "",
     id: event.id || event.code,
-    imageUrl: event.logoUrl,
+    imageUrl: sceneAsset?.src ?? event.logoUrl,
     month: date.month,
     name,
     people: event.participantCount,
@@ -76,8 +85,8 @@ function EventCard({ event }: { event: OrbitLandingEventView }) {
 
   return (
     <a className="orbit-card-link" href={preserveHref(productHref(`/events/${event.code}`))}>
-      <article className="card card-hover orbit-event-card">
-        <Cover className="orbit-card-cover" g={mapped.g} imageAlt={mapped.name} imageUrl={mapped.imageUrl} monogram={mapped.imageUrl ? null : { text: mapped.name.slice(0, 1), size: 46 }} style={{ height: undefined, opacity: event.status === "ended" ? 0.72 : 1 }}>
+      <article className="card card-hover orbit-event-card" data-demo-visual-asset-id={mapped.imageAssetId || undefined} data-demo-visual-source={mapped.imageSourceLabel || undefined} data-demo-visual-source-label={mapped.imageSourceLabel || undefined}>
+        <Cover className="orbit-card-cover" g={mapped.g} imageAlt={mapped.imageAlt} imageUrl={mapped.imageUrl} monogram={mapped.imageUrl ? null : { text: mapped.name.slice(0, 1), size: 46 }} style={{ height: undefined, opacity: event.status === "ended" ? 0.72 : 1 }}>
           <div style={{ left: 12, position: "absolute", top: 12 }}><StatusBadge language={language} status={event.status} /></div>
           <div className="orbit-card-date">
             <div style={{ color: "var(--rose)", fontSize: 10, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
@@ -142,7 +151,7 @@ function MapEventCard({ item }: { item: MappedEvent }) {
 
   return (
     <div className="card" style={{ alignItems: "center", boxShadow: "var(--sh-lg)", display: "flex", gap: 13, padding: 14 }}>
-      <Cover g={item.g} monogram={{ text: item.name.slice(0, 1), size: 26 }} style={{ borderRadius: 13, flexShrink: 0, height: 64, width: 64 }}>
+      <Cover g={item.g} imageAlt={item.imageAlt} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 26 }} style={{ borderRadius: 13, flexShrink: 0, height: 64, width: 64 }}>
         <div style={{ left: 6, position: "absolute", top: 6 }}><StatusBadge language={language} status={item.status} /></div>
       </Cover>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -164,8 +173,8 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
   const actionLabel = item.status === "upcoming" || item.status === "active" ? t({ en: "Register", zh: "报名" }) : t({ en: "View", zh: "查看" });
 
   return (
-    <a className="card card-hover" href={preserveHref(productHref(`/events/${item.code}`))} style={{ display: "block", overflow: "hidden", textDecoration: "none" }}>
-      <Cover g={item.g} monogram={{ text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
+    <a className="card card-hover" data-demo-visual-asset-id={item.imageAssetId || undefined} data-demo-visual-source={item.imageSourceLabel || undefined} data-demo-visual-source-label={item.imageSourceLabel || undefined} href={preserveHref(productHref(`/events/${item.code}`))} style={{ display: "block", overflow: "hidden", textDecoration: "none" }}>
+      <Cover g={item.g} imageAlt={item.imageAlt} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
         <div style={{ left: 11, position: "absolute", top: 11 }}><StatusBadge language={language} status={item.status} /></div>
         <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 9, minWidth: 42, padding: "4px 8px", position: "absolute", right: 11, textAlign: "center", top: 11 }}>
           <div style={{ color: "var(--rose)", fontSize: 9.5, fontWeight: 700 }}>{item.month}</div>
@@ -249,7 +258,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
                     const on = selectedItem?.id === item.id;
                     return (
                       <button key={item.id} className="card-hover" onClick={() => setSelectedId(item.id)} style={{ background: on ? "var(--accent-softer)" : "var(--surface)", border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, borderRadius: 13, cursor: "pointer", display: "flex", gap: 12, padding: 11, textAlign: "left" }} type="button">
-                        <Cover g={item.g} monogram={{ text: item.name.slice(0, 1), size: 22 }} style={{ borderRadius: 11, flexShrink: 0, height: 54, width: 54 }} />
+                        <Cover g={item.g} imageAlt={item.imageAlt} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 22 }} style={{ borderRadius: 11, flexShrink: 0, height: 54, width: 54 }} />
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span className="h-section" style={{ color: "var(--ink)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
                           <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginTop: 2 }}>{[item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`}` : item.time, item.place].filter(Boolean).join(" · ")}</span>
