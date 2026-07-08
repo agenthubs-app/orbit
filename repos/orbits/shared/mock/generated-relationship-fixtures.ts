@@ -103,14 +103,14 @@ export const generatedRelationshipFixtures = {
     },
     {
       "id": "event_06",
-      "name": "名刺プロフィール生成ワークショップ / Business Card Profile Generation Workshop",
+      "name": "半導体×製造サミット / Semiconductor × Manufacturing Summit",
       "location": "Shanghai",
       "startsAt": "2026-01-15T10:00:00+09:00",
       "endsAt": "2026-01-15T12:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_06",
-        "label": "名刺プロフィール生成ワークショップ / 名片资料生成工作坊 / Business Card Profile Generation Workshop"
+        "label": "半導体×製造サミット / 半导体 × 制造峰会 / Semiconductor × Manufacturing Summit"
       },
       "evidenceIds": [
         "evidence:event:06"
@@ -118,14 +118,14 @@ export const generatedRelationshipFixtures = {
     },
     {
       "id": "event_07",
-      "name": "イベント後フォローアップ作戦会議 / Post-Event Follow-Up Strategy Session",
+      "name": "FinTech Tokyo ミキサー / FinTech Tokyo Mixer",
       "location": "Taipei",
       "startsAt": "2026-02-15T10:00:00+09:00",
       "endsAt": "2026-02-15T12:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_07",
-        "label": "イベント後フォローアップ作戦会議 / 会后跟进策略会 / Post-Event Follow-Up Strategy Session"
+        "label": "FinTech Tokyo ミキサー / FinTech Tokyo Mixer / FinTech Tokyo Mixer"
       },
       "evidenceIds": [
         "evidence:event:07"
@@ -133,14 +133,14 @@ export const generatedRelationshipFixtures = {
     },
     {
       "id": "event_08",
-      "name": "休眠関係リカバリー会 / Dormant Relationship Reactivation Lab",
+      "name": "AI創業者ナイト / AI Founders Night",
       "location": "Tokyo",
       "startsAt": "2026-03-15T10:00:00+09:00",
       "endsAt": "2026-03-15T12:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_08",
-        "label": "休眠関係リカバリー会 / 沉睡关系重新激活会 / Dormant Relationship Reactivation Lab"
+        "label": "AI創業者ナイト / AI Founders Night / AI Founders Night"
       },
       "evidenceIds": [
         "evidence:event:08"
@@ -148,14 +148,14 @@ export const generatedRelationshipFixtures = {
     },
     {
       "id": "event_09",
-      "name": "重複コンタクト整理クリニック / Duplicate Contact Merge Clinic",
+      "name": "D2Cブランド海外展開サロン / D2C Brand Global Expansion Salon",
       "location": "Osaka",
       "startsAt": "2026-04-15T10:00:00+09:00",
       "endsAt": "2026-04-15T12:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_09",
-        "label": "重複コンタクト整理クリニック / 重复联系人合并诊断会 / Duplicate Contact Merge Clinic"
+        "label": "D2Cブランド海外展開サロン / D2C 品牌出海沙龙 / D2C Brand Global Expansion Salon"
       },
       "evidenceIds": [
         "evidence:event:09"
@@ -163,14 +163,14 @@ export const generatedRelationshipFixtures = {
     },
     {
       "id": "event_10",
-      "name": "低品質マッチ排除レビュー / Bad Match Filtering Review",
+      "name": "東京ファッションデザインウィーク Mixer / Tokyo Fashion Design Week Mixer",
       "location": "Shanghai",
       "startsAt": "2026-05-15T10:00:00+09:00",
       "endsAt": "2026-05-15T12:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_10",
-        "label": "低品質マッチ排除レビュー / 低质量匹配过滤复盘会 / Bad Match Filtering Review"
+        "label": "東京ファッションデザインウィーク Mixer / 东京时尚设计周 Mixer / Tokyo Fashion Design Week Mixer"
       },
       "evidenceIds": [
         "evidence:event:10"
@@ -87130,7 +87130,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:event:06",
       "sourceType": "event_import",
       "sourceId": "event_06",
-      "summary": "JA: 名刺、会話メモ、公開プロフィールから、信頼できる連絡先情報とフォローアップ文脈を作る実践会。 ZH: 用名片、会话笔记和公开资料生成可信联系人信息与后续跟进语境的实操工作坊。 EN: A workshop for turning business cards, conversation notes, and public profiles into trusted contact context.",
+      "summary": "JA: 半導体と製造業のリーダーが集まり、日中サプライチェーンと製造DXの提携を探るサミット。 ZH: 半导体与制造业负责人齐聚，探讨中日供应链与制造业数字化转型合作的峰会。 EN: A summit where semiconductor and manufacturing leaders explore Japan-China supply-chain and manufacturing-DX partnerships.",
       "occurredAt": "2026-01-15T10:00:00+09:00",
       "confidence": 0.94,
       "createdBy": "profile_orbit_generated_operator"

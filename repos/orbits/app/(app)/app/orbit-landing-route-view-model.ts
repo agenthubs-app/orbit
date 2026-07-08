@@ -18,6 +18,7 @@ import {
 } from "./orbit-hybrid-route-data";
 
 export interface OrbitLandingEventView {
+  about?: OrbitEventAboutSection[];
   address: string;
   agenda: OrbitEventAgendaItem[];
   brandColor: string;
@@ -51,6 +52,15 @@ export interface OrbitEventAgendaItem {
   description: string;
   label: string;
   time: string;
+}
+
+// A labeled "about" section (overview / content / who / logistics) rendered as a
+// distinct block on the event detail page. Already localized to the page language
+// by the event presentation layer before it reaches the component.
+export interface OrbitEventAboutSection {
+  body: string;
+  icon: string;
+  label: string;
 }
 
 export interface OrbitEventAttendeeView {

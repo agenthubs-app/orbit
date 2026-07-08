@@ -170,7 +170,24 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
         {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
       </section>
 
-      {event.descriptionZh ? <section><h3 className="h-section" style={{ margin: "0 0 10px" }}>{t({ en: "About this event", zh: "关于活动" })}</h3><p style={{ fontSize: 15, lineHeight: 1.7, color: "var(--text-2)", margin: 0, whiteSpace: "pre-line" }}>{event.descriptionZh}</p></section> : null}
+      {event.about && event.about.length ? (
+        <section>
+          <h3 className="h-section" style={{ margin: "0 0 14px" }}>{t({ en: "About this event", zh: "关于活动" })}</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {event.about.map((section) => (
+              <div key={section.label} className="card-flat" style={{ padding: 16, borderLeft: "3px solid var(--accent)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span aria-hidden="true" style={{ fontSize: 17 }}>{section.icon}</span>
+                  <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>{section.label}</h4>
+                </div>
+                <p style={{ fontSize: 14.5, lineHeight: 1.75, color: "var(--text-2)", margin: 0, whiteSpace: "pre-line" }}>{section.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : event.descriptionZh ? (
+        <section><h3 className="h-section" style={{ margin: "0 0 10px" }}>{t({ en: "About this event", zh: "关于活动" })}</h3><p style={{ fontSize: 15, lineHeight: 1.7, color: "var(--text-2)", margin: 0, whiteSpace: "pre-line" }}>{event.descriptionZh}</p></section>
+      ) : null}
 
       {event.agenda.length ? (
         <section>
