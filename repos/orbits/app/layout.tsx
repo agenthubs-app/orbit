@@ -281,7 +281,7 @@ const themeInitScript = `(function(){try{var t=localStorage.getItem('orbit-theme
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
