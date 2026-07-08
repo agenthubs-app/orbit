@@ -130375,5 +130375,53 @@ export const generatedRelationshipFixtures = {
       ],
       "createdAt": "2026-06-30T14:14:38.537342+00:00"
     }
+  ],
+  "meetings": [
+    {
+      "id": "meeting_generated_0001",
+      "title": "Follow-up sync",
+      "startsAt": "2026-07-02T02:00:00.000Z",
+      "status": "confirmed",
+      "contactId": "contact_001",
+      "connectionId": "connection_0001",
+      "eventId": "event_01",
+      "endsAt": "2026-07-02T02:30:00.000Z",
+      "durationMinutes": 30,
+      "mode": "video",
+      "location": "Google Meet",
+      "source": {
+        "type": "system",
+        "id": "source:generated-relationship-fixtures",
+        "label": "Generated relationship mockdata fixture"
+      },
+      "evidenceIds": [
+        "evidence:event:01"
+      ],
+      "createdAt": "2026-06-30T14:14:38.537342+00:00",
+      "updatedAt": "2026-06-30T14:14:38.537342+00:00"
+    }
+  ],
+  "organizers": [
+    {
+      "id": "organizer_generated_0001",
+      "slug": "orbit-generated",
+      "name": "Orbit Generated Host",
+      "accountId": "account_orbit_generated",
+      "verified": true,
+      "rating": 4.7,
+      "ratingCount": 88,
+      "eventsHostedCount": 8,
+      "cumulativeAttendees": 320,
+      "source": {
+        "type": "system",
+        "id": "source:generated-relationship-fixtures",
+        "label": "Generated relationship mockdata fixture"
+      },
+      "evidenceIds": [
+        "evidence:event:01"
+      ],
+      "createdAt": "2026-06-30T14:14:38.537342+00:00",
+      "updatedAt": "2026-06-30T14:14:38.537342+00:00"
+    }
   ]
 } satisfies MockRuntimeFixtures;

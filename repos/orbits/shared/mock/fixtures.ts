@@ -18,18 +18,22 @@ import type {
   InteractionMemoryDTO,
   IsoDateTimeString,
   MatchRecommendationDTO,
+  MeetingDTO,
   MessageDTO,
   NetworkPersonDTO,
   NotificationDTO,
   OrbitId,
+  OrganizerDTO,
   PersonRelationshipEdgeDTO,
   PermissionStateDTO,
+  PublicProfileDTO,
   RecommendationTestRecordDTO,
   RelationshipEvidenceDTO,
+  SeatAssignmentDTO,
   TaskDTO,
   UserProfileDTO,
 } from "../domain/contracts";
-import type { SourceReferenceDTO } from "../domain/source-types";
+import type { RsvpStatus, SourceReferenceDTO } from "../domain/source-types";
 import { generatedRelationshipFixtures } from "./generated-relationship-fixtures";
 
 export const MOCK_FIXTURE_COLLECTION_NAMES = [
@@ -55,6 +59,8 @@ export const MOCK_FIXTURE_COLLECTION_NAMES = [
   "matchRecommendations",
   "interactionMemories",
   "recommendationTests",
+  "meetings",
+  "organizers",
 ] as const;
 
 export type MockFixtureCollectionName =
@@ -69,6 +75,12 @@ export interface EventAttendeeDTO {
   organization?: string;
   role?: string;
   status: "imported" | "reviewed" | "skipped";
+  // RSVP / 座位 / 名片档案扩展（全部可选，容忍稀疏数据）。
+  rsvpStatus?: RsvpStatus;
+  verified?: boolean;
+  checkedInAt?: IsoDateTimeString;
+  seat?: SeatAssignmentDTO;
+  publicProfile?: PublicProfileDTO;
   source: SourceReferenceDTO;
   evidenceIds: readonly [OrbitId, ...OrbitId[]];
   createdAt: IsoDateTimeString;
@@ -101,11 +113,16 @@ export interface MockRuntimeFixtures {
   agentActions: AgentActionDTO[];
   permissions: PermissionStateDTO[];
   notifications: NotificationDTO[];
+  // 新集合：已纳入 MOCK_FIXTURE_COLLECTION_NAMES 的统一遍历，
+  // 因此每个 MockRuntimeFixtures 字面量都必须提供（可为空数组）。
+  meetings: MeetingDTO[];
+  organizers: OrganizerDTO[];
 }
 
 const accountId = "account_orbit_demo";
 const profileId = "profile_ari_kato";
 const eventId = "event_orbit_summit_2026";
+const organizerId = "organizer_orbit_summit";
 const attendeeMinaId = "attendee_mina_tanaka";
 const attendeeNiaId = "attendee_nia_patel";
 const personMinaId = "person_mina_tanaka";
@@ -156,6 +173,26 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       displayName: "Ari Kato",
       role: "Founder",
       timezone: "Asia/Tokyo",
+      headline: "Founder building a relationship operating system",
+      organization: "Orbit",
+      handles: {
+        email: "ari@orbit.test",
+        lineId: "ari.kato",
+        wechatId: "ari_kato_orbit",
+      },
+      publicProfile: {
+        bio: "Founder focused on turning event encounters into durable relationships.",
+        selfIntroduction:
+          "I help founders operationalize post-event follow-up. Happy to trade go-to-market notes.",
+        industry: "SaaS",
+        seniorityLevel: "founder",
+        offering: ["relationship-ops product lessons", "Tokyo founder intros"],
+        seeking: ["design partners", "seed-stage operators"],
+        topics: ["relationship intelligence", "founder-led sales"],
+        conversationPrompts: [
+          "What does your current follow-up workflow look like?",
+        ],
+      },
       createdAt: "2026-06-20T09:05:00.000Z",
       updatedAt: generatedAt,
     },
@@ -253,6 +290,36 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       location: "Tokyo Midtown",
       startsAt: "2026-06-24T09:00:00.000Z",
       endsAt: "2026-06-24T12:30:00.000Z",
+      description:
+        "An invite-only founder roundtable on turning event encounters into durable business relationships.",
+      tags: ["founders", "relationships", "go-to-market"],
+      industry: "SaaS",
+      capacity: 40,
+      address: "9-7-1 Akasaka, Minato City, Tokyo",
+      geo: { lat: 35.6659, lng: 139.7312 },
+      agenda: [
+        {
+          id: "agenda_orbit_summit_open",
+          time: "09:00",
+          startsAt: "2026-06-24T09:00:00.000Z",
+          label: "Welcome & roundtable framing",
+          description: "How Orbit thinks about relationship provenance.",
+        },
+        {
+          id: "agenda_orbit_summit_matching",
+          time: "10:00",
+          startsAt: "2026-06-24T10:00:00.000Z",
+          label: "Guided introductions",
+          description: "Badge-scan matching and warm-intro practice.",
+        },
+        {
+          id: "agenda_orbit_summit_close",
+          time: "12:00",
+          startsAt: "2026-06-24T12:00:00.000Z",
+          label: "Follow-up planning",
+        },
+      ],
+      organizerId: organizerId,
       source: eventSource,
       evidenceIds: ["evidence_event_roster"],
     },
@@ -325,6 +392,20 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       organization: "Northstar Labs",
       role: "Founder",
       status: "reviewed",
+      // 完整参会者：已签到、已认证、有座位与名片档案。
+      rsvpStatus: "checked_in",
+      verified: true,
+      checkedInAt: "2026-06-24T09:12:00.000Z",
+      seat: { tableLabel: "1", tableNumber: 1, seatLabel: "A2" },
+      publicProfile: {
+        bio: "Marketplace founder with hiring and Japan go-to-market context.",
+        industry: "Marketplace",
+        seniorityLevel: "founder",
+        offering: ["marketplace product lessons", "founder hiring experiments"],
+        seeking: ["operator intros for hiring marketplaces", "Japan GTM context"],
+        topics: ["hiring marketplaces", "operator introductions"],
+        conversationPrompts: ["How are you handling supply-side onboarding?"],
+      },
       source: eventSource,
       evidenceIds: ["evidence_event_roster", "evidence_mina_badge"],
       createdAt: "2026-06-24T10:16:00.000Z",
@@ -339,6 +420,8 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       organization: "Civic Operators Guild",
       role: "Community lead",
       status: "imported",
+      // 稀疏参会者：仅有 RSVP，未签到、无座位、无档案 —— UI 需优雅降级。
+      rsvpStatus: "rsvped",
       source: eventSource,
       evidenceIds: ["evidence_event_roster", "evidence_nia_referral"],
       createdAt: "2026-06-24T10:33:00.000Z",
@@ -753,6 +836,45 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       source: agentSource,
       evidenceIds: ["evidence_agent_recommendation"],
       createdAt: "2026-06-24T11:37:00.000Z",
+    },
+  ],
+  meetings: [
+    {
+      id: "meeting_mina_followup",
+      title: "Follow-up: Mina hiring-market intro",
+      startsAt: "2026-06-25T02:00:00.000Z",
+      status: "pending_confirmation",
+      contactId: contactMinaId,
+      connectionId: connectionMinaId,
+      eventId,
+      endsAt: "2026-06-25T02:30:00.000Z",
+      durationMinutes: 30,
+      mode: "video",
+      location: "Google Meet",
+      notes: "Confirm operator-intro scope before drafting.",
+      source: agentSource,
+      evidenceIds: ["evidence_mina_email", "evidence_agent_recommendation"],
+      createdAt: "2026-06-24T11:38:00.000Z",
+      updatedAt: generatedAt,
+    },
+  ],
+  organizers: [
+    {
+      id: organizerId,
+      slug: "orbit",
+      name: "Orbit",
+      accountId,
+      handle: "@orbit",
+      bio: "Host of founder relationship roundtables in Tokyo.",
+      verified: true,
+      rating: 4.8,
+      ratingCount: 126,
+      eventsHostedCount: 12,
+      cumulativeAttendees: 480,
+      source: eventSource,
+      evidenceIds: ["evidence_event_roster"],
+      createdAt: "2026-06-20T09:00:00.000Z",
+      updatedAt: generatedAt,
     },
   ],
 };

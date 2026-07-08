@@ -1,4 +1,6 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
+import type { ContactHandlesDTO } from "../../shared/domain/contracts";
+import type { SeniorityLevel } from "../../shared/domain/source-types";
 
 // Profile contract 描述用户手动资料编辑和完整度评分。
 // 它是 onboarding/profile 页的主读写模型，不包含外部文档解析或自动信号应用。
@@ -80,6 +82,14 @@ export interface ManualProfile {
   targetRelationshipTypes: readonly string[];
   preferredFollowUpWindow: string;
   preferredIntroChannels: readonly string[];
+  // 名片档案扩展（全部可选，容忍稀疏数据）。
+  handles?: ContactHandlesDTO;
+  industry?: string;
+  seniorityLevel?: SeniorityLevel;
+  bio?: string;
+  offering?: readonly string[];
+  seeking?: readonly string[];
+  topics?: readonly string[];
   updatedAt: string;
 }
 
@@ -94,6 +104,13 @@ export interface ManualProfileUpdateInput {
   targetRelationshipTypes?: readonly string[];
   preferredFollowUpWindow?: string;
   preferredIntroChannels?: readonly string[];
+  handles?: ContactHandlesDTO;
+  industry?: string;
+  seniorityLevel?: SeniorityLevel;
+  bio?: string;
+  offering?: readonly string[];
+  seeking?: readonly string[];
+  topics?: readonly string[];
 }
 
 // CompletenessField 是完整度评分会检查的字段集合。

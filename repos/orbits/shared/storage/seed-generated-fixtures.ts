@@ -199,6 +199,13 @@ function targetFor(
         targetId: stringField(record, "eventId") ?? record.id,
         targetType: stringField(record, "eventId") ? "event" : "recommendation_test",
       };
+    case "meetings":
+      return {
+        targetId: stringField(record, "contactId") ?? record.id,
+        targetType: stringField(record, "contactId") ? "contact" : "meeting",
+      };
+    case "organizers":
+      return { targetId: record.id, targetType: "organizer" };
   }
 }
 

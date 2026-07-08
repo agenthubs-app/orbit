@@ -124,6 +124,57 @@ export const PERMISSION_STATE_VALUES = [
 
 export type PermissionState = (typeof PERMISSION_STATE_VALUES)[number];
 
+// 名片档案的职级枚举；register 的 levelOptions 收敛到这里。
+export const SENIORITY_LEVEL_VALUES = [
+  "individual_contributor",
+  "manager",
+  "director",
+  "vp",
+  "c_level",
+  "founder",
+] as const;
+
+export type SeniorityLevel = (typeof SENIORITY_LEVEL_VALUES)[number];
+
+// 会面（Meeting）实体的状态；区别于 TaskDTO 的提醒状态。
+export const MEETING_STATUS_VALUES = [
+  "proposed",
+  "pending_confirmation",
+  "confirmed",
+  "completed",
+  "cancelled",
+] as const;
+
+export type MeetingStatus = (typeof MEETING_STATUS_VALUES)[number];
+
+export const MEETING_MODE_VALUES = ["in_person", "video", "phone"] as const;
+
+export type MeetingMode = (typeof MEETING_MODE_VALUES)[number];
+
+// 联系人网络分类（名片夹仪表盘的人物画像轴），独立于 valueTypes 与 stage。
+export const NETWORK_CATEGORY_VALUES = [
+  "prospect",
+  "partner",
+  "investor",
+  "connector",
+  "advisor",
+  "customer",
+] as const;
+
+export type NetworkCategory = (typeof NETWORK_CATEGORY_VALUES)[number];
+
+// 活动 RSVP / 出席状态；缺失视为未报名。
+export const RSVP_STATUS_VALUES = [
+  "invited",
+  "rsvped",
+  "waitlisted",
+  "checked_in",
+  "no_show",
+  "cancelled",
+] as const;
+
+export type RsvpStatus = (typeof RSVP_STATUS_VALUES)[number];
+
 export interface SourceReferenceDTO {
   type: SourceType;
   id: string;
@@ -201,4 +252,24 @@ export function isRecommendationTestExpectedOutcome(
 
 export function isPermissionState(value: unknown): value is PermissionState {
   return includesValue(PERMISSION_STATE_VALUES, value);
+}
+
+export function isSeniorityLevel(value: unknown): value is SeniorityLevel {
+  return includesValue(SENIORITY_LEVEL_VALUES, value);
+}
+
+export function isMeetingStatus(value: unknown): value is MeetingStatus {
+  return includesValue(MEETING_STATUS_VALUES, value);
+}
+
+export function isMeetingMode(value: unknown): value is MeetingMode {
+  return includesValue(MEETING_MODE_VALUES, value);
+}
+
+export function isRsvpStatus(value: unknown): value is RsvpStatus {
+  return includesValue(RSVP_STATUS_VALUES, value);
+}
+
+export function isNetworkCategory(value: unknown): value is NetworkCategory {
+  return includesValue(NETWORK_CATEGORY_VALUES, value);
 }

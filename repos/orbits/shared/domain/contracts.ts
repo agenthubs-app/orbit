@@ -2,6 +2,9 @@ import type {
   AiAnalysisType,
   InteractionMemoryType,
   MatchRecommendationType,
+  MeetingMode,
+  MeetingStatus,
+  NetworkCategory,
   PermissionState,
   PreferredLanguage,
   RecommendationTestCaseType,
@@ -10,6 +13,7 @@ import type {
   RelationshipTargetType,
   RelationshipTrustLevel,
   RelationshipValueType,
+  SeniorityLevel,
   SourceReferenceDTO,
   SourceType,
 } from "./source-types";
@@ -34,8 +38,38 @@ export interface UserProfileDTO {
   displayName: string;
   role?: string;
   timezone?: string;
+  // 名片档案扩展（全部可选，容忍稀疏数据）。
+  headline?: string;
+  organization?: string;
+  handles?: ContactHandlesDTO;
+  publicProfile?: PublicProfileDTO;
   createdAt: IsoDateTimeString;
   updatedAt: IsoDateTimeString;
+}
+
+// ContactHandlesDTO 收拢社交联系方式；供用户档案与联系人复用。
+// email/phone 已在 ContactDTO 有 primary* 字段，这里补社媒句柄。
+export interface ContactHandlesDTO {
+  email?: string;
+  phone?: string;
+  wechatId?: string;
+  lineId?: string;
+  website?: string;
+}
+
+// PublicProfileDTO 是「名片社交档案」共享形状，
+// 由 features/contacts 的 ContactDetailPublicProfile 提升为跨模块复用。
+// offering/seeking/topics 是档案级自我价值标签，
+// 与活动级 EventParticipantIntentDTO.canOffer/lookingFor 区分。
+export interface PublicProfileDTO {
+  bio?: string;
+  selfIntroduction?: string;
+  industry?: string;
+  seniorityLevel?: SeniorityLevel;
+  offering?: readonly string[];
+  seeking?: readonly string[];
+  topics?: readonly string[];
+  conversationPrompts?: readonly string[];
 }
 
 export type NetworkPersonKind = "platform_user" | "external_contact";
@@ -89,6 +123,14 @@ export interface RelationshipEvidenceDTO {
   createdBy: OrbitId;
 }
 
+// NextActionDTO 是结构化的「下一步行动」：正文 + 理由 + 可追溯证据。
+// 此前联系人上的 nextAction 只是一个裸字符串。
+export interface NextActionDTO {
+  text: string;
+  reason?: string;
+  evidenceId?: OrbitId;
+}
+
 export interface ContactDTO {
   id: OrbitId;
   personId?: OrbitId;
@@ -100,6 +142,11 @@ export interface ContactDTO {
   primaryPhone?: string;
   profileSnippet?: string;
   stage: RelationshipStage;
+  // 名片夹扩展（全部可选，容忍稀疏数据）。
+  handles?: ContactHandlesDTO;
+  publicProfile?: PublicProfileDTO;
+  networkCategory?: NetworkCategory;
+  nextAction?: NextActionDTO;
   source: SourceReferenceDTO;
   evidenceIds: EvidenceIdList;
   createdAt: IsoDateTimeString;
@@ -124,14 +171,86 @@ export interface ConnectionDTO {
   updatedAt: IsoDateTimeString;
 }
 
+// GeoCoordinateDTO 为真实地图视图提供经纬度；缺失时 UI 回退示意坐标。
+export interface GeoCoordinateDTO {
+  lat: number;
+  lng: number;
+}
+
+// EventAgendaItemDTO 是活动日程条目；活动详情与派对页会渲染真实日程。
+export interface EventAgendaItemDTO {
+  id: OrbitId;
+  time: string;
+  startsAt?: IsoDateTimeString;
+  label: string;
+  description?: string;
+}
+
 export interface EventDTO {
   id: OrbitId;
   name: string;
   location?: string;
   startsAt: IsoDateTimeString;
   endsAt?: IsoDateTimeString;
+  // 内容/功能扩展（全部可选，缺失即隐藏对应 UI）。
+  description?: string;
+  tags?: readonly string[];
+  industry?: string;
+  capacity?: number;
+  address?: string;
+  geo?: GeoCoordinateDTO;
+  agenda?: readonly EventAgendaItemDTO[];
+  organizerId?: OrbitId;
   source: SourceReferenceDTO;
   evidenceIds: EvidenceIdList;
+}
+
+// SeatAssignmentDTO 承载派对座位/桌次分配，也解决联系人 encounter 的桌号。
+export interface SeatAssignmentDTO {
+  tableLabel: string;
+  tableNumber?: number;
+  seatLabel: string;
+}
+
+// OrganizerDTO 是独立主办方实体；此前主办方只是活动上的字符串标签。
+export interface OrganizerDTO {
+  id: OrbitId;
+  slug: string;
+  name: string;
+  accountId?: OrbitId;
+  handle?: string;
+  avatarAssetUrl?: string;
+  bio?: string;
+  verified?: boolean;
+  rating?: number;
+  ratingCount?: number;
+  eventsHostedCount?: number;
+  cumulativeAttendees?: number;
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
+  updatedAt: IsoDateTimeString;
+}
+
+// MeetingDTO 是「有具体时刻的会面」；区别于 TaskDTO（提醒/待办）。
+// 承载日程页需要的时刻、时长、地点与确认状态。
+export interface MeetingDTO {
+  id: OrbitId;
+  title: string;
+  startsAt: IsoDateTimeString;
+  status: MeetingStatus;
+  contactId?: OrbitId;
+  connectionId?: OrbitId;
+  eventId?: OrbitId;
+  endsAt?: IsoDateTimeString;
+  durationMinutes?: number;
+  mode?: MeetingMode;
+  location?: string;
+  notes?: string;
+  source: SourceReferenceDTO;
+  evidenceIds: EvidenceIdList;
+  createdAt: IsoDateTimeString;
+  updatedAt: IsoDateTimeString;
 }
 
 export interface RelationshipTargetReferenceDTO {
