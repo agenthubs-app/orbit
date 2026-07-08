@@ -1,0 +1,103 @@
+{
+  "sprint_number": 94,
+  "goal": "Add event-registration personal information guidance with event-specific profile-building questions for the current test user.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "Registerable event detail pages expose a guided personal-information step that combines current user profile fields and event context into several profile-building questions.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Every registerable demonstration event has a deterministic question set for the current test user, and tests verify that no registerable event falls back to generic empty questions.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "The registration UI lets the user review or skip questions locally and clearly labels that answers are staged for profile-building guidance until confirmed.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Focused tests cover at least three event types and prove the questions differ by event topic, target attendees, language preference, and missing user profile fields.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The registration documentation explains why this sprint uses deterministic demonstration question data and how a future generation provider can replace it.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Adding live agent generation for registration questions in this sprint",
+    "Writing profile updates before explicit confirmation",
+    "Changing event list routing"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/events/event_001",
+      "/app/events/event_001/register"
+    ],
+    "commands": [
+      {
+        "name": "registration-guide-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/event-registration-profile-guide.test.ts",
+          "tests/pages/app-event-registration-guide.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/events/registration-profile-guide.ts",
+      "features/events/REGISTRATION_PROFILE_GUIDE_LIVE_IMPLEMENTATION.md",
+      "app/(app)/app/events/[id]/page.tsx",
+      "app/(app)/app/events/[id]/register/page.tsx",
+      "tests/capabilities/event-registration-profile-guide.test.ts",
+      "tests/pages/app-event-registration-guide.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/events",
+    "owned_paths": [
+      "features/events/**",
+      "app/(app)/app/events/[id]/page.tsx",
+      "app/(app)/app/events/[id]/register/page.tsx",
+      "tests/capabilities/event-registration-profile-guide.test.ts",
+      "tests/pages/app-event-registration-guide.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "features/profile/**"
+    ],
+    "forbidden_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/schedule/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

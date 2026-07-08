@@ -1,0 +1,103 @@
+{
+  "sprint_number": 93,
+  "goal": "Fix /app/schedule right-side arrangements so they are localized, data-backed, and clickable into contact or event detail pages.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app/schedule right-side arrangements render localized person or event names, reasons, timing, and source context instead of placeholder strings such as Review follow-up for contact_021.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Each arrangement item has a valid href to either a contact detail route or an event detail route, and tests verify those targets resolve to existing route ids.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "The schedule route view model maps arrangement records through typed contact, event, and follow-up context rather than displaying raw ids as primary copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Empty, pending, and failure schedule states keep localized recovery controls and do not mix English labels into Chinese UI copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The schedule documentation explains the arrangement data contract and the future live provider replacement boundary.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Adding calendar writes or external scheduler sync",
+    "Changing contact or event detail page layouts",
+    "Changing Orbit AI behavior"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/schedule",
+      "/app/contacts/contact_001",
+      "/app/events/event_001"
+    ],
+    "commands": [
+      {
+        "name": "schedule-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/pages/app-schedule-route-services.test.ts",
+          "tests/pages/app-schedule-page.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/schedule/page.tsx",
+      "app/(app)/app/schedule/schedule-route-view-model.ts",
+      "app/(app)/app/schedule/SCHEDULE_LIVE_IMPLEMENTATION.md",
+      "tests/pages/app-schedule-route-services.test.ts",
+      "tests/pages/app-schedule-page.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app/schedule",
+    "owned_paths": [
+      "app/(app)/app/schedule/**",
+      "tests/pages/app-schedule-route-services.test.ts",
+      "tests/pages/app-schedule-page.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "features/events/**",
+      "features/contacts/**",
+      "features/followups/**"
+    ],
+    "forbidden_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/chat/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

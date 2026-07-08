@@ -1,0 +1,100 @@
+{
+  "sprint_number": 90,
+  "goal": "Add calendar-action affordances inside Orbit AI conversations with safe preview and confirmation boundaries.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "Orbit AI result cards for follow-up, recommendation, event, and to-do flows can expose an add-to-calendar affordance only when a concrete title, time, person or event link, and reason are available.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "The add-to-calendar preview shows exactly what would be added, what data source produced it, and whether the action is local-only or still unconfirmed.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Focused tests assert that unconfirmed previews perform no saved record write, external calendar mutation, notification, message send, or outside network request.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "GET /app/agent calendar-action scenarios preserve the original AI answer while showing a clear staged action state and a cancellation path.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The feature documentation defines the future live calendar adapter boundary and the no-side-effect default used by tests.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Writing to Google Calendar, Apple Calendar, email, notifications, or remote stores by default",
+    "Adding OAuth flows",
+    "Changing non-agent schedule list behavior"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/agent",
+      "/app/agent?action=calendar-preview"
+    ],
+    "commands": [
+      {
+        "name": "calendar-action-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/orbit-ai-calendar-action.test.ts",
+          "tests/pages/app-agent-calendar-action.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/orbit-ai/calendar-action-service.ts",
+      "features/orbit-ai/CALENDAR_ACTION_LIVE_IMPLEMENTATION.md",
+      "app/(app)/app/agent/page.tsx",
+      "tests/capabilities/orbit-ai-calendar-action.test.ts",
+      "tests/pages/app-agent-calendar-action.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/orbit-ai",
+    "owned_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "tests/capabilities/orbit-ai-calendar-action.test.ts",
+      "tests/pages/app-agent-calendar-action.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "features/events/**",
+      "features/followups/**"
+    ],
+    "forbidden_paths": [
+      "app/api/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

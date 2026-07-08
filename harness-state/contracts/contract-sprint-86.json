@@ -1,0 +1,103 @@
+{
+  "sprint_number": 86,
+  "goal": "Implement Orbit AI relationship recommendations for goal-based contact discovery with measurable relevance.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "A relationship recommendation service accepts a user goal and ranks contacts using profile, relationship, event, conversation, and follow-up signals with source-backed reasons.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "GET /app/agent goal-based contact prompts display recommended contacts with why-this-person, confidence, evidence snippets, and links to contact detail pages.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Ten named evaluation cases cover industry fit, market-entry help, investor search, organizer intro, weak-tie relevance, negative match filtering, ambiguous goals, Chinese input, English input, and privacy-limited data.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Focused tests assert ranking quality for the ten cases, including at least one rejected high-profile but irrelevant contact in each negative-match scenario.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The feature documentation records the design-evaluation-analysis loop and the minimum score threshold required before the UI presents recommendations as ready.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Adding vector indexes, embeddings, live CRM sync, or external network writes",
+    "Hardcoding final recommendation text per evaluation prompt",
+    "Changing contact detail page layout except links consumed by this feature"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/agent",
+      "/app/contacts/contact_001"
+    ],
+    "commands": [
+      {
+        "name": "contact-recommendation-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/orbit-ai-contact-recommendation-evaluation.test.ts",
+          "tests/pages/app-agent-contact-recommendations.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/orbit-ai/contact-recommendation-service.ts",
+      "features/orbit-ai/CONTACT_RECOMMENDATION_EVALUATION.md",
+      "app/(app)/app/agent/page.tsx",
+      "tests/capabilities/orbit-ai-contact-recommendation-evaluation.test.ts",
+      "tests/pages/app-agent-contact-recommendations.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/orbit-ai",
+    "owned_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "tests/capabilities/orbit-ai-contact-recommendation-evaluation.test.ts",
+      "tests/pages/app-agent-contact-recommendations.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "features/contacts/**",
+      "features/connections/**",
+      "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts",
+      "app/(app)/app/contacts/orbit-real-contacts.tsx"
+    ],
+    "forbidden_paths": [
+      "app/(app)/app/events/**",
+      "app/(app)/app/schedule/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

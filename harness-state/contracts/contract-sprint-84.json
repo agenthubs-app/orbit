@@ -1,0 +1,107 @@
+{
+  "sprint_number": 84,
+  "goal": "Create a mock-backed asynchronous conversation service and UI for relationship correspondence, not realtime chat.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "A typed conversation service returns inbox, thread, draft-reply, next-action, contact, event, and schedule context for the current test user without realtime transport or external sends.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "GET /app/chat renders a usable inbox and selected thread with natural relationship correspondence tone, next actions, and scheduling context rather than stiff internal-company contact logs.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Conversation records in tests resolve to contacts, connections, events, and follow-up tasks; each selected thread exposes at least one concrete next action and one source context label.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "The local reply or next-action preview route stages the action only and explicitly shows that no external message, notification, calendar entry, saved record, or network side effect occurred.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The mock-to-live replacement guidance documents the future live provider, privacy boundaries, no-send defaults, and replacement tests for asynchronous conversation storage.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Adding realtime websocket chat, email sends, SMS sends, push notifications, or external CRM sync",
+    "Changing Orbit AI tool execution behavior",
+    "Editing unrelated product routes"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/chat",
+      "/app/chat?conversation=conversation_demo_aoba",
+      "/app/chat?action=stage-reply&conversation=conversation_demo_aoba"
+    ],
+    "commands": [
+      {
+        "name": "chat-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/async-conversation-service.test.ts",
+          "tests/pages/app-chat-page.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/chat/contract.ts",
+      "features/chat/service.ts",
+      "features/chat/mock-service.ts",
+      "features/chat/service-factory.ts",
+      "features/chat/ASYNC_CONVERSATION_MOCK_TO_LIVE.md",
+      "app/(app)/app/chat/page.tsx",
+      "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-command-center.tsx",
+      "tests/capabilities/async-conversation-service.test.ts",
+      "tests/pages/app-chat-page.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/chat",
+    "owned_paths": [
+      "features/chat/**",
+      "app/(app)/app/chat/**",
+      "tests/capabilities/async-conversation-service.test.ts",
+      "tests/pages/app-chat-page.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/api/**",
+      "features/orbit-ai/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/schedule/**"
+    ],
+    "mock_to_live_doc": "features/chat/ASYNC_CONVERSATION_MOCK_TO_LIVE.md",
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

@@ -1,0 +1,104 @@
+{
+  "sprint_number": 91,
+  "goal": "Provide proactive Orbit Agent email-like messages for calendar activities that start in one hour.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "A proactive agent service detects local schedule or event entries starting within one hour and creates an email-like in-app message with the event title, time, people context, and preparation prompt.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Clicking the proactive message opens a new Orbit AI conversation whose context is the triggering calendar activity and whose first generated response uses that context.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Tests prove the trigger is idempotent for the same activity window and does not send an external email, push notification, SMS, or calendar update.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "GET /app/chat or /app/agent surfaces the proactive message in a localized inbox-style UI with a link to the context conversation.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The feature documentation defines timing windows, local delivery semantics, future live notification boundaries, and privacy constraints.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Real background jobs, push notifications, email sends, SMS sends, or remote scheduler writes",
+    "Adding OS calendar integrations",
+    "Changing unrelated chat inbox behavior"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/chat",
+      "/app/agent",
+      "/app/schedule"
+    ],
+    "commands": [
+      {
+        "name": "proactive-agent-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/orbit-ai-proactive-calendar-message.test.ts",
+          "tests/pages/app-proactive-agent-message.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/orbit-ai/proactive-contract.ts",
+      "features/orbit-ai/proactive-calendar-service.ts",
+      "features/orbit-ai/PROACTIVE_AGENT_LIVE_IMPLEMENTATION.md",
+      "app/(app)/app/agent/page.tsx",
+      "app/(app)/app/chat/page.tsx",
+      "tests/capabilities/orbit-ai-proactive-calendar-message.test.ts",
+      "tests/pages/app-proactive-agent-message.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/orbit-ai",
+    "owned_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/chat/**",
+      "tests/capabilities/orbit-ai-proactive-calendar-message.test.ts",
+      "tests/pages/app-proactive-agent-message.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "features/chat/**",
+      "features/events/**"
+    ],
+    "forbidden_paths": [
+      "app/api/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

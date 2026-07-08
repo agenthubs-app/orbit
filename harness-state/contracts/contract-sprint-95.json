@@ -1,0 +1,100 @@
+{
+  "sprint_number": 95,
+  "goal": "Restore the event detail page UI so it follows the previous approved design instead of a collapsed layout.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET /app/events/event_001 renders the approved event detail hierarchy with hero, schedule, attendee or relationship context, registration action, and supporting detail sections visible without a collapsed-only layout.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Desktop and mobile page tests assert that primary event details, registration controls, and relationship context are visible, non-overlapping, and reachable without hidden collapsed defaults.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "The route view model preserves existing event-detail data shape, empty, pending, and failure boundaries while restoring the presenter structure.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "The implementation keeps no-write behavior during page render and does not add ticketing, payment, notification, calendar, or message side effects.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The event detail documentation records the restored layout contract and the regression test that prevents future collapse regressions.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing event list page behavior",
+    "Adding event registration question logic beyond existing entry points",
+    "Adding live external side effects"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/events/event_001",
+      "/app/events/event_002"
+    ],
+    "commands": [
+      {
+        "name": "event-detail-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/pages/app-event-detail-live-route-services.test.ts",
+          "tests/pages/app-event-detail-page.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/(app)/app/events/[id]/page.tsx",
+      "app/(app)/app/events/EVENT_DETAIL_UI_CONTRACT.md",
+      "tests/pages/app-event-detail-live-route-services.test.ts",
+      "tests/pages/app-event-detail-page.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app/(app)/app/events",
+    "owned_paths": [
+      "app/(app)/app/events/**",
+      "tests/pages/app-event-detail-live-route-services.test.ts",
+      "tests/pages/app-event-detail-page.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "features/events/**"
+    ],
+    "forbidden_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "app/(app)/app/chat/**",
+      "app/(app)/app/schedule/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

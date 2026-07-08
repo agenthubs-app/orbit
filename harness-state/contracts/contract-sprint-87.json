@@ -1,0 +1,101 @@
+{
+  "sprint_number": 87,
+  "goal": "Implement Orbit AI event recommendations for relationship and business-development goals.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "An event recommendation service accepts a user goal and ranks events using attendee intent, event topic, schedule timing, relationship opportunities, and profile fit with source-backed reasons.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "GET /app/agent event-discovery prompts display recommended events with why-this-event, people-to-meet, timing, confidence, and links to event detail pages.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Ten named evaluation cases cover meeting investors, finding China-market partners, hiring AI talent, restaurant expansion, organizer networking, language preference, schedule conflict, negative event filtering, Chinese input, and English input.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Focused tests assert ranking quality for the ten cases and prove irrelevant popular events are rejected when attendee/topic evidence does not match the goal.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The feature documentation records the design-evaluation-analysis loop and the accepted score threshold for presenting event recommendations.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Creating new live event ingestion, ticketing, payments, or external calendar writes",
+    "Hardcoding one final recommendation response for each prompt",
+    "Changing event registration behavior"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/agent",
+      "/app/events",
+      "/app/events/event_001"
+    ],
+    "commands": [
+      {
+        "name": "event-recommendation-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/orbit-ai-event-recommendation-evaluation.test.ts",
+          "tests/pages/app-agent-event-recommendations.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/orbit-ai/event-recommendation-service.ts",
+      "features/orbit-ai/EVENT_RECOMMENDATION_EVALUATION.md",
+      "app/(app)/app/agent/page.tsx",
+      "tests/capabilities/orbit-ai-event-recommendation-evaluation.test.ts",
+      "tests/pages/app-agent-event-recommendations.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/orbit-ai",
+    "owned_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "tests/capabilities/orbit-ai-event-recommendation-evaluation.test.ts",
+      "tests/pages/app-agent-event-recommendations.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "features/events/**"
+    ],
+    "forbidden_paths": [
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/schedule/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

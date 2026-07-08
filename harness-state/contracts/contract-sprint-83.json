@@ -1,0 +1,112 @@
+{
+  "sprint_number": 83,
+  "goal": "Restore the root homepage as the integrated Orbit Agent plus activity overview instead of an event-only page.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "GET / renders an Orbit Agent first-viewport section before activity or event sections; route source tests fail if app/page.tsx only delegates to an event-only or personal-home adapter.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "The lower root homepage content shows localized activity and event context with links into event and contact workflows, while /app/home and /app/home/events remain the personal home routes.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Regression tests assert the rendered root contains the agent hero marker, the activity overview marker, and does not collapse into a pure My events page.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "The root homepage keeps existing no-write live safety behavior and does not add external network calls, notifications, calendar writes, or message sends during render.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The app documentation explains the route boundary between /, /app/home, and /app/home/events so future changes do not repeat the homepage regression.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing /app/home personal hub behavior unless a regression test proves a route boundary requires it",
+    "Adding live writes, notifications, message sends, or calendar mutations",
+    "Editing the reference-only repository"
+  ],
+  "evidence": {
+    "routes": [
+      "/",
+      "/app/home",
+      "/app/home/events"
+    ],
+    "commands": [
+      {
+        "name": "home-route-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/pages/app-home-live-route-services.test.ts",
+          "tests/smoke.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "app/page.tsx",
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/orbit-real-landing-page.tsx",
+      "app/(app)/app/orbit-agent-hero.tsx",
+      "app/(app)/app/orbit-landing-route-view-model.ts",
+      "app/(app)/app/orbit-reference-styles.tsx",
+      "docs/architecture/root-home-routing.md",
+      "tests/pages/app-home-live-route-services.test.ts",
+      "tests/smoke.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "app",
+    "owned_paths": [
+      "app/page.tsx",
+      "app/(app)/app/page.tsx",
+      "app/(app)/app/orbit-real-landing-page.tsx",
+      "app/(app)/app/orbit-agent-hero.tsx",
+      "app/(app)/app/orbit-landing-route-view-model.ts",
+      "app/(app)/app/orbit-reference-styles.tsx",
+      "docs/architecture/root-home-routing.md",
+      "tests/pages/app-home-live-route-services.test.ts",
+      "tests/smoke.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "features/**",
+      "app/api/**",
+      "app/(app)/app/events/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/schedule/**",
+      "app/(app)/app/chat/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

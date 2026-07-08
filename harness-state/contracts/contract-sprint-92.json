@@ -1,0 +1,100 @@
+{
+  "sprint_number": 92,
+  "goal": "Localize Orbit AI right-side result panels so user-facing text matches the active system language.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "Orbit AI tool result panels use a single locale source and render Chinese user-facing copy when the active system language is Chinese, including labels, empty states, action names, confidence copy, and recovery text.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Panel tests cover follow-up context, contact recommendations, event recommendations, calendar actions, proactive messages, and general conversation results with no mixed English-Chinese UI labels.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Source identifiers, route paths, record ids, and provider names may remain English only when they are explicitly displayed as technical provenance rather than product copy.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "GET /app/agent in Chinese locale shows localized right-side panels after tool calls and keeps generated answer language aligned with the user prompt.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The localization documentation lists every panel namespace and the fallback behavior when a translation key is missing.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Changing generated record ids or technical provenance identifiers",
+    "Adding new translation frameworks",
+    "Changing unrelated product route copy"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/agent"
+    ],
+    "commands": [
+      {
+        "name": "ai-localization-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/orbit-ai-panel-localization.test.ts",
+          "tests/pages/app-agent-localization.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/orbit-ai/panel-localization.ts",
+      "features/orbit-ai/PANEL_LOCALIZATION.md",
+      "app/(app)/app/agent/page.tsx",
+      "tests/capabilities/orbit-ai-panel-localization.test.ts",
+      "tests/pages/app-agent-localization.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/orbit-ai",
+    "owned_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "tests/capabilities/orbit-ai-panel-localization.test.ts",
+      "tests/pages/app-agent-localization.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "app/(app)/app/orbit-language-server.ts"
+    ],
+    "forbidden_paths": [
+      "app/(app)/app/events/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/schedule/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

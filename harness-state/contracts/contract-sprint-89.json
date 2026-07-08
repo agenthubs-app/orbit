@@ -1,0 +1,101 @@
+{
+  "sprint_number": 89,
+  "goal": "Implement Orbit AI to-do question answering from conversations and schedule context.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "A to-do summary service combines conversation next actions, event timing, schedule entries, birthdays, introduction opportunities, and relationship reminders into a source-backed upcoming-work answer.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "GET /app/agent to-do prompts display prioritized next actions with person or event links, due timing, reason, and whether each item came from conversation or schedule context.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Five named evaluation cases cover today agenda, weekend social reminder, birthday mention, friend introduction request, and business follow-up after an event.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Focused tests prove generated answers use structured inputs and reject prepared final responses that ignore updated conversation or schedule records.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The feature documentation records the design-evaluation-analysis loop and the acceptance threshold for task recall and prioritization.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Creating real calendar writes, email sends, or notification sends",
+    "Replacing the schedule page UI",
+    "Hardcoding final answers per case"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/agent",
+      "/app/schedule"
+    ],
+    "commands": [
+      {
+        "name": "todo-ai-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/orbit-ai-todo-summary-evaluation.test.ts",
+          "tests/pages/app-agent-todo-summary.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/orbit-ai/todo-summary-service.ts",
+      "features/orbit-ai/TODO_SUMMARY_EVALUATION.md",
+      "app/(app)/app/agent/page.tsx",
+      "tests/capabilities/orbit-ai-todo-summary-evaluation.test.ts",
+      "tests/pages/app-agent-todo-summary.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/orbit-ai",
+    "owned_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "tests/capabilities/orbit-ai-todo-summary-evaluation.test.ts",
+      "tests/pages/app-agent-todo-summary.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "features/chat/**",
+      "features/followups/**",
+      "features/events/**"
+    ],
+    "forbidden_paths": [
+      "app/api/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

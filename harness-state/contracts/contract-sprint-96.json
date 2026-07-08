@@ -1,0 +1,106 @@
+{
+  "sprint_number": 96,
+  "goal": "Add suitable visual assets for every demonstration event and every demonstration user or contact.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "Every displayed demonstration event has a suitable scene image mapped through a typed asset manifest with alt text, source label, and stable asset id.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "Every displayed demonstration user or contact has an AI-generated-style avatar mapped through the same asset manifest with alt text, source label, and stable asset id.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Event list, event detail, contact list, contact detail, homepage activity, and recommendation cards use the manifest images without broken URLs or missing alt text.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "Focused tests verify asset coverage for all displayed events, users, and contacts and fail when a new displayed record lacks an image mapping.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The asset documentation records generation prompts, licensing posture, replacement process, and the rule that generated media files live under public/orbit-demo-assets.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Using remote hotlinked image URLs",
+    "Changing event or contact data semantics",
+    "Editing reference-only repositories"
+  ],
+  "evidence": {
+    "routes": [
+      "/",
+      "/app/events",
+      "/app/events/event_001",
+      "/app/contacts",
+      "/app/contacts/contact_001"
+    ],
+    "commands": [
+      {
+        "name": "asset-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/demo-visual-asset-coverage.test.ts",
+          "tests/pages/app-demo-visual-assets.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "public/orbit-demo-assets/manifest.json",
+      "shared/demo-visual-assets.ts",
+      "docs/architecture/demo-visual-assets.md",
+      "tests/capabilities/demo-visual-asset-coverage.test.ts",
+      "tests/pages/app-demo-visual-assets.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "public/orbit-demo-assets",
+    "owned_paths": [
+      "public/orbit-demo-assets/**",
+      "shared/demo-visual-assets.ts",
+      "docs/architecture/demo-visual-assets.md",
+      "tests/capabilities/demo-visual-asset-coverage.test.ts",
+      "tests/pages/app-demo-visual-assets.test.tsx"
+    ],
+    "allowed_shared_paths": [
+      "app/(app)/app/events/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/orbit-real-landing-page.tsx"
+    ],
+    "forbidden_paths": [
+      "features/orbit-ai/**",
+      "app/api/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

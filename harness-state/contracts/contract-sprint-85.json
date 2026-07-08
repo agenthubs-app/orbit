@@ -1,0 +1,104 @@
+{
+  "sprint_number": 85,
+  "goal": "Implement generated Orbit AI follow-up context over demonstration conversation data so the right-side panel resolves real relationship context.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "The Orbit AI right-side panel no longer shows the text No mock chat conversation fixture matches that conversation id for seeded follow-up requests and instead resolves the intended contact, conversation, event, and schedule context.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "The follow-up context service calls the configured agent-generation boundary with structured conversation and relationship inputs, and tests reject canned final-answer fixtures that bypass generation.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Ten named evaluation cases cover direct match, missing conversation, ambiguous person, stale relationship, recent event, pending reply, Chinese-language request, English-language request, schedule conflict, and privacy-limited context.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "A repeatable design-evaluation-analysis loop records scoring thresholds and failing-case analysis in feature documentation, and the focused tests enforce the accepted threshold before UI success.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The mock-to-live replacement guidance documents conversation-data replacement, provider gating, prompt inputs, provenance requirements, and tests that keep generated context accurate.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Returning prepared final answers instead of generated agent output",
+    "Calling external send or notification APIs",
+    "Changing conversation service contracts beyond typed inputs required by this sprint"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/agent",
+      "/app/agent?q=%E6%80%BB%E7%BB%93%E5%92%8CAoba%E7%9A%84%E5%85%B3%E7%B3%BB%E4%B8%8A%E4%B8%8B%E6%96%87"
+    ],
+    "commands": [
+      {
+        "name": "followup-context-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/orbit-ai-followup-context-evaluation.test.ts",
+          "tests/capabilities/orbit-ai-chat-context-live-artifact.test.ts"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/orbit-ai/chat-context-artifact-service.ts",
+      "features/orbit-ai/live-conversation-service.ts",
+      "features/orbit-ai/FOLLOWUP_CONTEXT_MOCK_TO_LIVE.md",
+      "features/orbit-ai/FOLLOWUP_CONTEXT_EVALUATION.md",
+      "app/(app)/app/agent/page.tsx",
+      "tests/capabilities/orbit-ai-followup-context-evaluation.test.ts",
+      "tests/capabilities/orbit-ai-chat-context-live-artifact.test.ts"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/orbit-ai",
+    "owned_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "tests/capabilities/orbit-ai-followup-context-evaluation.test.ts",
+      "tests/capabilities/orbit-ai-chat-context-live-artifact.test.ts"
+    ],
+    "allowed_shared_paths": [
+      "features/chat/**"
+    ],
+    "forbidden_paths": [
+      "app/(app)/app/events/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/schedule/**"
+    ],
+    "mock_to_live_doc": "features/orbit-ai/FOLLOWUP_CONTEXT_MOCK_TO_LIVE.md",
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}

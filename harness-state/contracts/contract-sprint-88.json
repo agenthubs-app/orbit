@@ -1,0 +1,98 @@
+{
+  "sprint_number": 88,
+  "goal": "Implement general Orbit AI conversation that can answer normally when no tool call is needed while preserving context.",
+  "success_criteria": [
+    {
+      "id": "SC-1",
+      "description": "The Orbit AI router distinguishes ordinary conversation from follow-up, contact, event, calendar, and to-do intents using explicit decision output that tests can inspect.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-2",
+      "description": "General conversation prompts receive generated assistant replies that preserve recent context and do not invoke tools when the prompt has no tool-worthy intent.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-3",
+      "description": "Ten named evaluation cases cover greeting, preference memory, clarification, refusal of unsafe side effects, bilingual context, pronoun reference, follow-up continuation, event continuation, off-topic small talk, and no-tool boundary.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-4",
+      "description": "GET /app/agent displays ordinary assistant turns without opening a stale tool result panel, while preserving the conversation history needed by the next turn.",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "SC-5",
+      "description": "The feature documentation records the design-evaluation-analysis loop and the acceptance threshold for no-tool and context-memory correctness.",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "out_of_scope": [
+    "Invoking tools for every prompt",
+    "Adding external messaging or notification sends",
+    "Replacing specialized Orbit AI tool flows"
+  ],
+  "evidence": {
+    "routes": [
+      "/app/agent"
+    ],
+    "commands": [
+      {
+        "name": "general-ai-tests",
+        "cmd": [
+          "npm",
+          "test",
+          "--",
+          "tests/capabilities/orbit-ai-general-conversation-evaluation.test.ts",
+          "tests/pages/app-agent-general-conversation.test.tsx"
+        ]
+      },
+      {
+        "name": "lint",
+        "cmd": [
+          "npm",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "build",
+        "cmd": [
+          "npm",
+          "run",
+          "build"
+        ]
+      }
+    ],
+    "source_files": [
+      "features/orbit-ai/general-conversation-service.ts",
+      "features/orbit-ai/GENERAL_CONVERSATION_EVALUATION.md",
+      "app/(app)/app/agent/page.tsx",
+      "tests/capabilities/orbit-ai-general-conversation-evaluation.test.ts",
+      "tests/pages/app-agent-general-conversation.test.tsx"
+    ]
+  },
+  "file_boundary": {
+    "capability_root": "features/orbit-ai",
+    "owned_paths": [
+      "features/orbit-ai/**",
+      "app/(app)/app/agent/**",
+      "tests/capabilities/orbit-ai-general-conversation-evaluation.test.ts",
+      "tests/pages/app-agent-general-conversation.test.tsx"
+    ],
+    "allowed_shared_paths": [],
+    "forbidden_paths": [
+      "app/(app)/app/events/**",
+      "app/(app)/app/contacts/**",
+      "app/(app)/app/schedule/**"
+    ],
+    "shared_change_policy": "forbidden_unless_explicit"
+  },
+  "confirmed": true
+}
