@@ -56,7 +56,13 @@ export interface GeminiOrbitAgentPlannerOutput {
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }
 
+export interface GeminiOrbitAgentConversationTurn {
+  content: string;
+  role: "user" | "assistant";
+}
+
 export interface GeminiOrbitAgentPlannerInput {
+  history?: readonly GeminiOrbitAgentConversationTurn[];
   locale?: string | null;
   message: string;
 }
@@ -71,6 +77,7 @@ export interface GeminiOrbitAgentToolResultSummary {
 export interface GeminiOrbitAgentSynthesisInput {
   artifacts: readonly GeminiOrbitAgentToolResultSummary[];
   assistantMessage: string;
+  history?: readonly GeminiOrbitAgentConversationTurn[];
   intent: GeminiOrbitAgentIntent;
   locale?: string | null;
   message: string;
@@ -509,6 +516,8 @@ function systemInstruction(): string {
     "- contact recommendation / who can introduce or help / network search -> contact_recommendations with contacts.recommend.",
     "- follow-up review / this week / dormant relationship / queue -> followup_queue with followups.reviewQueue.",
     "- privacy control / delete / do not analyze / sensitive share -> general_chat unless current chat context review is explicitly needed.",
+    "conversationHistory lists earlier turns of this conversation, oldest first. Use it to resolve pronouns and vague references in the current message.",
+    "When history states a concrete goal (e.g. launching a fintech product) and the current message asks who can help, which friends/contacts to talk to, or for introductions -> contact_recommendations with contacts.recommend, carrying the goal from history into arguments.searchTerms as english keywords.",
     "Do not claim privacy settings, storage, deletion, or analysis opt-out state changed unless an explicit Orbit privacy tool result says so.",
     "Do not describe storage guarantees; direct users to privacy controls for durable changes.",
     "- external action preview / send / schedule / notify -> choose the closest context tool only to prepare a reviewable artifact; never claim execution.",
@@ -529,6 +538,7 @@ function systemInstruction(): string {
 
 function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
   return JSON.stringify({
+    conversationHistory: (input.history ?? []).slice(-8),
     locale: input.locale ?? "zh",
     message: input.message,
     outputSchema: {
@@ -551,8 +561,9 @@ function synthesisInstruction(): string {
   return [
     "You are Orbit Agent, writing the final user-facing response after Orbit tools returned information.",
     "Return natural language only, not JSON.",
-    "Plain text only: no markdown, no ** bold, no bullet or numbered list syntax.",
+    "Light markdown is allowed (bold, short bullet lists); no headings, tables, or code blocks.",
     "Respond in the language indicated by the locale field (zh -> Chinese, en -> English).",
+    "conversationHistory lists earlier turns; keep the reply coherent with them.",
     "Use the provided tool result summaries, but do not invent executed actions.",
     "The reviewable result list is already displayed beside this reply; do NOT ask for permission to show it.",
     "Briefly point out the strongest matches by name and why they fit, then remind that any outreach or side effect still needs the user's confirmation.",
@@ -563,6 +574,7 @@ function synthesisInstruction(): string {
 function synthesisInput(input: GeminiOrbitAgentSynthesisInput): string {
   return JSON.stringify({
     artifacts: input.artifacts,
+    conversationHistory: (input.history ?? []).slice(-8),
     locale: input.locale ?? "zh",
     originalAssistantMessage: input.assistantMessage,
     originalUserMessage: input.message,

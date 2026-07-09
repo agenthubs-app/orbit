@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import type {
   OrbitAgentEventResultView,
@@ -147,6 +149,33 @@ function peopleItemsFromArtifact(
 function currentAgentQuery() {
   if (typeof window === "undefined") return "";
   return new URLSearchParams(window.location.search).get("q") ?? "";
+}
+
+// assistant 回复按轻量 markdown 渲染（加粗、列表、行内代码、链接）。
+// 组件级内联样式，保持和气泡文本一致的字号与行高。
+function AgentMarkdown({ text }: { text: string }) {
+  return (
+    <div style={{ marginBottom: -6 }}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ children, href }) => (
+            <a href={href} rel="noreferrer" style={{ color: "var(--accent)" }} target="_blank">{children}</a>
+          ),
+          code: ({ children }) => (
+            <code className="mono" style={{ background: "var(--surface-2)", borderRadius: 4, fontSize: 13, padding: "1px 5px" }}>{children}</code>
+          ),
+          li: ({ children }) => <li style={{ margin: "3px 0" }}>{children}</li>,
+          ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 20 }}>{children}</ol>,
+          p: ({ children }) => <p style={{ margin: "0 0 6px" }}>{children}</p>,
+          strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+          ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 20 }}>{children}</ul>,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 function AgentHistoryList({
@@ -426,8 +455,10 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   const [activeQ, setActiveQ] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const languageRef = useRef(language);
+  const messagesRef = useRef<AgentMessage[]>(messages);
 
   languageRef.current = language;
+  messagesRef.current = messages;
 
   const navigate = useCallback((prototypeHref: string) => {
     const href = preserveHref(productHref(prototypeHref));
@@ -451,13 +482,19 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         ? "Agent 暂时无法完成这次回复，请稍后再试。"
         : "The agent could not complete this reply. Please try again.";
 
+    // 发送前抓取已有轮次作为对话历史，让服务端 planner 能接住追问里的指代。
+    const history = messagesRef.current
+      .map((turn) => ({ content: turn.text.trim(), role: turn.role }))
+      .filter((turn) => turn.content)
+      .slice(-8);
+
     setMessages((current) => [...current, { role: "user", text: query }]);
     setThinking(true);
     setPanel(null);
 
     try {
       const response = await fetch("/api/ai/conversations", {
-        body: JSON.stringify({ locale, message: query }),
+        body: JSON.stringify({ history, locale, message: query }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });
@@ -583,7 +620,9 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                   {message.note}
                 </div>
               ) : null}
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", fontSize: 15, lineHeight: 1.6, padding: "12px 15px" }}>{message.text}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", fontSize: 15, lineHeight: 1.6, padding: "12px 15px" }}>
+                <AgentMarkdown text={message.text} />
+              </div>
               {inlinePanel && message.items.length > 0 ? (
                 <div style={{ marginTop: 12 }}>
                   <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panelTitle}</div>

@@ -180,7 +180,9 @@ live 路径下，`language-normalization-service` 先用模型把任意语言 qu
 
 主要产品入口是 `/app`。Orbit AI 可以打开联系人、活动、跟进、聊天、关系健康或下一步面板，但页面内容仍来自对应模块。
 
-`/app/agent` 的聊天框直接调用 `/api/ai/conversations`（POST，带 `locale`），把返回的 `contact_recommendations` artifact 在页面自己的 view-model 映射后渲染到侧边人脉面板；卡片文案（标题、职位、推荐依据、可信标签）由 artifact 服务按 locale 本地化，页面不再使用本地关键词剧本回答。
+`/app/agent` 的聊天框直接调用 `/api/ai/conversations`（POST，带 `locale` 和最近 8 轮 `history`），把返回的 `contact_recommendations` artifact 在页面自己的 view-model 映射后渲染到侧边人脉面板；卡片文案（标题、职位、推荐依据、可信标签）由 artifact 服务按 locale 本地化，页面不再使用本地关键词剧本回答。assistant 气泡按轻量 markdown 渲染。
+
+`history` 在服务端的用途：route 校验角色和长度后透传；runtime 把同一份最近轮次交给 planner（消解追问指代并按前文目标路由工具）、artifact contextMessages（参与检索词抽取与路径选择）和 synthesis（保持多轮连贯）。会话仍不做服务端持久化，历史由页面随每次请求携带。
 
 当 Orbit AI 嵌入 `/app/chat` 等模块页面时，模块页面不直接依赖 raw payload。嵌入方应在自己的 route view model 中调用 Orbit AI service，把 proposed tool intents、assistant reply 和 artifact surface 映射成该页面的 view model。
 

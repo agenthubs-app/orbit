@@ -830,6 +830,7 @@ export function proposedIntentForTool(
 
 export async function artifactForRequest(input: {
   artifactTaskService: OrbitAgentArtifactTaskService;
+  history?: readonly OrbitAgentConversationHistoryTurn[];
   locale?: string | null;
   message: string;
   request: GeminiOrbitAgentToolRequest;
@@ -838,9 +839,13 @@ export async function artifactForRequest(input: {
   const request: OrbitAgentArtifactTaskRequest = {
     conversationId: liveConversationId,
     contextMessages: [
+      ...(input.history ?? []).map((turn) => ({
+        content: turn.content,
+        role: turn.role,
+      })),
       {
         content: input.message,
-        role: "user",
+        role: "user" as const,
       },
     ],
     kind: artifactKindForTool(input.request.toolName),
@@ -1052,8 +1057,14 @@ export async function runLiveOrbitAgentRuntime(
     };
   }
 
+  // history 由调用方（页面/route）透传；planner、artifact 上下文和 synthesis
+  // 共享同一份最近轮次，让追问（"有哪些朋友可以帮我进入呢?"）能接上前文目标。
+  const historyTurns = (input.history ?? [])
+    .filter((turn) => readText(turn.content))
+    .slice(-8);
   const plannerStartedAt = nowMs();
   const plannerResult = await runtime.planner.plan({
+    history: historyTurns,
     locale: input.locale,
     message,
   });
@@ -1087,6 +1098,7 @@ export async function runLiveOrbitAgentRuntime(
           toolRequests.map((request) =>
             artifactForRequest({
               artifactTaskService: runtime.artifactTaskService,
+              history: historyTurns,
               locale,
               message,
               request,
@@ -1112,6 +1124,7 @@ export async function runLiveOrbitAgentRuntime(
     ? await runtime.planner.synthesize({
         artifacts: artifacts.map(artifactSummaryForSynthesis),
         assistantMessage: plannerResult.data.assistantMessage,
+        history: historyTurns,
         intent: plannerResult.data.intent,
         locale: input.locale,
         message,

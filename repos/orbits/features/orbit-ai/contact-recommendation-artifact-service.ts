@@ -726,12 +726,25 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
         return fallbackService.createArtifactTask(request);
       }
 
+      // 追问经常不带领域词（"有哪些朋友可以帮我进入呢?"）；路径选择和检索词抽取
+      // 都用"最近用户轮次 + 当前 query"的组合文本，让前文目标参与判断。
+      const userContextTexts = (request.contextMessages ?? [])
+        .filter((message) => message.role === "user")
+        .map((message) => message.content.trim())
+        .filter(Boolean);
+
+      if (userContextTexts[userContextTexts.length - 1] !== query) {
+        userContextTexts.push(query);
+      }
+
+      const combinedQueryContext = userContextTexts.slice(-4).join("\n");
+
       const methodResolution = resolveContactRecommendationMethod();
       if (
         methodResolution.success === true &&
         methodResolution.method === "rules_v1" &&
         !input.matcher &&
-        !shouldUseLegacyRelationshipMatcher(query)
+        !shouldUseLegacyRelationshipMatcher(combinedQueryContext)
       ) {
         const recommendationResult =
           createOrbitAiRelationshipRecommendationService().recommendContacts({
@@ -791,7 +804,7 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
       // 注入 toolArguments.searchTerms 再检索；缺 key/失败时 searchTerms=null，自动回退
       // 正则词表。未注入（默认/测试）时保持同步、纯正则。
       if (normalizationService) {
-        return normalizationService.extractSearchTerms(query).then((extraction) =>
+        return normalizationService.extractSearchTerms(combinedQueryContext).then((extraction) =>
           runMatcher(
             extraction.searchTerms
               ? {

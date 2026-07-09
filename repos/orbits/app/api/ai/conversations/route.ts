@@ -96,6 +96,32 @@ function readString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+// history 是可选的最近对话轮次，用于 planner 消解追问里的指代。
+// 只接受 user/assistant 两种角色，截断条数与单条长度，防止超长 payload 直达模型。
+function readHistory(
+  value: unknown,
+): OrbitAgentSendMessageInput["history"] {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const turns = value
+    .filter(isRecord)
+    .map((turn) => ({
+      content:
+        typeof turn.content === "string" ? turn.content.trim().slice(0, 2000) : "",
+      role: turn.role,
+    }))
+    .filter(
+      (turn): turn is { content: string; role: "user" | "assistant" } =>
+        Boolean(turn.content) &&
+        (turn.role === "user" || turn.role === "assistant"),
+    )
+    .slice(-12);
+
+  return turns.length > 0 ? turns : undefined;
+}
+
 function readListInput(request: Request): OrbitAgentConversationInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -112,6 +138,7 @@ async function readSendInput(
 
   return {
     conversationId: readString(body.conversationId),
+    history: readHistory(body.history),
     locale: readString(body.locale),
     message: readString(body.message) ?? readString(body.prompt),
     scenario: searchParams.get("scenario") ?? readString(body.scenario),
