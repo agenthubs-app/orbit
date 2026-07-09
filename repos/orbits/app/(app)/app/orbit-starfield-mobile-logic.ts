@@ -510,7 +510,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
     self._cleanup=()=>{window.removeEventListener('resize',onR);window.removeEventListener('wheel',onWheel);window.removeEventListener('touchstart',onTS);window.removeEventListener('touchend',onTE);window.removeEventListener('keydown',onKey);};
     tick(performance.now());
     if(!RM)self._raf=requestAnimationFrame(loop);
-  
+
   // React-only additions to the reference unmount: the reference page never
   // unmounts, so it leaks head styles and a document-level listener; we must not.
   return () => {if(self._raf)cancelAnimationFrame(self._raf);if(self._miniIv)clearInterval(self._miniIv);if(self._demoIv)clearInterval(self._demoIv);if(self._cleanup)self._cleanup();if(self._gst)self._gst.remove();if(self._grain)self._grain.remove();if(self._langStyle)self._langStyle.remove();if(self._menuDocClick)document.removeEventListener('click',self._menuDocClick);};

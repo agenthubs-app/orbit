@@ -76,6 +76,7 @@ export interface AppFollowupsPriorityViewModel {
 export interface AppFollowupsWorkflowCardViewModel {
   body: string;
   due: string;
+  dueAt?: string;
   evidenceIds: readonly string[];
   id: string;
   recordIds: readonly string[];
@@ -529,25 +530,23 @@ function actionResultViewModel(
 
 function workflowCardsViewModel(input: {
   draft: MessageDraft | null;
-  notifications: ReminderScheduleNotificationPayload;
-  task: FollowupTask | null;
+  tasks: readonly FollowupTask[];
 }): AppFollowupsWorkflowCardViewModel[] {
-  const reminder = input.notifications.reminders[0] ?? null;
-  const queueEntry = input.notifications.notificationQueue[0] ?? null;
   const cards: AppFollowupsWorkflowCardViewModel[] = [];
 
-  if (input.task) {
+  for (const task of input.tasks) {
     cards.push({
-      body: input.task.recommendedAction,
-      due: dueSentenceLabel(input.task.dueInDays),
-      evidenceIds: input.task.evidenceIds,
-      id: input.task.taskId,
+      body: task.recommendedAction,
+      due: dueSentenceLabel(task.dueInDays),
+      dueAt: task.dueAt,
+      evidenceIds: task.evidenceIds,
+      id: task.taskId,
       recordIds: [],
-      relationship: `${input.task.contactName} · ${input.task.organization}`,
+      relationship: `${task.contactName} · ${task.organization}`,
       reviewStatus: bilingualText("本地复核暂缓", "Held for local review"),
-      sourceContext: input.task.source.label,
+      sourceContext: task.source.label,
       stepLabel: bilingualText("待判断任务", "Task to decide"),
-      title: input.task.title,
+      title: task.title,
     });
   }
 
@@ -563,46 +562,6 @@ function workflowCardsViewModel(input: {
       sourceContext: input.draft.relationshipContext,
       stepLabel: bilingualText("待复核消息草稿", "Message draft to review"),
       title: input.draft.subject,
-    });
-  }
-
-  if (reminder) {
-    cards.push({
-      body: reminder.recommendedWindow,
-      due: dueSentenceLabel(reminder.dueInDays),
-      evidenceIds: reminder.evidenceIds,
-      id: reminder.reminderId,
-      recordIds: [],
-      relationship: `${reminder.contactName} · ${reminder.organization}`,
-      reviewStatus: bilingualText("本地复核暂缓", "Held for local review"),
-      sourceContext: reminder.source.label,
-      stepLabel: bilingualText("保持可见的提醒", "Reminder to keep visible"),
-      title: reminder.title,
-    });
-  }
-
-  if (queueEntry) {
-    cards.push({
-      body: bilingualText(
-        "承诺和消息复核完成前，发送会保持暂存。",
-        "Delivery stays staged until the promise and message are reviewed.",
-      ),
-      due: reminder
-        ? dueSentenceLabel(reminder.dueInDays)
-        : bilingualText("未定时", "Not timed"),
-      evidenceIds: queueEntry.evidenceIds,
-      id: queueEntry.queueEntryId,
-      recordIds: [queueEntry.queueEntryId],
-      relationship: reminder
-        ? `${reminder.contactName} · ${reminder.organization}`
-        : bilingualText("已选择关系", "Selected relationship"),
-      reviewStatus: queueReviewStatusLabel(queueEntry.status),
-      sourceContext: queueSourceContext(queueEntry, reminder),
-      stepLabel: bilingualText(
-        "发送前队列暂缓",
-        "Queue hold before delivery",
-      ),
-      title: queueEntryLabel(queueEntry, reminder),
     });
   }
 
@@ -665,8 +624,7 @@ function successViewModel(input: {
     reminderQueue: reminderQueueViewModel(input.notifications),
     workflowCards: workflowCardsViewModel({
       draft: input.draft,
-      notifications: input.notifications,
-      task: input.task,
+      tasks: input.taskResult.data.tasks,
     }),
   };
 }

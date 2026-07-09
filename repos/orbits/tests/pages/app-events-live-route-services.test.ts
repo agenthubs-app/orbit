@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { resolveAppEventsRouteServices } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory";
+import { EVENT_CONTENT } from "../../app/(app)/app/orbit-event-content";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -99,4 +100,22 @@ test("/app/events page renders the live-capable product events UI", async () => 
     assert.match(html, /shared-ui-state-view/);
     assert.match(html, /Events could not load/);
   });
+});
+
+test("priority business events use premium local cover assets", () => {
+  const expectedCovers = {
+    event_02: "/orbit-covers/events/ai-workflow-poc-roundtable.jpg",
+    event_03: "/orbit-covers/events/cross-border-ecommerce-meetup.jpg",
+    event_04: "/orbit-covers/events/investor-founder-salon.jpg",
+    event_05: "/orbit-covers/events/chinese-business-community-salon.jpg",
+    event_signup_01: "/orbit-covers/events/kansai-business-connect.jpg",
+    event_signup_02: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
+    event_signup_03: "/orbit-covers/events/investor-founder-salon.jpg",
+  } as const;
+
+  for (const [eventId, cover] of Object.entries(expectedCovers)) {
+    assert.equal(EVENT_CONTENT[eventId]?.cover, cover);
+    assert.match(cover, /^\/orbit-covers\/events\/.+\.jpg$/);
+    assert.equal(existsSync(join(projectRoot, "public", cover)), true);
+  }
 });

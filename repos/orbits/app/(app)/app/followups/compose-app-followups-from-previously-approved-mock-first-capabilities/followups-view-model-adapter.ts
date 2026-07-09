@@ -21,7 +21,15 @@ function todayParts() {
 }
 
 function connectionIdFor(name: string): string {
-  return `contact:${name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "orbit"}`;
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}-]+/gu, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return `contact:${slug || "orbit"}`;
 }
 
 function splitRelationship(value: string): { company: string; name: string } {
@@ -53,8 +61,26 @@ function dateForDue(value: string, index: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+function dateForCard(card: { due: string; dueAt?: string }, index: number): string {
+  if (card.dueAt) {
+    const dueDate = new Date(card.dueAt);
+
+    if (Number.isFinite(dueDate.getTime())) {
+      return dueDate.toISOString().slice(0, 10);
+    }
+  }
+
+  return dateForDue(card.due, index);
+}
+
 function timeForIndex(index: number): string {
   return `${String(9 + (index % 8)).padStart(2, "0")}:00`;
+}
+
+function timeForCard(card: { dueAt?: string }, index: number): string {
+  const time = card.dueAt?.match(/T(\d{2}:\d{2})/)?.[1];
+
+  return time ?? timeForIndex(index);
 }
 
 export function followupsRouteToOrbitScheduleViewModel(
@@ -95,14 +121,14 @@ export function followupsRouteToOrbitScheduleViewModel(
 
       return {
         cid: connection.id,
-        date: dateForDue(card.due, index),
+        date: dateForCard(card, index),
         dur: "30 分钟",
         id: `${card.id}:${index}`,
         place: connection.company,
         status: /ready|confirmed|已确认/i.test(card.reviewStatus)
           ? "已确认"
           : "待确认",
-        time: timeForIndex(index),
+        time: timeForCard(card, index),
         topic: card.title,
       };
     },

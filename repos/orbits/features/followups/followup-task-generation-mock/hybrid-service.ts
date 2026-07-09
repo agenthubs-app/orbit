@@ -229,6 +229,7 @@ function toTask(
     title: task.title,
     triggerKind: triggerKindFor(task),
     priority: priorityFor(dueInDays),
+    dueAt: task.dueAt,
     dueInDays,
     connectionId: task.connectionId ?? connection?.id ?? "",
     contactName: contact?.displayName ?? "Hybrid local remote contact",

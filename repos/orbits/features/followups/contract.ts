@@ -156,6 +156,7 @@ export interface FollowupTask {
   title: string;
   triggerKind: FollowupTaskTriggerKind;
   priority: FollowupTaskPriority;
+  dueAt?: string;
   dueInDays: number;
   connectionId: string;
   contactName: string;

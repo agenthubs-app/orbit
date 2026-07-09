@@ -282,9 +282,11 @@ function isStoredAgentMessage(value: unknown): value is AgentMessage {
 
 export interface AgentStoredChatSession {
   createdAt: string;
+  customTitle?: string;
   id: string;
   messages: AgentMessage[];
   panel?: AgentPanel | null;
+  pinned?: boolean;
   title: string;
   updatedAt: string;
 }
@@ -304,6 +306,9 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
       panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
       createdAt:
         typeof session.createdAt === "string" ? session.createdAt : "",
+      customTitle:
+        typeof session.customTitle === "string" ? session.customTitle.trim() : "",
+      pinned: session.pinned === true,
       title: typeof session.title === "string" ? session.title.trim() : "",
       updatedAt:
         typeof session.updatedAt === "string" ? session.updatedAt : "",
@@ -356,17 +361,22 @@ export function agentChatHistorySessionsToHistory(
   const group = language === "zh" ? "更早" : "Earlier";
 
   return [...sessions]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .sort(
+      (a, b) =>
+        Number(b.pinned === true) - Number(a.pinned === true) ||
+        b.createdAt.localeCompare(a.createdAt),
+    )
     .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS)
     .map((session) => {
       const firstUserMessage =
         session.messages.find((message) => message.role === "user")?.text ??
         session.title;
-      const title = titleFromMessages(session.messages) || session.title;
+      const title = displayTitleForStoredSession(session);
 
       return {
         group,
         id: `session:${session.id}`,
+        pinned: session.pinned,
         q: firstUserMessage,
         sessionId: session.id,
         title,
@@ -451,6 +461,14 @@ export function titleFromMessages(messages: readonly AgentMessage[]): string {
   }
 
   return compactAgentChatTitleFromQuestion(firstUserMessage);
+}
+
+function displayTitleForStoredSession(session: AgentStoredChatSession): string {
+  return (
+    session.customTitle?.trim() ||
+    titleFromMessages(session.messages) ||
+    session.title
+  );
 }
 
 function panelFromMessages(messages: readonly AgentMessage[]): AgentPanel | null {
@@ -659,17 +677,40 @@ function AgentHistoryList({
   history,
   onDelete,
   onPick,
+  onRename,
+  onTogglePin,
 }: {
   activeQ: string;
   activeSessionId: string | null;
   history: OrbitAgentHistoryView[];
   onDelete: (history: OrbitAgentHistoryView) => void;
   onPick: (history: OrbitAgentHistoryView) => void;
+  onRename: (history: OrbitAgentHistoryView, title: string) => void;
+  onTogglePin: (history: OrbitAgentHistoryView) => void;
 }) {
   const { t } = useOrbitLanguage();
   const [historyMenuOpenId, setHistoryMenuOpenId] = useState<string | null>(null);
   const [hoveredHistoryId, setHoveredHistoryId] = useState<string | null>(null);
+  const [renamingHistoryId, setRenamingHistoryId] = useState<string | null>(null);
+  const [renamingHistoryTitle, setRenamingHistoryTitle] = useState("");
   const groups = useMemo(() => [...new Set(history.map((item) => item.group))], [history]);
+
+  const startRename = (item: OrbitAgentHistoryView) => {
+    setHistoryMenuOpenId(null);
+    setRenamingHistoryId(item.id);
+    setRenamingHistoryTitle(item.title);
+  };
+
+  const finishRename = (item: OrbitAgentHistoryView) => {
+    const title = renamingHistoryTitle.trim();
+
+    if (title) {
+      onRename(item, title);
+    }
+
+    setRenamingHistoryId(null);
+    setRenamingHistoryTitle("");
+  };
 
   useEffect(() => {
     if (!historyMenuOpenId) {
@@ -703,6 +744,7 @@ function AgentHistoryList({
                     (activeQ && item.q === activeQ),
                 );
                 const menuOpen = historyMenuOpenId === item.id;
+                const renaming = renamingHistoryId === item.id;
                 const controlsVisible = active || menuOpen || hoveredHistoryId === item.id;
 
                 return (
@@ -723,31 +765,69 @@ function AgentHistoryList({
                       width: "100%",
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHistoryMenuOpenId(null);
-                        onPick(item);
-                      }}
-                      style={{
-                        alignItems: "center",
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        display: "flex",
-                        flex: 1,
-                        fontFamily: "var(--ff)",
-                        gap: 10,
-                        minWidth: 0,
-                        padding: "7px 0",
-                        textAlign: "left",
-                      }}
-                    >
-                      <Icon name="message" size={15} color={active ? "var(--accent)" : "var(--text-4)"} />
-                      <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {item.title}
-                      </span>
-                    </button>
+                    {renaming ? (
+                      <form
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          finishRename(item);
+                        }}
+                        style={{ alignItems: "center", display: "flex", flex: 1, minWidth: 0, padding: "4px 0" }}
+                      >
+                        <input
+                          autoFocus
+                          data-orbit-agent-history-rename-input={item.sessionId}
+                          onBlur={() => finishRename(item)}
+                          onChange={(event) => setRenamingHistoryTitle(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              setRenamingHistoryId(null);
+                              setRenamingHistoryTitle("");
+                            }
+                          }}
+                          value={renamingHistoryTitle}
+                          style={{
+                            background: "var(--surface)",
+                            border: "1px solid var(--accent)",
+                            borderRadius: 8,
+                            color: "var(--ink)",
+                            flex: 1,
+                            fontFamily: "var(--ff)",
+                            fontSize: 14,
+                            height: 30,
+                            minWidth: 0,
+                            outline: "none",
+                            padding: "0 8px",
+                          }}
+                        />
+                      </form>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHistoryMenuOpenId(null);
+                          onPick(item);
+                        }}
+                        style={{
+                          alignItems: "center",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          flex: 1,
+                          fontFamily: "var(--ff)",
+                          gap: 10,
+                          minWidth: 0,
+                          padding: "7px 0",
+                          textAlign: "left",
+                        }}
+                      >
+                        <Icon name="message" size={15} color={active ? "var(--accent)" : "var(--text-4)"} />
+                        <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {item.title}
+                        </span>
+                      </button>
+                    )}
                     {item.sessionId ? (
                       <>
                         <button
@@ -784,7 +864,7 @@ function AgentHistoryList({
                               border: "1px solid var(--border)",
                               borderRadius: 10,
                               boxShadow: "var(--sh-pop)",
-                              minWidth: 132,
+                              minWidth: 156,
                               padding: 6,
                               position: "absolute",
                               right: 2,
@@ -792,6 +872,62 @@ function AgentHistoryList({
                               zIndex: 20,
                             }}
                           >
+                            <button
+                              data-orbit-agent-history-pin={item.sessionId}
+                              onClick={() => {
+                                setHistoryMenuOpenId(null);
+                                onTogglePin(item);
+                              }}
+                              role="menuitem"
+                              type="button"
+                              style={{
+                                alignItems: "center",
+                                background: "transparent",
+                                border: "none",
+                                borderRadius: 8,
+                                color: "var(--text)",
+                                cursor: "pointer",
+                                display: "flex",
+                                fontFamily: "var(--ff)",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                gap: 8,
+                                height: 34,
+                                padding: "0 10px",
+                                textAlign: "left",
+                                width: "100%",
+                              }}
+                            >
+                              <Icon name="pin" size={14} />
+                              {item.pinned ? t({ en: "Unpin", zh: "取消置顶" }) : t({ en: "Pin", zh: "置顶" })}
+                            </button>
+                            <button
+                              data-orbit-agent-history-rename={item.sessionId}
+                              onClick={() => startRename(item)}
+                              role="menuitem"
+                              type="button"
+                              style={{
+                                alignItems: "center",
+                                background: "transparent",
+                                border: "none",
+                                borderRadius: 8,
+                                color: "var(--text)",
+                                cursor: "pointer",
+                                display: "flex",
+                                fontFamily: "var(--ff)",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                gap: 8,
+                                height: 34,
+                                padding: "0 10px",
+                                textAlign: "left",
+                                width: "100%",
+                              }}
+                            >
+                              <Icon name="edit" size={14} />
+                              {t({ en: "Rename", zh: "重命名" })}
+                            </button>
+                            <div style={{ background: "var(--border)", height: 1, margin: "5px 4px" }} />
                             <button
                               data-orbit-agent-history-delete={item.sessionId}
                               onClick={() => {
@@ -811,6 +947,7 @@ function AgentHistoryList({
                                 fontFamily: "var(--ff)",
                                 fontSize: 13,
                                 fontWeight: 600,
+                                gap: 8,
                                 height: 34,
                                 padding: "0 10px",
                                 textAlign: "left",
@@ -1209,12 +1346,16 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     const existingSession = storedSessionsRef.current.find(
       (item) => item.id === sessionId,
     );
+    const customTitle = existingSession?.customTitle?.trim();
+    const autoTitle = titleFromMessages(nextMessages);
     const session: AgentStoredChatSession = {
       createdAt: existingSession?.createdAt ?? now,
+      customTitle,
       id: sessionId,
       messages: [...nextMessages],
       panel: nextPanel,
-      title: titleFromMessages(nextMessages),
+      pinned: existingSession?.pinned,
+      title: customTitle || autoTitle,
       updatedAt: now,
     };
     const nextSessions = upsertAgentChatSession(
@@ -1529,6 +1670,63 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     navigate("/agent");
   };
 
+  const updateHistorySession = (
+    sessionId: string,
+    update: (session: AgentStoredChatSession) => AgentStoredChatSession,
+  ) => {
+    const currentSession = storedSessionsRef.current.find(
+      (session) => session.id === sessionId,
+    );
+
+    if (!currentSession) {
+      return;
+    }
+
+    const nextSession = {
+      ...update(currentSession),
+      updatedAt: new Date().toISOString(),
+    };
+    const nextSessions = upsertAgentChatSession(
+      storedSessionsRef.current,
+      nextSession,
+    );
+
+    storedSessionsRef.current = nextSessions;
+    setStoredSessions(nextSessions);
+    void persistStoredAgentChatSession(nextSession);
+  };
+
+  const togglePinnedHistorySession = (item: OrbitAgentHistoryView) => {
+    if (!item.sessionId) {
+      return;
+    }
+
+    updateHistorySession(item.sessionId, (session) => ({
+      ...session,
+      pinned: !session.pinned,
+    }));
+  };
+
+  const renameHistorySession = (
+    item: OrbitAgentHistoryView,
+    title: string,
+  ) => {
+    if (!item.sessionId) {
+      return;
+    }
+
+    const customTitle = title.trim();
+    if (!customTitle) {
+      return;
+    }
+
+    updateHistorySession(item.sessionId, (session) => ({
+      ...session,
+      customTitle,
+      title: customTitle,
+    }));
+  };
+
   const deleteHistorySession = (item: OrbitAgentHistoryView) => {
     if (!item.sessionId) {
       return;
@@ -1641,7 +1839,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             <div className="eyebrow">{t({ en: "Chat history", zh: "对话历史" })}</div>
           </div>
           <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 10px 18px" }}>
-            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} />
+            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} />
           </div>
         </aside>
         <button
@@ -1738,7 +1936,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               <div className="eyebrow" style={{ padding: "2px 8px 4px" }}>{t({ en: "Chat history", zh: "对话历史" })}</div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 8px 18px" }}>
-              <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} />
+              <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} />
             </div>
           </div>
         </div>

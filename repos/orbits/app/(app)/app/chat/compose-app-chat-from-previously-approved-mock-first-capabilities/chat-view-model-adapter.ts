@@ -83,13 +83,7 @@ export function chatRouteToOrbitAgentViewModel(
   const contextQuery = `总结我和 ${participant} (${organization}) 的关系上下文。`;
 
   return {
-    history: workspace.conversations.slice(0, 8).map((item, index) => ({
-      group: index < 3 ? "关系聊天" : "更早",
-      id: item.conversationId,
-      q: `总结我和 ${item.participantName} (${item.organization}) 的关系上下文。`,
-      title: `${item.participantName} · ${item.organization}`,
-      when: item.statusLabel,
-    })),
+    history: [],
     scenarios: {
       events: {
         intro:

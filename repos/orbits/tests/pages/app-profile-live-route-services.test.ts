@@ -111,6 +111,24 @@ test("/app/profile page renders the real Orbit profile editor", () => {
   assert.match(profileSource, /data-orbit-real-page="profile"/);
 });
 
+test("/app/profile page applies the founder's Chinese matching profile copy", () => {
+  const pageSource = source("app/(app)/app/profile/page.tsx");
+
+  assert.match(pageSource, /buildFounderProfileViewModel/);
+  assert.match(pageSource, /fullName: "Xinyi Zhao"/);
+  assert.match(pageSource, /Orbit 的创始人/);
+  assert.match(pageSource, /帮企业把 AI 放进销售、客服、运营和内部知识库这些真实流程里/);
+  assert.match(pageSource, /AI 落地方案拆解/);
+  assert.match(pageSource, /日本本地商务资源/);
+  assert.match(pageSource, /有真实 AI 导入需求的企业/);
+  assert.match(pageSource, /language === "en"/);
+  assert.doesNotMatch(
+    pageSource,
+    /\.\.\.viewModel\.(?:industries|offeringTags|seekingTags|topics)/,
+  );
+  assert.doesNotMatch(pageSource, /fullName: "結城 航太郎"/);
+});
+
 test("app profile success model keeps editable identity fields for the real profile UI", async () => {
   await withMockProfile(async () => {
     const viewModel = await loadAppProfileRouteViewModel();

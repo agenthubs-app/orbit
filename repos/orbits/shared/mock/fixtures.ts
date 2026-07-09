@@ -943,5 +943,46 @@ function withGeneratedTaskConnectionIds(
   };
 }
 
+const generatedFollowupTaskCalendarStartUtc = Date.UTC(2026, 6, 10);
+const generatedFollowupTaskCalendarSpanDays = 90;
+const generatedFollowupTaskHours = [9, 10, 11, 14, 15, 16] as const;
+
+function padDatePart(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function generatedFollowupDueAt(index: number, total: number): IsoDateTimeString {
+  const date = new Date(generatedFollowupTaskCalendarStartUtc);
+  const safeTotal = Math.max(1, total);
+  const dayOffset = Math.min(
+    generatedFollowupTaskCalendarSpanDays - 1,
+    Math.floor((index * generatedFollowupTaskCalendarSpanDays) / safeTotal),
+  );
+  const hour =
+    generatedFollowupTaskHours[index % generatedFollowupTaskHours.length];
+
+  date.setUTCDate(date.getUTCDate() + dayOffset);
+
+  const year = date.getUTCFullYear();
+  const month = padDatePart(date.getUTCMonth() + 1);
+  const day = padDatePart(date.getUTCDate());
+
+  return `${year}-${month}-${day}T${padDatePart(hour)}:00:00+09:00`;
+}
+
+function withDenseGeneratedFollowupCalendar(
+  fixtures: MockRuntimeFixtures,
+): MockRuntimeFixtures {
+  return {
+    ...fixtures,
+    tasks: fixtures.tasks.map((task, index) => ({
+      ...task,
+      dueAt: generatedFollowupDueAt(index, fixtures.tasks.length),
+    })),
+  };
+}
+
 export const defaultMockFixtures: MockRuntimeFixtures =
-  withGeneratedTaskConnectionIds(generatedRelationshipFixtures);
+  withGeneratedTaskConnectionIds(
+    withDenseGeneratedFollowupCalendar(generatedRelationshipFixtures),
+  );

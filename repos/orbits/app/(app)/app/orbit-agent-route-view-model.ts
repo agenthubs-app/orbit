@@ -83,6 +83,7 @@ export interface OrbitAgentScenarioView {
 export interface OrbitAgentHistoryView {
   group: string;
   id: string;
+  pinned?: boolean;
   q: string;
   sessionId?: string;
   title: string;

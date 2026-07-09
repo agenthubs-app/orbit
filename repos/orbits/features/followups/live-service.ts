@@ -220,6 +220,7 @@ function toTask(task: TaskDTO, graph: LiveFollowupGraph): FollowupTask {
     title: task.title,
     triggerKind: triggerKindFor(task),
     priority: priorityFor(dueInDays),
+    dueAt: task.dueAt,
     dueInDays,
     connectionId: task.connectionId ?? connection?.id ?? "",
     contactName: contact?.displayName ?? "Live contact",
