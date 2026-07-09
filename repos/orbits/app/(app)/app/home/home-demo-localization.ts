@@ -57,6 +57,11 @@ const VALUE_ZH: Record<string, string> = {
     "根据实时的关系背景，判断下一步最该跟进谁。",
   "founder building a relationship operating system":
     "正在打造一套关系运营系统的创始人",
+  // 主用户 小雨（AI/CV 工程师）
+  "ai & computer vision engineer": "AI 与计算机视觉工程师",
+  "oppo japan research": "OPPO 日本研究所",
+  "shipped camera ai on 10m+ devices; now building trustworthy genai":
+    "把相机 AI 做到千万级出货，如今专注可信生成式 AI",
 };
 
 // 双语 "中文 / English" 里挑中文片段。
@@ -70,9 +75,17 @@ function pickChineseSegment(value: string): string | null {
   }
   const han = /[一-鿿]/;
   const kana = /[぀-ヿ]/;
-  return (
-    segments.find((segment) => han.test(segment) && !kana.test(segment)) ?? null
+  const chineseSegment = segments.find(
+    (segment) => han.test(segment) && !kana.test(segment),
   );
+  // Only treat "/" as a language separator when there is a genuine
+  // English-only counterpart segment ("中文 / English"). For monolingual
+  // Chinese that merely uses "/" (e.g. "人工智能 / 计算机视觉", "AI/CV"), keep
+  // the whole value instead of truncating to the first segment.
+  const englishSegment = segments.find(
+    (segment) => !han.test(segment) && !kana.test(segment) && /[A-Za-z]/.test(segment),
+  );
+  return chineseSegment && englishSegment ? chineseSegment : null;
 }
 
 // 单个档案文本值：先挑双语中文，再查词表，最后原样返回。
