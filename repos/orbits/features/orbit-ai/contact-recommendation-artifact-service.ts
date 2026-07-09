@@ -800,10 +800,14 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
 
       const normalizationService = input.normalizationService;
 
+      // planner 已经给出 searchTerms（例如实体名"梁佳怡"的详情查询）时以它为准，
+      // 不再让抽词服务覆盖——抽词的指令是"不要包含人名"，会把实体查询洗掉。
+      const plannerSearchTerms = readText(request.toolArguments?.searchTerms);
+
       // live 路径注入 normalizationService：先用模型把任意语言 query 抽成英文检索词，
       // 注入 toolArguments.searchTerms 再检索；缺 key/失败时 searchTerms=null，自动回退
       // 正则词表。未注入（默认/测试）时保持同步、纯正则。
-      if (normalizationService) {
+      if (normalizationService && !plannerSearchTerms) {
         return normalizationService.extractSearchTerms(combinedQueryContext).then((extraction) =>
           runMatcher(
             extraction.searchTerms

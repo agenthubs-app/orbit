@@ -188,6 +188,8 @@ live 路径下，`language-normalization-service` 先用模型把任意语言 qu
 
 `history` 在服务端的用途：route 校验角色和长度后透传；runtime 把同一份最近轮次交给 planner（消解追问指代并按前文目标路由工具）、artifact contextMessages（参与检索词抽取与路径选择）和 synthesis（保持多轮连贯）。会话仍不做服务端持久化，历史由页面随每次请求携带。
 
+带推荐结果的 assistant 轮在 history 中附加 `[本轮推荐明细]` 结构化行（名称/时间/地点/分数/理由）。实体详情查询走两级：明细块已含答案时 planner 用 general_chat 直接作答；需要完整记录时 planner 复用 `events.recommend` / `contacts.recommend`，把实体名放进 `arguments.searchTerms` 从 live 库取回完整记录（Contacts 排名 token 支持中日文名子串匹配；planner 提供的 searchTerms 优先于抽词服务，不会被覆盖）。不为实体详情新增白名单工具。等待回复期间侧边栏保持上一轮结果，新回复带结果时才替换。
+
 当 Orbit AI 嵌入 `/app/chat` 等模块页面时，模块页面不直接依赖 raw payload。嵌入方应在自己的 route view model 中调用 Orbit AI service，把 proposed tool intents、assistant reply 和 artifact surface 映射成该页面的 view model。
 
 ## 测试要求

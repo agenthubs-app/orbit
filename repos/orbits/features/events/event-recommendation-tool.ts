@@ -349,6 +349,9 @@ function resultForList(
   // 中文/日文请求由此拿到能命中双语活动文本的英文关键词。
   const searchTerms = readText(input.toolArguments?.searchTerms);
   const tokens = tokensFor(searchTerms ? `${query} ${searchTerms}` : query);
+  // 有模型检索词=相关性模式，零命中的活动被过滤；
+  // 没有检索词（纯正则/测试路径）保持可用性列表行为，不做整体过滤。
+  const requireTokenMatch = Boolean(searchTerms) && tokens.length > 0;
   const databaseQueryExecuted = databaseReadExecuted(listResult.data.provenance);
   const candidates = listResult.data.events
     .filter((event) => event.status !== "cancelled")
@@ -362,8 +365,7 @@ function resultForList(
         tokens,
       }),
     )
-    // 请求带了关键词却一个都没命中的活动不进入推荐，避免"什么都推"。
-    .filter((candidate) => tokens.length === 0 || candidate.matchedTokens.length > 0)
+    .filter((candidate) => !requireTokenMatch || candidate.matchedTokens.length > 0)
     .sort(compareCandidates)
     .slice(0, limit);
   const evidenceIds = candidates.flatMap((candidate) => candidate.evidenceIds);

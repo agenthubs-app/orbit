@@ -317,7 +317,7 @@ function generatedViewFor(
             en: `${result.candidates.length} event(s) are ready for review.`,
             zh: `已有 ${result.candidates.length} 个活动可复核。`,
           })
-        : result.summary,
+        : emptyStateFor(result, locale) ?? result.summary,
   };
 }
 

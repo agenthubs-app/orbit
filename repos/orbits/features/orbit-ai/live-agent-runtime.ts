@@ -870,11 +870,16 @@ export function artifactSummaryForSynthesis(
   const topItems = (artifact.result.generatedView?.sections ?? [])
     .flatMap((section) => section.items ?? [])
     .slice(0, 3)
-    .map((item) =>
-      [item.title, item.subtitle, item.reason]
+    .map((item) => {
+      const when = (item.metadata ?? []).find((entry) =>
+        ["Start", "When", "开始", "时间"].includes(entry.label),
+      )?.value;
+      const body = item.body?.trim().slice(0, 140);
+
+      return [item.title, item.subtitle, when, item.reason, body]
         .filter((value): value is string => Boolean(value && value.trim()))
-        .join(" · "),
-    )
+        .join(" · ");
+    })
     .filter(Boolean);
   const baseSummary =
     artifact.result.generatedView?.summary ??

@@ -296,14 +296,17 @@ const rankingStopwords = new Set([
 ]);
 
 function rankingTokensFor(searchQuery: string): readonly string[] {
-  return Array.from(
-    new Set(
-      searchQuery
-        .toLowerCase()
-        .split(/[^a-z0-9]+/)
-        .filter((token) => token.length >= 3 && !rankingStopwords.has(token)),
-    ),
-  );
+  const lowered = searchQuery.toLowerCase();
+  const latinTokens = lowered
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3 && !rankingStopwords.has(token));
+  // 中日文 token（如联系人名"梁佳怡"）整段保留做子串匹配，
+  // 支持"某某是谁/是做什么的"这类按名字调取实体信息的查询。
+  const cjkTokens: string[] = (
+    lowered.match(/[぀-ヿ㐀-鿿]{2,}/gu) ?? []
+  ).filter((token: string) => token.length <= 12);
+
+  return Array.from(new Set([...latinTokens, ...cjkTokens]));
 }
 
 // 行业桶的确定性扩展词：模型抽词逐轮会有波动，行业方向一旦被正则桶识别，

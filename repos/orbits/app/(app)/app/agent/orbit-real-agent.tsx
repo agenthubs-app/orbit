@@ -38,8 +38,8 @@ type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
 type AgentHistoryLanguage = "en" | "zh" | "ja";
 
-const AGENT_CHAT_HISTORY_STORAGE_KEY = "orbit-agent-chat-history-v1";
 const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
+const AGENT_CHAT_SESSIONS_API_PATH = "/api/ai/conversations/sessions";
 const MAX_AGENT_CHAT_HISTORY_SESSIONS = 12;
 
 function depthFor(t: Translate) {
@@ -184,6 +184,31 @@ function eventItemsFromArtifact(
   });
 }
 
+// 发给服务端的对话历史不只带气泡文本：带推荐结果的 assistant 轮附加结构化明细
+// （名称/时间/地点/分数），否则追问"第一个活动是什么时候"时模型确实看不到时间。
+function historyContentFor(turn: AgentMessage): string {
+  const text = turn.text.trim();
+
+  if (turn.role === "user" || turn.items.length === 0) {
+    return text;
+  }
+
+  const lines = turn.items.slice(0, 8).map((item, index) => {
+    if (isPeopleResult(item)) {
+      const connection = item.connection;
+      const identity = [connection.title, connection.company]
+        .filter(Boolean)
+        .join(" · ");
+
+      return `${index + 1}. ${connection.displayName}（${identity}）匹配度 ${item.match}% — ${item.reason}`;
+    }
+
+    return `${index + 1}. ${item.event.name}（${item.event.place}）时间 ${item.event.startsAt} 匹配分 ${item.score} — ${item.reason}`;
+  });
+
+  return `${text}\n[本轮推荐明细]\n${lines.join("\n")}`;
+}
+
 function currentAgentQuery() {
   if (typeof window === "undefined") return "";
   return new URLSearchParams(window.location.search).get("q") ?? "";
@@ -223,6 +248,31 @@ export interface AgentStoredChatSession {
   updatedAt: string;
 }
 
+function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(isRecord)
+    .map((session) => ({
+      id: typeof session.id === "string" ? session.id : "",
+      messages: Array.isArray(session.messages)
+        ? session.messages.filter(isStoredAgentMessage)
+        : [],
+      panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
+      title: typeof session.title === "string" ? session.title.trim() : "",
+      updatedAt:
+        typeof session.updatedAt === "string" ? session.updatedAt : "",
+    }))
+    .filter(
+      (session) =>
+        Boolean(session.id && session.title && session.updatedAt) &&
+        session.messages.some((message) => message.role === "user"),
+    )
+    .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
+}
+
 export function parseAgentChatHistoryStorage(
   value: string | null,
 ): AgentStoredChatSession[] {
@@ -232,31 +282,24 @@ export function parseAgentChatHistoryStorage(
 
   try {
     const parsed = JSON.parse(value) as unknown;
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
 
-    return parsed
-      .filter(isRecord)
-      .map((session) => ({
-        id: typeof session.id === "string" ? session.id : "",
-        messages: Array.isArray(session.messages)
-          ? session.messages.filter(isStoredAgentMessage)
-          : [],
-        panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
-        title: typeof session.title === "string" ? session.title.trim() : "",
-        updatedAt:
-          typeof session.updatedAt === "string" ? session.updatedAt : "",
-      }))
-      .filter(
-        (session) =>
-          Boolean(session.id && session.title && session.updatedAt) &&
-          session.messages.some((message) => message.role === "user"),
-      )
-      .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
+    return parseAgentChatSessionsArray(parsed);
   } catch {
     return [];
   }
+}
+
+function parseAgentChatSessionsData(value: unknown): AgentStoredChatSession[] {
+  return isRecord(value) ? parseAgentChatSessionsArray(value.sessions) : [];
+}
+
+function parseAgentChatSessionData(value: unknown): AgentStoredChatSession | null {
+  const sessions =
+    isRecord(value) && isRecord(value.session)
+      ? parseAgentChatSessionsArray([value.session])
+      : [];
+
+  return sessions[0] ?? null;
 }
 
 export function agentChatHistorySessionsToHistory(
@@ -324,27 +367,69 @@ function upsertAgentChatSession(
   ].slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
 }
 
-function readStoredAgentChatSessions(): AgentStoredChatSession[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  return parseAgentChatHistoryStorage(
-    window.localStorage.getItem(AGENT_CHAT_HISTORY_STORAGE_KEY),
-  );
+function agentChatSessionsApiPath(sessionId?: string): string {
+  return sessionId
+    ? `${AGENT_CHAT_SESSIONS_API_PATH}/${encodeURIComponent(sessionId)}`
+    : AGENT_CHAT_SESSIONS_API_PATH;
 }
 
-function writeStoredAgentChatSessions(
-  sessions: readonly AgentStoredChatSession[],
-): void {
-  if (typeof window === "undefined") {
-    return;
+async function readJsonResponse(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
   }
+}
 
-  window.localStorage.setItem(
-    AGENT_CHAT_HISTORY_STORAGE_KEY,
-    JSON.stringify(sessions),
-  );
+async function loadStoredAgentChatSessions(): Promise<AgentStoredChatSession[]> {
+  try {
+    const response = await fetch(agentChatSessionsApiPath(), {
+      headers: { accept: "application/json" },
+      method: "GET",
+    });
+    const payload = await readJsonResponse(response);
+
+    return response.ok && isRecord(payload) && payload.success === true
+      ? parseAgentChatSessionsData(payload.data)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadStoredAgentChatSession(
+  sessionId: string,
+): Promise<AgentStoredChatSession | null> {
+  try {
+    const response = await fetch(agentChatSessionsApiPath(sessionId), {
+      headers: { accept: "application/json" },
+      method: "GET",
+    });
+    const payload = await readJsonResponse(response);
+
+    return response.ok && isRecord(payload) && payload.success === true
+      ? parseAgentChatSessionData(payload.data)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function persistStoredAgentChatSession(
+  session: AgentStoredChatSession,
+): Promise<boolean> {
+  try {
+    const response = await fetch(agentChatSessionsApiPath(), {
+      body: JSON.stringify({ session }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    const payload = await readJsonResponse(response);
+
+    return response.ok && isRecord(payload) && payload.success === true;
+  } catch {
+    return false;
+  }
 }
 
 export async function copyAgentMessageText(text: string): Promise<boolean> {
@@ -798,7 +883,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     setActiveSessionId(sessionId);
     storedSessionsRef.current = nextSessions;
     setStoredSessions(nextSessions);
-    writeStoredAgentChatSessions(nextSessions);
+    void persistStoredAgentChatSession(session);
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
@@ -817,15 +902,16 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         ? "Agent 暂时无法完成这次回复，请稍后再试。"
         : "The agent could not complete this reply. Please try again.";
 
-    // 发送前抓取已有轮次作为对话历史，让服务端 planner 能接住追问里的指代。
+    // 发送前抓取已有轮次作为对话历史，让服务端 planner 能接住追问里的指代；
+    // 推荐轮附带结构化明细，追问时间/地点/理由时模型可直接作答。
     const history = messagesRef.current
-      .map((turn) => ({ content: turn.text.trim(), role: turn.role }))
+      .map((turn) => ({ content: historyContentFor(turn), role: turn.role }))
       .filter((turn) => turn.content)
       .slice(-8);
 
     setMessages((current) => [...current, { role: "user", text: query }]);
     setThinking(true);
-    setPanel(null);
+    // 等待回复期间保留现有侧边栏；新回复带结果时才替换。
 
     try {
       const response = await fetch("/api/ai/conversations", {
@@ -905,33 +991,58 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   }, []);
 
   useEffect(() => {
-    const sessions = readStoredAgentChatSessions();
-    const sessionId =
-      currentAgentSessionId() ||
-      (typeof window !== "undefined"
-        ? window.localStorage.getItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY) ?? ""
-        : "");
-    const session = sessions.find((item) => item.id === sessionId);
+    let cancelled = false;
 
-    storedSessionsRef.current = sessions;
-    setStoredSessions(sessions);
-    historyHydratedRef.current = true;
+    const hydrateHistory = async () => {
+      const sessionId =
+        currentAgentSessionId() ||
+        (typeof window !== "undefined"
+          ? window.localStorage.getItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY) ?? ""
+          : "");
+      const sessions = await loadStoredAgentChatSessions();
 
-    if (session) {
-      restoreSession(session);
-      return;
-    }
+      if (cancelled) {
+        return;
+      }
 
-    const query = currentAgentQuery();
-    setActiveQ(query);
-    if (query) {
-      setMessages([]);
-      setPanel(null);
-      setText("");
-      setActiveSessionId(null);
-      activeSessionIdRef.current = null;
-      void ask(query);
-    }
+      let session =
+        sessions.find((item) => item.id === sessionId) ??
+        (sessionId ? await loadStoredAgentChatSession(sessionId) : null);
+
+      if (cancelled) {
+        return;
+      }
+
+      const nextSessions = session
+        ? upsertAgentChatSession(sessions, session)
+        : sessions;
+
+      storedSessionsRef.current = nextSessions;
+      setStoredSessions(nextSessions);
+      historyHydratedRef.current = true;
+
+      if (session) {
+        restoreSession(session);
+        return;
+      }
+
+      const query = currentAgentQuery();
+      setActiveQ(query);
+      if (query) {
+        setMessages([]);
+        setPanel(null);
+        setText("");
+        setActiveSessionId(null);
+        activeSessionIdRef.current = null;
+        void ask(query);
+      }
+    };
+
+    void hydrateHistory();
+
+    return () => {
+      cancelled = true;
+    };
   }, [ask, restoreSession]);
 
   useEffect(() => {
@@ -969,6 +1080,22 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         navigate(`/agent?session=${encodeURIComponent(session.id)}`);
         return;
       }
+
+      void loadStoredAgentChatSession(item.sessionId).then((storedSession) => {
+        if (!storedSession) {
+          return;
+        }
+
+        const nextSessions = upsertAgentChatSession(
+          storedSessionsRef.current,
+          storedSession,
+        );
+        storedSessionsRef.current = nextSessions;
+        setStoredSessions(nextSessions);
+        restoreSession(storedSession);
+        navigate(`/agent?session=${encodeURIComponent(storedSession.id)}`);
+      });
+      return;
     }
 
     setHistOpen(false);
