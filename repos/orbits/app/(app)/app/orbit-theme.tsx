@@ -134,6 +134,8 @@ html[data-theme="light"] [data-orbit-real-page] .orbit-view-toggle button.is-act
   color: #fff;
 }
 
+/* The toggle renders outside [data-orbit-real-page], so design tokens don't
+   resolve here — use explicit per-theme colors so it's visible in both themes. */
 .orbit-theme-toggle {
   position: fixed;
   right: 18px;
@@ -145,16 +147,23 @@ html[data-theme="light"] [data-orbit-real-page] .orbit-view-toggle button.is-act
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  border: 1px solid var(--border-strong, rgba(150,145,200,0.34));
-  background: var(--glass-chip, rgba(16,13,32,0.86));
-  color: var(--ink, #F2F0FB);
   cursor: pointer;
-  box-shadow: var(--sh-md, 0 2px 4px rgba(0,0,0,0.4));
   backdrop-filter: blur(8px);
-  transition: transform .08s ease, background .15s ease;
+  transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  /* dark theme (default) */
+  background: #1b1830;
+  color: #f2f0fb;
+  border: 1px solid rgba(150,145,200,0.34);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+}
+html[data-theme="light"] .orbit-theme-toggle {
+  background: #ffffff;
+  color: #17211f;
+  border: 1px solid rgba(23,33,31,0.14);
+  box-shadow: 0 4px 14px rgba(23,33,31,0.14);
 }
 .orbit-theme-toggle:hover { transform: translateY(-1px); }
-.orbit-theme-toggle:focus-visible { outline: 3px solid var(--accent-ring, rgba(139,123,240,0.42)); outline-offset: 2px; }
+.orbit-theme-toggle:focus-visible { outline: 3px solid rgba(14,116,144,0.5); outline-offset: 2px; }
 `;
 
 // Animated avatars (item 4): a subtle orbiting sheen on every Avatar primitive,
