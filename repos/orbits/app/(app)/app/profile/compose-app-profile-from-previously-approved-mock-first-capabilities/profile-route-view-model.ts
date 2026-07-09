@@ -91,14 +91,20 @@ export interface AppProfileSuccessViewModel {
   nextProfileFieldLabel: string;
   profile: Pick<
     ManualProfile,
+    | "bio"
     | "displayName"
     | "headline"
     | "homeMarket"
+    | "industry"
+    | "offering"
     | "organization"
+    | "preferredFollowUpWindow"
     | "preferredIntroChannels"
     | "relationshipGoal"
     | "role"
+    | "seeking"
     | "targetRelationshipTypes"
+    | "topics"
   >;
   profileEvidenceIds: readonly string[];
   resumeDraft: AppProfileDraftViewModel;
@@ -530,14 +536,20 @@ function successViewModel(input: {
       input.profileState.data.completeness.nextBestField,
     ),
     profile: {
+      bio: profile.bio,
       displayName: profile.displayName,
       headline: profile.headline,
       homeMarket: profile.homeMarket,
+      industry: profile.industry,
+      offering: profile.offering,
       organization: profile.organization,
+      preferredFollowUpWindow: profile.preferredFollowUpWindow,
       preferredIntroChannels: profile.preferredIntroChannels,
       relationshipGoal: profile.relationshipGoal,
       role: profile.role,
+      seeking: profile.seeking,
       targetRelationshipTypes: profile.targetRelationshipTypes,
+      topics: profile.topics,
     },
     profileEvidenceIds: input.profileState.data.provenance.evidenceIds,
     resumeDraft: {

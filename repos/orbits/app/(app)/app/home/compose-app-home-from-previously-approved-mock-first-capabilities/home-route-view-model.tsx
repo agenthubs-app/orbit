@@ -165,7 +165,8 @@ function homeViewModel(input: {
   events: Extract<AppEventsRouteViewModel, { state: "success" }>;
   profile: Extract<AppProfileRouteViewModel, { state: "success" }>;
 }): OrbitHomeViewModel {
-  const fullName = input.profile.profile.profile.displayName || "Orbit operator";
+  const profile = input.profile.profile.profile;
+  const fullName = profile.displayName || "Orbit operator";
   const events = input.events.workspace.eventChoices.map(
     eventChoiceToLandingEvent,
   );
@@ -173,8 +174,20 @@ function homeViewModel(input: {
   return {
     account: {
       fullName,
-      headline: input.profile.profile.profile.headline,
+      headline: profile.headline,
       initial: fullName.slice(0, 1) || "O",
+      role: profile.role,
+      organization: profile.organization,
+      industry: profile.industry,
+      homeMarket: profile.homeMarket,
+      relationshipGoal: profile.relationshipGoal,
+      bio: profile.bio,
+      offering: profile.offering,
+      seeking: profile.seeking,
+      topics: profile.topics,
+      targetRelationshipTypes: profile.targetRelationshipTypes,
+      preferredIntroChannels: profile.preferredIntroChannels,
+      preferredFollowUpWindow: profile.preferredFollowUpWindow,
     },
     events,
     stats: {

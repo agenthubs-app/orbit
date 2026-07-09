@@ -3,10 +3,15 @@
 import { useState } from "react";
 
 import { AccountTopNav, orbitNavigate } from "../orbit-account-shell";
-import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
+import type { OrbitHomeAccountView, OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
+import {
+  localizeHomeHeadline,
+  localizeHomeList,
+  localizeHomeValue,
+} from "./home-demo-localization";
 
 type HomeFilter = "active" | "all" | "ended" | "upcoming";
 type HomeMode = "events" | "hub";
@@ -29,6 +34,97 @@ function hubEntryCards(t: Translate) {
     { g: "g-rose", href: "/home/cards", icon: "wallet", mobileSub: t({ en: "CRM", zh: "CRM" }), mobileTitle: t({ en: "Contacts", zh: "名片夹" }), sub: t({ en: "Post-event contact CRM", zh: "会后人脉 CRM" }), title: t({ en: "Contacts", zh: "名片夹" }) },
     { g: "g-sky", href: "/home/schedule", icon: "clock", mobileSub: t({ en: "Meet", zh: "约见" }), mobileTitle: t({ en: "Schedule", zh: "日程" }), sub: t({ en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ en: "Schedule", zh: "日程安排" }) },
   ];
+}
+
+function subtitleFor(account: OrbitHomeAccountView, language: OrbitLanguage): string {
+  // 副标题用 role · organization（本地化）。中文页面下若 organization 仍是英文
+  // （多为生成占位），则只显示 role，避免中英混排；两者都缺时退回 headline。
+  const role = account.role ? localizeHomeValue(account.role, language) : "";
+  const orgRaw = account.organization
+    ? localizeHomeValue(account.organization, language)
+    : "";
+  const keepOrg =
+    orgRaw && (language === "en" || /[一-鿿]/.test(orgRaw));
+  const composed = [role, keepOrg ? orgRaw : ""].filter(Boolean).join(" · ");
+  return composed || localizeHomeHeadline(account.headline, account.role, language);
+}
+
+// 个人资料摘要卡：surface 更完整的档案（行业、主场、关系目标、可提供/寻求/话题、简介）。
+function ProfileSummary({
+  account,
+  language,
+  t,
+}: {
+  account: OrbitHomeAccountView;
+  language: OrbitLanguage;
+  t: Translate;
+}) {
+  const industry = account.industry ? localizeHomeValue(account.industry, language) : "";
+  const homeMarket = account.homeMarket ? localizeHomeValue(account.homeMarket, language) : "";
+  const goal = account.relationshipGoal
+    ? localizeHomeValue(account.relationshipGoal, language)
+    : "";
+  const bio = account.bio ? localizeHomeValue(account.bio, language) : "";
+  const offering = localizeHomeList(account.offering, language).filter(Boolean);
+  const seeking = localizeHomeList(account.seeking, language).filter(Boolean);
+  const topics = localizeHomeList(account.topics, language).filter(Boolean);
+  const targets = localizeHomeList(account.targetRelationshipTypes, language).filter(Boolean);
+  const channels = localizeHomeList(account.preferredIntroChannels, language).filter(Boolean);
+  const followUpWindow = account.preferredFollowUpWindow
+    ? localizeHomeValue(account.preferredFollowUpWindow, language)
+    : "";
+
+  const facts: Array<[string, string]> = [];
+  if (industry) facts.push([t({ en: "Industry", zh: "行业" }), industry]);
+  if (homeMarket) facts.push([t({ en: "Home market", zh: "主场市场" }), homeMarket]);
+  if (followUpWindow) facts.push([t({ en: "Follow-up cadence", zh: "跟进节奏" }), followUpWindow]);
+
+  const chipGroups: Array<{ label: string; items: readonly string[]; tone: string }> = [];
+  if (offering.length) chipGroups.push({ label: t({ en: "I can offer", zh: "我能提供" }), items: offering, tone: "nc-tag-value" });
+  if (seeking.length) chipGroups.push({ label: t({ en: "I'm looking for", zh: "我在寻找" }), items: seeking, tone: "" });
+  if (targets.length) chipGroups.push({ label: t({ en: "I want to meet", zh: "想认识的人" }), items: targets, tone: "" });
+  if (topics.length) chipGroups.push({ label: t({ en: "Topics", zh: "关注话题" }), items: topics, tone: "" });
+  if (channels.length) chipGroups.push({ label: t({ en: "Intro channels", zh: "引荐渠道" }), items: channels, tone: "" });
+
+  if (!facts.length && !goal && !bio && !chipGroups.length) {
+    return null;
+  }
+
+  return (
+    <div className="card orbit-hub-profile" style={{ marginTop: 18, padding: 20 }}>
+      <div className="orbit-hub-profile-title">
+        <Icon name="user" size={16} />
+        <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "About me", zh: "个人资料" })}</h2>
+      </div>
+      {bio ? <p className="orbit-hub-bio">{bio}</p> : null}
+      {facts.length ? (
+        <div className="orbit-hub-facts">
+          {facts.map(([label, value]) => (
+            <div className="orbit-hub-fact" key={label}>
+              <span className="orbit-hub-fact-k">{label}</span>
+              <span className="orbit-hub-fact-v">{value}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {goal ? (
+        <div className="orbit-hub-goal">
+          <span className="orbit-hub-fact-k">{t({ en: "Relationship goal", zh: "关系目标" })}</span>
+          <p className="orbit-hub-goal-body">{goal}</p>
+        </div>
+      ) : null}
+      {chipGroups.map((group) => (
+        <div className="orbit-hub-chips" key={group.label}>
+          <span className="orbit-hub-fact-k">{group.label}</span>
+          <div className="orbit-hub-chip-row">
+            {group.items.map((item) => (
+              <span className={`nc-tag ${group.tone}`} key={item}>{item}</span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function parseDate(value: string) {
@@ -192,7 +288,7 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="eyebrow" style={{ marginBottom: 4 }}>{t({ en: "Good evening", zh: "晚上好" })}</div>
             <h1 className="h-display" style={{ margin: 0 }}>{viewModel.account.fullName}</h1>
-            <div style={{ color: "var(--text-2)", fontSize: 15, marginTop: 4 }}>{viewModel.account.headline}</div>
+            <div style={{ color: "var(--text-2)", fontSize: 15, marginTop: 4 }}>{subtitleFor(viewModel.account, language)}</div>
           </div>
           <div style={{ display: "flex", flexShrink: 0, gap: 10 }}>
             <a className="btn btn-ghost" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }}><Icon name="edit" size={16} />{t({ en: "Edit universal profile", zh: "编辑通用画像" })}</a>
@@ -204,6 +300,7 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
             <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
           ))}
         </div>
+        <ProfileSummary account={viewModel.account} language={language} t={t} />
         <div style={{ alignItems: "start", display: "grid", gap: 30, gridTemplateColumns: "1fr 320px", marginTop: 34 }}>
           <div>
             <div style={{ alignItems: "center", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 16 }}>
@@ -234,7 +331,7 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
       <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 18px 36px" }}>
         <div style={{ alignItems: "center", display: "flex", gap: 14, padding: "8px 0 4px" }}>
           <span className="avatar g-indigo" style={{ fontSize: 21.84, height: 52, width: 52 }}>{viewModel.account.initial}</span>
-          <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--text-3)", fontSize: 12 }}>{t({ en: "Good evening", zh: "晚上好" })}</div><h1 className="h-title" style={{ color: "var(--ink)", margin: 0 }}>{viewModel.account.fullName}</h1></div>
+          <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--text-3)", fontSize: 12 }}>{t({ en: "Good evening", zh: "晚上好" })}</div><h1 className="h-title" style={{ color: "var(--ink)", margin: 0 }}>{viewModel.account.fullName}</h1><div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitleFor(viewModel.account, language)}</div></div>
           <a aria-label={t({ en: "Edit", zh: "编辑" })} className="hit-44" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }} style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: "var(--r-pill)", color: "var(--text-2)", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }}><Icon name="settings" size={19} /></a>
           <button aria-label={t({ en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => orbitNavigate("/")} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--text-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
         </div>
@@ -252,6 +349,7 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
             </a>
           ))}
         </div>
+        <ProfileSummary account={viewModel.account} language={language} t={t} />
         <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", margin: "24px 0 12px" }}>
           <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "My events", zh: "我的活动" })}</h2>
           <a aria-label={t({ en: "View all events", zh: "查看全部活动" })} href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }} style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, textDecoration: "none" }}>{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></a>
@@ -302,6 +400,20 @@ export function OrbitRealHome({ mode, viewModel }: { mode: HomeMode; viewModel: 
     <main data-orbit-real-page="home">
       <HubDesktop language={language} t={t} viewModel={viewModel} />
       <HubMobile language={language} t={t} viewModel={viewModel} />
+      <style dangerouslySetInnerHTML={{ __html: `
+[data-orbit-real-page="home"] .orbit-hub-profile { display:flex; flex-direction:column; gap:14px; }
+[data-orbit-real-page="home"] .orbit-hub-profile-title { display:flex; align-items:center; gap:8px; }
+[data-orbit-real-page="home"] .orbit-hub-profile-title svg { color:var(--accent); }
+[data-orbit-real-page="home"] .orbit-hub-bio { margin:0; font-size:14px; line-height:1.6; color:var(--text); }
+[data-orbit-real-page="home"] .orbit-hub-facts { display:flex; flex-wrap:wrap; gap:10px 28px; }
+[data-orbit-real-page="home"] .orbit-hub-fact { display:flex; flex-direction:column; gap:3px; }
+[data-orbit-real-page="home"] .orbit-hub-fact-k { font-size:12px; font-weight:600; color:var(--text-3); }
+[data-orbit-real-page="home"] .orbit-hub-fact-v { font-size:14px; color:var(--text); }
+[data-orbit-real-page="home"] .orbit-hub-goal { display:flex; flex-direction:column; gap:4px; }
+[data-orbit-real-page="home"] .orbit-hub-goal-body { margin:0; font-size:13.5px; line-height:1.55; color:var(--text-2); }
+[data-orbit-real-page="home"] .orbit-hub-chips { display:flex; flex-direction:column; gap:7px; }
+[data-orbit-real-page="home"] .orbit-hub-chip-row { display:flex; flex-wrap:wrap; gap:6px; }
+` }} />
     </main>
   );
 }
