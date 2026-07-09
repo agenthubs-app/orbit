@@ -144,7 +144,7 @@ function extractRuleCriteria(input: {
       /f\s*&\s*b/i,
       /hospitality/i,
       /catering/i,
-      /餐饮|餐廳|餐厅|餐馆|餐館|美食|饮食|飲食|食材|门店|門店|连锁/,
+      /餐饮|餐廳|餐厅|餐馆|餐館|菜馆|菜館|川菜|中餐|美食|饮食|飲食|食材|门店|門店|连锁/,
     ])
   ) {
     valueTypes.push("commercial_opportunity");
@@ -355,10 +355,11 @@ function rankSearchItem(
   item: RelationshipNaturalSearchResultItem,
   tokens: readonly string[],
 ): RankedSearchItem | null {
-  const strongText = [item.displayName, item.role, item.organization]
+  const strongText = [item.displayName, item.role, item.organization, item.location]
     .join(" ")
     .toLowerCase();
   const weakText = [
+    item.industry,
     item.relationshipContext,
     item.recommendedAction,
     ...item.evidence.map((evidence) => evidence.excerpt),

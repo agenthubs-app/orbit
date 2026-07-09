@@ -1,4 +1,8 @@
 import { createEventsRecommendationTool } from "../events/event-recommendation-tool";
+import {
+  createContactRecommendationMatcher,
+  resolveContactRecommendationMethod,
+} from "./contact-recommendation-matching";
 import { createOrbitAgentChatContextArtifactService } from "./chat-context-artifact-service";
 import { createOrbitAgentContactRecommendationArtifactService } from "./contact-recommendation-artifact-service";
 import { createOrbitAgentEventRecommendationArtifactService } from "./event-recommendation-artifact-service";
@@ -25,8 +29,19 @@ export function createOrbitAgentLiveArtifactTaskService(): OrbitAgentArtifactTas
     recommendationTool: createEventsRecommendationTool(),
   });
 
+  // live 路径显式注入关系检索 matcher：所有 contacts.recommend 请求都查真实关系库，
+  // 不再经过按措辞分流到固定画像 goal 推荐的正则门（那条路径会以"目标过于模糊"
+  // 反复向用户要信息）。方法配置非法时不注入，让 artifact service 报配置错误。
+  const contactMethodResolution = resolveContactRecommendationMethod();
+
   return createOrbitAgentContactRecommendationArtifactService({
     fallbackService: eventService,
+    matcher:
+      contactMethodResolution.success === true
+        ? createContactRecommendationMatcher({
+            method: contactMethodResolution.method,
+          })
+        : undefined,
     // live 路径启用"模型抽英文检索词"：任意语言 query → 英文关键词 → 现有子串搜索。
     // 缺 provider key 时抽词返回空，自动回退到确定性正则词表。
     normalizationService: createOrbitLanguageNormalizationService(),

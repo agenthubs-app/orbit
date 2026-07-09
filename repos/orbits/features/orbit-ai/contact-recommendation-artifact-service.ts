@@ -769,40 +769,88 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
         };
       }
 
+      const computeMatch = (
+        augmentedRequest: OrbitAgentArtifactTaskRequest,
+      ): ContactRecommendationMatcherResult =>
+        methodResolution.success === false
+          ? configurationErrorResultFor(methodResolution.requestedMethod)
+          : (input.matcher ??
+              createContactRecommendationMatcher({
+                method: methodResolution.method,
+              })).recommend({
+              contextMessages: augmentedRequest.contextMessages,
+              locale: augmentedRequest.locale,
+              query,
+              toolArguments: augmentedRequest.toolArguments,
+            });
+
+      const envelopeFor = (
+        matchResult: ContactRecommendationResult,
+        augmentedRequest: OrbitAgentArtifactTaskRequest,
+      ): OrbitAgentArtifactResultEnvelope => ({
+        data: payloadFor({ matchResult, query, request: augmentedRequest }),
+        success: true as const,
+      });
+
       const runMatcher = (
         augmentedRequest: OrbitAgentArtifactTaskRequest,
       ): OrbitAgentArtifactResultEnvelope | Promise<OrbitAgentArtifactResultEnvelope> => {
-        const matchResult =
-          methodResolution.success === false
-            ? configurationErrorResultFor(methodResolution.requestedMethod)
-            : (input.matcher ??
-                createContactRecommendationMatcher({
-                  method: methodResolution.method,
-                })).recommend({
-                contextMessages: augmentedRequest.contextMessages,
-                locale: augmentedRequest.locale,
-                query,
-                toolArguments: augmentedRequest.toolArguments,
-              });
+        const matchResult = computeMatch(augmentedRequest);
 
         if (isPromiseLike(matchResult)) {
-          return matchResult.then((resolved) => ({
-            data: payloadFor({ matchResult: resolved, query, request: augmentedRequest }),
-            success: true as const,
-          }));
+          return matchResult.then((resolved) =>
+            envelopeFor(resolved, augmentedRequest),
+          );
         }
 
-        return {
-          data: payloadFor({ matchResult, query, request: augmentedRequest }),
-          success: true as const,
-        };
+        return envelopeFor(matchResult, augmentedRequest);
       };
+
+      const requestWithSearchTerms = (
+        searchTerms: string,
+      ): OrbitAgentArtifactTaskRequest => ({
+        ...request,
+        toolArguments: {
+          ...(request.toolArguments ?? {}),
+          searchTerms,
+        },
+      });
 
       const normalizationService = input.normalizationService;
 
       // planner 已经给出 searchTerms（例如实体名"梁佳怡"的详情查询）时以它为准，
       // 不再让抽词服务覆盖——抽词的指令是"不要包含人名"，会把实体查询洗掉。
       const plannerSearchTerms = readText(request.toolArguments?.searchTerms);
+
+      // planner 词有时是中文（库里身份字段是英文），零命中会得到空结果。
+      // 确定性重试策略：planner 词检索为空时，用抽词服务的英文词再检索一次，
+      // 仍为空才如实返回空 artifact。
+      if (normalizationService && plannerSearchTerms) {
+        return (async () => {
+          const first = await computeMatch(request);
+
+          if (first.state !== "empty") {
+            return envelopeFor(first, request);
+          }
+
+          const extraction =
+            await normalizationService.extractSearchTerms(combinedQueryContext);
+
+          if (
+            !extraction.searchTerms ||
+            extraction.searchTerms === plannerSearchTerms.toLowerCase()
+          ) {
+            return envelopeFor(first, request);
+          }
+
+          const retryRequest = requestWithSearchTerms(extraction.searchTerms);
+          const second = await computeMatch(retryRequest);
+
+          return second.state === "empty"
+            ? envelopeFor(first, request)
+            : envelopeFor(second, retryRequest);
+        })();
+      }
 
       // live 路径注入 normalizationService：先用模型把任意语言 query 抽成英文检索词，
       // 注入 toolArguments.searchTerms 再检索；缺 key/失败时 searchTerms=null，自动回退
@@ -811,13 +859,7 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
         return normalizationService.extractSearchTerms(combinedQueryContext).then((extraction) =>
           runMatcher(
             extraction.searchTerms
-              ? {
-                  ...request,
-                  toolArguments: {
-                    ...(request.toolArguments ?? {}),
-                    searchTerms: extraction.searchTerms,
-                  },
-                }
+              ? requestWithSearchTerms(extraction.searchTerms)
               : request,
           ),
         );

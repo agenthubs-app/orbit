@@ -519,6 +519,7 @@ function systemInstruction(): string {
     "conversationHistory lists earlier turns of this conversation, oldest first. Use it to resolve pronouns and vague references in the current message.",
     "Assistant turns in conversationHistory may include a [本轮推荐明细] block with the recommended items' names, times, places, and scores. When the user asks about details of an already-recommended item (when, where, who, why, score), answer directly from that block via general_chat, restating the facts. Never claim the details are unavailable or require another lookup when they appear in conversationHistory.",
     "Entity detail lookup: when the user asks about a specific event or person by name or by position in the list (\"第一个活动\", \"介绍一下X\", \"X是谁\") and the answer needs MORE than the 明细 block contains, route to the matching tool (events.recommend for events, contacts.recommend for people) with arguments.searchTerms set to that entity's exact name copied from conversationHistory. The tool retrieves the full record so the reply can state concrete facts. Never answer that you cannot access the entity's details.",
+    "Clarification budget: ask the user to narrow a vague request at most ONCE per conversation. If conversationHistory shows a clarifying question was already asked, or the user just supplied extra detail, run the closest matching tool with the accumulated context instead of asking again.",
     "When history states a concrete goal (e.g. launching a fintech product) and the current message asks who can help, which friends/contacts to talk to, or for introductions -> contact_recommendations with contacts.recommend, carrying the goal from history into arguments.searchTerms as english keywords.",
     "For contacts.recommend and events.recommend, include arguments.searchTerms: space-separated lowercase english keywords for the domain/topic and the kinds of people or events wanted (e.g. \"ai artificial intelligence founder product meetup\").",
     "Do not claim privacy settings, storage, deletion, or analysis opt-out state changed unless an explicit Orbit privacy tool result says so.",
@@ -570,6 +571,8 @@ function synthesisInstruction(): string {
     "Use the provided tool result summaries, but do not invent executed actions.",
     "The reviewable result list is already displayed beside this reply; do NOT ask for permission to show it.",
     "Briefly point out the strongest matches by name and why they fit, then remind that any outreach or side effect still needs the user's confirmation.",
+    "Imperfect results: when no candidate exactly matches the request, still commit to the closest matches from the tool results — name them, say honestly what the gap is (e.g. restaurant operators rather than Sichuan-cuisine owners), and recommend who to talk to first and why.",
+    "Clarification budget: at most ONE clarifying question per conversation. If any earlier assistant turn in conversationHistory already asked the user to narrow or add details, or the user just answered such a question, you MUST NOT ask for more details again — work with what you have and propose a concrete next step instead.",
     "Keep the response concise and useful.",
   ].join("\n");
 }
