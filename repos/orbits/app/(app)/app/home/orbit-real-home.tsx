@@ -74,24 +74,24 @@ function ProfileSummary({
     ? localizeHomeValue(account.preferredFollowUpWindow, language)
     : "";
 
-  const facts: Array<[string, string]> = [];
-  if (industry) facts.push([t({ en: "Industry", zh: "行业" }), industry]);
-  if (homeMarket) facts.push([t({ en: "Home market", zh: "主场市场" }), homeMarket]);
-  if (followUpWindow) facts.push([t({ en: "Follow-up cadence", zh: "跟进节奏" }), followUpWindow]);
+  const facts: Array<{ icon: string; label: string; value: string }> = [];
+  if (industry) facts.push({ icon: "value", label: t({ en: "Industry", zh: "行业" }), value: industry });
+  if (homeMarket) facts.push({ icon: "pin", label: t({ en: "Home market", zh: "主场市场" }), value: homeMarket });
+  if (followUpWindow) facts.push({ icon: "clock", label: t({ en: "Follow-up cadence", zh: "跟进节奏" }), value: followUpWindow });
 
-  const chipGroups: Array<{ label: string; items: readonly string[]; tone: string }> = [];
-  if (offering.length) chipGroups.push({ label: t({ en: "I can offer", zh: "我能提供" }), items: offering, tone: "nc-tag-value" });
-  if (seeking.length) chipGroups.push({ label: t({ en: "I'm looking for", zh: "我在寻找" }), items: seeking, tone: "" });
-  if (targets.length) chipGroups.push({ label: t({ en: "I want to meet", zh: "想认识的人" }), items: targets, tone: "" });
-  if (topics.length) chipGroups.push({ label: t({ en: "Topics", zh: "关注话题" }), items: topics, tone: "" });
-  if (channels.length) chipGroups.push({ label: t({ en: "Intro channels", zh: "引荐渠道" }), items: channels, tone: "" });
+  const chipGroups: Array<{ icon: string; label: string; items: readonly string[]; tone: string }> = [];
+  if (offering.length) chipGroups.push({ icon: "sparkle", label: t({ en: "I can offer", zh: "我能提供" }), items: offering, tone: "nc-tag-value" });
+  if (seeking.length) chipGroups.push({ icon: "search", label: t({ en: "I'm looking for", zh: "我在寻找" }), items: seeking, tone: "" });
+  if (targets.length) chipGroups.push({ icon: "network", label: t({ en: "I want to meet", zh: "想认识的人" }), items: targets, tone: "" });
+  if (topics.length) chipGroups.push({ icon: "tag", label: t({ en: "Topics", zh: "关注话题" }), items: topics, tone: "" });
+  if (channels.length) chipGroups.push({ icon: "share", label: t({ en: "Intro channels", zh: "引荐渠道" }), items: channels, tone: "" });
 
   if (!facts.length && !goal && !bio && !chipGroups.length) {
     return null;
   }
 
   return (
-    <div className="card orbit-hub-profile" style={{ marginTop: 18, padding: 20 }}>
+    <div className="card orbit-hub-profile" style={{ marginTop: 18 }}>
       <div className="orbit-hub-profile-title">
         <Icon name="user" size={16} />
         <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "About me", zh: "个人资料" })}</h2>
@@ -99,30 +99,43 @@ function ProfileSummary({
       {bio ? <p className="orbit-hub-bio">{bio}</p> : null}
       {facts.length ? (
         <div className="orbit-hub-facts">
-          {facts.map(([label, value]) => (
-            <div className="orbit-hub-fact" key={label}>
-              <span className="orbit-hub-fact-k">{label}</span>
-              <span className="orbit-hub-fact-v">{value}</span>
+          {facts.map((fact) => (
+            <div className="orbit-hub-fact" key={fact.label}>
+              <span className="orbit-hub-fact-icon"><Icon name={fact.icon} size={14} /></span>
+              <span className="orbit-hub-fact-body">
+                <span className="orbit-hub-fact-k">{fact.label}</span>
+                <span className="orbit-hub-fact-v">{fact.value}</span>
+              </span>
             </div>
           ))}
         </div>
       ) : null}
       {goal ? (
         <div className="orbit-hub-goal">
-          <span className="orbit-hub-fact-k">{t({ en: "Relationship goal", zh: "关系目标" })}</span>
-          <p className="orbit-hub-goal-body">{goal}</p>
+          <span className="orbit-hub-goal-icon"><Icon name="target" size={15} /></span>
+          <span className="orbit-hub-goal-main">
+            <span className="orbit-hub-group-k">{t({ en: "Relationship goal", zh: "关系目标" })}</span>
+            <p className="orbit-hub-goal-body">{goal}</p>
+          </span>
         </div>
       ) : null}
-      {chipGroups.map((group) => (
-        <div className="orbit-hub-chips" key={group.label}>
-          <span className="orbit-hub-fact-k">{group.label}</span>
-          <div className="orbit-hub-chip-row">
-            {group.items.map((item) => (
-              <span className={`nc-tag ${group.tone}`} key={item}>{item}</span>
-            ))}
-          </div>
+      {chipGroups.length ? (
+        <div className="orbit-hub-grid">
+          {chipGroups.map((group) => (
+            <div className="orbit-hub-group" key={group.label}>
+              <span className="orbit-hub-group-head">
+                <Icon name={group.icon} size={13} />
+                <span className="orbit-hub-group-k">{group.label}</span>
+              </span>
+              <div className="orbit-hub-chip-row">
+                {group.items.map((item) => (
+                  <span className={`nc-tag ${group.tone}`} key={item}>{item}</span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      ) : null}
     </div>
   );
 }
@@ -401,18 +414,30 @@ export function OrbitRealHome({ mode, viewModel }: { mode: HomeMode; viewModel: 
       <HubDesktop language={language} t={t} viewModel={viewModel} />
       <HubMobile language={language} t={t} viewModel={viewModel} />
       <style dangerouslySetInnerHTML={{ __html: `
-[data-orbit-real-page="home"] .orbit-hub-profile { display:flex; flex-direction:column; gap:14px; }
+[data-orbit-real-page="home"] .orbit-hub-profile { display:flex; flex-direction:column; gap:18px; padding:22px 22px 24px; }
 [data-orbit-real-page="home"] .orbit-hub-profile-title { display:flex; align-items:center; gap:8px; }
 [data-orbit-real-page="home"] .orbit-hub-profile-title svg { color:var(--accent); }
-[data-orbit-real-page="home"] .orbit-hub-bio { margin:0; font-size:14px; line-height:1.6; color:var(--text); }
-[data-orbit-real-page="home"] .orbit-hub-facts { display:flex; flex-wrap:wrap; gap:10px 28px; }
-[data-orbit-real-page="home"] .orbit-hub-fact { display:flex; flex-direction:column; gap:3px; }
-[data-orbit-real-page="home"] .orbit-hub-fact-k { font-size:12px; font-weight:600; color:var(--text-3); }
-[data-orbit-real-page="home"] .orbit-hub-fact-v { font-size:14px; color:var(--text); }
-[data-orbit-real-page="home"] .orbit-hub-goal { display:flex; flex-direction:column; gap:4px; }
-[data-orbit-real-page="home"] .orbit-hub-goal-body { margin:0; font-size:13.5px; line-height:1.55; color:var(--text-2); }
-[data-orbit-real-page="home"] .orbit-hub-chips { display:flex; flex-direction:column; gap:7px; }
+[data-orbit-real-page="home"] .orbit-hub-bio { margin:0; font-size:14.5px; line-height:1.72; color:var(--text-2); padding-left:13px; border-left:2px solid var(--border-2); }
+/* facts as bordered stat cards */
+[data-orbit-real-page="home"] .orbit-hub-facts { display:flex; flex-wrap:wrap; gap:10px; }
+[data-orbit-real-page="home"] .orbit-hub-fact { display:flex; align-items:center; gap:10px; flex:1 1 150px; min-width:150px; padding:11px 14px; border:1px solid var(--border); border-radius:var(--r-md); background:var(--surface-2); }
+[data-orbit-real-page="home"] .orbit-hub-fact-icon { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:9px; background:var(--accent-soft); color:var(--accent); flex-shrink:0; }
+[data-orbit-real-page="home"] .orbit-hub-fact-body { display:flex; flex-direction:column; gap:2px; min-width:0; }
+[data-orbit-real-page="home"] .orbit-hub-fact-k { font-size:11.5px; font-weight:600; letter-spacing:.01em; color:var(--text-3); }
+[data-orbit-real-page="home"] .orbit-hub-fact-v { font-size:14px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* goal callout */
+[data-orbit-real-page="home"] .orbit-hub-goal { display:flex; align-items:flex-start; gap:11px; padding:13px 15px; border-radius:var(--r-md); background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+[data-orbit-real-page="home"] .orbit-hub-goal-icon { display:inline-flex; color:var(--accent); margin-top:1px; flex-shrink:0; }
+[data-orbit-real-page="home"] .orbit-hub-goal-main { display:flex; flex-direction:column; gap:3px; }
+[data-orbit-real-page="home"] .orbit-hub-goal-body { margin:0; font-size:13.5px; line-height:1.55; color:var(--text); }
+/* chip groups in a responsive 2-col grid */
+[data-orbit-real-page="home"] .orbit-hub-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+[data-orbit-real-page="home"] .orbit-hub-group { display:flex; flex-direction:column; gap:9px; padding:13px 14px; border:1px solid var(--border); border-radius:var(--r-md); background:var(--surface-2); }
+[data-orbit-real-page="home"] .orbit-hub-group-head { display:flex; align-items:center; gap:6px; }
+[data-orbit-real-page="home"] .orbit-hub-group-head svg { color:var(--accent); }
+[data-orbit-real-page="home"] .orbit-hub-group-k { font-size:12px; font-weight:600; color:var(--text-3); }
 [data-orbit-real-page="home"] .orbit-hub-chip-row { display:flex; flex-wrap:wrap; gap:6px; }
+@media (max-width:720px) { [data-orbit-real-page="home"] .orbit-hub-grid { grid-template-columns:1fr; } }
 ` }} />
     </main>
   );
