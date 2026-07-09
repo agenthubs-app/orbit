@@ -90,6 +90,17 @@ const relationshipPhraseLabels: Record<"en" | "zh", readonly [RegExp, string][]>
     [/next action/gi, "next action"],
   ],
   zh: [
+    // Full-sentence relationship-record templates (must run before the standalone
+    // source-label patterns below so the whole sentence is rewritten cleanly).
+    [/(.+?) has a concrete current-user relationship record from Confirmed offline meeting note for .+?\.?$/gi, "与 $1 有一次已确认的线下见面记录。"],
+    [/(.+?) has a concrete current-user relationship record from Direct QR scan for .+?\.?$/gi, "通过现场扫码与 $1 建立了联系记录。"],
+    [/(.+?) has a concrete current-user relationship record from Warm referral for .+?\.?$/gi, "经人引荐与 $1 建立了联系记录。"],
+    [/(.+?) has a concrete current-user relationship record from Business card exchange for .+?\.?$/gi, "与 $1 交换名片并建立了联系记录。"],
+    [/(.+?) has a concrete current-user relationship record from .+?\.?$/gi, "与 $1 已建立有据可查的联系记录。"],
+    // Standalone source labels (for the "认识来源 / 认识于" field).
+    [/Confirmed offline meeting note for\s*/gi, "线下见面确认："],
+    [/Warm referral for\s*/gi, "引荐认识："],
+    [/Business card exchange for\s*/gi, "名片交换："],
     [/QR scan for\s*/gi, "QR 扫码："],
     [/QR scan at\s*/gi, "QR 扫码："],
     [/Direct QR scan for\s*/gi, "直接 QR 扫码："],
@@ -111,6 +122,26 @@ const relationshipPhraseLabels: Record<"en" | "zh", readonly [RegExp, string][]>
     [/Sales Director/gi, "销售总监"],
     [/Founder CEO/gi, "创始人 CEO"],
     [/Founder/gi, "创始人"],
+    [/review evidence before follow-up/gi, "跟进前先核对证据"],
+    // Company names (run last so multi-word roles/phrases above win first).
+    // Prefix patterns keep the trailing space so "Aoba Partners" -> "青叶合伙".
+    [/North Star /gi, "北星"],
+    [/Morning Light /gi, "晨光"],
+    [/Blue Harbor /gi, "蓝港"],
+    [/Bamboo Grove /gi, "竹林"],
+    [/Red Bridge /gi, "红桥"],
+    [/Aoba /gi, "青叶"],
+    [/Yokohama /gi, "横滨"],
+    [/Kansai /gi, "关西"],
+    [/Umeda /gi, "梅田"],
+    [/Cedar /gi, "雪松"],
+    [/Nanshan /gi, "南山"],
+    [/Ginza /gi, "银座"],
+    [/Foods\b/g, "食品"],
+    [/Technologies\b/g, "科技"],
+    [/Partners\b/g, "合伙"],
+    [/Capital\b/g, "资本"],
+    [/Community\b/g, "社群"],
   ],
 };
 

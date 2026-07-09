@@ -82,8 +82,15 @@ function localizeCompany(company: string, language: OrbitLanguage): string {
   return `${prefixEntry[language]}${typeEntry[language]}`;
 }
 
+// Recurring nextAction / prompt phrases that show verbatim on cards + detail.
+const COMMON_PHRASE: Record<string, Tri> = {
+  "review evidence before follow-up": { zh: "跟进前先核对证据", en: "review evidence before follow-up", ja: "フォローアップ前に証跡を確認" },
+  "Review the matched contacts with source evidence before creating tasks.": { zh: "创建任务前，先核对匹配联系人的来源证据。", en: "Review the matched contacts with source evidence before creating tasks.", ja: "タスク作成前に、一致した連絡先のソース証跡を確認する。" },
+};
+
 function localizeNextActionText(text: string, language: OrbitLanguage): string {
   if (!text || language === "en") return text;
+  if (COMMON_PHRASE[text]) return COMMON_PHRASE[text][language] ?? COMMON_PHRASE[text].zh;
   let match = text.match(/^Review (.+) with source evidence before agent use\.?$/);
   if (match) {
     const name = match[1];
