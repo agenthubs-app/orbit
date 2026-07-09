@@ -6,6 +6,18 @@ import type {
 } from "../../../../features/chat/contract";
 import type { ReminderScheduleNotificationPayload } from "../../../../features/notifications/contract";
 import type { OrbitAiProactiveAgentPayload } from "../../../../features/orbit-ai/proactive-contract";
+import type { OrbitLanguage } from "../orbit-language-core";
+import {
+  localizeDraftReply,
+  localizeProactive,
+  localizeReminderTitle,
+  localizeReminderWindow,
+  localizeSourceLabels,
+  localizeThreadMessage,
+  localizeThreadPreview,
+  localizeThreadSubject,
+  localizeThreadSummary,
+} from "./inbox-demo-localization";
 
 // 关系收件箱面板的 view model：把 async correspondence 的 feature DTO 映射成
 // UI-neutral 结构。这是面板的唯一 DTO→UI 转换点；面板组件只消费这里的类型，
@@ -56,27 +68,39 @@ export interface InboxPanelViewModel {
   selected: InboxThreadDetail | null;
 }
 
-function threadListItem(item: AsyncConversationInboxItem): InboxThreadListItem {
+function threadListItem(
+  item: AsyncConversationInboxItem,
+  language: OrbitLanguage,
+): InboxThreadListItem {
   return {
     conversationId: item.conversationId,
     contactId: item.contactId,
     participantName: item.participantName,
     organization: item.organization,
-    subject: item.subject,
-    preview: item.preview,
+    subject: localizeThreadSubject(item.conversationId, item.subject, language),
+    preview: localizeThreadPreview(item.conversationId, item.preview, language),
     lastCorrespondenceAt: item.lastCorrespondenceAt,
     unreadCount: item.unreadCount,
     nextActionLabel: item.nextActionLabel,
-    sourceContextLabels: item.sourceContextLabels,
+    sourceContextLabels: localizeSourceLabels(item.sourceContextLabels, language),
   };
 }
 
-function threadMessage(message: AsyncConversationMessage): InboxThreadMessage {
+function threadMessage(
+  message: AsyncConversationMessage,
+  conversationId: string,
+  language: OrbitLanguage,
+): InboxThreadMessage {
   return {
     messageId: message.messageId,
     senderName: message.senderName,
     fromMe: message.senderRole === "orbit_user",
-    body: message.body,
+    body: localizeThreadMessage(
+      conversationId,
+      message.messageId,
+      message.body,
+      language,
+    ),
     occurredAt: message.occurredAt,
     sourceContextLabel: message.sourceContextLabel,
   };
@@ -84,7 +108,9 @@ function threadMessage(message: AsyncConversationMessage): InboxThreadMessage {
 
 export function toInboxPanelViewModel(
   payload: AsyncConversationWorkspacePayload,
+  language: OrbitLanguage = "zh",
 ): InboxPanelViewModel {
+  const selectedId = payload.selectedThread.conversationId;
   const sideEffects = payload.sideEffects;
   const noExternalSideEffect =
     sideEffects.externalMessageSent === false &&
@@ -96,16 +122,35 @@ export function toInboxPanelViewModel(
   return {
     title: payload.inbox.title,
     currentUserName: payload.currentUser.displayName,
-    threads: payload.inbox.conversations.map(threadListItem),
+    threads: payload.inbox.conversations.map((item) =>
+      threadListItem(item, language),
+    ),
     selected: {
-      conversationId: payload.selectedThread.conversationId,
-      subject: payload.selectedThread.subject,
-      summary: payload.selectedThread.summary,
+      conversationId: selectedId,
+      subject: localizeThreadSubject(
+        selectedId,
+        payload.selectedThread.subject,
+        language,
+      ),
+      summary: localizeThreadSummary(
+        selectedId,
+        payload.selectedThread.summary,
+        language,
+      ),
       participantName: payload.contact.displayName,
       organization: payload.contact.organization,
-      messages: payload.selectedThread.messages.map(threadMessage),
-      sourceContextLabels: payload.selectedThread.sourceContextLabels,
-      draftReplyBody: payload.draftReply.body,
+      messages: payload.selectedThread.messages.map((message) =>
+        threadMessage(message, selectedId, language),
+      ),
+      sourceContextLabels: localizeSourceLabels(
+        payload.selectedThread.sourceContextLabels,
+        language,
+      ),
+      draftReplyBody: localizeDraftReply(
+        selectedId,
+        payload.draftReply.body,
+        language,
+      ),
       draftReplyTone: payload.draftReply.tone,
       externalSendStatus: payload.draftReply.externalSendStatus,
       noExternalSideEffect,
@@ -115,7 +160,10 @@ export function toInboxPanelViewModel(
 
 // draft→thread：把新建的 staged 对话映射成面板结构（列表条目 + 线程详情）。
 // 新线程没有回复草稿（draftReplyBody 为空），发送边界固定 not_requested。
-export function toCreatedThread(payload: AsyncConversationCreatePayload): {
+export function toCreatedThread(
+  payload: AsyncConversationCreatePayload,
+  language: OrbitLanguage = "zh",
+): {
   item: InboxThreadListItem;
   detail: InboxThreadDetail;
 } {
@@ -127,15 +175,18 @@ export function toCreatedThread(payload: AsyncConversationCreatePayload): {
     sideEffects.savedRecordCreated === false &&
     sideEffects.networkRequestMade === false;
 
+  // 用户新建的线程内容由用户输入（通常已是中文），localization 对未知 id 原样返回。
   return {
-    item: threadListItem(payload.inboxItem),
+    item: threadListItem(payload.inboxItem, language),
     detail: {
       conversationId: payload.thread.conversationId,
       subject: payload.thread.subject,
       summary: payload.thread.summary,
       participantName: payload.inboxItem.participantName,
       organization: payload.inboxItem.organization,
-      messages: payload.thread.messages.map(threadMessage),
+      messages: payload.thread.messages.map((message) =>
+        threadMessage(message, payload.thread.conversationId, language),
+      ),
       sourceContextLabels: payload.thread.sourceContextLabels,
       draftReplyBody: "",
       draftReplyTone: "",
@@ -173,13 +224,17 @@ export interface InboxAlertsViewModel {
 // 提醒条目点击后跳转到"承诺工作流"页面。
 export function toReminderAlerts(
   payload: ReminderScheduleNotificationPayload,
+  language: OrbitLanguage = "zh",
 ): readonly InboxReminderAlert[] {
   return payload.reminders.map((reminder) => ({
     id: reminder.reminderId,
-    title: reminder.title,
+    title: localizeReminderTitle(reminder.title, language),
     contactName: reminder.contactName,
     organization: reminder.organization,
-    dueLabel: reminder.recommendedWindow || reminder.dueAt,
+    dueLabel: localizeReminderWindow(
+      reminder.recommendedWindow || reminder.dueAt,
+      language,
+    ),
     priority: reminder.priority,
     href: "/app/followups",
   }));
@@ -197,6 +252,7 @@ const proactiveSurfaceHref: Record<string, string> = {
 // proactive 当前每次返回一条主动 turn；映射成一条提示。
 export function toProactiveAlerts(
   payload: OrbitAiProactiveAgentPayload,
+  language: OrbitLanguage = "zh",
 ): readonly InboxProactiveAlert[] {
   const action = payload.suggestedActions[0];
   const surface = action?.targetSurface ?? "orbit_ai_chat";
@@ -204,9 +260,9 @@ export function toProactiveAlerts(
   return [
     {
       id: payload.message.messageId,
-      title: payload.signal.title ?? "Relationship nudge",
+      title: localizeProactive(payload.signal.title ?? "Relationship nudge", language),
       body: payload.message.content,
-      actionLabel: action?.label ?? "Open in Orbit AI",
+      actionLabel: localizeProactive(action?.label ?? "Open in Orbit AI", language),
       href: proactiveSurfaceHref[surface] ?? "/app/agent",
     },
   ];

@@ -222,3 +222,50 @@ test("message draft generator produces a review-only first draft (no external se
   assert.equal(body.data.drafts[0].sendActionRequiresConfirmation, true);
   assert.equal(body.data.drafts[0].externalSendRequested, false);
 });
+
+test("inbox demo content defaults to Chinese and preserves English when language is en", async () => {
+  const route = await import("../../app/api/chat/relationship-inbox/route");
+  const response = await route.GET(
+    new Request("https://orbit.local/api/chat/relationship-inbox?conversationId=conversation_demo_aoba"),
+  );
+  const body = (await response.json()) as {
+    data: AsyncConversationWorkspacePayload;
+  };
+
+  // 默认（zh）：demo 对话展示中文改写。
+  const zh = toInboxPanelViewModel(body.data);
+  const zhAoba = zh.threads.find((thread) => thread.conversationId === "conversation_demo_aoba");
+  assert.ok(zhAoba);
+  assert.match(zhAoba.subject, /创始人早餐要点回顾/);
+  assert.doesNotMatch(zhAoba.subject, /Founder breakfast recap/);
+  assert.equal(zh.selected?.conversationId, "conversation_demo_aoba");
+  assert.match(zh.selected?.subject ?? "", /创始人早餐要点回顾/);
+  assert.match(zh.selected?.messages[0]?.body ?? "", /[一-鿿]/);
+
+  // 英文页面：保留 fixture 原文，不做改写。
+  const en = toInboxPanelViewModel(body.data, "en");
+  const enAoba = en.threads.find((thread) => thread.conversationId === "conversation_demo_aoba");
+  assert.equal(enAoba?.subject, "Founder breakfast recap");
+});
+
+test("inbox reminder + proactive alerts default to Chinese", async () => {
+  const notifRoute = await import("../../app/api/notifications/route");
+  const notifResponse = await notifRoute.GET(
+    new Request("https://orbit.local/api/notifications"),
+  );
+  const notif = (await notifResponse.json()) as {
+    data: Parameters<typeof import("../../app/(app)/app/inbox/inbox-panel-view-model").toReminderAlerts>[0];
+  };
+  const { toReminderAlerts } = await import("../../app/(app)/app/inbox/inbox-panel-view-model");
+  // 默认（zh）：提醒标题本地化为中文（覆盖 mock 散文标题与 live "Review follow-up" 模式）。
+  const zhReminders = toReminderAlerts(notif.data);
+  const localized = zhReminders.find((alert) => /[一-鿿]/.test(alert.title));
+  assert.ok(localized, "expected at least one reminder title localized to Chinese");
+
+  // 英文页面：保留 fixture 原文，不做改写。
+  const enReminders = toReminderAlerts(notif.data, "en");
+  assert.doesNotMatch(
+    enReminders.map((alert) => alert.title).join(" "),
+    /把答应给|跟进 contact_/,
+  );
+});

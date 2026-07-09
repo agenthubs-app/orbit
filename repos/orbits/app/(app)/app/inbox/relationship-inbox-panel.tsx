@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom";
 
 import { useOrbitLanguage } from "../orbit-language-context";
+import type { OrbitLanguage } from "../orbit-language-core";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import {
   toCreatedThread,
@@ -41,7 +42,8 @@ export function openRelationshipInboxCompose(seed: NewThreadSeed): void {
 // 拉取 async correspondence workspace。传 conversationId 选中某条线程。
 // 面板只经这里的 view model 消费数据，不直接依赖 feature 契约的运行时代码。
 async function fetchInboxWorkspace(
-  conversationId?: string,
+  conversationId: string | undefined,
+  language: OrbitLanguage,
 ): Promise<InboxPanelViewModel> {
   const query = conversationId
     ? `?conversationId=${encodeURIComponent(conversationId)}`
@@ -60,6 +62,7 @@ async function fetchInboxWorkspace(
 
   return toInboxPanelViewModel(
     envelope.data as Parameters<typeof toInboxPanelViewModel>[0],
+    language,
   );
 }
 
@@ -68,12 +71,12 @@ function initialOf(name: string): string {
 }
 
 // badge 聚合：未读对话数 + 待处理提醒（reminders + proactive）数。fail-closed 返回 0。
-async function fetchBadgeCount(): Promise<number> {
+async function fetchBadgeCount(language: OrbitLanguage): Promise<number> {
   try {
     const [inbox, reminders, proactive] = await Promise.all([
-      fetchInboxWorkspace().catch(() => null),
-      fetchReminderAlerts(),
-      fetchProactiveAlerts(),
+      fetchInboxWorkspace(undefined, language).catch(() => null),
+      fetchReminderAlerts(language),
+      fetchProactiveAlerts(language),
     ]);
     const unreadThreads = inbox ? unreadThreadCount(inbox.threads) : 0;
     return unreadThreads + reminders.length + proactive.length;
@@ -117,12 +120,15 @@ async function generateMessageDraft(input: {
 }
 
 // draft→thread：从确认后的草稿创建一个新的本地 staged 对话线程。
-async function createThreadFromDraft(input: {
-  participantName: string;
-  organization: string;
-  subject: string;
-  body: string;
-}): Promise<ReturnType<typeof toCreatedThread> | null> {
+async function createThreadFromDraft(
+  input: {
+    participantName: string;
+    organization: string;
+    subject: string;
+    body: string;
+  },
+  language: OrbitLanguage,
+): Promise<ReturnType<typeof toCreatedThread> | null> {
   try {
     const response = await fetch("/api/chat/relationship-inbox", {
       method: "POST",
@@ -135,6 +141,7 @@ async function createThreadFromDraft(input: {
     }
     return toCreatedThread(
       envelope.data as Parameters<typeof toCreatedThread>[0],
+      language,
     );
   } catch {
     return null;
@@ -197,7 +204,9 @@ function EmptyState({ icon, title, hint }: { icon: string; title: string; hint: 
 
 // 提醒 tab 数据源：notifications reminders（GET）+ orbit-ai proactive nudge（POST）。
 // 两者都 fail-closed，出错时返回空数组，不阻塞面板。
-async function fetchReminderAlerts(): Promise<readonly InboxReminderAlert[]> {
+async function fetchReminderAlerts(
+  language: OrbitLanguage,
+): Promise<readonly InboxReminderAlert[]> {
   try {
     const response = await fetch("/api/notifications", {
       headers: { accept: "application/json" },
@@ -208,13 +217,16 @@ async function fetchReminderAlerts(): Promise<readonly InboxReminderAlert[]> {
     }
     return toReminderAlerts(
       envelope.data as Parameters<typeof toReminderAlerts>[0],
+      language,
     );
   } catch {
     return [];
   }
 }
 
-async function fetchProactiveAlerts(): Promise<readonly InboxProactiveAlert[]> {
+async function fetchProactiveAlerts(
+  language: OrbitLanguage,
+): Promise<readonly InboxProactiveAlert[]> {
   try {
     // GET 返回演示用的主动 nudge（内置 demo 信号），无需构造 signal。
     const response = await fetch("/api/ai/proactive-turns", {
@@ -226,6 +238,7 @@ async function fetchProactiveAlerts(): Promise<readonly InboxProactiveAlert[]> {
     }
     return toProactiveAlerts(
       envelope.data as Parameters<typeof toProactiveAlerts>[0],
+      language,
     );
   } catch {
     return [];
@@ -233,7 +246,7 @@ async function fetchProactiveAlerts(): Promise<readonly InboxProactiveAlert[]> {
 }
 
 function AlertsTab() {
-  const { t } = useOrbitLanguage();
+  const { t, language } = useOrbitLanguage();
   const [state, setState] = useState<"loading" | "ready">("loading");
   const [reminders, setReminders] = useState<readonly InboxReminderAlert[]>([]);
   const [proactive, setProactive] = useState<readonly InboxProactiveAlert[]>([]);
@@ -242,7 +255,7 @@ function AlertsTab() {
   useEffect(() => {
     let active = true;
     setState("loading");
-    Promise.all([fetchReminderAlerts(), fetchProactiveAlerts()])
+    Promise.all([fetchReminderAlerts(language), fetchProactiveAlerts(language)])
       .then(([reminderAlerts, proactiveAlerts]) => {
         if (!active) return;
         setReminders(reminderAlerts);
@@ -255,7 +268,7 @@ function AlertsTab() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [language]);
 
   const dismiss = (id: string) =>
     setDismissed((prev) => {
@@ -497,6 +510,7 @@ function NewThreadForm({
   onCancel: () => void;
   t: (copy: { en: string; zh: string }) => string;
 }) {
+  const { language } = useOrbitLanguage();
   const [recipient, setRecipient] = useState(initialRecipient ?? "");
   const [organization, setOrganization] = useState(initialOrganization ?? "");
   const [subject, setSubject] = useState("");
@@ -523,12 +537,15 @@ function NewThreadForm({
   const onCreate = async () => {
     setBusy("creating");
     setError(false);
-    const created = await createThreadFromDraft({
-      participantName: recipient,
-      organization,
-      subject,
-      body,
-    });
+    const created = await createThreadFromDraft(
+      {
+        participantName: recipient,
+        organization,
+        subject,
+        body,
+      },
+      language,
+    );
     if (created) {
       onCreated(created);
     } else {
@@ -590,7 +607,7 @@ function ThreadsTab({
   newThreadSeed?: { recipient?: string; organization?: string } | null;
   onNewThreadConsumed?: () => void;
 }) {
-  const { t } = useOrbitLanguage();
+  const { t, language } = useOrbitLanguage();
   const [state, setState] = useState<"loading" | "error" | "ready">("loading");
   const [viewModel, setViewModel] = useState<InboxPanelViewModel | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -600,7 +617,7 @@ function ThreadsTab({
   useEffect(() => {
     let active = true;
     setState("loading");
-    fetchInboxWorkspace()
+    fetchInboxWorkspace(undefined, language)
       .then((model) => {
         if (!active) return;
         setViewModel(model);
@@ -612,7 +629,7 @@ function ThreadsTab({
     return () => {
       active = false;
     };
-  }, []);
+  }, [language]);
 
   // 联系人详情页"起草邮件"带着收件人进入面板时，直接打开发起新对话表单。
   useEffect(() => {
@@ -627,7 +644,7 @@ function ThreadsTab({
     if (created.some((entry) => entry.detail.conversationId === conversationId)) {
       return;
     }
-    fetchInboxWorkspace(conversationId)
+    fetchInboxWorkspace(conversationId, language)
       .then((model) => setViewModel(model))
       .catch(() => undefined);
   };
@@ -907,7 +924,7 @@ function RelationshipInboxPanel({
 // 顶栏右上角入口：信封图标 + 未读 badge（对话未读 + 待处理提醒的聚合计数）。
 // unreadCount prop 作为初始值/测试覆盖；挂载后按真实数据刷新。
 export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: number }) {
-  const { t } = useOrbitLanguage();
+  const { t, language } = useOrbitLanguage();
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(unreadCount);
   const [seed, setSeed] = useState<NewThreadSeed | null>(null);
@@ -922,7 +939,7 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
   // 挂载后拉取真实聚合计数。
   useEffect(() => {
     let active = true;
-    fetchBadgeCount()
+    fetchBadgeCount(language)
       .then((value) => {
         if (active) setCount(value);
       })
@@ -930,7 +947,7 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
     return () => {
       active = false;
     };
-  }, []);
+  }, [language]);
 
   // 监听"起草邮件"等外部入口的 compose 事件，打开面板并带上收件人。
   useEffect(() => {
