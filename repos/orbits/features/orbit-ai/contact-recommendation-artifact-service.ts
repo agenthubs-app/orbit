@@ -227,6 +227,8 @@ function localizeMatchReason(
     .map((reason) => readText(reason))
     .filter((reason): reason is string => Boolean(reason))
     .filter((reason) => reason !== RELATIONSHIP_SEARCH_DIAGNOSTIC)
+    // 排名路径附带的检索词诊断句只服务于 trace/评估，不进入用户可读推荐理由。
+    .filter((reason) => !/^matched search terms:/i.test(reason))
     .join(" ")
     .trim();
   const pattern = raw.match(/^(.+?)\s+matches\s+(.+?)\s+through\s+(.+?)\.?$/i);
@@ -243,7 +245,9 @@ function localizeMatchReason(
 
   const localized = localizeRecommendationContext(raw, locale);
 
-  if (localized) {
+  // 清洗结果仍不是当前语言（例如纯英文证据句在中文页面）时，退回通用理由,
+  // 不把另一种语言的原始句子直接放进推荐卡片。
+  if (localized && segmentMatchesLocale(localized, locale)) {
     return localized;
   }
 

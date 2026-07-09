@@ -164,6 +164,8 @@ Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限�
 
 人脉推荐只推荐已有关系证据支持的人，不做开放网络发现。当前实现会从 query、tool arguments 和上下文里抽取行业、合作意图、引荐意图等条件，再调用 relationship natural search service；候选必须带有 evidence ids 和 relationship path。
 
+live 路径下，`language-normalization-service` 先用模型把任意语言 query 抽成英文检索词（`toolArguments.searchTerms`）。有模型检索词时，Contacts 适配器取全量关系池并按 token 相关度排名：姓名/职位/组织等身份字段命中权重高于证据文本命中，证据文本命中封顶计入以抑制模板句噪音；行业桶（如 fintech）会补上确定性的行业+角色扩展词，保证同类查询不随模型抽词波动。结果按 contactId 去重、取前 8 条，matchScore 反映本次查询相关度。没有模型检索词时保持原有正则分桶 + 后端子串匹配行为。
+
 长期边界是：`contacts.recommend` 的产品策略应归 Contacts 或 Recommendations。当前基础实现通过 `createContactsRecommendationSearchTool()` 调用 Relationship Search；Search 只负责根据 query、filters 和 evidence constraints 召回候选；Contacts/Recommendations 负责候选资格、排序、推荐理由和下一步动作；Orbit AI 负责选择工具、记录 trace、生成 artifact 和综合回复。
 
 `ORBIT_CONTACT_RECOMMENDATION_METHOD` 控制匹配方法：
@@ -177,6 +179,8 @@ Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限�
 ## 页面使用规则
 
 主要产品入口是 `/app`。Orbit AI 可以打开联系人、活动、跟进、聊天、关系健康或下一步面板，但页面内容仍来自对应模块。
+
+`/app/agent` 的聊天框直接调用 `/api/ai/conversations`（POST，带 `locale`），把返回的 `contact_recommendations` artifact 在页面自己的 view-model 映射后渲染到侧边人脉面板；卡片文案（标题、职位、推荐依据、可信标签）由 artifact 服务按 locale 本地化，页面不再使用本地关键词剧本回答。
 
 当 Orbit AI 嵌入 `/app/chat` 等模块页面时，模块页面不直接依赖 raw payload。嵌入方应在自己的 route view model 中调用 Orbit AI service，把 proposed tool intents、assistant reply 和 artifact surface 映射成该页面的 view model。
 

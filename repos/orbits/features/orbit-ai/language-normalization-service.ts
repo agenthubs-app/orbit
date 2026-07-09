@@ -80,9 +80,11 @@ const EXTRACTION_INSTRUCTION = [
   "You extract search keywords for a contact/relationship recommendation search.",
   "The user request may be in any language (Chinese, Japanese, English).",
   "Return ONLY a compact JSON object with two string fields:",
-  '{"searchTerms":"<space-separated lowercase English keywords for the domain/industry and who they are looking for>","intent":"partnership|intro|customer|investor|hire|general"}',
-  "searchTerms must be English words that would appear in an English professional profile",
-  "(examples: restaurant, hospitality, ecommerce, retail, saas, manufacturing, marketing, investor, tourism, education).",
+  '{"searchTerms":"<space-separated lowercase English keywords>","intent":"partnership|intro|customer|investor|hire|general"}',
+  "searchTerms must be English words that would appear in an English professional profile, ordered most specific first, and must cover BOTH:",
+  "1. the domain/industry of the request (examples: fintech, restaurant, hospitality, ecommerce, retail, saas, manufacturing, tourism, education);",
+  "2. the roles or capabilities of people who could actually help (examples: investor, capital, venture, marketing, sales, distribution, consultant, founder, organizer).",
+  "Prefer concrete nouns; do not include generic filler words like people, someone, help, find, need, market, business.",
   "Do not include the person's own name. No prose, no code fences.",
 ].join("\n");
 

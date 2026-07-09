@@ -124,7 +124,7 @@ function extractRuleCriteria(input: {
   ) {
     industries.push("fintech");
     valueTypes.push("referral_path", "strategic_intro");
-    searchQuery = "fintech referral";
+    searchQuery = searchQuery === input.query ? "fintech referral" : searchQuery;
   }
 
   if (includesAny(text, [/climate/i, /energy/i, /storage/i, /气候/, /能源/, /储能/])) {
@@ -265,6 +265,210 @@ function extractRuleCriteria(input: {
   };
 }
 
+// 模型抽词路径的排名参数：按 token 命中给候选打分，姓名/职位/组织命中权重高于
+// 关系上下文命中；同一联系人可能有多条 connection，只保留得分最高的一条。
+const rankedCandidateLimit = 8;
+
+// 泛词不参与相关度排名：它们在几乎所有关系记录里都会命中，会把领域词的信号淹没。
+const rankingStopwords = new Set([
+  "and",
+  "are",
+  "business",
+  "can",
+  "contact",
+  "contacts",
+  "entry",
+  "find",
+  "for",
+  "help",
+  "market",
+  "need",
+  "people",
+  "person",
+  "product",
+  "products",
+  "someone",
+  "the",
+  "who",
+  "with",
+  "you",
+  "your",
+]);
+
+function rankingTokensFor(searchQuery: string): readonly string[] {
+  return Array.from(
+    new Set(
+      searchQuery
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((token) => token.length >= 3 && !rankingStopwords.has(token)),
+    ),
+  );
+}
+
+// 行业桶的确定性扩展词：模型抽词逐轮会有波动，行业方向一旦被正则桶识别，
+// 就补上该行业在关系库里的稳定身份词（行业词 + 能帮上忙的角色词），
+// 保证同一类查询的候选资格不随模型输出漂移。
+const industryRankingExpansions: Partial<
+  Record<RelationshipNaturalSearchIndustry, readonly string[]>
+> = {
+  climate: ["climate", "energy", "storage", "carbon"],
+  enterprise_saas: ["saas", "software", "consultant"],
+  fintech: [
+    "fintech",
+    "finance",
+    "financial",
+    "payment",
+    "banking",
+    "investor",
+    "capital",
+    "venture",
+    "fundraising",
+  ],
+};
+
+function rankingTokensForCriteria(
+  criteria: ContactRecommendationCriteria,
+): readonly string[] {
+  const tokens = new Set(rankingTokensFor(criteria.searchQuery));
+
+  for (const industry of criteria.industries) {
+    for (const token of industryRankingExpansions[industry] ?? []) {
+      tokens.add(token);
+    }
+  }
+
+  return Array.from(tokens);
+}
+
+interface RankedSearchItem {
+  item: RelationshipNaturalSearchResultItem;
+  matchedTokens: readonly string[];
+  strongHits: number;
+  weakHits: number;
+}
+
+function rankSearchItem(
+  item: RelationshipNaturalSearchResultItem,
+  tokens: readonly string[],
+): RankedSearchItem | null {
+  const strongText = [item.displayName, item.role, item.organization]
+    .join(" ")
+    .toLowerCase();
+  const weakText = [
+    item.relationshipContext,
+    item.recommendedAction,
+    ...item.evidence.map((evidence) => evidence.excerpt),
+  ]
+    .join(" ")
+    .toLowerCase();
+  const matchedTokens: string[] = [];
+  let strongHits = 0;
+  let weakHits = 0;
+
+  for (const token of tokens) {
+    if (strongText.includes(token)) {
+      strongHits += 1;
+      matchedTokens.push(token);
+    } else if (weakText.includes(token)) {
+      weakHits += 1;
+      matchedTokens.push(token);
+    }
+  }
+
+  return strongHits + weakHits > 0
+    ? { item, matchedTokens, strongHits, weakHits }
+    : null;
+}
+
+// 职位/组织/姓名等身份字段命中主导排序；证据文本命中封顶计入，
+// 避免种子数据里重复出现的模板句把弱命中堆成高分。
+function rankedRelevance(ranked: RankedSearchItem): number {
+  return ranked.strongHits * 3 + Math.min(ranked.weakHits, 2);
+}
+
+function rankedMatchScore(ranked: RankedSearchItem): number {
+  return Math.min(
+    97,
+    55 + ranked.strongHits * 16 + Math.min(ranked.weakHits, 2) * 5,
+  );
+}
+
+function betterRankedItem(
+  left: RankedSearchItem,
+  right: RankedSearchItem,
+): boolean {
+  const relevanceDelta = rankedRelevance(left) - rankedRelevance(right);
+
+  if (relevanceDelta !== 0) {
+    return relevanceDelta > 0;
+  }
+
+  return left.item.value.score > right.item.value.score;
+}
+
+function resultForRankedSearch(
+  criteria: ContactRecommendationCriteria,
+  searchResult: RelationshipNaturalSearchResult,
+): ContactRecommendationResult {
+  if (searchResult.success !== true) {
+    return resultForSearch(criteria, searchResult);
+  }
+
+  const tokens = rankingTokensForCriteria(criteria);
+  const bestByContact = new Map<string, RankedSearchItem>();
+
+  for (const item of searchResult.data.results) {
+    const ranked = rankSearchItem(item, tokens);
+
+    if (!ranked) {
+      continue;
+    }
+
+    const current = bestByContact.get(item.contactId);
+
+    if (!current || betterRankedItem(ranked, current)) {
+      bestByContact.set(item.contactId, ranked);
+    }
+  }
+
+  const topRanked = Array.from(bestByContact.values())
+    .sort((left, right) => (betterRankedItem(left, right) ? -1 : 1))
+    .slice(0, rankedCandidateLimit);
+  const candidates = topRanked
+    .map((ranked): ContactRecommendationCandidate | null => {
+      const candidate = candidateFor(ranked.item);
+
+      return candidate
+        ? {
+            ...candidate,
+            matchReasons: [
+              `Matched search terms: ${ranked.matchedTokens.join(", ")}.`,
+              ...candidate.matchReasons,
+            ],
+            matchScore: rankedMatchScore(ranked),
+          }
+        : null;
+    })
+    .filter((candidate): candidate is ContactRecommendationCandidate =>
+      Boolean(candidate),
+    );
+
+  return {
+    candidates,
+    criteria,
+    databaseQueryExecuted:
+      searchResult.data.provenance?.databaseQueryExecuted ??
+      candidates.some((candidate) => candidate.databaseQueryExecuted),
+    method: "rules_v1",
+    state: candidates.length > 0 ? "success" : "empty",
+    summary:
+      candidates.length > 0
+        ? `${candidates.length} existing relationship candidate(s) ranked by model search terms for the rules_v1 contact recommendation method.`
+        : "No existing relationship candidate matched the model search terms for the rules_v1 contact recommendation method.",
+  };
+}
+
 function searchInputFor(criteria: ContactRecommendationCriteria): RelationshipNaturalSearchInput {
   return {
     businessIntent: criteria.businessIntent,
@@ -356,6 +560,22 @@ export function createContactsRecommendationSearchTool(
   return {
     recommend(request): ContactsRecommendationSearchToolResult {
       const criteria = extractRuleCriteria(request);
+      const modelSearchTerms = readText(request.toolArguments?.searchTerms);
+
+      // 有模型抽取的检索词时，取全量关系池并按 token 相关度排名，避免后端
+      // AND 子串匹配对多词查询过严、对元数据标签循环命中的问题。
+      if (modelSearchTerms) {
+        const poolResult = relationshipSearchService.queryRelationships({});
+
+        if (isPromiseLike(poolResult)) {
+          return poolResult.then((resolved) =>
+            resultForRankedSearch(criteria, resolved),
+          );
+        }
+
+        return resultForRankedSearch(criteria, poolResult);
+      }
+
       const searchResult =
         relationshipSearchService.queryRelationships(searchInputFor(criteria));
 

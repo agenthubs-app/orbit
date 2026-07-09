@@ -62,11 +62,86 @@ function isPeopleResult(item: OrbitAgentPeopleResultView | OrbitAgentEventResult
   return "connection" in item;
 }
 
-function routeScenario(query: string, scenarios: OrbitAgentViewModel["scenarios"]) {
-  const text = String(query || "");
-  if (/女装|服装|时尚|设计|fashion|买手|面料|服饰|穿搭/i.test(text)) return scenarios.peopleToEvents;
-  if (/活动|参加|想去|meetup|沙龙|局\b|聚会|峰会|展会|类型的活动|去哪/i.test(text)) return scenarios.events;
-  return scenarios.people;
+// /api/ai/conversations 返回的 artifact 载荷里，本页只消费 contact_recommendations
+// 的 generatedView。这里做本页自己的 view-model 映射，不直接把 raw payload 交给卡片。
+interface AgentArtifactViewItem {
+  body?: string;
+  confidenceLabel?: string;
+  id?: string;
+  metadata?: readonly { label?: string; value?: string }[];
+  reason?: string;
+  subtitle?: string;
+  title?: string;
+}
+
+interface AgentArtifactRecord {
+  result?: {
+    generatedView?: {
+      sections?: readonly { items?: readonly AgentArtifactViewItem[] }[];
+      summary?: string;
+    };
+    kind?: string;
+    presentation?: { title?: string };
+  };
+  task?: { kind?: string };
+}
+
+function contactRecommendationArtifact(
+  artifacts: unknown,
+): AgentArtifactRecord | null {
+  const list = Array.isArray(artifacts) ? (artifacts as AgentArtifactRecord[]) : [];
+
+  return (
+    list.find(
+      (artifact) =>
+        (artifact.task?.kind ?? artifact.result?.kind) ===
+        "contact_recommendations",
+    ) ?? null
+  );
+}
+
+function artifactMetadataValue(
+  item: AgentArtifactViewItem,
+  labels: readonly string[],
+): string {
+  for (const entry of item.metadata ?? []) {
+    if (entry.label && labels.includes(entry.label) && entry.value) {
+      return entry.value;
+    }
+  }
+
+  return "";
+}
+
+function peopleItemsFromArtifact(
+  artifact: AgentArtifactRecord | null,
+): OrbitAgentPeopleResultView[] {
+  const items =
+    artifact?.result?.generatedView?.sections?.flatMap(
+      (section) => section.items ?? [],
+    ) ?? [];
+
+  return items.map((item) => {
+    const contactId = String(item.id ?? "").split(":").pop() ?? "";
+    const displayName = item.title?.trim() || contactId || "Orbit";
+    const score = Number(artifactMetadataValue(item, ["分数", "Score"]));
+
+    return {
+      connection: {
+        company: artifactMetadataValue(item, ["组织", "Organization"]),
+        displayName,
+        g: gradientFromString(contactId || displayName),
+        id: contactId,
+        industry: item.confidenceLabel ?? "",
+        initial: displayName.slice(0, 1).toUpperCase(),
+        pipelineStatus: "in_progress" as const,
+        title: item.subtitle ?? "",
+      },
+      match: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 80,
+      opener: item.body ?? "",
+      reason: item.reason ?? "",
+    };
+  });
 }
 
 function currentAgentQuery() {
@@ -193,8 +268,8 @@ function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultVi
         <Avatar letter={connection.initial} g={connection.g} size={46} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{connection.displayName}</div>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>
-            {connection.title} · {connection.company}
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {[connection.title, connection.company].filter(Boolean).join(" · ")}
           </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
@@ -210,13 +285,15 @@ function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultVi
           <span style={{ background: status.color, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
           {status.label}
         </span>
-        <span className="chip" style={{ height: 24 }}>{connection.industry}</span>
+        {connection.industry ? (
+          <span className="chip" style={{ height: 24, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{connection.industry}</span>
+        ) : null}
       </div>
       <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>
       <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 11, padding: 11 }}>
         <Icon name="message" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
-        <div>
-          <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "How to start", zh: "怎么开口" })}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "Why this person", zh: "推荐依据" })}</div>
           <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.opener}</div>
         </div>
       </div>
@@ -348,7 +425,9 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   const [histOpen, setHistOpen] = useState(false);
   const [activeQ, setActiveQ] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const timerRef = useRef<number | null>(null);
+  const languageRef = useRef(language);
+
+  languageRef.current = language;
 
   const navigate = useCallback((prototypeHref: string) => {
     const href = preserveHref(productHref(prototypeHref));
@@ -363,29 +442,76 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     window.location.href = href;
   }, [preserveHref]);
 
-  const ask = useCallback((query: string) => {
-    const scenario = routeScenario(query, viewModel.scenarios);
+  // 真实链路：把用户消息发给 Orbit Agent conversation API（planner → 白名单工具 →
+  // 可复核 artifact → synthesis），并把 contact_recommendations artifact 映射到侧边栏。
+  const ask = useCallback(async (query: string) => {
+    const locale = languageRef.current === "zh" ? "zh" : "en";
+    const failureText =
+      locale === "zh"
+        ? "Agent 暂时无法完成这次回复，请稍后再试。"
+        : "The agent could not complete this reply. Please try again.";
 
-    if (timerRef.current) window.clearTimeout(timerRef.current);
     setMessages((current) => [...current, { role: "user", text: query }]);
     setThinking(true);
     setPanel(null);
-    timerRef.current = window.setTimeout(() => {
-      setThinking(false);
+
+    try {
+      const response = await fetch("/api/ai/conversations", {
+        body: JSON.stringify({ locale, message: query }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        data?: { artifacts?: unknown; assistantMessage?: string };
+        error?: { message?: string };
+        success?: boolean;
+      } | null;
+
+      if (!response.ok || payload?.success !== true || !payload.data) {
+        const errorText = payload?.error?.message
+          ? `${failureText}（${payload.error.message}）`
+          : failureText;
+
+        setMessages((current) => [
+          ...current,
+          { items: [], kind: "people", panelTitle: "", role: "assistant", text: errorText },
+        ]);
+        return;
+      }
+
+      const artifact = contactRecommendationArtifact(payload.data.artifacts);
+      const peopleItems = peopleItemsFromArtifact(artifact);
+      const panelTitle =
+        artifact?.result?.presentation?.title?.trim() ||
+        (locale === "zh" ? "人脉推荐" : "Recommended contacts");
+      const assistantText =
+        payload.data.assistantMessage?.trim() ||
+        artifact?.result?.generatedView?.summary ||
+        failureText;
+
       setMessages((current) => [
         ...current,
         {
-          items: scenario.items,
-          kind: scenario.kind,
-          note: scenario.note,
-          panelTitle: scenario.panelTitle,
+          items: peopleItems,
+          kind: "people",
+          panelTitle,
           role: "assistant",
-          text: scenario.intro,
+          text: assistantText,
         },
       ]);
-      setPanel({ items: scenario.items, kind: scenario.kind, panelTitle: scenario.panelTitle });
-    }, 750);
-  }, [viewModel.scenarios]);
+
+      if (peopleItems.length > 0) {
+        setPanel({ items: peopleItems, kind: "people", panelTitle });
+      }
+    } catch {
+      setMessages((current) => [
+        ...current,
+        { items: [], kind: "people", panelTitle: "", role: "assistant", text: failureText },
+      ]);
+    } finally {
+      setThinking(false);
+    }
+  }, []);
 
   useEffect(() => {
     const query = currentAgentQuery();
@@ -394,12 +520,8 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       setMessages([]);
       setPanel(null);
       setText("");
-      ask(query);
+      void ask(query);
     }
-
-    return () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-    };
   }, [ask]);
 
   useEffect(() => {
@@ -429,11 +551,10 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     setPanel(null);
     setText("");
     navigate(`/agent?q=${encodeURIComponent(item.q)}`);
-    ask(item.q);
+    void ask(item.q);
   };
 
   const newChat = () => {
-    if (timerRef.current) window.clearTimeout(timerRef.current);
     setHistOpen(false);
     setMessages([]);
     setPanel(null);
@@ -463,7 +584,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                 </div>
               ) : null}
               <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", fontSize: 15, lineHeight: 1.6, padding: "12px 15px" }}>{message.text}</div>
-              {inlinePanel ? (
+              {inlinePanel && message.items.length > 0 ? (
                 <div style={{ marginTop: 12 }}>
                   <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panelTitle}</div>
                   <PanelCards language={language === "ja" ? "en" : language} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} navigate={navigate} t={t} />

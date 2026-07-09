@@ -860,13 +860,29 @@ export async function artifactForRequest(input: {
 export function artifactSummaryForSynthesis(
   artifact: OrbitAgentArtifactPayload,
 ): GeminiOrbitAgentToolResultSummary {
+  // 把排名靠前的条目（姓名/职位等）一并交给 synthesis，让最终回复能具体说出
+  // 推荐了谁、为什么，而不是只报一个数量。
+  const topItems = (artifact.result.generatedView?.sections ?? [])
+    .flatMap((section) => section.items ?? [])
+    .slice(0, 3)
+    .map((item) =>
+      [item.title, item.subtitle, item.reason]
+        .filter((value): value is string => Boolean(value && value.trim()))
+        .join(" · "),
+    )
+    .filter(Boolean);
+  const baseSummary =
+    artifact.result.generatedView?.summary ??
+    artifact.result.nextAction ??
+    "Orbit prepared a reviewable artifact.";
+
   return {
     kind: artifact.task.kind,
     preferredSurface: artifact.result.presentation.preferredSurface,
     summary:
-      artifact.result.generatedView?.summary ??
-      artifact.result.nextAction ??
-      "Orbit prepared a reviewable artifact.",
+      topItems.length > 0
+        ? `${baseSummary} Top matches: ${topItems.join(" | ")}`
+        : baseSummary,
     title: artifact.result.presentation.title,
   };
 }
