@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AccountTopNav, ModalShell } from "../orbit-account-shell";
 import { useOrbitLanguage } from "../orbit-language-context";
@@ -51,43 +51,103 @@ function connectionById(connections: OrbitScheduleConnectionView[], id: string) 
   return connections.find((connection) => connection.id === id) ?? connections[0];
 }
 
+// The seed leaves a couple of English strings on schedule items; localize them.
+function localizeRole(title: string, language: "en" | "zh"): string {
+  if (title === "Relationship contact") return language === "en" ? "Relationship contact" : "人脉联系人";
+  return title;
+}
+
+function localizeTopic(
+  topic: string,
+  connection: OrbitScheduleConnectionView,
+  language: "en" | "zh",
+): string {
+  const match = topic.match(/^Review follow-up for .+$/i);
+  if (match) {
+    return language === "en"
+      ? `Follow up with ${connection.displayName}`
+      : `跟进 ${connection.displayName} 的关系进展`;
+  }
+  return topic;
+}
+
+function statusLabel(status: string, language: "en" | "zh"): string {
+  if (language !== "en") return status;
+  return status === "已确认" ? "Confirmed" : "To confirm";
+}
+
+// Default the selected day to today if it has meetings, else the first day in
+// the current month that does — so the day panel is never empty on load.
+function firstDayWithMeetings(
+  viewModel: OrbitScheduleViewModel,
+): CalendarView {
+  const { y, m, d } = viewModel.today;
+  if (eventsOn(viewModel.schedules, y, m, d).length > 0) {
+    return { y, m, d };
+  }
+  const inMonth = eventsInMonth(viewModel.schedules, y, m)[0];
+  if (inMonth) {
+    const date = new Date(inMonth.date);
+    return { y: date.getFullYear(), m: date.getMonth(), d: date.getDate() };
+  }
+  return { y, m, d };
+}
+
 function SchedRow({
-  connections,
-  dim,
+  connection,
+  defaultOpen,
+  language,
   schedule,
+  t,
 }: {
-  connections: OrbitScheduleConnectionView[];
-  dim?: boolean;
+  connection: OrbitScheduleConnectionView;
+  defaultOpen?: boolean;
+  language: "en" | "zh";
   schedule: OrbitScheduleItemView;
+  t: Translate;
 }) {
-  const connection = connectionById(connections, schedule.cid);
+  const [open, setOpen] = useState(Boolean(defaultOpen));
   const status = scheduleStatusColor(schedule.status);
+  const topic = localizeTopic(schedule.topic, connection, language);
+  const role = localizeRole(connection.title, language);
 
   return (
-    <div className="card" style={{ alignItems: "flex-start", display: "flex", gap: 14, opacity: dim ? 0.55 : 1, padding: 14 }}>
-      <div style={{ flexShrink: 0, textAlign: "center", width: 50 }}>
-        <div className="mono" style={{ color: "var(--ink)", fontSize: 16, fontWeight: 600 }}>{schedule.time}</div>
-        <div style={{ color: "var(--text-3)", fontSize: 11, marginTop: 2 }}>{schedule.dur}</div>
-      </div>
-      <div style={{ alignSelf: "stretch", background: "var(--border)", width: 1 }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
-          <Avatar letter={connection.initial} g={connection.g} size={30} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{connection.displayName}</div>
-            <div style={{ color: "var(--text-3)", fontSize: 12 }}>{connection.title} · {connection.company}</div>
+    <div className={`sch-card${open ? " is-open" : ""}`}>
+      <button type="button" className="sch-card-head" onClick={() => setOpen((value) => !value)}>
+        <span className="sch-time">
+          <span className="sch-time-h">{schedule.time}</span>
+          <span className="sch-time-d">{schedule.dur}</span>
+        </span>
+        <span className="sch-rail" />
+        <Avatar letter={connection.initial} g={connection.g} size={34} />
+        <span className="sch-who">
+          <span className="sch-name">{connection.displayName}</span>
+          <span className="sch-sub">{[role, connection.company].filter(Boolean).join(" · ")}</span>
+        </span>
+        <span className="sch-status" style={{ background: status.soft, color: status.c }}>
+          <span className="sch-status-dot" style={{ background: status.c }} />
+          {statusLabel(schedule.status, language)}
+        </span>
+        <Icon name="chevR" size={16} />
+      </button>
+      {open ? (
+        <div className="sch-detail">
+          <div className="sch-detail-topic">{topic}</div>
+          <div className="sch-detail-facts">
+            <span className="sch-fact"><Icon name="clock" size={13} />{schedule.time} · {schedule.dur}</span>
+            {schedule.place ? <span className="sch-fact"><Icon name="pin" size={13} />{schedule.place}</span> : null}
+            <span className="sch-fact"><Icon name="status" size={13} />{statusLabel(schedule.status, language)}</span>
           </div>
-          <span style={{ alignItems: "center", background: status.soft, borderRadius: "var(--r-pill)", color: status.c, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 6, height: 22, padding: "0 9px" }}>
-            <span style={{ background: status.c, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
-            {schedule.status}
-          </span>
+          <div className="sch-detail-actions">
+            <a className="btn btn-ghost btn-sm" href={`/app/contacts/${connection.id}`}>
+              <Icon name="user" size={14} />{t({ en: "View contact", zh: "查看名片" })}
+            </a>
+            <a className="btn btn-ghost btn-sm" href={`/app/contacts/${connection.id}`}>
+              <Icon name="mail" size={14} />{t({ en: "Draft email", zh: "起草邮件" })}
+            </a>
+          </div>
         </div>
-        <div style={{ color: "var(--text-2)", fontSize: 13, marginTop: 9 }}>{schedule.topic}</div>
-        <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 12, gap: 6, marginTop: 7 }}>
-          <Icon name="pin" size={12} />
-          {schedule.place}
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 }
@@ -206,11 +266,11 @@ function MonthCalendar({
 }
 
 function ScheduleListPanel({
-  compact,
   connections,
   language,
   schedules,
   selected,
+  setSelected,
   t,
   view,
 }: {
@@ -219,46 +279,122 @@ function ScheduleListPanel({
   language: "en" | "zh";
   schedules: OrbitScheduleItemView[];
   selected: CalendarView;
+  setSelected: (view: CalendarView) => void;
   t: Translate;
   view: CalendarView;
 }) {
-  const list = eventsInMonth(schedules, view.y, view.m);
-  const selectedInView = selected && selected.y === view.y && selected.m === view.m;
-  const groups = [...new Set(list.map((schedule) => schedule.date))];
-  const weekday = (dateStr: string) => (language === "en" ? WEEKDAYS_EN : WEEKDAYS)[new Date(dateStr).getDay()];
+  const [mode, setMode] = useState<"day" | "month">("day");
+  // Clicking a calendar day (or a month-list date) focuses that day.
+  useEffect(() => {
+    setMode("day");
+  }, [selected.y, selected.m, selected.d]);
+
+  const monthList = eventsInMonth(schedules, view.y, view.m);
+  const dayItems =
+    selected.d != null
+      ? eventsOn(schedules, selected.y, selected.m, selected.d).sort((a, b) =>
+          a.time.localeCompare(b.time),
+        )
+      : [];
+  const selDate = selected.d != null ? new Date(selected.y, selected.m, selected.d) : null;
+  const weekdayName = (date: Date) => (language === "en" ? WEEKDAYS_EN : WEEKDAYS)[date.getDay()];
+  const dateTitle = (date: Date) =>
+    language === "en" ? `${MON_EN[date.getMonth()]} ${date.getDate()}` : `${date.getMonth() + 1}月${date.getDate()}日`;
+  const count = mode === "day" ? dayItems.length : monthList.length;
+  const groups = [...new Set(monthList.map((schedule) => schedule.date))];
 
   return (
-    <div>
-      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-        <h3 className="h-section" style={{ margin: 0 }}>{language === "en" ? `${MON_EN[view.m]} schedule` : `${view.m + 1} 月安排`}</h3>
-        <span className="mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{t({ en: `${list.length} meetings`, zh: `${list.length} 场` })}</span>
+    <div className="sch-panel">
+      <div className="sch-panel-head">
+        <div className="sch-panel-title">
+          <h3 className="h-section" style={{ margin: 0 }}>
+            {mode === "day" && selDate
+              ? dateTitle(selDate)
+              : language === "en"
+                ? `${MON_EN[view.m]} schedule`
+                : `${view.m + 1} 月安排`}
+          </h3>
+          {mode === "day" && selDate ? (
+            <span className="sch-panel-wd">{language === "en" ? weekdayName(selDate) : `周${weekdayName(selDate)}`}</span>
+          ) : null}
+        </div>
+        <span className="mono sch-panel-count">{t({ en: `${count} meetings`, zh: `${count} 场` })}</span>
       </div>
-      {list.length === 0 ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 14, padding: 20, textAlign: "center" }}>{t({ en: "No meetings this month. Pick a date on the calendar to schedule one.", zh: "本月暂无约见。点左侧日历安排一场。" })}</div> : null}
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        {groups.map((dateStr) => {
-          const date = new Date(dateStr);
-          const day = date.getDate();
-          const selectedDay = selected && selected.y === view.y && selected.m === view.m && selected.d === day;
 
-          return (
-            <div key={dateStr}>
-              <div style={{ alignItems: "center", display: "flex", gap: 10, margin: "0 0 10px" }}>
-                <span style={{ alignItems: "center", color: selectedDay ? "var(--accent)" : "var(--ink)", display: "inline-flex", fontFamily: "var(--ff-tight)", fontSize: 15, fontWeight: 600, gap: 8 }}>
-                  {language === "en" ? `${MON_EN[view.m]} ${day}` : `${view.m + 1}月${day}日`}
-                  <span style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 500 }}>{language === "en" ? weekday(dateStr) : `周${weekday(dateStr)}`}</span>
-                </span>
-                {selectedDay ? <span className="badge badge-soon" style={{ height: 20 }}>{t({ en: "Selected", zh: "已选" })}</span> : null}
-                <div style={{ background: "var(--border)", flex: 1, height: 1 }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {list.filter((schedule) => schedule.date === dateStr).map((schedule) => (
-                  <SchedRow key={schedule.id} schedule={schedule} connections={connections} dim={selectedInView && !selectedDay} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      <div className="sch-toggle">
+        <button type="button" className={mode === "day" ? "is-active" : ""} onClick={() => setMode("day")}>
+          {t({ en: "This day", zh: "当日" })}
+        </button>
+        <button type="button" className={mode === "month" ? "is-active" : ""} onClick={() => setMode("month")}>
+          {t({ en: "This month", zh: "本月全部" })}
+        </button>
       </div>
+
+      {mode === "day" ? (
+        dayItems.length ? (
+          <div className="sch-timeline">
+            {dayItems.map((schedule, index) => (
+              <SchedRow
+                key={schedule.id}
+                schedule={schedule}
+                connection={connectionById(connections, schedule.cid)}
+                language={language}
+                t={t}
+                defaultOpen={index === 0}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="sch-empty">
+            <Icon name="calendar" size={22} />
+            <p>{t({ en: "No meetings on this day.", zh: "这一天暂无安排。" })}</p>
+            <span>{t({ en: "Pick another date, or view the whole month.", zh: "换一天，或查看本月全部。" })}</span>
+          </div>
+        )
+      ) : monthList.length ? (
+        <div className="sch-month">
+          {groups.map((dateStr) => {
+            const date = new Date(dateStr);
+            const day = date.getDate();
+            const isSelectedDay =
+              selected.d === day && selected.m === view.m && selected.y === view.y;
+            return (
+              <div key={dateStr}>
+                <button
+                  type="button"
+                  className={`sch-day-head${isSelectedDay ? " is-selected" : ""}`}
+                  onClick={() => setSelected({ y: date.getFullYear(), m: date.getMonth(), d: day })}
+                >
+                  <span className="sch-day-date">
+                    {language === "en" ? `${MON_EN[view.m]} ${day}` : `${view.m + 1}月${day}日`}
+                    <span className="sch-day-wd">{language === "en" ? weekdayName(date) : `周${weekdayName(date)}`}</span>
+                  </span>
+                  <span className="sch-day-count">{monthList.filter((s) => s.date === dateStr).length}</span>
+                </button>
+                <div className="sch-timeline" style={{ marginBottom: 16 }}>
+                  {monthList
+                    .filter((schedule) => schedule.date === dateStr)
+                    .map((schedule) => (
+                      <SchedRow
+                        key={schedule.id}
+                        schedule={schedule}
+                        connection={connectionById(connections, schedule.cid)}
+                        language={language}
+                        t={t}
+                      />
+                    ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="sch-empty">
+          <Icon name="calendar" size={22} />
+          <p>{t({ en: "No meetings this month.", zh: "本月暂无约见。" })}</p>
+          <span>{t({ en: "Pick a date on the calendar to schedule one.", zh: "点左侧日历安排一场。" })}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -323,7 +459,7 @@ function AddScheduleModal({
 
 export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
   const [view, setView] = useState<CalendarView>({ y: viewModel.today.y, m: viewModel.today.m });
-  const [selected, setSelected] = useState<CalendarView>({ ...viewModel.today });
+  const [selected, setSelected] = useState<CalendarView>(() => firstDayWithMeetings(viewModel));
   const [addOpen, setAddOpen] = useState(false);
   const { t, language } = useOrbitLanguage();
 
@@ -360,7 +496,7 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
           </div>
           <div style={{ alignItems: "start", display: "grid", gap: 26, gridTemplateColumns: "minmax(0,1fr) 380px" }}>
             <MonthCalendar {...monthCalendarProps} />
-            <ScheduleListPanel connections={viewModel.connections} language={language === "ja" ? "en" : language} schedules={viewModel.schedules} selected={selected} t={t} view={view} />
+            <ScheduleListPanel connections={viewModel.connections} language={language === "ja" ? "en" : language} schedules={viewModel.schedules} selected={selected} setSelected={setSelected} t={t} view={view} />
           </div>
         </div>
       </div>
@@ -378,10 +514,52 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
         </div>
         <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", gap: 20, minHeight: 0, overflowY: "auto", padding: "14px 18px 36px" }}>
           <MonthCalendar {...monthCalendarProps} compact />
-          <ScheduleListPanel compact connections={viewModel.connections} language={language === "ja" ? "en" : language} schedules={viewModel.schedules} selected={selected} t={t} view={view} />
+          <ScheduleListPanel compact connections={viewModel.connections} language={language === "ja" ? "en" : language} schedules={viewModel.schedules} selected={selected} setSelected={setSelected} t={t} view={view} />
         </div>
       </div>
       {addOpen ? <AddScheduleModal connections={viewModel.connections} onClose={() => setAddOpen(false)} t={t} /> : null}
+      <style dangerouslySetInnerHTML={{ __html: `
+[data-orbit-real-page="schedule"] .sch-panel { display:flex; flex-direction:column; }
+[data-orbit-real-page="schedule"] .sch-panel-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:12px; }
+[data-orbit-real-page="schedule"] .sch-panel-title { display:flex; align-items:baseline; gap:9px; }
+[data-orbit-real-page="schedule"] .sch-panel-wd { color:var(--text-3); font-size:13px; }
+[data-orbit-real-page="schedule"] .sch-panel-count { color:var(--text-3); font-size:12px; white-space:nowrap; }
+[data-orbit-real-page="schedule"] .sch-toggle { display:inline-flex; gap:2px; padding:3px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-pill); margin-bottom:16px; align-self:flex-start; }
+[data-orbit-real-page="schedule"] .sch-toggle button { border:0; background:transparent; color:var(--text-3); font-size:13px; font-weight:600; padding:5px 15px; border-radius:var(--r-pill); cursor:pointer; transition:background .12s, color .12s; }
+[data-orbit-real-page="schedule"] .sch-toggle button.is-active { background:var(--accent); color:#fff; }
+[data-orbit-real-page="schedule"] .sch-timeline { display:flex; flex-direction:column; gap:10px; }
+[data-orbit-real-page="schedule"] .sch-card { border:1px solid var(--border); border-radius:var(--r-md); background:var(--surface); overflow:hidden; transition:border-color .14s; }
+[data-orbit-real-page="schedule"] .sch-card.is-open { border-color:var(--border-strong); }
+[data-orbit-real-page="schedule"] .sch-card-head { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; background:transparent; border:0; cursor:pointer; text-align:left; }
+[data-orbit-real-page="schedule"] .sch-card-head:hover { background:var(--surface-2); }
+[data-orbit-real-page="schedule"] .sch-time { display:flex; flex-direction:column; align-items:center; width:50px; flex-shrink:0; }
+[data-orbit-real-page="schedule"] .sch-time-h { font-family:var(--ff-mono); font-size:15px; font-weight:700; color:var(--ink); }
+[data-orbit-real-page="schedule"] .sch-time-d { font-size:11px; color:var(--text-3); margin-top:2px; }
+[data-orbit-real-page="schedule"] .sch-rail { align-self:stretch; width:1px; background:var(--border); flex-shrink:0; }
+[data-orbit-real-page="schedule"] .sch-who { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+[data-orbit-real-page="schedule"] .sch-name { font-size:14px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-orbit-real-page="schedule"] .sch-sub { font-size:12px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-orbit-real-page="schedule"] .sch-status { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px; border-radius:var(--r-pill); font-size:12px; font-weight:600; flex-shrink:0; }
+[data-orbit-real-page="schedule"] .sch-status-dot { width:6px; height:6px; border-radius:var(--r-pill); }
+[data-orbit-real-page="schedule"] .sch-card-head > svg:last-child { color:var(--text-4); transition:transform .16s; flex-shrink:0; }
+[data-orbit-real-page="schedule"] .sch-card.is-open .sch-card-head > svg:last-child { transform:rotate(90deg); }
+[data-orbit-real-page="schedule"] .sch-detail { padding:2px 16px 15px 64px; display:flex; flex-direction:column; gap:11px; }
+[data-orbit-real-page="schedule"] .sch-detail-topic { font-size:13.5px; line-height:1.55; color:var(--text-2); }
+[data-orbit-real-page="schedule"] .sch-detail-facts { display:flex; flex-wrap:wrap; gap:8px 16px; }
+[data-orbit-real-page="schedule"] .sch-fact { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-3); }
+[data-orbit-real-page="schedule"] .sch-fact svg { color:var(--text-4); }
+[data-orbit-real-page="schedule"] .sch-detail-actions { display:flex; flex-wrap:wrap; gap:8px; }
+[data-orbit-real-page="schedule"] .sch-month { display:flex; flex-direction:column; }
+[data-orbit-real-page="schedule"] .sch-day-head { display:flex; align-items:center; justify-content:space-between; width:100%; padding:8px 4px; background:transparent; border:0; border-bottom:1px solid var(--border); cursor:pointer; margin-bottom:11px; }
+[data-orbit-real-page="schedule"] .sch-day-head:hover .sch-day-date, [data-orbit-real-page="schedule"] .sch-day-head.is-selected .sch-day-date { color:var(--accent); }
+[data-orbit-real-page="schedule"] .sch-day-date { display:inline-flex; align-items:baseline; gap:8px; font-family:var(--ff-tight); font-size:15px; font-weight:600; color:var(--ink); }
+[data-orbit-real-page="schedule"] .sch-day-wd { font-size:12px; font-weight:500; color:var(--text-3); }
+[data-orbit-real-page="schedule"] .sch-day-count { min-width:20px; height:20px; padding:0 6px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--r-pill); background:var(--surface-2); color:var(--text-3); font-size:12px; font-weight:600; }
+[data-orbit-real-page="schedule"] .sch-empty { display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; padding:40px 20px; border:1px dashed var(--border-strong); border-radius:var(--r-md); }
+[data-orbit-real-page="schedule"] .sch-empty svg { color:var(--text-4); }
+[data-orbit-real-page="schedule"] .sch-empty p { margin:6px 0 0; font-size:14px; font-weight:600; color:var(--text-2); }
+[data-orbit-real-page="schedule"] .sch-empty span { font-size:12.5px; color:var(--text-3); }
+` }} />
     </main>
   );
 }
