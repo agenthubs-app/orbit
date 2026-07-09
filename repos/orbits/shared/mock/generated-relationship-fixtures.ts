@@ -329,7 +329,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Kansai Foods",
       "role": "Product Manager",
       "location": "Tokyo",
-      "profileSnippet": "関西フーズのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 关西餐饮的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Product Manager at Kansai Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "関西フーズのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 关西餐饮的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Product Manager at Kansai Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_006",
@@ -349,7 +349,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Ginza Foods",
       "role": "Sales Director",
       "location": "Osaka",
-      "profileSnippet": "銀座フーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 银座餐饮的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Sales Director at Ginza Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "銀座フーズの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 银座餐饮的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Sales Director at Ginza Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_007",
@@ -526,7 +526,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Hoshino Foods",
       "role": "Founder CEO",
       "location": "Taipei",
-      "profileSnippet": "星野フーズの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 星野餐饮的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Founder CEO at Hoshino Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "星野フーズの創業者CEO。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 星野餐饮的创始人 CEO。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Founder CEO at Hoshino Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_016",
@@ -546,7 +546,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Bamboo Grove Foods",
       "role": "Store Owner",
       "location": "Singapore",
-      "profileSnippet": "竹林フーズの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 竹林餐饮的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Store Owner at Bamboo Grove Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "竹林フーズの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 竹林餐饮的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Store Owner at Bamboo Grove Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_017",
@@ -723,7 +723,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Asakusa Technologies",
       "role": "Community Organizer",
       "location": "Shanghai",
-      "profileSnippet": "浅草テクノロジーのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 浅草科技的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Community Organizer at Asakusa Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "浅草テクノロジーのコミュニティ主催者。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 浅草科技的社群组织者。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Community Organizer at Asakusa Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_026",
@@ -742,7 +742,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Umeda Technologies",
       "role": "Investor Partner",
       "location": "Shenzhen",
-      "profileSnippet": "梅田テクノロジーの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 梅田科技的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Investor Partner at Umeda Technologies. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "梅田テクノロジーの投資パートナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 梅田科技的投资合伙人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Investor Partner at Umeda Technologies. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_027",
@@ -919,7 +919,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Nanshan Technologies",
       "role": "DX Consultant",
       "location": "Tokyo",
-      "profileSnippet": "南山テクノロジーのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 南山科技的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / DX Consultant at Nanshan Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "南山テクノロジーのDXコンサルタント。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 南山科技的DX 顾问。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / DX Consultant at Nanshan Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_036",
@@ -939,7 +939,7 @@ export const generatedRelationshipFixtures = {
       "organization": "North Star Partners",
       "role": "Marketing Lead",
       "location": "Osaka",
-      "profileSnippet": "北星パートナーズのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 北星伙伴的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Marketing Lead at North Star Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "北星パートナーズのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 北星伙伴的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Marketing Lead at North Star Partners. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_037",
@@ -1116,7 +1116,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Fukuoka Partners",
       "role": "Product Manager",
       "location": "Taipei",
-      "profileSnippet": "福岡パートナーズのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 福冈伙伴的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Product Manager at Fukuoka Partners. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "福岡パートナーズのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 福冈伙伴的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Product Manager at Fukuoka Partners. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_046",
@@ -1136,7 +1136,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Red Bridge Partners",
       "role": "Sales Director",
       "location": "Singapore",
-      "profileSnippet": "紅橋パートナーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 红桥伙伴的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Sales Director at Red Bridge Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "紅橋パートナーズの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 红桥伙伴的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Sales Director at Red Bridge Partners. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_047",
@@ -1313,7 +1313,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Sakura Bridge Capital",
       "role": "Founder CEO",
       "location": "Shanghai",
-      "profileSnippet": "桜橋キャピタルの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 樱桥资本的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Founder CEO at Sakura Bridge Capital. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "桜橋キャピタルの創業者CEO。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 樱桥资本的创始人 CEO。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Founder CEO at Sakura Bridge Capital. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_056",
@@ -1332,7 +1332,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Aoba Capital",
       "role": "Store Owner",
       "location": "Shenzhen",
-      "profileSnippet": "青葉キャピタルの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 青叶资本的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Store Owner at Aoba Capital. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "青葉キャピタルの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 青叶资本的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Store Owner at Aoba Capital. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_057",
@@ -1509,7 +1509,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Morning Light Capital",
       "role": "Community Organizer",
       "location": "Tokyo",
-      "profileSnippet": "晨光キャピタルのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 晨光资本的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Community Organizer at Morning Light Capital. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "晨光キャピタルのコミュニティ主催者。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 晨光资本的社群组织者。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Community Organizer at Morning Light Capital. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_066",
@@ -1529,7 +1529,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Cedar Capital",
       "role": "Investor Partner",
       "location": "Osaka",
-      "profileSnippet": "雲杉キャピタルの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 云杉资本的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Investor Partner at Cedar Capital. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "雲杉キャピタルの投資パートナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 云杉资本的投资合伙人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Investor Partner at Cedar Capital. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_067",
@@ -1706,7 +1706,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Kanda Community",
       "role": "DX Consultant",
       "location": "Taipei",
-      "profileSnippet": "神田コミュニティのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 神田社群的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / DX Consultant at Kanda Community. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "神田コミュニティのDXコンサルタント。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 神田社群的DX 顾问。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / DX Consultant at Kanda Community. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_076",
@@ -1726,7 +1726,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Yokohama Community",
       "role": "Marketing Lead",
       "location": "Singapore",
-      "profileSnippet": "横浜コミュニティのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 横滨社群的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Marketing Lead at Yokohama Community. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "横浜コミュニティのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 横滨社群的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Marketing Lead at Yokohama Community. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_077",
@@ -1903,7 +1903,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Bright Shore Community",
       "role": "Product Manager",
       "location": "Shanghai",
-      "profileSnippet": "明岸コミュニティのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 明岸社群的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Product Manager at Bright Shore Community. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "明岸コミュニティのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 明岸社群的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Product Manager at Bright Shore Community. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_086",
@@ -1922,7 +1922,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Blue Harbor Community",
       "role": "Sales Director",
       "location": "Shenzhen",
-      "profileSnippet": "藍海コミュニティの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 蓝海社群的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Sales Director at Blue Harbor Community. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "藍海コミュニティの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 蓝海社群的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Sales Director at Blue Harbor Community. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_087",
@@ -2099,7 +2099,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Kansai Foods",
       "role": "Founder CEO",
       "location": "Tokyo",
-      "profileSnippet": "関西フーズの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 关西餐饮的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Founder CEO at Kansai Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "関西フーズの創業者CEO。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 关西餐饮的创始人 CEO。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Founder CEO at Kansai Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_096",
@@ -2119,7 +2119,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Ginza Foods",
       "role": "Store Owner",
       "location": "Osaka",
-      "profileSnippet": "銀座フーズの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 银座餐饮的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Store Owner at Ginza Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "銀座フーズの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 银座餐饮的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Store Owner at Ginza Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_097",
@@ -2296,7 +2296,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Hoshino Foods",
       "role": "Community Organizer",
       "location": "Taipei",
-      "profileSnippet": "星野フーズのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 星野餐饮的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Community Organizer at Hoshino Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "星野フーズのコミュニティ主催者。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 星野餐饮的社群组织者。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Community Organizer at Hoshino Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_106",
@@ -2316,7 +2316,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Bamboo Grove Foods",
       "role": "Investor Partner",
       "location": "Singapore",
-      "profileSnippet": "竹林フーズの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 竹林餐饮的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Investor Partner at Bamboo Grove Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "竹林フーズの投資パートナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 竹林餐饮的投资合伙人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Investor Partner at Bamboo Grove Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_107",
@@ -2493,7 +2493,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Asakusa Technologies",
       "role": "DX Consultant",
       "location": "Shanghai",
-      "profileSnippet": "浅草テクノロジーのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 浅草科技的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / DX Consultant at Asakusa Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "浅草テクノロジーのDXコンサルタント。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 浅草科技的DX 顾问。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / DX Consultant at Asakusa Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_116",
@@ -2512,7 +2512,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Umeda Technologies",
       "role": "Marketing Lead",
       "location": "Shenzhen",
-      "profileSnippet": "梅田テクノロジーのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 梅田科技的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Marketing Lead at Umeda Technologies. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "梅田テクノロジーのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 梅田科技的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Marketing Lead at Umeda Technologies. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_117",
@@ -2689,7 +2689,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Nanshan Technologies",
       "role": "Product Manager",
       "location": "Tokyo",
-      "profileSnippet": "南山テクノロジーのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 南山科技的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Product Manager at Nanshan Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "南山テクノロジーのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 南山科技的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Product Manager at Nanshan Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "source": {
         "type": "manual",
         "id": "source:external-person:person_126",
@@ -2709,7 +2709,7 @@ export const generatedRelationshipFixtures = {
       "organization": "North Star Partners",
       "role": "Sales Director",
       "location": "Osaka",
-      "profileSnippet": "北星パートナーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 北星伙伴的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Sales Director at North Star Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "北星パートナーズの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 北星伙伴的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Sales Director at North Star Partners. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "system",
         "id": "source:platform-user:person_127",
@@ -22846,7 +22846,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -22869,7 +22869,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_029",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -22896,7 +22896,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_036",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -22921,7 +22921,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_006",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -22947,11 +22947,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_007",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -23111,7 +23111,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -23134,7 +23134,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_099",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -23160,7 +23160,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_015",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -23186,7 +23186,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_016",
       "contactId": "contact_113",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -23213,11 +23213,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_017",
       "contactId": "contact_120",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "zh",
@@ -23376,7 +23376,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -23399,7 +23399,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_037",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -23425,7 +23425,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_025",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -23451,7 +23451,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_026",
       "contactId": "contact_051",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -23477,11 +23477,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_027",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -23641,7 +23641,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -23663,7 +23663,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_034",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -23690,7 +23690,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_114",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -23716,7 +23716,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_036",
       "contactId": "contact_121",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -23742,11 +23742,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_037",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "en",
@@ -23906,7 +23906,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -23929,7 +23929,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_045",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -23955,7 +23955,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_045",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -23980,7 +23980,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_046",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -24007,11 +24007,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_047",
       "contactId": "contact_066",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -24172,7 +24172,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "zh",
       "confidence": 0.85,
@@ -24194,7 +24194,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_054",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -24220,7 +24220,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_055",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -24246,7 +24246,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_056",
       "contactId": "contact_129",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -24272,11 +24272,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_057",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -24436,7 +24436,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -24459,7 +24459,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_053",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -24486,7 +24486,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_060",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -24511,7 +24511,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_066",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -24537,11 +24537,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_067",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -24701,7 +24701,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "zh",
       "confidence": 0.85,
@@ -24724,7 +24724,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_123",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -24750,7 +24750,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_075",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -24776,7 +24776,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_076",
       "contactId": "contact_005",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -24803,11 +24803,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_077",
       "contactId": "contact_012",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -24966,7 +24966,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -24989,7 +24989,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_061",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -25015,7 +25015,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_085",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -25041,7 +25041,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_086",
       "contactId": "contact_075",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -25067,11 +25067,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_087",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -25231,7 +25231,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "en",
       "confidence": 0.85,
@@ -25253,7 +25253,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_094",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -25280,7 +25280,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_006",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -25306,7 +25306,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_096",
       "contactId": "contact_013",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -25332,11 +25332,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_097",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -25496,7 +25496,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -25519,7 +25519,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_069",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -25545,7 +25545,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_105",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -25570,7 +25570,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_106",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -25597,11 +25597,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_107",
       "contactId": "contact_090",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -25762,7 +25762,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "en",
       "confidence": 0.85,
@@ -25784,7 +25784,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_114",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -25810,7 +25810,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_115",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -25836,7 +25836,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_116",
       "contactId": "contact_021",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -25862,11 +25862,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_117",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -26026,7 +26026,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -26049,7 +26049,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_077",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -26076,7 +26076,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_084",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -26101,7 +26101,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_126",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -26127,11 +26127,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_127",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -26291,7 +26291,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -26314,7 +26314,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_015",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -26340,7 +26340,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_135",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -26366,7 +26366,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_136",
       "contactId": "contact_029",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -26393,11 +26393,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_137",
       "contactId": "contact_036",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -26556,7 +26556,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -26579,7 +26579,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_085",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -26605,7 +26605,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_145",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -26631,7 +26631,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_146",
       "contactId": "contact_099",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -26657,11 +26657,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_147",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -26821,7 +26821,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -26843,7 +26843,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_154",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -26870,7 +26870,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_030",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -26896,7 +26896,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_156",
       "contactId": "contact_037",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -26922,11 +26922,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_157",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -27086,7 +27086,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -27109,7 +27109,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_093",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -27135,7 +27135,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_165",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -27160,7 +27160,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_166",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -27187,11 +27187,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_167",
       "contactId": "contact_114",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "zh",
@@ -27352,7 +27352,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -27374,7 +27374,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_174",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -27400,7 +27400,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_175",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -27426,7 +27426,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_176",
       "contactId": "contact_045",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -27452,11 +27452,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_177",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -27616,7 +27616,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -27639,7 +27639,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_101",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -27666,7 +27666,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_108",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -27691,7 +27691,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_186",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -27717,11 +27717,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_187",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "zh",
@@ -27881,7 +27881,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -27904,7 +27904,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_039",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -27930,7 +27930,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_195",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -27956,7 +27956,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_196",
       "contactId": "contact_053",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -27983,11 +27983,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_197",
       "contactId": "contact_060",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -28146,7 +28146,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -28169,7 +28169,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_109",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -28195,7 +28195,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_205",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -28221,7 +28221,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_206",
       "contactId": "contact_123",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -28247,11 +28247,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_207",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "en",
@@ -28411,7 +28411,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -28433,7 +28433,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_214",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -28460,7 +28460,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_054",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -28486,7 +28486,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_216",
       "contactId": "contact_061",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -28512,11 +28512,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_217",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -28676,7 +28676,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "zh",
       "confidence": 0.75,
@@ -28699,7 +28699,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_117",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -28725,7 +28725,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_225",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -28750,7 +28750,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_226",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -28777,11 +28777,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_227",
       "contactId": "contact_006",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -28942,7 +28942,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -28964,7 +28964,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_234",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -28990,7 +28990,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_235",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -29016,7 +29016,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_236",
       "contactId": "contact_069",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -29042,11 +29042,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_237",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -29206,7 +29206,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "zh",
       "confidence": 0.75,
@@ -29229,7 +29229,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_125",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -29256,7 +29256,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_132",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -29281,7 +29281,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_246",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -29307,11 +29307,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_247",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -29471,7 +29471,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -29494,7 +29494,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_063",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -29520,7 +29520,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_255",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -29546,7 +29546,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_256",
       "contactId": "contact_077",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -29573,11 +29573,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_257",
       "contactId": "contact_084",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -29736,7 +29736,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "en",
       "confidence": 0.75,
@@ -29759,7 +29759,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_001",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -29785,7 +29785,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_265",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -29811,7 +29811,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_266",
       "contactId": "contact_015",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -29837,11 +29837,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_267",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -30001,7 +30001,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -30023,7 +30023,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_274",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -30050,7 +30050,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_078",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -30076,7 +30076,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_276",
       "contactId": "contact_085",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -30102,11 +30102,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_277",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -30266,7 +30266,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -30289,7 +30289,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_009",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -30315,7 +30315,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_285",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -30340,7 +30340,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_286",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -30367,11 +30367,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_287",
       "contactId": "contact_030",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -30532,7 +30532,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -30554,7 +30554,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_294",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -30580,7 +30580,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_295",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -30606,7 +30606,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_296",
       "contactId": "contact_093",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -30632,11 +30632,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_297",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -30796,7 +30796,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -30819,7 +30819,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_017",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -30846,7 +30846,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_024",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -30871,7 +30871,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_306",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -30897,11 +30897,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_307",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -31061,7 +31061,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -31084,7 +31084,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_087",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -31110,7 +31110,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_315",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -31136,7 +31136,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_316",
       "contactId": "contact_101",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -31163,11 +31163,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_317",
       "contactId": "contact_108",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "zh",
@@ -31326,7 +31326,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -31349,7 +31349,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_025",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -31375,7 +31375,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_325",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -31401,7 +31401,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_326",
       "contactId": "contact_039",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -31427,11 +31427,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_327",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -31591,7 +31591,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -31613,7 +31613,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_334",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -31640,7 +31640,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_102",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -31666,7 +31666,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_336",
       "contactId": "contact_109",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -31692,11 +31692,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_337",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "zh",
@@ -31856,7 +31856,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -31879,7 +31879,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_033",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -31905,7 +31905,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_345",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -31930,7 +31930,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_346",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -31957,11 +31957,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_347",
       "contactId": "contact_054",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -32122,7 +32122,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -32144,7 +32144,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_354",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -32170,7 +32170,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_355",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -32196,7 +32196,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_356",
       "contactId": "contact_117",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -32222,11 +32222,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_357",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "en",
@@ -32386,7 +32386,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -32409,7 +32409,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_041",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -32436,7 +32436,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_048",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -32461,7 +32461,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_366",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -32487,11 +32487,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_367",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -32651,7 +32651,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -32674,7 +32674,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_111",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -32700,7 +32700,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_375",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -32726,7 +32726,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_376",
       "contactId": "contact_125",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -32753,11 +32753,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_377",
       "contactId": "contact_132",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "en",
@@ -32916,7 +32916,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -32939,7 +32939,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_049",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -32965,7 +32965,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_385",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -32991,7 +32991,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_386",
       "contactId": "contact_063",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -33017,11 +33017,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_387",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -33181,7 +33181,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "zh",
       "confidence": 0.85,
@@ -33203,7 +33203,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_394",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -33230,7 +33230,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_126",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -33256,7 +33256,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_396",
       "contactId": "contact_001",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -33282,11 +33282,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_397",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -33446,7 +33446,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -33469,7 +33469,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_057",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -33495,7 +33495,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_405",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -33520,7 +33520,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_406",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -33547,11 +33547,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_407",
       "contactId": "contact_078",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -33712,7 +33712,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "zh",
       "confidence": 0.85,
@@ -33734,7 +33734,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_414",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -33760,7 +33760,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_415",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -33786,7 +33786,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_416",
       "contactId": "contact_009",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -33812,11 +33812,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_417",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -33976,7 +33976,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -33999,7 +33999,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_065",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -34026,7 +34026,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_072",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -34051,7 +34051,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_426",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -34077,11 +34077,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_427",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -34241,7 +34241,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "en",
       "confidence": 0.85,
@@ -34264,7 +34264,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_003",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -34290,7 +34290,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_435",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -34316,7 +34316,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_436",
       "contactId": "contact_017",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -34343,11 +34343,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_437",
       "contactId": "contact_024",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -34506,7 +34506,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -34529,7 +34529,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_073",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -34555,7 +34555,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_445",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -34581,7 +34581,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_446",
       "contactId": "contact_087",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -34607,11 +34607,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_447",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -34771,7 +34771,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -34793,7 +34793,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_454",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -34820,7 +34820,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_018",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -34846,7 +34846,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_456",
       "contactId": "contact_025",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -34872,11 +34872,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_457",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -35036,7 +35036,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -35059,7 +35059,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_081",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -35085,7 +35085,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_465",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -35110,7 +35110,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_466",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -35137,11 +35137,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_467",
       "contactId": "contact_102",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -35302,7 +35302,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -35324,7 +35324,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_474",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -35350,7 +35350,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_475",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -35376,7 +35376,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_476",
       "contactId": "contact_033",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -35402,11 +35402,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_477",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -35566,7 +35566,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.75,
@@ -35589,7 +35589,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_089",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -35616,7 +35616,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_096",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -35641,7 +35641,7 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_06",
       "attendeeId": "participant_486",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -35667,11 +35667,11 @@ export const generatedRelationshipFixtures = {
       "eventId": "event_07",
       "attendeeId": "participant_487",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "zh",
@@ -35831,7 +35831,7 @@ export const generatedRelationshipFixtures = {
       ],
       "canOffer": [
         "seed investor screening and founder feedback",
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "preferredLanguage": "ja",
       "confidence": 0.85,
@@ -35854,7 +35854,7 @@ export const generatedRelationshipFixtures = {
       "contactId": "contact_027",
       "lookingFor": [
         "investor warm intro for seed fundraising",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "canOffer": [
         "event table matching and sponsor visibility",
@@ -35880,7 +35880,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_495",
       "lookingFor": [
         "event sponsor with Chinese business-community reach",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "canOffer": [
         "cross-border ecommerce launch playbook",
@@ -35906,7 +35906,7 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_496",
       "contactId": "contact_041",
       "lookingFor": [
-        "post-event follow-up workflow operator",
+        "semiconductor supply-chain sourcing lead",
         "retail live-commerce distribution partner"
       ],
       "canOffer": [
@@ -35933,11 +35933,11 @@ export const generatedRelationshipFixtures = {
       "attendeeId": "participant_497",
       "contactId": "contact_048",
       "lookingFor": [
-        "duplicate contact cleanup and provenance review",
+        "D2C brand overseas-expansion partner",
         "trusted tax and incorporation advisor for Japan entry"
       ],
       "canOffer": [
-        "privacy-safe contact provenance audit",
+        "hands-on D2C cross-border logistics and payments",
         "Mandarin Japanese community marketing channel"
       ],
       "preferredLanguage": "ja",
@@ -36101,7 +36101,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Kansai Foods",
       "role": "Product Manager",
       "location": "Tokyo",
-      "profileSnippet": "関西フーズのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 关西餐饮的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Product Manager at Kansai Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "関西フーズのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 关西餐饮的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Product Manager at Kansai Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "stage": "reviewing",
       "source": {
         "type": "referral",
@@ -36201,7 +36201,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Bamboo Grove Foods",
       "role": "Store Owner",
       "location": "Singapore",
-      "profileSnippet": "竹林フーズの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 竹林餐饮的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Store Owner at Bamboo Grove Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "竹林フーズの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 竹林餐饮的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Store Owner at Bamboo Grove Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "stage": "active",
       "source": {
         "type": "qr_scan",
@@ -36301,7 +36301,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Umeda Technologies",
       "role": "Investor Partner",
       "location": "Shenzhen",
-      "profileSnippet": "梅田テクノロジーの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 梅田科技的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Investor Partner at Umeda Technologies. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "梅田テクノロジーの投資パートナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 梅田科技的投资合伙人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Investor Partner at Umeda Technologies. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "stage": "active",
       "source": {
         "type": "manual",
@@ -36381,7 +36381,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Nanshan Technologies",
       "role": "DX Consultant",
       "location": "Tokyo",
-      "profileSnippet": "南山テクノロジーのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 南山科技的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / DX Consultant at Nanshan Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "南山テクノロジーのDXコンサルタント。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 南山科技的DX 顾问。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / DX Consultant at Nanshan Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "stage": "reviewing",
       "source": {
         "type": "business_card_ocr",
@@ -36401,7 +36401,7 @@ export const generatedRelationshipFixtures = {
       "organization": "North Star Partners",
       "role": "Marketing Lead",
       "location": "Osaka",
-      "profileSnippet": "北星パートナーズのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 北星伙伴的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Marketing Lead at North Star Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "北星パートナーズのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 北星伙伴的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Marketing Lead at North Star Partners. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "stage": "active",
       "source": {
         "type": "qr_scan",
@@ -36601,7 +36601,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Aoba Capital",
       "role": "Store Owner",
       "location": "Shenzhen",
-      "profileSnippet": "青葉キャピタルの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 青叶资本的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Store Owner at Aoba Capital. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "青葉キャピタルの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 青叶资本的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Store Owner at Aoba Capital. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "stage": "active",
       "source": {
         "type": "qr_scan",
@@ -36701,7 +36701,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Morning Light Capital",
       "role": "Community Organizer",
       "location": "Tokyo",
-      "profileSnippet": "晨光キャピタルのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 晨光资本的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Community Organizer at Morning Light Capital. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "晨光キャピタルのコミュニティ主催者。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 晨光资本的社群组织者。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Community Organizer at Morning Light Capital. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "stage": "reviewing",
       "source": {
         "type": "referral",
@@ -36801,7 +36801,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Yokohama Community",
       "role": "Marketing Lead",
       "location": "Singapore",
-      "profileSnippet": "横浜コミュニティのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 横滨社群的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Marketing Lead at Yokohama Community. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "横浜コミュニティのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 横滨社群的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Marketing Lead at Yokohama Community. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "stage": "active",
       "source": {
         "type": "qr_scan",
@@ -36901,7 +36901,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Blue Harbor Community",
       "role": "Sales Director",
       "location": "Shenzhen",
-      "profileSnippet": "藍海コミュニティの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 蓝海社群的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Sales Director at Blue Harbor Community. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "藍海コミュニティの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 蓝海社群的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Sales Director at Blue Harbor Community. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "stage": "active",
       "source": {
         "type": "manual",
@@ -36981,7 +36981,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Kansai Foods",
       "role": "Founder CEO",
       "location": "Tokyo",
-      "profileSnippet": "関西フーズの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 关西餐饮的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Founder CEO at Kansai Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "関西フーズの創業者CEO。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 关西餐饮的创始人 CEO。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Founder CEO at Kansai Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "stage": "reviewing",
       "source": {
         "type": "business_card_ocr",
@@ -37001,7 +37001,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Ginza Foods",
       "role": "Store Owner",
       "location": "Osaka",
-      "profileSnippet": "銀座フーズの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 银座餐饮的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Store Owner at Ginza Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "銀座フーズの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 银座餐饮的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Store Owner at Ginza Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "stage": "active",
       "source": {
         "type": "qr_scan",
@@ -37201,7 +37201,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Umeda Technologies",
       "role": "Marketing Lead",
       "location": "Shenzhen",
-      "profileSnippet": "梅田テクノロジーのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 / 梅田科技的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 / Marketing Lead at Umeda Technologies. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "profileSnippet": "梅田テクノロジーのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 / 梅田科技的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 / Marketing Lead at Umeda Technologies. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "stage": "active",
       "source": {
         "type": "qr_scan",
@@ -37301,7 +37301,7 @@ export const generatedRelationshipFixtures = {
       "organization": "Nanshan Technologies",
       "role": "Product Manager",
       "location": "Tokyo",
-      "profileSnippet": "南山テクノロジーのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 南山科技的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 / Product Manager at Nanshan Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "profileSnippet": "南山テクノロジーのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 / 南山科技的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 / Product Manager at Nanshan Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "stage": "reviewing",
       "source": {
         "type": "referral",
@@ -37428,16 +37428,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "emerging",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -37583,13 +37583,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "emerging",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -37893,13 +37893,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "warm",
       "businessRelevanceScore": 81,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -37924,16 +37924,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "warm",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -38048,13 +38048,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "trusted",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -38203,13 +38203,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "emerging",
       "businessRelevanceScore": 56,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -38358,16 +38358,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "emerging",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -38513,13 +38513,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "warm",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -38823,13 +38823,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "trusted",
       "businessRelevanceScore": 51,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -38854,16 +38854,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "trusted",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -38978,13 +38978,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "emerging",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -39133,13 +39133,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "emerging",
       "businessRelevanceScore": 71,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -39288,16 +39288,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "warm",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -39443,13 +39443,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "warm",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -39753,13 +39753,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "emerging",
       "businessRelevanceScore": 66,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -39784,16 +39784,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "emerging",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -39908,13 +39908,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "emerging",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -40063,13 +40063,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "warm",
       "businessRelevanceScore": 86,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -40218,16 +40218,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "warm",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -40373,13 +40373,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "trusted",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -40683,13 +40683,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "emerging",
       "businessRelevanceScore": 81,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -40714,16 +40714,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "emerging",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -40838,13 +40838,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "warm",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -40993,13 +40993,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "warm",
       "businessRelevanceScore": 56,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -41148,16 +41148,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "trusted",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -41303,13 +41303,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "emerging",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -41613,13 +41613,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "warm",
       "businessRelevanceScore": 51,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -41644,16 +41644,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "warm",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -41768,13 +41768,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "warm",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -41923,13 +41923,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "trusted",
       "businessRelevanceScore": 71,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -42078,16 +42078,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "emerging",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -42233,13 +42233,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "emerging",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -42543,13 +42543,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "warm",
       "businessRelevanceScore": 66,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -42574,16 +42574,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "warm",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -42698,13 +42698,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "trusted",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -42853,13 +42853,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "emerging",
       "businessRelevanceScore": 86,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -43008,16 +43008,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "emerging",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -43163,13 +43163,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "warm",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -43473,13 +43473,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "trusted",
       "businessRelevanceScore": 81,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -43504,16 +43504,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "trusted",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -43628,13 +43628,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "emerging",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -43783,13 +43783,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "emerging",
       "businessRelevanceScore": 56,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -43938,16 +43938,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "warm",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -44093,13 +44093,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "warm",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -44403,13 +44403,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "emerging",
       "businessRelevanceScore": 51,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -44434,16 +44434,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "emerging",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -44558,13 +44558,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "emerging",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -44713,13 +44713,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "warm",
       "businessRelevanceScore": 71,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -44868,16 +44868,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "warm",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -45023,13 +45023,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "trusted",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -45333,13 +45333,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "emerging",
       "businessRelevanceScore": 66,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -45364,16 +45364,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "emerging",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -45488,13 +45488,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "warm",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -45643,13 +45643,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "warm",
       "businessRelevanceScore": 86,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -45798,16 +45798,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "trusted",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -45953,13 +45953,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "emerging",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -46263,13 +46263,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "warm",
       "businessRelevanceScore": 81,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -46294,16 +46294,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "warm",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -46418,13 +46418,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "warm",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -46573,13 +46573,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "trusted",
       "businessRelevanceScore": 56,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -46728,16 +46728,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "emerging",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -46883,13 +46883,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "emerging",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -47193,13 +47193,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "warm",
       "businessRelevanceScore": 51,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -47224,16 +47224,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "warm",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -47348,13 +47348,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "trusted",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -47503,13 +47503,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "emerging",
       "businessRelevanceScore": 71,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -47658,16 +47658,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "emerging",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -47813,13 +47813,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "warm",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -48123,13 +48123,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "trusted",
       "businessRelevanceScore": 66,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -48154,16 +48154,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "trusted",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -48278,13 +48278,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "emerging",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -48433,13 +48433,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "emerging",
       "businessRelevanceScore": 86,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -48588,16 +48588,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "warm",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -48743,13 +48743,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "warm",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -49053,13 +49053,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "emerging",
       "businessRelevanceScore": 81,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -49084,16 +49084,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "emerging",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -49208,13 +49208,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "emerging",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -49363,13 +49363,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "warm",
       "businessRelevanceScore": 56,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -49518,16 +49518,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "warm",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -49673,13 +49673,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "trusted",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -49983,13 +49983,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "emerging",
       "businessRelevanceScore": 51,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -50014,16 +50014,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "emerging",
       "businessRelevanceScore": 52,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -50138,13 +50138,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "warm",
       "businessRelevanceScore": 61,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -50293,13 +50293,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "warm",
       "businessRelevanceScore": 71,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -50448,16 +50448,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "曾伟 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "曾伟 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 42,
       "trustLevel": "trusted",
       "businessRelevanceScore": 82,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -50603,13 +50603,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "松田 翔 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "松田 翔 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 51,
       "trustLevel": "emerging",
       "businessRelevanceScore": 46,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -50913,13 +50913,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "佐藤 健一 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "佐藤 健一 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 71,
       "trustLevel": "warm",
       "businessRelevanceScore": 66,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -50944,16 +50944,16 @@ export const generatedRelationshipFixtures = {
         "knowledge_exchange",
         "community_context"
       ],
-      "summary": "山田 千尋 matches legal_accounting through duplicate contact cleanup and provenance review.",
+      "summary": "山田 千尋 matches legal_accounting through D2C brand overseas-expansion partner.",
       "relationshipStrength": 72,
       "trustLevel": "warm",
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "source": {
         "type": "manual",
@@ -51068,13 +51068,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "胡家明 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "胡家明 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 81,
       "trustLevel": "warm",
       "businessRelevanceScore": 76,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -51223,13 +51223,13 @@ export const generatedRelationshipFixtures = {
         "commercial_opportunity",
         "referral_path"
       ],
-      "summary": "程可欣 matches retail_omnichannel through post-event follow-up workflow operator.",
+      "summary": "程可欣 matches retail_omnichannel through semiconductor supply-chain sourcing lead.",
       "relationshipStrength": 91,
       "trustLevel": "trusted",
       "businessRelevanceScore": 86,
       "sharedTopics": [
         "retail_omnichannel",
-        "post-event follow-up workflow operator"
+        "semiconductor supply-chain sourcing lead"
       ],
       "suggestedActions": [
         "bilingual sales deck review"
@@ -53253,7 +53253,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -53280,10 +53280,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": true
       },
@@ -53523,7 +53523,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -53550,10 +53550,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -53793,7 +53793,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -53820,10 +53820,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -54063,7 +54063,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -54090,10 +54090,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -54333,7 +54333,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -54360,10 +54360,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -54603,7 +54603,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -54630,10 +54630,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -54873,7 +54873,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -54900,10 +54900,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -55143,7 +55143,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -55170,10 +55170,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": true
       },
@@ -55413,7 +55413,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -55440,10 +55440,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -55683,7 +55683,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -55710,10 +55710,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -55953,7 +55953,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -55980,10 +55980,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -56223,7 +56223,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -56250,10 +56250,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -56493,7 +56493,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -56520,10 +56520,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -56763,7 +56763,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -56790,10 +56790,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -57033,7 +57033,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -57060,10 +57060,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": true
       },
@@ -57303,7 +57303,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -57330,10 +57330,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -57573,7 +57573,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -57600,10 +57600,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -57843,7 +57843,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -57870,10 +57870,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -58113,7 +58113,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -58140,10 +58140,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -58383,7 +58383,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -58410,10 +58410,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -58653,7 +58653,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -58680,10 +58680,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -58923,7 +58923,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -58950,10 +58950,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": true
       },
@@ -59193,7 +59193,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -59220,10 +59220,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -59463,7 +59463,7 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "post-event follow-up workflow operator"
+          "semiconductor supply-chain sourcing lead"
         ],
         "inferred_traits": [
           "bilingual sales deck review"
@@ -59490,10 +59490,10 @@ export const generatedRelationshipFixtures = {
       },
       "resultJson": {
         "confirmed_facts": [
-          "duplicate contact cleanup and provenance review"
+          "D2C brand overseas-expansion partner"
         ],
         "inferred_traits": [
-          "privacy-safe contact provenance audit"
+          "hands-on D2C cross-border logistics and payments"
         ],
         "low_confidence": false
       },
@@ -59633,7 +59633,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0002",
@@ -59745,7 +59745,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0006",
@@ -59773,7 +59773,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0007",
@@ -59914,7 +59914,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0012",
@@ -60026,7 +60026,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0016",
@@ -60054,7 +60054,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0017",
@@ -60135,10 +60135,10 @@ export const generatedRelationshipFixtures = {
       "businessRelevanceScore": 70,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
       "source": {
@@ -60195,7 +60195,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0022",
@@ -60307,7 +60307,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0026",
@@ -60335,7 +60335,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0027",
@@ -60476,7 +60476,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0032",
@@ -60588,7 +60588,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0036",
@@ -60616,7 +60616,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0037",
@@ -60758,7 +60758,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "Mandarin Japanese community marketing channel"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0042",
@@ -60869,7 +60869,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0046",
@@ -60897,7 +60897,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0047",
@@ -61037,7 +61037,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0052",
@@ -61150,7 +61150,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0056",
@@ -61178,7 +61178,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0057",
@@ -61318,7 +61318,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0062",
@@ -61371,10 +61371,10 @@ export const generatedRelationshipFixtures = {
       "businessRelevanceScore": 69,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
       "source": {
@@ -61431,7 +61431,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0066",
@@ -61459,7 +61459,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0067",
@@ -61599,7 +61599,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0072",
@@ -61712,7 +61712,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0076",
@@ -61740,7 +61740,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0077",
@@ -61880,7 +61880,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0082",
@@ -61994,7 +61994,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "Mandarin Japanese community marketing channel"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0086",
@@ -62021,7 +62021,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0087",
@@ -62161,7 +62161,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0092",
@@ -62273,7 +62273,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0096",
@@ -62302,7 +62302,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "event table matching and sponsor visibility"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0097",
@@ -62442,7 +62442,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0102",
@@ -62554,7 +62554,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0106",
@@ -62582,7 +62582,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0107",
@@ -62607,10 +62607,10 @@ export const generatedRelationshipFixtures = {
       "businessRelevanceScore": 68,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
       "source": {
@@ -62723,7 +62723,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0112",
@@ -62835,7 +62835,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0116",
@@ -62863,7 +62863,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0117",
@@ -63004,7 +63004,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0122",
@@ -63116,7 +63116,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0126",
@@ -63144,7 +63144,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0127",
@@ -63285,7 +63285,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0132",
@@ -63397,7 +63397,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0136",
@@ -63425,7 +63425,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0137",
@@ -63566,7 +63566,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0142",
@@ -63678,7 +63678,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0146",
@@ -63706,7 +63706,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0147",
@@ -63843,12 +63843,12 @@ export const generatedRelationshipFixtures = {
       "businessRelevanceScore": 67,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0152",
@@ -63959,7 +63959,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0156",
@@ -63987,7 +63987,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0157",
@@ -64127,7 +64127,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0162",
@@ -64240,7 +64240,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0166",
@@ -64268,7 +64268,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0167",
@@ -64408,7 +64408,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0172",
@@ -64521,7 +64521,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0176",
@@ -64549,7 +64549,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0177",
@@ -64689,7 +64689,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0182",
@@ -64802,7 +64802,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0186",
@@ -64830,7 +64830,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0187",
@@ -64970,7 +64970,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0192",
@@ -65079,12 +65079,12 @@ export const generatedRelationshipFixtures = {
       "businessRelevanceScore": 66,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0196",
@@ -65111,7 +65111,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0197",
@@ -65251,7 +65251,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0202",
@@ -65363,7 +65363,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0206",
@@ -65393,7 +65393,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "Tokyo restaurant operator test site"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0207",
@@ -65532,7 +65532,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0212",
@@ -65644,7 +65644,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0216",
@@ -65672,7 +65672,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0217",
@@ -65813,7 +65813,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0222",
@@ -65925,7 +65925,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0226",
@@ -65953,7 +65953,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0227",
@@ -66094,7 +66094,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0232",
@@ -66206,7 +66206,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0236",
@@ -66234,7 +66234,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0237",
@@ -66315,10 +66315,10 @@ export const generatedRelationshipFixtures = {
       "businessRelevanceScore": 65,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "reason": "Need/offer fit: bilingual Xiaohongshu inbound campaign partner ↔ cross-border ecommerce launch playbook.",
       "source": {
@@ -66375,7 +66375,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0242",
@@ -66487,7 +66487,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0246",
@@ -66515,7 +66515,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0247",
@@ -66656,7 +66656,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0252",
@@ -66768,7 +66768,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0256",
@@ -66796,7 +66796,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0257",
@@ -66938,7 +66938,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "Mandarin Japanese community marketing channel"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0262",
@@ -67049,7 +67049,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0266",
@@ -67077,7 +67077,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0267",
@@ -67217,7 +67217,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0272",
@@ -67330,7 +67330,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0276",
@@ -67358,7 +67358,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0277",
@@ -67498,7 +67498,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0282",
@@ -67551,10 +67551,10 @@ export const generatedRelationshipFixtures = {
       "businessRelevanceScore": 64,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "reason": "Need/offer fit: investor warm intro for seed fundraising ↔ partner channel introductions in Kansai.",
       "source": {
@@ -67611,7 +67611,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0286",
@@ -67639,7 +67639,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0287",
@@ -67779,7 +67779,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0292",
@@ -67892,7 +67892,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0296",
@@ -67920,7 +67920,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0297",
@@ -68060,7 +68060,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0302",
@@ -68174,7 +68174,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "Mandarin Japanese community marketing channel"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0306",
@@ -68201,7 +68201,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0307",
@@ -68341,7 +68341,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0312",
@@ -68453,7 +68453,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0316",
@@ -68482,7 +68482,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "event table matching and sponsor visibility"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0317",
@@ -68622,7 +68622,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0322",
@@ -68734,7 +68734,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0326",
@@ -68762,7 +68762,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0327",
@@ -68787,10 +68787,10 @@ export const generatedRelationshipFixtures = {
       "businessRelevanceScore": 63,
       "sharedTopics": [
         "legal_accounting",
-        "duplicate contact cleanup and provenance review"
+        "D2C brand overseas-expansion partner"
       ],
       "suggestedActions": [
-        "privacy-safe contact provenance audit"
+        "hands-on D2C cross-border logistics and payments"
       ],
       "reason": "Need/offer fit: retail live-commerce distribution partner ↔ seed investor screening and founder feedback.",
       "source": {
@@ -68903,7 +68903,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0332",
@@ -69015,7 +69015,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0336",
@@ -69043,7 +69043,7 @@ export const generatedRelationshipFixtures = {
         "ask the introducer for permission before creating a contact",
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. This target is not yet a current-user contact; create contact only after a warm introduction or direct exchange.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0337",
@@ -69184,7 +69184,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+      "reason": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0342",
@@ -69296,7 +69296,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+      "reason": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0346",
@@ -69324,7 +69324,7 @@ export const generatedRelationshipFixtures = {
       "suggestedActions": [
         "review source evidence before follow-up"
       ],
-      "reason": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+      "reason": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
       "source": {
         "type": "agent_action",
         "id": "source:recommendation_0347",
@@ -69448,7 +69448,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0006",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -69467,7 +69467,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0007",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -69657,7 +69657,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0027",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -69752,7 +69752,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0036",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -69847,7 +69847,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0047",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -69942,7 +69942,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0057",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70018,7 +70018,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0066",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70037,7 +70037,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0067",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70227,7 +70227,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0087",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70322,7 +70322,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0096",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70417,7 +70417,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0107",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70512,7 +70512,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0117",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70588,7 +70588,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0126",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70607,7 +70607,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0127",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70797,7 +70797,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0147",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70892,7 +70892,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0156",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -70987,7 +70987,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0167",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71082,7 +71082,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0177",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71158,7 +71158,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0186",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71177,7 +71177,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0187",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71367,7 +71367,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0207",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71462,7 +71462,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0216",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71557,7 +71557,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0227",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71652,7 +71652,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0237",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71728,7 +71728,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0246",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71747,7 +71747,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0247",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -71937,7 +71937,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0267",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72032,7 +72032,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0276",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72127,7 +72127,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0287",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72222,7 +72222,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0297",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72298,7 +72298,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0306",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72317,7 +72317,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0307",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72507,7 +72507,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0327",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72602,7 +72602,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0336",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72697,7 +72697,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0347",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72792,7 +72792,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0357",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72868,7 +72868,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0366",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -72887,7 +72887,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0367",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73077,7 +73077,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0387",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73172,7 +73172,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0396",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73267,7 +73267,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0407",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73362,7 +73362,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0417",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73438,7 +73438,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0426",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73457,7 +73457,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0427",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73647,7 +73647,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0447",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73742,7 +73742,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0456",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73837,7 +73837,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0467",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -73932,7 +73932,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0477",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74008,7 +74008,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0486",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74027,7 +74027,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0487",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74217,7 +74217,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0507",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74312,7 +74312,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0516",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74407,7 +74407,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0527",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74502,7 +74502,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0537",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74578,7 +74578,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0546",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74597,7 +74597,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0547",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74787,7 +74787,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0567",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74882,7 +74882,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0576",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -74977,7 +74977,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0587",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75072,7 +75072,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0597",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75148,7 +75148,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0606",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75167,7 +75167,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0607",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75357,7 +75357,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0627",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75452,7 +75452,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0636",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75547,7 +75547,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0647",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75642,7 +75642,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0657",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75718,7 +75718,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0666",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75737,7 +75737,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0667",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -75927,7 +75927,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0687",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76022,7 +76022,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0696",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76117,7 +76117,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0707",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76212,7 +76212,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0717",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76288,7 +76288,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0726",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76307,7 +76307,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0727",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76497,7 +76497,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0747",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76592,7 +76592,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0756",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76687,7 +76687,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0767",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76782,7 +76782,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0777",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76858,7 +76858,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0786",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -76877,7 +76877,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0787",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77067,7 +77067,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0807",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77162,7 +77162,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0816",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77257,7 +77257,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0827",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77352,7 +77352,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0837",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77428,7 +77428,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0846",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77447,7 +77447,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0847",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77637,7 +77637,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0867",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77732,7 +77732,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0876",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77827,7 +77827,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0887",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77922,7 +77922,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0897",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -77998,7 +77998,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0906",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78017,7 +78017,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0907",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78207,7 +78207,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0927",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78302,7 +78302,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0936",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78397,7 +78397,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0947",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78492,7 +78492,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0957",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78568,7 +78568,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0966",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78587,7 +78587,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0967",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78777,7 +78777,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0987",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78872,7 +78872,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_0996",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -78967,7 +78967,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1007",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79062,7 +79062,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1017",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79138,7 +79138,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1026",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79157,7 +79157,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1027",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79347,7 +79347,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1047",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79442,7 +79442,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1056",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79537,7 +79537,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1067",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79632,7 +79632,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1077",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79708,7 +79708,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1086",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79727,7 +79727,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1087",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -79917,7 +79917,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1107",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80012,7 +80012,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1116",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80107,7 +80107,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1127",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80202,7 +80202,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1137",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80278,7 +80278,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1146",
       "contactId": "contact_078",
       "memoryType": "follow_up_request",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80297,7 +80297,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1147",
       "contactId": "contact_089",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80487,7 +80487,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1167",
       "contactId": "contact_045",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80582,7 +80582,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1176",
       "contactId": "contact_012",
       "memoryType": "event_note",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80677,7 +80677,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1187",
       "contactId": "contact_001",
       "memoryType": "referral_offer",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -80772,7 +80772,7 @@ export const generatedRelationshipFixtures = {
       "id": "interaction_1197",
       "contactId": "contact_111",
       "memoryType": "follow_up_request",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "source": {
@@ -85942,7 +85942,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:006",
       "sourceType": "manual",
       "sourceId": "contact_006",
-      "summary": "渡辺 颯太 / Sota Watanabe at Kansai Foods. JA: 関西フーズのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 关西餐饮的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Product Manager at Kansai Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "渡辺 颯太 / Sota Watanabe at Kansai Foods. JA: 関西フーズのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 关西餐饮的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Product Manager at Kansai Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -85951,7 +85951,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:007",
       "sourceType": "referral",
       "sourceId": "contact_007",
-      "summary": "山本 浩 / Hiroshi Yamamoto at Ginza Foods. JA: 銀座フーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 银座餐饮的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Sales Director at Ginza Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "山本 浩 / Hiroshi Yamamoto at Ginza Foods. JA: 銀座フーズの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 银座餐饮的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Sales Director at Ginza Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86032,7 +86032,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:016",
       "sourceType": "event_import",
       "sourceId": "contact_016",
-      "summary": "井上 誠 / Makoto Inoue at Hoshino Foods. JA: 星野フーズの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 星野餐饮的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Founder CEO at Hoshino Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "井上 誠 / Makoto Inoue at Hoshino Foods. JA: 星野フーズの創業者CEO。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 星野餐饮的创始人 CEO。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Founder CEO at Hoshino Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86041,7 +86041,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:017",
       "sourceType": "business_card_ocr",
       "sourceId": "contact_017",
-      "summary": "木村 桜 / Sakura Kimura at Bamboo Grove Foods. JA: 竹林フーズの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 竹林餐饮的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Store Owner at Bamboo Grove Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "木村 桜 / Sakura Kimura at Bamboo Grove Foods. JA: 竹林フーズの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 竹林餐饮的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Store Owner at Bamboo Grove Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86122,7 +86122,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:026",
       "sourceType": "manual",
       "sourceId": "contact_026",
-      "summary": "石川 亮 / Ryo Ishikawa at Asakusa Technologies. JA: 浅草テクノロジーのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 浅草科技的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Community Organizer at Asakusa Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "石川 亮 / Ryo Ishikawa at Asakusa Technologies. JA: 浅草テクノロジーのコミュニティ主催者。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 浅草科技的社群组织者。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Community Organizer at Asakusa Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86131,7 +86131,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:027",
       "sourceType": "referral",
       "sourceId": "contact_027",
-      "summary": "前田 祐介 / Yusuke Maeda at Umeda Technologies. JA: 梅田テクノロジーの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 梅田科技的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Investor Partner at Umeda Technologies. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "前田 祐介 / Yusuke Maeda at Umeda Technologies. JA: 梅田テクノロジーの投資パートナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 梅田科技的投资合伙人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Investor Partner at Umeda Technologies. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86212,7 +86212,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:036",
       "sourceType": "event_import",
       "sourceId": "contact_036",
-      "summary": "遠藤 悠斗 / Haruto Endo at Nanshan Technologies. JA: 南山テクノロジーのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 南山科技的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: DX Consultant at Nanshan Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "遠藤 悠斗 / Haruto Endo at Nanshan Technologies. JA: 南山テクノロジーのDXコンサルタント。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 南山科技的DX 顾问。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: DX Consultant at Nanshan Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86221,7 +86221,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:037",
       "sourceType": "business_card_ocr",
       "sourceId": "contact_037",
-      "summary": "青木 瑞希 / Mizuki Aoki at North Star Partners. JA: 北星パートナーズのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 北星伙伴的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Marketing Lead at North Star Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "青木 瑞希 / Mizuki Aoki at North Star Partners. JA: 北星パートナーズのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 北星伙伴的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Marketing Lead at North Star Partners. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86302,7 +86302,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:046",
       "sourceType": "manual",
       "sourceId": "contact_046",
-      "summary": "中島 蓮 / Ren Nakajima at Fukuoka Partners. JA: 福岡パートナーズのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 福冈伙伴的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Product Manager at Fukuoka Partners. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "中島 蓮 / Ren Nakajima at Fukuoka Partners. JA: 福岡パートナーズのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 福冈伙伴的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Product Manager at Fukuoka Partners. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86311,7 +86311,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:047",
       "sourceType": "referral",
       "sourceId": "contact_047",
-      "summary": "中川 遥 / Haruka Nakagawa at Red Bridge Partners. JA: 紅橋パートナーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 红桥伙伴的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Sales Director at Red Bridge Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "中川 遥 / Haruka Nakagawa at Red Bridge Partners. JA: 紅橋パートナーズの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 红桥伙伴的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Sales Director at Red Bridge Partners. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86392,7 +86392,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:056",
       "sourceType": "event_import",
       "sourceId": "contact_056",
-      "summary": "佐藤 浩二 / Koji Sato at Sakura Bridge Capital. JA: 桜橋キャピタルの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 樱桥资本的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Founder CEO at Sakura Bridge Capital. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "佐藤 浩二 / Koji Sato at Sakura Bridge Capital. JA: 桜橋キャピタルの創業者CEO。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 樱桥资本的创始人 CEO。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Founder CEO at Sakura Bridge Capital. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86401,7 +86401,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:057",
       "sourceType": "business_card_ocr",
       "sourceId": "contact_057",
-      "summary": "鈴木 翔太 / Shota Suzuki at Aoba Capital. JA: 青葉キャピタルの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 青叶资本的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Store Owner at Aoba Capital. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "鈴木 翔太 / Shota Suzuki at Aoba Capital. JA: 青葉キャピタルの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 青叶资本的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Store Owner at Aoba Capital. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86482,7 +86482,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:066",
       "sourceType": "manual",
       "sourceId": "contact_066",
-      "summary": "吉田 彩 / Aya Yoshida at Morning Light Capital. JA: 晨光キャピタルのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 晨光资本的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Community Organizer at Morning Light Capital. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "吉田 彩 / Aya Yoshida at Morning Light Capital. JA: 晨光キャピタルのコミュニティ主催者。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 晨光资本的社群组织者。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Community Organizer at Morning Light Capital. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86491,7 +86491,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:067",
       "sourceType": "referral",
       "sourceId": "contact_067",
-      "summary": "罗皓宇 / Haoyu Luo at Cedar Capital. JA: 雲杉キャピタルの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 云杉资本的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Investor Partner at Cedar Capital. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "罗皓宇 / Haoyu Luo at Cedar Capital. JA: 雲杉キャピタルの投資パートナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 云杉资本的投资合伙人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Investor Partner at Cedar Capital. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86572,7 +86572,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:076",
       "sourceType": "event_import",
       "sourceId": "contact_076",
-      "summary": "冯佳琪 / Jiaqi Feng at Kanda Community. JA: 神田コミュニティのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 神田社群的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: DX Consultant at Kanda Community. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "冯佳琪 / Jiaqi Feng at Kanda Community. JA: 神田コミュニティのDXコンサルタント。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 神田社群的DX 顾问。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: DX Consultant at Kanda Community. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86581,7 +86581,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:077",
       "sourceType": "business_card_ocr",
       "sourceId": "contact_077",
-      "summary": "曹子睿 / Zirui Cao at Yokohama Community. JA: 横浜コミュニティのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 横滨社群的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Marketing Lead at Yokohama Community. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "曹子睿 / Zirui Cao at Yokohama Community. JA: 横浜コミュニティのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 横滨社群的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Marketing Lead at Yokohama Community. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86662,7 +86662,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:086",
       "sourceType": "manual",
       "sourceId": "contact_086",
-      "summary": "于思琪 / Siqi Yu at Bright Shore Community. JA: 明岸コミュニティのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 明岸社群的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Product Manager at Bright Shore Community. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "于思琪 / Siqi Yu at Bright Shore Community. JA: 明岸コミュニティのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 明岸社群的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Product Manager at Bright Shore Community. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86671,7 +86671,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:087",
       "sourceType": "referral",
       "sourceId": "contact_087",
-      "summary": "蒋思雨 / Siyu Jiang at Blue Harbor Community. JA: 藍海コミュニティの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 蓝海社群的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Sales Director at Blue Harbor Community. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "蒋思雨 / Siyu Jiang at Blue Harbor Community. JA: 藍海コミュニティの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 蓝海社群的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Sales Director at Blue Harbor Community. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86752,7 +86752,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:096",
       "sourceType": "event_import",
       "sourceId": "contact_096",
-      "summary": "廖依娜 / Yina Liao at Kansai Foods. JA: 関西フーズの創業者CEO。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 关西餐饮的创始人 CEO。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Founder CEO at Kansai Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "廖依娜 / Yina Liao at Kansai Foods. JA: 関西フーズの創業者CEO。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 关西餐饮的创始人 CEO。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Founder CEO at Kansai Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86761,7 +86761,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:097",
       "sourceType": "business_card_ocr",
       "sourceId": "contact_097",
-      "summary": "姚晓琳 / Xiaolin Yao at Ginza Foods. JA: 銀座フーズの店舗オーナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 银座餐饮的门店经营者。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Store Owner at Ginza Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "姚晓琳 / Xiaolin Yao at Ginza Foods. JA: 銀座フーズの店舗オーナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 银座餐饮的门店经营者。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Store Owner at Ginza Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86842,7 +86842,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:106",
       "sourceType": "manual",
       "sourceId": "contact_106",
-      "summary": "黄思雨 / Siyu Huang at Hoshino Foods. JA: 星野フーズのコミュニティ主催者。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 星野餐饮的社群组织者。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Community Organizer at Hoshino Foods. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "黄思雨 / Siyu Huang at Hoshino Foods. JA: 星野フーズのコミュニティ主催者。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 星野餐饮的社群组织者。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Community Organizer at Hoshino Foods. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86851,7 +86851,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:107",
       "sourceType": "referral",
       "sourceId": "contact_107",
-      "summary": "周明轩 / Mingxuan Zhou at Bamboo Grove Foods. JA: 竹林フーズの投資パートナー。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 竹林餐饮的投资合伙人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Investor Partner at Bamboo Grove Foods. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "周明轩 / Mingxuan Zhou at Bamboo Grove Foods. JA: 竹林フーズの投資パートナー。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 竹林餐饮的投资合伙人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Investor Partner at Bamboo Grove Foods. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86932,7 +86932,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:116",
       "sourceType": "event_import",
       "sourceId": "contact_116",
-      "summary": "罗晓琳 / Xiaolin Luo at Asakusa Technologies. JA: 浅草テクノロジーのDXコンサルタント。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 浅草科技的DX 顾问。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: DX Consultant at Asakusa Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "罗晓琳 / Xiaolin Luo at Asakusa Technologies. JA: 浅草テクノロジーのDXコンサルタント。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 浅草科技的DX 顾问。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: DX Consultant at Asakusa Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -86941,7 +86941,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:117",
       "sourceType": "business_card_ocr",
       "sourceId": "contact_117",
-      "summary": "郑思远 / Siyuan Zheng at Umeda Technologies. JA: 梅田テクノロジーのマーケティング責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 梅田科技的市场负责人。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Marketing Lead at Umeda Technologies. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "郑思远 / Siyuan Zheng at Umeda Technologies. JA: 梅田テクノロジーのマーケティング責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 梅田科技的市场负责人。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Marketing Lead at Umeda Technologies. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -87022,7 +87022,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:126",
       "sourceType": "manual",
       "sourceId": "contact_126",
-      "summary": "Lucas Duarte / Lucas Duarte at Nanshan Technologies. JA: 南山テクノロジーのプロダクトマネージャー。今回の関心は「イベント後フォローアップ運用の担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 南山科技的产品经理。本次关注「会后跟进流程运营负责人」，可提供「双语销售材料审阅」。 EN: Product Manager at Nanshan Technologies. Looking for post-event follow-up workflow operator; can offer bilingual sales deck review.",
+      "summary": "Lucas Duarte / Lucas Duarte at Nanshan Technologies. JA: 南山テクノロジーのプロダクトマネージャー。今回の関心は「半導体サプライチェーンの調達担当者」で、提供できる強みは「二言語営業資料のレビュー」。 ZH: 南山科技的产品经理。本次关注「半导体供应链的采购负责人」，可提供「双语销售材料审阅」。 EN: Product Manager at Nanshan Technologies. Looking for semiconductor supply-chain sourcing lead; can offer bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -87031,7 +87031,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:contact:127",
       "sourceType": "referral",
       "sourceId": "contact_127",
-      "summary": "Maya Parker / Maya Parker at North Star Partners. JA: 北星パートナーズの営業責任者。今回の関心は「重複連絡先の整理と証跡レビュー」で、提供できる強みは「プライバシーに配慮した連絡先証跡監査」。 ZH: 北星伙伴的销售总监。本次关注「重复联系人清理与证据复核」，可提供「注重隐私的联系人证据审计」。 EN: Sales Director at North Star Partners. Looking for duplicate contact cleanup and provenance review; can offer privacy-safe contact provenance audit.",
+      "summary": "Maya Parker / Maya Parker at North Star Partners. JA: 北星パートナーズの営業責任者。今回の関心は「D2Cブランドの海外展開パートナー」で、提供できる強みは「D2Cの越境物流と決済の実務知見」。 ZH: 北星伙伴的销售总监。本次关注「D2C 品牌的海外拓展伙伴」，可提供「D2C 出海的物流与支付实操经验」。 EN: Sales Director at North Star Partners. Looking for D2C brand overseas-expansion partner; can offer hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.9,
       "createdBy": "profile_orbit_generated_operator"
@@ -87220,7 +87220,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:003",
       "sourceType": "event_import",
       "sourceId": "participant_003",
-      "summary": "森 明日香 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "森 明日香 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87229,7 +87229,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:004",
       "sourceType": "event_import",
       "sourceId": "participant_004",
-      "summary": "岡田 隼人 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "岡田 隼人 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87238,7 +87238,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:005",
       "sourceType": "event_import",
       "sourceId": "participant_005",
-      "summary": "遠藤 悠斗 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "遠藤 悠斗 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87247,7 +87247,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:006",
       "sourceType": "event_import",
       "sourceId": "participant_006",
-      "summary": "藤原 翼 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "藤原 翼 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87256,7 +87256,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:007",
       "sourceType": "event_import",
       "sourceId": "participant_007",
-      "summary": "竹内 優子 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "竹内 優子 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87310,7 +87310,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:013",
       "sourceType": "event_import",
       "sourceId": "participant_013",
-      "summary": "杜家明 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "杜家明 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87319,7 +87319,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:014",
       "sourceType": "event_import",
       "sourceId": "participant_014",
-      "summary": "王一凡 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "王一凡 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87328,7 +87328,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:015",
       "sourceType": "event_import",
       "sourceId": "participant_015",
-      "summary": "黄思雨 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "黄思雨 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87337,7 +87337,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:016",
       "sourceType": "event_import",
       "sourceId": "participant_016",
-      "summary": "高佩珊 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "高佩珊 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87346,7 +87346,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:017",
       "sourceType": "event_import",
       "sourceId": "participant_017",
-      "summary": "宋梦琪 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "宋梦琪 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87400,7 +87400,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:023",
       "sourceType": "event_import",
       "sourceId": "participant_023",
-      "summary": "後藤 信也 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "後藤 信也 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87409,7 +87409,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:024",
       "sourceType": "event_import",
       "sourceId": "participant_024",
-      "summary": "青木 瑞希 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "青木 瑞希 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87418,7 +87418,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:025",
       "sourceType": "event_import",
       "sourceId": "participant_025",
-      "summary": "岡本 奈々子 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "岡本 奈々子 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87427,7 +87427,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:026",
       "sourceType": "event_import",
       "sourceId": "participant_026",
-      "summary": "田村 莉奈 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "田村 莉奈 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87436,7 +87436,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:027",
       "sourceType": "event_import",
       "sourceId": "participant_027",
-      "summary": "高橋 裕太 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "高橋 裕太 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87490,7 +87490,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:033",
       "sourceType": "event_import",
       "sourceId": "participant_033",
-      "summary": "李嘉豪 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "李嘉豪 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87499,7 +87499,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:034",
       "sourceType": "event_import",
       "sourceId": "participant_034",
-      "summary": "周明轩 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "周明轩 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87508,7 +87508,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:035",
       "sourceType": "event_import",
       "sourceId": "participant_035",
-      "summary": "郭亦辰 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "郭亦辰 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87517,7 +87517,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:036",
       "sourceType": "event_import",
       "sourceId": "participant_036",
-      "summary": "唐嘉诚 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "唐嘉诚 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87526,7 +87526,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:037",
       "sourceType": "event_import",
       "sourceId": "participant_037",
-      "summary": "Noah Garcia joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "Noah Garcia joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87580,7 +87580,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:043",
       "sourceType": "event_import",
       "sourceId": "participant_043",
-      "summary": "藤井 佳奈 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "藤井 佳奈 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87589,7 +87589,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:044",
       "sourceType": "event_import",
       "sourceId": "participant_044",
-      "summary": "松田 翔 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "松田 翔 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87598,7 +87598,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:045",
       "sourceType": "event_import",
       "sourceId": "participant_045",
-      "summary": "金子 聡 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "金子 聡 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87607,7 +87607,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:046",
       "sourceType": "event_import",
       "sourceId": "participant_046",
-      "summary": "田中 千尋 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "田中 千尋 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87616,7 +87616,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:047",
       "sourceType": "event_import",
       "sourceId": "participant_047",
-      "summary": "吉田 彩 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "吉田 彩 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87670,7 +87670,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:053",
       "sourceType": "event_import",
       "sourceId": "participant_053",
-      "summary": "吴可欣 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "吴可欣 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87679,7 +87679,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:054",
       "sourceType": "event_import",
       "sourceId": "participant_054",
-      "summary": "何依娜 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "何依娜 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87688,7 +87688,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:055",
       "sourceType": "event_import",
       "sourceId": "participant_055",
-      "summary": "许凯文 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "许凯文 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87697,7 +87697,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:056",
       "sourceType": "event_import",
       "sourceId": "participant_056",
-      "summary": "Aisha Brown joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "Aisha Brown joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87706,7 +87706,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:057",
       "sourceType": "event_import",
       "sourceId": "participant_057",
-      "summary": "田中 健太 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "田中 健太 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87760,7 +87760,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:063",
       "sourceType": "event_import",
       "sourceId": "participant_063",
-      "summary": "中島 蓮 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "中島 蓮 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87769,7 +87769,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:064",
       "sourceType": "event_import",
       "sourceId": "participant_064",
-      "summary": "和田 由美 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "和田 由美 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87778,7 +87778,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:065",
       "sourceType": "event_import",
       "sourceId": "participant_065",
-      "summary": "伊藤 豪 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "伊藤 豪 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87787,7 +87787,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:066",
       "sourceType": "event_import",
       "sourceId": "participant_066",
-      "summary": "罗皓宇 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "罗皓宇 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87796,7 +87796,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:067",
       "sourceType": "event_import",
       "sourceId": "participant_067",
-      "summary": "邓静怡 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "邓静怡 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87850,7 +87850,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:073",
       "sourceType": "event_import",
       "sourceId": "participant_073",
-      "summary": "罗晓琳 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "罗晓琳 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87859,7 +87859,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:074",
       "sourceType": "event_import",
       "sourceId": "participant_074",
-      "summary": "Sofia Martinez joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "Sofia Martinez joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87868,7 +87868,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:075",
       "sourceType": "event_import",
       "sourceId": "participant_075",
-      "summary": "Ethan Khan joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "Ethan Khan joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87877,7 +87877,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:076",
       "sourceType": "event_import",
       "sourceId": "participant_076",
-      "summary": "伊藤 香織 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "伊藤 香織 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87886,7 +87886,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:077",
       "sourceType": "event_import",
       "sourceId": "participant_077",
-      "summary": "山田 千尋 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "山田 千尋 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87940,7 +87940,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:083",
       "sourceType": "event_import",
       "sourceId": "participant_083",
-      "summary": "中野 葵 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "中野 葵 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87949,7 +87949,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:084",
       "sourceType": "event_import",
       "sourceId": "participant_084",
-      "summary": "渡辺 航平 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "渡辺 航平 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87958,7 +87958,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:085",
       "sourceType": "event_import",
       "sourceId": "participant_085",
-      "summary": "郑晨 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "郑晨 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87967,7 +87967,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:086",
       "sourceType": "event_import",
       "sourceId": "participant_086",
-      "summary": "韩梓豪 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "韩梓豪 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -87976,7 +87976,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:087",
       "sourceType": "event_import",
       "sourceId": "participant_087",
-      "summary": "潘博文 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "潘博文 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88030,7 +88030,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:093",
       "sourceType": "event_import",
       "sourceId": "participant_093",
-      "summary": "Daniel Ahmed joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "Daniel Ahmed joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88039,7 +88039,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:094",
       "sourceType": "event_import",
       "sourceId": "participant_094",
-      "summary": "Priya Martinez joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "Priya Martinez joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88048,7 +88048,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:095",
       "sourceType": "event_import",
       "sourceId": "participant_095",
-      "summary": "渡辺 颯太 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "渡辺 颯太 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88057,7 +88057,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:096",
       "sourceType": "event_import",
       "sourceId": "participant_096",
-      "summary": "佐々木 豪 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "佐々木 豪 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88066,7 +88066,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:097",
       "sourceType": "event_import",
       "sourceId": "participant_097",
-      "summary": "清水 修平 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "清水 修平 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88120,7 +88120,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:103",
       "sourceType": "event_import",
       "sourceId": "participant_103",
-      "summary": "山本 恵子 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "山本 恵子 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88129,7 +88129,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:104",
       "sourceType": "event_import",
       "sourceId": "participant_104",
-      "summary": "梁佳怡 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "梁佳怡 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88138,7 +88138,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:105",
       "sourceType": "event_import",
       "sourceId": "participant_105",
-      "summary": "冯佳琪 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "冯佳琪 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88147,7 +88147,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:106",
       "sourceType": "event_import",
       "sourceId": "participant_106",
-      "summary": "田雨薇 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "田雨薇 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88156,7 +88156,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:107",
       "sourceType": "event_import",
       "sourceId": "participant_107",
-      "summary": "魏宇航 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "魏宇航 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88210,7 +88210,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:113",
       "sourceType": "event_import",
       "sourceId": "participant_113",
-      "summary": "Mateo Ahmed joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "Mateo Ahmed joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88219,7 +88219,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:114",
       "sourceType": "event_import",
       "sourceId": "participant_114",
-      "summary": "山本 浩 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "山本 浩 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88228,7 +88228,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:115",
       "sourceType": "event_import",
       "sourceId": "participant_115",
-      "summary": "山口 航平 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "山口 航平 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88237,7 +88237,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:116",
       "sourceType": "event_import",
       "sourceId": "participant_116",
-      "summary": "山崎 美穂 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "山崎 美穂 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88246,7 +88246,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:117",
       "sourceType": "event_import",
       "sourceId": "participant_117",
-      "summary": "藤田 愛 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "藤田 愛 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88300,7 +88300,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:123",
       "sourceType": "event_import",
       "sourceId": "participant_123",
-      "summary": "谢子涵 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "谢子涵 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88309,7 +88309,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:124",
       "sourceType": "event_import",
       "sourceId": "participant_124",
-      "summary": "曹子睿 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "曹子睿 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88318,7 +88318,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:125",
       "sourceType": "event_import",
       "sourceId": "participant_125",
-      "summary": "董安琪 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "董安琪 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88327,7 +88327,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:126",
       "sourceType": "event_import",
       "sourceId": "participant_126",
-      "summary": "苏立新 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "苏立新 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88336,7 +88336,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:127",
       "sourceType": "event_import",
       "sourceId": "participant_127",
-      "summary": "龙思远 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "龙思远 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88390,7 +88390,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:133",
       "sourceType": "event_import",
       "sourceId": "participant_133",
-      "summary": "中村 沙也香 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "中村 沙也香 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88399,7 +88399,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:134",
       "sourceType": "event_import",
       "sourceId": "participant_134",
-      "summary": "松本 恵子 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "松本 恵子 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88408,7 +88408,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:135",
       "sourceType": "event_import",
       "sourceId": "participant_135",
-      "summary": "森 明日香 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "森 明日香 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88417,7 +88417,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:136",
       "sourceType": "event_import",
       "sourceId": "participant_136",
-      "summary": "岡田 隼人 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "岡田 隼人 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88426,7 +88426,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:137",
       "sourceType": "event_import",
       "sourceId": "participant_137",
-      "summary": "遠藤 悠斗 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "遠藤 悠斗 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88480,7 +88480,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:143",
       "sourceType": "event_import",
       "sourceId": "participant_143",
-      "summary": "曾伟 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "曾伟 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88489,7 +88489,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:144",
       "sourceType": "event_import",
       "sourceId": "participant_144",
-      "summary": "袁子墨 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "袁子墨 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88498,7 +88498,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:145",
       "sourceType": "event_import",
       "sourceId": "participant_145",
-      "summary": "杜家明 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "杜家明 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88507,7 +88507,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:146",
       "sourceType": "event_import",
       "sourceId": "participant_146",
-      "summary": "王一凡 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "王一凡 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88516,7 +88516,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:147",
       "sourceType": "event_import",
       "sourceId": "participant_147",
-      "summary": "黄思雨 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "黄思雨 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88570,7 +88570,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:153",
       "sourceType": "event_import",
       "sourceId": "participant_153",
-      "summary": "井上 誠 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "井上 誠 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88579,7 +88579,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:154",
       "sourceType": "event_import",
       "sourceId": "participant_154",
-      "summary": "池田 学 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "池田 学 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88588,7 +88588,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:155",
       "sourceType": "event_import",
       "sourceId": "participant_155",
-      "summary": "後藤 信也 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "後藤 信也 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88597,7 +88597,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:156",
       "sourceType": "event_import",
       "sourceId": "participant_156",
-      "summary": "青木 瑞希 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "青木 瑞希 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88606,7 +88606,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:157",
       "sourceType": "event_import",
       "sourceId": "participant_157",
-      "summary": "岡本 奈々子 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "岡本 奈々子 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88660,7 +88660,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:163",
       "sourceType": "event_import",
       "sourceId": "participant_163",
-      "summary": "于思琪 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "于思琪 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88669,7 +88669,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:164",
       "sourceType": "event_import",
       "sourceId": "participant_164",
-      "summary": "方欣然 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "方欣然 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88678,7 +88678,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:165",
       "sourceType": "event_import",
       "sourceId": "participant_165",
-      "summary": "李嘉豪 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "李嘉豪 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88687,7 +88687,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:166",
       "sourceType": "event_import",
       "sourceId": "participant_166",
-      "summary": "周明轩 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "周明轩 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88696,7 +88696,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:167",
       "sourceType": "event_import",
       "sourceId": "participant_167",
-      "summary": "郭亦辰 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "郭亦辰 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88750,7 +88750,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:173",
       "sourceType": "event_import",
       "sourceId": "participant_173",
-      "summary": "橋本 夏美 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "橋本 夏美 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88759,7 +88759,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:174",
       "sourceType": "event_import",
       "sourceId": "participant_174",
-      "summary": "長谷川 絵美 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "長谷川 絵美 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88768,7 +88768,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:175",
       "sourceType": "event_import",
       "sourceId": "participant_175",
-      "summary": "藤井 佳奈 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "藤井 佳奈 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88777,7 +88777,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:176",
       "sourceType": "event_import",
       "sourceId": "participant_176",
-      "summary": "松田 翔 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "松田 翔 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88786,7 +88786,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:177",
       "sourceType": "event_import",
       "sourceId": "participant_177",
-      "summary": "金子 聡 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "金子 聡 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88840,7 +88840,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:183",
       "sourceType": "event_import",
       "sourceId": "participant_183",
-      "summary": "沈佩珊 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "沈佩珊 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88849,7 +88849,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:184",
       "sourceType": "event_import",
       "sourceId": "participant_184",
-      "summary": "张博文 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "张博文 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88858,7 +88858,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:185",
       "sourceType": "event_import",
       "sourceId": "participant_185",
-      "summary": "吴可欣 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "吴可欣 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88867,7 +88867,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:186",
       "sourceType": "event_import",
       "sourceId": "participant_186",
-      "summary": "何依娜 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "何依娜 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88876,7 +88876,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:187",
       "sourceType": "event_import",
       "sourceId": "participant_187",
-      "summary": "许凯文 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "许凯文 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88930,7 +88930,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:193",
       "sourceType": "event_import",
       "sourceId": "participant_193",
-      "summary": "村上 雄二 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "村上 雄二 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88939,7 +88939,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:194",
       "sourceType": "event_import",
       "sourceId": "participant_194",
-      "summary": "西村 大地 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "西村 大地 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88948,7 +88948,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:195",
       "sourceType": "event_import",
       "sourceId": "participant_195",
-      "summary": "中島 蓮 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "中島 蓮 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88957,7 +88957,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:196",
       "sourceType": "event_import",
       "sourceId": "participant_196",
-      "summary": "和田 由美 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "和田 由美 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -88966,7 +88966,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:197",
       "sourceType": "event_import",
       "sourceId": "participant_197",
-      "summary": "伊藤 豪 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "伊藤 豪 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89020,7 +89020,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:203",
       "sourceType": "event_import",
       "sourceId": "participant_203",
-      "summary": "刘雨薇 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "刘雨薇 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89029,7 +89029,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:204",
       "sourceType": "event_import",
       "sourceId": "participant_204",
-      "summary": "徐宇航 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "徐宇航 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89038,7 +89038,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:205",
       "sourceType": "event_import",
       "sourceId": "participant_205",
-      "summary": "罗晓琳 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "罗晓琳 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89047,7 +89047,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:206",
       "sourceType": "event_import",
       "sourceId": "participant_206",
-      "summary": "Sofia Martinez joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "Sofia Martinez joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89056,7 +89056,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:207",
       "sourceType": "event_import",
       "sourceId": "participant_207",
-      "summary": "Ethan Khan joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "Ethan Khan joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89110,7 +89110,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:213",
       "sourceType": "event_import",
       "sourceId": "participant_213",
-      "summary": "福田 明子 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "福田 明子 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89119,7 +89119,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:214",
       "sourceType": "event_import",
       "sourceId": "participant_214",
-      "summary": "中川 遥 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "中川 遥 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89128,7 +89128,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:215",
       "sourceType": "event_import",
       "sourceId": "participant_215",
-      "summary": "中野 葵 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "中野 葵 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89137,7 +89137,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:216",
       "sourceType": "event_import",
       "sourceId": "participant_216",
-      "summary": "渡辺 航平 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "渡辺 航平 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89146,7 +89146,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:217",
       "sourceType": "event_import",
       "sourceId": "participant_217",
-      "summary": "郑晨 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "郑晨 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89200,7 +89200,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:223",
       "sourceType": "event_import",
       "sourceId": "participant_223",
-      "summary": "孙立新 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "孙立新 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89209,7 +89209,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:224",
       "sourceType": "event_import",
       "sourceId": "participant_224",
-      "summary": "郑思远 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "郑思远 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89218,7 +89218,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:225",
       "sourceType": "event_import",
       "sourceId": "participant_225",
-      "summary": "Daniel Ahmed joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "Daniel Ahmed joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89227,7 +89227,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:226",
       "sourceType": "event_import",
       "sourceId": "participant_226",
-      "summary": "Priya Martinez joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "Priya Martinez joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89236,7 +89236,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:227",
       "sourceType": "event_import",
       "sourceId": "participant_227",
-      "summary": "渡辺 颯太 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "渡辺 颯太 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89290,7 +89290,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:233",
       "sourceType": "event_import",
       "sourceId": "participant_233",
-      "summary": "原田 信明 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "原田 信明 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89299,7 +89299,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:234",
       "sourceType": "event_import",
       "sourceId": "participant_234",
-      "summary": "石田 和也 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "石田 和也 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89308,7 +89308,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:235",
       "sourceType": "event_import",
       "sourceId": "participant_235",
-      "summary": "山本 恵子 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "山本 恵子 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89317,7 +89317,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:236",
       "sourceType": "event_import",
       "sourceId": "participant_236",
-      "summary": "梁佳怡 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "梁佳怡 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89326,7 +89326,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:237",
       "sourceType": "event_import",
       "sourceId": "participant_237",
-      "summary": "冯佳琪 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "冯佳琪 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89380,7 +89380,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:243",
       "sourceType": "event_import",
       "sourceId": "participant_243",
-      "summary": "梁海宁 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "梁海宁 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89389,7 +89389,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:244",
       "sourceType": "event_import",
       "sourceId": "participant_244",
-      "summary": "Olivia Andersson joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "Olivia Andersson joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89398,7 +89398,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:245",
       "sourceType": "event_import",
       "sourceId": "participant_245",
-      "summary": "Mateo Ahmed joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "Mateo Ahmed joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89407,7 +89407,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:246",
       "sourceType": "event_import",
       "sourceId": "participant_246",
-      "summary": "山本 浩 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "山本 浩 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89416,7 +89416,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:247",
       "sourceType": "event_import",
       "sourceId": "participant_247",
-      "summary": "山口 航平 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "山口 航平 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89470,7 +89470,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:253",
       "sourceType": "event_import",
       "sourceId": "participant_253",
-      "summary": "佐藤 浩二 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "佐藤 浩二 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89479,7 +89479,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:254",
       "sourceType": "event_import",
       "sourceId": "participant_254",
-      "summary": "中村 誠 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "中村 誠 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89488,7 +89488,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:255",
       "sourceType": "event_import",
       "sourceId": "participant_255",
-      "summary": "谢子涵 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "谢子涵 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89497,7 +89497,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:256",
       "sourceType": "event_import",
       "sourceId": "participant_256",
-      "summary": "曹子睿 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "曹子睿 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89506,7 +89506,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:257",
       "sourceType": "event_import",
       "sourceId": "participant_257",
-      "summary": "董安琪 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "董安琪 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89560,7 +89560,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:263",
       "sourceType": "event_import",
       "sourceId": "participant_263",
-      "summary": "Lucas Duarte joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "Lucas Duarte joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89569,7 +89569,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:264",
       "sourceType": "event_import",
       "sourceId": "participant_264",
-      "summary": "佐藤 健一 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "佐藤 健一 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89578,7 +89578,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:265",
       "sourceType": "event_import",
       "sourceId": "participant_265",
-      "summary": "中村 沙也香 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "中村 沙也香 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89587,7 +89587,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:266",
       "sourceType": "event_import",
       "sourceId": "participant_266",
-      "summary": "松本 恵子 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "松本 恵子 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89596,7 +89596,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:267",
       "sourceType": "event_import",
       "sourceId": "participant_267",
-      "summary": "森 明日香 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "森 明日香 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89650,7 +89650,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:273",
       "sourceType": "event_import",
       "sourceId": "participant_273",
-      "summary": "小林 桜 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "小林 桜 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89659,7 +89659,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:274",
       "sourceType": "event_import",
       "sourceId": "participant_274",
-      "summary": "宋欣怡 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "宋欣怡 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89668,7 +89668,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:275",
       "sourceType": "event_import",
       "sourceId": "participant_275",
-      "summary": "曾伟 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "曾伟 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89677,7 +89677,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:276",
       "sourceType": "event_import",
       "sourceId": "participant_276",
-      "summary": "袁子墨 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "袁子墨 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89686,7 +89686,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:277",
       "sourceType": "event_import",
       "sourceId": "participant_277",
-      "summary": "杜家明 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "杜家明 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89740,7 +89740,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:283",
       "sourceType": "event_import",
       "sourceId": "participant_283",
-      "summary": "鈴木 真理 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "鈴木 真理 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89749,7 +89749,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:284",
       "sourceType": "event_import",
       "sourceId": "participant_284",
-      "summary": "小林 浩二 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "小林 浩二 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89758,7 +89758,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:285",
       "sourceType": "event_import",
       "sourceId": "participant_285",
-      "summary": "井上 誠 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "井上 誠 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89767,7 +89767,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:286",
       "sourceType": "event_import",
       "sourceId": "participant_286",
-      "summary": "池田 学 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "池田 学 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89776,7 +89776,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:287",
       "sourceType": "event_import",
       "sourceId": "participant_287",
-      "summary": "後藤 信也 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "後藤 信也 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89830,7 +89830,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:293",
       "sourceType": "event_import",
       "sourceId": "participant_293",
-      "summary": "唐天宇 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "唐天宇 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89839,7 +89839,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:294",
       "sourceType": "event_import",
       "sourceId": "participant_294",
-      "summary": "彭雅婷 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "彭雅婷 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89848,7 +89848,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:295",
       "sourceType": "event_import",
       "sourceId": "participant_295",
-      "summary": "于思琪 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "于思琪 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89857,7 +89857,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:296",
       "sourceType": "event_import",
       "sourceId": "participant_296",
-      "summary": "方欣然 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "方欣然 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89866,7 +89866,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:297",
       "sourceType": "event_import",
       "sourceId": "participant_297",
-      "summary": "李嘉豪 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "李嘉豪 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89920,7 +89920,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:303",
       "sourceType": "event_import",
       "sourceId": "participant_303",
-      "summary": "加藤 翔太 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "加藤 翔太 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89929,7 +89929,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:304",
       "sourceType": "event_import",
       "sourceId": "participant_304",
-      "summary": "木村 桜 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "木村 桜 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89938,7 +89938,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:305",
       "sourceType": "event_import",
       "sourceId": "participant_305",
-      "summary": "橋本 夏美 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "橋本 夏美 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89947,7 +89947,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:306",
       "sourceType": "event_import",
       "sourceId": "participant_306",
-      "summary": "長谷川 絵美 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "長谷川 絵美 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -89956,7 +89956,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:307",
       "sourceType": "event_import",
       "sourceId": "participant_307",
-      "summary": "藤井 佳奈 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "藤井 佳奈 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90010,7 +90010,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:313",
       "sourceType": "event_import",
       "sourceId": "participant_313",
-      "summary": "萧一凡 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "萧一凡 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90019,7 +90019,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:314",
       "sourceType": "event_import",
       "sourceId": "participant_314",
-      "summary": "蒋思雨 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "蒋思雨 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90028,7 +90028,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:315",
       "sourceType": "event_import",
       "sourceId": "participant_315",
-      "summary": "沈佩珊 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "沈佩珊 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90037,7 +90037,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:316",
       "sourceType": "event_import",
       "sourceId": "participant_316",
-      "summary": "张博文 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "张博文 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90046,7 +90046,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:317",
       "sourceType": "event_import",
       "sourceId": "participant_317",
-      "summary": "吴可欣 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "吴可欣 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90100,7 +90100,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:323",
       "sourceType": "event_import",
       "sourceId": "participant_323",
-      "summary": "林 恵 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "林 恵 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90109,7 +90109,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:324",
       "sourceType": "event_import",
       "sourceId": "participant_324",
-      "summary": "阿部 美咲 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "阿部 美咲 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90118,7 +90118,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:325",
       "sourceType": "event_import",
       "sourceId": "participant_325",
-      "summary": "村上 雄二 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "村上 雄二 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90127,7 +90127,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:326",
       "sourceType": "event_import",
       "sourceId": "participant_326",
-      "summary": "西村 大地 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "西村 大地 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90136,7 +90136,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:327",
       "sourceType": "event_import",
       "sourceId": "participant_327",
-      "summary": "中島 蓮 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "中島 蓮 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90190,7 +90190,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:333",
       "sourceType": "event_import",
       "sourceId": "participant_333",
-      "summary": "叶明轩 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "叶明轩 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90199,7 +90199,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:334",
       "sourceType": "event_import",
       "sourceId": "participant_334",
-      "summary": "任亦辰 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "任亦辰 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90208,7 +90208,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:335",
       "sourceType": "event_import",
       "sourceId": "participant_335",
-      "summary": "刘雨薇 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "刘雨薇 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90217,7 +90217,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:336",
       "sourceType": "event_import",
       "sourceId": "participant_336",
-      "summary": "徐宇航 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "徐宇航 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90226,7 +90226,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:337",
       "sourceType": "event_import",
       "sourceId": "participant_337",
-      "summary": "罗晓琳 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "罗晓琳 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90280,7 +90280,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:343",
       "sourceType": "event_import",
       "sourceId": "participant_343",
-      "summary": "石川 亮 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "石川 亮 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90289,7 +90289,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:344",
       "sourceType": "event_import",
       "sourceId": "participant_344",
-      "summary": "近藤 大輔 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "近藤 大輔 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90298,7 +90298,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:345",
       "sourceType": "event_import",
       "sourceId": "participant_345",
-      "summary": "福田 明子 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "福田 明子 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90307,7 +90307,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:346",
       "sourceType": "event_import",
       "sourceId": "participant_346",
-      "summary": "中川 遥 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "中川 遥 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90316,7 +90316,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:347",
       "sourceType": "event_import",
       "sourceId": "participant_347",
-      "summary": "中野 葵 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "中野 葵 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90370,7 +90370,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:353",
       "sourceType": "event_import",
       "sourceId": "participant_353",
-      "summary": "廖依娜 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "廖依娜 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90379,7 +90379,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:354",
       "sourceType": "event_import",
       "sourceId": "participant_354",
-      "summary": "陈安琪 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "陈安琪 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90388,7 +90388,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:355",
       "sourceType": "event_import",
       "sourceId": "participant_355",
-      "summary": "孙立新 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "孙立新 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90397,7 +90397,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:356",
       "sourceType": "event_import",
       "sourceId": "participant_356",
-      "summary": "郑思远 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "郑思远 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90406,7 +90406,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:357",
       "sourceType": "event_import",
       "sourceId": "participant_357",
-      "summary": "Daniel Ahmed joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "Daniel Ahmed joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90460,7 +90460,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:363",
       "sourceType": "event_import",
       "sourceId": "participant_363",
-      "summary": "石井 陽子 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "石井 陽子 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90469,7 +90469,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:364",
       "sourceType": "event_import",
       "sourceId": "participant_364",
-      "summary": "太田 直子 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "太田 直子 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90478,7 +90478,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:365",
       "sourceType": "event_import",
       "sourceId": "participant_365",
-      "summary": "原田 信明 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "原田 信明 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90487,7 +90487,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:366",
       "sourceType": "event_import",
       "sourceId": "participant_366",
-      "summary": "石田 和也 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "石田 和也 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90496,7 +90496,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:367",
       "sourceType": "event_import",
       "sourceId": "participant_367",
-      "summary": "山本 恵子 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "山本 恵子 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90550,7 +90550,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:373",
       "sourceType": "event_import",
       "sourceId": "participant_373",
-      "summary": "林子墨 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "林子墨 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90559,7 +90559,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:374",
       "sourceType": "event_import",
       "sourceId": "participant_374",
-      "summary": "胡家明 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "胡家明 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90568,7 +90568,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:375",
       "sourceType": "event_import",
       "sourceId": "participant_375",
-      "summary": "梁海宁 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "梁海宁 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90577,7 +90577,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:376",
       "sourceType": "event_import",
       "sourceId": "participant_376",
-      "summary": "Olivia Andersson joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "Olivia Andersson joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90586,7 +90586,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:377",
       "sourceType": "event_import",
       "sourceId": "participant_377",
-      "summary": "Mateo Ahmed joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "Mateo Ahmed joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90640,7 +90640,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:383",
       "sourceType": "event_import",
       "sourceId": "participant_383",
-      "summary": "三浦 達也 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "三浦 達也 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90649,7 +90649,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:384",
       "sourceType": "event_import",
       "sourceId": "participant_384",
-      "summary": "小川 拓也 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "小川 拓也 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90658,7 +90658,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:385",
       "sourceType": "event_import",
       "sourceId": "participant_385",
-      "summary": "佐藤 浩二 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "佐藤 浩二 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90667,7 +90667,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:386",
       "sourceType": "event_import",
       "sourceId": "participant_386",
-      "summary": "中村 誠 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "中村 誠 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90676,7 +90676,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:387",
       "sourceType": "event_import",
       "sourceId": "participant_387",
-      "summary": "谢子涵 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "谢子涵 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90730,7 +90730,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:393",
       "sourceType": "event_import",
       "sourceId": "participant_393",
-      "summary": "朱欣然 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "朱欣然 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90739,7 +90739,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:394",
       "sourceType": "event_import",
       "sourceId": "participant_394",
-      "summary": "谢睿 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "谢睿 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90748,7 +90748,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:395",
       "sourceType": "event_import",
       "sourceId": "participant_395",
-      "summary": "Lucas Duarte joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "Lucas Duarte joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90757,7 +90757,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:396",
       "sourceType": "event_import",
       "sourceId": "participant_396",
-      "summary": "佐藤 健一 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "佐藤 健一 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90766,7 +90766,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:397",
       "sourceType": "event_import",
       "sourceId": "participant_397",
-      "summary": "中村 沙也香 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "中村 沙也香 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90820,7 +90820,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:403",
       "sourceType": "event_import",
       "sourceId": "participant_403",
-      "summary": "竹内 優子 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "竹内 優子 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90829,7 +90829,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:404",
       "sourceType": "event_import",
       "sourceId": "participant_404",
-      "summary": "鈴木 翔太 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "鈴木 翔太 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90838,7 +90838,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:405",
       "sourceType": "event_import",
       "sourceId": "participant_405",
-      "summary": "小林 桜 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "小林 桜 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90847,7 +90847,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:406",
       "sourceType": "event_import",
       "sourceId": "participant_406",
-      "summary": "宋欣怡 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "宋欣怡 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90856,7 +90856,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:407",
       "sourceType": "event_import",
       "sourceId": "participant_407",
-      "summary": "曾伟 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "曾伟 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90910,7 +90910,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:413",
       "sourceType": "event_import",
       "sourceId": "participant_413",
-      "summary": "宋梦琪 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "宋梦琪 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90919,7 +90919,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:414",
       "sourceType": "event_import",
       "sourceId": "participant_414",
-      "summary": "Maya Parker joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "Maya Parker joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90928,7 +90928,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:415",
       "sourceType": "event_import",
       "sourceId": "participant_415",
-      "summary": "鈴木 真理 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "鈴木 真理 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90937,7 +90937,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:416",
       "sourceType": "event_import",
       "sourceId": "participant_416",
-      "summary": "小林 浩二 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "小林 浩二 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -90946,7 +90946,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:417",
       "sourceType": "event_import",
       "sourceId": "participant_417",
-      "summary": "井上 誠 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "井上 誠 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91000,7 +91000,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:423",
       "sourceType": "event_import",
       "sourceId": "participant_423",
-      "summary": "高橋 裕太 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "高橋 裕太 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91009,7 +91009,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:424",
       "sourceType": "event_import",
       "sourceId": "participant_424",
-      "summary": "加藤 恵 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "加藤 恵 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91018,7 +91018,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:425",
       "sourceType": "event_import",
       "sourceId": "participant_425",
-      "summary": "唐天宇 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "唐天宇 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91027,7 +91027,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:426",
       "sourceType": "event_import",
       "sourceId": "participant_426",
-      "summary": "彭雅婷 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "彭雅婷 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91036,7 +91036,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:427",
       "sourceType": "event_import",
       "sourceId": "participant_427",
-      "summary": "于思琪 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "于思琪 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91090,7 +91090,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:433",
       "sourceType": "event_import",
       "sourceId": "participant_433",
-      "summary": "Noah Garcia joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "Noah Garcia joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91099,7 +91099,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:434",
       "sourceType": "event_import",
       "sourceId": "participant_434",
-      "summary": "高橋 智子 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "高橋 智子 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91108,7 +91108,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:435",
       "sourceType": "event_import",
       "sourceId": "participant_435",
-      "summary": "加藤 翔太 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "加藤 翔太 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91117,7 +91117,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:436",
       "sourceType": "event_import",
       "sourceId": "participant_436",
-      "summary": "木村 桜 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "木村 桜 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91126,7 +91126,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:437",
       "sourceType": "event_import",
       "sourceId": "participant_437",
-      "summary": "橋本 夏美 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "橋本 夏美 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91180,7 +91180,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:443",
       "sourceType": "event_import",
       "sourceId": "participant_443",
-      "summary": "吉田 彩 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "吉田 彩 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91189,7 +91189,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:444",
       "sourceType": "event_import",
       "sourceId": "participant_444",
-      "summary": "许怡然 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "许怡然 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91198,7 +91198,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:445",
       "sourceType": "event_import",
       "sourceId": "participant_445",
-      "summary": "萧一凡 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "萧一凡 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91207,7 +91207,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:446",
       "sourceType": "event_import",
       "sourceId": "participant_446",
-      "summary": "蒋思雨 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "蒋思雨 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91216,7 +91216,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:447",
       "sourceType": "event_import",
       "sourceId": "participant_447",
-      "summary": "沈佩珊 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "沈佩珊 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91270,7 +91270,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:453",
       "sourceType": "event_import",
       "sourceId": "participant_453",
-      "summary": "田中 健太 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "田中 健太 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91279,7 +91279,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:454",
       "sourceType": "event_import",
       "sourceId": "participant_454",
-      "summary": "吉田 裕太 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "吉田 裕太 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91288,7 +91288,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:455",
       "sourceType": "event_import",
       "sourceId": "participant_455",
-      "summary": "林 恵 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "林 恵 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91297,7 +91297,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:456",
       "sourceType": "event_import",
       "sourceId": "participant_456",
-      "summary": "阿部 美咲 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "阿部 美咲 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91306,7 +91306,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:457",
       "sourceType": "event_import",
       "sourceId": "participant_457",
-      "summary": "村上 雄二 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "村上 雄二 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91360,7 +91360,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:463",
       "sourceType": "event_import",
       "sourceId": "participant_463",
-      "summary": "邓静怡 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "邓静怡 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91369,7 +91369,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:464",
       "sourceType": "event_import",
       "sourceId": "participant_464",
-      "summary": "蔡嘉豪 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "蔡嘉豪 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91378,7 +91378,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:465",
       "sourceType": "event_import",
       "sourceId": "participant_465",
-      "summary": "叶明轩 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "叶明轩 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91387,7 +91387,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:466",
       "sourceType": "event_import",
       "sourceId": "participant_466",
-      "summary": "任亦辰 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "任亦辰 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91396,7 +91396,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:467",
       "sourceType": "event_import",
       "sourceId": "participant_467",
-      "summary": "刘雨薇 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "刘雨薇 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91450,7 +91450,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:473",
       "sourceType": "event_import",
       "sourceId": "participant_473",
-      "summary": "山田 千尋 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "山田 千尋 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91459,7 +91459,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:474",
       "sourceType": "event_import",
       "sourceId": "participant_474",
-      "summary": "斎藤 彩 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "斎藤 彩 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91468,7 +91468,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:475",
       "sourceType": "event_import",
       "sourceId": "participant_475",
-      "summary": "石川 亮 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "石川 亮 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91477,7 +91477,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:476",
       "sourceType": "event_import",
       "sourceId": "participant_476",
-      "summary": "近藤 大輔 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "近藤 大輔 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91486,7 +91486,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:477",
       "sourceType": "event_import",
       "sourceId": "participant_477",
-      "summary": "福田 明子 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "福田 明子 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91540,7 +91540,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:483",
       "sourceType": "event_import",
       "sourceId": "participant_483",
-      "summary": "潘博文 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "潘博文 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91549,7 +91549,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:484",
       "sourceType": "event_import",
       "sourceId": "participant_484",
-      "summary": "程可欣 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "程可欣 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91558,7 +91558,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:485",
       "sourceType": "event_import",
       "sourceId": "participant_485",
-      "summary": "廖依娜 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "廖依娜 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91567,7 +91567,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:486",
       "sourceType": "event_import",
       "sourceId": "participant_486",
-      "summary": "陈安琪 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "陈安琪 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91576,7 +91576,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:487",
       "sourceType": "event_import",
       "sourceId": "participant_487",
-      "summary": "孙立新 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "孙立新 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91630,7 +91630,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:493",
       "sourceType": "event_import",
       "sourceId": "participant_493",
-      "summary": "清水 修平 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, privacy-safe contact provenance audit.",
+      "summary": "清水 修平 joined event_03 looking for restaurant reservation CRM integration pilot, event sponsor with Chinese business-community reach; can offer seed investor screening and founder feedback, hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91639,7 +91639,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:494",
       "sourceType": "event_import",
       "sourceId": "participant_494",
-      "summary": "前田 祐介 joined event_04 looking for investor warm intro for seed fundraising, post-event follow-up workflow operator; can offer event table matching and sponsor visibility, follow-up message localization.",
+      "summary": "前田 祐介 joined event_04 looking for investor warm intro for seed fundraising, semiconductor supply-chain sourcing lead; can offer event table matching and sponsor visibility, follow-up message localization.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91648,7 +91648,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:495",
       "sourceType": "event_import",
       "sourceId": "participant_495",
-      "summary": "石井 陽子 joined event_05 looking for event sponsor with Chinese business-community reach, duplicate contact cleanup and provenance review; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
+      "summary": "石井 陽子 joined event_05 looking for event sponsor with Chinese business-community reach, D2C brand overseas-expansion partner; can offer cross-border ecommerce launch playbook, partner channel introductions in Kansai.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91657,7 +91657,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:496",
       "sourceType": "event_import",
       "sourceId": "participant_496",
-      "summary": "太田 直子 joined event_06 looking for post-event follow-up workflow operator, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
+      "summary": "太田 直子 joined event_06 looking for semiconductor supply-chain sourcing lead, retail live-commerce distribution partner; can offer bilingual sales deck review, Tokyo restaurant operator test site.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91666,7 +91666,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:participant:497",
       "sourceType": "event_import",
       "sourceId": "participant_497",
-      "summary": "原田 信明 joined event_07 looking for duplicate contact cleanup and provenance review, trusted tax and incorporation advisor for Japan entry; can offer privacy-safe contact provenance audit, Mandarin Japanese community marketing channel.",
+      "summary": "原田 信明 joined event_07 looking for D2C brand overseas-expansion partner, trusted tax and incorporation advisor for Japan entry; can offer hands-on D2C cross-border logistics and payments, Mandarin Japanese community marketing channel.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.86,
       "createdBy": "profile_orbit_generated_operator"
@@ -91747,7 +91747,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0006",
       "sourceType": "manual",
       "sourceId": "connection_0006",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -91756,7 +91756,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0007",
       "sourceType": "manual",
       "sourceId": "connection_0007",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -91837,7 +91837,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0016",
       "sourceType": "manual",
       "sourceId": "connection_0016",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -91846,7 +91846,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0017",
       "sourceType": "manual",
       "sourceId": "connection_0017",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -91927,7 +91927,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0026",
       "sourceType": "manual",
       "sourceId": "connection_0026",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -91936,7 +91936,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0027",
       "sourceType": "manual",
       "sourceId": "connection_0027",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92017,7 +92017,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0036",
       "sourceType": "manual",
       "sourceId": "connection_0036",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92026,7 +92026,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0037",
       "sourceType": "manual",
       "sourceId": "connection_0037",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92107,7 +92107,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0046",
       "sourceType": "manual",
       "sourceId": "connection_0046",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92116,7 +92116,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0047",
       "sourceType": "manual",
       "sourceId": "connection_0047",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92197,7 +92197,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0056",
       "sourceType": "manual",
       "sourceId": "connection_0056",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92206,7 +92206,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0057",
       "sourceType": "manual",
       "sourceId": "connection_0057",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92287,7 +92287,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0066",
       "sourceType": "manual",
       "sourceId": "connection_0066",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92296,7 +92296,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0067",
       "sourceType": "manual",
       "sourceId": "connection_0067",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92377,7 +92377,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0076",
       "sourceType": "manual",
       "sourceId": "connection_0076",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92386,7 +92386,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0077",
       "sourceType": "manual",
       "sourceId": "connection_0077",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92467,7 +92467,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0086",
       "sourceType": "manual",
       "sourceId": "connection_0086",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92476,7 +92476,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0087",
       "sourceType": "manual",
       "sourceId": "connection_0087",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92557,7 +92557,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0096",
       "sourceType": "manual",
       "sourceId": "connection_0096",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92566,7 +92566,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0097",
       "sourceType": "manual",
       "sourceId": "connection_0097",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92647,7 +92647,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0106",
       "sourceType": "manual",
       "sourceId": "connection_0106",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92656,7 +92656,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0107",
       "sourceType": "manual",
       "sourceId": "connection_0107",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92737,7 +92737,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0116",
       "sourceType": "manual",
       "sourceId": "connection_0116",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92746,7 +92746,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0117",
       "sourceType": "manual",
       "sourceId": "connection_0117",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92827,7 +92827,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0126",
       "sourceType": "manual",
       "sourceId": "connection_0126",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92836,7 +92836,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0127",
       "sourceType": "manual",
       "sourceId": "connection_0127",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92917,7 +92917,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0136",
       "sourceType": "manual",
       "sourceId": "connection_0136",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -92926,7 +92926,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0137",
       "sourceType": "manual",
       "sourceId": "connection_0137",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93007,7 +93007,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0146",
       "sourceType": "manual",
       "sourceId": "connection_0146",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93016,7 +93016,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0147",
       "sourceType": "manual",
       "sourceId": "connection_0147",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93097,7 +93097,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0156",
       "sourceType": "manual",
       "sourceId": "connection_0156",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93106,7 +93106,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0157",
       "sourceType": "manual",
       "sourceId": "connection_0157",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93187,7 +93187,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0166",
       "sourceType": "manual",
       "sourceId": "connection_0166",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93196,7 +93196,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0167",
       "sourceType": "manual",
       "sourceId": "connection_0167",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93277,7 +93277,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0176",
       "sourceType": "manual",
       "sourceId": "connection_0176",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93286,7 +93286,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0177",
       "sourceType": "manual",
       "sourceId": "connection_0177",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93367,7 +93367,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0186",
       "sourceType": "manual",
       "sourceId": "connection_0186",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93376,7 +93376,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0187",
       "sourceType": "manual",
       "sourceId": "connection_0187",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93457,7 +93457,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0196",
       "sourceType": "manual",
       "sourceId": "connection_0196",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93466,7 +93466,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0197",
       "sourceType": "manual",
       "sourceId": "connection_0197",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93547,7 +93547,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0206",
       "sourceType": "manual",
       "sourceId": "connection_0206",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93556,7 +93556,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0207",
       "sourceType": "manual",
       "sourceId": "connection_0207",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93637,7 +93637,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0216",
       "sourceType": "manual",
       "sourceId": "connection_0216",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93646,7 +93646,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0217",
       "sourceType": "manual",
       "sourceId": "connection_0217",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93727,7 +93727,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0226",
       "sourceType": "manual",
       "sourceId": "connection_0226",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93736,7 +93736,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0227",
       "sourceType": "manual",
       "sourceId": "connection_0227",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93817,7 +93817,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0236",
       "sourceType": "manual",
       "sourceId": "connection_0236",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93826,7 +93826,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0237",
       "sourceType": "manual",
       "sourceId": "connection_0237",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93907,7 +93907,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0246",
       "sourceType": "manual",
       "sourceId": "connection_0246",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93916,7 +93916,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0247",
       "sourceType": "manual",
       "sourceId": "connection_0247",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -93997,7 +93997,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0256",
       "sourceType": "manual",
       "sourceId": "connection_0256",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94006,7 +94006,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0257",
       "sourceType": "manual",
       "sourceId": "connection_0257",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94087,7 +94087,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0266",
       "sourceType": "manual",
       "sourceId": "connection_0266",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94096,7 +94096,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0267",
       "sourceType": "manual",
       "sourceId": "connection_0267",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94177,7 +94177,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0276",
       "sourceType": "manual",
       "sourceId": "connection_0276",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94186,7 +94186,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0277",
       "sourceType": "manual",
       "sourceId": "connection_0277",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94267,7 +94267,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0286",
       "sourceType": "manual",
       "sourceId": "connection_0286",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94276,7 +94276,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0287",
       "sourceType": "manual",
       "sourceId": "connection_0287",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94357,7 +94357,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0296",
       "sourceType": "manual",
       "sourceId": "connection_0296",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94366,7 +94366,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0297",
       "sourceType": "manual",
       "sourceId": "connection_0297",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94447,7 +94447,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0306",
       "sourceType": "manual",
       "sourceId": "connection_0306",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94456,7 +94456,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0307",
       "sourceType": "manual",
       "sourceId": "connection_0307",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94537,7 +94537,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0316",
       "sourceType": "manual",
       "sourceId": "connection_0316",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94546,7 +94546,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0317",
       "sourceType": "manual",
       "sourceId": "connection_0317",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94627,7 +94627,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0326",
       "sourceType": "manual",
       "sourceId": "connection_0326",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94636,7 +94636,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0327",
       "sourceType": "manual",
       "sourceId": "connection_0327",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94717,7 +94717,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0336",
       "sourceType": "manual",
       "sourceId": "connection_0336",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94726,7 +94726,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0337",
       "sourceType": "manual",
       "sourceId": "connection_0337",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94807,7 +94807,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0346",
       "sourceType": "manual",
       "sourceId": "connection_0346",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94816,7 +94816,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0347",
       "sourceType": "manual",
       "sourceId": "connection_0347",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94897,7 +94897,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0356",
       "sourceType": "manual",
       "sourceId": "connection_0356",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94906,7 +94906,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0357",
       "sourceType": "manual",
       "sourceId": "connection_0357",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94987,7 +94987,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0366",
       "sourceType": "manual",
       "sourceId": "connection_0366",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -94996,7 +94996,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0367",
       "sourceType": "manual",
       "sourceId": "connection_0367",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95077,7 +95077,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0376",
       "sourceType": "manual",
       "sourceId": "connection_0376",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95086,7 +95086,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0377",
       "sourceType": "manual",
       "sourceId": "connection_0377",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95167,7 +95167,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0386",
       "sourceType": "manual",
       "sourceId": "connection_0386",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95176,7 +95176,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0387",
       "sourceType": "manual",
       "sourceId": "connection_0387",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95257,7 +95257,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0396",
       "sourceType": "manual",
       "sourceId": "connection_0396",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95266,7 +95266,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0397",
       "sourceType": "manual",
       "sourceId": "connection_0397",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95347,7 +95347,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0406",
       "sourceType": "manual",
       "sourceId": "connection_0406",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95356,7 +95356,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0407",
       "sourceType": "manual",
       "sourceId": "connection_0407",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95437,7 +95437,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0416",
       "sourceType": "manual",
       "sourceId": "connection_0416",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95446,7 +95446,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0417",
       "sourceType": "manual",
       "sourceId": "connection_0417",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95527,7 +95527,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0426",
       "sourceType": "manual",
       "sourceId": "connection_0426",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95536,7 +95536,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0427",
       "sourceType": "manual",
       "sourceId": "connection_0427",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95617,7 +95617,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0436",
       "sourceType": "manual",
       "sourceId": "connection_0436",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95626,7 +95626,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0437",
       "sourceType": "manual",
       "sourceId": "connection_0437",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95707,7 +95707,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0446",
       "sourceType": "manual",
       "sourceId": "connection_0446",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95716,7 +95716,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0447",
       "sourceType": "manual",
       "sourceId": "connection_0447",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95797,7 +95797,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0456",
       "sourceType": "manual",
       "sourceId": "connection_0456",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95806,7 +95806,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0457",
       "sourceType": "manual",
       "sourceId": "connection_0457",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95887,7 +95887,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0466",
       "sourceType": "manual",
       "sourceId": "connection_0466",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95896,7 +95896,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0467",
       "sourceType": "manual",
       "sourceId": "connection_0467",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95977,7 +95977,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0476",
       "sourceType": "manual",
       "sourceId": "connection_0476",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -95986,7 +95986,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0477",
       "sourceType": "manual",
       "sourceId": "connection_0477",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96067,7 +96067,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0486",
       "sourceType": "manual",
       "sourceId": "connection_0486",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96076,7 +96076,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0487",
       "sourceType": "manual",
       "sourceId": "connection_0487",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96157,7 +96157,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0496",
       "sourceType": "manual",
       "sourceId": "connection_0496",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96166,7 +96166,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0497",
       "sourceType": "manual",
       "sourceId": "connection_0497",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96247,7 +96247,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0506",
       "sourceType": "manual",
       "sourceId": "connection_0506",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96256,7 +96256,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0507",
       "sourceType": "manual",
       "sourceId": "connection_0507",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96337,7 +96337,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0516",
       "sourceType": "manual",
       "sourceId": "connection_0516",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96346,7 +96346,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0517",
       "sourceType": "manual",
       "sourceId": "connection_0517",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96427,7 +96427,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0526",
       "sourceType": "manual",
       "sourceId": "connection_0526",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96436,7 +96436,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0527",
       "sourceType": "manual",
       "sourceId": "connection_0527",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96517,7 +96517,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0536",
       "sourceType": "manual",
       "sourceId": "connection_0536",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96526,7 +96526,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0537",
       "sourceType": "manual",
       "sourceId": "connection_0537",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96607,7 +96607,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0546",
       "sourceType": "manual",
       "sourceId": "connection_0546",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96616,7 +96616,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0547",
       "sourceType": "manual",
       "sourceId": "connection_0547",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96697,7 +96697,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0556",
       "sourceType": "manual",
       "sourceId": "connection_0556",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96706,7 +96706,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0557",
       "sourceType": "manual",
       "sourceId": "connection_0557",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96787,7 +96787,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0566",
       "sourceType": "manual",
       "sourceId": "connection_0566",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96796,7 +96796,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0567",
       "sourceType": "manual",
       "sourceId": "connection_0567",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96877,7 +96877,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0576",
       "sourceType": "manual",
       "sourceId": "connection_0576",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96886,7 +96886,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0577",
       "sourceType": "manual",
       "sourceId": "connection_0577",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96967,7 +96967,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0586",
       "sourceType": "manual",
       "sourceId": "connection_0586",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -96976,7 +96976,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0587",
       "sourceType": "manual",
       "sourceId": "connection_0587",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97057,7 +97057,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0596",
       "sourceType": "manual",
       "sourceId": "connection_0596",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97066,7 +97066,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0597",
       "sourceType": "manual",
       "sourceId": "connection_0597",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97147,7 +97147,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0606",
       "sourceType": "manual",
       "sourceId": "connection_0606",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97156,7 +97156,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0607",
       "sourceType": "manual",
       "sourceId": "connection_0607",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97237,7 +97237,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0616",
       "sourceType": "manual",
       "sourceId": "connection_0616",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97246,7 +97246,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0617",
       "sourceType": "manual",
       "sourceId": "connection_0617",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97327,7 +97327,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0626",
       "sourceType": "manual",
       "sourceId": "connection_0626",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97336,7 +97336,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0627",
       "sourceType": "manual",
       "sourceId": "connection_0627",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97417,7 +97417,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0636",
       "sourceType": "manual",
       "sourceId": "connection_0636",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97426,7 +97426,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0637",
       "sourceType": "manual",
       "sourceId": "connection_0637",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97507,7 +97507,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0646",
       "sourceType": "manual",
       "sourceId": "connection_0646",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97516,7 +97516,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0647",
       "sourceType": "manual",
       "sourceId": "connection_0647",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97597,7 +97597,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0656",
       "sourceType": "manual",
       "sourceId": "connection_0656",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97606,7 +97606,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0657",
       "sourceType": "manual",
       "sourceId": "connection_0657",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97687,7 +97687,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0666",
       "sourceType": "manual",
       "sourceId": "connection_0666",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97696,7 +97696,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0667",
       "sourceType": "manual",
       "sourceId": "connection_0667",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97777,7 +97777,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0676",
       "sourceType": "manual",
       "sourceId": "connection_0676",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97786,7 +97786,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0677",
       "sourceType": "manual",
       "sourceId": "connection_0677",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97867,7 +97867,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0686",
       "sourceType": "manual",
       "sourceId": "connection_0686",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97876,7 +97876,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0687",
       "sourceType": "manual",
       "sourceId": "connection_0687",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97957,7 +97957,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0696",
       "sourceType": "manual",
       "sourceId": "connection_0696",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -97966,7 +97966,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0697",
       "sourceType": "manual",
       "sourceId": "connection_0697",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98047,7 +98047,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0706",
       "sourceType": "manual",
       "sourceId": "connection_0706",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98056,7 +98056,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0707",
       "sourceType": "manual",
       "sourceId": "connection_0707",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98137,7 +98137,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0716",
       "sourceType": "manual",
       "sourceId": "connection_0716",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98146,7 +98146,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0717",
       "sourceType": "manual",
       "sourceId": "connection_0717",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98227,7 +98227,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0726",
       "sourceType": "manual",
       "sourceId": "connection_0726",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98236,7 +98236,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0727",
       "sourceType": "manual",
       "sourceId": "connection_0727",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98317,7 +98317,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0736",
       "sourceType": "manual",
       "sourceId": "connection_0736",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98326,7 +98326,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0737",
       "sourceType": "manual",
       "sourceId": "connection_0737",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98407,7 +98407,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0746",
       "sourceType": "manual",
       "sourceId": "connection_0746",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98416,7 +98416,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0747",
       "sourceType": "manual",
       "sourceId": "connection_0747",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98497,7 +98497,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0756",
       "sourceType": "manual",
       "sourceId": "connection_0756",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98506,7 +98506,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0757",
       "sourceType": "manual",
       "sourceId": "connection_0757",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98587,7 +98587,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0766",
       "sourceType": "manual",
       "sourceId": "connection_0766",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98596,7 +98596,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0767",
       "sourceType": "manual",
       "sourceId": "connection_0767",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98677,7 +98677,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0776",
       "sourceType": "manual",
       "sourceId": "connection_0776",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98686,7 +98686,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0777",
       "sourceType": "manual",
       "sourceId": "connection_0777",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98767,7 +98767,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0786",
       "sourceType": "manual",
       "sourceId": "connection_0786",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98776,7 +98776,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0787",
       "sourceType": "manual",
       "sourceId": "connection_0787",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98857,7 +98857,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0796",
       "sourceType": "manual",
       "sourceId": "connection_0796",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98866,7 +98866,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0797",
       "sourceType": "manual",
       "sourceId": "connection_0797",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98947,7 +98947,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0806",
       "sourceType": "manual",
       "sourceId": "connection_0806",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -98956,7 +98956,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0807",
       "sourceType": "manual",
       "sourceId": "connection_0807",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99037,7 +99037,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0816",
       "sourceType": "manual",
       "sourceId": "connection_0816",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99046,7 +99046,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0817",
       "sourceType": "manual",
       "sourceId": "connection_0817",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99127,7 +99127,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0826",
       "sourceType": "manual",
       "sourceId": "connection_0826",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99136,7 +99136,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0827",
       "sourceType": "manual",
       "sourceId": "connection_0827",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99217,7 +99217,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0836",
       "sourceType": "manual",
       "sourceId": "connection_0836",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99226,7 +99226,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0837",
       "sourceType": "manual",
       "sourceId": "connection_0837",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99307,7 +99307,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0846",
       "sourceType": "manual",
       "sourceId": "connection_0846",
-      "summary": "Relationship context for 罗皓宇: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 罗皓宇: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99316,7 +99316,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0847",
       "sourceType": "manual",
       "sourceId": "connection_0847",
-      "summary": "Relationship context for 曾伟: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 曾伟: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99397,7 +99397,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0856",
       "sourceType": "manual",
       "sourceId": "connection_0856",
-      "summary": "Relationship context for 松田 翔: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 松田 翔: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99406,7 +99406,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0857",
       "sourceType": "manual",
       "sourceId": "connection_0857",
-      "summary": "Relationship context for 佐藤 浩二: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 佐藤 浩二: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99487,7 +99487,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0866",
       "sourceType": "manual",
       "sourceId": "connection_0866",
-      "summary": "Relationship context for 池田 学: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 池田 学: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99496,7 +99496,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0867",
       "sourceType": "manual",
       "sourceId": "connection_0867",
-      "summary": "Relationship context for 石井 陽子: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 石井 陽子: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99577,7 +99577,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0876",
       "sourceType": "manual",
       "sourceId": "connection_0876",
-      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 佐藤 健一: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99586,7 +99586,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0877",
       "sourceType": "manual",
       "sourceId": "connection_0877",
-      "summary": "Relationship context for 山田 千尋: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 山田 千尋: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99667,7 +99667,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0886",
       "sourceType": "manual",
       "sourceId": "connection_0886",
-      "summary": "Relationship context for 胡家明: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 胡家明: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99676,7 +99676,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0887",
       "sourceType": "manual",
       "sourceId": "connection_0887",
-      "summary": "Relationship context for 许凯文: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 许凯文: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99757,7 +99757,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0896",
       "sourceType": "manual",
       "sourceId": "connection_0896",
-      "summary": "Relationship context for 程可欣: retail_omnichannel, post-event follow-up workflow operator; next action bilingual sales deck review.",
+      "summary": "Relationship context for 程可欣: retail_omnichannel, semiconductor supply-chain sourcing lead; next action bilingual sales deck review.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99766,7 +99766,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:connection:0897",
       "sourceType": "manual",
       "sourceId": "connection_0897",
-      "summary": "Relationship context for 李嘉豪: legal_accounting, duplicate contact cleanup and provenance review; next action privacy-safe contact provenance audit.",
+      "summary": "Relationship context for 李嘉豪: legal_accounting, D2C brand overseas-expansion partner; next action hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.82,
       "createdBy": "profile_orbit_generated_operator"
@@ -99811,7 +99811,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0002",
       "sourceType": "manual",
       "sourceId": "recommendation_0002",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 橋本 夏美.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 橋本 夏美.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -99847,7 +99847,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0006",
       "sourceType": "manual",
       "sourceId": "recommendation_0006",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 遠藤 悠斗.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 遠藤 悠斗.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -99856,7 +99856,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0007",
       "sourceType": "manual",
       "sourceId": "recommendation_0007",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 西村 大地.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 西村 大地.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -99901,7 +99901,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0012",
       "sourceType": "manual",
       "sourceId": "recommendation_0012",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 中野 葵.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 中野 葵.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -99937,7 +99937,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0016",
       "sourceType": "manual",
       "sourceId": "recommendation_0016",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 吉田 彩.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 吉田 彩.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -99946,7 +99946,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0017",
       "sourceType": "manual",
       "sourceId": "recommendation_0017",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 梁佳怡.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 梁佳怡.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -99991,7 +99991,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0022",
       "sourceType": "manual",
       "sourceId": "recommendation_0022",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 董安琪.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 董安琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100027,7 +100027,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0026",
       "sourceType": "manual",
       "sourceId": "recommendation_0026",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 廖依娜.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 廖依娜.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100036,7 +100036,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0027",
       "sourceType": "manual",
       "sourceId": "recommendation_0027",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 王一凡.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 王一凡.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100081,7 +100081,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0032",
       "sourceType": "manual",
       "sourceId": "recommendation_0032",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 郭亦辰.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 郭亦辰.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100117,7 +100117,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0036",
       "sourceType": "manual",
       "sourceId": "recommendation_0036",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: Lucas Duarte.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: Lucas Duarte.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100126,7 +100126,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0037",
       "sourceType": "manual",
       "sourceId": "recommendation_0037",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: Aisha Brown.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: Aisha Brown.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100171,7 +100171,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0042",
       "sourceType": "manual",
       "sourceId": "recommendation_0042",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 山田 千尋.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 山田 千尋.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100207,7 +100207,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0046",
       "sourceType": "manual",
       "sourceId": "recommendation_0046",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 橋本 夏美.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 橋本 夏美.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100216,7 +100216,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0047",
       "sourceType": "manual",
       "sourceId": "recommendation_0047",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 前田 祐介.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 前田 祐介.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100261,7 +100261,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0052",
       "sourceType": "manual",
       "sourceId": "recommendation_0052",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 三浦 達也.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 三浦 達也.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100297,7 +100297,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0056",
       "sourceType": "manual",
       "sourceId": "recommendation_0056",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 中野 葵.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 中野 葵.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100306,7 +100306,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0057",
       "sourceType": "manual",
       "sourceId": "recommendation_0057",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 鈴木 翔太.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 鈴木 翔太.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100351,7 +100351,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0062",
       "sourceType": "manual",
       "sourceId": "recommendation_0062",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 唐天宇.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 唐天宇.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100387,7 +100387,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0066",
       "sourceType": "manual",
       "sourceId": "recommendation_0066",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 董安琪.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 董安琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100396,7 +100396,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0067",
       "sourceType": "manual",
       "sourceId": "recommendation_0067",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 蒋思雨.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 蒋思雨.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100441,7 +100441,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0072",
       "sourceType": "manual",
       "sourceId": "recommendation_0072",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 刘雨薇.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 刘雨薇.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100477,7 +100477,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0076",
       "sourceType": "manual",
       "sourceId": "recommendation_0076",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 郭亦辰.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 郭亦辰.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100486,7 +100486,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0077",
       "sourceType": "manual",
       "sourceId": "recommendation_0077",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 郑思远.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 郑思远.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100531,7 +100531,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0082",
       "sourceType": "manual",
       "sourceId": "recommendation_0082",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: Mateo Ahmed.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: Mateo Ahmed.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100567,7 +100567,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0086",
       "sourceType": "manual",
       "sourceId": "recommendation_0086",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 山田 千尋.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 山田 千尋.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100576,7 +100576,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0087",
       "sourceType": "manual",
       "sourceId": "recommendation_0087",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 松本 恵子.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 松本 恵子.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100621,7 +100621,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0092",
       "sourceType": "manual",
       "sourceId": "recommendation_0092",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 後藤 信也.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 後藤 信也.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100657,7 +100657,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0096",
       "sourceType": "manual",
       "sourceId": "recommendation_0096",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 三浦 達也.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 三浦 達也.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100666,7 +100666,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0097",
       "sourceType": "manual",
       "sourceId": "recommendation_0097",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 松田 翔.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 松田 翔.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100711,7 +100711,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0102",
       "sourceType": "manual",
       "sourceId": "recommendation_0102",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 伊藤 豪.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 伊藤 豪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100747,7 +100747,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0106",
       "sourceType": "manual",
       "sourceId": "recommendation_0106",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 唐天宇.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 唐天宇.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100756,7 +100756,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0107",
       "sourceType": "manual",
       "sourceId": "recommendation_0107",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 韩梓豪.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 韩梓豪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100801,7 +100801,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0112",
       "sourceType": "manual",
       "sourceId": "recommendation_0112",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 魏宇航.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 魏宇航.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100837,7 +100837,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0116",
       "sourceType": "manual",
       "sourceId": "recommendation_0116",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 刘雨薇.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 刘雨薇.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100846,7 +100846,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0117",
       "sourceType": "manual",
       "sourceId": "recommendation_0117",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 赵思琪.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 赵思琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100891,7 +100891,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0122",
       "sourceType": "manual",
       "sourceId": "recommendation_0122",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 宋梦琪.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 宋梦琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100927,7 +100927,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0126",
       "sourceType": "manual",
       "sourceId": "recommendation_0126",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: Mateo Ahmed.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: Mateo Ahmed.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100936,7 +100936,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0127",
       "sourceType": "manual",
       "sourceId": "recommendation_0127",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 高橋 智子.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 高橋 智子.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -100981,7 +100981,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0132",
       "sourceType": "manual",
       "sourceId": "recommendation_0132",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 林 恵.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 林 恵.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101017,7 +101017,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0136",
       "sourceType": "manual",
       "sourceId": "recommendation_0136",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 後藤 信也.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 後藤 信也.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101026,7 +101026,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0137",
       "sourceType": "manual",
       "sourceId": "recommendation_0137",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 近藤 大輔.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 近藤 大輔.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101071,7 +101071,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0142",
       "sourceType": "manual",
       "sourceId": "recommendation_0142",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 原田 信明.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 原田 信明.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101107,7 +101107,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0146",
       "sourceType": "manual",
       "sourceId": "recommendation_0146",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 伊藤 豪.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 伊藤 豪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101116,7 +101116,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0147",
       "sourceType": "manual",
       "sourceId": "recommendation_0147",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 中村 誠.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 中村 誠.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101161,7 +101161,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0152",
       "sourceType": "manual",
       "sourceId": "recommendation_0152",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 曾伟.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 曾伟.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101197,7 +101197,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0156",
       "sourceType": "manual",
       "sourceId": "recommendation_0156",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 魏宇航.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 魏宇航.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101206,7 +101206,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0157",
       "sourceType": "manual",
       "sourceId": "recommendation_0157",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 方欣然.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 方欣然.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101251,7 +101251,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0162",
       "sourceType": "manual",
       "sourceId": "recommendation_0162",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 吴可欣.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 吴可欣.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101287,7 +101287,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0166",
       "sourceType": "manual",
       "sourceId": "recommendation_0166",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 宋梦琪.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 宋梦琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101296,7 +101296,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0167",
       "sourceType": "manual",
       "sourceId": "recommendation_0167",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: Sofia Martinez.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: Sofia Martinez.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101341,7 +101341,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0172",
       "sourceType": "manual",
       "sourceId": "recommendation_0172",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 渡辺 颯太.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 渡辺 颯太.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101377,7 +101377,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0176",
       "sourceType": "manual",
       "sourceId": "recommendation_0176",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 林 恵.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 林 恵.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101386,7 +101386,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0177",
       "sourceType": "manual",
       "sourceId": "recommendation_0177",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 山崎 美穂.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 山崎 美穂.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101431,7 +101431,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0182",
       "sourceType": "manual",
       "sourceId": "recommendation_0182",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 遠藤 悠斗.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 遠藤 悠斗.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101467,7 +101467,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0186",
       "sourceType": "manual",
       "sourceId": "recommendation_0186",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 原田 信明.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 原田 信明.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101476,7 +101476,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0187",
       "sourceType": "manual",
       "sourceId": "recommendation_0187",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 田村 莉奈.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 田村 莉奈.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101521,7 +101521,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0192",
       "sourceType": "manual",
       "sourceId": "recommendation_0192",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 吉田 彩.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 吉田 彩.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101557,7 +101557,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0196",
       "sourceType": "manual",
       "sourceId": "recommendation_0196",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 曾伟.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 曾伟.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101566,7 +101566,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0197",
       "sourceType": "manual",
       "sourceId": "recommendation_0197",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 蔡嘉豪.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 蔡嘉豪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101611,7 +101611,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0202",
       "sourceType": "manual",
       "sourceId": "recommendation_0202",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 廖依娜.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 廖依娜.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101647,7 +101647,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0206",
       "sourceType": "manual",
       "sourceId": "recommendation_0206",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 吴可欣.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 吴可欣.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101656,7 +101656,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0207",
       "sourceType": "manual",
       "sourceId": "recommendation_0207",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 胡家明.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 胡家明.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101701,7 +101701,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0212",
       "sourceType": "manual",
       "sourceId": "recommendation_0212",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: Lucas Duarte.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: Lucas Duarte.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101737,7 +101737,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0216",
       "sourceType": "manual",
       "sourceId": "recommendation_0216",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 渡辺 颯太.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 渡辺 颯太.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101746,7 +101746,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0217",
       "sourceType": "manual",
       "sourceId": "recommendation_0217",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 小林 浩二.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 小林 浩二.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101791,7 +101791,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0222",
       "sourceType": "manual",
       "sourceId": "recommendation_0222",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 橋本 夏美.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 橋本 夏美.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101827,7 +101827,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0226",
       "sourceType": "manual",
       "sourceId": "recommendation_0226",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 遠藤 悠斗.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 遠藤 悠斗.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101836,7 +101836,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0227",
       "sourceType": "manual",
       "sourceId": "recommendation_0227",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 西村 大地.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 西村 大地.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101881,7 +101881,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0232",
       "sourceType": "manual",
       "sourceId": "recommendation_0232",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 中野 葵.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 中野 葵.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101917,7 +101917,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0236",
       "sourceType": "manual",
       "sourceId": "recommendation_0236",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 吉田 彩.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 吉田 彩.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101926,7 +101926,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0237",
       "sourceType": "manual",
       "sourceId": "recommendation_0237",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 梁佳怡.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 梁佳怡.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -101971,7 +101971,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0242",
       "sourceType": "manual",
       "sourceId": "recommendation_0242",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 董安琪.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 董安琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102007,7 +102007,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0246",
       "sourceType": "manual",
       "sourceId": "recommendation_0246",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 廖依娜.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 廖依娜.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102016,7 +102016,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0247",
       "sourceType": "manual",
       "sourceId": "recommendation_0247",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 王一凡.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 王一凡.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102061,7 +102061,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0252",
       "sourceType": "manual",
       "sourceId": "recommendation_0252",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 郭亦辰.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 郭亦辰.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102097,7 +102097,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0256",
       "sourceType": "manual",
       "sourceId": "recommendation_0256",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: Lucas Duarte.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: Lucas Duarte.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102106,7 +102106,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0257",
       "sourceType": "manual",
       "sourceId": "recommendation_0257",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: Aisha Brown.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: Aisha Brown.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102151,7 +102151,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0262",
       "sourceType": "manual",
       "sourceId": "recommendation_0262",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 山田 千尋.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 山田 千尋.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102187,7 +102187,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0266",
       "sourceType": "manual",
       "sourceId": "recommendation_0266",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 橋本 夏美.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 橋本 夏美.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102196,7 +102196,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0267",
       "sourceType": "manual",
       "sourceId": "recommendation_0267",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 前田 祐介.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 前田 祐介.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102241,7 +102241,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0272",
       "sourceType": "manual",
       "sourceId": "recommendation_0272",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 三浦 達也.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 三浦 達也.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102277,7 +102277,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0276",
       "sourceType": "manual",
       "sourceId": "recommendation_0276",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 中野 葵.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 中野 葵.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102286,7 +102286,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0277",
       "sourceType": "manual",
       "sourceId": "recommendation_0277",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 鈴木 翔太.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 鈴木 翔太.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102331,7 +102331,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0282",
       "sourceType": "manual",
       "sourceId": "recommendation_0282",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 唐天宇.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 唐天宇.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102367,7 +102367,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0286",
       "sourceType": "manual",
       "sourceId": "recommendation_0286",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 董安琪.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 董安琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102376,7 +102376,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0287",
       "sourceType": "manual",
       "sourceId": "recommendation_0287",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 蒋思雨.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 蒋思雨.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102421,7 +102421,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0292",
       "sourceType": "manual",
       "sourceId": "recommendation_0292",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 刘雨薇.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 刘雨薇.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102457,7 +102457,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0296",
       "sourceType": "manual",
       "sourceId": "recommendation_0296",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 郭亦辰.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 郭亦辰.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102466,7 +102466,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0297",
       "sourceType": "manual",
       "sourceId": "recommendation_0297",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 郑思远.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 郑思远.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102511,7 +102511,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0302",
       "sourceType": "manual",
       "sourceId": "recommendation_0302",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: Mateo Ahmed.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: Mateo Ahmed.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102547,7 +102547,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0306",
       "sourceType": "manual",
       "sourceId": "recommendation_0306",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 山田 千尋.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 山田 千尋.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102556,7 +102556,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0307",
       "sourceType": "manual",
       "sourceId": "recommendation_0307",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 松本 恵子.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 松本 恵子.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102601,7 +102601,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0312",
       "sourceType": "manual",
       "sourceId": "recommendation_0312",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 後藤 信也.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 後藤 信也.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102637,7 +102637,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0316",
       "sourceType": "manual",
       "sourceId": "recommendation_0316",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 三浦 達也.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 三浦 達也.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102646,7 +102646,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0317",
       "sourceType": "manual",
       "sourceId": "recommendation_0317",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 松田 翔.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 松田 翔.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102691,7 +102691,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0322",
       "sourceType": "manual",
       "sourceId": "recommendation_0322",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 伊藤 豪.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 伊藤 豪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102727,7 +102727,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0326",
       "sourceType": "manual",
       "sourceId": "recommendation_0326",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 唐天宇.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 唐天宇.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102736,7 +102736,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0327",
       "sourceType": "manual",
       "sourceId": "recommendation_0327",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 韩梓豪.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 韩梓豪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102781,7 +102781,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0332",
       "sourceType": "manual",
       "sourceId": "recommendation_0332",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 魏宇航.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 魏宇航.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102817,7 +102817,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0336",
       "sourceType": "manual",
       "sourceId": "recommendation_0336",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: 刘雨薇.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: 刘雨薇.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102826,7 +102826,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0337",
       "sourceType": "manual",
       "sourceId": "recommendation_0337",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 赵思琪.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 赵思琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102871,7 +102871,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0342",
       "sourceType": "manual",
       "sourceId": "recommendation_0342",
-      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit. Recommended contact: 宋梦琪.",
+      "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments. Recommended contact: 宋梦琪.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102907,7 +102907,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0346",
       "sourceType": "manual",
       "sourceId": "recommendation_0346",
-      "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel. Recommended contact: Mateo Ahmed.",
+      "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel. Recommended contact: Mateo Ahmed.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102916,7 +102916,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:recommendation:0347",
       "sourceType": "manual",
       "sourceId": "recommendation_0347",
-      "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 高橋 智子.",
+      "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback. Recommended contact: 高橋 智子.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.8,
       "createdBy": "profile_orbit_generated_operator"
@@ -102997,7 +102997,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0006",
       "sourceType": "manual",
       "sourceId": "message_0006",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103006,7 +103006,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0007",
       "sourceType": "manual",
       "sourceId": "message_0007",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103087,7 +103087,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0016",
       "sourceType": "manual",
       "sourceId": "message_0016",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103096,7 +103096,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0017",
       "sourceType": "manual",
       "sourceId": "message_0017",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103177,7 +103177,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0026",
       "sourceType": "manual",
       "sourceId": "message_0026",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103186,7 +103186,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0027",
       "sourceType": "manual",
       "sourceId": "message_0027",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103267,7 +103267,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0036",
       "sourceType": "manual",
       "sourceId": "message_0036",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103276,7 +103276,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0037",
       "sourceType": "manual",
       "sourceId": "message_0037",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103357,7 +103357,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0046",
       "sourceType": "manual",
       "sourceId": "message_0046",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103366,7 +103366,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0047",
       "sourceType": "manual",
       "sourceId": "message_0047",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103447,7 +103447,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0056",
       "sourceType": "manual",
       "sourceId": "message_0056",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103456,7 +103456,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0057",
       "sourceType": "manual",
       "sourceId": "message_0057",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103537,7 +103537,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0066",
       "sourceType": "manual",
       "sourceId": "message_0066",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103546,7 +103546,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0067",
       "sourceType": "manual",
       "sourceId": "message_0067",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103627,7 +103627,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0076",
       "sourceType": "manual",
       "sourceId": "message_0076",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103636,7 +103636,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0077",
       "sourceType": "manual",
       "sourceId": "message_0077",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103717,7 +103717,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0086",
       "sourceType": "manual",
       "sourceId": "message_0086",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103726,7 +103726,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0087",
       "sourceType": "manual",
       "sourceId": "message_0087",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103807,7 +103807,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0096",
       "sourceType": "manual",
       "sourceId": "message_0096",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103816,7 +103816,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0097",
       "sourceType": "manual",
       "sourceId": "message_0097",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103897,7 +103897,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0106",
       "sourceType": "manual",
       "sourceId": "message_0106",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103906,7 +103906,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0107",
       "sourceType": "manual",
       "sourceId": "message_0107",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103987,7 +103987,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0116",
       "sourceType": "manual",
       "sourceId": "message_0116",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -103996,7 +103996,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0117",
       "sourceType": "manual",
       "sourceId": "message_0117",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104077,7 +104077,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0126",
       "sourceType": "manual",
       "sourceId": "message_0126",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104086,7 +104086,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0127",
       "sourceType": "manual",
       "sourceId": "message_0127",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104167,7 +104167,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0136",
       "sourceType": "manual",
       "sourceId": "message_0136",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104176,7 +104176,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0137",
       "sourceType": "manual",
       "sourceId": "message_0137",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104257,7 +104257,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0146",
       "sourceType": "manual",
       "sourceId": "message_0146",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104266,7 +104266,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0147",
       "sourceType": "manual",
       "sourceId": "message_0147",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104347,7 +104347,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0156",
       "sourceType": "manual",
       "sourceId": "message_0156",
-      "summary": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "summary": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104356,7 +104356,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:message:0157",
       "sourceType": "manual",
       "sourceId": "message_0157",
-      "summary": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "summary": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-30T14:14:38.537342+00:00",
       "confidence": 0.78,
       "createdBy": "profile_orbit_generated_operator"
@@ -104437,7 +104437,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0006",
       "sourceType": "email_signal",
       "sourceId": "interaction_0006",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104446,7 +104446,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0007",
       "sourceType": "manual",
       "sourceId": "interaction_0007",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104527,7 +104527,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0016",
       "sourceType": "event_import",
       "sourceId": "interaction_0016",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104536,7 +104536,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0017",
       "sourceType": "manual",
       "sourceId": "interaction_0017",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104617,7 +104617,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0026",
       "sourceType": "email_signal",
       "sourceId": "interaction_0026",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104626,7 +104626,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0027",
       "sourceType": "manual",
       "sourceId": "interaction_0027",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104707,7 +104707,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0036",
       "sourceType": "event_import",
       "sourceId": "interaction_0036",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104716,7 +104716,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0037",
       "sourceType": "manual",
       "sourceId": "interaction_0037",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104797,7 +104797,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0046",
       "sourceType": "email_signal",
       "sourceId": "interaction_0046",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104806,7 +104806,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0047",
       "sourceType": "manual",
       "sourceId": "interaction_0047",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104887,7 +104887,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0056",
       "sourceType": "event_import",
       "sourceId": "interaction_0056",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104896,7 +104896,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0057",
       "sourceType": "manual",
       "sourceId": "interaction_0057",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104977,7 +104977,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0066",
       "sourceType": "email_signal",
       "sourceId": "interaction_0066",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -104986,7 +104986,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0067",
       "sourceType": "manual",
       "sourceId": "interaction_0067",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105067,7 +105067,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0076",
       "sourceType": "event_import",
       "sourceId": "interaction_0076",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105076,7 +105076,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0077",
       "sourceType": "manual",
       "sourceId": "interaction_0077",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105157,7 +105157,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0086",
       "sourceType": "email_signal",
       "sourceId": "interaction_0086",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105166,7 +105166,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0087",
       "sourceType": "manual",
       "sourceId": "interaction_0087",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105247,7 +105247,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0096",
       "sourceType": "event_import",
       "sourceId": "interaction_0096",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105256,7 +105256,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0097",
       "sourceType": "manual",
       "sourceId": "interaction_0097",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105337,7 +105337,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0106",
       "sourceType": "email_signal",
       "sourceId": "interaction_0106",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105346,7 +105346,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0107",
       "sourceType": "manual",
       "sourceId": "interaction_0107",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105427,7 +105427,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0116",
       "sourceType": "event_import",
       "sourceId": "interaction_0116",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105436,7 +105436,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0117",
       "sourceType": "manual",
       "sourceId": "interaction_0117",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105517,7 +105517,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0126",
       "sourceType": "email_signal",
       "sourceId": "interaction_0126",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105526,7 +105526,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0127",
       "sourceType": "manual",
       "sourceId": "interaction_0127",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105607,7 +105607,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0136",
       "sourceType": "event_import",
       "sourceId": "interaction_0136",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105616,7 +105616,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0137",
       "sourceType": "manual",
       "sourceId": "interaction_0137",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105697,7 +105697,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0146",
       "sourceType": "email_signal",
       "sourceId": "interaction_0146",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105706,7 +105706,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0147",
       "sourceType": "manual",
       "sourceId": "interaction_0147",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105787,7 +105787,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0156",
       "sourceType": "event_import",
       "sourceId": "interaction_0156",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105796,7 +105796,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0157",
       "sourceType": "manual",
       "sourceId": "interaction_0157",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105877,7 +105877,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0166",
       "sourceType": "email_signal",
       "sourceId": "interaction_0166",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105886,7 +105886,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0167",
       "sourceType": "manual",
       "sourceId": "interaction_0167",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105967,7 +105967,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0176",
       "sourceType": "event_import",
       "sourceId": "interaction_0176",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -105976,7 +105976,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0177",
       "sourceType": "manual",
       "sourceId": "interaction_0177",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106057,7 +106057,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0186",
       "sourceType": "email_signal",
       "sourceId": "interaction_0186",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106066,7 +106066,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0187",
       "sourceType": "manual",
       "sourceId": "interaction_0187",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106147,7 +106147,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0196",
       "sourceType": "event_import",
       "sourceId": "interaction_0196",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106156,7 +106156,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0197",
       "sourceType": "manual",
       "sourceId": "interaction_0197",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106237,7 +106237,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0206",
       "sourceType": "email_signal",
       "sourceId": "interaction_0206",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106246,7 +106246,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0207",
       "sourceType": "manual",
       "sourceId": "interaction_0207",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106327,7 +106327,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0216",
       "sourceType": "event_import",
       "sourceId": "interaction_0216",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106336,7 +106336,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0217",
       "sourceType": "manual",
       "sourceId": "interaction_0217",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106417,7 +106417,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0226",
       "sourceType": "email_signal",
       "sourceId": "interaction_0226",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106426,7 +106426,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0227",
       "sourceType": "manual",
       "sourceId": "interaction_0227",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106507,7 +106507,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0236",
       "sourceType": "event_import",
       "sourceId": "interaction_0236",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106516,7 +106516,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0237",
       "sourceType": "manual",
       "sourceId": "interaction_0237",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106597,7 +106597,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0246",
       "sourceType": "email_signal",
       "sourceId": "interaction_0246",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106606,7 +106606,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0247",
       "sourceType": "manual",
       "sourceId": "interaction_0247",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106687,7 +106687,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0256",
       "sourceType": "event_import",
       "sourceId": "interaction_0256",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106696,7 +106696,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0257",
       "sourceType": "manual",
       "sourceId": "interaction_0257",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106777,7 +106777,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0266",
       "sourceType": "email_signal",
       "sourceId": "interaction_0266",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106786,7 +106786,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0267",
       "sourceType": "manual",
       "sourceId": "interaction_0267",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106867,7 +106867,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0276",
       "sourceType": "event_import",
       "sourceId": "interaction_0276",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106876,7 +106876,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0277",
       "sourceType": "manual",
       "sourceId": "interaction_0277",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106957,7 +106957,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0286",
       "sourceType": "email_signal",
       "sourceId": "interaction_0286",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -106966,7 +106966,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0287",
       "sourceType": "manual",
       "sourceId": "interaction_0287",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107047,7 +107047,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0296",
       "sourceType": "event_import",
       "sourceId": "interaction_0296",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107056,7 +107056,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0297",
       "sourceType": "manual",
       "sourceId": "interaction_0297",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107137,7 +107137,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0306",
       "sourceType": "email_signal",
       "sourceId": "interaction_0306",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107146,7 +107146,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0307",
       "sourceType": "manual",
       "sourceId": "interaction_0307",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107227,7 +107227,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0316",
       "sourceType": "event_import",
       "sourceId": "interaction_0316",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107236,7 +107236,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0317",
       "sourceType": "manual",
       "sourceId": "interaction_0317",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107317,7 +107317,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0326",
       "sourceType": "email_signal",
       "sourceId": "interaction_0326",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107326,7 +107326,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0327",
       "sourceType": "manual",
       "sourceId": "interaction_0327",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107407,7 +107407,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0336",
       "sourceType": "event_import",
       "sourceId": "interaction_0336",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107416,7 +107416,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0337",
       "sourceType": "manual",
       "sourceId": "interaction_0337",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107497,7 +107497,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0346",
       "sourceType": "email_signal",
       "sourceId": "interaction_0346",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107506,7 +107506,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0347",
       "sourceType": "manual",
       "sourceId": "interaction_0347",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107587,7 +107587,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0356",
       "sourceType": "event_import",
       "sourceId": "interaction_0356",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107596,7 +107596,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0357",
       "sourceType": "manual",
       "sourceId": "interaction_0357",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107677,7 +107677,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0366",
       "sourceType": "email_signal",
       "sourceId": "interaction_0366",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107686,7 +107686,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0367",
       "sourceType": "manual",
       "sourceId": "interaction_0367",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107767,7 +107767,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0376",
       "sourceType": "event_import",
       "sourceId": "interaction_0376",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107776,7 +107776,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0377",
       "sourceType": "manual",
       "sourceId": "interaction_0377",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107857,7 +107857,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0386",
       "sourceType": "email_signal",
       "sourceId": "interaction_0386",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107866,7 +107866,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0387",
       "sourceType": "manual",
       "sourceId": "interaction_0387",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107947,7 +107947,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0396",
       "sourceType": "event_import",
       "sourceId": "interaction_0396",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -107956,7 +107956,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0397",
       "sourceType": "manual",
       "sourceId": "interaction_0397",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108037,7 +108037,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0406",
       "sourceType": "email_signal",
       "sourceId": "interaction_0406",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108046,7 +108046,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0407",
       "sourceType": "manual",
       "sourceId": "interaction_0407",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108127,7 +108127,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0416",
       "sourceType": "event_import",
       "sourceId": "interaction_0416",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108136,7 +108136,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0417",
       "sourceType": "manual",
       "sourceId": "interaction_0417",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108217,7 +108217,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0426",
       "sourceType": "email_signal",
       "sourceId": "interaction_0426",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108226,7 +108226,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0427",
       "sourceType": "manual",
       "sourceId": "interaction_0427",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108307,7 +108307,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0436",
       "sourceType": "event_import",
       "sourceId": "interaction_0436",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108316,7 +108316,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0437",
       "sourceType": "manual",
       "sourceId": "interaction_0437",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108397,7 +108397,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0446",
       "sourceType": "email_signal",
       "sourceId": "interaction_0446",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108406,7 +108406,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0447",
       "sourceType": "manual",
       "sourceId": "interaction_0447",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108487,7 +108487,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0456",
       "sourceType": "event_import",
       "sourceId": "interaction_0456",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108496,7 +108496,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0457",
       "sourceType": "manual",
       "sourceId": "interaction_0457",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108577,7 +108577,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0466",
       "sourceType": "email_signal",
       "sourceId": "interaction_0466",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108586,7 +108586,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0467",
       "sourceType": "manual",
       "sourceId": "interaction_0467",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108667,7 +108667,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0476",
       "sourceType": "event_import",
       "sourceId": "interaction_0476",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108676,7 +108676,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0477",
       "sourceType": "manual",
       "sourceId": "interaction_0477",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108757,7 +108757,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0486",
       "sourceType": "email_signal",
       "sourceId": "interaction_0486",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108766,7 +108766,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0487",
       "sourceType": "manual",
       "sourceId": "interaction_0487",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108847,7 +108847,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0496",
       "sourceType": "event_import",
       "sourceId": "interaction_0496",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108856,7 +108856,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0497",
       "sourceType": "manual",
       "sourceId": "interaction_0497",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108937,7 +108937,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0506",
       "sourceType": "email_signal",
       "sourceId": "interaction_0506",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -108946,7 +108946,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0507",
       "sourceType": "manual",
       "sourceId": "interaction_0507",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109027,7 +109027,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0516",
       "sourceType": "event_import",
       "sourceId": "interaction_0516",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109036,7 +109036,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0517",
       "sourceType": "manual",
       "sourceId": "interaction_0517",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109117,7 +109117,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0526",
       "sourceType": "email_signal",
       "sourceId": "interaction_0526",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109126,7 +109126,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0527",
       "sourceType": "manual",
       "sourceId": "interaction_0527",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109207,7 +109207,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0536",
       "sourceType": "event_import",
       "sourceId": "interaction_0536",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109216,7 +109216,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0537",
       "sourceType": "manual",
       "sourceId": "interaction_0537",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109297,7 +109297,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0546",
       "sourceType": "email_signal",
       "sourceId": "interaction_0546",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109306,7 +109306,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0547",
       "sourceType": "manual",
       "sourceId": "interaction_0547",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109387,7 +109387,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0556",
       "sourceType": "event_import",
       "sourceId": "interaction_0556",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109396,7 +109396,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0557",
       "sourceType": "manual",
       "sourceId": "interaction_0557",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109477,7 +109477,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0566",
       "sourceType": "email_signal",
       "sourceId": "interaction_0566",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109486,7 +109486,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0567",
       "sourceType": "manual",
       "sourceId": "interaction_0567",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109567,7 +109567,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0576",
       "sourceType": "event_import",
       "sourceId": "interaction_0576",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109576,7 +109576,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0577",
       "sourceType": "manual",
       "sourceId": "interaction_0577",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109657,7 +109657,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0586",
       "sourceType": "email_signal",
       "sourceId": "interaction_0586",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109666,7 +109666,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0587",
       "sourceType": "manual",
       "sourceId": "interaction_0587",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109747,7 +109747,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0596",
       "sourceType": "event_import",
       "sourceId": "interaction_0596",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109756,7 +109756,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0597",
       "sourceType": "manual",
       "sourceId": "interaction_0597",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109837,7 +109837,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0606",
       "sourceType": "email_signal",
       "sourceId": "interaction_0606",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109846,7 +109846,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0607",
       "sourceType": "manual",
       "sourceId": "interaction_0607",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109927,7 +109927,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0616",
       "sourceType": "event_import",
       "sourceId": "interaction_0616",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -109936,7 +109936,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0617",
       "sourceType": "manual",
       "sourceId": "interaction_0617",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110017,7 +110017,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0626",
       "sourceType": "email_signal",
       "sourceId": "interaction_0626",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110026,7 +110026,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0627",
       "sourceType": "manual",
       "sourceId": "interaction_0627",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110107,7 +110107,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0636",
       "sourceType": "event_import",
       "sourceId": "interaction_0636",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110116,7 +110116,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0637",
       "sourceType": "manual",
       "sourceId": "interaction_0637",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110197,7 +110197,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0646",
       "sourceType": "email_signal",
       "sourceId": "interaction_0646",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110206,7 +110206,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0647",
       "sourceType": "manual",
       "sourceId": "interaction_0647",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110287,7 +110287,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0656",
       "sourceType": "event_import",
       "sourceId": "interaction_0656",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110296,7 +110296,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0657",
       "sourceType": "manual",
       "sourceId": "interaction_0657",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110377,7 +110377,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0666",
       "sourceType": "email_signal",
       "sourceId": "interaction_0666",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110386,7 +110386,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0667",
       "sourceType": "manual",
       "sourceId": "interaction_0667",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110467,7 +110467,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0676",
       "sourceType": "event_import",
       "sourceId": "interaction_0676",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110476,7 +110476,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0677",
       "sourceType": "manual",
       "sourceId": "interaction_0677",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110557,7 +110557,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0686",
       "sourceType": "email_signal",
       "sourceId": "interaction_0686",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110566,7 +110566,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0687",
       "sourceType": "manual",
       "sourceId": "interaction_0687",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110647,7 +110647,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0696",
       "sourceType": "event_import",
       "sourceId": "interaction_0696",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110656,7 +110656,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0697",
       "sourceType": "manual",
       "sourceId": "interaction_0697",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110737,7 +110737,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0706",
       "sourceType": "email_signal",
       "sourceId": "interaction_0706",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110746,7 +110746,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0707",
       "sourceType": "manual",
       "sourceId": "interaction_0707",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110827,7 +110827,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0716",
       "sourceType": "event_import",
       "sourceId": "interaction_0716",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110836,7 +110836,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0717",
       "sourceType": "manual",
       "sourceId": "interaction_0717",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110917,7 +110917,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0726",
       "sourceType": "email_signal",
       "sourceId": "interaction_0726",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -110926,7 +110926,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0727",
       "sourceType": "manual",
       "sourceId": "interaction_0727",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111007,7 +111007,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0736",
       "sourceType": "event_import",
       "sourceId": "interaction_0736",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111016,7 +111016,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0737",
       "sourceType": "manual",
       "sourceId": "interaction_0737",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111097,7 +111097,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0746",
       "sourceType": "email_signal",
       "sourceId": "interaction_0746",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111106,7 +111106,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0747",
       "sourceType": "manual",
       "sourceId": "interaction_0747",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111187,7 +111187,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0756",
       "sourceType": "event_import",
       "sourceId": "interaction_0756",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111196,7 +111196,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0757",
       "sourceType": "manual",
       "sourceId": "interaction_0757",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111277,7 +111277,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0766",
       "sourceType": "email_signal",
       "sourceId": "interaction_0766",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111286,7 +111286,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0767",
       "sourceType": "manual",
       "sourceId": "interaction_0767",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111367,7 +111367,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0776",
       "sourceType": "event_import",
       "sourceId": "interaction_0776",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111376,7 +111376,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0777",
       "sourceType": "manual",
       "sourceId": "interaction_0777",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111457,7 +111457,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0786",
       "sourceType": "email_signal",
       "sourceId": "interaction_0786",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111466,7 +111466,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0787",
       "sourceType": "manual",
       "sourceId": "interaction_0787",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111547,7 +111547,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0796",
       "sourceType": "event_import",
       "sourceId": "interaction_0796",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111556,7 +111556,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0797",
       "sourceType": "manual",
       "sourceId": "interaction_0797",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111637,7 +111637,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0806",
       "sourceType": "email_signal",
       "sourceId": "interaction_0806",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111646,7 +111646,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0807",
       "sourceType": "manual",
       "sourceId": "interaction_0807",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111727,7 +111727,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0816",
       "sourceType": "event_import",
       "sourceId": "interaction_0816",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111736,7 +111736,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0817",
       "sourceType": "manual",
       "sourceId": "interaction_0817",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111817,7 +111817,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0826",
       "sourceType": "email_signal",
       "sourceId": "interaction_0826",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111826,7 +111826,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0827",
       "sourceType": "manual",
       "sourceId": "interaction_0827",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111907,7 +111907,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0836",
       "sourceType": "event_import",
       "sourceId": "interaction_0836",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111916,7 +111916,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0837",
       "sourceType": "manual",
       "sourceId": "interaction_0837",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -111997,7 +111997,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0846",
       "sourceType": "email_signal",
       "sourceId": "interaction_0846",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112006,7 +112006,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0847",
       "sourceType": "manual",
       "sourceId": "interaction_0847",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112087,7 +112087,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0856",
       "sourceType": "event_import",
       "sourceId": "interaction_0856",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112096,7 +112096,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0857",
       "sourceType": "manual",
       "sourceId": "interaction_0857",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112177,7 +112177,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0866",
       "sourceType": "email_signal",
       "sourceId": "interaction_0866",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112186,7 +112186,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0867",
       "sourceType": "manual",
       "sourceId": "interaction_0867",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112267,7 +112267,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0876",
       "sourceType": "event_import",
       "sourceId": "interaction_0876",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112276,7 +112276,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0877",
       "sourceType": "manual",
       "sourceId": "interaction_0877",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112357,7 +112357,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0886",
       "sourceType": "email_signal",
       "sourceId": "interaction_0886",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112366,7 +112366,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0887",
       "sourceType": "manual",
       "sourceId": "interaction_0887",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112447,7 +112447,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0896",
       "sourceType": "event_import",
       "sourceId": "interaction_0896",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112456,7 +112456,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0897",
       "sourceType": "manual",
       "sourceId": "interaction_0897",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112537,7 +112537,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0906",
       "sourceType": "email_signal",
       "sourceId": "interaction_0906",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112546,7 +112546,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0907",
       "sourceType": "manual",
       "sourceId": "interaction_0907",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112627,7 +112627,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0916",
       "sourceType": "event_import",
       "sourceId": "interaction_0916",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112636,7 +112636,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0917",
       "sourceType": "manual",
       "sourceId": "interaction_0917",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112717,7 +112717,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0926",
       "sourceType": "email_signal",
       "sourceId": "interaction_0926",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112726,7 +112726,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0927",
       "sourceType": "manual",
       "sourceId": "interaction_0927",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112807,7 +112807,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0936",
       "sourceType": "event_import",
       "sourceId": "interaction_0936",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112816,7 +112816,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0937",
       "sourceType": "manual",
       "sourceId": "interaction_0937",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112897,7 +112897,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0946",
       "sourceType": "email_signal",
       "sourceId": "interaction_0946",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112906,7 +112906,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0947",
       "sourceType": "manual",
       "sourceId": "interaction_0947",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112987,7 +112987,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0956",
       "sourceType": "event_import",
       "sourceId": "interaction_0956",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -112996,7 +112996,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0957",
       "sourceType": "manual",
       "sourceId": "interaction_0957",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113077,7 +113077,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0966",
       "sourceType": "email_signal",
       "sourceId": "interaction_0966",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113086,7 +113086,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0967",
       "sourceType": "manual",
       "sourceId": "interaction_0967",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113167,7 +113167,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0976",
       "sourceType": "event_import",
       "sourceId": "interaction_0976",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113176,7 +113176,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0977",
       "sourceType": "manual",
       "sourceId": "interaction_0977",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113257,7 +113257,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0986",
       "sourceType": "email_signal",
       "sourceId": "interaction_0986",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113266,7 +113266,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0987",
       "sourceType": "manual",
       "sourceId": "interaction_0987",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113347,7 +113347,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0996",
       "sourceType": "event_import",
       "sourceId": "interaction_0996",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113356,7 +113356,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:0997",
       "sourceType": "manual",
       "sourceId": "interaction_0997",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113437,7 +113437,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1006",
       "sourceType": "email_signal",
       "sourceId": "interaction_1006",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113446,7 +113446,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1007",
       "sourceType": "manual",
       "sourceId": "interaction_1007",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113527,7 +113527,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1016",
       "sourceType": "event_import",
       "sourceId": "interaction_1016",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113536,7 +113536,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1017",
       "sourceType": "manual",
       "sourceId": "interaction_1017",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113617,7 +113617,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1026",
       "sourceType": "email_signal",
       "sourceId": "interaction_1026",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113626,7 +113626,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1027",
       "sourceType": "manual",
       "sourceId": "interaction_1027",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113707,7 +113707,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1036",
       "sourceType": "event_import",
       "sourceId": "interaction_1036",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113716,7 +113716,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1037",
       "sourceType": "manual",
       "sourceId": "interaction_1037",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113797,7 +113797,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1046",
       "sourceType": "email_signal",
       "sourceId": "interaction_1046",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113806,7 +113806,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1047",
       "sourceType": "manual",
       "sourceId": "interaction_1047",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113887,7 +113887,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1056",
       "sourceType": "event_import",
       "sourceId": "interaction_1056",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113896,7 +113896,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1057",
       "sourceType": "manual",
       "sourceId": "interaction_1057",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113977,7 +113977,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1066",
       "sourceType": "email_signal",
       "sourceId": "interaction_1066",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-03T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -113986,7 +113986,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1067",
       "sourceType": "manual",
       "sourceId": "interaction_1067",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-04T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114067,7 +114067,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1076",
       "sourceType": "event_import",
       "sourceId": "interaction_1076",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-13T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114076,7 +114076,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1077",
       "sourceType": "manual",
       "sourceId": "interaction_1077",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-14T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114157,7 +114157,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1086",
       "sourceType": "email_signal",
       "sourceId": "interaction_1086",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-23T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114166,7 +114166,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1087",
       "sourceType": "manual",
       "sourceId": "interaction_1087",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-24T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114247,7 +114247,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1096",
       "sourceType": "event_import",
       "sourceId": "interaction_1096",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-05T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114256,7 +114256,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1097",
       "sourceType": "manual",
       "sourceId": "interaction_1097",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-06T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114337,7 +114337,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1106",
       "sourceType": "email_signal",
       "sourceId": "interaction_1106",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-15T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114346,7 +114346,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1107",
       "sourceType": "manual",
       "sourceId": "interaction_1107",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-16T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114427,7 +114427,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1116",
       "sourceType": "event_import",
       "sourceId": "interaction_1116",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-25T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114436,7 +114436,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1117",
       "sourceType": "manual",
       "sourceId": "interaction_1117",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-26T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114517,7 +114517,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1126",
       "sourceType": "email_signal",
       "sourceId": "interaction_1126",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-07T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114526,7 +114526,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1127",
       "sourceType": "manual",
       "sourceId": "interaction_1127",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-08T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114607,7 +114607,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1136",
       "sourceType": "event_import",
       "sourceId": "interaction_1136",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-17T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114616,7 +114616,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1137",
       "sourceType": "manual",
       "sourceId": "interaction_1137",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-18T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114697,7 +114697,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1146",
       "sourceType": "email_signal",
       "sourceId": "interaction_1146",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-27T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114706,7 +114706,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1147",
       "sourceType": "manual",
       "sourceId": "interaction_1147",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-28T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114787,7 +114787,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1156",
       "sourceType": "event_import",
       "sourceId": "interaction_1156",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-09T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114796,7 +114796,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1157",
       "sourceType": "manual",
       "sourceId": "interaction_1157",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-10T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114877,7 +114877,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1166",
       "sourceType": "email_signal",
       "sourceId": "interaction_1166",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-19T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114886,7 +114886,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1167",
       "sourceType": "manual",
       "sourceId": "interaction_1167",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-20T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114967,7 +114967,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1176",
       "sourceType": "event_import",
       "sourceId": "interaction_1176",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-01T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -114976,7 +114976,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1177",
       "sourceType": "manual",
       "sourceId": "interaction_1177",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-02T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -115057,7 +115057,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1186",
       "sourceType": "email_signal",
       "sourceId": "interaction_1186",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-11T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -115066,7 +115066,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1187",
       "sourceType": "manual",
       "sourceId": "interaction_1187",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-12T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -115147,7 +115147,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1196",
       "sourceType": "event_import",
       "sourceId": "interaction_1196",
-      "summary": "Discussed post-event follow-up workflow operator and bilingual sales deck review.",
+      "summary": "Discussed semiconductor supply-chain sourcing lead and bilingual sales deck review.",
       "occurredAt": "2026-06-21T15:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -115156,7 +115156,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:interaction:1197",
       "sourceType": "manual",
       "sourceId": "interaction_1197",
-      "summary": "Discussed duplicate contact cleanup and provenance review and privacy-safe contact provenance audit.",
+      "summary": "Discussed D2C brand overseas-expansion partner and hands-on D2C cross-border logistics and payments.",
       "occurredAt": "2026-06-22T16:00:00+09:00",
       "confidence": 0.76,
       "createdBy": "profile_orbit_generated_operator"
@@ -127170,7 +127170,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0007",
       "conversationId": "conversation_007",
       "direction": "internal_note",
-      "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "body": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-08T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127250,7 +127250,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0016",
       "conversationId": "conversation_004",
       "direction": "internal_note",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-17T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127410,7 +127410,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0036",
       "conversationId": "conversation_012",
       "direction": "outbound",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-09T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127426,7 +127426,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0037",
       "conversationId": "conversation_001",
       "direction": "internal_note",
-      "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "body": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-10T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127490,7 +127490,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0046",
       "conversationId": "conversation_010",
       "direction": "internal_note",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-19T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127570,7 +127570,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0056",
       "conversationId": "conversation_008",
       "direction": "internal_note",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-01T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127650,7 +127650,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0067",
       "conversationId": "conversation_007",
       "direction": "internal_note",
-      "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "body": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-12T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127730,7 +127730,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0076",
       "conversationId": "conversation_004",
       "direction": "internal_note",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-21T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127890,7 +127890,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0096",
       "conversationId": "conversation_012",
       "direction": "outbound",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-13T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127906,7 +127906,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0097",
       "conversationId": "conversation_001",
       "direction": "internal_note",
-      "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "body": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-14T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -127970,7 +127970,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0106",
       "conversationId": "conversation_010",
       "direction": "internal_note",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-23T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -128050,7 +128050,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0116",
       "conversationId": "conversation_008",
       "direction": "internal_note",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-05T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -128130,7 +128130,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0127",
       "conversationId": "conversation_007",
       "direction": "internal_note",
-      "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "body": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-16T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -128210,7 +128210,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0136",
       "conversationId": "conversation_004",
       "direction": "internal_note",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-25T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -128370,7 +128370,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0156",
       "conversationId": "conversation_012",
       "direction": "outbound",
-      "body": "Follow up about post-event follow-up workflow operator with a concrete next step.",
+      "body": "Follow up about semiconductor supply-chain sourcing lead with a concrete next step.",
       "occurredAt": "2026-06-17T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -128386,7 +128386,7 @@ export const generatedRelationshipFixtures = {
       "id": "message_0157",
       "conversationId": "conversation_001",
       "direction": "internal_note",
-      "body": "Follow up about duplicate contact cleanup and provenance review with a concrete next step.",
+      "body": "Follow up about D2C brand overseas-expansion partner with a concrete next step.",
       "occurredAt": "2026-06-18T13:00:00+09:00",
       "createdBy": "profile_orbit_generated_operator",
       "source": {
@@ -128438,7 +128438,7 @@ export const generatedRelationshipFixtures = {
         {
           "id": "dashboard_item_002",
           "title": "Review context_share for contact_024",
-          "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+          "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
           "valueType": "knowledge_exchange",
           "source": {
             "type": "agent_action",
@@ -128494,7 +128494,7 @@ export const generatedRelationshipFixtures = {
         {
           "id": "dashboard_item_006",
           "title": "Review event_follow_up for contact_036",
-          "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+          "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
           "valueType": "commercial_opportunity",
           "source": {
             "type": "agent_action",
@@ -128508,7 +128508,7 @@ export const generatedRelationshipFixtures = {
         {
           "id": "dashboard_item_007",
           "title": "Review warm_intro for contact_039",
-          "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+          "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
           "valueType": "knowledge_exchange",
           "source": {
             "type": "agent_action",
@@ -128578,7 +128578,7 @@ export const generatedRelationshipFixtures = {
         {
           "id": "dashboard_item_012",
           "title": "Review event_follow_up for contact_054",
-          "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ privacy-safe contact provenance audit.",
+          "summary": "Need/offer fit: Japan market entry advisor for China SaaS sales ↔ hands-on D2C cross-border logistics and payments.",
           "valueType": "knowledge_exchange",
           "source": {
             "type": "agent_action",
@@ -128634,7 +128634,7 @@ export const generatedRelationshipFixtures = {
         {
           "id": "dashboard_item_016",
           "title": "Review warm_intro for contact_066",
-          "summary": "Need/offer fit: post-event follow-up workflow operator ↔ Mandarin Japanese community marketing channel.",
+          "summary": "Need/offer fit: semiconductor supply-chain sourcing lead ↔ Mandarin Japanese community marketing channel.",
           "valueType": "commercial_opportunity",
           "source": {
             "type": "agent_action",
@@ -128648,7 +128648,7 @@ export const generatedRelationshipFixtures = {
         {
           "id": "dashboard_item_017",
           "title": "Review context_share for contact_069",
-          "summary": "Need/offer fit: duplicate contact cleanup and provenance review ↔ manufacturing DX requirements and buyer feedback.",
+          "summary": "Need/offer fit: D2C brand overseas-expansion partner ↔ manufacturing DX requirements and buyer feedback.",
           "valueType": "knowledge_exchange",
           "source": {
             "type": "agent_action",
