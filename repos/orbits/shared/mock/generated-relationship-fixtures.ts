@@ -18,8 +18,10 @@ export const generatedRelationshipFixtures = {
     {
       "id": "profile_orbit_generated_operator",
       "accountId": "account_orbit_generated",
-      "displayName": "結城 航太郎",
-      "role": "Relationship Operations Lead",
+      "displayName": "李 琼宇",
+      "role": "AI & Computer Vision Engineer",
+      "headline": "Shipped camera AI on 10M+ devices; now building trustworthy GenAI",
+      "organization": "OPPO Japan Research",
       "timezone": "Asia/Tokyo",
       "createdAt": "2026-06-30T14:14:38.537342+00:00",
       "updatedAt": "2026-06-30T14:14:38.537342+00:00"
