@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
@@ -910,6 +911,13 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(unreadCount);
   const [seed, setSeed] = useState<NewThreadSeed | null>(null);
+  // 顶栏（含 backdrop-filter）会成为 fixed 定位的包含块，把面板困在 72px 高的导航条内。
+  // 用 portal 把面板挂到 document.body，让 slide-over 正确覆盖整个视口。
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 挂载后拉取真实聚合计数。
   useEffect(() => {
@@ -986,9 +994,12 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
           </span>
         ) : null}
       </button>
-      {open ? (
-        <RelationshipInboxPanel initialSeed={seed} onClose={() => setOpen(false)} />
-      ) : null}
+      {open && mounted
+        ? createPortal(
+            <RelationshipInboxPanel initialSeed={seed} onClose={() => setOpen(false)} />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

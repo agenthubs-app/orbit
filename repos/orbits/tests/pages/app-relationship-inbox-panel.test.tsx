@@ -25,6 +25,23 @@ test("relationship inbox trigger renders a single top-nav entry with an accessib
   assert.doesNotMatch(html, /data-orbit-real-page="relationship-inbox"/);
 });
 
+test("relationship inbox panel portals to document.body (escapes the filtered top-nav)", async () => {
+  // 顶栏带 backdrop-filter，会成为 fixed 定位的包含块。面板必须 portal 到 body
+  // 才能全视口覆盖，否则被困在导航条高度内。用源码断言守护这个修复不被回退。
+  const source = await import("node:fs").then((fs) =>
+    fs.readFileSync(
+      new URL(
+        "../../app/(app)/app/inbox/relationship-inbox-panel.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+
+  assert.match(source, /createPortal\(/);
+  assert.match(source, /document\.body/);
+});
+
 test("relationship inbox trigger shows an unread badge only when there are unread items", () => {
   const withBadge = renderTrigger({ unreadCount: 3 });
   const withoutBadge = renderTrigger({ unreadCount: 0 });
