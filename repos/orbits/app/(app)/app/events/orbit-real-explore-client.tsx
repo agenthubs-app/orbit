@@ -72,6 +72,8 @@ function EventCard({ event }: { event: OrbitLandingEventView }) {
   const { language, preserveHref, t } = useOrbitLanguage();
   const mapped = mapEvent(event, language === "ja" ? "en" : language);
   const actionLabel = event.status === "upcoming" || event.status === "active" ? t({ en: "Register", zh: "报名" }) : t({ en: "View", zh: "查看" });
+  const canEnter = Boolean(event.stats.youRsvped) && (event.status === "active" || event.status === "ended");
+  const enterLabel = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : t({ en: "Enter", zh: "进入现场" });
   const cardTime = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", ...tz }).format(new Date(event.startsAt));
 
   return (
@@ -96,7 +98,11 @@ function EventCard({ event }: { event: OrbitLandingEventView }) {
           <div style={{ flex: 1 }} />
           <div style={{ alignItems: "center", borderTop: "1px solid var(--border)", display: "flex", gap: 12, justifyContent: "space-between", paddingTop: 11 }}>
             <span style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 13, gap: 6 }}><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
-            <span style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4 }}>{actionLabel}<Icon name="chevR" size={14} /></span>
+            {canEnter ? (
+              <span role="button" tabIndex={0} onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.assign(preserveHref(productHref("/party"))); }} className="btn btn-soft btn-sm" style={{ height: 30, fontSize: 12.5 }}>{enterLabel}<Icon name="arrowUR" size={14} /></span>
+            ) : (
+              <span style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4 }}>{actionLabel}<Icon name="chevR" size={14} /></span>
+            )}
           </div>
         </div>
       </article>

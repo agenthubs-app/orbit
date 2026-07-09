@@ -79,7 +79,8 @@ function eventPlace(event: OrbitLandingEventView, t: Translate) {
 function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate }) {
   const date = homeDate(event.startsAt, language, t);
   const place = eventPlace(event, t);
-  const canEnter = event.status === "active";
+  const canEnter = event.status === "active" || event.status === "ended";
+  const enterLabel = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : t({ en: "Enter event", zh: "进入活动" });
   const name = event.name;
   const content = (
     <>
@@ -92,7 +93,7 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
         </span>
       </span>
       <span style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 10 }}>
-        {canEnter ? <span className="btn btn-soft btn-sm" style={{ height: 32, pointerEvents: "none" }}>{t({ en: "Enter event", zh: "进入活动" })}<Icon name="arrowUR" size={14} /></span> : <StatusBadge language={language} status={event.status} />}
+        {canEnter ? <span className="btn btn-soft btn-sm" style={{ height: 32, pointerEvents: "none" }}>{enterLabel}<Icon name="arrowUR" size={14} /></span> : <StatusBadge language={language} status={event.status} />}
         <Icon color="var(--text-4)" name="chevR" size={17} />
       </span>
     </>
@@ -130,7 +131,8 @@ function MyEventsBlock({ events, language, t }: { events: OrbitLandingEventView[
 
 function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate }) {
   const date = homeDate(event.startsAt, language, t);
-  const canEnter = event.status === "active";
+  const canEnter = event.status === "active" || event.status === "ended";
+  const enterLabel = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : t({ en: "Enter event", zh: "进入活动" });
   const name = event.name;
   const place = eventPlace(event, t);
   const content = (
@@ -145,7 +147,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
         {place ? <span className="orbit-account-event-meta"><Icon color="var(--text-3)" name="pin" size={15} />{place}</span> : null}
         <span className="orbit-account-event-foot">
           <span style={{ color: "var(--text-3)", fontSize: 13 }}>{event.status === "ended" ? t({ en: "Past event", zh: "个人历史活动" }) : t({ en: "Registered event", zh: "个人报名活动" })}</span>
-          <span className={canEnter ? "btn btn-soft btn-sm" : "orbit-account-event-link"}>{canEnter ? t({ en: "Enter event", zh: "进入活动" }) : t({ en: "View event", zh: "查看活动" })}{canEnter ? <Icon name="arrowUR" size={14} /> : <Icon name="chevR" size={14} />}</span>
+          <span className={canEnter ? "btn btn-soft btn-sm" : "orbit-account-event-link"}>{canEnter ? enterLabel : t({ en: "View event", zh: "查看活动" })}{canEnter ? <Icon name="arrowUR" size={14} /> : <Icon name="chevR" size={14} />}</span>
         </span>
       </span>
     </>
