@@ -122,6 +122,18 @@ html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav .orbit-nav-link.i
   background: rgba(23, 33, 31, 0.06);
 }
 
+/* Inverted-contrast controls pair a var(--ink) background with near-black text
+   (#0B0A15) — correct only when ink is bright (dark theme). In the light theme
+   ink is dark, so that near-black text vanishes into the dark pill (the chips
+   read as solid black blobs). Restore white text on these dark pills. */
+html[data-theme="light"] [data-orbit-real-page] .chip.is-active,
+html[data-theme="light"] [data-orbit-real-page] .btn-dark,
+html[data-theme="light"] [data-orbit-real-page] .btn-primary,
+html[data-theme="light"] [data-orbit-real-page] .orbit-organizer-seg button.is-active,
+html[data-theme="light"] [data-orbit-real-page] .orbit-view-toggle button.is-active {
+  color: #fff;
+}
+
 .orbit-theme-toggle {
   position: fixed;
   right: 18px;
