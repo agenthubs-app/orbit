@@ -346,6 +346,7 @@ export type ChatConversationMessageResult =
 export const ASYNC_CONVERSATION_ERROR_CODES = [
   "ASYNC_CONVERSATION_NOT_FOUND",
   "ASYNC_CONVERSATION_ACTION_NOT_FOUND",
+  "ASYNC_CONVERSATION_DRAFT_CONTEXT_REQUIRED",
 ] as const;
 
 export type AsyncConversationErrorCode =
@@ -564,6 +565,36 @@ export type AsyncConversationWorkspaceResult =
 
 export type AsyncConversationStageResult =
   | AsyncConversationStageSuccess
+  | AsyncConversationFailure;
+
+// 从一封消息草稿发起一个新的对话线程（"每发起一封邮件 = 打开一个主题"）。
+// 这是 draft→thread 的写入入口：draft-generator 生成首封 → 确认 → 成为线程第一条。
+// mock-first：只生成本地 staged 线程，不发送、不落库、不触发任何外部副作用。
+export interface AsyncConversationCreateFromDraftInput {
+  contactId?: string | null;
+  participantName?: string | null;
+  organization?: string | null;
+  subject?: string | null;
+  body?: string | null;
+  sourceLabel?: string | null;
+}
+
+export interface AsyncConversationCreatePayload {
+  state: "staged_created";
+  thread: AsyncConversationThread;
+  inboxItem: AsyncConversationInboxItem;
+  noSideEffectStatement: string;
+  sideEffects: AsyncConversationNoSideEffects;
+  provenance: AsyncConversationProvenance;
+}
+
+export interface AsyncConversationCreateSuccess {
+  success: true;
+  data: AsyncConversationCreatePayload;
+}
+
+export type AsyncConversationCreateResult =
+  | AsyncConversationCreateSuccess
   | AsyncConversationFailure;
 
 export function chatConversationMockFailureToAppError(

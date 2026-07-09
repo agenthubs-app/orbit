@@ -1,0 +1,146 @@
+import { NextResponse } from "next/server";
+import {
+  failure,
+  runtimeBoundaryHeaders,
+  success,
+  RUNTIME_BOUNDARY_HEADER_VALUES,
+} from "../../../../shared/api/envelope";
+import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
+import {
+  AppError,
+  getHttpStatusForAppErrorCode,
+} from "../../../../shared/errors/app-error";
+import type {
+  AsyncConversationCreateFromDraftInput,
+  AsyncConversationCreateResult,
+  AsyncConversationInput,
+  AsyncConversationWorkspaceResult,
+} from "../../../../features/chat/service";
+import { createAsyncRelationshipConversationService } from "../../../../features/chat/service-factory";
+
+// 关系收件箱面板的数据入口：返回 async correspondence workspace（inbox + 选中线程 +
+// 草稿回复 + 上下文）。传 conversationId 选中某条线程。
+//
+// 该服务当前只有 mock 实现，因此显式 pin 到 "mock"（见
+// features/chat/ASYNC_CONVERSATION_MOCK_TO_LIVE.md）：即使 app runtime 用
+// ORBIT_MODULE_MODE=live，也不去解析尚未实现的 live async provider。
+// 所有 side effect 保持 false：不发送、不通知、不写日历、不落库、不联网。
+export const dynamic = "force-dynamic";
+
+function readInput(request: Request): AsyncConversationInput {
+  const searchParams = new URL(request.url).searchParams;
+
+  return {
+    conversationId: searchParams.get("conversationId"),
+  };
+}
+
+function responseForResult(
+  result: AsyncConversationWorkspaceResult,
+  mode: ReturnType<typeof resolveFeatureMode>,
+): Response {
+  if (result.success === false) {
+    const appError = new AppError(
+      result.error.appCode,
+      result.error.message,
+    );
+
+    return NextResponse.json(
+      failure(appError, {
+        boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
+        asyncConversationErrorCode: result.error.code,
+        mode,
+        privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
+        provenance:
+          "Async relationship conversation failure came from the local correspondence preview boundary.",
+        service: "async-relationship-conversation-mock",
+      }),
+      {
+        headers: runtimeBoundaryHeaders(mode),
+        status: getHttpStatusForAppErrorCode(appError.code),
+      },
+    );
+  }
+
+  return NextResponse.json(success(result.data), {
+    headers: runtimeBoundaryHeaders(mode),
+    status: 200,
+  });
+}
+
+export async function GET(request: Request): Promise<Response> {
+  const mode = resolveFeatureMode();
+  // 显式 mock：async correspondence 尚无 live provider。
+  const service = createAsyncRelationshipConversationService("mock");
+  const result = await service.getCorrespondenceWorkspace(readInput(request));
+
+  return responseForResult(result, mode);
+}
+
+type JsonRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function readJsonBody(request: Request): Promise<JsonRecord> {
+  try {
+    const body = (await request.json()) as unknown;
+
+    return isRecord(body) ? body : {};
+  } catch {
+    return {};
+  }
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function createResponseForResult(
+  result: AsyncConversationCreateResult,
+  mode: ReturnType<typeof resolveFeatureMode>,
+): Response {
+  if (result.success === false) {
+    const appError = new AppError(result.error.appCode, result.error.message);
+
+    return NextResponse.json(
+      failure(appError, {
+        boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
+        asyncConversationErrorCode: result.error.code,
+        mode,
+        privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
+        provenance:
+          "Async relationship conversation create-from-draft failure came from the local correspondence preview boundary.",
+        service: "async-relationship-conversation-mock",
+      }),
+      {
+        headers: runtimeBoundaryHeaders(mode),
+        status: getHttpStatusForAppErrorCode(appError.code),
+      },
+    );
+  }
+
+  return NextResponse.json(success(result.data), {
+    headers: runtimeBoundaryHeaders(mode),
+    status: 200,
+  });
+}
+
+// draft→thread 写入入口：从确认后的消息草稿发起一个新的对话线程（本地 staged 预览）。
+export async function POST(request: Request): Promise<Response> {
+  const mode = resolveFeatureMode();
+  const body = await readJsonBody(request);
+  const input: AsyncConversationCreateFromDraftInput = {
+    contactId: readString(body.contactId),
+    participantName: readString(body.participantName),
+    organization: readString(body.organization),
+    subject: readString(body.subject),
+    body: readString(body.body),
+    sourceLabel: readString(body.sourceLabel),
+  };
+  const service = createAsyncRelationshipConversationService("mock");
+  const result = await service.createConversationFromDraft(input);
+
+  return createResponseForResult(result, mode);
+}

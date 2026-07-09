@@ -10,6 +10,8 @@ import type {
   AsyncConversationStageActionInput,
   AsyncConversationStageResult,
   AsyncConversationWorkspaceResult,
+  AsyncConversationCreateFromDraftInput,
+  AsyncConversationCreateResult,
 } from "./contract";
 import {
   chatConversationMockFailureContext,
@@ -52,6 +54,10 @@ export interface AsyncRelationshipConversationService {
   stageConversationAction: (
     input: AsyncConversationStageActionInput,
   ) => AsyncRelationshipConversationServiceResult<AsyncConversationStageResult>;
+  // draft→thread：从一封确认后的消息草稿发起新的对话线程（mock 生成本地 staged 线程）。
+  createConversationFromDraft: (
+    input: AsyncConversationCreateFromDraftInput,
+  ) => AsyncRelationshipConversationServiceResult<AsyncConversationCreateResult>;
 }
 
 export {
@@ -71,4 +77,6 @@ export type {
   AsyncConversationStageActionInput,
   AsyncConversationStageResult,
   AsyncConversationWorkspaceResult,
+  AsyncConversationCreateFromDraftInput,
+  AsyncConversationCreateResult,
 };

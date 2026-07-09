@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useOrbitLanguage } from "./orbit-language-context";
 import { OrbitTopNav, productHref } from "./orbit-public-shell";
 import { Icon, Logo } from "./orbit-reference-primitives";
+import { RelationshipInboxTrigger } from "./inbox/relationship-inbox-panel";
 
 function accountHref(prototypeHref: string) {
   if (prototypeHref === "/home") return "/app/home";
@@ -31,7 +32,13 @@ export function AccountTopNav({
       active={active}
       agentActive={agentTone ? agentTone === "selected" : active === "agent"}
       meHref="/app/home"
-      rightExtra={rightExtra}
+      rightExtra={
+        // 关系收件箱入口在所有 /app/** 顶栏默认出现；页面传入的 rightExtra 仍保留。
+        <>
+          {rightExtra}
+          <RelationshipInboxTrigger />
+        </>
+      }
     />
   );
 }

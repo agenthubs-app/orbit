@@ -13,6 +13,7 @@ import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
 import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
+import { openRelationshipInboxCompose } from "../inbox/relationship-inbox-panel";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
 
 type Copy = { en: string; zh: string };
@@ -431,7 +432,14 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const draftEmail = () => setToast(t({ en: "Email draft started", zh: "已开始起草邮件" }));
+  // "起草邮件"进入关系收件箱的发起新对话流程，预填当前联系人。
+  const draftEmail = () => {
+    openRelationshipInboxCompose({
+      recipient: contact.displayName,
+      organization: contact.company,
+    });
+    setToast(t({ en: "Draft started in inbox", zh: "已在收件箱开始起草" }));
+  };
   const setStage = (next: OrbitContactPipelineStatus) => {
     setStatus(next);
     const label = viewModel.pipelineStatuses.find((item) => item.value === next)?.label ?? "";

@@ -1,5 +1,7 @@
 import {
   CHAT_CONVERSATION_MOCK_ERROR_DEFINITIONS,
+  type AsyncConversationCreateFromDraftInput,
+  type AsyncConversationCreateResult,
   type AsyncConversationDraftReply,
   type AsyncConversationFailure,
   type AsyncConversationInboxItem,
@@ -11,6 +13,7 @@ import {
   type AsyncConversationStageActionInput,
   type AsyncConversationStagePayload,
   type AsyncConversationStageResult,
+  type AsyncConversationThread,
   type AsyncConversationWorkspacePayload,
   type AsyncConversationWorkspaceResult,
   type ChatConversationListPayload,
@@ -617,6 +620,13 @@ function asyncFailure(
       recovery:
         "Choose a conversation from the relationship inbox before reviewing a thread.",
     },
+    ASYNC_CONVERSATION_DRAFT_CONTEXT_REQUIRED: {
+      appCode: "VALIDATION_ERROR",
+      message:
+        "A subject and body are required before staging a new relationship conversation from a draft.",
+      recovery:
+        "Generate or write a draft subject and body before creating a new conversation thread.",
+    },
   };
 
   return {
@@ -767,6 +777,98 @@ function normalizeAsyncActionId(
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function asyncTrimmed(value?: string | null): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function asyncSlug(value: string): string {
+  const normalized = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+
+  return normalized || "new";
+}
+
+// 从确认后的消息草稿构建一个新的本地 staged 对话线程。
+// 首条消息 = 草稿正文，发送方为当前用户，deliveryState=staged 本地预览；
+// 不发送、不通知、不写日历、不落库、不联网。id/时间戳按输入确定性派生。
+function createFromDraftPayload(
+  input: AsyncConversationCreateFromDraftInput,
+): AsyncConversationCreateResult {
+  const subject = asyncTrimmed(input.subject);
+  const body = asyncTrimmed(input.body);
+
+  if (!subject || !body) {
+    return asyncFailure("ASYNC_CONVERSATION_DRAFT_CONTEXT_REQUIRED");
+  }
+
+  const participantName = asyncTrimmed(input.participantName) || "New contact";
+  const organization = asyncTrimmed(input.organization);
+  const contactId =
+    asyncTrimmed(input.contactId) || `contact:${asyncSlug(participantName)}`;
+  const conversationId = `conversation:new:${asyncSlug(`${participantName}-${subject}`)}`;
+  const stagedAt = "2026-07-09T09:00:00+09:00";
+  const sourceLabel =
+    asyncTrimmed(input.sourceLabel) ||
+    "Staged from a reviewed message draft";
+  const sourceContextLabels = [sourceLabel];
+  const evidenceId = `evidence:conversation:new:${asyncSlug(subject)}`;
+
+  const firstMessage: AsyncConversationMessage = {
+    messageId: `message:new:${asyncSlug(subject)}:1`,
+    senderName: "Alex Tan",
+    senderRole: "orbit_user",
+    body,
+    occurredAt: stagedAt,
+    // 首条是本地草稿快照，未发送。
+    deliveryState: "local_draft_snapshot",
+    sourceContextLabel: sourceLabel,
+    evidenceIds: [evidenceId],
+  };
+
+  const thread: AsyncConversationThread = {
+    conversationId,
+    threadId: `thread:new:${asyncSlug(subject)}`,
+    subject,
+    correspondenceMode: "asynchronous",
+    realtimeTransportEnabled: false,
+    messages: [firstMessage],
+    summary: `New relationship thread staged from a reviewed draft to ${participantName}.`,
+    sourceContextLabels,
+  };
+
+  const inboxItem: AsyncConversationInboxItem = {
+    conversationId,
+    contactId,
+    participantName,
+    organization,
+    subject,
+    preview: body,
+    lastCorrespondenceAt: stagedAt,
+    unreadCount: 0,
+    nextActionLabel: "Review the staged draft before any send",
+    sourceContextLabels,
+  };
+
+  return {
+    success: true,
+    data: cloneAsyncPayload({
+      state: "staged_created",
+      thread,
+      inboxItem,
+      noSideEffectStatement:
+        "No external message, notification, calendar entry, saved record, or network side effect occurred. The thread is a local staged preview.",
+      sideEffects: asyncNoSideEffects,
+      provenance: {
+        ...asyncConversationProvenance,
+        evidenceIds: [evidenceId],
+        sourceLabel: "Mock staged conversation created from a reviewed draft",
+      },
+    }),
+  };
+}
+
 export function createMockAsyncRelationshipConversationService(): AsyncRelationshipConversationService {
   return {
     getCorrespondenceWorkspace(input = {}): AsyncConversationWorkspaceResult {
@@ -795,6 +897,12 @@ export function createMockAsyncRelationshipConversationService(): AsyncRelations
         success: true,
         data: cloneAsyncPayload(stage),
       };
+    },
+
+    createConversationFromDraft(
+      input: AsyncConversationCreateFromDraftInput,
+    ): AsyncConversationCreateResult {
+      return createFromDraftPayload(input);
     },
   };
 }
