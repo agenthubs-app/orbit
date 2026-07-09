@@ -80,6 +80,9 @@ export function OrbitCardsInteractions() {
     const onClick = (e: MouseEvent) => {
       const target = e.target as Element;
       if (!target || !target.closest) return;
+      // Buttons that open the React relationship-inbox compose panel handle
+      // themselves — never also open the legacy email sheet (double panel).
+      if (target.closest('[data-inbox-compose]')) return;
       if (!target.closest('[data-orbit-real-page], .nc-sheet, .nc-scrim, .nc-toast-host')) return;
 
       if (target.closest("[data-nc-close], .nc-scrim")) { closeSheet(); return; }

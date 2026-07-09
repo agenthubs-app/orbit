@@ -475,7 +475,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
               </div>
               <div className="nc-hero-cta">
                 <a className="btn btn-ghost" href="#" onClick={(event) => event.preventDefault()}><Icon name="edit" size={16} />{t({ en: "Edit", zh: "编辑" })}</a>
-                <button className="btn btn-primary" onClick={draftEmail} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
+                <button className="btn btn-primary" data-inbox-compose onClick={draftEmail} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
               </div>
             </div>
 
@@ -519,7 +519,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             </div>
           </div>
 
-          <button className="btn btn-primary btn-block" onClick={draftEmail} style={{ margin: "16px 0" }} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
+          <button className="btn btn-primary btn-block" data-inbox-compose onClick={draftEmail} style={{ margin: "16px 0" }} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <AboutCard contact={contact} t={t} />
