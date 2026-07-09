@@ -13,6 +13,7 @@ import {
   type AppContactsSearchParams,
 } from "./compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { contactsRouteToOrbitContactsViewModel } from "./compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
+import { applyOrbitContactsPresentation } from "../orbit-contacts-presentation";
 import { OrbitRealCardsList } from "./orbit-real-contacts";
 
 type ContactsRouteState =
@@ -69,7 +70,10 @@ export default async function AppContactsPage({
         <div data-orbit-route="app-contacts-route">
           <OrbitRealCardsList
             viewModel={localizeOrbitTree(
-              contactsRouteToOrbitContactsViewModel(routeModel),
+              applyOrbitContactsPresentation(
+                contactsRouteToOrbitContactsViewModel(routeModel),
+                language ?? "zh",
+              ),
               language ?? "zh",
             )}
           />
