@@ -184,7 +184,9 @@ Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限�
 
 主要产品入口是 `/app`。Orbit AI 可以打开联系人、活动、跟进、聊天、关系健康或下一步面板，但页面内容仍来自对应模块。
 
-`/app/agent` 的聊天框直接调用 `/api/ai/conversations`（POST，带 `locale` 和最近 8 轮 `history`），把返回的 `contact_recommendations` artifact 在页面自己的 view-model 映射后渲染到侧边人脉面板；卡片文案（标题、职位、推荐依据、可信标签）由 artifact 服务按 locale 本地化，页面不再使用本地关键词剧本回答。assistant 气泡按轻量 markdown 渲染。
+`/app/agent` 的聊天框直接调用 `/api/ai/conversations`（POST，带 `locale` 和最近 8 轮 `history`），把返回的 `contact_recommendations` / `event_recommendations` / `followup_queue` artifact 在页面自己的 view-model 映射后渲染到侧边面板（人脉卡 / 活动卡 / 待办卡）；卡片文案由 artifact 服务按 locale 本地化（followup 卡对种子模板标题做确定性重组：`跟进 <姓名>` + 来源方式本地化），页面不再使用本地关键词剧本回答。assistant 气泡按轻量 markdown 渲染。
+
+会面备忘录（备忘录/会前准备）复用 `chat.context`：planner 把人名放进 `arguments.searchTerms`，synthesis 按固定四段模板输出（背景/上次进展/建议话题/待确认事项），只允许使用工具结果与对话历史里的事实，缺口写「待补充」。
 
 `history` 在服务端的用途：route 校验角色和长度后透传；runtime 把同一份最近轮次交给 planner（消解追问指代并按前文目标路由工具）、artifact contextMessages（参与检索词抽取与路径选择）和 synthesis（保持多轮连贯）。会话仍不做服务端持久化，历史由页面随每次请求携带。
 

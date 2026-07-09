@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -9,6 +9,7 @@ import type {
   OrbitAgentHistoryView,
   OrbitAgentPeopleResultView,
   OrbitAgentScenarioView,
+  OrbitAgentTodoResultView,
   OrbitAgentViewModel,
 } from "../orbit-agent-route-view-model";
 import { AccountTopNav } from "../orbit-account-shell";
@@ -41,6 +42,10 @@ type AgentHistoryLanguage = "en" | "zh" | "ja";
 const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
 const AGENT_CHAT_SESSIONS_API_PATH = "/api/ai/conversations/sessions";
 const MAX_AGENT_CHAT_HISTORY_SESSIONS = 12;
+const HISTORY_SIDEBAR_DEFAULT_WIDTH = 248;
+const HISTORY_SIDEBAR_MAX_WIDTH = 380;
+const HISTORY_SIDEBAR_MIN_WIDTH = 220;
+const MAX_AGENT_CHAT_TITLE_LENGTH = 18;
 
 function depthFor(t: Translate) {
   return {
@@ -65,8 +70,17 @@ function parseDate(value: string) {
   return date && Number.isFinite(date.getTime()) ? date : null;
 }
 
-function isPeopleResult(item: OrbitAgentPeopleResultView | OrbitAgentEventResultView): item is OrbitAgentPeopleResultView {
+type AgentResultItem =
+  | OrbitAgentPeopleResultView
+  | OrbitAgentEventResultView
+  | OrbitAgentTodoResultView;
+
+function isPeopleResult(item: AgentResultItem): item is OrbitAgentPeopleResultView {
   return "connection" in item;
+}
+
+function isTodoResult(item: AgentResultItem): item is OrbitAgentTodoResultView {
+  return "due" in item;
 }
 
 // /api/ai/conversations 返回的 artifact 载荷里，本页只消费 contact_recommendations
@@ -95,7 +109,7 @@ interface AgentArtifactRecord {
 
 function artifactOfKind(
   artifacts: unknown,
-  kind: "contact_recommendations" | "event_recommendations",
+  kind: "contact_recommendations" | "event_recommendations" | "followup_queue",
 ): AgentArtifactRecord | null {
   const list = Array.isArray(artifacts) ? (artifacts as AgentArtifactRecord[]) : [];
 
@@ -203,10 +217,36 @@ function historyContentFor(turn: AgentMessage): string {
       return `${index + 1}. ${connection.displayName}（${identity}）匹配度 ${item.match}% — ${item.reason}`;
     }
 
+    if (isTodoResult(item)) {
+      return `${index + 1}. ${item.title}（${[item.contactName, item.organization].filter(Boolean).join(" · ")}）到期 ${item.due} 优先级 ${item.priority} — ${item.reason}`;
+    }
+
     return `${index + 1}. ${item.event.name}（${item.event.place}）时间 ${item.event.startsAt} 匹配分 ${item.score} — ${item.reason}`;
   });
 
   return `${text}\n[本轮推荐明细]\n${lines.join("\n")}`;
+}
+
+// followup_queue artifact → 待办/行程卡片视图。
+function todoItemsFromArtifact(
+  artifact: AgentArtifactRecord | null,
+): OrbitAgentTodoResultView[] {
+  const items =
+    artifact?.result?.generatedView?.sections?.flatMap(
+      (section) => section.items ?? [],
+    ) ?? [];
+
+  return items.map((item, index) => ({
+    contactName: item.subtitle ?? "",
+    due: artifactMetadataValue(item, ["到期", "Due"]),
+    id: String(item.id ?? `todo-${index}`),
+    organization: artifactMetadataValue(item, ["组织", "Organization"]),
+    priority: artifactMetadataValue(item, ["优先级", "Priority"]) || item.confidenceLabel || "",
+    reason: item.reason ?? "",
+    sourceLabel: artifactMetadataValue(item, ["来源", "Source"]),
+    task: item.body ?? "",
+    title: item.title ?? "",
+  }));
 }
 
 function currentAgentQuery() {
@@ -235,7 +275,7 @@ function isStoredAgentMessage(value: unknown): value is AgentMessage {
   return (
     value.role === "assistant" &&
     Array.isArray(value.items) &&
-    (value.kind === "people" || value.kind === "events") &&
+    (value.kind === "people" || value.kind === "events" || value.kind === "todos") &&
     typeof value.panelTitle === "string"
   );
 }
@@ -322,19 +362,87 @@ export function agentChatHistorySessionsToHistory(
       const firstUserMessage =
         session.messages.find((message) => message.role === "user")?.text ??
         session.title;
+      const title = titleFromMessages(session.messages) || session.title;
 
       return {
         group,
         id: `session:${session.id}`,
         q: firstUserMessage,
         sessionId: session.id,
-        title: session.title,
+        title,
         when: group,
       };
     });
 }
 
-function titleFromMessages(messages: readonly AgentMessage[]): string {
+function cleanAgentTitleText(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[?？!！。.,，;；:：]+$/g, "");
+}
+
+function truncateAgentChatTitle(value: string): string {
+  const text = cleanAgentTitleText(value);
+
+  return text.length > MAX_AGENT_CHAT_TITLE_LENGTH
+    ? `${text.slice(0, MAX_AGENT_CHAT_TITLE_LENGTH).trim()}...`
+    : text;
+}
+
+function clampHistorySidebarWidth(value: number): number {
+  return Math.min(
+    HISTORY_SIDEBAR_MAX_WIDTH,
+    Math.max(HISTORY_SIDEBAR_MIN_WIDTH, Math.round(value)),
+  );
+}
+
+function compactTitlePhrase(subject: string, suffix: string): string {
+  const text = cleanAgentTitleText(subject)
+    .replace(/^(今天|明天|本周|下周|这个月|本月|适合|適合|关于|有关|围绕)\s*/i, "")
+    .replace(/(的人|的联系人|联系人|人脉|活动|会议|峰会|邮件|消息|草稿)$/i, "")
+    .trim();
+  const joiner = /^[\x00-\x7F]+$/.test(text) && /[^\x00-\x7F]/.test(suffix) ? " " : "";
+  const title = suffix && text && !text.endsWith(suffix) ? `${text}${joiner}${suffix}` : text;
+
+  return truncateAgentChatTitle(title || subject || suffix);
+}
+
+export function compactAgentChatTitleFromQuestion(question: string): string {
+  const cleaned = cleanAgentTitleText(question);
+  const firstClause = cleanAgentTitleText(
+    cleaned.split(/[，,。.!！?？；;\n]/)[0] ?? cleaned,
+  );
+
+  if (!firstClause) {
+    return "New chat";
+  }
+
+  const chatSubject = firstClause.match(/聊\s*([^，,。.!！?？；;的人]+?)\s*的人/);
+  if (chatSubject?.[1]) {
+    return compactTitlePhrase(chatSubject[1], "人脉");
+  }
+
+  const meetingEvent = firstClause.match(/见\s*([^，,。.!！?？；;的活动]+?)\s*的?活动/i);
+  if (meetingEvent?.[1]) {
+    return compactTitlePhrase(meetingEvent[1], "见面活动");
+  }
+
+  const hasEventIntent = /活动|会议|峰会|event|conference/i.test(cleaned);
+  const hasDraftIntent = /邮件|消息|草稿|email|message|draft/i.test(cleaned);
+  const hasPeopleIntent =
+    /人脉|联系人|认识|找人|找.*人|适合聊|connect|contact|people/i.test(cleaned);
+  const suffix = hasDraftIntent ? "消息草稿" : hasEventIntent ? "活动" : hasPeopleIntent ? "人脉" : "";
+  const subject = firstClause
+    .replace(/^(请|请帮我|帮我|麻烦|可以|能不能|能否|我想|想|给我|帮忙)\s*/i, "")
+    .replace(/^(找|寻找|推荐|认识|安排|写|起草|总结|生成)\s*/i, "")
+    .replace(/^(一下|一些|几个|一个|适合|適合)\s*/i, "")
+    .replace(/^(今天|明天|本周|下周|这个月|本月)\s*/i, "");
+
+  return compactTitlePhrase(subject || firstClause, suffix);
+}
+
+export function titleFromMessages(messages: readonly AgentMessage[]): string {
   const firstUserMessage =
     messages.find((message) => message.role === "user")?.text.trim() ?? "";
 
@@ -342,9 +450,7 @@ function titleFromMessages(messages: readonly AgentMessage[]): string {
     return "New chat";
   }
 
-  return firstUserMessage.length > 28
-    ? `${firstUserMessage.slice(0, 28)}...`
-    : firstUserMessage;
+  return compactAgentChatTitleFromQuestion(firstUserMessage);
 }
 
 function panelFromMessages(messages: readonly AgentMessage[]): AgentPanel | null {
@@ -430,6 +536,21 @@ async function persistStoredAgentChatSession(
       body: JSON.stringify({ session }),
       headers: { "content-type": "application/json" },
       method: "POST",
+    });
+    const payload = await readJsonResponse(response);
+
+    return response.ok && isRecord(payload) && payload.success === true;
+  } catch {
+    return false;
+  }
+}
+
+async function deleteStoredAgentChatSession(
+  sessionId: string,
+): Promise<boolean> {
+  try {
+    const response = await fetch(agentChatSessionsApiPath(sessionId), {
+      method: "DELETE",
     });
     const payload = await readJsonResponse(response);
 
@@ -536,14 +657,35 @@ function AgentHistoryList({
   activeQ,
   activeSessionId,
   history,
+  onDelete,
   onPick,
 }: {
   activeQ: string;
   activeSessionId: string | null;
   history: OrbitAgentHistoryView[];
+  onDelete: (history: OrbitAgentHistoryView) => void;
   onPick: (history: OrbitAgentHistoryView) => void;
 }) {
+  const { t } = useOrbitLanguage();
+  const [historyMenuOpenId, setHistoryMenuOpenId] = useState<string | null>(null);
+  const [hoveredHistoryId, setHoveredHistoryId] = useState<string | null>(null);
   const groups = useMemo(() => [...new Set(history.map((item) => item.group))], [history]);
+
+  useEffect(() => {
+    if (!historyMenuOpenId) {
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setHistoryMenuOpenId(null);
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [historyMenuOpenId]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -560,34 +702,128 @@ function AgentHistoryList({
                   (item.sessionId && item.sessionId === activeSessionId) ||
                     (activeQ && item.q === activeQ),
                 );
+                const menuOpen = historyMenuOpenId === item.id;
+                const controlsVisible = active || menuOpen || hoveredHistoryId === item.id;
 
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    onClick={() => onPick(item)}
+                    onMouseEnter={() => setHoveredHistoryId(item.id)}
+                    onMouseLeave={() => {
+                      setHoveredHistoryId((current) => (current === item.id ? null : current));
+                    }}
                     style={{
                       alignItems: "center",
                       background: active ? "var(--accent-softer)" : "transparent",
-                      border: "none",
                       borderRadius: "var(--r-sm)",
-                      cursor: "pointer",
                       display: "flex",
-                      fontFamily: "var(--ff)",
                       gap: 10,
-                      padding: "9px 10px",
-                      textAlign: "left",
+                      padding: "2px 4px 2px 10px",
+                      position: "relative",
                       width: "100%",
                     }}
                   >
-                    <Icon name="message" size={15} color={active ? "var(--accent)" : "var(--text-4)"} />
-                    <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {item.title}
-                    </span>
-                    <span className="mono" style={{ color: "var(--text-4)", flexShrink: 0, fontSize: 11 }}>
-                      {item.when}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHistoryMenuOpenId(null);
+                        onPick(item);
+                      }}
+                      style={{
+                        alignItems: "center",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        flex: 1,
+                        fontFamily: "var(--ff)",
+                        gap: 10,
+                        minWidth: 0,
+                        padding: "7px 0",
+                        textAlign: "left",
+                      }}
+                    >
+                      <Icon name="message" size={15} color={active ? "var(--accent)" : "var(--text-4)"} />
+                      <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {item.title}
+                      </span>
+                    </button>
+                    {item.sessionId ? (
+                      <>
+                        <button
+                          aria-expanded={menuOpen}
+                          aria-haspopup="menu"
+                          aria-label={t({ en: "More actions", zh: "更多操作" })}
+                          data-orbit-agent-history-menu-button={item.sessionId}
+                          onClick={() => setHistoryMenuOpenId(menuOpen ? null : item.id)}
+                          title={t({ en: "More actions", zh: "更多操作" })}
+                          type="button"
+                          style={{
+                            alignItems: "center",
+                            background: menuOpen ? "var(--surface-2)" : "transparent",
+                            border: "none",
+                            borderRadius: 8,
+                            color: active ? "var(--accent)" : "var(--text-4)",
+                            cursor: "pointer",
+                            display: "flex",
+                            flexShrink: 0,
+                            height: 28,
+                            justifyContent: "center",
+                            opacity: controlsVisible ? 1 : 0.46,
+                            width: 28,
+                          }}
+                        >
+                          <Icon name="more" size={16} />
+                        </button>
+                        {menuOpen ? (
+                          <div
+                            data-orbit-agent-history-menu={item.sessionId}
+                            role="menu"
+                            style={{
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              borderRadius: 10,
+                              boxShadow: "var(--sh-pop)",
+                              minWidth: 132,
+                              padding: 6,
+                              position: "absolute",
+                              right: 2,
+                              top: 36,
+                              zIndex: 20,
+                            }}
+                          >
+                            <button
+                              data-orbit-agent-history-delete={item.sessionId}
+                              onClick={() => {
+                                setHistoryMenuOpenId(null);
+                                onDelete(item);
+                              }}
+                              role="menuitem"
+                              type="button"
+                              style={{
+                                alignItems: "center",
+                                background: "transparent",
+                                border: "none",
+                                borderRadius: 8,
+                                color: "var(--danger, #C2410C)",
+                                cursor: "pointer",
+                                display: "flex",
+                                fontFamily: "var(--ff)",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                height: 34,
+                                padding: "0 10px",
+                                textAlign: "left",
+                                width: "100%",
+                              }}
+                            >
+                              {t({ en: "Delete", zh: "删除对话" })}
+                            </button>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
                 );
               })}
           </div>
@@ -740,12 +976,67 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
   );
 }
 
+// 待办/行程卡片：到期 + 优先级 + 联系人 + 建议动作，点击进入跟进页复核。
+function AgentTodoCard({ item, navigate, t }: { item: OrbitAgentTodoResultView; navigate: (href: string) => void; t: Translate }) {
+  const priorityColor =
+    item.priority === t({ en: "Today", zh: "今天" })
+      ? { color: "var(--amber)", soft: "var(--amber-soft)" }
+      : item.priority === t({ en: "This week", zh: "本周" })
+        ? { color: "var(--sky)", soft: "var(--sky-soft)" }
+        : { color: "var(--text-3)", soft: "var(--surface-2)" };
+
+  return (
+    <button type="button" className="card card-hover" style={{ cursor: "pointer", display: "block", fontFamily: "var(--ff)", padding: 15, textAlign: "left", width: "100%" }} onClick={() => navigate("/home/schedule")}>
+      <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
+        <Avatar letter={(item.contactName || item.title).slice(0, 1).toUpperCase()} g={gradientFromString(item.contactName || item.id)} size={44} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {[item.contactName, item.organization].filter(Boolean).join(" · ")}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, textAlign: "right" }}>
+          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 17, fontWeight: 600, lineHeight: 1 }}>{item.due}</div>
+          <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Due", zh: "到期" })}</div>
+        </div>
+      </div>
+      <div style={{ alignItems: "center", display: "flex", gap: 6, marginTop: 11 }}>
+        <span style={{ alignItems: "center", background: priorityColor.soft, borderRadius: "var(--r-pill)", color: priorityColor.color, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 6, height: 24, padding: "0 10px" }}>
+          <span style={{ background: priorityColor.color, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
+          {item.priority}
+        </span>
+        {item.sourceLabel ? (
+          <span className="chip" style={{ height: 24, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.sourceLabel}</span>
+        ) : null}
+      </div>
+      {item.reason ? (
+        <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>
+      ) : null}
+      {item.task ? (
+        <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 11, padding: 11 }}>
+          <Icon name="clock" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "Suggested action", zh: "建议动作" })}</div>
+            <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.task}</div>
+          </div>
+        </div>
+      ) : null}
+      <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4, justifyContent: "flex-end", marginTop: 12 }}>
+        {t({ en: "Open schedule", zh: "查看日程" })}
+        <Icon name="chevR" size={14} />
+      </div>
+    </button>
+  );
+}
+
 function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {panel.items.map((item, index) =>
         isPeopleResult(item) ? (
           <AgentPeopleCard key={`${item.connection.id}-${index}`} item={item} navigate={navigate} t={t} />
+        ) : isTodoResult(item) ? (
+          <AgentTodoCard key={`${item.id}-${index}`} item={item} navigate={navigate} t={t} />
         ) : (
           <AgentEventCard key={`${item.event.code}-${index}`} item={item} language={language} navigate={navigate} t={t} />
         ),
@@ -848,8 +1139,13 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   const [histOpen, setHistOpen] = useState(false);
   const [activeQ, setActiveQ] = useState("");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [historySidebarResizing, setHistorySidebarResizing] = useState(false);
+  const [historySidebarWidth, setHistorySidebarWidth] = useState(
+    HISTORY_SIDEBAR_DEFAULT_WIDTH,
+  );
   const [storedSessions, setStoredSessions] = useState<AgentStoredChatSession[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const historyResizeRef = useRef<{ startWidth: number; startX: number } | null>(null);
   const languageRef = useRef(language);
   const messagesRef = useRef<AgentMessage[]>(messages);
   const storedSessionsRef = useRef<AgentStoredChatSession[]>(storedSessions);
@@ -992,22 +1288,40 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         payload.data.artifacts,
         "event_recommendations",
       );
+      const followupArtifact = artifactOfKind(
+        payload.data.artifacts,
+        "followup_queue",
+      );
       const peopleItems = peopleItemsFromArtifact(contactArtifact);
       const eventItems =
         peopleItems.length > 0 ? [] : eventItemsFromArtifact(eventArtifact);
-      const kind: "people" | "events" =
-        eventItems.length > 0 ? "events" : "people";
-      const items = kind === "events" ? eventItems : peopleItems;
-      const activeArtifact = kind === "events" ? eventArtifact : contactArtifact;
+      const todoItems =
+        peopleItems.length > 0 || eventItems.length > 0
+          ? []
+          : todoItemsFromArtifact(followupArtifact);
+      const kind: "people" | "events" | "todos" =
+        eventItems.length > 0 ? "events" : todoItems.length > 0 ? "todos" : "people";
+      const items =
+        kind === "events" ? eventItems : kind === "todos" ? todoItems : peopleItems;
+      const activeArtifact =
+        kind === "events"
+          ? eventArtifact
+          : kind === "todos"
+            ? followupArtifact
+            : contactArtifact;
       const panelTitle =
         activeArtifact?.result?.presentation?.title?.trim() ||
         (kind === "events"
           ? locale === "zh"
             ? "活动推荐"
             : "Recommended events"
-          : locale === "zh"
-            ? "人脉推荐"
-            : "Recommended contacts");
+          : kind === "todos"
+            ? locale === "zh"
+              ? "行程与跟进"
+              : "Schedule & follow-ups"
+            : locale === "zh"
+              ? "人脉推荐"
+              : "Recommended contacts");
       const assistantText =
         payload.data.assistantMessage?.trim() ||
         activeArtifact?.result?.generatedView?.summary ||
@@ -1110,6 +1424,51 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [histOpen]);
 
+  useEffect(() => {
+    if (!historySidebarResizing) {
+      return undefined;
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      const resize = historyResizeRef.current;
+      if (!resize) {
+        return;
+      }
+
+      setHistorySidebarWidth(
+        clampHistorySidebarWidth(
+          resize.startWidth + event.clientX - resize.startX,
+        ),
+      );
+    };
+    const stopResize = () => {
+      historyResizeRef.current = null;
+      setHistorySidebarResizing(false);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", stopResize);
+    window.addEventListener("pointercancel", stopResize);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", stopResize);
+      window.removeEventListener("pointercancel", stopResize);
+    };
+  }, [historySidebarResizing]);
+
+  const startHistorySidebarResize = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      historyResizeRef.current = {
+        startWidth: historySidebarWidth,
+        startX: event.clientX,
+      };
+      setHistorySidebarResizing(true);
+    },
+    [historySidebarWidth],
+  );
+
   const send = () => {
     const value = text.trim();
     if (!value) return;
@@ -1156,6 +1515,38 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   };
 
   const newChat = () => {
+    setHistOpen(false);
+    setMessages([]);
+    setPanel(null);
+    setText("");
+    setThinking(false);
+    setActiveQ("");
+    setActiveSessionId(null);
+    activeSessionIdRef.current = null;
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
+    }
+    navigate("/agent");
+  };
+
+  const deleteHistorySession = (item: OrbitAgentHistoryView) => {
+    if (!item.sessionId) {
+      return;
+    }
+
+    const sessionId = item.sessionId;
+    const nextSessions = storedSessionsRef.current.filter(
+      (session) => session.id !== sessionId,
+    );
+
+    storedSessionsRef.current = nextSessions;
+    setStoredSessions(nextSessions);
+    void deleteStoredAgentChatSession(sessionId);
+
+    if (activeSessionIdRef.current !== sessionId) {
+      return;
+    }
+
     setHistOpen(false);
     setMessages([]);
     setPanel(null);
@@ -1239,7 +1630,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       </div>
 
       <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <aside style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, width: 248 }}>
+        <aside data-orbit-agent-history-sidebar style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, maxWidth: HISTORY_SIDEBAR_MAX_WIDTH, minWidth: HISTORY_SIDEBAR_MIN_WIDTH, width: historySidebarWidth }}>
           <div style={{ padding: 14 }}>
             <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, height: 40, justifyContent: "center", width: "100%" }}>
               <Icon name="plus" size={16} color="var(--accent)" />
@@ -1250,9 +1641,28 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             <div className="eyebrow">{t({ en: "Chat history", zh: "对话历史" })}</div>
           </div>
           <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 10px 18px" }}>
-            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onPick={pickHistory} />
+            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} />
           </div>
         </aside>
+        <button
+          aria-label={t({ en: "Resize chat history", zh: "调整历史宽度" })}
+          aria-orientation="vertical"
+          data-orbit-agent-history-resize-handle
+          onPointerDown={startHistorySidebarResize}
+          role="separator"
+          title={t({ en: "Resize chat history", zh: "调整历史宽度" })}
+          type="button"
+          style={{
+            alignSelf: "stretch",
+            background: historySidebarResizing ? "var(--accent-soft)" : "transparent",
+            border: "none",
+            borderRight: "1px solid var(--border)",
+            cursor: "col-resize",
+            flexShrink: 0,
+            padding: 0,
+            width: 8,
+          }}
+        />
         <div style={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}>
           <div ref={scrollRef} className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 28px" }}>
             <div style={{ margin: "0 auto", maxWidth: 720 }}>
@@ -1328,7 +1738,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               <div className="eyebrow" style={{ padding: "2px 8px 4px" }}>{t({ en: "Chat history", zh: "对话历史" })}</div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 8px 18px" }}>
-              <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onPick={pickHistory} />
+              <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} />
             </div>
           </div>
         </div>

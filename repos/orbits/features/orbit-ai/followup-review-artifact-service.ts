@@ -181,6 +181,72 @@ function presentationFor(
   };
 }
 
+// live 种子任务的 title/rationale 是英文模板串（"Review follow-up for contact_021"）。
+// 卡片文案在这里确定性重组：模板标题换成"跟进 <姓名>"，来源方式翻成当前语言。
+const templateTaskTitle = /^Review follow-up for contact_/i;
+
+const captureMethodLabels: Record<string, Record<ArtifactLocale, string>> = {
+  "Business card exchange": { en: "business card exchange", zh: "名片交换" },
+  "Confirmed offline meeting note": {
+    en: "a confirmed offline meeting note",
+    zh: "已确认的线下会面记录",
+  },
+  "Direct QR scan": { en: "a direct QR scan", zh: "现场扫码交换" },
+  "Warm referral": { en: "a warm referral", zh: "熟人引荐" },
+};
+
+function displayTitleFor(task: FollowupTask, locale: ArtifactLocale): string {
+  if (!templateTaskTitle.test(task.title)) {
+    return task.title;
+  }
+
+  return localize(locale, {
+    en: `Follow up with ${task.contactName}`,
+    zh: `跟进 ${task.contactName}`,
+  });
+}
+
+function displayReasonFor(task: FollowupTask, locale: ArtifactLocale): string {
+  const pattern = task.rationale.match(
+    /^(.+?) has a concrete current-user relationship record from (.+?) for .+\.$/i,
+  );
+
+  if (!pattern) {
+    return task.rationale;
+  }
+
+  const method =
+    captureMethodLabels[pattern[2].trim()]?.[locale] ?? pattern[2].trim();
+
+  return localize(locale, {
+    en: `You have a confirmed relationship record with ${pattern[1]} via ${method}.`,
+    zh: `与 ${pattern[1]} 有确认的关系记录（${method}）。`,
+  });
+}
+
+const sourceLabels: Record<string, Record<ArtifactLocale, string>> = {
+  "Followup Postgres live storage": {
+    en: "Follow-up live store",
+    zh: "跟进任务库",
+  },
+  "Generated recommendation": { en: "Generated recommendation", zh: "关系记录建议" },
+};
+
+function sourceLabelFor(label: string, locale: ArtifactLocale): string {
+  return sourceLabels[label]?.[locale] ?? label;
+}
+
+function displayActionFor(task: FollowupTask, locale: ArtifactLocale): string {
+  if (!templateTaskTitle.test(task.recommendedAction)) {
+    return task.recommendedAction;
+  }
+
+  return localize(locale, {
+    en: `Review the evidence, then decide the next touchpoint with ${task.contactName} before it is due.`,
+    zh: `复核证据后，在到期前决定与 ${task.contactName} 的下一次联系方式。`,
+  });
+}
+
 function itemFor(task: FollowupTask, locale: ArtifactLocale) {
   return {
     actions: [
@@ -193,7 +259,7 @@ function itemFor(task: FollowupTask, locale: ArtifactLocale) {
         requiresConfirmation: true,
       },
     ],
-    body: task.recommendedAction,
+    body: displayActionFor(task, locale),
     confidenceLabel: priorityLabelFor(task.priority, locale),
     evidenceIds: task.evidenceIds,
     id: `followup:${task.taskId}`,
@@ -212,12 +278,12 @@ function itemFor(task: FollowupTask, locale: ArtifactLocale) {
       },
       {
         label: localize(locale, { en: "Source", zh: "来源" }),
-        value: task.source.label || task.audit.sourceLabel,
+        value: sourceLabelFor(task.source.label || task.audit.sourceLabel, locale),
       },
     ],
-    reason: task.rationale,
+    reason: displayReasonFor(task, locale),
     subtitle: task.contactName,
-    title: task.title,
+    title: displayTitleFor(task, locale),
   };
 }
 

@@ -55,10 +55,26 @@ export interface OrbitAgentEventResultView {
   score: number;
 }
 
+// 跟进/待办面板项：来自 followup_queue artifact 的行程复核卡。
+export interface OrbitAgentTodoResultView {
+  contactName: string;
+  due: string;
+  id: string;
+  organization: string;
+  priority: string;
+  reason: string;
+  sourceLabel: string;
+  task: string;
+  title: string;
+}
+
 export interface OrbitAgentScenarioView {
   intro: string;
-  items: OrbitAgentPeopleResultView[] | OrbitAgentEventResultView[];
-  kind: "people" | "events";
+  items:
+    | OrbitAgentPeopleResultView[]
+    | OrbitAgentEventResultView[]
+    | OrbitAgentTodoResultView[];
+  kind: "people" | "events" | "todos";
   note?: string;
   panelTitle: string;
   q: string;
@@ -68,6 +84,7 @@ export interface OrbitAgentHistoryView {
   group: string;
   id: string;
   q: string;
+  sessionId?: string;
   title: string;
   when: string;
 }

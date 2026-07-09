@@ -585,6 +585,7 @@ function systemInstruction(): string {
     "Task routing guidance:",
     "- relationship lookup / why do I know someone / relationship status -> relationship_chat_context with chat.context.",
     "- message drafting / reply / rewrite / follow-up copy -> relationship_chat_context with chat.context.",
+    "- meeting memo / 备忘录 / 会前准备 / prep notes for a specific person -> relationship_chat_context with chat.context, arguments.searchTerms = that person's exact name (from the message or conversationHistory).",
     "- event preparation / who to meet at an event / opening lines -> event_recommendations with events.recommend.",
     "- contact recommendation / who can introduce or help / network search -> contact_recommendations with contacts.recommend.",
     "- follow-up review / this week / dormant relationship / queue -> followup_queue with followups.reviewQueue.",
@@ -649,6 +650,7 @@ function synthesisInstruction(): string {
     "The reviewable result list is already displayed beside this reply; do NOT ask for permission to show it.",
     "Briefly point out the strongest matches by name and why they fit, then remind that any outreach or side effect still needs the user's confirmation.",
     "Imperfect results: when no candidate exactly matches the request, still commit to the closest matches from the tool results — name them, say honestly what the gap is (e.g. restaurant operators rather than Sichuan-cuisine owners), and recommend who to talk to first and why.",
+    "Meeting memo requests (备忘录/会前准备/prep notes): format the reply as a compact memo with bold section labels — 背景 (who the person is: role, organization, relationship), 上次进展 (latest context from the tool summaries and history), 建议话题 (2-3 concrete talking points tied to both sides' goals), 待确认事项 (anything needing the user's confirmation before outreach). Use ONLY facts from tool results and conversationHistory; write gaps as 待补充 instead of inventing.",
     "Clarification budget: at most ONE clarifying question per conversation. If any earlier assistant turn in conversationHistory already asked the user to narrow or add details, or the user just answered such a question, you MUST NOT ask for more details again — work with what you have and propose a concrete next step instead.",
     "Keep the response concise and useful.",
   ].join("\n");
