@@ -18,11 +18,37 @@ export const generatedRelationshipFixtures = {
     {
       "id": "profile_orbit_generated_operator",
       "accountId": "account_orbit_generated",
-      "displayName": "李 琼宇",
+      "displayName": "小雨",
       "role": "AI & Computer Vision Engineer",
       "headline": "Shipped camera AI on 10M+ devices; now building trustworthy GenAI",
       "organization": "OPPO Japan Research",
       "timezone": "Asia/Tokyo",
+      "publicProfile": {
+        "industry": "人工智能 / 计算机视觉",
+        "bio": "OPPO 日本研究所的 AI/CV 算法工程师。把 HDR 相机 AI 从研发做到量产，搭载于 1000 万台以上设备（失败案例分析、评测设计、C++ SDK、量化与端侧延迟）。近年把这套「让 AI 真正上生产」的工程规律带到可信生成式 AI —— RAG、工具调用、根据校验、回答保留、回归评测与审计日志。东京大学人工智能硕士，中日英三语。",
+        "selfIntroduction": "我做的 AI 只在有依据时才回答，没有依据就保留——把量产相机 AI 的工程严谨带进生成式 AI。",
+        "offering": [
+          "量产级 ML（量化 · 端侧延迟 · C++ SDK）",
+          "相机 AI / HDR / CV 算法（千万级出货）",
+          "可信 LLM 与 RAG 系统",
+          "中日英三语沟通"
+        ],
+        "seeking": [
+          "可信生成式 AI / LLM 应用的落地机会",
+          "把 AI 真正落地到生产的团队",
+          "在日本的 AI 产品合作"
+        ],
+        "topics": [
+          "生成式 AI / LLM",
+          "RAG 与有据可循的 AI",
+          "计算机视觉 / HDR",
+          "端侧 AI"
+        ],
+        "conversationPrompts": [
+          "问我怎么把 HDR AI 做到千万级出货",
+          "问我「只在有依据时回答」的生成式 AI 怎么设计"
+        ]
+      },
       "createdAt": "2026-06-30T14:14:38.537342+00:00",
       "updatedAt": "2026-06-30T14:14:38.537342+00:00"
     }

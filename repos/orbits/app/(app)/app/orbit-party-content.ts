@@ -67,8 +67,8 @@ export const PARTY_CONTENT: PartyContent = {
     zh: "SHIBUYA QWS 15楼（涩谷 Scramble Square）",
   },
   me: {
-    name: "李 琼宇",
-    initial: "李",
+    name: "小雨",
+    initial: "小",
     groupNumber: 3,
     seat: "C1",
     role: {

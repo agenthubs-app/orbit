@@ -165,6 +165,7 @@ function manualProfileFor(input: {
 }): ManualProfile {
   const organization = input.profile.organization ?? input.accountName ?? "Orbit";
   const role = input.profile.role ?? "Relationship operator";
+  const publicProfile = input.profile.publicProfile;
 
   return {
     id: input.profile.id,
@@ -174,6 +175,11 @@ function manualProfileFor(input: {
       `${role} managing source-backed relationship follow-up`,
     organization,
     role,
+    industry: publicProfile?.industry,
+    bio: publicProfile?.bio,
+    offering: publicProfile?.offering,
+    seeking: publicProfile?.seeking,
+    topics: publicProfile?.topics,
     homeMarket:
       input.profile.homeMarket ?? marketFromTimezone(input.profile.timezone),
     relationshipGoal:

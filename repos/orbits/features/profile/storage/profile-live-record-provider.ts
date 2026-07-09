@@ -1,4 +1,4 @@
-import type { AccountDTO, UserProfileDTO } from "../../../shared/domain/contracts";
+import type { AccountDTO, PublicProfileDTO, UserProfileDTO } from "../../../shared/domain/contracts";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -129,6 +129,9 @@ function profileFromRecord(
     preferredIntroChannels: stringArray(payload.preferredIntroChannels),
     relationshipGoal: optionalString(payload.relationshipGoal),
     targetRelationshipTypes: stringArray(payload.targetRelationshipTypes),
+    publicProfile: (payload.publicProfile ?? undefined) as
+      | PublicProfileDTO
+      | undefined,
     evidenceIds:
       record.evidenceIds.length > 0
         ? record.evidenceIds
