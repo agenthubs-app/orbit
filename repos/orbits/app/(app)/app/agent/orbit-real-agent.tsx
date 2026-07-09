@@ -241,6 +241,7 @@ function isStoredAgentMessage(value: unknown): value is AgentMessage {
 }
 
 export interface AgentStoredChatSession {
+  createdAt: string;
   id: string;
   messages: AgentMessage[];
   panel?: AgentPanel | null;
@@ -261,13 +262,19 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
         ? session.messages.filter(isStoredAgentMessage)
         : [],
       panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
+      createdAt:
+        typeof session.createdAt === "string" ? session.createdAt : "",
       title: typeof session.title === "string" ? session.title.trim() : "",
       updatedAt:
         typeof session.updatedAt === "string" ? session.updatedAt : "",
     }))
+    .map((session) => ({
+      ...session,
+      createdAt: session.createdAt || session.updatedAt,
+    }))
     .filter(
       (session) =>
-        Boolean(session.id && session.title && session.updatedAt) &&
+        Boolean(session.id && session.title && session.createdAt && session.updatedAt) &&
         session.messages.some((message) => message.role === "user"),
     )
     .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
@@ -309,7 +316,7 @@ export function agentChatHistorySessionsToHistory(
   const group = language === "zh" ? "更早" : "Earlier";
 
   return [...sessions]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS)
     .map((session) => {
       const firstUserMessage =
@@ -797,6 +804,41 @@ function TypingDots() {
   );
 }
 
+// 真实链路是单次请求（planner → 工具 → artifact → synthesis），没有流式分阶段
+// 回调，等待可能好几秒。为了不让用户对着一个静止的点发呆，这里按时间推进一串
+// “正在…”阶段文案（理解→检索→深度思考→整理），配合跳动圆点，营造进度感。
+// 纯展示：文案与真实进度无严格对应，只按固定节奏往后走并停在最后一个。
+const THINKING_PHASES: readonly Copy[] = [
+  { en: "Understanding your request", zh: "正在理解你的需求" },
+  { en: "Searching your network & events", zh: "正在检索信息" },
+  { en: "Thinking it through", zh: "正在深度思考中" },
+  { en: "Composing recommendations", zh: "正在整理答复" },
+];
+
+const THINKING_PHASE_INTERVAL_MS = 2200;
+
+function ThinkingIndicator({ t }: { t: Translate }) {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    // 组件仅在 thinking=true 时挂载，所以挂载即等待开始；到最后一个阶段就停。
+    const timer = window.setInterval(() => {
+      setPhase((current) =>
+        current >= THINKING_PHASES.length - 1 ? current : current + 1,
+      );
+    }, THINKING_PHASE_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <span aria-live="polite" style={{ alignItems: "center", display: "inline-flex", gap: 9 }}>
+      <span style={{ color: "var(--text-2)", fontSize: 14 }}>{t(THINKING_PHASES[phase])}</span>
+      <TypingDots />
+    </span>
+  );
+}
+
 export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   const { language, preserveHref, t } = useOrbitLanguage();
   const [text, setText] = useState("");
@@ -867,12 +909,17 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     }
 
     const sessionId = activeSessionIdRef.current ?? createAgentSessionId();
+    const now = new Date().toISOString();
+    const existingSession = storedSessionsRef.current.find(
+      (item) => item.id === sessionId,
+    );
     const session: AgentStoredChatSession = {
+      createdAt: existingSession?.createdAt ?? now,
       id: sessionId,
       messages: [...nextMessages],
       panel: nextPanel,
       title: titleFromMessages(nextMessages),
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     };
     const nextSessions = upsertAgentChatSession(
       storedSessionsRef.current,
@@ -1164,8 +1211,8 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           <span className="avatar g-indigo" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
             <Icon name="sparkle" size={16} color="var(--on-dark)" />
           </span>
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", padding: "14px 16px" }}>
-            <TypingDots />
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", padding: "12px 16px" }}>
+            <ThinkingIndicator t={t} />
           </div>
         </div>
       ) : null}
