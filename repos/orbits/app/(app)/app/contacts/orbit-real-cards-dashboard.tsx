@@ -840,7 +840,7 @@ const dashboardCss = `
 
 [data-orbit-real-page] .nc-orbit-card { padding:18px 18px 16px; display:flex; flex-direction:column; }
 [data-orbit-real-page] .nc-orbit-stage { position:relative; width:100%; }
-[data-orbit-real-page] .nc-orbit-svg { display:block; width:100%; height:auto; }
+[data-orbit-real-page] .nc-orbit-svg { display:block; width:100%; height:auto; max-width:520px; margin:0 auto; }
 [data-orbit-real-page] .nc-mobile-orbit .nc-orbit-svg { max-width:330px; margin:0 auto; }
 [data-orbit-real-page] .nc-orbit-ring { animation:nc-orbBreath 7s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
 @keyframes nc-orbBreath { 0%,100%{ opacity:.45 } 50%{ opacity:.85 } }
