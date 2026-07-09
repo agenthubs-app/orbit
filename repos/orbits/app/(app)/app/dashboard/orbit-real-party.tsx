@@ -261,7 +261,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
           {t({ en: "Good evening, ", zh: "晚上好，" })}
           {viewModel.me.initial}
         </h1>
-        <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>{`Tokyo Business Connect · ${t({ en: "Tokyo Midtown Hall B", zh: "东京中城 Hall B" })}`}</div>
+        <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>{`${viewModel.eventName} · ${viewModel.eventVenue}`}</div>
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button className="btn btn-primary" onClick={() => navigateTo("/app/party/checkin")} style={{ flex: "1 1 0%" }}>
             <Icon color="var(--on-dark)" name="ticket" size={16} />
@@ -569,7 +569,7 @@ function PartyAgenda({ t, viewModel }: { t: Translate; viewModel: OrbitPartyView
         <div>
           <div className="eyebrow">AGENDA</div>
           <h1 className="h-display orbit-party-network-title">{t({ en: "Agenda", zh: "流程议程" })}</h1>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{`Tokyo Business Connect · ${t({ en: "Tonight's agenda", zh: "今晚流程" })}`}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{`${viewModel.eventName} · ${t({ en: "Tonight's agenda", zh: "今晚流程" })}`}</div>
         </div>
         <span className="badge badge-ended">{t({ en: "Ended", zh: "已结束" })}</span>
       </div>
@@ -593,20 +593,15 @@ function PartyAgenda({ t, viewModel }: { t: Translate; viewModel: OrbitPartyView
   );
 }
 
-const graphColors: Record<string, string> = {
-  AI: "#8AA4C8",
-  SaaS: "#8AA4C8",
-  云计算: "#9B8CC6",
-  消费电子: "#C2998A",
-  电商: "#D97B5E",
-  风险投资: "#C4A25E",
-  金融: "#6359E9",
-  硬件: "#7D7870",
-  综合商社: "#6359E9",
-};
+// Language-agnostic palette: color derived from a stable hash of the label so the
+// graph stays colorful whether industry text is zh / en / ja.
+const graphColorPalette = ["#8AA4C8", "#9B8CC6", "#C2998A", "#D97B5E", "#C4A25E", "#6359E9", "#7D7870", "#47898F"];
 
 function graphColor(industry: string) {
-  return graphColors[industry] ?? "#8B7E74";
+  const label = industry || "";
+  let hash = 0;
+  for (let i = 0; i < label.length; i += 1) hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
+  return graphColorPalette[hash % graphColorPalette.length] ?? "#8B7E74";
 }
 
 function SocialGraphLite({
@@ -779,7 +774,7 @@ export function OrbitRealPartyCheckin({ viewModel }: { viewModel?: OrbitPartyVie
             </div>
             <div className="eyebrow">CHECK-IN COMPLETE</div>
             <h1 className="h-title">{t({ en: "Check-in complete", zh: "签到完毕" })}</h1>
-            <p className="orbit-party-done-event">Tokyo Business Connect</p>
+            <p className="orbit-party-done-event">{viewModel?.eventName ?? ""}</p>
             <div className="orbit-party-done-meta">
               <span className="badge badge-live">
                 <Icon name="check" size={13} />

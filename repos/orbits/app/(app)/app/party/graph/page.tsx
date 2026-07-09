@@ -6,7 +6,8 @@
 import { StateView } from "../../../../../shared/ui/state-view";
 import { OrbitRealPartyGraph } from "../../dashboard/orbit-real-party";
 import type { OrbitLanguage } from "../../orbit-language-core";
-import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
+import { getOrbitServerLanguage } from "../../orbit-language-server";
+import { buildOrbitParty } from "../../orbit-party-presentation";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import {
@@ -74,7 +75,7 @@ export default async function AppPartyGraphPage({
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-party-graph-route">
           <OrbitRealPartyGraph
-            viewModel={localizeOrbitTree(routeModel.party, language)}
+            viewModel={buildOrbitParty(language)}
           />
         </div>
       ) : (
