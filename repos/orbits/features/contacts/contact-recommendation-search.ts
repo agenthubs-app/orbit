@@ -309,14 +309,25 @@ function rankingTokensFor(searchQuery: string): readonly string[] {
   return Array.from(new Set([...latinTokens, ...cjkTokens]));
 }
 
-// 行业桶的确定性扩展词：模型抽词逐轮会有波动，行业方向一旦被正则桶识别，
-// 就补上该行业在关系库里的稳定身份词（行业词 + 能帮上忙的角色词），
-// 保证同一类查询的候选资格不随模型输出漂移。
-const industryRankingExpansions: Partial<
-  Record<RelationshipNaturalSearchIndustry, readonly string[]>
-> = {
+// 领域的确定性扩展词：领域分类由 planner 从固定枚举里选（arguments.domains），
+// 分类确定后补上该领域在关系库里的稳定身份词（行业词 + 能帮上忙的角色词），
+// 保证同一类查询的候选资格不随模型抽词漂移。没有模型 domains 时，
+// 回退到正则桶识别出的 criteria.industries（键是本表子集）。
+const domainRankingExpansions: Record<string, readonly string[]> = {
+  agriculture: ["agriculture", "farm", "farming", "crop"],
+  ai: ["ai", "machine learning", "workflow", "engineer", "automation"],
+  biotech: ["biotech", "pharma", "laboratory", "clinical"],
   climate: ["climate", "energy", "storage", "carbon"],
+  community: ["community", "organizer", "network"],
+  construction: ["construction", "builder", "architecture", "contractor"],
+  consulting: ["consultant", "consulting", "advisor", "advisory"],
+  crypto: ["crypto", "blockchain", "web3", "token"],
+  ecommerce: ["ecommerce", "commerce", "retail", "d2c", "distribution"],
+  education: ["education", "training", "course"],
+  energy: ["energy", "power", "solar", "battery", "storage"],
   enterprise_saas: ["saas", "software", "consultant"],
+  entertainment: ["entertainment", "studio", "content", "creator"],
+  fashion: ["fashion", "design", "apparel", "buyer"],
   fintech: [
     "fintech",
     "finance",
@@ -328,15 +339,39 @@ const industryRankingExpansions: Partial<
     "venture",
     "fundraising",
   ],
+  food_beverage: ["food", "beverage", "dining", "restaurant", "catering"],
+  gaming: ["gaming", "game", "esports"],
+  government: ["government", "public", "policy", "municipal"],
+  hardware: ["hardware", "device", "iot", "electronics"],
+  healthcare: ["health", "medical", "clinic", "care"],
+  hr_recruiting: ["recruiting", "recruiter", "talent", "hiring", "hr"],
+  investor: ["investor", "capital", "venture", "fundraising", "seed"],
+  legal: ["legal", "lawyer", "attorney", "compliance"],
+  logistics: ["logistics", "shipping", "warehouse", "freight", "supply chain"],
+  manufacturing: ["manufacturing", "factory", "supply", "dx"],
+  marketing: ["marketing", "growth", "brand", "media"],
+  media: ["media", "press", "journalist", "publisher", "content"],
+  mobility: ["mobility", "transport", "automotive", "logistics"],
+  nonprofit: ["nonprofit", "ngo", "foundation", "volunteer"],
+  real_estate: ["real estate", "property", "leasing", "broker"],
+  restaurant: ["restaurant", "food", "dining", "hospitality", "store", "reservation"],
+  retail: ["retail", "store", "merchandising", "shop"],
+  security: ["security", "cybersecurity", "privacy"],
+  semiconductor: ["semiconductor", "chip", "fab", "silicon"],
+  sports: ["sports", "fitness", "athlete"],
+  telecom: ["telecom", "network", "carrier", "5g"],
+  tourism: ["tourism", "travel", "inbound", "hotel"],
 };
 
 function rankingTokensForCriteria(
   criteria: ContactRecommendationCriteria,
+  domains: readonly string[],
 ): readonly string[] {
   const tokens = new Set(rankingTokensFor(criteria.searchQuery));
+  const expansionKeys = domains.length > 0 ? domains : criteria.industries;
 
-  for (const industry of criteria.industries) {
-    for (const token of industryRankingExpansions[industry] ?? []) {
+  for (const key of expansionKeys) {
+    for (const token of domainRankingExpansions[key] ?? []) {
       tokens.add(token);
     }
   }
@@ -411,15 +446,26 @@ function betterRankedItem(
   return left.item.value.score > right.item.value.score;
 }
 
+function readDomains(value: unknown): readonly string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(
+    (domain): domain is string => typeof domain === "string" && domain in domainRankingExpansions,
+  );
+}
+
 function resultForRankedSearch(
   criteria: ContactRecommendationCriteria,
   searchResult: RelationshipNaturalSearchResult,
+  domains: readonly string[],
 ): ContactRecommendationResult {
   if (searchResult.success !== true) {
     return resultForSearch(criteria, searchResult);
   }
 
-  const tokens = rankingTokensForCriteria(criteria);
+  const tokens = rankingTokensForCriteria(criteria, domains);
   const bestByContact = new Map<string, RankedSearchItem>();
 
   for (const item of searchResult.data.results) {
@@ -565,19 +611,20 @@ export function createContactsRecommendationSearchTool(
     recommend(request): ContactsRecommendationSearchToolResult {
       const criteria = extractRuleCriteria(request);
       const modelSearchTerms = readText(request.toolArguments?.searchTerms);
+      const modelDomains = readDomains(request.toolArguments?.domains);
 
-      // 有模型抽取的检索词时，取全量关系池并按 token 相关度排名，避免后端
-      // AND 子串匹配对多词查询过严、对元数据标签循环命中的问题。
-      if (modelSearchTerms) {
+      // 有模型判断（检索词或领域分类）时，取全量关系池并按 token 相关度排名，
+      // 避免后端 AND 子串匹配对多词查询过严、对元数据标签循环命中的问题。
+      if (modelSearchTerms || modelDomains.length > 0) {
         const poolResult = relationshipSearchService.queryRelationships({});
 
         if (isPromiseLike(poolResult)) {
           return poolResult.then((resolved) =>
-            resultForRankedSearch(criteria, resolved),
+            resultForRankedSearch(criteria, resolved, modelDomains),
           );
         }
 
-        return resultForRankedSearch(criteria, poolResult);
+        return resultForRankedSearch(criteria, poolResult, modelDomains);
       }
 
       const searchResult =

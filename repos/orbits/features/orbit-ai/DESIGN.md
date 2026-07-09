@@ -164,7 +164,7 @@ Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限�
 
 人脉推荐只推荐已有关系证据支持的人，不做开放网络发现。当前实现会从 query、tool arguments 和上下文里抽取行业、合作意图、引荐意图等条件，再调用 relationship natural search service；候选必须带有 evidence ids 和 relationship path。
 
-live 路径下，`language-normalization-service` 先用模型把任意语言 query 抽成英文检索词（`toolArguments.searchTerms`）。有模型检索词时，Contacts 适配器取全量关系池并按 token 相关度排名：姓名/职位/组织等身份字段命中权重高于证据文本命中，证据文本命中封顶计入以抑制模板句噪音；行业桶（如 fintech）会补上确定性的行业+角色扩展词，保证同类查询不随模型抽词波动。结果按 contactId 去重、取前 8 条，matchScore 反映本次查询相关度。没有模型检索词时保持原有正则分桶 + 后端子串匹配行为。
+领域分类遵循 understanding in model, deterministic retrieval in code：planner 在工具参数里输出 `searchTerms`（英文检索词）和 `domains`（多选，最多 5 个，只能取 `ORBIT_AGENT_RECOMMENDATION_DOMAINS` 固定枚举，schema 校验会过滤枚举外的值）。有模型判断时，Contacts 适配器取全量关系池并按 token 相关度排名：姓名/职位/组织/地点等身份字段命中权重高于证据文本命中，证据文本命中封顶计入以抑制模板句噪音；每个选中的 domain 由代码补上确定性的行业+角色扩展词（`domainRankingExpansions`），保证同类查询不随模型抽词波动。结果按 contactId 去重、取前 8 条，matchScore 反映本次查询相关度。planner 检索词零命中时，用 `language-normalization-service` 抽的英文词确定性重试一次。完全没有模型判断时（无 key/测试环境）回退到 `extractRuleCriteria` 正则分桶 + 后端子串匹配——正则词表只作为无模型环境的兜底，不在 live 主路径承担领域判断。
 
 长期边界是：`contacts.recommend` 的产品策略应归 Contacts 或 Recommendations。当前基础实现通过 `createContactsRecommendationSearchTool()` 调用 Relationship Search；Search 只负责根据 query、filters 和 evidence constraints 召回候选；Contacts/Recommendations 负责候选资格、排序、推荐理由和下一步动作；Orbit AI 负责选择工具、记录 trace、生成 artifact 和综合回复。
 

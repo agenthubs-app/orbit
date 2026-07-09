@@ -345,13 +345,22 @@ function resultForList(
 
   const query = input.query.trim();
   const limit = normalizedLimit(input.toolArguments?.limit);
-  // 模型抽取的英文检索词（searchTerms）与原始 query 合并参与匹配，
-  // 中文/日文请求由此拿到能命中双语活动文本的英文关键词。
+  // 模型抽取的英文检索词（searchTerms）与领域标签（domains，多选枚举）
+  // 同原始 query 合并参与匹配，中文/日文请求由此拿到能命中双语活动文本的英文关键词。
   const searchTerms = readText(input.toolArguments?.searchTerms);
-  const tokens = tokensFor(searchTerms ? `${query} ${searchTerms}` : query);
-  // 有模型检索词=相关性模式，零命中的活动被过滤；
-  // 没有检索词（纯正则/测试路径）保持可用性列表行为，不做整体过滤。
-  const requireTokenMatch = Boolean(searchTerms) && tokens.length > 0;
+  const domainWords = Array.isArray(input.toolArguments?.domains)
+    ? (input.toolArguments?.domains as unknown[])
+        .filter((domain): domain is string => typeof domain === "string")
+        .join(" ")
+        .replace(/_/g, " ")
+    : "";
+  const tokens = tokensFor(
+    [query, searchTerms ?? "", domainWords].filter(Boolean).join(" "),
+  );
+  const modelGuided = Boolean(searchTerms) || domainWords.length > 0;
+  // 有模型判断（检索词或领域）=相关性模式，零命中的活动被过滤；
+  // 没有时（纯正则/测试路径）保持可用性列表行为，不做整体过滤。
+  const requireTokenMatch = modelGuided && tokens.length > 0;
   const databaseQueryExecuted = databaseReadExecuted(listResult.data.provenance);
   const candidates = listResult.data.events
     .filter((event) => event.status !== "cancelled")

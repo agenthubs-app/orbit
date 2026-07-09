@@ -38,6 +38,73 @@ export const GEMINI_ORBIT_AGENT_TOOL_NAMES = [
   "chat.context",
 ] as const;
 
+// 领域分类由模型完成（understanding in model），但只能从这个固定枚举里选；
+// schema 校验会过滤掉枚举外的值。领域确定后的扩展词、加权、过滤等
+// 确定性策略仍由各 feature 的代码拥有（deterministic retrieval in code）。
+export const ORBIT_AGENT_RECOMMENDATION_DOMAINS = [
+  "agriculture",
+  "ai",
+  "biotech",
+  "climate",
+  "community",
+  "construction",
+  "consulting",
+  "crypto",
+  "ecommerce",
+  "education",
+  "energy",
+  "enterprise_saas",
+  "entertainment",
+  "fashion",
+  "fintech",
+  "food_beverage",
+  "gaming",
+  "government",
+  "hardware",
+  "healthcare",
+  "hr_recruiting",
+  "investor",
+  "legal",
+  "logistics",
+  "manufacturing",
+  "marketing",
+  "media",
+  "mobility",
+  "nonprofit",
+  "real_estate",
+  "restaurant",
+  "retail",
+  "security",
+  "semiconductor",
+  "sports",
+  "telecom",
+  "tourism",
+] as const;
+
+export type OrbitAgentRecommendationDomain =
+  (typeof ORBIT_AGENT_RECOMMENDATION_DOMAINS)[number];
+
+const allowedRecommendationDomains = new Set<string>(
+  ORBIT_AGENT_RECOMMENDATION_DOMAINS,
+);
+
+// 只保留枚举内的 domain 标签；模型给出的其它值直接丢弃而不是整体拒绝，
+// 分类错误的最坏结果是相关度下降，不是安全问题。
+export function sanitizeRecommendationDomains(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value.filter(
+        (domain): domain is string =>
+          typeof domain === "string" && allowedRecommendationDomains.has(domain),
+      ),
+    ),
+  ).slice(0, 5);
+}
+
 export type GeminiOrbitAgentIntent =
   (typeof GEMINI_ORBIT_AGENT_INTENTS)[number];
 
@@ -458,8 +525,14 @@ export function validateGeminiOrbitAgentPlannerOutput(
       return null;
     }
 
+    const requestArguments = readObject(request.arguments);
+    const domains = sanitizeRecommendationDomains(requestArguments.domains);
+
     toolRequests.push({
-      arguments: readObject(request.arguments),
+      arguments:
+        "domains" in requestArguments
+          ? { ...requestArguments, domains }
+          : requestArguments,
       requiresUserConfirmation: true,
       toolName: toolName as GeminiOrbitAgentToolName,
     });
@@ -522,6 +595,7 @@ function systemInstruction(): string {
     "Clarification budget: ask the user to narrow a vague request at most ONCE per conversation. If conversationHistory shows a clarifying question was already asked, or the user just supplied extra detail, run the closest matching tool with the accumulated context instead of asking again.",
     "When history states a concrete goal (e.g. launching a fintech product) and the current message asks who can help, which friends/contacts to talk to, or for introductions -> contact_recommendations with contacts.recommend, carrying the goal from history into arguments.searchTerms as english keywords.",
     "For contacts.recommend and events.recommend, include arguments.searchTerms: space-separated lowercase english keywords for the domain/topic and the kinds of people or events wanted (e.g. \"ai artificial intelligence founder product meetup\").",
+    `For contacts.recommend and events.recommend, also include arguments.domains: an array (multi-select, up to 5) of tags chosen ONLY from [${ORBIT_AGENT_RECOMMENDATION_DOMAINS.join(", ")}]. Pick ALL tags that apply to the request: the industry of the request itself AND the kinds of helpers wanted. Examples: 开川菜馆 -> ["restaurant", "food_beverage"]; 金融产品进入市场 -> ["fintech", "investor", "marketing"]; AI 活动认识做产品的人 -> ["ai", "community"].`,
     "Do not claim privacy settings, storage, deletion, or analysis opt-out state changed unless an explicit Orbit privacy tool result says so.",
     "Do not describe storage guarantees; direct users to privacy controls for durable changes.",
     "- external action preview / send / schedule / notify -> choose the closest context tool only to prepare a reviewable artifact; never claim execution.",
@@ -550,7 +624,10 @@ function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
       intent: GEMINI_ORBIT_AGENT_INTENTS,
       toolRequests: [
         {
-          arguments: "object",
+          arguments: {
+            domains: ORBIT_AGENT_RECOMMENDATION_DOMAINS,
+            searchTerms: "string",
+          },
           requiresUserConfirmation: true,
           toolName: GEMINI_ORBIT_AGENT_TOOL_NAMES,
         },
