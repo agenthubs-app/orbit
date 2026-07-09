@@ -109,6 +109,19 @@ html[data-theme="light"] [data-orbit-real-page] .orbit-platform-sidebar {
   background: var(--surface-2);
 }
 
+/* Top-nav links hardcode a near-white color (dark-theme ink) that is invisible
+   on a light canvas — restate them in dark ink for the light theme. */
+html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav .orbit-nav-link {
+  color: rgba(23, 33, 31, 0.64);
+}
+html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav .orbit-nav-link:hover,
+html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav .orbit-nav-link.is-active {
+  color: var(--ink);
+}
+html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav .orbit-nav-link.is-active {
+  background: rgba(23, 33, 31, 0.06);
+}
+
 .orbit-theme-toggle {
   position: fixed;
   right: 18px;
