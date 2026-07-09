@@ -168,6 +168,10 @@ live 路径下，`language-normalization-service` 先用模型把任意语言 qu
 
 长期边界是：`contacts.recommend` 的产品策略应归 Contacts 或 Recommendations。当前基础实现通过 `createContactsRecommendationSearchTool()` 调用 Relationship Search；Search 只负责根据 query、filters 和 evidence constraints 召回候选；Contacts/Recommendations 负责候选资格、排序、推荐理由和下一步动作；Orbit AI 负责选择工具、记录 trace、生成 artifact 和综合回复。
 
+## 活动推荐工具
+
+`events.recommend` 在 live 路径映射为 `event_recommendations` artifact，由 Events 拥有的 `createEventsRecommendationTool()` 从 events live store 读取全部未取消活动并按查询排名：token 采用词边界匹配（拉丁词）+ 子串匹配（CJK），会从中日文句子里抽出嵌入的拉丁词（如「参加AI相关的活动」里的 ai），合并 planner 提供的 `toolArguments.searchTerms`；英文虚词进停用词表。还没开始的活动加权（+15），带关键词却零命中的活动被过滤。artifact 卡片文案不透出导入原始串，改为确定性生成的本地化「匹配理由 + 未开始/已结束状态」，双语标题按 locale 挑选，动作链接指向 `/app/events/{id}`。不注入该工具时，artifact service 回退到固定画像的 goal 推荐实现（mock 与评估路径）。
+
 `ORBIT_CONTACT_RECOMMENDATION_METHOD` 控制匹配方法：
 
 - `rules_v1`：默认方法，使用当前规则抽取和 Contacts/Search adapter。

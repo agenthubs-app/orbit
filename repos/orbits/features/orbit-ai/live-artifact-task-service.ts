@@ -1,3 +1,4 @@
+import { createEventsRecommendationTool } from "../events/event-recommendation-tool";
 import { createOrbitAgentChatContextArtifactService } from "./chat-context-artifact-service";
 import { createOrbitAgentContactRecommendationArtifactService } from "./contact-recommendation-artifact-service";
 import { createOrbitAgentEventRecommendationArtifactService } from "./event-recommendation-artifact-service";
@@ -19,6 +20,9 @@ export function createOrbitAgentLiveArtifactTaskService(): OrbitAgentArtifactTas
   });
   const eventService = createOrbitAgentEventRecommendationArtifactService({
     fallbackService: followupService,
+    // live 路径用 Events 拥有的 live 推荐工具（读 events live store 并按查询排名），
+    // 不注入时该 artifact service 会回退到固定画像的 goal 推荐实现。
+    recommendationTool: createEventsRecommendationTool(),
   });
 
   return createOrbitAgentContactRecommendationArtifactService({

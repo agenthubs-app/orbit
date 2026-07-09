@@ -518,6 +518,7 @@ function systemInstruction(): string {
     "- privacy control / delete / do not analyze / sensitive share -> general_chat unless current chat context review is explicitly needed.",
     "conversationHistory lists earlier turns of this conversation, oldest first. Use it to resolve pronouns and vague references in the current message.",
     "When history states a concrete goal (e.g. launching a fintech product) and the current message asks who can help, which friends/contacts to talk to, or for introductions -> contact_recommendations with contacts.recommend, carrying the goal from history into arguments.searchTerms as english keywords.",
+    "For contacts.recommend and events.recommend, include arguments.searchTerms: space-separated lowercase english keywords for the domain/topic and the kinds of people or events wanted (e.g. \"ai artificial intelligence founder product meetup\").",
     "Do not claim privacy settings, storage, deletion, or analysis opt-out state changed unless an explicit Orbit privacy tool result says so.",
     "Do not describe storage guarantees; direct users to privacy controls for durable changes.",
     "- external action preview / send / schedule / notify -> choose the closest context tool only to prepare a reviewable artifact; never claim execution.",

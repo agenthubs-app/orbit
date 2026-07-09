@@ -169,11 +169,55 @@ function confidenceLabelFor(
   return localize(locale, { en: "Available", zh: "可复核" });
 }
 
+// 活动种子标题是「日文 / English」双语串；卡片只显示当前语言那一段。
+function bilingualSegment(text: string, locale: ArtifactLocale): string {
+  const segments = text
+    .split(/\s*\/\s*/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (segments.length <= 1) {
+    return text.trim();
+  }
+
+  if (locale === "en") {
+    return (
+      segments.find((segment) => !/[぀-ヿ㐀-鿿]/u.test(segment)) ??
+      segments[segments.length - 1]
+    );
+  }
+
+  return segments[0];
+}
+
 function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocale) {
+  // live 库的 description/relationshipContext 是导入原始串，不适合直接展示；
+  // 卡片文案从匹配词和时间状态确定性生成，保持当前语言。
+  const matchedReason =
+    candidate.matchedTokens.length > 0
+      ? localize(locale, {
+          en: `Matched your request on: ${candidate.matchedTokens.join(", ")}.`,
+          zh: `与你的请求在「${candidate.matchedTokens.join("、")}」上匹配。`,
+        })
+      : localize(locale, {
+          en: "Available from live Events data for review.",
+          zh: "来自活动库的可复核活动。",
+        });
+  const timingNote = candidate.upcoming
+    ? localize(locale, {
+        en: "Upcoming — open the event page to review details before registering.",
+        zh: "尚未开始——可打开活动页复核详情后再决定是否报名。",
+      })
+    : localize(locale, {
+        en: "Already ended — keep it as a lead for similar events and the people who attended.",
+        zh: "已结束——可作为同类活动与参会人脉的线索复核。",
+      });
+
   return {
     actions: [
       {
         actionId: `event:review:${candidate.eventId}`,
+        href: `/app/events/${candidate.eventId}`,
         label: localize(locale, {
           en: "Review event",
           zh: "复核活动",
@@ -181,7 +225,7 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
         requiresConfirmation: true,
       },
     ],
-    body: candidate.description || candidate.relationshipContext,
+    body: timingNote,
     confidenceLabel: confidenceLabelFor(candidate, locale),
     evidenceIds: candidate.evidenceIds,
     id: `event-recommendation:${candidate.eventId}`,
@@ -189,6 +233,10 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
       {
         label: localize(locale, { en: "When", zh: "时间" }),
         value: dateLabel(candidate.startsAt),
+      },
+      {
+        label: localize(locale, { en: "Start", zh: "开始" }),
+        value: candidate.startsAt,
       },
       {
         label: localize(locale, { en: "Status", zh: "状态" }),
@@ -203,9 +251,9 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
         value: String(candidate.score),
       },
     ],
-    reason: candidate.matchReasons.join(" "),
+    reason: matchedReason,
     subtitle: candidate.venue,
-    title: candidate.title,
+    title: bilingualSegment(candidate.title, locale),
   };
 }
 

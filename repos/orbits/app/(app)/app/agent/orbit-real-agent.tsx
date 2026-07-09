@@ -36,6 +36,11 @@ type AgentMessage =
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
+type AgentHistoryLanguage = "en" | "zh" | "ja";
+
+const AGENT_CHAT_HISTORY_STORAGE_KEY = "orbit-agent-chat-history-v1";
+const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
+const MAX_AGENT_CHAT_HISTORY_SESSIONS = 12;
 
 function depthFor(t: Translate) {
   return {
@@ -88,16 +93,15 @@ interface AgentArtifactRecord {
   task?: { kind?: string };
 }
 
-function contactRecommendationArtifact(
+function artifactOfKind(
   artifacts: unknown,
+  kind: "contact_recommendations" | "event_recommendations",
 ): AgentArtifactRecord | null {
   const list = Array.isArray(artifacts) ? (artifacts as AgentArtifactRecord[]) : [];
 
   return (
     list.find(
-      (artifact) =>
-        (artifact.task?.kind ?? artifact.result?.kind) ===
-        "contact_recommendations",
+      (artifact) => (artifact.task?.kind ?? artifact.result?.kind) === kind,
     ) ?? null
   );
 }
@@ -146,9 +150,237 @@ function peopleItemsFromArtifact(
   });
 }
 
+// event_recommendations artifact → 活动卡片视图。startsAt 优先取 Start(ISO)，
+// 其次 When(仅日期)；score 取 artifact 元数据分数。
+function eventItemsFromArtifact(
+  artifact: AgentArtifactRecord | null,
+): OrbitAgentEventResultView[] {
+  const items =
+    artifact?.result?.generatedView?.sections?.flatMap(
+      (section) => section.items ?? [],
+    ) ?? [];
+
+  return items.map((item) => {
+    const eventId = String(item.id ?? "").split(":").pop() ?? "";
+    const name = item.title?.trim() || eventId || "Orbit event";
+    const score = Number(artifactMetadataValue(item, ["分数", "Score"]));
+    const startsAt =
+      artifactMetadataValue(item, ["开始", "Start"]) ||
+      artifactMetadataValue(item, ["时间", "When"]);
+
+    return {
+      event: {
+        code: eventId,
+        g: gradientFromString(eventId || name),
+        id: eventId,
+        name,
+        place: item.subtitle ?? "",
+        startsAt,
+      },
+      howto: item.body ?? "",
+      reason: item.reason ?? "",
+      score: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 70,
+    };
+  });
+}
+
 function currentAgentQuery() {
   if (typeof window === "undefined") return "";
   return new URLSearchParams(window.location.search).get("q") ?? "";
+}
+
+function currentAgentSessionId() {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get("session") ?? "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStoredAgentMessage(value: unknown): value is AgentMessage {
+  if (!isRecord(value) || typeof value.text !== "string") {
+    return false;
+  }
+
+  if (value.role === "user") {
+    return true;
+  }
+
+  return (
+    value.role === "assistant" &&
+    Array.isArray(value.items) &&
+    (value.kind === "people" || value.kind === "events") &&
+    typeof value.panelTitle === "string"
+  );
+}
+
+export interface AgentStoredChatSession {
+  id: string;
+  messages: AgentMessage[];
+  panel?: AgentPanel | null;
+  title: string;
+  updatedAt: string;
+}
+
+export function parseAgentChatHistoryStorage(
+  value: string | null,
+): AgentStoredChatSession[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter(isRecord)
+      .map((session) => ({
+        id: typeof session.id === "string" ? session.id : "",
+        messages: Array.isArray(session.messages)
+          ? session.messages.filter(isStoredAgentMessage)
+          : [],
+        panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
+        title: typeof session.title === "string" ? session.title.trim() : "",
+        updatedAt:
+          typeof session.updatedAt === "string" ? session.updatedAt : "",
+      }))
+      .filter(
+        (session) =>
+          Boolean(session.id && session.title && session.updatedAt) &&
+          session.messages.some((message) => message.role === "user"),
+      )
+      .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
+  } catch {
+    return [];
+  }
+}
+
+export function agentChatHistorySessionsToHistory(
+  sessions: readonly AgentStoredChatSession[],
+  language: AgentHistoryLanguage,
+): OrbitAgentHistoryView[] {
+  const group = language === "zh" ? "更早" : "Earlier";
+
+  return [...sessions]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS)
+    .map((session) => {
+      const firstUserMessage =
+        session.messages.find((message) => message.role === "user")?.text ??
+        session.title;
+
+      return {
+        group,
+        id: `session:${session.id}`,
+        q: firstUserMessage,
+        sessionId: session.id,
+        title: session.title,
+        when: group,
+      };
+    });
+}
+
+function titleFromMessages(messages: readonly AgentMessage[]): string {
+  const firstUserMessage =
+    messages.find((message) => message.role === "user")?.text.trim() ?? "";
+
+  if (!firstUserMessage) {
+    return "New chat";
+  }
+
+  return firstUserMessage.length > 28
+    ? `${firstUserMessage.slice(0, 28)}...`
+    : firstUserMessage;
+}
+
+function panelFromMessages(messages: readonly AgentMessage[]): AgentPanel | null {
+  const message = [...messages]
+    .reverse()
+    .find(
+      (item): item is Extract<AgentMessage, { role: "assistant" }> =>
+        item.role === "assistant" && item.items.length > 0,
+    );
+
+  return message
+    ? { items: message.items, kind: message.kind, panelTitle: message.panelTitle }
+    : null;
+}
+
+function createAgentSessionId(): string {
+  return `agent-session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function upsertAgentChatSession(
+  sessions: readonly AgentStoredChatSession[],
+  session: AgentStoredChatSession,
+): AgentStoredChatSession[] {
+  return [
+    session,
+    ...sessions.filter((item) => item.id !== session.id),
+  ].slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
+}
+
+function readStoredAgentChatSessions(): AgentStoredChatSession[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  return parseAgentChatHistoryStorage(
+    window.localStorage.getItem(AGENT_CHAT_HISTORY_STORAGE_KEY),
+  );
+}
+
+function writeStoredAgentChatSessions(
+  sessions: readonly AgentStoredChatSession[],
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    AGENT_CHAT_HISTORY_STORAGE_KEY,
+    JSON.stringify(sessions),
+  );
+}
+
+export async function copyAgentMessageText(text: string): Promise<boolean> {
+  const value = text.trim();
+  if (!value) {
+    return false;
+  }
+
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // Fall through to the legacy textarea copy path.
+  }
+
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.left = "-9999px";
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } finally {
+    textarea.remove();
+  }
 }
 
 // assistant 回复按轻量 markdown 渲染（加粗、列表、行内代码、链接）。
@@ -178,12 +410,44 @@ function AgentMarkdown({ text }: { text: string }) {
   );
 }
 
+function AgentMessageCopyButton({ text }: { text: string }) {
+  const { t } = useOrbitLanguage();
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      aria-label={t({ en: "Copy message", zh: "复制消息" })}
+      data-orbit-agent-message-copy={copied ? "copied" : "idle"}
+      onClick={async () => setCopied(await copyAgentMessageText(text))}
+      title={copied ? t({ en: "Copied", zh: "已复制" }) : t({ en: "Copy", zh: "复制" })}
+      type="button"
+      style={{
+        alignItems: "center",
+        background: copied ? "var(--accent-soft)" : "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 9,
+        color: copied ? "var(--accent)" : "var(--text-3)",
+        cursor: "pointer",
+        display: "inline-flex",
+        flexShrink: 0,
+        height: 30,
+        justifyContent: "center",
+        width: 30,
+      }}
+    >
+      <Icon name={copied ? "check" : "copy"} size={14} />
+    </button>
+  );
+}
+
 function AgentHistoryList({
   activeQ,
+  activeSessionId,
   history,
   onPick,
 }: {
   activeQ: string;
+  activeSessionId: string | null;
   history: OrbitAgentHistoryView[];
   onPick: (history: OrbitAgentHistoryView) => void;
 }) {
@@ -200,7 +464,10 @@ function AgentHistoryList({
             {history
               .filter((item) => item.group === group)
               .map((item) => {
-                const active = Boolean(activeQ && item.q === activeQ);
+                const active = Boolean(
+                  (item.sessionId && item.sessionId === activeSessionId) ||
+                    (activeQ && item.q === activeQ),
+                );
 
                 return (
                   <button
@@ -453,12 +720,23 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   const [thinking, setThinking] = useState(false);
   const [histOpen, setHistOpen] = useState(false);
   const [activeQ, setActiveQ] = useState("");
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [storedSessions, setStoredSessions] = useState<AgentStoredChatSession[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const languageRef = useRef(language);
   const messagesRef = useRef<AgentMessage[]>(messages);
+  const storedSessionsRef = useRef<AgentStoredChatSession[]>(storedSessions);
+  const activeSessionIdRef = useRef<string | null>(activeSessionId);
+  const historyHydratedRef = useRef(false);
 
   languageRef.current = language;
   messagesRef.current = messages;
+  storedSessionsRef.current = storedSessions;
+  activeSessionIdRef.current = activeSessionId;
+  const storedHistory = useMemo(
+    () => agentChatHistorySessionsToHistory(storedSessions, language),
+    [language, storedSessions],
+  );
 
   const navigate = useCallback((prototypeHref: string) => {
     const href = preserveHref(productHref(prototypeHref));
@@ -472,6 +750,63 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
     window.location.href = href;
   }, [preserveHref]);
+
+  const restoreSession = useCallback((session: AgentStoredChatSession) => {
+    setHistOpen(false);
+    setMessages(session.messages);
+    setPanel(session.panel ?? panelFromMessages(session.messages));
+    setText("");
+    setThinking(false);
+    setActiveQ("");
+    setActiveSessionId(session.id);
+    activeSessionIdRef.current = session.id;
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
+        session.id,
+      );
+    }
+  }, []);
+
+  const persistCurrentSession = useCallback((
+    nextMessages: readonly AgentMessage[],
+    nextPanel: AgentPanel | null,
+  ) => {
+    if (!historyHydratedRef.current || nextMessages.length === 0) {
+      return;
+    }
+
+    const hasUserMessage = nextMessages.some((message) => message.role === "user");
+    if (!hasUserMessage) {
+      return;
+    }
+
+    const sessionId = activeSessionIdRef.current ?? createAgentSessionId();
+    const session: AgentStoredChatSession = {
+      id: sessionId,
+      messages: [...nextMessages],
+      panel: nextPanel,
+      title: titleFromMessages(nextMessages),
+      updatedAt: new Date().toISOString(),
+    };
+    const nextSessions = upsertAgentChatSession(
+      storedSessionsRef.current,
+      session,
+    );
+
+    activeSessionIdRef.current = sessionId;
+    setActiveSessionId(sessionId);
+    storedSessionsRef.current = nextSessions;
+    setStoredSessions(nextSessions);
+    writeStoredAgentChatSessions(nextSessions);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
+        sessionId,
+      );
+    }
+  }, []);
 
   // 真实链路：把用户消息发给 Orbit Agent conversation API（planner → 白名单工具 →
   // 可复核 artifact → synthesis），并把 contact_recommendations artifact 映射到侧边栏。
@@ -516,29 +851,48 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         return;
       }
 
-      const artifact = contactRecommendationArtifact(payload.data.artifacts);
-      const peopleItems = peopleItemsFromArtifact(artifact);
+      const contactArtifact = artifactOfKind(
+        payload.data.artifacts,
+        "contact_recommendations",
+      );
+      const eventArtifact = artifactOfKind(
+        payload.data.artifacts,
+        "event_recommendations",
+      );
+      const peopleItems = peopleItemsFromArtifact(contactArtifact);
+      const eventItems =
+        peopleItems.length > 0 ? [] : eventItemsFromArtifact(eventArtifact);
+      const kind: "people" | "events" =
+        eventItems.length > 0 ? "events" : "people";
+      const items = kind === "events" ? eventItems : peopleItems;
+      const activeArtifact = kind === "events" ? eventArtifact : contactArtifact;
       const panelTitle =
-        artifact?.result?.presentation?.title?.trim() ||
-        (locale === "zh" ? "人脉推荐" : "Recommended contacts");
+        activeArtifact?.result?.presentation?.title?.trim() ||
+        (kind === "events"
+          ? locale === "zh"
+            ? "活动推荐"
+            : "Recommended events"
+          : locale === "zh"
+            ? "人脉推荐"
+            : "Recommended contacts");
       const assistantText =
         payload.data.assistantMessage?.trim() ||
-        artifact?.result?.generatedView?.summary ||
+        activeArtifact?.result?.generatedView?.summary ||
         failureText;
 
       setMessages((current) => [
         ...current,
         {
-          items: peopleItems,
-          kind: "people",
+          items,
+          kind,
           panelTitle,
           role: "assistant",
           text: assistantText,
         },
       ]);
 
-      if (peopleItems.length > 0) {
-        setPanel({ items: peopleItems, kind: "people", panelTitle });
+      if (items.length > 0) {
+        setPanel({ items, kind, panelTitle });
       }
     } catch {
       setMessages((current) => [
@@ -551,15 +905,38 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   }, []);
 
   useEffect(() => {
+    const sessions = readStoredAgentChatSessions();
+    const sessionId =
+      currentAgentSessionId() ||
+      (typeof window !== "undefined"
+        ? window.localStorage.getItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY) ?? ""
+        : "");
+    const session = sessions.find((item) => item.id === sessionId);
+
+    storedSessionsRef.current = sessions;
+    setStoredSessions(sessions);
+    historyHydratedRef.current = true;
+
+    if (session) {
+      restoreSession(session);
+      return;
+    }
+
     const query = currentAgentQuery();
     setActiveQ(query);
     if (query) {
       setMessages([]);
       setPanel(null);
       setText("");
+      setActiveSessionId(null);
+      activeSessionIdRef.current = null;
       void ask(query);
     }
-  }, [ask]);
+  }, [ask, restoreSession]);
+
+  useEffect(() => {
+    persistCurrentSession(messages, panel);
+  }, [messages, panel, persistCurrentSession]);
 
   useEffect(() => {
     const scroll = scrollRef.current;
@@ -583,10 +960,23 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   };
 
   const pickHistory = (item: OrbitAgentHistoryView) => {
+    if (item.sessionId) {
+      const session = storedSessionsRef.current.find(
+        (stored) => stored.id === item.sessionId,
+      );
+      if (session) {
+        restoreSession(session);
+        navigate(`/agent?session=${encodeURIComponent(session.id)}`);
+        return;
+      }
+    }
+
     setHistOpen(false);
     setMessages([]);
     setPanel(null);
     setText("");
+    setActiveSessionId(null);
+    activeSessionIdRef.current = null;
     navigate(`/agent?q=${encodeURIComponent(item.q)}`);
     void ask(item.q);
   };
@@ -598,6 +988,11 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     setText("");
     setThinking(false);
     setActiveQ("");
+    setActiveSessionId(null);
+    activeSessionIdRef.current = null;
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
+    }
     navigate("/agent");
   };
 
@@ -605,7 +1000,8 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     <>
       {messages.map((message, index) =>
         message.role === "user" ? (
-          <div key={`user-${index}`} style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+          <div key={`user-${index}`} style={{ alignItems: "flex-end", display: "flex", gap: 8, justifyContent: "flex-end", marginBottom: 16 }}>
+            <AgentMessageCopyButton text={message.text} />
             <div style={{ background: "var(--accent)", borderRadius: "16px 16px 4px 16px", color: "var(--on-dark)", fontSize: 15, lineHeight: 1.55, maxWidth: "82%", padding: "11px 15px" }}>{message.text}</div>
           </div>
         ) : (
@@ -620,8 +1016,11 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                   {message.note}
                 </div>
               ) : null}
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", fontSize: 15, lineHeight: 1.6, padding: "12px 15px" }}>
-                <AgentMarkdown text={message.text} />
+              <div style={{ alignItems: "flex-end", display: "flex", gap: 8 }}>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", flex: 1, fontSize: 15, lineHeight: 1.6, minWidth: 0, padding: "12px 15px" }}>
+                  <AgentMarkdown text={message.text} />
+                </div>
+                <AgentMessageCopyButton text={message.text} />
               </div>
               {inlinePanel && message.items.length > 0 ? (
                 <div style={{ marginTop: 12 }}>
@@ -677,7 +1076,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             <div className="eyebrow">{t({ en: "Chat history", zh: "对话历史" })}</div>
           </div>
           <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 10px 18px" }}>
-            <AgentHistoryList activeQ={activeQ} history={viewModel.history} onPick={pickHistory} />
+            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onPick={pickHistory} />
           </div>
         </aside>
         <div style={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}>
@@ -755,7 +1154,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               <div className="eyebrow" style={{ padding: "2px 8px 4px" }}>{t({ en: "Chat history", zh: "对话历史" })}</div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 8px 18px" }}>
-              <AgentHistoryList activeQ={activeQ} history={viewModel.history} onPick={pickHistory} />
+              <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onPick={pickHistory} />
             </div>
           </div>
         </div>

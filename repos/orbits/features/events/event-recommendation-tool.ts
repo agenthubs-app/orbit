@@ -22,6 +22,7 @@ export interface EventsRecommendationCandidate {
   eventId: string;
   evidenceIds: readonly string[];
   matchReasons: readonly string[];
+  matchedTokens: readonly string[];
   nextAction: string;
   recommendedPreparation: string;
   relationshipContext: string;
@@ -30,6 +31,7 @@ export interface EventsRecommendationCandidate {
   startsAt: string;
   status: EventStatus;
   title: string;
+  upcoming: boolean;
   venue: string;
 }
 
@@ -54,6 +56,8 @@ export interface EventsRecommendationTool {
 
 export interface EventsRecommendationToolOptions {
   eventService?: EventCrudAndImportService;
+  // 可注入的时间源，便于测试固定"未来活动优先"的判定；默认取真实当前时间。
+  now?: () => number;
 }
 
 const preferredStatuses = new Set<EventStatus>(["confirmed", "imported"]);
@@ -83,16 +87,70 @@ function normalizedStatus(value: unknown): EventStatus | null {
     : null;
 }
 
+// \u82f1\u6587\u865a\u8bcd\u4e0e\u8bf7\u6c42\u5957\u8bdd\u4e0d\u53c2\u4e0e\u5339\u914d\uff0c\u907f\u514d "to/want/join" \u8fd9\u7c7b\u8bcd\u628a\u65e0\u5173\u6d3b\u52a8\u9876\u4e0a\u6765\u3002
+const tokenStopwords = new Set([
+  "an",
+  "and",
+  "are",
+  "at",
+  "can",
+  "for",
+  "help",
+  "in",
+  "is",
+  "join",
+  "me",
+  "meet",
+  "my",
+  "need",
+  "of",
+  "on",
+  "people",
+  "some",
+  "that",
+  "the",
+  "to",
+  "want",
+  "who",
+  "with",
+]);
+
 function tokensFor(query: string): readonly string[] {
+  const lowered = query.toLowerCase();
+  const runTokens = lowered
+    .split(/[^a-z0-9\u3040-\u30ff\u3400-\u9fff]+/u)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+  // \u4e2d\u6587/\u65e5\u6587\u53e5\u5b50\u91cc\u5d4c\u7740\u7684\u62c9\u4e01\u8bcd\uff08"\u53c2\u52a0AI\u76f8\u5173\u7684\u6d3b\u52a8"\u91cc\u7684 ai\uff09\u5355\u72ec\u62bd\u51fa\u6765\uff0c
+  // \u5426\u5219\u6574\u6bb5 CJK \u8fde\u4e32\u6c38\u8fdc\u5339\u914d\u4e0d\u5230\u6d3b\u52a8\u6587\u672c\u91cc\u7684\u82f1\u6587\u5173\u952e\u8bcd\u3002
+  const embeddedLatinTokens = (lowered.match(/[a-z0-9]+/g) ?? []).filter(
+    (token) => token.length >= 2,
+  );
+
   return Array.from(
     new Set(
-      query
-        .toLowerCase()
-        .split(/[^a-z0-9\u3040-\u30ff\u3400-\u9fff]+/u)
-        .map((token) => token.trim())
-        .filter((token) => token.length >= 2),
+      [...runTokens, ...embeddedLatinTokens].filter(
+        (token) => !tokenStopwords.has(token),
+      ),
     ),
   );
+}
+
+function isLatinToken(token: string): boolean {
+  return /^[a-z0-9]+$/.test(token);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// \u62c9\u4e01\u8bcd\u7528\u8bcd\u8fb9\u754c\u5339\u914d\uff0c\u907f\u514d "ai" \u547d\u4e2d "Kansai" \u8fd9\u7c7b\u5b50\u4e32\uff1bCJK \u8bcd\u4fdd\u6301\u5b50\u4e32\u5339\u914d\u3002
+function textMatchesToken(text: string, token: string): boolean {
+  if (isLatinToken(token)) {
+    return new RegExp(`\\b${escapeRegExp(token)}\\b`, "i").test(text);
+  }
+
+  return text.includes(token);
 }
 
 function eventText(event: EventRecord): string {
@@ -129,20 +187,30 @@ function matchScore(input: {
   event: EventRecord;
   query: string;
   tokens: readonly string[];
+  upcoming: boolean;
 }): { matchedTokens: readonly string[]; score: number } {
   const text = eventText(input.event);
-  const matchedTokens = input.tokens.filter((token) => text.includes(token));
+  const matchedTokens = input.tokens.filter((token) =>
+    textMatchesToken(text, token),
+  );
   const statusScore = preferredStatuses.has(input.event.status) ? 20 : 0;
-  const queryScore = matchedTokens.length * 10;
+  const queryScore = matchedTokens.length * 15;
   const contextScore = readText(input.event.relationshipContext) ? 10 : 0;
   const preparationScore = readText(input.event.recommendedPreparation) ? 10 : 0;
   const fallbackScore = input.tokens.length === 0 ? 15 : 0;
+  // 还没开始的活动才真正"可以参加"；已结束的只作为线索保留、排序靠后。
+  const upcomingScore = input.upcoming ? 15 : 0;
 
   return {
     matchedTokens,
     score: Math.min(
       100,
-      statusScore + queryScore + contextScore + preparationScore + fallbackScore,
+      statusScore +
+        queryScore +
+        contextScore +
+        preparationScore +
+        fallbackScore +
+        upcomingScore,
     ),
   };
 }
@@ -178,14 +246,18 @@ function matchReasonsFor(input: {
 function candidateFor(input: {
   databaseQueryExecuted: boolean;
   event: EventRecord;
+  nowMs: number;
   query: string;
   sourceLabel: string;
   tokens: readonly string[];
 }): EventsRecommendationCandidate {
+  const startsAtMs = Date.parse(input.event.startsAt);
+  const upcoming = Number.isFinite(startsAtMs) && startsAtMs >= input.nowMs;
   const { matchedTokens, score } = matchScore({
     event: input.event,
     query: input.query,
     tokens: input.tokens,
+    upcoming,
   });
 
   return {
@@ -199,6 +271,7 @@ function candidateFor(input: {
       matchedTokens,
       query: input.query,
     }),
+    matchedTokens,
     nextAction: input.event.nextAction,
     recommendedPreparation: input.event.recommendedPreparation,
     relationshipContext: input.event.relationshipContext,
@@ -207,6 +280,7 @@ function candidateFor(input: {
     startsAt: input.event.startsAt,
     status: input.event.status,
     title: input.event.title,
+    upcoming,
     venue: input.event.venue,
   };
 }
@@ -227,6 +301,7 @@ function compareCandidates(
 function resultForList(
   listResult: EventListResult,
   input: EventsRecommendationToolInput,
+  nowMs: number,
 ): EventsRecommendationToolResult {
   if (listResult.success === false) {
     return {
@@ -241,7 +316,10 @@ function resultForList(
 
   const query = input.query.trim();
   const limit = normalizedLimit(input.toolArguments?.limit);
-  const tokens = tokensFor(query);
+  // 模型抽取的英文检索词（searchTerms）与原始 query 合并参与匹配，
+  // 中文/日文请求由此拿到能命中双语活动文本的英文关键词。
+  const searchTerms = readText(input.toolArguments?.searchTerms);
+  const tokens = tokensFor(searchTerms ? `${query} ${searchTerms}` : query);
   const databaseQueryExecuted = databaseReadExecuted(listResult.data.provenance);
   const candidates = listResult.data.events
     .filter((event) => event.status !== "cancelled")
@@ -249,11 +327,14 @@ function resultForList(
       candidateFor({
         databaseQueryExecuted,
         event,
+        nowMs,
         query,
         sourceLabel: listResult.data.provenance.sourceLabel,
         tokens,
       }),
     )
+    // 请求带了关键词却一个都没命中的活动不进入推荐，避免"什么都推"。
+    .filter((candidate) => tokens.length === 0 || candidate.matchedTokens.length > 0)
     .sort(compareCandidates)
     .slice(0, limit);
   const evidenceIds = candidates.flatMap((candidate) => candidate.evidenceIds);
@@ -286,19 +367,21 @@ export function createEventsRecommendationTool(
   options: EventsRecommendationToolOptions = {},
 ): EventsRecommendationTool {
   const eventService = options.eventService ?? createEventCrudAndImportService();
+  const now = options.now ?? (() => Date.now());
 
   return {
     recommend(input): EventsRecommendationToolResultValue {
       const statusFilter = normalizedStatus(input.toolArguments?.statusFilter);
+      const nowMs = now();
       const listResult = eventService.listEvents(
         statusFilter ? { statusFilter } : {},
       );
 
       if (isPromiseLike(listResult)) {
-        return listResult.then((resolved) => resultForList(resolved, input));
+        return listResult.then((resolved) => resultForList(resolved, input, nowMs));
       }
 
-      return resultForList(listResult, input);
+      return resultForList(listResult, input, nowMs);
     },
   };
 }
