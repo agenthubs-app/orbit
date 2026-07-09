@@ -85,12 +85,39 @@ async function fetchBadgeCount(language: OrbitLanguage): Promise<number> {
   }
 }
 
+function chineseDemoMessageDraft(input: {
+  recipientName: string;
+  organization: string;
+}): { subject: string; body: string } {
+  const recipientName = input.recipientName.trim() || "您好";
+  const organization = input.organization.trim() || "相关合作";
+
+  return {
+    subject: `关于${organization}的跟进`,
+    body: [
+      `${recipientName}，您好：`,
+      "",
+      `我想基于目前已经整理好的关系背景，继续跟进与${organization}相关的沟通。`,
+      "",
+      "这边已经整理好可复核的来源线索和下一步确认事项，想先和您确认是否方便继续推进。",
+      "",
+      "在任何消息真正发出前，我会先完成来源证据与确认要求的复核。",
+    ].join("\n"),
+  };
+}
+
 // 用 message-draft-generator 生成首封草稿（subject + body），供发起新对话预填。
+// 中文演示环境使用本地中文模板，避免 live/mock draft service 返回英文 fixture。
 // 只生成可复核草稿，不发送。失败时返回 null。
-async function generateMessageDraft(input: {
+export async function generateMessageDraft(input: {
+  language: OrbitLanguage;
   recipientName: string;
   organization: string;
 }): Promise<{ subject: string; body: string } | null> {
+  if (input.language === "zh") {
+    return chineseDemoMessageDraft(input);
+  }
+
   try {
     const response = await fetch("/api/message-drafts", {
       method: "POST",
@@ -522,6 +549,7 @@ function NewThreadForm({
     setBusy("generating");
     setError(false);
     const draft = await generateMessageDraft({
+      language,
       recipientName: recipient,
       organization,
     });

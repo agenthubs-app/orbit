@@ -6,6 +6,11 @@
 export const metadata = {
   title: "Orbit",
   description: "An event-grounded relationship operating system.",
+  icons: {
+    apple: "/icon.svg",
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
 };
 
 const globalStyles = `

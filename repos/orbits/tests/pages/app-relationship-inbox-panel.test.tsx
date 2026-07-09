@@ -91,3 +91,30 @@ test("contact detail card connection routes 起草邮件 into the inbox compose 
   assert.match(source, /openRelationshipInboxCompose\(/);
   assert.match(source, /recipient: contact\.displayName/);
 });
+
+test("Chinese relationship inbox draft generation uses pure Chinese demo copy", async () => {
+  const mod = await import("../../app/(app)/app/inbox/relationship-inbox-panel");
+  const previousFetch = globalThis.fetch;
+  let fetchRequested = false;
+  globalThis.fetch = (async () => {
+    fetchRequested = true;
+    throw new Error("Chinese demo draft should not depend on the message-drafts API");
+  }) as typeof fetch;
+
+  try {
+    const draft = await mod.generateMessageDraft({
+      language: "zh",
+      organization: "北星食品",
+      recipientName: "佐藤 健一",
+    });
+    const draftText = `${draft?.subject ?? ""}\n${draft?.body ?? ""}`;
+
+    assert.equal(fetchRequested, false);
+    assert.equal(draft?.subject, "关于北星食品的跟进");
+    assert.match(draft?.body ?? "", /佐藤 健一，您好：/);
+    assert.match(draft?.body ?? "", /北星食品/);
+    assert.doesNotMatch(draftText, /[A-Za-z]/);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
