@@ -169,7 +169,8 @@ function confidenceLabelFor(
   return localize(locale, { en: "Available", zh: "可复核" });
 }
 
-// 活动种子标题是「日文 / English」双语串；卡片只显示当前语言那一段。
+// 活动源标签是「日文 / 中文 / 英文」多语串（title 有时只有日/英两段）；
+// zh 页面挑"有汉字且无假名"的中文段，en 页面挑纯拉丁段，缺段时回退。
 function bilingualSegment(text: string, locale: ArtifactLocale): string {
   const segments = text
     .split(/\s*\/\s*/)
@@ -180,14 +181,21 @@ function bilingualSegment(text: string, locale: ArtifactLocale): string {
     return text.trim();
   }
 
+  const hasKana = (segment: string) => /[぀-ヿ]/u.test(segment);
+  const hasHan = (segment: string) => /[㐀-鿿]/u.test(segment);
+
   if (locale === "en") {
     return (
-      segments.find((segment) => !/[぀-ヿ㐀-鿿]/u.test(segment)) ??
+      segments.find((segment) => !hasHan(segment) && !hasKana(segment)) ??
       segments[segments.length - 1]
     );
   }
 
-  return segments[0];
+  return (
+    segments.find((segment) => hasHan(segment) && !hasKana(segment)) ??
+    segments.find(hasHan) ??
+    segments[0]
+  );
 }
 
 function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocale) {
@@ -212,6 +220,14 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
         en: "Already ended — keep it as a lead for similar events and the people who attended.",
         zh: "已结束——可作为同类活动与参会人脉的线索复核。",
       });
+  // 有分语言简介时先给简介，再接未开始/已结束提示。
+  const localizedDescription =
+    locale === "zh"
+      ? candidate.localizedDescriptions.zh
+      : candidate.localizedDescriptions.en;
+  const body = localizedDescription
+    ? `${localizedDescription} ${timingNote}`
+    : timingNote;
 
   return {
     actions: [
@@ -225,7 +241,7 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
         requiresConfirmation: true,
       },
     ],
-    body: timingNote,
+    body,
     confidenceLabel: confidenceLabelFor(candidate, locale),
     evidenceIds: candidate.evidenceIds,
     id: `event-recommendation:${candidate.eventId}`,
@@ -253,7 +269,7 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
     ],
     reason: matchedReason,
     subtitle: candidate.venue,
-    title: bilingualSegment(candidate.title, locale),
+    title: bilingualSegment(candidate.eventLabel || candidate.title, locale),
   };
 }
 

@@ -19,8 +19,16 @@ export interface EventsRecommendationCandidate {
   databaseQueryExecuted: boolean;
   description: string;
   endsAt: string;
+  // 事件源标签通常是「日文 / 中文 / 英文」三语串，供展示层按 locale 挑选。
+  eventLabel: string;
   eventId: string;
   evidenceIds: readonly string[];
+  // 从 description 里按 JA:/ZH:/EN: 标记抽出的分语言简介；缺失时为 null。
+  localizedDescriptions: {
+    en: string | null;
+    ja: string | null;
+    zh: string | null;
+  };
   matchReasons: readonly string[];
   matchedTokens: readonly string[];
   nextAction: string;
@@ -153,6 +161,25 @@ function textMatchesToken(text: string, token: string): boolean {
   return text.includes(token);
 }
 
+// 种子活动的 description 把三语简介拼在一段里（"JA: … ZH: … EN: …"）；
+// 按标记抽出各语言句子，展示层就不用透出整个导入串。
+function localizedDescriptionsFor(description: string): {
+  en: string | null;
+  ja: string | null;
+  zh: string | null;
+} {
+  const read = (marker: string): string | null => {
+    const match = description.match(
+      new RegExp(`${marker}:\\s*([^]*?)(?=\\s(?:JA|ZH|EN):|\\sprofile_|$)`),
+    );
+    const text = match?.[1]?.trim();
+
+    return text ? text : null;
+  };
+
+  return { en: read("EN"), ja: read("JA"), zh: read("ZH") };
+}
+
 function eventText(event: EventRecord): string {
   return [
     event.title,
@@ -264,8 +291,10 @@ function candidateFor(input: {
     databaseQueryExecuted: input.databaseQueryExecuted,
     description: input.event.description,
     endsAt: input.event.endsAt,
+    eventLabel: input.event.sourceMetadata.label ?? input.event.title,
     eventId: input.event.id,
     evidenceIds: evidenceIdsFor(input.event),
+    localizedDescriptions: localizedDescriptionsFor(input.event.description),
     matchReasons: matchReasonsFor({
       event: input.event,
       matchedTokens,
