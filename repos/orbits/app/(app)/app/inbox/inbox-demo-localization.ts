@@ -135,18 +135,19 @@ export function localizeThreadMessage(
 export function localizeReminderTitle(
   original: string,
   language: OrbitLanguage,
+  readableTarget?: string,
 ): string {
+  const followUp = original.match(/^Review follow-up for (.+)$/);
+  if (followUp) {
+    const target = readableTarget?.trim() || followUp[1];
+    return active(language) ? `跟进 ${target}` : `Follow up with ${target}`;
+  }
   if (!active(language)) {
     return original;
   }
   const mapped = REMINDER_TITLE_ZH[original];
   if (mapped) {
     return mapped;
-  }
-  // live 生成模式："Review follow-up for contact_021" → "跟进 contact_021"
-  const followUp = original.match(/^Review follow-up for (.+)$/);
-  if (followUp) {
-    return `跟进 ${followUp[1]}`;
   }
   return original;
 }

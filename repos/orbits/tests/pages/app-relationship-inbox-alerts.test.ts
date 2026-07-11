@@ -48,6 +48,25 @@ test("reminder alerts view model maps reminders to navigable alert rows", async 
   assert.ok(["high", "normal", "low"].includes(first.priority));
 });
 
+test("reminder alerts show contact names instead of internal contact ids", () => {
+  const alerts = toReminderAlerts({
+    reminders: [
+      {
+        reminderId: "notification_001",
+        title: "Review follow-up for contact_021",
+        contactName: "山崎 美穂",
+        organization: "Aoba Technologies",
+        recommendedWindow: "Review before the scheduled in-app reminder",
+        dueAt: "2026-07-10T01:00:00.000Z",
+        priority: "high",
+      },
+    ],
+  } as unknown as ReminderScheduleNotificationPayload);
+
+  assert.equal(alerts[0]?.title, "跟进 山崎 美穂");
+  assert.doesNotMatch(alerts[0]?.title ?? "", /contact_\d+/);
+});
+
 test("proactive-turns API returns an in-app nudge with no external side effect", async () => {
   const route = await import("../../app/api/ai/proactive-turns/route");
   const response = await route.GET();

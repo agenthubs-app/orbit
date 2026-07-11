@@ -228,7 +228,7 @@ export function toReminderAlerts(
 ): readonly InboxReminderAlert[] {
   return payload.reminders.map((reminder) => ({
     id: reminder.reminderId,
-    title: localizeReminderTitle(reminder.title, language),
+    title: localizeReminderTitle(reminder.title, language, reminder.contactName),
     contactName: reminder.contactName,
     organization: reminder.organization,
     dueLabel: localizeReminderWindow(
