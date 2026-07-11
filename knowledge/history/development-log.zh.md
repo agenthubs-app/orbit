@@ -111,3 +111,11 @@
 - 修改摘要：将模块架构文档从 `agent.md` 改为 `actions.md`，更新模块树、`features/agent/DESIGN.md`、相关 live handoff 文档、Orbit AI 模块说明、知识库主题页和 app-local manifest；catalog 与中文镜像展示名改为 `actions`。
 - 架构边界：当前代码路径、route 和 API 仍保留 legacy `features/agent`、`/app/agent` 和 `/api/agent/*`，因为 GitNexus 对 `createAgentActionQueueService` 的上游影响为 HIGH；本次只收敛产品/文档术语，不做代码符号和路由迁移。
 - 验证方式：运行知识库生成脚本、root knowledge tests、app knowledge tests、modular-boundaries test、`git diff --check` 和 GitNexus detect changes。
+
+## [2026-07-11] design | Orbit AI 定位与能力边界设计定稿
+
+- 用户目标：明确 Orbit AI 功能要做到什么程度、边界在哪里，解决"窄工具定价弱 vs 无限制 AI Chat 风险高"的定位问题。
+- 决定摘要：定位为"懂你人脉的商务秘书"（活动关系闭环），采用三层漏斗——对话入口无边界（通用问题注入关系上下文并克制引导回产品）、能力核心有边界（会前/会中/会后闭环判断句）、执行闭环收费（A 档 draft+确认执行）。系统内写入确认后真实执行且必须走 Actions 模块；邮件永远止于草稿，不开任何形式代发；主动性做到档位 2（关键时机推送，深链回 proactive 消息）；不做 CRM 管道、群发、线索购买、全场自动录音。
+- 活动端备忘：NFC-first 互换（consent 模型 A：碰即好友+可撤）、"碰一下+说一句"语音 memo、活动方价值包（会前匹配/ROI 报告/NFC 胸牌套件），另立第二份设计展开。
+- 来源文档：`docs/superpowers/specs/2026-07-11-orbit-ai-positioning-boundary-design.md`。
+- 验证方式：设计文档逐节与产品负责人确认；后续 sprint 以该文档第 3、4、5、6 节为契约来源。
