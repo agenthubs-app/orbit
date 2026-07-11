@@ -31,7 +31,7 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：Chat 摘要 和 Extraction Mock Live 实现
+- 第 1 节：Chat 摘要 和 Extraction Live 实现
 - 第 2 节：Live 服务 Files
 - 第 3 节：源标题：Switch Mechanism
 - 第 4 节：Required Env Vars Or 权限

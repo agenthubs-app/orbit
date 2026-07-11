@@ -36,6 +36,11 @@
 - 第 3 节：源标题：Mock Live Component Replacement
 - 第 4 节：产品 UI 契约 Decoupling
 - 第 5 节：App Documentation 和 知识 Manifest
+- 第 6 节：GitNexus — 代码 Intelligence
+- 第 7 节：源标题：Always Do
+- 第 8 节：源标题：Never Do
+- 第 9 节：源标题：Resources
+- 第 10 节：源标题：CLI
 
 ## 保留的代码与命令证据
 

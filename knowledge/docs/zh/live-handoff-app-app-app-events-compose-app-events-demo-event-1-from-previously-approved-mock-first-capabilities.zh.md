@@ -38,6 +38,7 @@
 - 第 5 节：Required Env Vars Or 权限
 - 第 6 节：源标题：Privacy Provenance Constraints
 - 第 7 节：Replacement 测试
+- 第 8 节：源标题：Verified Live Behavior
 
 ## 保留的代码与命令证据
 

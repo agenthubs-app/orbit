@@ -360,7 +360,7 @@ const additionalOrbitDocs = [
     sourcePath: "harness-state/audits/2026-06-24-harness-audit.md",
     category: "harness",
     status: "historical",
-    freshness: "likely-current",
+    freshness: "known-stale",
     ownerArea: "harness",
     relatedCodePaths: ["harness"],
     relatedKnowledgePages: ["knowledge/wiki/harness.zh.md"],
@@ -570,6 +570,27 @@ const documents = [
     relatedKnowledgePages: ["knowledge/wiki/actions-system.zh.md"],
   }),
   doc({
+    id: "orbit-ai-positioning-boundary-design",
+    titleZh: "Orbit AI 定位与能力边界设计",
+    summaryZh:
+      "2026-07-11 定稿的产品定位与边界决定：懂你人脉的商务秘书、三层漏斗（对话无边界/能力有边界/执行闭环）、A 档确认执行、邮件永远止于草稿、主动性档位 2、不做清单，附活动端 NFC 互换与语音 memo 决定备忘。",
+    reviewEvidenceZh:
+      "设计与产品负责人逐节确认；执行深度与主动性尚未实现，后续 sprint 以该文档第 3、4、5、6 节为契约来源。",
+    sourcePath: "docs/superpowers/specs/2026-07-11-orbit-ai-positioning-boundary-design.md",
+    category: "sprint-spec",
+    freshness: "likely-current",
+    ownerArea: "orbit-ai",
+    relatedCodePaths: [
+      "repos/orbits/features/orbit-ai/agent-tools/registry.ts",
+      "repos/orbits/features/orbit-ai/live-agent-runtime.ts",
+      "repos/orbits/features/agent",
+    ],
+    relatedKnowledgePages: [
+      "knowledge/wiki/actions-system.zh.md",
+      "knowledge/wiki/project-overview.zh.md",
+    ],
+  }),
+  doc({
     id: "trace-tool-catalog-plan",
     titleZh: "Orbit AI Trace 工具目录计划",
     summaryZh: "实施 trace debug 页面展示工具 catalog 和中文规格说明的计划。",
@@ -770,9 +791,11 @@ const documents = [
     id: "learning-troubleshooting",
     titleZh: "根排障知识",
     summaryZh: "记录 Orbit AI trace submit loading、provider timeout 和 responsive submit 控件等排障过程。",
+    reviewEvidenceZh:
+      "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
     sourcePath: ".learnings/TROUBLESHOOTING.md",
     category: "learning",
-    freshness: "likely-current",
+    freshness: "known-stale",
     ownerArea: "learning",
     relatedKnowledgePages: ["knowledge/learnings/troubleshooting.zh.md"],
   }),
@@ -780,9 +803,11 @@ const documents = [
     id: "learning-errors",
     titleZh: "根错误记录",
     summaryZh: "记录 harness 依赖、tsx eval、provider hang 和 git diff 命令等错误经验。",
+    reviewEvidenceZh:
+      "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
     sourcePath: ".learnings/ERRORS.md",
     category: "learning",
-    freshness: "likely-current",
+    freshness: "known-stale",
     ownerArea: "learning",
     relatedKnowledgePages: ["knowledge/learnings/errors.zh.md"],
   }),
@@ -790,9 +815,11 @@ const documents = [
     id: "learning-patterns-root",
     titleZh: "根通用经验",
     summaryZh: "记录用户反馈、harness best practices 和项目维护经验。",
+    reviewEvidenceZh:
+      "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
     sourcePath: ".learnings/LEARNINGS.md",
     category: "learning",
-    freshness: "likely-current",
+    freshness: "known-stale",
     ownerArea: "learning",
     relatedKnowledgePages: ["knowledge/learnings/patterns.zh.md"],
   }),
@@ -805,7 +832,7 @@ const documents = [
     sourcePath: ".learnings/PERFORMANCE.md",
     category: "learning",
     status: "historical",
-    freshness: "likely-current",
+    freshness: "known-stale",
     ownerArea: "learning",
     relatedKnowledgePages: ["knowledge/learnings/patterns.zh.md"],
   }),
@@ -813,9 +840,11 @@ const documents = [
     id: "app-learning-errors",
     titleZh: "App 错误记录",
     summaryZh: "记录 repos/orbits 内 fixture migration、comment patch、git diff 正则等错误经验。",
+    reviewEvidenceZh:
+      "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
     sourcePath: "repos/orbits/.learnings/ERRORS.md",
     category: "learning",
-    freshness: "likely-current",
+    freshness: "known-stale",
     ownerArea: "learning",
     relatedKnowledgePages: ["knowledge/learnings/errors.zh.md"],
   }),
@@ -823,9 +852,11 @@ const documents = [
     id: "app-learning-patterns",
     titleZh: "App 经验记录",
     summaryZh: "记录 framework/mock/live 解耦、提交范围检查和注释提交卫生等经验。",
+    reviewEvidenceZh:
+      "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
     sourcePath: "repos/orbits/.learnings/LEARNINGS.md",
     category: "learning",
-    freshness: "likely-current",
+    freshness: "known-stale",
     ownerArea: "learning",
     relatedKnowledgePages: ["knowledge/learnings/patterns.zh.md"],
   }),
@@ -845,7 +876,10 @@ function validateDocuments() {
     if (!/[\u4e00-\u9fff]/.test(entry.reviewEvidenceZh)) {
       invalid.push(`${entry.id} missing Chinese review evidence`);
     }
-    if (!existsSync(join(projectRoot, entry.sourcePath))) missing.push(entry.sourcePath);
+    // known-stale 允许来源路径失效（schema 定义：已知过期、路径失效或被替代）。
+    if (entry.freshness !== "known-stale" && !existsSync(join(projectRoot, entry.sourcePath))) {
+      missing.push(entry.sourcePath);
+    }
     if (!entry.localizedSourcePath?.startsWith("knowledge/docs/zh/")) {
       invalid.push(`${entry.id} invalid localizedSourcePath`);
     }

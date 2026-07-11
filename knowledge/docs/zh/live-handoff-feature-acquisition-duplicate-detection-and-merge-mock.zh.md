@@ -31,11 +31,11 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：Duplicate 检测 和 Merge Mock Live 实现
+- 第 1 节：Duplicate 检测 和 Merge Live 实现
 - 第 2 节：源标题：Switch Mechanism
-- 第 3 节：Required Environment 和 权限
-- 第 4 节：privacy 和 provenance constraints
-- 第 5 节：replacement 测试
+- 第 3 节：当前 Live 边界
+- 第 4 节：Privacy 和 Provenance Constraints
+- 第 5 节：测试
 
 ## 保留的代码与命令证据
 

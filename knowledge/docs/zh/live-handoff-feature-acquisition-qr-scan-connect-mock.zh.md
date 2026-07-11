@@ -31,10 +31,10 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：源标题：QR Scan Connect Mock Replacement
+- 第 1 节：QR Scan Connect Live 实现
 - 第 2 节：Live 服务 边界
 - 第 3 节：源标题：Switch
-- 第 4 节：源标题：Required Live Inputs
+- 第 4 节：当前 Live Inputs
 - 第 5 节：Privacy 和 Provenance
 - 第 6 节：Replacement 测试
 

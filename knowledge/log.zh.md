@@ -81,3 +81,10 @@
 - 补充 Orbit AI trace 英中设计，记录 shared live runtime、planner-only 兼容入口和人脉推荐方法选择。
 - 补充 `features/orbit-ai/DESIGN.md`，把 `ORBIT_CONTACT_RECOMMENDATION_METHOD`、`contacts.recommend` 和 graph-gated RAG 边界写入模块文档。
 - 更新 catalog 元数据，重新生成中文镜像和 app-local knowledge manifest。
+
+## [2026-07-11] ingest | 收录 Orbit AI 定位与能力边界设计
+
+- 新增 catalog 条目 `orbit-ai-positioning-boundary-design`，来源 `docs/superpowers/specs/2026-07-11-orbit-ai-positioning-boundary-design.md`。
+- `wiki/project-overview.zh.md` 新增"产品定位"节：懂你人脉的商务秘书、活动关系闭环、能力取舍判断句和不做清单。
+- `wiki/actions-system.zh.md` 新增"定位与执行深度决定"节：三层漏斗、A 档确认执行、邮件止于草稿、B 档只预留、主动性档位 2。
+- 开发历史已在 `history/development-log.zh.md` 追加对应条目。

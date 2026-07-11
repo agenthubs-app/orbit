@@ -32,6 +32,20 @@
 ## 结构化阅读入口
 
 - 第 1 节：源标题：Sprint Definitions
+- 第 2 节：源标题：Sprint 83 Restore Root Comprehensive Homepage
+- 第 3 节：Sprint 84 Asynchronous 关系 Conversations
+- 第 4 节：Sprint 85 Orbit AI Follow Up 上下文
+- 第 5 节：Sprint 86 Orbit AI 联系人 推荐
+- 第 6 节：Sprint 87 Orbit AI 活动 推荐
+- 第 7 节：源标题：Sprint 88 General Orbit AI Conversation
+- 第 8 节：源标题：Sprint 89 Do Question Answering
+- 第 9 节：源标题：Sprint 90 Calendar Action Affordances
+- 第 10 节：源标题：Sprint 91 Proactive Agent Messages
+- 第 11 节：源标题：Sprint 92 Orbit AI Panel Localization
+- 第 12 节：源标题：Sprint 93 Schedule Arrangement Navigation
+- 第 13 节：Sprint 94 活动 Registration Profile Guidance
+- 第 14 节：Sprint 95 Restore 活动 Detail UI
+- 第 15 节：源标题：Sprint 96 Demonstration Visual Assets
 
 ## 保留的代码与命令证据
 

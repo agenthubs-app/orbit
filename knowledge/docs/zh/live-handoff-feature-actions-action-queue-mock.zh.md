@@ -31,10 +31,10 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：源标题：Actions Queue Mock Live Handoff
+- 第 1 节：Actions Queue Live 实现
 - 第 2 节：Live 服务 和 Provider Files
-- 第 3 节：源标题：Switch Mechanism
-- 第 4 节：Required Environment 和 权限
+- 第 3 节：当前 Live Behavior
+- 第 4 节：源标题：Switch Mechanism
 - 第 5 节：Privacy 和 Provenance Constraints
 - 第 6 节：Replacement 测试
 

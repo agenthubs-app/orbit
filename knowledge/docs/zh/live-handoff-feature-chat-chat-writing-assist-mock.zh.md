@@ -31,11 +31,11 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：源标题：Chat Writing Assist Mock Live Handoff
+- 第 1 节：Chat Writing Assist Live Store 实现
 - 第 2 节：Live 服务 Files
-- 第 3 节：源标题：Switch Mechanism
-- 第 4 节：Required Env Vars 和 权限
-- 第 5 节：Privacy 和 Provenance Constraints
+- 第 3 节：运行时 选择
+- 第 4 节：当前 Live 边界
+- 第 5 节：Failure 和 状态 处理
 - 第 6 节：Replacement 测试
 
 ## 保留的代码与命令证据

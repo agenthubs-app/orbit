@@ -31,13 +31,12 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：Live 实现 记录
-- 第 2 节：评估器 Evidence 摘要
-- 第 3 节：源标题：Live files:
-- 第 4 节：源标题：Switch:
-- 第 5 节：Env 和 权限:
-- 第 6 节：Privacy 和 provenance:
-- 第 7 节：Replacement 测试:
+- 第 1 节：联系人 Detail 路由 Live 实现 记录
+- 第 2 节：源标题：Live Files
+- 第 3 节：源标题：Switch
+- 第 4 节：路由 Composition
+- 第 5 节：Privacy 和 Side Effects
+- 第 6 节：源标题：Verified Behavior
 
 ## 保留的代码与命令证据
 

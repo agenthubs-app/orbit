@@ -57,6 +57,7 @@ Bootstrap 不拥有业务事实。它的职责是编排和兜底，让 `/app` �
 ## 子能力范围
 
 - `app-bootstrap-mock-aggregator`：聚合 mock 账号、Profile、联系人、活动、跟进和 Agent 状态。
+- `app-bootstrap-live`：从 shared live record store 聚合账号、Profile、联系人、关系、活动、任务、Agent action、权限和通知摘要。
 - 为 `/app` AI command center 和产品 shell 提供初始数据。
 
 ## 契约与数据边界
@@ -65,13 +66,17 @@ Bootstrap 不拥有业务事实。它的职责是编排和兜底，让 `/app` �
 
 `features/bootstrap/service-factory.ts` 是唯一入口。
 
+live storage 字段映射位于 `features/bootstrap/storage/bootstrap-live-record-provider.ts`。它只读取 `orbit_records` 的通用 envelope，并把 `accounts`、`profiles`、`contacts`、`connections`、`events`、`tasks`、`agentActions`、`permissions`、`notifications` 和 `evidence` collections 映射回已有 DTO。不要把这些领域字段加进 `shared/storage/live-record-store.ts`。
+
 ## Mock 行为
 
 Mock bootstrap 通过 service factory 读取本地 mock 服务并组合结果。它不访问数据库、搜索、AI provider 或外部网络。某个依赖失败时，Bootstrap 应返回明确 partial/failure 状态，而不是让首页崩溃。
 
 ## Live 替换方案
 
-Live bootstrap 可以并发读取真实模块服务，但需要设置超时、错误归因和 partial recovery。不能因为一个次要模块失败就清空整个首页。真实实现仍然返回同一个 bootstrap DTO。
+Live bootstrap 通过 `ORBIT_MODULE_MODE=live` 由 `features/bootstrap/live-service.ts` 启用。当前实现读取 shared live record store 并返回同一个 bootstrap DTO；它不写数据库、不触发通知投递、不调用 AI provider、日历、邮箱或设备 API。
+
+当 live storage 未配置时，service 返回 `APP_BOOTSTRAP_LIVE_STORE_UNCONFIGURED`，API 以 503 envelope 暴露失败来源。未来如果把 bootstrap 改成并发调用各模块 live service，需要保留超时、错误归因和 partial recovery，不能因为一个次要模块失败就清空整个首页。
 
 ## API 与页面使用
 
@@ -82,7 +87,7 @@ Live bootstrap 可以并发读取真实模块服务，但需要设置超时、�
 - 聚合测试确认 Bootstrap 通过 service factory 获取依赖。
 - API 测试覆盖 success、empty、pending、failure。
 - 页面测试确认 `/app` 在 partial 状态仍有可恢复 UI。
-- live 接入测试确认单模块失败不会造成无归因失败。
+- live 接入测试确认 memory live store 可以聚合首屏数据、未配置 live store 会 fail closed、API header 和 service mode 对齐。
 
 ## 团队协作规则
 

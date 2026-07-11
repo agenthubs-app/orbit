@@ -31,12 +31,13 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：Chat Conversation 和 Message Mock Live 实现
+- 第 1 节：Chat Conversation 和 Message Live 实现
 - 第 2 节：Live 服务 files
 - 第 3 节：源标题：Switch mechanism
 - 第 4 节：Required env vars 和 权限
-- 第 5 节：Privacy 和 provenance constraints
-- 第 6 节：Replacement 测试
+- 第 5 节：数据 mapping
+- 第 6 节：Privacy 和 provenance constraints
+- 第 7 节：Replacement 测试
 
 ## 保留的代码与命令证据
 

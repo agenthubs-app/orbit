@@ -23,7 +23,7 @@
 
 ## 中文摘要
 
-说明 Search 作为 Relationship Search 底层检索能力的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
+说明 search 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
 
 ## 审计依据
 
