@@ -119,3 +119,10 @@
 - 活动端备忘：NFC-first 互换（consent 模型 A：碰即好友+可撤）、"碰一下+说一句"语音 memo、活动方价值包（会前匹配/ROI 报告/NFC 胸牌套件），另立第二份设计展开。
 - 来源文档：`docs/superpowers/specs/2026-07-11-orbit-ai-positioning-boundary-design.md`。
 - 验证方式：设计文档逐节与产品负责人确认；后续 sprint 以该文档第 3、4、5、6 节为契约来源。
+
+## [2026-07-19] maintenance | 知识库 catalog 积压补登记与扫描规则收敛
+
+- 用户目标：处理 2026-06-30 后累积的 52 个未登记 Markdown，恢复知识库测试全绿。
+- 修改摘要：`scripts/knowledge/build-catalog.mjs` 新增 julyBacklogDocs 38 条人工条目（每条经阅读原文撰写中文标题/摘要/审计依据）；排除 `**/.claude/**` 与 `CLAUDE.md`（共 7 个 agent 工具说明）；live-handoff 自动收录扩展到 `*_LIVE_IMPLEMENTATION.md`/`*_MOCK_TO_LIVE.md`（6 个）；moduleDocs 增加 home。重新生成 catalog（191 条）、中文镜像与 app manifest。
+- 环境修复：repos/orbits node_modules 缺失 react-markdown 等依赖导致 knowledge 页面测试失败，npm install 后恢复。
+- 验证方式：freshness 报告未登记归零；`node --test tests/knowledge-*.test.mjs` 6/6；app 侧 knowledge-manifest、knowledge-document-content、knowledge-wiki-page 测试 11/11。

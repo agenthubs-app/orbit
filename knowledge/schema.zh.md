@@ -40,3 +40,7 @@
 ## 排除规则
 
 默认文档库排除 `harness-state/runs/**` 和 `harness-state/tmp/**`。这些路径可以作为开发历史证据引用，但不能混入当前权威文档目录。
+
+Coding-agent 工具说明不属于项目知识：`**/.claude/**`（如 GitNexus skills）和任何 `CLAUDE.md` 默认排除在扫描范围之外。它们面向工具配置，不面向项目读者。
+
+`known-stale` 条目允许来源路径失效（例如 gitignore 的 `.learnings/**` 本地文件在部分机器缺失），但其中文镜像必须保留，保证 `/dev/knowledge` 仍可读到最后一次生成的内容。

@@ -8,6 +8,33 @@
 
 ## 文档查询入口
 
+### adr
+
+- **ADR-0001：先建 Events Live Store，后做日历 Provider 导入**（`docs/adr/0001-events-live-store-before-calendar-provider-import.md`）
+  - 中文阅读版：`knowledge/docs/zh/adr-0001-events-live-store-first.zh.md`
+  - 简介：决定 Events 的 live 模式首先以 Orbit 自有的 Events Live Store 实现（CRUD/详情/手动创建），把外部日历 Provider 导入（OAuth、同步、去重、重复事件展开）留作后续独立集成，且后者将来只能写穿 Events Live Store 而不拥有事件记录。
+  - 审计依据：长期架构决定记录（ADR），仍是权威边界；具体 live 行为以 repos/orbits/features/events/event-crud-and-import/live-service.ts 及 tests/capabilities/event-crud-and-import-live-store.test.ts 的代码与测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`events`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/modules.zh.md`
+- **ADR-0002：本地 Live 数据库选用 Local Postgres**（`docs/adr/0002-local-postgres-for-local-live-database.md`）
+  - 中文阅读版：`knowledge/docs/zh/adr-0002-local-postgres-live-db.zh.md`
+  - 简介：决定第一个 Local Live Database 目标是本地 Postgres（而非 SQLite 或完整 Supabase 本地栈），使开发数据存储贴近未来 Supabase 生产形态；hybrid 仍是 localStorage/内存迁移模式，不等同于 Local Live Database。
+  - 审计依据：长期架构决定记录（ADR），仍是权威方向；具体连接与配置行为以 repos/orbits/shared/storage/postgres-live-record-store.ts 与 live-database-config.ts 的代码及相关存储测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`data`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
+- **ADR-0003：Live 数据库采用带索引的 JSONB 信封记录**（`docs/adr/0003-indexed-jsonb-records-for-local-live-database.md`）
+  - 中文阅读版：`knowledge/docs/zh/adr-0003-indexed-jsonb-records.zh.md`
+  - 简介：决定 Live 数据库行采用类型化信封记录：稳定列承载身份、归属、来源、时间戳和常用检索索引，JSONB payload 承载各 feature 的 DTO，形成共享的 orbit_records 形状；字段稳定后可再通过普通 Postgres 迁移升格为列或独立表。
+  - 审计依据：长期架构决定记录（ADR），是 orbit_records 通用信封边界的权威依据；具体 schema 与映射行为以 repos/orbits/shared/storage/live-record-store.ts、migrations.ts 及各 feature 的 storage provider 代码与测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`data`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
+- **ADR-0004：Events 各 capability 按业务角色命名并自持 live 实现**（`docs/adr/0004-events-capabilities-own-live-implementations.md`）
+  - 中文阅读版：`knowledge/docs/zh/adr-0004-events-capabilities-own-live.zh.md`
+  - 简介：决定 Events 子能力（attendee-roster、goal-readiness、encounter-note、want-connect、post-event-review）按业务角色命名，mock/hybrid/live 只是其可替换实现；迁移顺序为先结构性去 mock、再 live 边界、最后全量数据接通，用户产生的活动工作成为 orbit_records 中的持久 Live Records，派生分数与推荐保持为计算视图。
+  - 审计依据：长期架构决定记录（ADR），命名与迁移顺序仍是权威约束；各子能力当前实际的 live 行为以 repos/orbits/features/events/ 下各 capability 的 live-service 与对应 tests/capabilities/ 测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`events`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/architecture.zh.md`
+
 ### architecture
 
 - **模块化与热拔插设计**（`repos/orbits/docs/architecture/modular-design.md`）
@@ -28,6 +55,30 @@
   - 审计依据：已核对本记录对应的优化已在 route、live runtime、artifact producer 和 OrbitReferenceStyles 相关代码中落地；它仍是历史快照，新的性能判断要重新测量。
   - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/actions-system.zh.md`
+- **Orbit 演示视觉资产规则（Sprint 96）**（`repos/orbits/docs/architecture/demo-visual-assets.md`）
+  - 中文阅读版：`knowledge/docs/zh/demo-visual-assets.zh.md`
+  - 简介：规定演示活动/用户/联系人的本地视觉资产只能经 shared/demo-visual-assets.ts 读取 public/orbit-demo-assets/manifest.json，禁止组件硬编码路径与远程热链图片，并定义 manifest 字段、生成提示词、授权姿态、替换流程和 mock-to-live 替换边界。
+  - 审计依据：当前权威的资产存放与替换规则文档；覆盖范围与断言以 repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts 等测试和 shared/demo-visual-assets.ts 代码为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`app`
+  - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`、`knowledge/wiki/modules.zh.md`
+- **关系收件箱面板（Relationship Inbox Panel）落地设计**（`repos/orbits/docs/architecture/relationship-inbox-panel.md`）
+  - 中文阅读版：`knowledge/docs/zh/relationship-inbox-panel.zh.md`
+  - 简介：设计并记录了 /app/** 顶栏右上角的 shell 级 slide-over 面板：单入口两 tab（对话线程 + 提醒/主动提示），复用 chat/message-draft/notifications/proactive 既有契约，新增 createConversationFromDraft 写入路径；文末实现状态显示步骤 0–5 已于 2026-07-09 全部落地。
+  - 审计依据：已执行完成的一次性落地设计（含拍板决定与实现状态快照）；面板当前行为以 repos/orbits/app/(app)/app/inbox/ 下组件、app/api/chat/relationship-inbox/route.ts 及 tests/pages/app-relationship-inbox-*.test 系列测试为准，发送安全边界（外发全 false、停在本地 staged 预览）仍是有效约束。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`app`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/actions-system.zh.md`
+- **根路由与 Home 路由分工**（`repos/orbits/docs/architecture/root-home-routing.md`）
+  - 中文阅读版：`knowledge/docs/zh/root-home-routing.zh.md`
+  - 简介：规定三个 home 类路由的分工：/ 是公共产品入口（render-only、无写副作用），/app/home 是登录后个人中枢（live-capable、可 fail-closed），/app/home/events 是个人活动列表；禁止把 / 指回 /app/home，并要求根页活动链接用稳定 id 而非可能碰撞的 display code。
+  - 审计依据：当前权威的路由分工约定；具体渲染与链接行为以 repos/orbits/app/page.tsx 和 app/(app)/app/home 路由代码及相关页面测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`app`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/project-overview.zh.md`
+- **Orbit AI 面板本地化架构**（`repos/orbits/features/orbit-ai/PANEL_LOCALIZATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ai-panel-localization.zh.md`
+  - 简介：Sprint 92 把 Orbit AI 右侧结果面板的用户可见文案集中到 panel-localization.ts，按 panel/artifact/metadata/actions/confidence/calendar/proactive/conversation/recovery 九个命名空间组织；缺失翻译键时回退原文，技术溯源字段（id、路径、provider 名、时间戳等）刻意不翻译。React 页面经 /app/agent 本地适配器间接消费，避免 UI 直接 import feature 模块。
+  - 审计依据：这是现行架构约定文档：新增用户可见文案应加入对应命名空间而非页面本地修补；命名空间与回退行为以 features/orbit-ai/panel-localization.ts 实现为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`、`knowledge/wiki/modules.zh.md`
 
 ### developer-guide
 
@@ -43,6 +94,45 @@
   - 审计依据：已核对文档仍在 app scripts 目录，且当前 app 路由与页面测试已覆盖主要产品表面；路径变化时仍需同步维护。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`qa`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
+- **Node 测试运行器使用说明**（`repos/orbits/scripts/TEST_RUNNER.md`）
+  - 中文阅读版：`knowledge/docs/zh/app-test-runner-guide.zh.md`
+  - 简介：极简指南：npm test 跑全量测试套件，npm test -- tests/path/example.test.ts 只跑指定文件；harness sprint 合约使用聚焦形式，避免无关套件失败掩盖 sprint 结果。
+  - 审计依据：这是仍然有效的开发者指南，仅两条命令约定；具体测试脚本定义以 package.json 的 test script 为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`repos/orbits`
+  - 关联知识页：`knowledge/wiki/harness.zh.md`、`knowledge/wiki/project-overview.zh.md`
+
+### evaluation
+
+- **Orbit AI 联系人推荐评估**（`repos/orbits/features/orbit-ai/CONTACT_RECOMMENDATION_EVALUATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ai-contact-recommendation-evaluation.zh.md`
+  - 简介：Sprint 86 目标驱动联系人发现的评估文档：五类可审计信号、十个命名评估用例、就绪分数阈值 72，以及展示层对三语 fixture 片段和英文诊断串的本地化清洗规则。还记录了多语言检索策略（查询侧 extractSearchTerms 抽英文关键词、录入侧翻译合成双语 searchText，均 fail-closed）和 mock 到 live 的替换路径与隐私约束。
+  - 审计依据：这是能力评估与边界文档，混合了设计决策与现行实现说明；评估阈值、用例与安全约束以文档为设计基准，具体行为以 contact-recommendation-service.ts、language-normalization-service.ts 及对应评估测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`、`knowledge/wiki/harness.zh.md`
+- **Orbit AI 活动推荐评估**（`repos/orbits/features/orbit-ai/EVENT_RECOMMENDATION_EVALUATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ai-event-recommendation-evaluation.zh.md`
+  - 简介：Sprint 87 goal_relevance_v1 活动推荐规则服务的评估文档：五类信号评分（参会意图/活动主题/时间/关系机会/画像匹配）、就绪阈值 74、十个固定评估场景，以及无可解析目标时必须返回 needs_more_context 的约束。详情链接暂指向 demo-event-1 工作区并以 sourceEventId 保留来源，文末给出 live 替换所需的 provider 文件、只读权限与 fail-closed 要求。
+  - 审计依据：这是能力评估文档，阈值与评估用例是设计承诺；实际评分与拒绝行为以 event-recommendation-service.ts、artifact service 及其评估测试为准，demo-event-1 链接是待 live sprint 替换的已知临时状态。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`、`knowledge/wiki/harness.zh.md`
+- **Orbit AI 跟进上下文评估**（`repos/orbits/features/orbit-ai/FOLLOWUP_CONTEXT_EVALUATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ai-followup-context-evaluation.zh.md`
+  - 简介：Sprint 85 跟进上下文解析的评估文档：chat.context 工具计划经会话候选打分（接受阈值 0.7，模糊高分必须 pending）后才调用 generator，十个命名用例覆盖直接命中、失效会话 id、同名歧义、中英文输入和隐私受限等场景。大量篇幅记录失败模式清单——原始来源标签/技术 token/actor 与 ISO 时间戳不得泄漏到主面板、移动端证据必须折叠分层等呈现约束。
+  - 审计依据：这是能力评估与失败案例分析文档，其失败模式清单是 UI 呈现的审计标准；实际解析与面板行为以 chat-context-artifact-service.ts 和 orbit-ai-followup-context-evaluation 测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`、`knowledge/wiki/harness.zh.md`
+- **Orbit AI 普通对话路由评估**（`repos/orbits/features/orbit-ai/GENERAL_CONVERSATION_EVALUATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ai-general-conversation-evaluation.zh.md`
+  - 简介：Sprint 88 普通对话路由层的评估文档：mock/SSR 预览路径用确定性 general-conversation-service 判断是否需要工具，live 路径则完全交给模型 planner 做意图路由（general_chat 直接自由回复，其它 intent 受 schema 和工具 allowlist 约束），routingDecisionFromPlannerIntent 保持统一展示契约。接受阈值为 no-tool 正确率 100%、上下文记忆正确率 80%。
+  - 审计依据：这是评估文档且已随架构演进更新（明确 live 路径不再消费规则判断）；读者应注意 mock 与 live 的路由机制不同，实际行为以 general-conversation-service.ts、live-agent-runtime.ts 及评估测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`、`knowledge/wiki/harness.zh.md`
+- **Orbit AI 待办摘要评估**（`repos/orbits/features/orbit-ai/TODO_SUMMARY_EVALUATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ai-todo-summary-evaluation.zh.md`
+  - 简介：todo-summary-service 回答'我接下来该做什么'的评估文档：只综合结构化输入（对话下一步、日程、生日、引荐、关系提醒），输出必须带来源/证据/链接/优先级，所有动作 requiresConfirmation。五个命名 case 校验召回与首位优先级（阈值均 0.8），服务必须拒绝复用过期的 prepared final response；文末给出 mock-to-live 的文件规划与只读权限约束。
+  - 审计依据：这是能力评估文档，五个 case 与阈值是回归基准，live 路径部分是尚未实现的规划；实际行为以 todo-summary-service.ts 和 orbit-ai-todo-summary-evaluation 测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/actions-system.zh.md`、`knowledge/wiki/harness.zh.md`
 
 ### feature-design
 
@@ -286,6 +376,12 @@
   - 审计依据：已核对页面目录存在：repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`app`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
+- **App 页面组合交接：schedule**（`repos/orbits/app/(app)/app/schedule/SCHEDULE_LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-app-app-app-schedule-SCHEDULE-LIVE-IMPLEMENTATION-md.zh.md`
+  - 简介：记录 app 路由 schedule 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
+  - 审计依据：已核对页面目录存在：repos/orbits/app/(app)/app/schedule。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`app`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`
 - **App 页面组合交接：dev/capabilities/capability debug dashboard**（`repos/orbits/app/dev/capabilities/capability-debug-dashboard/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-app-dev-capabilities-capability-debug-dashboard.zh.md`
   - 简介：记录 app 路由 dev/capabilities/capability debug dashboard 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
@@ -394,6 +490,12 @@
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/bootstrap/app-bootstrap-mock-aggregator。目录级实时行为仍以 service factory、API route 和测试为准。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:bootstrap`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
+- **chat 能力 Live 交接：async conversation**（`repos/orbits/features/chat/ASYNC_CONVERSATION_MOCK_TO_LIVE.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-chat-async-conversation-mock-to-live.zh.md`
+  - 简介：记录 chat 模块 async conversation 能力的 mock-to-live 切换 边界：需要替换的服务、环境变量、权限约束和验证要求。
+  - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/chat。具体切换行为以 service factory 与测试为准。
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:chat`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **chat 能力 Live 交接：chat conversation and message mock**（`repos/orbits/features/chat/chat-conversation-and-message-mock/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-chat-chat-conversation-and-message-mock.zh.md`
   - 简介：记录 chat 模块中 chat conversation and message mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
@@ -460,6 +562,12 @@
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/dashboard/opportunity-reminder-analytics-mock。目录级实时行为仍以 service factory、API route 和测试为准。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:dashboard`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
+- **events 能力 Live 交接：registration profile guide**（`repos/orbits/features/events/REGISTRATION_PROFILE_GUIDE_LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-events-registration-profile-guide-live-implementation.zh.md`
+  - 简介：记录 events 模块 registration profile guide 能力的 live 实现 边界：需要替换的服务、环境变量、权限约束和验证要求。
+  - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/events。具体切换行为以 service factory 与测试为准。
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:events`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **events 能力 Live 交接：attendee roster**（`repos/orbits/features/events/attendee-roster/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-events-attendee-roster.zh.md`
   - 简介：记录 events 模块中 attendee roster 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
@@ -513,6 +621,24 @@
   - 简介：记录 notifications 模块中 reminder schedule and notification mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/notifications/reminder-schedule-and-notification-mock。目录级实时行为仍以 service factory、API route 和测试为准。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:notifications`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`
+- **orbit-ai 能力 Live 交接：calendar action**（`repos/orbits/features/orbit-ai/CALENDAR_ACTION_LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-orbit-ai-calendar-action-live-implementation.zh.md`
+  - 简介：记录 orbit-ai 模块 calendar action 能力的 live 实现 边界：需要替换的服务、环境变量、权限约束和验证要求。
+  - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/orbit-ai。具体切换行为以 service factory 与测试为准。
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:orbit-ai`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`
+- **orbit-ai 能力 Live 交接：followup context**（`repos/orbits/features/orbit-ai/FOLLOWUP_CONTEXT_MOCK_TO_LIVE.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-orbit-ai-followup-context-mock-to-live.zh.md`
+  - 简介：记录 orbit-ai 模块 followup context 能力的 mock-to-live 切换 边界：需要替换的服务、环境变量、权限约束和验证要求。
+  - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/orbit-ai。具体切换行为以 service factory 与测试为准。
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:orbit-ai`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`
+- **orbit-ai 能力 Live 交接：proactive agent**（`repos/orbits/features/orbit-ai/PROACTIVE_AGENT_LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-orbit-ai-proactive-agent-live-implementation.zh.md`
+  - 简介：记录 orbit-ai 模块 proactive agent 能力的 live 实现 边界：需要替换的服务、环境变量、权限约束和验证要求。
+  - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/orbit-ai。具体切换行为以 service factory 与测试为准。
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:orbit-ai`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **permissions 能力 Live 交接：permission state and staged authorization mock**（`repos/orbits/features/permissions/permission-state-and-staged-authorization-mock/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-permissions-permission-state-and-staged-authorization-mock.zh.md`
@@ -649,6 +775,102 @@
   - 审计依据：已登记来源文档，后续变更通过 catalog 新鲜度状态追踪。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/actions-system.zh.md`
+- **Orbit AI 主动代理基础版实施计划**（`docs/superpowers/plans/2026-07-01-orbit-ai-proactive-agent-basic.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ai-proactive-agent-basic-plan.zh.md`
+  - 简介：以 mock-first 方式在 features/orbit-ai 下新增独立的 orbit-ai-proactive-agent 能力：把结构化信号（AgentSignal）转成投递到 Orbit AI 聊天窗口的主动助手消息（deliverySurface: orbit_ai_chat），Notifications 仅作为未来投递管道而非内容生产方。计划刻意绕开高影响的 createOrbitAgentConversationService，全部任务复选框已勾选完成。
+  - 审计依据：这是一份已执行完毕的一次性 TDD 实施计划（所有步骤标记为 [x]），属于历史材料；代码中已出现超出本计划范围的 live-proactive-service.ts 与 PROACTIVE_AGENT_LIVE_IMPLEMENTATION.md，说明主动代理能力已继续演进。当前行为应以 repos/orbits/features/orbit-ai 下的合约与服务代码及其 DESIGN.md 为准，本计划仅供追溯边界决策（主动内容归 Orbit AI 聊天、通知只做投递）。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/architecture.zh.md`
+- **Orbit iOS App 第一阶段实施计划**（`docs/superpowers/plans/2026-07-03-orbit-ios-app-first-stage.md`）
+  - 中文阅读版：`knowledge/docs/zh/ios-app-first-stage.zh.md`
+  - 简介：在 repos/orbit-app 从零搭建 iOS-first 的独立 Expo 客户端：Expo Router 路由骨架、带类型的 API envelope 客户端（含非 JSON/网络失败的受控错误码）、RouteState 视图模型映射、移动端设计 token 与基础组件，以及 AI/Events/Contacts/Schedule/Profile 五个数据驱动 Tab。全程只走 repos/orbits 的 HTTP API，禁止直读数据库或引用 web 源码。
+  - 审计依据：这是一次性的分任务实施计划（含完整文件内容与逐条命令），属于已执行的历史材料——repos/orbit-app 中对应的 src/api、src/view-models、src/screens、tests 均已落地并继续被后续 Goal 2-8 演进。当前结构与行为应以 repos/orbit-app 实际代码及其 AGENTS.md/README.md 为准；计划中的绝对路径也已过时。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/project-overview.zh.md`
+- **iOS App 目标 2：详情导航与下拉刷新计划**（`docs/superpowers/plans/2026-07-03-orbit-ios-app-goal-2-details-and-refresh.md`）
+  - 中文阅读版：`knowledge/docs/zh/ios-app-goal-2-details-refresh.zh.md`
+  - 简介：把首阶段只读列表升级为可导航、可刷新的移动视图：Events/Contacts 卡片跳转详情路由并请求 /api/events/:id 与 /api/contacts/:id，useApiResource 增加 refresh/refreshing 状态支持下拉刷新，详情映射器需兼容 mock/hybrid/live 三种载荷形态。
+  - 审计依据：简短的一次性任务清单式计划，属于已执行的历史材料；repos/orbit-app 中的 EventDetailScreen/ContactDetailScreen、detail-view-model.test.ts 及 useApiResource 均已实现对应能力。当前行为以 orbit-app 代码为准，本文档仅记录该阶段的范围与排除项（不含鉴权、离线缓存、编辑操作等）。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/project-overview.zh.md`
+- **iOS App 目标 3：运行时服务器地址设置计划**（`docs/superpowers/plans/2026-07-03-orbit-ios-app-goal-3-runtime-server-settings.md`）
+  - 中文阅读版：`knowledge/docs/zh/ios-app-goal-3-runtime-server-settings.zh.md`
+  - 简介：让 App 在运行时切换 Orbit API 服务器地址，模拟器、真机、远程 API 测试无需改代码：新增 base URL 规范化/校验工具、AsyncStorage 持久化的服务器地址 Provider 包裹根布局，并把只读 Settings 页替换为可编辑的服务器地址表单。
+  - 审计依据：一次性任务清单式计划，属于已执行的历史材料；repos/orbit-app/src/api 下的 base-url.ts、ApiBaseUrlProvider.tsx 与 ApiSettingsScreen.tsx 及 base-url.test.ts 已落地。当前行为以这些代码为准，本文档记录该阶段范围（明确排除鉴权、密钥与生产环境管理）。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/harness.zh.md`
+- **iOS App 目标 4：Orbit AI 发送消息计划**（`docs/superpowers/plans/2026-07-03-orbit-ios-app-goal-4-orbit-ai-send-message.md`）
+  - 中文阅读版：`knowledge/docs/zh/ios-app-goal-4-orbit-ai-send-message.zh.md`
+  - 简介：把移动端 Orbit AI Tab 从只读列表变成可用的助手收件箱：新增聊天输入框，经现有 envelope 客户端 POST /api/ai/conversations，映射助手回复、消息列表与建议的工具意图，并渲染发送中/成功/校验失败/离线/失败等状态。明确不含流式响应与工具确认执行。
+  - 审计依据：一次性任务清单式计划，属于已执行的历史材料；repos/orbit-app 的 AiScreen.tsx、conversations.ts 视图模型与 conversation-view-model.test.ts 已实现该能力并被后续 Goal 5 继续扩展。当前行为以 orbit-app 代码及 orbits 侧 /api/ai/conversations 合约为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/actions-system.zh.md`
+- **iOS App 目标 5：Orbit AI 启动摘要计划**（`docs/superpowers/plans/2026-07-03-orbit-ios-app-goal-5-orbit-ai-bootstrap-summary.md`）
+  - 中文阅读版：`knowledge/docs/zh/ios-app-goal-5-orbit-ai-bootstrap-summary.zh.md`
+  - 简介：为 Orbit AI Tab 增加 API 驱动的启动摘要：通过 /api/app/bootstrap 读取关系上下文，在 bootstrap 视图模型中新增 bootstrapMetrics 生成 Events/Follow-ups/Relationships/Assistant actions 等紧凑指标卡，让用户发消息前先看到当日关系概览。坚持不新增第六个 Tab、不做营销式首页。
+  - 审计依据：一次性 TDD 实施计划，属于已执行的历史材料；repos/orbit-app/src/view-models/bootstrap.ts 与 bootstrap-view-model.test.ts 已包含对应实现。当前摘要卡的字段与文案以 orbit-app 代码和 orbits 侧 bootstrap API 载荷为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`、`knowledge/wiki/project-overview.zh.md`
+- **iOS App 目标 6：服务器健康检查计划**（`docs/superpowers/plans/2026-07-03-orbit-ios-app-goal-6-server-health-check.md`）
+  - 中文阅读版：`knowledge/docs/zh/ios-app-goal-6-server-health-check.zh.md`
+  - 简介：让 Server 设置页可以验证配置的 Orbit API 地址是否可达：新增 health 视图模型把 /api/health 载荷转成用户可读文案（隐藏 mode/mock/hybrid 等运行时实现字段），用户点按检查按钮时经现有 OrbitApiClient 发起请求。
+  - 审计依据：一次性 TDD 实施计划，属于已执行的历史材料；repos/orbit-app/src/view-models/health.ts、health-view-model.test.ts 与 ApiSettingsScreen.tsx 均已落地。当前行为以 orbit-app 代码为准，文档价值在于记录"用户文案不得暴露运行时实现标签"这一约束。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/harness.zh.md`、`knowledge/wiki/architecture.zh.md`
+- **iOS App 目标 7：可行动的日程卡片计划**（`docs/superpowers/plans/2026-07-03-orbit-ios-app-goal-7-actionable-schedule-cards.md`）
+  - 中文阅读版：`knowledge/docs/zh/ios-app-goal-7-actionable-schedule-cards.zh.md`
+  - 简介：把 Schedule Tab 从占位文案升级为可行动的跟进上下文：扩展 schedule 视图模型保留 /api/tasks 中的 contactName、organization、priority、recommendedAction 字段并在紧凑卡片中渲染，不新增后端路由，也暂不加任务详情路由（等详情 API 存在再说）。
+  - 审计依据：一次性 TDD 实施计划，属于已执行的历史材料；repos/orbit-app/src/view-models/schedule.ts 与 ScheduleScreen.tsx 已实现扩展字段。当前卡片字段与展示逻辑以 orbit-app 代码及 orbits 侧 /api/tasks 载荷为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`、`knowledge/wiki/project-overview.zh.md`
+- **iOS App 目标 8：可行动的联系人卡片计划**（`docs/superpowers/plans/2026-07-03-orbit-ios-app-goal-8-actionable-contact-cards.md`）
+  - 中文阅读版：`knowledge/docs/zh/ios-app-goal-8-actionable-contact-cards.zh.md`
+  - 简介：让 Contacts Tab 展示下一步行动、状态与价值上下文：扩展联系人摘要映射器输出 nextAction、用户可读的 status（如 needs_follow_up 转为 Needs follow up）与 valueScore，在现有卡片列表中渲染并保留详情导航，同时不暴露 source/provider 等内部字段。
+  - 审计依据：一次性 TDD 实施计划，属于已执行的历史材料；repos/orbit-app/src/view-models/contacts.ts 与 ContactsScreen.tsx 已实现扩展映射。当前联系人卡片行为以 orbit-app 代码及 orbits 侧 /api/contacts 载荷为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`、`knowledge/wiki/project-overview.zh.md`
+- **Connections 证据 Live Store 计划（Goal 3）**（`repos/orbits/docs/superpowers/plans/2026-07-01-connections-live-store.md`）
+  - 中文阅读版：`knowledge/docs/zh/app-plan-connections-live-store.zh.md`
+  - 简介：将连接/证据读取模型从 mock-only 迁移到基于 orbit_records（connections/contacts/evidence 集合）的 live 存储模式：新增 live 连接证据服务与存储 provider，注册 live 模式，API 路由改为 await 异步服务，addEvidence 在 live 模式下保持 fail-closed。验收含内存 live store 读到 510 条连接及远端 Postgres 返回生成的关系连接。
+  - 审计依据：这是一份 2026-07-01 的一次性实施计划（goal/scope/acceptance 形式），描述的是当时的目标而非现状；实际行为应以 features/connections 下的 live 服务、service-factory 及对应测试为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`connections`
+  - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`、`knowledge/wiki/modules.zh.md`
+- **Contacts Live Store 计划（Goal 2）**（`repos/orbits/docs/superpowers/plans/2026-07-01-contacts-live-store.md`）
+  - 中文阅读版：`knowledge/docs/zh/app-plan-contacts-live-store.zh.md`
+  - 简介：将 Contacts 列表/搜索/筛选能力从 hybrid 本地远端数据迁移到共享 orbit_records 表的 live 存储模式：保留 contract.ts 为 DTO 边界，新增 live 服务与读取 contacts/connections/evidence 的存储 provider，注册 live 模式并让 /api/contacts 路由异步化。验收含内存 live store 读到 66 个联系人及 live 模式无数据库配置时 fail-closed。
+  - 审计依据：这是一份 2026-07-01 的一次性实施计划，记录当时的迁移目标与验收标准；当前实际实现应以 features/contacts 下的 live 服务、存储 provider 与 service-factory 及其测试为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`contacts`
+  - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`、`knowledge/wiki/modules.zh.md`
+- **Events Live Store 实施计划**（`repos/orbits/docs/superpowers/plans/2026-07-01-events-live-store.md`）
+  - 中文阅读版：`knowledge/docs/zh/app-plan-events-live-store.zh.md`
+  - 简介：为 Events 的 event-crud-import 子能力增加显式 live 模式的 TDD 任务清单：先写失败测试，再实现带 LiveEventStoreProvider 的 live 服务（未配置 provider 时返回 EVENTS_LIVE_STORE_UNCONFIGURED），最后仅在该子能力的 factory 注册 live。明确不涉及日历 provider 导入，live 不得回退到 mock/hybrid，仅创建成功后才置 liveDatabaseWriteExecuted。
+  - 审计依据：这是一份按任务分步执行的一次性实施计划（含 RED/GREEN 验证命令与 GitNexus 检测步骤）；Events live 能力的现状应以 features/events/event-crud-and-import/live-service.ts、service-factory 及对应能力测试为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`events`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
+- **生成 Fixture 灌种到 Live 库的实施计划**（`repos/orbits/docs/superpowers/plans/2026-07-01-live-generated-fixtures-seed.md`）
+  - 中文阅读版：`knowledge/docs/zh/app-plan-live-generated-fixtures-seed.zh.md`
+  - 简介：把 defaultMockFixtures 的全部 21 个集合灌种到远端 orbit_records Postgres 并验证：新增共享 seed 模块（DTO 转通用 LiveRecord、幂等 upsert、结构化 verify）和 db:seed/db:verify npm 脚本。文末附执行证据：已对远端工作区上载 8267 条记录，并逐集合列出计数与关键记录字段校验。
+  - 审计依据：这是一份已执行完毕的一次性计划，自带 Execution Evidence（远端集合计数、关键记录校验）；后续应以 shared/storage/seed-generated-fixtures.ts、两个 CLI 脚本与 live-generated-fixture-seed 测试为准，计数可能随 fixture 演进而变化。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`data`
+  - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`、`knowledge/wiki/architecture.zh.md`
+- **Live Record 存储层实施计划**（`repos/orbits/docs/superpowers/plans/2026-07-01-live-record-storage.md`）
+  - 中文阅读版：`knowledge/docs/zh/app-plan-live-record-storage.zh.md`
+  - 简介：新增 shared/storage 薄存储层的 TDD 计划：定义数据库中立的 LiveRecord 信封与 LiveRecordStore 接口（list/get/upsert/delete）、内存实现和 orbit_records 的 Postgres 迁移 SQL，并以 Events 存储 provider 作为第一个消费者。约束包括不含 feature 业务规则、DTO 映射留在 feature provider、Search/Orbit AI 不直接读存储、单测不依赖运行中的 Postgres。
+  - 审计依据：这是一份 2026-07-01 的一次性实施计划，奠定了 shared/storage 与 hybrid local-remote-store 并存的边界；存储层现状应以 shared/storage/live-record-store.ts、migrations.ts 及 live-record-storage 测试为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`data`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
+- **关系搜索后端抽象实施计划**（`repos/orbits/docs/superpowers/plans/2026-07-01-search-backend-abstractions.md`）
+  - 中文阅读版：`knowledge/docs/zh/app-plan-search-backend-abstractions.zh.md`
+  - 简介：为 Relationship Search 引入可配置的 backend/store 抽象：默认保持 fixture-backed 确定性实现，用 ORBIT_RELATIONSHIP_SEARCH_BACKEND / _STORE 环境变量选择实现（非法值显式失败），API 载荷保持稳定；并新增 Contacts 拥有的 contacts.recommend 搜索适配器，让 Orbit AI matcher 通过它委托检索而不越权拥有业务策略。
+  - 审计依据：这是一份一次性 TDD 实施计划，明确了 Search 拥有检索机制、Contacts 拥有推荐策略、Orbit AI 拥有工具选择的分工；现状应以 features/search/backend-factory.ts、stores/fixture-store.ts 与 features/contacts/contact-recommendation-search.ts 为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`search`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/modules.zh.md`
+- **Contacts Live 路由性能优化计划**（`repos/orbits/docs/superpowers/plans/2026-07-02-contacts-live-route-performance.md`）
+  - 中文阅读版：`knowledge/docs/zh/app-plan-contacts-live-route-performance.zh.md`
+  - 简介：把 /app/contacts 及详情页 live 模式的冗余全图读取替换为按路由收敛的 focused graph 读取：为 contacts/connections/relationship-value provider 增加可选的 focused 方法并保留全图 API 兼容回退，详情路由增加 live-only 的共享图 fast path（一次加载、三处复用）。计划还记录了当时脏工作区草稿的分类处理和逐符号 GitNexus 风险闸门。
+  - 审计依据：这是一份 2026-07-02 的一次性性能优化实施计划（含每步测试断言与提交流程），并带有'未经用户明确恢复不得实施'的前置条件；实际查询形态应以 contacts/connections/analysis 的 live 服务、存储 provider 及 *-live-store 能力测试为准。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`contacts`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
 
 ### learning
 
@@ -784,6 +1006,12 @@
   - 审计依据：已登记关联代码路径：repos/orbits/features/followups/service-factory.ts。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:followups`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
+- **home 模块架构**（`repos/orbits/docs/architecture/modules/home.md`）
+  - 中文阅读版：`knowledge/docs/zh/module-home.zh.md`
+  - 简介：说明 home 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
+  - 审计依据：已登记关联代码路径：repos/orbits/app/(app)/app/home、repos/orbits/app/page.tsx。
+  - 状态：`current`；新鲜度：`verified-current`；负责人域：`module:home`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **notifications 模块架构**（`repos/orbits/docs/architecture/modules/notifications.md`）
   - 中文阅读版：`knowledge/docs/zh/module-notifications.zh.md`
   - 简介：说明 notifications 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
@@ -904,6 +1132,48 @@
   - 审计依据：已核对产品 chat、/dev/orbit-ai/trace 和 /api/dev/orbit-agent/trace 都调用 runLiveOrbitAgentRuntime；trace-contract 暴露 artifactProducers，contact recommendation method 由 ORBIT_CONTACT_RECOMMENDATION_METHOD 控制并有 targeted tests。
   - 状态：`current`；新鲜度：`verified-current`；负责人域：`orbit-ai`
   - 关联知识页：`knowledge/wiki/actions-system.zh.md`
+- **Events Live Store 首版设计（event-crud-import）**（`repos/orbits/docs/superpowers/specs/2026-07-01-events-live-store-design.md`）
+  - 中文阅读版：`knowledge/docs/zh/events-live-store-design.zh.md`
+  - 简介：为 event-crud-import 单个能力设计首个 live 模式：注册显式 live 构造器、缺配置时以 EVENTS_LIVE_STORE_UNCONFIGURED 受控失败、契约的数据库执行标志放宽为 boolean 且 live 写入成功后才置 true；明确排除日历/OAuth/后台同步等 Calendar Provider Import 范畴。
+  - 审计依据：一次性设计规格，对应实现已落地（roadmap 记录 event-crud-import live 已完成）；当前行为以 repos/orbits/features/events/event-crud-and-import/live-service.ts 与 tests/capabilities/event-crud-and-import-live-store.test.ts 为准，长期边界见 ADR-0001。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`events`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
+- **Orbit Live 数据功能路线图**（`repos/orbits/docs/superpowers/specs/2026-07-01-live-data-feature-roadmap.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-data-feature-roadmap.zh.md`
+  - 简介：从 mock-first/hybrid 迁移到 orbit_records 远程 live 存储的总路线图：按目标（fixture 种子、各 feature live provider、各 /app/* 路由 live service bundle 等）逐条列出成功证据与实现证据，并记录共享配置化 Postgres 连接池复用、fail-closed 等运行约束；是 live 化工作的 primary source of truth。
+  - 审计依据：当前权威的滚动路线图文档，随每个 goal 完成持续更新；各条实现证据是当时快照，具体行为以 repos/orbits/shared/storage/ 与各 features/*/live-service、tests/capabilities|pages 下的对应测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`data`
+  - 关联知识页：`knowledge/wiki/data-and-mockdata.zh.md`、`knowledge/wiki/architecture.zh.md`
+- **Orbit AI 主动 Agent 设计**（`repos/orbits/docs/superpowers/specs/2026-07-01-orbit-ai-proactive-agent-design.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ai-proactive-agent-design.zh.md`
+  - 简介：定义 Orbit AI 作为唯一用户侧助理收件箱：feature 信号（AgentSignal）经 proactive agent 转成 Orbit AI 聊天窗内的主动助理回合（ProactiveAgentMessage，deliverySurface=orbit_ai_chat）；Orbit AI 拥有主动解释与文案，Chat 拥有人际沟通，Notifications 只管投递机制；首版 mock-first、不触发任何外部副作用。
+  - 审计依据：定义 Orbit AI/Chat/Notifications 归属边界的设计文档，边界仍是权威；具体 proactive 行为以 repos/orbits/features/orbit-ai/proactive-contract.ts 与 app/api/ai/proactive-turns/route.ts 的代码及测试为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/actions-system.zh.md`
+- **关系搜索与 Orbit Agent 工具边界设计**（`repos/orbits/docs/superpowers/specs/2026-07-01-relationship-search-and-agent-tools-design.md`）
+  - 中文阅读版：`knowledge/docs/zh/relationship-search-agent-tool-boundaries.zh.md`
+  - 简介：确立中央 planner + 分布式工具归属的目标边界：Orbit AI 负责规划/白名单/trace/合成，业务 feature 拥有工具策略（contacts.recommend、events.recommend 等），Relationship Search 只做证据背书的检索基底（关键词/向量/元数据/图约束混合），不得拥有推荐策略或写副作用；并规定 live 检索的 provenance 与权限要求。
+  - 审计依据：记录目标边界的设计文档，边界原则仍是权威（roadmap 与 codex prompt 均引用）；当前检索实现以 repos/orbits/features/search/live-service.ts 及 tests/capabilities/relationship-natural-search-live-store.test.ts 为准，contact-recommendation-matching 的迁移仍是方向性描述。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`orbit-ai`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/modules.zh.md`
+- **Codex Live 功能执行提示词（2026-07-04）**（`repos/orbits/docs/superpowers/specs/2026-07-04-codex-live-feature-execution-prompt.md`）
+  - 中文阅读版：`knowledge/docs/zh/codex-live-feature-execution-prompt.zh.md`
+  - 简介：供新 Codex 会话继续 live 数据功能落地的一次性交接提示词：指向 roadmap 为 source of truth，规定 goal 粒度、TDD、GitNexus 影响分析、验证门（lint/test/远程 smoke）、fail-closed 与禁外部副作用等不可协商规则，以及远程数据库环境变量约定。
+  - 审计依据：一次性执行交接材料（历史快照），其中的架构规则来自 roadmap 与各设计文档；当前工作状态与规则以 docs/superpowers/specs/2026-07-01-live-data-feature-roadmap.md 及仓库代码/测试为准，不应把本提示词当作最新进度依据。
+  - 状态：`historical`；新鲜度：`likely-current`；负责人域：`data`
+  - 关联知识页：`knowledge/wiki/harness.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
+- **Events 能力接入真实数据设计**（`docs/superpowers/specs/2026-07-01-events-capability-live-data-design.md`）
+  - 中文阅读版：`knowledge/docs/zh/events-capability-live-data-design.zh.md`
+  - 简介：规划 Events 从"mock 命名目录 + 纯 mock 服务"分三阶段走向真实数据：先把子能力目录去 mock 化改为业务命名（attendee-roster、goal-readiness、encounter-note、want-connect、post-event-review），再基于 LiveRecord 信封建立存储 provider 骨架与七类集合，最后逐能力接入 live 服务并在 service-factory 注册，缺失 live 配置时 fail-closed 而非回退 mock。同时划定边界：Events 只存事件工作记录和联系人草稿，正式联系人创建仍走 Acquisition/Contacts。
+  - 审计依据：这是 sprint 设计文档而非一次性计划；repos/orbits/features/events 下的目录已呈业务命名且存在 storage/ 与 service-factory.ts，说明至少 Stage 1-2 已落地。三阶段路线与边界规则（Events 不直接建联系人、Calendar 导入与 Events Live Store 分离）仍是该能力的设计权威；具体实现进度以 features/events 代码为准。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`events`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
+- **Orbit iOS App 总体设计**（`docs/superpowers/specs/2026-07-03-orbit-ios-app-design.md`）
+  - 中文阅读版：`knowledge/docs/zh/orbit-ios-app-design.zh.md`
+  - 简介：确立 repos/orbit-app 作为 iOS-first 独立 Expo 客户端的总体设计：明确拒绝 WebView 封装与过早 monorepo 化，移动端只消费 repos/orbits 的 /api/** HTTP 接口，Orbit AI 聊天窗口是唯一助手收件箱（主动提醒以助手 turn 出现而非独立通知中心）。定义了移动端/Web 端职责边界、API 客户端要求、五 Tab 导航模型、设计规则，以及 Goal 1-12 的长期路线（从脚手架到相机采集、推送与 TestFlight 发布）。
+  - 审计依据：这是 orbit-app 的顶层设计文档，也是 Goal 2-8 各实施计划共同引用的权威来源；其边界规则（独立 Expo 应用、仅走 HTTP API、不暴露 mock/hybrid/provider 标签、路由状态五分法）与当前 repos/orbit-app 代码一致，仍应视为移动端架构的现行准绳。Goal 9 之后的路线（原生采集、推送、发布）尚未实施，属于前瞻内容。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`ios-app`
+  - 关联知识页：`knowledge/wiki/architecture.zh.md`、`knowledge/wiki/project-overview.zh.md`
 
 ### technical-design
 
@@ -919,4 +1189,13 @@
   - 审计依据：已登记关联代码路径：repos/orbits/app、repos/orbits/features、repos/orbits/shared。
   - 状态：`current`；新鲜度：`likely-current`；负责人域：`architecture`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
+
+### ui-contract
+
+- **活动详情页 UI 合约（Sprint 95）**（`repos/orbits/app/(app)/app/events/EVENT_DETAIL_UI_CONTRACT.md`）
+  - 中文阅读版：`knowledge/docs/zh/event-detail-ui-contract.zh.md`
+  - 简介：规定 /app/events/[id]（以 event_001 为目标）恢复后的页面层级：hero、schedule、relationship priority、报名动作、attendee context、supporting details 必须可见，移动端固定 CTA 需 overlap/overflow guard；并明确 route view model 边界（无显式 ?mode=live 时读本地确定性工作区、缺配置 fail-closed）、渲染期零副作用和防回归测试清单。
+  - 审计依据：当前权威的页面 UI 合约；具体断言以 repos/orbits/tests/pages/app-event-detail-page.test.tsx 与 app-event-detail-live-route-services.test.ts 及 app/(app)/app/events/[id] 路由代码为准，event_002 的 controlled boundary 等状态可能随后续 sprint 变化。
+  - 状态：`current`；新鲜度：`likely-current`；负责人域：`events`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/harness.zh.md`
 
