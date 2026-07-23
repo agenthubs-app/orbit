@@ -45,3 +45,6 @@ orbits-app-redesign-mobile.png
 
 # Local backups used while flattening nested git repos into this root repo
 .local-git-backups/
+
+# Isolated feature worktrees
+.worktrees/
