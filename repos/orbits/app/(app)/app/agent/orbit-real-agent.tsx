@@ -618,7 +618,7 @@ export async function copyAgentMessageText(text: string): Promise<boolean> {
 // 组件级内联样式，保持和气泡文本一致的字号与行高。
 function AgentMarkdown({ text }: { text: string }) {
   return (
-    <div style={{ marginBottom: -6 }}>
+    <div className="orbit-agent-markdown" style={{ marginBottom: -6 }}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -648,6 +648,7 @@ function AgentMessageCopyButton({ text }: { text: string }) {
   return (
     <button
       aria-label={t({ en: "Copy message", zh: "复制消息" })}
+      className="orbit-agent-message-copy"
       data-orbit-agent-message-copy={copied ? "copied" : "idle"}
       onClick={async () => setCopied(await copyAgentMessageText(text))}
       title={copied ? t({ en: "Copied", zh: "已复制" }) : t({ en: "Copy", zh: "复制" })}
@@ -729,7 +730,7 @@ function AgentHistoryList({
   }, [historyMenuOpenId]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="orbit-agent-history-list" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {groups.map((group) => (
         <div key={group}>
           <div className="eyebrow" style={{ padding: "0 8px 6px" }}>
@@ -749,6 +750,7 @@ function AgentHistoryList({
 
                 return (
                   <div
+                    className={`orbit-agent-history-row${active ? " is-active" : ""}`}
                     key={item.id}
                     onMouseEnter={() => setHoveredHistoryId(item.id)}
                     onMouseLeave={() => {
@@ -986,8 +988,8 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
   const { language, t } = useOrbitLanguage();
 
   return (
-    <div style={{ alignItems: "center", display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "50vh", padding: "24px 8px", textAlign: "center" }}>
-      <span className="avatar g-indigo" style={{ alignItems: "center", borderRadius: 16, display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
+    <div className="orbit-agent-welcome" style={{ alignItems: "center", display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "50vh", padding: "24px 8px", textAlign: "center" }}>
+      <span className="avatar g-indigo orbit-agent-mark" style={{ alignItems: "center", borderRadius: 16, display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
         <Icon name="sparkle" size={26} color="var(--on-dark)" />
       </span>
       <h2 className="h-title" style={{ margin: "16px 0 6px" }}>
@@ -1002,6 +1004,7 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "min(420px, 100%)" }}>
         {viewModel.suggests.map((suggest) => (
           <button
+            className="orbit-agent-suggestion"
             key={suggest.label}
             type="button"
             onClick={() => onPick(suggest.q)}
@@ -1168,7 +1171,7 @@ function AgentTodoCard({ item, navigate, t }: { item: OrbitAgentTodoResultView; 
 
 function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="orbit-agent-result-cards" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {panel.items.map((item, index) =>
         isPeopleResult(item) ? (
           <AgentPeopleCard key={`${item.connection.id}-${index}`} item={item} navigate={navigate} t={t} />
@@ -1186,8 +1189,9 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
   const { t } = useOrbitLanguage();
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, boxShadow: "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)", padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
+    <div className="orbit-agent-composer" style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, boxShadow: "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)", padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
       <textarea
+        className="orbit-agent-composer-input"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => {
@@ -1202,13 +1206,14 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
       />
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginTop: big ? 8 : 4 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 6, height: 32, padding: "0 12px" }}>
+          <span className="orbit-agent-capability" style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 6, height: 32, padding: "0 12px" }}>
             <Icon name="sparkle" size={14} />
             iOrbit
           </span>
           <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
         </div>
         <button
+          className="orbit-agent-send"
           type="button"
           onClick={onSend}
           disabled={!value.trim()}
@@ -1260,7 +1265,7 @@ function ThinkingIndicator({ t }: { t: Translate }) {
   }, []);
 
   return (
-    <span aria-live="polite" style={{ alignItems: "center", display: "inline-flex", gap: 9 }}>
+    <span aria-live="polite" className="orbit-agent-thinking-indicator" style={{ alignItems: "center", display: "inline-flex", gap: 9 }}>
       <span style={{ color: "var(--text-2)", fontSize: 14 }}>{t(THINKING_PHASES[phase])}</span>
       <TypingDots />
     </span>
@@ -1763,13 +1768,13 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     <>
       {messages.map((message, index) =>
         message.role === "user" ? (
-          <div key={`user-${index}`} style={{ alignItems: "flex-end", display: "flex", gap: 8, justifyContent: "flex-end", marginBottom: 16 }}>
+          <div className="orbit-agent-user-turn" key={`user-${index}`} style={{ alignItems: "flex-end", display: "flex", gap: 8, justifyContent: "flex-end", marginBottom: 16 }}>
             <AgentMessageCopyButton text={message.text} />
-            <div style={{ background: "var(--accent)", borderRadius: "16px 16px 4px 16px", color: "var(--on-dark)", fontSize: 15, lineHeight: 1.55, maxWidth: "82%", padding: "11px 15px" }}>{message.text}</div>
+            <div className="orbit-agent-user-bubble" style={{ background: "var(--accent)", borderRadius: "16px 16px 4px 16px", color: "var(--on-dark)", fontSize: 15, lineHeight: 1.55, maxWidth: "82%", padding: "11px 15px" }}>{message.text}</div>
           </div>
         ) : (
-          <div key={`assistant-${index}`} style={{ display: "flex", gap: 12, marginBottom: 18 }}>
-            <span className="avatar g-indigo" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
+          <div className="orbit-agent-assistant-turn" key={`assistant-${index}`} style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+            <span className="avatar g-indigo orbit-agent-assistant-mark" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
               <Icon name="sparkle" size={16} color="var(--on-dark)" />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -1779,14 +1784,14 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                   {message.note}
                 </div>
               ) : null}
-              <div style={{ alignItems: "flex-end", display: "flex", gap: 8 }}>
-                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", flex: 1, fontSize: 15, lineHeight: 1.6, minWidth: 0, padding: "12px 15px" }}>
+              <div className="orbit-agent-assistant-content" style={{ alignItems: "flex-end", display: "flex", gap: 8 }}>
+                <div className="orbit-agent-assistant-message" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", flex: 1, fontSize: 15, lineHeight: 1.6, minWidth: 0, padding: "12px 15px" }}>
                   <AgentMarkdown text={message.text} />
                 </div>
                 <AgentMessageCopyButton text={message.text} />
               </div>
               {inlinePanel && message.items.length > 0 ? (
-                <div style={{ marginTop: 12 }}>
+                <div className="orbit-agent-inline-results" style={{ marginTop: 12 }}>
                   <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panelTitle}</div>
                   <PanelCards language={language === "ja" ? "en" : language} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} navigate={navigate} t={t} />
                 </div>
@@ -1796,11 +1801,11 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         ),
       )}
       {thinking ? (
-        <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
-          <span className="avatar g-indigo" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
+        <div className="orbit-agent-assistant-turn orbit-agent-thinking-turn" style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+          <span className="avatar g-indigo orbit-agent-assistant-mark" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
             <Icon name="sparkle" size={16} color="var(--on-dark)" />
           </span>
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", padding: "12px 16px" }}>
+          <div className="orbit-agent-thinking-message" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", padding: "12px 16px" }}>
             <ThinkingIndicator t={t} />
           </div>
         </div>
@@ -1809,7 +1814,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   );
 
   return (
-    <div data-orbit-real-page="agent" style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}>
+    <div className="orbit-agent-workspace" data-orbit-real-page="agent" style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}>
       <div className="orbit-desktop-only">
         {/* No rightExtra here: the "New chat" action already lives in the
             sidebar below, so the desktop top-nav stays identical to the
@@ -1828,7 +1833,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       </div>
 
       <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <aside data-orbit-agent-history-sidebar style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, maxWidth: HISTORY_SIDEBAR_MAX_WIDTH, minWidth: HISTORY_SIDEBAR_MIN_WIDTH, width: historySidebarWidth }}>
+        <aside className="orbit-agent-history" data-orbit-agent-history-sidebar style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, maxWidth: HISTORY_SIDEBAR_MAX_WIDTH, minWidth: HISTORY_SIDEBAR_MIN_WIDTH, width: historySidebarWidth }}>
           <div style={{ padding: 14 }}>
             <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, height: 40, justifyContent: "center", width: "100%" }}>
               <Icon name="plus" size={16} color="var(--accent)" />
@@ -1843,6 +1848,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           </div>
         </aside>
         <button
+          className="orbit-agent-history-resize"
           aria-label={t({ en: "Resize chat history", zh: "调整历史宽度" })}
           aria-orientation="vertical"
           data-orbit-agent-history-resize-handle
@@ -1861,21 +1867,21 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             width: 8,
           }}
         />
-        <div style={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}>
-          <div ref={scrollRef} className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 28px" }}>
-            <div style={{ margin: "0 auto", maxWidth: 720 }}>
+        <div className="orbit-agent-center" style={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}>
+          <div ref={scrollRef} className="scroll orbit-agent-transcript" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 28px" }}>
+            <div className="orbit-agent-transcript-inner" style={{ margin: "0 auto", maxWidth: 720 }}>
               {!messages.length && !thinking ? <AgentWelcome onPick={ask} viewModel={viewModel} /> : renderBubbles(false)}
             </div>
           </div>
-          <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "12px 28px 18px" }}>
+          <div className="orbit-agent-composer-dock" style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "12px 28px 18px" }}>
             <div style={{ margin: "0 auto", maxWidth: 720 }}>
               <ChatBox value={text} onChange={setText} onSend={send} />
             </div>
           </div>
         </div>
         {panel ? (
-          <aside key={`${panel.panelTitle}-${messages.length}`} style={{ animation: "agentpanel .32s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, width: 444 }}>
-            <div style={{ borderBottom: "1px solid var(--border)", padding: "18px 20px 12px" }}>
+          <aside className="orbit-agent-results" key={`${panel.panelTitle}-${messages.length}`} style={{ animation: "agentpanel .32s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, width: 444 }}>
+            <div className="orbit-agent-results-header" style={{ borderBottom: "1px solid var(--border)", padding: "18px 20px 12px" }}>
               <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
                 <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 9, color: "var(--accent)", display: "flex", height: 30, justifyContent: "center", width: 30 }}>
                   <Icon name={panel.kind === "people" ? "users" : "calendar"} size={17} />
@@ -1888,7 +1894,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                   : t({ en: "Click a card to open the event page.", zh: "点卡片可直接跳转到对应活动页" })}
               </div>
             </div>
-            <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 24px" }}>
+            <div className="scroll orbit-agent-results-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 24px" }}>
               <PanelCards language={language === "ja" ? "en" : language} panel={panel} navigate={navigate} t={t} />
             </div>
           </aside>

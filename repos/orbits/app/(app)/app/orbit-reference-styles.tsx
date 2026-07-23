@@ -1568,6 +1568,395 @@ body:has([data-orbit-real-page]) {
   border-radius: 20px;
 }
 
+/* ===================================================================
+   Orbit AI chat — Conversation+ presentation layer.
+
+   The agent keeps its existing three-column behavior and data flow. These
+   hooks only establish a quieter, readable chat hierarchy. Light mode gets
+   the approved continuous-white canvas; dark mode keeps the existing token
+   palette while sharing the same flattened composition.
+   =================================================================== */
+[data-orbit-real-page="agent"] {
+  --agent-canvas: #FFFFFF;
+  --agent-ink: #171A1C;
+  --agent-muted: #687078;
+  --agent-hairline: #E6E9EB;
+  --agent-signal: #176A73;
+  --agent-signal-soft: #EEF7F6;
+  --agent-body-size: 15px;
+  --agent-meta-size: 12px;
+  font-family: var(--ff);
+  font-size: var(--agent-body-size);
+}
+
+html[data-theme="light"] [data-orbit-real-page="agent"] {
+  color-scheme: light;
+  --accent: var(--agent-signal);
+  --accent-hover: #125B63;
+  --accent-press: #0E4B52;
+  --accent-soft: var(--agent-signal-soft);
+  --accent-softer: #F4F8F7;
+  --accent-ring: rgba(23, 106, 115, 0.28);
+  --accent-grad: var(--agent-signal);
+  --accent-grad-bar: var(--agent-signal);
+  --on-accent: #FFFFFF;
+  --on-dark: #FFFFFF;
+  --ink: var(--agent-ink);
+  --text: #2B3034;
+  --text-2: var(--agent-muted);
+  --text-3: #7B838A;
+  --text-4: #969DA3;
+  --bg: var(--agent-canvas);
+  --bg-soft: var(--agent-canvas);
+  --bg-sunken: #FAFBFB;
+  --surface: var(--agent-canvas);
+  --surface-2: #F7F8F8;
+  --surface-3: #F1F3F3;
+  --border: var(--agent-hairline);
+  --border-2: #D9DEE1;
+  --border-strong: #C7CDD1;
+  --hairline: var(--agent-hairline);
+  --ff-tight: var(--ff);
+  --sh-xs: none;
+  --sh-sm: none;
+  --sh-md: none;
+  --sh-lg: none;
+  --sh-pop: none;
+  --glass-bar: #FFFFFF;
+  --glass-chip: #FFFFFF;
+}
+
+html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
+  background: #FFFFFF;
+}
+
+html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--agent-canvas);
+  border-bottom-color: var(--agent-hairline);
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-workspace,
+[data-orbit-real-page="agent"] .orbit-agent-center,
+[data-orbit-real-page="agent"] .orbit-agent-history,
+[data-orbit-real-page="agent"] .orbit-agent-results,
+[data-orbit-real-page="agent"] .orbit-agent-composer-dock {
+  background: var(--bg) !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history,
+[data-orbit-real-page="agent"] .orbit-agent-results {
+  border-color: var(--border) !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-list {
+  gap: 18px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-list .eyebrow {
+  color: var(--text-3);
+  font-size: var(--agent-meta-size);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-row {
+  border: 1px solid transparent;
+  border-radius: 8px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-row.is-active {
+  background: var(--accent-softer) !important;
+  border-color: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-row button span {
+  font-size: 14px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-resize {
+  border-right-color: var(--border) !important;
+  width: 7px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-resize:hover,
+[data-orbit-real-page="agent"] .orbit-agent-history-resize:focus-visible {
+  background: var(--accent-soft) !important;
+  outline: none;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-transcript {
+  background: var(--bg);
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-transcript-inner {
+  max-width: 760px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-welcome {
+  min-height: 46vh !important;
+  padding-block: 30px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-welcome .orbit-agent-mark,
+[data-orbit-real-page="agent"] .orbit-agent-assistant-mark {
+  background: var(--accent-soft) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent) !important;
+  color: var(--accent) !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-welcome .orbit-agent-mark {
+  border-radius: 10px !important;
+  height: 46px !important;
+  width: 46px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-welcome .orbit-agent-mark svg,
+[data-orbit-real-page="agent"] .orbit-agent-assistant-mark svg {
+  color: var(--accent) !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-welcome h2 {
+  font-family: var(--ff);
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin: 18px 0 8px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-welcome > p {
+  color: var(--text-2) !important;
+  font-size: var(--agent-body-size) !important;
+  line-height: 1.7 !important;
+  margin-bottom: 24px !important;
+  max-width: 460px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-suggestion {
+  background: var(--surface) !important;
+  border-color: var(--border-2) !important;
+  border-radius: 9px !important;
+  min-height: 48px;
+  padding: 12px 14px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-suggestion span {
+  font-size: 14px !important;
+  font-weight: 550 !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-suggestion:hover {
+  background: var(--surface-2) !important;
+  border-color: var(--border-strong) !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-suggestion:focus-visible,
+[data-orbit-real-page="agent"] .orbit-agent-message-copy:focus-visible,
+[data-orbit-real-page="agent"] .orbit-agent-send:focus-visible {
+  outline: 3px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-user-turn {
+  margin-bottom: 22px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-user-bubble {
+  background: var(--surface-3) !important;
+  border-radius: 10px 10px 3px 10px !important;
+  color: var(--ink) !important;
+  font-size: var(--agent-body-size) !important;
+  line-height: 1.65 !important;
+  max-width: min(82%, 620px) !important;
+  padding: 10px 14px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-assistant-turn {
+  gap: 13px !important;
+  margin-bottom: 26px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-assistant-mark {
+  border-radius: 8px !important;
+  height: 30px !important;
+  margin-top: 2px;
+  width: 30px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-assistant-content {
+  align-items: flex-start !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-assistant-message {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: var(--text) !important;
+  font-size: var(--agent-body-size) !important;
+  line-height: 1.65 !important;
+  max-width: 68ch;
+  padding: 3px 0 0 !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-markdown {
+  margin-bottom: 0 !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-markdown p {
+  margin-bottom: 10px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-markdown code {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border);
+  border-radius: 5px !important;
+  font-size: 13px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-message-copy {
+  background: transparent !important;
+  border-color: transparent !important;
+  border-radius: 7px !important;
+  color: var(--text-3) !important;
+  height: 32px !important;
+  width: 32px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-message-copy:hover {
+  background: var(--surface-2) !important;
+  color: var(--ink) !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-thinking-message {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 7px 0 0 !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-thinking-indicator > span:first-child {
+  font-size: 14px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-results-header {
+  border-color: var(--border) !important;
+  padding: 18px 20px 14px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-results-header .h-section {
+  font-family: var(--ff);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-results-header > div:last-child {
+  font-size: var(--agent-meta-size) !important;
+  line-height: 1.5;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-result-cards {
+  gap: 12px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-result-cards > .card {
+  background: var(--surface) !important;
+  border-color: var(--border-2) !important;
+  border-radius: 9px !important;
+  box-shadow: none !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-result-cards > .card:hover {
+  border-color: var(--border-strong) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-result-cards .mono {
+  font-size: var(--agent-meta-size) !important;
+  letter-spacing: 0.02em;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-result-cards .chip {
+  font-size: var(--agent-meta-size);
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-composer-dock {
+  border-color: var(--border) !important;
+  padding-top: 14px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-composer {
+  background: var(--surface) !important;
+  border-color: var(--border-2) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  padding: 11px 11px 8px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-composer:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft) !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-composer-input {
+  font-size: var(--agent-body-size) !important;
+  line-height: 1.55 !important;
+  min-height: 25px;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-composer-input::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-capability {
+  background: transparent !important;
+  border-radius: 0 !important;
+  color: var(--text-2) !important;
+  font-size: 13px !important;
+  font-weight: 550 !important;
+  height: 30px !important;
+  padding: 0 4px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-send {
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  min-height: 40px;
+  min-width: 40px;
+}
+
+@media (max-width: 760px) {
+  [data-orbit-real-page="agent"] .orbit-agent-welcome {
+    justify-content: flex-start !important;
+    min-height: auto !important;
+    padding: 38px 4px 26px !important;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-agent-assistant-turn {
+    gap: 10px !important;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-agent-assistant-mark {
+    height: 28px !important;
+    width: 28px !important;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-agent-user-bubble {
+    max-width: 88% !important;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-agent-result-cards > .card {
+    border-radius: 8px !important;
+  }
+
+  [data-orbit-real-page="agent"] .orbit-agent-capability + span {
+    display: none;
+  }
+}
+
 /* Minimum readable text: the prototype dips to 8–10.5px on date tiles and
    metadata. 11px is the floor (matches the inline-style floor in React). */
 [data-orbit-real-page] .orbit-landing-event-date small,
