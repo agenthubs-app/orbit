@@ -42,6 +42,7 @@
 - 第 9 节：联系人
 - 第 10 节：Core Agent Facing 服务
 - 第 11 节：源标题：Hybrid Fallback
+- 第 12 节：Live 记录 Storage
 
 ## 保留的代码与命令证据
 

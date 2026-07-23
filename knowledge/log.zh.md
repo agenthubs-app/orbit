@@ -81,3 +81,17 @@
 - 补充 Orbit AI trace 英中设计，记录 shared live runtime、planner-only 兼容入口和人脉推荐方法选择。
 - 补充 `features/orbit-ai/DESIGN.md`，把 `ORBIT_CONTACT_RECOMMENDATION_METHOD`、`contacts.recommend` 和 graph-gated RAG 边界写入模块文档。
 - 更新 catalog 元数据，重新生成中文镜像和 app-local knowledge manifest。
+
+## [2026-07-11] ingest | 收录 Orbit AI 定位与能力边界设计
+
+- 新增 catalog 条目 `orbit-ai-positioning-boundary-design`，来源 `docs/superpowers/specs/2026-07-11-orbit-ai-positioning-boundary-design.md`。
+- `wiki/project-overview.zh.md` 新增"产品定位"节：懂你人脉的商务秘书、活动关系闭环、能力取舍判断句和不做清单。
+- `wiki/actions-system.zh.md` 新增"定位与执行深度决定"节：三层漏斗、A 档确认执行、邮件止于草稿、B 档只预留、主动性档位 2。
+- 开发历史已在 `history/development-log.zh.md` 追加对应条目。
+
+## [2026-07-19] maintenance | 文档积压补登记归零
+
+- 将 2026-06-30 后新增的 38 个文档补登记进 catalog（ADR、iOS App 设计与 Goal 计划、live store 计划/设计、Orbit AI 评估文档、UI 合约、面板本地化、测试指南等），新增 adr、evaluation、ui-contract、developer-guide 分类。
+- 扫描排除规则新增 coding-agent 工具说明（`**/.claude/**` 与 `CLAUDE.md`），并写入 `knowledge/schema.zh.md`。
+- live-handoff 自动收录扩展到 `*_LIVE_IMPLEMENTATION.md` 与 `*_MOCK_TO_LIVE.md` 命名；moduleDocs 补充 home 模块。
+- freshness 报告"扫描范围内未纳入目录"从 52 归零；root 知识库测试 6/6、app 侧 knowledge 测试 11/11 通过（后者需先补装 node_modules 缺失依赖）。

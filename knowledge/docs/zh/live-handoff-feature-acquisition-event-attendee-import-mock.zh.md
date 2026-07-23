@@ -32,11 +32,12 @@
 ## 结构化阅读入口
 
 - 第 1 节：活动 Attendee Import Mock Live Handoff
-- 第 2 节：Live 服务 和 Provider Files
+- 第 2 节：当前 Live Storage 实现
 - 第 3 节：源标题：Switch Mechanism
 - 第 4 节：Required Env Vars 和 权限
 - 第 5 节：Privacy 和 Provenance Constraints
-- 第 6 节：Replacement 测试
+- 第 6 节：后续 Organizer Feed 和 Bulk Import
+- 第 7 节：Replacement 测试
 
 ## 保留的代码与命令证据
 

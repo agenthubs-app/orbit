@@ -35,7 +35,8 @@
 - 第 2 节：模块定位
 - 第 3 节：期望行为
 - 第 4 节：Mock 行为
-- 第 5 节：热拔插边界
+- 第 5 节：Live 行为
+- 第 6 节：热拔插边界
 
 ## 保留的代码与命令证据
 
@@ -55,6 +56,14 @@ Bootstrap 负责应用启动时的聚合数据，向主界面提供账号、联�
 ## Mock 行为
 
 Mock 服务从各模块 mock/factory 组合演示数据，保持 deterministic，不触发真实登录、消息、日历、邮件、数据库或网络行为。
+
+## Live 行为
+
+Live 服务通过 `ORBIT_MODULE_MODE=live` 注册在 `features/bootstrap/service-factory.ts`。它读取 shared live record store 中的 `accounts`、`profiles`、`contacts`、`connections`、`events`、`tasks`、`agentActions`、`permissions`、`notifications` 和 `evidence` collections，并聚合成同一个 app bootstrap envelope。
+
+字段映射在 `features/bootstrap/storage/bootstrap-live-record-provider.ts`，聚合规则在 `features/bootstrap/live-service.ts`。storage 层仍只保存通用 record envelope，不定义 bootstrap、contact、event 或 task 的业务字段。
+
+当前 live bootstrap 是只读边界：不写数据库、不投递通知、不调用 AI、calendar、email、device 或外部 provider。未配置 live storage 时返回 `APP_BOOTSTRAP_LIVE_STORE_UNCONFIGURED`。
 
 ## 热拔插边界
 

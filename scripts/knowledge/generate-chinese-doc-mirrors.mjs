@@ -315,6 +315,7 @@ function renderMirror(entry, sourceMarkdown) {
 }
 
 let written = 0;
+let preserved = 0;
 
 for (const entry of catalog.documents) {
   if (!entry.localizedSourcePath) {
@@ -323,6 +324,14 @@ for (const entry of catalog.documents) {
 
   const sourcePath = join(projectRoot, entry.sourcePath);
   if (!existsSync(sourcePath)) {
+    // known-stale 条目允许来源路径失效：保留最后一次生成的中文镜像，不重写。
+    if (
+      entry.freshness === "known-stale" &&
+      existsSync(join(projectRoot, entry.localizedSourcePath))
+    ) {
+      preserved += 1;
+      continue;
+    }
     throw new Error(`${entry.sourcePath} does not exist`);
   }
 
@@ -335,4 +344,6 @@ for (const entry of catalog.documents) {
   written += 1;
 }
 
-console.log(`Wrote ${written} Chinese document mirrors.`);
+console.log(
+  `Wrote ${written} Chinese document mirrors.${preserved ? ` Preserved ${preserved} known-stale mirrors with missing sources.` : ""}`,
+);

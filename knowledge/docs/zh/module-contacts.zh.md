@@ -23,7 +23,7 @@
 
 ## 中文摘要
 
-说明 contacts 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态、副作用规则和 `contacts.recommend` 的策略边界仍以对应 contract 与测试为准。
+说明 contacts 模块的职责、Mock 行为、热拔插边界和阅读顺序。字段、状态和副作用规则仍以对应 contract 与测试为准。
 
 ## 审计依据
 
@@ -35,7 +35,8 @@
 - 第 2 节：模块定位
 - 第 3 节：期望行为
 - 第 4 节：Mock 行为
-- 第 5 节：热拔插边界
+- 第 5 节：源标题：Live Store
+- 第 6 节：热拔插边界
 
 ## 保留的代码与命令证据
 
@@ -59,6 +60,19 @@ Contacts 也可以拥有 `contacts.recommend` 这类产品级工具策略。Rela
 ## Mock 行为
 
 Mock 服务返回确定性的联系人、标签、状态、搜索结果和空/失败场景，不访问真实通讯录、CRM、数据库或外部网络。
+
+## Live Store
+
+Contacts live mode 读取共享 live storage 的 generated relationship graph：
+
+- 列表、搜索和筛选从 `contacts`、`connections` 和 `evidence` 映射成联系人列表契约。
+- 联系人详情从同一组 live records 映射成 detail/tag/status 契约；更新标签、状态、note 和 last interaction 目前仍是 preview，不写回联系人记录或生产 audit log。
+- Contacts live provider 保留全图读取 API，同时为列表和详情提供 focused reads：列表按 search input 缩小 contact set 后只读取 listed contacts 与其 connections 引用的 evidence；详情按 `contactId` 只读取该 contact、对应 connection 和相关 evidence。
+- 联系人详情页不是新的数据层。它组合 Contacts、Connections 和 Analysis 三个 feature service；live 模式下先按 `contactId` 读取一次 shared focused graph，再把同一 graph 复用给 contact detail、connection evidence 和 relationship value scoring，避免重复读取全量 `contacts` / `connections` / `evidence`。
+- `/app/contacts/[id]` 现在通过 `loadAppContactDetailRoute` 初始化页面。页面 adapter 只负责把 route success model 映射到既有详情 UI 的 `OrbitContactsViewModel` 形状；空态、pending 和 failure 通过 shared `StateView` 展示。
+- `/app/contacts/pipeline`、`/app/contacts/graph` 和 `/app/contacts/intros` 现在也通过 `loadAppContactsRouteViewModel` 读取 live-capable contacts payload。它们的 `contacts-subroute-route-adapter.tsx` 只是旧 UI 兼容层：把 contacts payload 映射成既有 `OrbitContactsViewModel`，不新增 storage 查询、不读取 fixture、不绕过 contacts service。
+
+如果 live storage 未配置，feature service 和 page-level route 都必须返回受控失败，不能回退到 mock 数据。
 
 ## 热拔插边界
 

@@ -39,6 +39,18 @@ Actions 拥有 action queue、autonomy settings 和 external action sandbox。Or
 
 这仍是受限工具系统，不是让模型自由定义工具。模型只能选择已注册、已通过 schema 和 safety gate 的工具。
 
+## 定位与执行深度决定（2026-07-11 定稿）
+
+产品负责人已对 Orbit AI 的边界逐节拍板，权威来源是
+`docs/superpowers/specs/2026-07-11-orbit-ai-positioning-boundary-design.md`。要点：
+
+- **三层漏斗**：对话入口无边界（通用商务问题接住，自动注入关系上下文，克制地引导回产品能力）；能力核心有边界（处处有据）；执行闭环是收费价值层。
+- **执行深度 A 档**：系统内写入（建跟进任务、写日历、记 memo）走 agent 备好 → 用户确认 → 真实执行，且必须经过 Actions 模块的 queue、confirmation 和 audit，不允许 Orbit AI 绕过 Actions 直接写。
+- **邮件/消息永远止于草稿**：不开"确认后代发"，任何档位、任何授权形式都不做自动发送。安全模型一句话：Orbit 的手永远伸不出用户的系统。
+- **B 档（授权自动执行）只预留架构**：`read/draft/write/external` 风险分级与 autonomy settings 脚手架保留，待真实用户建立信任后逐动作开放。
+- **主动性档位 2**：只在"错过就有真实代价"的时机推送手机（会后跟进窗口、活动前提醒、承诺到期），深链回 Orbit AI 聊天中的 proactive 消息，带频控与类别开关。Notifications 仍只做投递。
+- **不做清单**：CRM 管道与成单管理、无限制 AI Chat 定位、自动发送邮件、高频催办式主动性、活动现场全场自动录音。违反不做清单的 sprint 提案应直接驳回。
+
 ## 安全边界
 
 - 不执行任意 shell 命令。
@@ -50,6 +62,7 @@ Actions 拥有 action queue、autonomy settings 和 external action sandbox。Or
 
 ## 主要来源
 
+- `docs/superpowers/specs/2026-07-11-orbit-ai-positioning-boundary-design.md`
 - `repos/orbits/docs/architecture/modules/orbit-ai.md`
 - `repos/orbits/docs/architecture/modules/actions.md`
 - `repos/orbits/features/orbit-ai/DESIGN.md`

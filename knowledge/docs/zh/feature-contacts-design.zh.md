@@ -23,7 +23,7 @@
 
 ## 中文摘要
 
-记录 contacts feature 的设计边界和 mock-first 实施方向。这里也明确 `contacts.recommend` 的产品策略应归 Contacts 或 Recommendations，而不是 Search 或 Orbit AI。
+记录 contacts feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
 
 ## 审计依据
 
@@ -74,6 +74,8 @@ Mock 使用本地联系人 fixture。搜索和筛选是本地确定性规则，�
 
 Live 可以接联系人数据库、CRM、搜索服务和标签系统。搜索 provider 返回值必须映射为 contact summary。CRM 字段不能直接进入页面；需要先转成 Orbit 的 source、status、value 和 next action。
 
+联系人详情 live mapper 还必须把来源和关系值转成人能读懂的标签。`qr_scan` 要显示成 QR scan 来源，`community_context` 要显示成 community context，`venture_capital` 等生成式主题要先映射为业务标签后再进入 `/app/contacts/[id]`。页面不能展示 `source:*` ID、snake_case 价值类型或 provider payload 字段。
+
 ## 推荐与搜索边界
 
 Contacts 可以拥有 `contacts.recommend` 这类产品级能力：候选资格、排序、推荐理由、联系人动作和确认边界都应由 Contacts 或 Recommendations 决定。
@@ -81,6 +83,8 @@ Contacts 可以拥有 `contacts.recommend` 这类产品级能力：候选资格�
 Relationship Search 只负责检索已有关系证据中的候选项。Contacts 可以根据联系人场景构造 semantic query、keyword query、source/value/status filters 和 evidence constraints，再调用 Search；Search 返回候选后，Contacts 再做联系人级排序、解释和 action mapping。
 
 当前 `features/contacts/contact-recommendation-search.ts` 提供基础的 feature-owned adapter：它把 query、conversation context 和 tool arguments 转成联系人推荐 criteria，调用 Relationship Search，再把结果映射成 source-backed candidates。Orbit AI 可以选择 `contacts.recommend` 工具并渲染 artifact，但人脉推荐策略应停在 Contacts/Recommendations 边界内。
+
+`extractRuleCriteria` 的领域词表按 **live 关系数据实际词汇** 对齐（restaurant/餐饮、ecommerce/retail、enterprise_saas、investor/seed、marketing、manufacturing、tourism/旅游、education、ai 等），并把中文/英文说法改写成能在 Relationship Search 后端子串命中的英文关键词。这是刻意的：后端 `matchesQuery` 的分词器会剥离中日文字符，若不改写，中文 query 分词后为空、会匹配所有候选并退化成任意排序结果。新增领域时，关键词必须真实出现在候选的 `relationshipContext`/`sharedTopics` 等可搜索字段里。
 
 Contacts 不应把推荐策略下放到 Search，也不应让 Orbit AI 长期拥有联系人推荐的业务规则。
 

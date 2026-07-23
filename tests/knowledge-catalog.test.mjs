@@ -39,11 +39,21 @@ test("knowledge document catalog has valid Chinese entries", () => {
       /[\u4e00-\u9fff]/,
       `${doc.id} needs Chinese review evidence`,
     );
-    assert.equal(
-      existsSync(join(projectRoot, doc.sourcePath)),
-      true,
-      `${doc.sourcePath} must exist`,
-    );
+    // known-stale 条目允许来源路径失效（gitignore 本地文件可能在部分机器缺失），
+    // 但其中文镜像必须仍然存在，保证 /dev/knowledge 可读。
+    if (doc.freshness === "known-stale") {
+      assert.equal(
+        existsSync(join(projectRoot, doc.localizedSourcePath)),
+        true,
+        `${doc.id} known-stale entry must keep its Chinese mirror`,
+      );
+    } else {
+      assert.equal(
+        existsSync(join(projectRoot, doc.sourcePath)),
+        true,
+        `${doc.sourcePath} must exist`,
+      );
+    }
     assert.equal(
       typeof doc.localizedSourcePath,
       "string",

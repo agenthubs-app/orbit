@@ -23,7 +23,7 @@
 
 ## 中文摘要
 
-记录 search feature 的设计边界和 mock-first 实施方向。Search 当前应理解为 Relationship Search：底层关系检索能力，不是联系人、活动、跟进或 agent 推荐策略的 owner。
+记录 search feature 的设计边界和 mock-first 实施方向，是模块文档之后的第二层阅读材料。
 
 ## 审计依据
 
@@ -45,8 +45,14 @@
 
 ## 保留的代码与命令证据
 
-源文档没有独立代码块；涉及的路径、命令和接口名保留在上方元信息中。
+### 代码证据 1
 
+```text
+Feature-owned tool or service
+  -> builds RelationshipSearchInput
+  -> Search retrieves evidence-backed candidates
+  -> Feature ranks, explains, and maps to product action/artifact
+```
 
 ## 源文档正文
 

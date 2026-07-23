@@ -31,10 +31,10 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：SPEC: Orbit 关系 数据 和 Mockdata Harness Sprints
+- 第 1 节：SPEC: Orbit 产品 Completion Harness Sprints
 - 第 2 节：产品 执行 摘要
-- 第 3 节：实现 Principles
-- 第 4 节：Provider SDK 边界
+- 第 3 节：架构 概览
+- 第 4 节：Global 安全 和 Quality Constraints
 - 第 5 节：Sprint 执行 边界
 
 ## 保留的代码与命令证据

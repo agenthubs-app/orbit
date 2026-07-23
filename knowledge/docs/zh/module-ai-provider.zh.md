@@ -52,6 +52,8 @@ AI Provider 是共享 AI 输出边界，负责消息草稿、运行记录、prom
 
 模块应提供可追溯的 AI-shaped 输出和 run lookup。真实模型接入后，也必须保留 prompt id、input hash、source refs、fallback 信息和外部调用标记。
 
+Live 模式在真实 provider adapter 和凭证配置完成前必须 fail closed：返回 typed failure envelope 和 live boundary provenance，不回退 mock 输出、不调用网络、不写数据库。
+
 ## Mock 行为
 
 Mock 服务用本地规则生成 message draft 和 run record，明确标记 `modelCallExecuted: false`、`liveAiProviderRequested: false`，不调用真实模型、网络、数据库、邮箱、日历、通知或设备。
