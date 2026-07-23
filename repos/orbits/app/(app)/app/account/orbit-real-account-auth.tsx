@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { signIn } from "next-auth/react";
 import type { OrbitAccountAuthViewModel } from "../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon, Logo } from "../orbit-reference-primitives";
@@ -32,9 +33,11 @@ function readAccountAuthQuery(defaultNext: string) {
 }
 
 export function OrbitRealAccountAuth({
+  oauthProviders = [],
   onClose,
   viewModel,
 }: {
+  oauthProviders?: readonly string[];
   onClose?: () => void;
   viewModel: OrbitAccountAuthViewModel;
 }) {
@@ -43,7 +46,7 @@ export function OrbitRealAccountAuth({
   const [email, setEmail] = useState(query.email);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error] = useState("");
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [forgotStep, setForgotStep] = useState(1);
   const [code, setCode] = useState("");
@@ -73,17 +76,41 @@ export function OrbitRealAccountAuth({
     ? `/account/login?next=${encodeURIComponent(query.next)}`
     : `/account/signup?next=${encodeURIComponent(query.next)}`;
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  // 注册走 /api/auth/register,登录走 NextAuth credentials(auth.ts →
+  // features/auth 校验)。忘记密码后端尚未接入,保持原型的两步视觉流程。
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
     setSubmitting(true);
-    window.setTimeout(() => {
-      setSubmitting(false);
+
+    try {
       if (isSignup) {
+        const response = await fetch("/api/auth/register", {
+          body: JSON.stringify({ email, password }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          error?: { message?: string };
+          success?: boolean;
+        } | null;
+
+        if (!response.ok || payload?.success !== true) {
+          setError(
+            response.status === 409
+              ? t({ en: "An account with this email already exists.", zh: "该邮箱已注册,请直接登录。" })
+              : payload?.error?.message ??
+                  t({ en: "Sign-up failed. Please try again.", zh: "注册失败,请稍后再试。" }),
+          );
+          return;
+        }
+
         navigate(
           `/account/login?next=${encodeURIComponent(query.next)}&created=1&email=${encodeURIComponent(email)}`,
         );
         return;
       }
+
       if (isForgot) {
         if (forgotStep === 1) {
           setForgotStep(2);
@@ -92,8 +119,29 @@ export function OrbitRealAccountAuth({
         }
         return;
       }
+
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError(t({ en: "Email or password is incorrect.", zh: "邮箱或密码不正确。" }));
+        return;
+      }
+
       navigate(query.next);
-    }, 420);
+    } catch {
+      setError(t({ en: "Something went wrong. Please try again.", zh: "网络异常,请稍后再试。" }));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function onGoogleSignIn() {
+    setError("");
+    void signIn("google", { callbackUrl: productHref(query.next) });
   }
 
   return (
@@ -202,9 +250,9 @@ export function OrbitRealAccountAuth({
                     autoComplete={isSignup ? "new-password" : "current-password"}
                     className="field"
                     id="orbit-auth-password"
-                    minLength={isSignup ? 6 : undefined}
+                    minLength={isSignup ? 8 : undefined}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder={isSignup ? t({ en: "Set a password of at least 6 characters", zh: "设置至少 6 位密码" }) : t({ en: "Enter your password", zh: "输入密码" })}
+                    placeholder={isSignup ? t({ en: "Set a password of at least 8 characters", zh: "设置至少 8 位密码" }) : t({ en: "Enter your password", zh: "输入密码" })}
                     required
                     type={showPassword ? "text" : "password"}
                     value={password}
@@ -231,6 +279,22 @@ export function OrbitRealAccountAuth({
           </form>
 
           <div className="orbit-account-auth-divider"><span /><em>{t({ en: "or", zh: "或" })}</em><span /></div>
+          {!isForgot && oauthProviders.includes("google") ? (
+            <button
+              className="btn btn-ghost btn-block"
+              onClick={onGoogleSignIn}
+              style={{ marginBottom: 10 }}
+              type="button"
+            >
+              <svg aria-hidden="true" height="17" viewBox="0 0 24 24" width="17">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" fill="#4285F4" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" fill="#34A853" />
+                <path d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z" fill="#FBBC05" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.97 10.97 0 0 0 12 1 11 11 0 0 0 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
+              </svg>
+              {t({ en: "Continue with Google", zh: "使用 Google 登录" })}
+            </button>
+          ) : null}
           {!isForgot ? (
             <a
               className="btn btn-ghost btn-block orbit-account-auth-switch"
