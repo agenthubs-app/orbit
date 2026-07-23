@@ -35,6 +35,7 @@ import {
   type OrbitAgentProviderSource,
 } from "./gemini-provider";
 import { createOrbitAgentLiveArtifactTaskService } from "./live-artifact-task-service";
+import { classifyOutOfServiceScope } from "./service-scope-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
 
 export const liveCollectedAt = "2026-06-27T00:00:00.000Z";
@@ -949,6 +950,37 @@ export function toolRequestsForPlannerResult(
       : [];
 }
 
+/**
+ * 超纲问题的确定性路由覆盖。
+ *
+ * 服务范围的判定收在 classifyOutOfServiceScope（代码层、可单测），命中后这里
+ * 直接指定用哪个工具、带哪些领域去检索，不再让 planner 自由裁量——planner 的
+ * systemInstruction 里同语义的规则只作为漏判时的兜底。
+ *
+ * 注意只覆盖"用什么去检索"（deny 侧确定），"最终推荐谁"仍由检索层按相关度
+ * 决定；回复里的拒答措辞由 synthesis 依据 plannerIntent 生成。
+ */
+export function toolRequestsForOutOfScopeMessage(
+  message: string,
+): readonly GeminiOrbitAgentToolRequest[] | null {
+  const classification = classifyOutOfServiceScope(message);
+
+  if (!classification) {
+    return null;
+  }
+
+  return [
+    {
+      arguments: {
+        domains: [...classification.domains],
+        searchTerms: classification.searchTerms,
+      },
+      requiresUserConfirmation: true,
+      toolName: "contacts.recommend",
+    },
+  ];
+}
+
 export function conversationForRuntimeSuccess(input: {
   artifacts: readonly OrbitAgentArtifactPayload[];
   finalAssistantMessage: string;
@@ -1093,7 +1125,10 @@ export async function runLiveOrbitAgentRuntime(
   );
 
   const toolMappingStartedAt = nowMs();
-  const toolRequests = toolRequestsForPlannerResult(plannerResult);
+  // 服务范围超纲时，路由由代码确定性接管，不采用 planner 的选择。
+  const outOfScopeToolRequests = toolRequestsForOutOfScopeMessage(message);
+  const toolRequests =
+    outOfScopeToolRequests ?? toolRequestsForPlannerResult(plannerResult);
   timings.push(timingSpan("tool_mapping", toolMappingStartedAt));
   const shouldExecuteDomainTools = runtime.maxLoopSteps >= 2;
   const artifactStartedAt = nowMs();
