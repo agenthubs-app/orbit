@@ -303,6 +303,73 @@ test("Orbit Agent provider instructions cover product-grade relationship work ro
   );
 });
 
+// 服务范围边界:超纲的生活类问题不能直接作答，要转成"你的人脉里谁懂这个"；
+// 但商业/职业知识问题必须仍然直接回答（加规则时最容易误伤的就是这一类）。
+test("Orbit Agent provider instructions define the service scope boundary in both directions", async () => {
+  const requests: {
+    body: { messages?: readonly { content?: string; role?: string }[] };
+  }[] = [];
+  const provider = await importProjectModule<{
+    createGeminiOrbitAgentPlanner: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      model: string;
+      provider: "deepseek";
+    }) => {
+      plan: (input: { message: string }) => Promise<{ success: boolean }>;
+    };
+  }>("features/orbit-ai/gemini-provider.ts");
+
+  const planner = provider.createGeminiOrbitAgentPlanner({
+    apiKey: "test-deepseek-key",
+    fetchImplementation: (async (_url, init) => {
+      requests.push({
+        body: JSON.parse(String(init?.body)) as {
+          messages?: readonly { content?: string; role?: string }[];
+        },
+      });
+
+      return jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                assistantMessage: "这个话题超出 Orbit 的范围。",
+                intent: "contact_recommendations",
+                toolRequests: [
+                  {
+                    arguments: { domains: ["restaurant"], searchTerms: "restaurant" },
+                    requiresUserConfirmation: true,
+                    toolName: "contacts.recommend",
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      });
+    }) as typeof fetch,
+    model: "deepseek-chat",
+    provider: "deepseek",
+  });
+
+  const result = await planner.plan({ message: "麻辣香锅怎么做？" });
+  const systemPrompt =
+    requests[0]?.body.messages?.find((message) => message.role === "system")
+      ?.content ?? "";
+
+  assert.equal(result.success, true);
+  // 在范围内的一侧：商业/职业知识问题继续直接作答
+  assert.match(systemPrompt, /Service scope: Orbit works on business relationships/);
+  assert.match(systemPrompt, /market research, industry trends[^\n]*ARE in scope/);
+  // 超纲的一侧：列出品类、禁止作答、并给出转人脉的处理方式
+  assert.match(systemPrompt, /OUT OF SCOPE topics/);
+  assert.match(systemPrompt, /cooking and recipes/);
+  assert.match(systemPrompt, /do NOT answer the question itself/);
+  assert.match(systemPrompt, /Out-of-scope handling: route to contact_recommendations/);
+  assert.match(systemPrompt, /offers the user's own network/);
+});
+
 test("Orbit Agent provider sends diverse routing examples for Chinese relationship requests", async () => {
   const requests: {
     body: {
