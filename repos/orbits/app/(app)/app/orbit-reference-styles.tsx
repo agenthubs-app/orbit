@@ -1952,9 +1952,6 @@ html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
     border-radius: 8px !important;
   }
 
-  [data-orbit-real-page="agent"] .orbit-agent-capability + span {
-    display: none;
-  }
 }
 
 /* Minimum readable text: the prototype dips to 8–10.5px on date tiles and

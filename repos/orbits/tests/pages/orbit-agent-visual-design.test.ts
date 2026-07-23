@@ -40,4 +40,8 @@ test("Orbit agent styles flatten assistant turns, composer, and result cards", (
   assert.match(styles, /\.orbit-agent-assistant-turn/);
   assert.match(styles, /\.orbit-agent-composer/);
   assert.match(styles, /\.orbit-agent-result-card/);
+  assert.doesNotMatch(
+    styles,
+    /\.orbit-agent-capability\s*\+\s*span\s*\{[^}]*display:\s*none/s,
+  );
 });
