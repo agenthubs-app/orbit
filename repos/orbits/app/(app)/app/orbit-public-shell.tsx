@@ -86,7 +86,7 @@ function OrbitNavAccountControl({ meHref }: { meHref: string }) {
           style={{
             background: "var(--accent)",
             borderRadius: "var(--r-pill)",
-            color: "var(--on-dark)",
+            color: "var(--on-accent)",
             fontSize: 13.5,
             fontWeight: 600,
             padding: "7px 15px",

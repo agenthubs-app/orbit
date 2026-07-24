@@ -31,7 +31,7 @@ html[data-theme="light"] [data-orbit-real-page] {
   --ink: #171a1c;
   --text: #2b3034;
   --text-2: #687078;
-  --text-3: #7b838a;
+  --text-3: #5B646B;
   --text-4: #969da3;
   --border: #e6e9eb;
   --border-2: #d9dee1;
@@ -49,12 +49,16 @@ html[data-theme="light"] [data-orbit-real-page] {
   --accent-grad-bar: #176a73;
   --live: #16a34a;
   --live-soft: rgba(22, 163, 74, 0.12);
+  --live-text: #0E7A3C;
   --amber: #b45309;
   --amber-soft: rgba(180, 83, 9, 0.12);
+  --amber-text: #8A5A00;
   --rose: #be123c;
   --rose-soft: rgba(190, 18, 60, 0.12);
+  --rose-text: #B4232E;
   --sky: #1d4ed8;
   --sky-soft: rgba(29, 78, 216, 0.12);
+  --signal: #C8323B;
   --sh-xs: none;
   --sh-sm: none;
   --sh-md: none;
@@ -82,7 +86,7 @@ html[data-theme="light"] [data-orbit-real-page].orbit-account-auth-page {
   --ink: #17211f;
   --text: #17211f;
   --text-2: #52615d;
-  --text-3: #6d7a75;
+  --text-3: #5A6864;
   --text-4: #8a938f;
   --bg: #f4f7f5;
   --bg-soft: #eef2f0;

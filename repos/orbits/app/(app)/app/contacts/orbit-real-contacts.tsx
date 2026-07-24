@@ -1309,7 +1309,7 @@ export function OrbitRealCardDetail({
           <button onClick={() => orbitNavigate("/home/cards")} style={{ alignItems: "center", background: "var(--glass-chip)", border: "none", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-sm)", color: "var(--ink)", cursor: "pointer", display: "flex", fontSize: 14, fontWeight: 600, gap: 6, height: 36, left: 24, padding: "0 14px", position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />{t({ en: "Contacts", zh: "名片夹" })}</button>
         </div>
         <div style={{ margin: "0 auto", maxWidth: 880, padding: "0 32px 60px", width: "100%" }}>
-          {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
+          {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
           <div style={{ alignItems: "flex-end", display: "flex", gap: 18, marginTop: -26, position: "relative", zIndex: 1 }}>
             <Avatar letter={crmInitial(connection.displayName)} g={cover} ring="var(--bg)" size={92} />
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ margin: 0, whiteSpace: "nowrap" }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 15, marginTop: 3 }}>{roleLine}</div></div>
@@ -1327,7 +1327,7 @@ export function OrbitRealCardDetail({
           <MobileBar dark onBack={() => orbitNavigate("/home/cards")} transparent />
         </div>
         <div style={{ padding: "0 18px 24px 18px" }}>
-          {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
+          {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
           <div style={{ alignItems: "flex-end", display: "flex", gap: 14, marginTop: -26, position: "relative", zIndex: 1 }}>
             <Avatar letter={crmInitial(connection.displayName)} g={cover} ring="var(--bg)" size={80} />
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ margin: 0 }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 3 }}>{roleLine}</div></div>

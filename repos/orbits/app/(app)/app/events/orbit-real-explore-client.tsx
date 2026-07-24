@@ -106,7 +106,7 @@ function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
           <div className="orbit-event-module-cover-top">
             <StatusBadge language={language} status={event.status} />
             <div className="orbit-card-date">
-              <div style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
+              <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
               <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
             </div>
           </div>
@@ -206,7 +206,7 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
       <Cover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
         <div style={{ left: 11, position: "absolute", top: 11 }}><StatusBadge language={language} status={item.status} /></div>
         <div style={{ background: "var(--glass-chip)", borderRadius: 9, minWidth: 42, padding: "4px 8px", position: "absolute", right: 11, textAlign: "center", top: 11 }}>
-          <div style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600 }}>{item.month}</div>
+          <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{item.month}</div>
           {item.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.day}</div> : null}
         </div>
       </Cover>

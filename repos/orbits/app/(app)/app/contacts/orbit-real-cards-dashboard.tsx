@@ -503,11 +503,11 @@ function IndustryBars({ rows, t }: { rows: typeof industryRows; t: Translate }) 
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {rows.map((row) => (
         <div className="nc-hbar" key={row.label.en}>
-          <span className="nc-hbar-lab" style={row.hot ? { color: "var(--amber)" } : undefined}>{t(row.label)}</span>
+          <span className="nc-hbar-lab" style={row.hot ? { color: "var(--amber-text)" } : undefined}>{t(row.label)}</span>
           <span className="nc-hbar-track">
             <span style={{ width: `${row.pct}%`, ...(row.hot ? { background: "linear-gradient(90deg,var(--amber),#c98f3e)" } : null) }} />
           </span>
-          <span className="nc-hbar-num" style={row.hot ? { color: "var(--amber)" } : undefined}>{row.num}</span>
+          <span className="nc-hbar-num" style={row.hot ? { color: "var(--amber-text)" } : undefined}>{row.num}</span>
         </div>
       ))}
     </div>
@@ -868,8 +868,8 @@ const dashboardCss = `
 [data-orbit-real-page] .nc-stat-k { font-size:12px; color:var(--text-2); font-weight:500; display:flex; align-items:center; justify-content:space-between; gap:6px; }
 [data-orbit-real-page] .nc-stat-v { font-family:var(--ff-mono); font-size:30px; font-weight:600; color:var(--ink); line-height:1.1; margin-top:8px; letter-spacing:-.01em; }
 [data-orbit-real-page] .nc-stat-d { font-size:12px; margin-top:4px; }
-[data-orbit-real-page] .nc-stat-d.up { color:var(--live); }
-[data-orbit-real-page] .nc-stat-d.down { color:var(--rose); }
+[data-orbit-real-page] .nc-stat-d.up { color:var(--live-text); }
+[data-orbit-real-page] .nc-stat-d.down { color:var(--rose-text); }
 
 [data-orbit-real-page] .nc-hbar { display:grid; grid-template-columns:120px 1fr 44px; align-items:center; gap:12px; }
 [data-orbit-real-page] .nc-hbar-lab { font-size:13px; color:var(--text-2); }

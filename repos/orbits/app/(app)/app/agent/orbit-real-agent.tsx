@@ -1777,7 +1777,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               {message.note ? (
-                <div style={{ alignItems: "center", background: "var(--amber-soft)", borderRadius: 12, color: "var(--amber)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 8, marginBottom: 10, padding: "7px 12px" }}>
+                <div style={{ alignItems: "center", background: "var(--amber-soft)", borderRadius: 12, color: "var(--amber-text)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 8, marginBottom: 10, padding: "7px 12px" }}>
                   <Icon name="eye" size={14} />
                   {message.note}
                 </div>

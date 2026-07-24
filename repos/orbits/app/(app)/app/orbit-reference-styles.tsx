@@ -379,7 +379,7 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-agenda-status {
-  color: var(--live);
+  color: var(--live-text);
   font-size: 13px;
   font-weight: 600;
   padding-top: 2px;
@@ -920,7 +920,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page] .chip.badge-live {
   background: var(--live-soft);
-  color: var(--live);
+  color: var(--live-text);
 }
 
 [data-orbit-real-page="explore"] .orbit-map-rail button,
@@ -1411,7 +1411,7 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page="explore"] .orbit-event-poster-date div {
-  color: var(--rose);
+  color: var(--rose-text);
   font-size: 11px;
   font-weight: 700;
 }
@@ -1781,12 +1781,16 @@ const reactReferenceIsolationStyles = `
   --hairline: rgba(150, 145, 200, 0.10);
   --live: #34C98E;
   --live-soft: rgba(52, 201, 142, 0.14);
+  --live-text: #7FE0B4;
   --amber: #E0B472;
   --amber-soft: rgba(216, 176, 106, 0.15);
+  --amber-text: #F0C374;
   --rose: #F0718B;
   --rose-soft: rgba(224, 65, 95, 0.17);
+  --rose-text: #F09AA4;
   --sky: #6FA8F8;
   --sky-soft: rgba(45, 127, 240, 0.17);
+  --signal: #C8323B;
   --sh-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
   --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
   --sh-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.55);
@@ -1944,7 +1948,7 @@ body:has([data-orbit-real-page]) {
    homepage's warm gold — the same accent as its "RELATIONSHIP STARFIELD"
    label — tying every section header back to the hero. */
 [data-orbit-real-page] .eyebrow {
-  color: var(--amber);
+  color: var(--amber-text);
 }
 
 /* Avatars share the coordinated cosmic palette (muted, violet-leaning, with
@@ -2034,7 +2038,7 @@ body:has([data-orbit-real-page]) {
 }
 [data-orbit-real-page] .btn-danger-soft {
   background: var(--rose-soft);
-  color: var(--rose);
+  color: var(--rose-text);
 }
 [data-orbit-real-page] .btn-danger-soft:hover {
   background: rgba(224, 65, 95, 0.26);
@@ -2139,7 +2143,7 @@ body:has([data-orbit-real-page]) {
 }
 [data-orbit-real-page] .field-error-text {
   align-items: center;
-  color: var(--rose);
+  color: var(--rose-text);
   display: flex;
   font-size: 13px;
   gap: 6px;
@@ -2686,25 +2690,25 @@ const orbitNamecardStyles = `
 [data-orbit-real-page] .nc-src svg { width:12px; height:12px; }
 [data-orbit-real-page] .nc-src-scan { background:var(--accent-soft); color:var(--accent); }
 [data-orbit-real-page] .nc-src-qr { background:var(--sky-soft); color:var(--sky); }
-[data-orbit-real-page] .nc-src-event { background:var(--amber-soft); color:var(--amber); }
+[data-orbit-real-page] .nc-src-event { background:var(--amber-soft); color:var(--amber-text); }
 [data-orbit-real-page] .nc-src-contact { background:var(--surface-3); color:var(--text-2); }
-[data-orbit-real-page] .nc-src-referral { background:var(--rose-soft); color:var(--rose); }
+[data-orbit-real-page] .nc-src-referral { background:var(--rose-soft); color:var(--rose-text); }
 
 [data-orbit-real-page] .nc-tag { display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:var(--r-pill); font-size:12px; font-weight:500; background:var(--surface-2); color:var(--text-2); border:1px solid var(--hairline); }
 [data-orbit-real-page] .nc-tag-value { background:var(--accent-softer); color:var(--accent); border-color:transparent; }
 
 [data-orbit-real-page] .nc-strength { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-strength .nc-dot { width:8px; height:8px; border-radius:50%; }
-[data-orbit-real-page] .nc-st-strong { color:var(--live); } [data-orbit-real-page] .nc-st-strong .nc-dot { background:var(--live); }
+[data-orbit-real-page] .nc-st-strong { color:var(--live-text); } [data-orbit-real-page] .nc-st-strong .nc-dot { background:var(--live); }
 [data-orbit-real-page] .nc-st-medium { color:var(--sky); } [data-orbit-real-page] .nc-st-medium .nc-dot { background:var(--sky); }
-[data-orbit-real-page] .nc-st-weak { color:var(--amber); } [data-orbit-real-page] .nc-st-weak .nc-dot { background:var(--amber); }
+[data-orbit-real-page] .nc-st-weak { color:var(--amber-text); } [data-orbit-real-page] .nc-st-weak .nc-dot { background:var(--amber); }
 [data-orbit-real-page] .nc-st-dormant { color:var(--text-3); } [data-orbit-real-page] .nc-st-dormant .nc-dot { background:var(--text-3); }
 
 [data-orbit-real-page] .nc-status { display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-status .nc-dot { width:7px; height:7px; border-radius:50%; }
-[data-orbit-real-page] .nc-ps-to_contact { background:var(--amber-soft); color:var(--amber); } [data-orbit-real-page] .nc-ps-to_contact .nc-dot { background:var(--amber); }
+[data-orbit-real-page] .nc-ps-to_contact { background:var(--amber-soft); color:var(--amber-text); } [data-orbit-real-page] .nc-ps-to_contact .nc-dot { background:var(--amber); }
 [data-orbit-real-page] .nc-ps-in_progress { background:var(--sky-soft); color:var(--sky); } [data-orbit-real-page] .nc-ps-in_progress .nc-dot { background:var(--sky); }
-[data-orbit-real-page] .nc-ps-partnered { background:var(--live-soft); color:var(--live); } [data-orbit-real-page] .nc-ps-partnered .nc-dot { background:var(--live); }
+[data-orbit-real-page] .nc-ps-partnered { background:var(--live-soft); color:var(--live-text); } [data-orbit-real-page] .nc-ps-partnered .nc-dot { background:var(--live); }
 
 [data-orbit-real-page] .nc-basis { position:relative; display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0; border:0; background:transparent; border-radius:50%; color:var(--text-4); cursor:pointer; vertical-align:middle; }
 [data-orbit-real-page] .nc-basis svg { width:13px; height:13px; }

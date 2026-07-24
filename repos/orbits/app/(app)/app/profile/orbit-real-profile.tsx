@@ -520,7 +520,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   const extractProps = { extractText, extracting, method, onFilePick: fakeExtract, onTextExtract: fakeExtract, setExtractText, setMethod, t };
   const editProps = { extractProps, profile, selectRenderKey, t, toggleTag, update, viewModel };
   const alert = message ? (
-    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
+    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
   ) : null;
 
   return (

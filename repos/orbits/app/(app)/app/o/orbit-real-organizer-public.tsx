@@ -51,7 +51,7 @@ function EventCard({ event, language, t }: { event: OrbitLandingEventView; langu
         <Cover className="orbit-card-cover" g={cover} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 46, text: name.slice(0, 1) }} style={{ height: undefined, opacity: status === "ended" ? 0.72 : 1 }}>
           <div style={{ left: 12, position: "absolute", top: 12 }}><StatusBadge language={language} status={status} /></div>
           <div className="orbit-card-date">
-            <div style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{date.month}</div>
+            <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{date.month}</div>
             {date.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{date.day}</div> : null}
           </div>
         </Cover>

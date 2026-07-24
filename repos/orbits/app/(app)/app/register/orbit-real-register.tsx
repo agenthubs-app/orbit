@@ -137,7 +137,7 @@ function RegField({
   return (
     <label style={{ display: "block" }}>
       <div style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>
-        {label}{required ? <span style={{ color: "var(--rose)", marginLeft: 3 }}>*</span> : null}
+        {label}{required ? <span style={{ color: "var(--rose-text)", marginLeft: 3 }}>*</span> : null}
       </div>
       <div style={{ position: "relative" }}>
         {icon ? <span style={{ color: "var(--text-3)", left: 13, position: "absolute", top: 14 }}><Icon name={icon} size={17} /></span> : null}
@@ -167,7 +167,7 @@ function RegChips({
     <div>
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 9 }}>
         <div style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600 }}>
-          {title}{required ? <span style={{ color: "var(--rose)", marginLeft: 3 }}>*</span> : null} <span style={{ color: "var(--text-4)", fontWeight: 400 }}>· {t({ en: "up to 5", zh: "最多5项" })}</span>
+          {title}{required ? <span style={{ color: "var(--rose-text)", marginLeft: 3 }}>*</span> : null} <span style={{ color: "var(--text-4)", fontWeight: 400 }}>· {t({ en: "up to 5", zh: "最多5项" })}</span>
         </div>
         <span className="mono" style={{ color: "var(--accent)", fontSize: 12 }}>{selected.length}</span>
       </div>
@@ -358,7 +358,7 @@ export function OrbitRealRegister({ viewModel }: { viewModel: OrbitRegisterViewM
             <div style={{ display: "grid", gap: 14 }}>
               <RegField icon="user" label={t({ en: "Name", zh: "姓名" })} onChange={(event) => upd("name", event.target.value)} placeholder={t({ en: "Enter your name", zh: "输入姓名" })} required value={form.name} />
               <div>
-                <div style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>{t({ en: "Contact", zh: "联系方式" })}<span style={{ color: "var(--rose)", marginLeft: 3 }}>*</span></div>
+                <div style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>{t({ en: "Contact", zh: "联系方式" })}<span style={{ color: "var(--rose-text)", marginLeft: 3 }}>*</span></div>
                 <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", display: "inline-flex", marginBottom: 9, padding: 3 }}>
                   {([["wechat", { en: "WeChat", zh: "微信号" }], ["line", { en: "LINE ID", zh: "LINE 号" }]] as const).map(([key, labelCopy]) => (
                     <button
@@ -378,7 +378,7 @@ export function OrbitRealRegister({ viewModel }: { viewModel: OrbitRegisterViewM
               <RegField icon="briefcase" label={t({ en: "Title", zh: "职位" })} onChange={(event) => upd("title", event.target.value)} placeholder={t({ en: "Enter your title", zh: "输入职位" })} required value={form.title} />
               <RegField icon="phone" label={t({ en: "Phone", zh: "电话" })} onChange={(event) => upd("phone", event.target.value)} placeholder={t({ en: "Enter your phone number", zh: "输入电话号码" })} value={form.phone} />
               <label>
-                <div style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>{t({ en: "Industry", zh: "行业" })}<span style={{ color: "var(--rose)", marginLeft: 3 }}>*</span></div>
+                <div style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>{t({ en: "Industry", zh: "行业" })}<span style={{ color: "var(--rose-text)", marginLeft: 3 }}>*</span></div>
                 <select className="field" onChange={(event) => upd("industry", event.target.value)} value={form.industry}>
                   <option value="">{t({ en: "Please select", zh: "请选择" })}</option>
                   {viewModel.industryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
@@ -399,7 +399,7 @@ export function OrbitRealRegister({ viewModel }: { viewModel: OrbitRegisterViewM
               <RegChips onToggle={(tag) => toggle("offering", tag)} options={viewModel.offeringTags} required selected={form.offering} t={t} title={t({ en: "Resources you can offer", zh: "你能提供的资源" })} />
               <RegChips onToggle={(tag) => toggle("seeking", tag)} options={viewModel.seekingTags} required selected={form.seeking} t={t} title={t({ en: "Support you're looking for", zh: "你在寻找的支持" })} />
               <label>
-                <div style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>{t({ en: "One-line summary", zh: "一句话总结" })}<span style={{ color: "var(--rose)", marginLeft: 3 }}>*</span></div>
+                <div style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>{t({ en: "One-line summary", zh: "一句话总结" })}<span style={{ color: "var(--rose-text)", marginLeft: 3 }}>*</span></div>
                 <textarea className="field" onChange={(event) => upd("intro", event.target.value)} placeholder={t({ en: "Briefly describe what you want to get and your goal today.", zh: "简单说说您今天想获得的资源和目的。" })} style={{ fontFamily: "var(--ff)", height: 64, lineHeight: 1.5, padding: 12, resize: "none" }} value={form.intro} />
               </label>
             </div>
@@ -410,7 +410,7 @@ export function OrbitRealRegister({ viewModel }: { viewModel: OrbitRegisterViewM
         {screen === "complete" ? (
           <div style={regStyles.screen}>
             <div style={{ height: 8 }} />
-            <div style={{ alignItems: "center", alignSelf: "flex-start", background: "var(--live-soft)", borderRadius: "var(--r-pill)", color: "var(--live)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 8, height: 30, padding: "0 12px" }}><Icon name="checkCircle" size={16} />{t({ en: "Registration complete", zh: "报名完成" })}</div>
+            <div style={{ alignItems: "center", alignSelf: "flex-start", background: "var(--live-soft)", borderRadius: "var(--r-pill)", color: "var(--live-text)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 8, height: 30, padding: "0 12px" }}><Icon name="checkCircle" size={16} />{t({ en: "Registration complete", zh: "报名完成" })}</div>
             <div><h1 className="h-display" style={regStyles.heroTitle}>{t({ en: "Keep your", zh: "收好你的" })}<span style={regStyles.accent}> {t({ en: "pass code", zh: "通行码" })}</span></h1><div style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.5, marginTop: 8 }}>{t({ en: "Show this on the day of the event for faster check-in and sign-in later.", zh: "活动当天出示这张图，签到和之后登录都会更快。" })}</div></div>
             <PassTicket code={code} event={viewModel.event} profile={form.name ? form : { ...viewModel.profilePreview, ...form }} t={t} />
             <div style={{ ...regStyles.banner, background: "var(--accent-softer)" }}>

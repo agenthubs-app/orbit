@@ -391,7 +391,7 @@ function CrmSidebar({ t }: { t: Translate }) {
 }
 
 const LOCAL_STYLES = `
-[data-orbit-real-page="contacts-pipeline"] .nc-evt { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:var(--r-pill); background:var(--amber-soft); color:var(--amber); font-size:13px; font-weight:600; border:1px solid transparent; }
+[data-orbit-real-page="contacts-pipeline"] .nc-evt { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:var(--r-pill); background:var(--amber-soft); color:var(--amber-text); font-size:13px; font-weight:600; border:1px solid transparent; }
 [data-orbit-real-page="contacts-pipeline"] .nc-evt svg { color:var(--amber); }
 [data-orbit-real-page="contacts-pipeline"] .nc-evt .nc-x { color:var(--amber); opacity:.7; margin-left:2px; }
 

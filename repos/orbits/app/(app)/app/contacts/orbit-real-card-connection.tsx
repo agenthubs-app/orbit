@@ -590,7 +590,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 [data-orbit-real-page] .nc-vblock + .nc-vblock { margin-top:14px; padding-top:14px; border-top:1px solid var(--hairline); }
 [data-orbit-real-page] .nc-vhead { display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; margin-bottom:9px; }
 [data-orbit-real-page] .nc-vblock.nc-give .nc-vhead { color:var(--accent); }
-[data-orbit-real-page] .nc-vblock.nc-get .nc-vhead { color:var(--live); }
+[data-orbit-real-page] .nc-vblock.nc-get .nc-vhead { color:var(--live-text); }
 [data-orbit-real-page] .nc-vlist { display:flex; flex-direction:column; gap:8px; }
 [data-orbit-real-page] .nc-vitem { display:grid; grid-template-columns:18px 1fr; gap:9px; align-items:start; font-size:13.5px; color:var(--text); line-height:1.4; }
 [data-orbit-real-page] .nc-vitem svg { margin-top:1px; }

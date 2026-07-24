@@ -270,7 +270,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
       <Cover className="orbit-account-event-module-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={eventImageUrl(event)} monogram={null} style={{ opacity: event.status === "ended" ? 0.78 : 1 }}>
         <span className="orbit-account-event-module-cover-top">
           <StatusBadge language={language} status={event.status} />
-          <span className="orbit-card-date"><span style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
+          <span className="orbit-card-date"><span style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
         </span>
       </Cover>
       <span className="orbit-account-event-module-body">

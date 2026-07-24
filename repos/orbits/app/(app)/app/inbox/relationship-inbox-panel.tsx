@@ -1242,14 +1242,14 @@ function RelationshipInboxPanel({
 [data-orbit-real-page="relationship-inbox"] .ri-new { display:flex; flex-direction:column; gap:8px; padding:6px 8px; }
 [data-orbit-real-page="relationship-inbox"] .ri-new-head { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
 [data-orbit-real-page="relationship-inbox"] .ri-new-label { font-size:12px; font-weight:600; color:var(--text-3); margin-top:4px; }
-[data-orbit-real-page="relationship-inbox"] .ri-new-error { font-size:12.5px; color:var(--signal, #e5484d); }
+[data-orbit-real-page="relationship-inbox"] .ri-new-error { font-size:12.5px; color:#e5484d; }
 
 [data-orbit-real-page="relationship-inbox"] .ri-alerts { display:flex; flex-direction:column; gap:16px; padding:6px 8px; }
 [data-orbit-real-page="relationship-inbox"] .ri-alert-group { display:flex; flex-direction:column; gap:8px; }
 [data-orbit-real-page="relationship-inbox"] .ri-alert-eyebrow { font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; padding:0 4px; }
 [data-orbit-real-page="relationship-inbox"] .ri-alert { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:start; padding:11px 12px; border-radius:12px; background:var(--surface-2); border-left:3px solid transparent; }
 [data-orbit-real-page="relationship-inbox"] .ri-alert-proactive { border-left-color:var(--accent); background:var(--accent-softer); }
-[data-orbit-real-page="relationship-inbox"] .ri-alert-pri-high { border-left-color:var(--signal, #e5484d); }
+[data-orbit-real-page="relationship-inbox"] .ri-alert-pri-high { border-left-color:#e5484d; }
 [data-orbit-real-page="relationship-inbox"] .ri-alert-pri-normal { border-left-color:var(--accent); }
 [data-orbit-real-page="relationship-inbox"] .ri-alert-main { display:flex; flex-direction:column; gap:4px; min-width:0; }
 [data-orbit-real-page="relationship-inbox"] .ri-alert-nav { text-decoration:none; color:inherit; }
@@ -1428,7 +1428,7 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
           <span
             aria-hidden="true"
             style={{
-              background: "var(--signal, #e5484d)",
+              background: "var(--signal, #c8323b)",
               borderRadius: 999,
               color: "#fff",
               fontSize: 11,
