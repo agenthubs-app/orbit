@@ -116,11 +116,20 @@ export function OrbitRealAllActions({
         ))}
       </div>
 
-      <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-        {viewModel.entries.map((entry) => (
-          <EntryRow entry={entry} key={entry.entryId} />
-        ))}
-      </ul>
+      {viewModel.entries.length === 0 ? (
+        <p
+          data-orbit-all-actions-no-match
+          style={{ color: "var(--text-3)", fontSize: 14, padding: "28px 0" }}
+        >
+          该状态下没有记录。
+        </p>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {viewModel.entries.map((entry) => (
+            <EntryRow entry={entry} key={entry.entryId} />
+          ))}
+        </ul>
+      )}
       <OrbitAllActionsSettings />
     </div>
   );

@@ -99,7 +99,7 @@ export async function loadAppAllActionsRouteViewModel(
     count: allEntries.filter((entry) => entry.status === status).length,
     key: status as AllActionsFilterKey,
     label: FILTER_LABELS[status],
-  })).filter((filter) => filter.count > 0);
+  })).filter((filter) => filter.count > 0 || filter.active);
 
   return {
     activeFilter,

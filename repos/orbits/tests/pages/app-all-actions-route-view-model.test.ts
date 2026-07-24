@@ -63,3 +63,21 @@ test("the failure scenario yields a typed failure view model", async () => {
   assert.equal(model.errorCode, "AGENT_LEDGER_MOCK_FAILED");
   assert.equal(model.entries.length, 0);
 });
+
+test("an active filter with zero matches keeps its pill visible", async () => {
+  const model = await loadAppAllActionsRouteViewModel({ status: "failed" });
+
+  assert.equal(model.activeFilter, "failed");
+  assert.equal(model.entries.length, 0);
+  const failedPill = model.filters.find((filter) => filter.key === "failed");
+  assert.ok(failedPill, "the active failed pill must stay visible at count 0");
+  assert.equal(failedPill.count, 0);
+  assert.ok(failedPill.active);
+});
+
+test("inactive zero-count statuses stay hidden from the filter row", async () => {
+  const model = await loadAppAllActionsRouteViewModel();
+
+  assert.equal(model.filters.some((filter) => filter.key === "failed"), false);
+  assert.equal(model.filters.some((filter) => filter.key === "deferred"), false);
+});
