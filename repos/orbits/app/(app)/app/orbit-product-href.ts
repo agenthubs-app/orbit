@@ -1,7 +1,12 @@
 // Shared (server + client) mapping from prototype hrefs to product routes.
 // Keep this module free of "use client" so Server Components can call it.
 export function productHref(prototypeHref: string) {
-  if (prototypeHref === "/") return "/app";
+  if (
+    prototypeHref === "/app" ||
+    prototypeHref.startsWith("/app/") ||
+    prototypeHref.startsWith("/app?")
+  ) return prototypeHref;
+  if (prototypeHref === "/") return "/";
   if (prototypeHref === "/explore") return "/app/events";
   if (prototypeHref === "/agent") return "/app/agent";
   if (prototypeHref.startsWith("/agent?")) return `/app/agent?${prototypeHref.split("?")[1]}`;
