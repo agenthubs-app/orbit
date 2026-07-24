@@ -9,6 +9,7 @@ import { cookies, headers } from "next/headers";
 
 import { OrbitLanguageProvider } from "./orbit-language-context";
 import { normalizeOrbitLanguage } from "./orbit-language-core";
+import { OrbitResponsiveA11y } from "./orbit-responsive-a11y";
 import { OrbitThemeStyles, OrbitThemeToggle } from "./orbit-theme";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -20,6 +21,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <OrbitLanguageProvider initialLanguage={language}>
+      <link href="/iorbit-starfield/fonts/desktop.css" rel="stylesheet" />
+      <OrbitResponsiveA11y />
       <OrbitThemeStyles />
       {children}
       <OrbitThemeToggle />

@@ -80,7 +80,7 @@ export function MobileBar({
       style={{
         alignItems: "center",
         backdropFilter: transparent ? "none" : "blur(14px)",
-        background: transparent ? "transparent" : "rgba(255,255,255,0.86)",
+        background: transparent ? "transparent" : "var(--glass-bar, rgba(255,255,255,0.86))",
         borderBottom: transparent ? "none" : "1px solid var(--border)",
         display: "flex",
         flexShrink: 0,

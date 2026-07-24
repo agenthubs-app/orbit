@@ -3,11 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import RootLayout from "../app/layout";
 import Page from "../app/page";
-import { getOrbitLandingViewModel } from "../app/(app)/app/orbit-landing-route-view-model";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -107,29 +105,25 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
     );
   }
 
+  // The root route (`app/page.tsx`) renders `OrbitStarfieldHome`, marked with
+  // `data-orbit-real-page="starfield-home"`. `app/page.tsx` takes no props and
+  // `app/layout.tsx` is an async Server Component, so both are invoked
+  // directly (not via `React.createElement`) and their async layout output is
+  // awaited before being handed to `renderToStaticMarkup`.
   let html = "";
   await withUnconfiguredLiveStorage(async () => {
     await assert.doesNotReject(async () => {
-      const rootPage = await Page({
-        searchParams: Promise.resolve({ mode: "live" }),
-      });
+      const rootPage = Page();
+      const layoutElement = await RootLayout({ children: rootPage });
 
-      html = renderToStaticMarkup(
-        React.createElement(RootLayout, null, rootPage),
-      );
+      html = renderToStaticMarkup(layoutElement);
     });
   });
 
   assert.match(html, /<main/);
-  assert.match(html, /data-orbit-agent-hero="root"/);
-  assert.match(html, /data-orbit-activity-overview="root"/);
-  assert.match(html, /data-orbit-event-context="root"/);
+  assert.match(html, /data-orbit-real-page="starfield-home"/);
   assert.match(html, /href="\/app\/events/);
   assert.match(html, /href="\/app\/contacts/);
-  for (const event of getOrbitLandingViewModel().events.slice(0, 3)) {
-    assert.match(html, new RegExp(`href="/app/events/${event.id}"`));
-  }
-  assert.match(html, /aria-label="查看西村 大地的人脉上下文"/);
   assert.doesNotMatch(html, /JA:/);
   assert.doesNotMatch(html, /ZH:/);
   assert.doesNotMatch(html, /EN:/);
@@ -142,6 +136,5 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
   assert.doesNotMatch(html, /Relationship context starter/);
   assert.doesNotMatch(html, /Mika Tanaka|Tokyo Founder Demo Night|Kenji Sato/);
   assert.doesNotMatch(html, /data-state-boundary="shared-ui-state-view"/);
-  assert.match(html, /data-orbit-real-page="landing"/);
   assert.doesNotMatch(html, /ready for your review|follow-up draft/i);
 });

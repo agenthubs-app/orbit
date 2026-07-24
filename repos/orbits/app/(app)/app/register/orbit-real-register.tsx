@@ -6,6 +6,7 @@ import {
   type OrbitRegisterProfileForm,
   type OrbitRegisterViewModel,
 } from "./register-view-model-contract";
+import { eventCoverPhoto } from "../orbit-landing-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
 
@@ -203,7 +204,7 @@ function PassTicket({
 }) {
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-md)", overflow: "hidden" }}>
-      <Cover g={gradientFromString(event.code)} style={{ height: 92, position: "relative" }}>
+      <Cover g={gradientFromString(event.code)} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} style={{ height: 92, position: "relative" }}>
         <div style={{ display: "flex", flexDirection: "column", inset: 0, justifyContent: "space-between", padding: 16, position: "absolute" }}>
           <div style={{ color: "var(--on-dark)", display: "flex", justifyContent: "space-between" }}>
             <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.9 }}>{event.name}</span>
