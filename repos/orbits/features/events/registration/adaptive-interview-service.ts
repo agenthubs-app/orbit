@@ -47,6 +47,10 @@ export interface AdaptiveInterviewStep {
 }
 
 export interface EventPersona {
+  /** 社交能量/风格,一句话(用于匹配相容的交流方式)。 */
+  energyStyle: string;
+  /** 行业标签 1-3 个(用于参会者行业匹配)。 */
+  industryTags: readonly string[];
   offering: string;
   openers: readonly string[];
   provenance: AdaptiveGenerationProvenance;
@@ -55,7 +59,7 @@ export interface EventPersona {
   tags: readonly string[];
 }
 
-export const ADAPTIVE_INTERVIEW_MAX_TURNS = 5;
+export const ADAPTIVE_INTERVIEW_MAX_TURNS = 8;
 
 // transcript 完全来自客户端,按白名单校验:字段必须在枚举内、字符串截断、
 // 轮数封顶,不合规的轮直接丢弃。供 interview/persona 两个 route 共用。
@@ -119,27 +123,62 @@ function remainingFieldsFor(
   );
 }
 
-// followUpPreference 不在共享题库里(固定流程只出 4 题);自适应流程需要
-// 完整五题的回退覆盖,在这里补上。
-function followUpPreferenceCandidate(
+// 共享题库(candidatesFor)只覆盖固定流程的 4 个字段;自适应流程要覆盖
+// 全部 8 个画像维度,匹配所需的新维度(行业/能量/经验/后续方式)在这里补齐。
+function extraFallbackCandidates(
   event: EventRecord,
   language: "en" | "zh",
-): CandidateQuestion {
-  return language === "en"
-    ? {
-        id: "follow_up_preference",
-        intent: "follow_up_preference",
+): readonly Pick<
+  CandidateQuestion,
+  "options" | "participantProfileField" | "prompt"
+>[] {
+  if (language === "en") {
+    return [
+      {
+        options: ["AI / software", "Consumer & retail", "Finance & investment", "Other industry"],
+        participantProfileField: "industry",
+        prompt: `Which industry best describes what you do, for people you meet at ${event.title}?`,
+      },
+      {
+        options: ["I open conversations", "I go deep in small groups", "I mostly listen first"],
+        participantProfileField: "energyStyle",
+        prompt: `How do you usually show up in a room like ${event.title}?`,
+      },
+      {
+        options: ["Built something from zero", "Scaled a team or market", "Deep domain expertise"],
+        participantProfileField: "experienceHighlight",
+        prompt: `What experience would you most want people at ${event.title} to know about you?`,
+      },
+      {
         options: ["Message first", "Coffee chat", "Straight to a working session"],
         participantProfileField: "followUpPreference",
         prompt: `After ${event.title}, how do you prefer promising conversations to continue?`,
-      }
-    : {
-        id: "follow_up_preference",
-        intent: "follow_up_preference",
-        options: ["先线上聊聊", "约杯咖啡", "直接进入正题合作"],
-        participantProfileField: "followUpPreference",
-        prompt: `「${event.title}」结束后,你希望有价值的交流以什么方式继续?`,
-      };
+      },
+    ];
+  }
+
+  return [
+    {
+      options: ["AI / 软件", "消费与零售", "金融与投资", "其他行业"],
+      participantProfileField: "industry",
+      prompt: `在「${event.title}」向别人介绍自己时,你的行业更接近哪一类?`,
+    },
+    {
+      options: ["主动破冰型", "小圈子深聊型", "先听再聊型"],
+      participantProfileField: "energyStyle",
+      prompt: `在「${event.title}」这样的场合,你通常是什么样的社交风格?`,
+    },
+    {
+      options: ["从零做成过一件事", "带过团队或打开过市场", "有很深的领域专长"],
+      participantProfileField: "experienceHighlight",
+      prompt: `你最希望「${event.title}」的参与者了解你的哪段经验?`,
+    },
+    {
+      options: ["先线上聊聊", "约杯咖啡", "直接进入正题合作"],
+      participantProfileField: "followUpPreference",
+      prompt: `「${event.title}」结束后,你希望有价值的交流以什么方式继续?`,
+    },
+  ];
 }
 
 function fallbackQuestionFor(
@@ -150,7 +189,7 @@ function fallbackQuestionFor(
 ): AdaptiveNextQuestion {
   const bank = [
     ...candidatesFor(event, language),
-    followUpPreferenceCandidate(event, language),
+    ...extraFallbackCandidates(event, language),
   ];
   const candidate =
     bank.find((question) => question.participantProfileField === field) ??
@@ -248,7 +287,7 @@ export async function nextAdaptiveInterviewQuestion(
       "Generate exactly ONE next question. Return strict JSON only: {\"acknowledgment\", \"field\", \"prompt\", \"options\"}.",
       `Write everything in ${language === "zh" ? "Chinese" : "English"}.`,
       "acknowledgment: one short sentence that reacts to the person's LATEST answer (empty string if there is no previous answer). Never repeat the answer verbatim; show you understood it.",
-      "field: pick the most valuable unanswered field from remainingFields, informed by what the person just said.",
+      "field: pick the most valuable unanswered field from remainingFields, informed by what the person just said. The persona feeds attendee matching, so cover diverse dimensions: positioning, industry, who to meet, value offered, desired outcome, social energy style, experience highlight, follow-up preference.",
       "prompt: the next question. Make it follow naturally from the latest answer — reference what they said. Keep it under 90 characters if possible.",
       "options: 2 to 4 short answer chips tailored to THIS person's situation (from their answers), not generic placeholders.",
       "Never ask for sensitive identity, credential, financial, or health data.",
@@ -331,13 +370,29 @@ function readModelPersona(text: string): Omit<EventPersona, "provenance"> | null
         .map((tag) => tag.trim())
         .filter(Boolean)
     : [];
+  const industryTags = Array.isArray(parsed.industryTags)
+    ? parsed.industryTags
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    : [];
+  const energyStyle =
+    typeof parsed.energyStyle === "string" ? parsed.energyStyle.trim() : "";
   const openers = Array.isArray(parsed.openers)
     ? parsed.openers
         .filter((opener): opener is string => typeof opener === "string")
         .map((opener) => opener.trim())
         .filter(Boolean)
     : [];
-  const texts = [tagline, seeking, offering, ...tags, ...openers];
+  const texts = [
+    tagline,
+    seeking,
+    offering,
+    energyStyle,
+    ...tags,
+    ...industryTags,
+    ...openers,
+  ];
 
   if (
     tagline.length < 4 ||
@@ -349,6 +404,11 @@ function readModelPersona(text: string): Omit<EventPersona, "provenance"> | null
     tags.length < 3 ||
     tags.length > 5 ||
     tags.some((tag) => tag.length > 16) ||
+    industryTags.length < 1 ||
+    industryTags.length > 3 ||
+    industryTags.some((tag) => tag.length > 16) ||
+    energyStyle.length < 2 ||
+    energyStyle.length > 60 ||
     openers.length < 2 ||
     openers.length > 3 ||
     openers.some((opener) => opener.length > 90) ||
@@ -357,7 +417,7 @@ function readModelPersona(text: string): Omit<EventPersona, "provenance"> | null
     return null;
   }
 
-  return { offering, openers, seeking, tagline, tags };
+  return { energyStyle, industryTags, offering, openers, seeking, tagline, tags };
 }
 
 function fallbackPersona(
@@ -372,17 +432,27 @@ function fallbackPersona(
   const target = answerFor("targetAttendees");
   const value = answerFor("valueOffered");
   const outcome = answerFor("desiredOutcome");
+  const industry = answerFor("industry");
+  const energy = answerFor("energyStyle");
+  const experience = answerFor("experienceHighlight");
   const zh = language === "zh";
+  const clip = (text: string) =>
+    text.length > 16 ? `${text.slice(0, 15)}…` : text;
 
-  const tags = [positioning, target, value]
+  const tags = [positioning, target, value, experience]
     .filter(Boolean)
-    .map((text) => (text.length > 16 ? `${text.slice(0, 15)}…` : text));
+    .map(clip);
 
   while (tags.length < 3) {
     tags.push(zh ? "现场交流" : "Open to talk");
   }
 
   return {
+    energyStyle:
+      energy || (zh ? "随场合灵活交流" : "Flexible, reads the room"),
+    industryTags: industry
+      ? [clip(industry)]
+      : [zh ? "跨行业" : "Cross-industry"],
     offering:
       value ||
       (zh ? "愿意分享自己的经验与资源。" : "Happy to share experience and resources."),
@@ -427,11 +497,13 @@ export async function generateEventPersona(
   const modelResult = await modelRunner({
     config: input.modelConfig,
     systemInstruction: [
-      "You write an event-facing attendee persona from an interview transcript.",
-      "Return strict JSON only: {\"tagline\", \"tags\", \"seeking\", \"offering\", \"openers\"}.",
+      "You write an event-facing attendee persona from an interview transcript. It powers attendee matching, so every dimension matters.",
+      "Return strict JSON only: {\"tagline\", \"tags\", \"industryTags\", \"energyStyle\", \"seeking\", \"offering\", \"openers\"}.",
       `Write everything in ${language === "zh" ? "Chinese" : "English"}.`,
       "tagline: one line (<=60 chars) positioning this person for THIS event.",
-      "tags: 3-5 short labels (<=16 chars each).",
+      "tags: 3-5 short labels (<=16 chars each) covering their strongest matching signals.",
+      "industryTags: 1-3 industry labels (<=16 chars each).",
+      "energyStyle: one short phrase (<=60 chars) describing how they engage socially (e.g. opens conversations, deep 1:1s, listens first).",
       "seeking: one sentence — who they want to meet at this event and why (<=140 chars).",
       "offering: one sentence — what they can offer people they meet (<=140 chars).",
       "openers: 2-3 conversation openers others could use with this person (<=90 chars each).",

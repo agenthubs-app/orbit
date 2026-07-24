@@ -11,7 +11,11 @@ import {
   nextAdaptiveInterviewQuestion,
   readInterviewTranscript,
 } from "../../../../../../features/events/registration/adaptive-interview-service";
-import { loadEventForRegistration } from "../../../../../../features/events/registration/event-loader";
+import {
+  loadEventForRegistration,
+  localizedEventTitle,
+} from "../../../../../../features/events/registration/event-loader";
+import { bilingualSegment } from "../../../../../../features/orbit-ai/event-recommendation-artifact-service";
 
 export const dynamic = "force-dynamic";
 
@@ -50,9 +54,16 @@ export async function POST(
     language?: unknown;
     transcript?: unknown;
   };
+  const language = body.language === "en" ? ("en" as const) : ("zh" as const);
+  // live 活动的 title/venue 是「日/中/英」拼接串;进模型前挑出当前语言段,
+  // 生成的题目措辞才不会夹带三语标题。
   const step = await nextAdaptiveInterviewQuestion({
-    event,
-    language: body.language === "en" ? "en" : "zh",
+    event: {
+      ...event,
+      title: localizedEventTitle(event, language),
+      venue: bilingualSegment(event.venue, language),
+    },
+    language,
     transcript: readInterviewTranscript(body.transcript),
   });
 

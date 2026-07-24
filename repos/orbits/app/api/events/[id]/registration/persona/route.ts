@@ -11,7 +11,11 @@ import {
   generateEventPersona,
   readInterviewTranscript,
 } from "../../../../../../features/events/registration/adaptive-interview-service";
-import { loadEventForRegistration } from "../../../../../../features/events/registration/event-loader";
+import {
+  loadEventForRegistration,
+  localizedEventTitle,
+} from "../../../../../../features/events/registration/event-loader";
+import { bilingualSegment } from "../../../../../../features/orbit-ai/event-recommendation-artifact-service";
 
 export const dynamic = "force-dynamic";
 
@@ -55,9 +59,14 @@ export async function POST(
     );
   }
 
+  const language = body.language === "en" ? ("en" as const) : ("zh" as const);
   const persona = await generateEventPersona({
-    event,
-    language: body.language === "en" ? "en" : "zh",
+    event: {
+      ...event,
+      title: localizedEventTitle(event, language),
+      venue: bilingualSegment(event.venue, language),
+    },
+    language,
     transcript,
   });
 

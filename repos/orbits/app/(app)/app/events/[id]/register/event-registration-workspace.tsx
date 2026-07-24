@@ -12,10 +12,11 @@
 // 之后每题调 /registration/interview;答案通过既有 /registration 端点持久化。
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type {
-  AdaptiveInterviewTurn,
-  AdaptiveNextQuestion,
-  EventPersona,
+import {
+  ADAPTIVE_INTERVIEW_MAX_TURNS,
+  type AdaptiveInterviewTurn,
+  type AdaptiveNextQuestion,
+  type EventPersona,
 } from "../../../../../../features/events/registration/adaptive-interview-service";
 import type {
   EventParticipantProfileAnswers,
@@ -49,7 +50,7 @@ type RegistrationEnvelope = {
 
 type Stage = "interview" | "generating" | "persona";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = ADAPTIVE_INTERVIEW_MAX_TURNS;
 const GENERATING_MIN_MS = 2700;
 const GENERATING_STAGE_MS = 900;
 const OPTION_KEYS = ["A", "B", "C", "D"] as const;
@@ -64,7 +65,10 @@ function fieldLabel(
 ): string {
   const labels: Record<AdaptiveInterviewTurn["field"], { en: string; zh: string }> = {
     desiredOutcome: { en: "Outcome", zh: "期待结果" },
+    energyStyle: { en: "Social energy", zh: "社交能量" },
+    experienceHighlight: { en: "Experience", zh: "经验亮点" },
     followUpPreference: { en: "Follow-up", zh: "后续方式" },
+    industry: { en: "Industry", zh: "行业" },
     positioning: { en: "Positioning", zh: "定位" },
     targetAttendees: { en: "Who to meet", zh: "想认识" },
     valueOffered: { en: "What you offer", zh: "能提供" },
@@ -148,19 +152,29 @@ export function EventRegistrationWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [pendingCancel, setPendingCancel] = useState(false);
   const generationRunId = useRef(0);
+  // 选项预取:题目一出现就为每个选项并行预生成下一题,用户点击时通常已就绪,
+  // 把 ~10s 的模型延迟藏进读题决策时间里。key=选项文本。
+  const prefetchRef = useRef<
+    Map<string, Promise<{ done: boolean; question: AdaptiveNextQuestion | null }>>
+  >(new Map());
+  const prefetchAbortRef = useRef<AbortController | null>(null);
 
   const status = registration?.status ?? "unregistered";
   const eventHref = `/app/events/${encodeURIComponent(event.id)}?language=${language}`;
   const stepIndex = Math.min(transcript.length, TOTAL_STEPS - 1);
 
   const fetchNextQuestion = useCallback(
-    async (nextTranscript: readonly AdaptiveInterviewTurn[]) => {
+    async (
+      nextTranscript: readonly AdaptiveInterviewTurn[],
+      signal?: AbortSignal,
+    ) => {
       const response = await fetch(
         `/api/events/${encodeURIComponent(event.id)}/registration/interview`,
         {
           body: JSON.stringify({ language, transcript: nextTranscript }),
           headers: { "content-type": "application/json" },
           method: "POST",
+          signal,
         },
       );
       const body = (await response.json().catch(() => null)) as {
@@ -300,10 +314,24 @@ export function EventRegistrationWorkspace({
     setThinking(true);
 
     try {
-      const step =
-        nextTranscript.length >= TOTAL_STEPS
-          ? { done: true, question: null }
-          : await fetchNextQuestion(nextTranscript);
+      // 命中预取则近乎即时;预取失败/被中止/自由输入时退回实时请求。
+      let step: { done: boolean; question: AdaptiveNextQuestion | null };
+
+      if (nextTranscript.length >= TOTAL_STEPS) {
+        step = { done: true, question: null };
+      } else {
+        const prefetched = prefetchRef.current.get(trimmed);
+
+        if (prefetched) {
+          try {
+            step = await prefetched;
+          } catch {
+            step = await fetchNextQuestion(nextTranscript);
+          }
+        } else {
+          step = await fetchNextQuestion(nextTranscript);
+        }
+      }
 
       setTranscript(nextTranscript);
       setQuestionHistory((history) => [...history, question]);
@@ -328,6 +356,45 @@ export function EventRegistrationWorkspace({
       setThinking(false);
     }
   }
+
+  // 选项预取:当前题渲染后立即为每个选项预生成下一题;换题/回退/卸载时中止。
+  useEffect(() => {
+    prefetchAbortRef.current?.abort();
+    prefetchRef.current = new Map();
+
+    if (
+      stage !== "interview" ||
+      !question ||
+      thinking ||
+      transcript.length + 1 >= TOTAL_STEPS
+    ) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+
+    prefetchAbortRef.current = controller;
+
+    for (const option of question.options) {
+      const hypotheticalTranscript = [
+        ...transcript,
+        { answer: option, field: question.field, prompt: question.prompt },
+      ];
+
+      const prefetchPromise = fetchNextQuestion(
+        hypotheticalTranscript,
+        controller.signal,
+      );
+
+      // 未被消费而中止的预取会 reject;挂空 catch 防 unhandled rejection,
+      // 消费方 await 原 promise 仍能拿到真实结果/错误。
+      prefetchPromise.catch(() => undefined);
+      prefetchRef.current.set(option, prefetchPromise);
+    }
+
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, question, transcript.length]);
 
   // Typeform 式键盘选择:A/B/C/D 直接选中对应选项(输入框聚焦时不劫持)。
   useEffect(() => {
@@ -842,6 +909,21 @@ export function EventRegistrationWorkspace({
                 {persona.tagline}
               </h2>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {persona.industryTags.map((tag) => (
+                  <span
+                    key={`industry-${tag}`}
+                    style={{
+                      background: "var(--accent)",
+                      borderRadius: "var(--r-pill)",
+                      color: "var(--on-dark)",
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      padding: "5px 13px",
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
                 {persona.tags.map((tag) => (
                   <span
                     key={tag}
@@ -873,6 +955,11 @@ export function EventRegistrationWorkspace({
                   body: persona.offering,
                   icon: "wallet" as const,
                   label: copy(language, { en: "Can offer", zh: "能提供" }),
+                },
+                {
+                  body: persona.energyStyle,
+                  icon: "sparkle" as const,
+                  label: copy(language, { en: "Social energy", zh: "社交能量" }),
                 },
               ].map((section) => (
                 <div

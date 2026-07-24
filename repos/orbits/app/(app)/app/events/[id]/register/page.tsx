@@ -10,7 +10,11 @@ import type { OrbitLanguage } from "../../../orbit-language-core";
 import { getOrbitServerLanguage } from "../../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../orbit-visual-freeze-runtime";
-import { loadEventForRegistration } from "../../../../../../features/events/registration/event-loader";
+import {
+  loadEventForRegistration,
+  localizedEventTitle,
+} from "../../../../../../features/events/registration/event-loader";
+import { bilingualSegment } from "../../../../../../features/orbit-ai/event-recommendation-artifact-service";
 import { generateEventRegistrationQuestions } from "../../../../../../features/events/registration/question-generator";
 import {
   CURRENT_EVENT_REGISTRATION_PROFILE,
@@ -406,9 +410,16 @@ export default async function AppEventRegistrationGuidePage({
   const event = await loadEventForRegistration(id);
 
   if (isRegisterableEventForWorkspace(event)) {
+    // live 活动的 title/venue 是「日/中/英」斜杠拼接串;进入画像问答前按
+    // 当前语言挑出单一段,标题展示与模型生成的题目措辞保持同一语言。
+    const localizedEvent = {
+      ...event,
+      title: localizedEventTitle(event, language === "en" ? "en" : "zh"),
+      venue: bilingualSegment(event.venue, language === "en" ? "en" : "zh"),
+    };
     const [questionSet, registration] = await Promise.all([
       generateEventRegistrationQuestions({
-        event,
+        event: localizedEvent,
         language,
       }),
       eventRegistrationRuntimeService.get({
@@ -429,9 +440,9 @@ export default async function AppEventRegistrationGuidePage({
         <OrbitReferenceStyles />
         <EventRegistrationWorkspace
           event={{
-            id: event.id,
-            title: event.title,
-            venue: event.venue,
+            id: localizedEvent.id,
+            title: localizedEvent.title,
+            venue: localizedEvent.venue,
           }}
           initialRegistration={registration}
           language={language}

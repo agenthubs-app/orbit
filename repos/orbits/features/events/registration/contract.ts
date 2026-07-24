@@ -9,11 +9,17 @@ export const EVENT_REGISTRATION_QUESTION_INTENTS = [
 export type EventRegistrationQuestionIntent =
   (typeof EVENT_REGISTRATION_QUESTION_INTENTS)[number];
 
+// 画像字段。前五个来自最初的固定问卷;后三个为参会者匹配补充的维度
+// (行业、社交能量/风格、经验亮点)。normalizeAnswers 以此为白名单,
+// 新增字段自动纳入存储,老记录缺字段不受影响(answers 是 Partial)。
 export const EVENT_PARTICIPANT_PROFILE_FIELDS = [
   "positioning",
+  "industry",
   "targetAttendees",
   "valueOffered",
   "desiredOutcome",
+  "energyStyle",
+  "experienceHighlight",
   "followUpPreference",
 ] as const;
 

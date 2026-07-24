@@ -95,10 +95,13 @@ test("model failure falls back deterministically and never blocks the flow", asy
 test("interview finishes after all fields are answered", async () => {
   const transcript: AdaptiveInterviewTurn[] = [
     { answer: "a", field: "positioning", prompt: "q1" },
-    { answer: "b", field: "targetAttendees", prompt: "q2" },
-    { answer: "c", field: "valueOffered", prompt: "q3" },
-    { answer: "d", field: "desiredOutcome", prompt: "q4" },
-    { answer: "e", field: "followUpPreference", prompt: "q5" },
+    { answer: "b", field: "industry", prompt: "q2" },
+    { answer: "c", field: "targetAttendees", prompt: "q3" },
+    { answer: "d", field: "valueOffered", prompt: "q4" },
+    { answer: "e", field: "desiredOutcome", prompt: "q5" },
+    { answer: "f", field: "energyStyle", prompt: "q6" },
+    { answer: "g", field: "experienceHighlight", prompt: "q7" },
+    { answer: "h", field: "followUpPreference", prompt: "q8" },
   ];
   const step = await nextAdaptiveInterviewQuestion({
     event,
@@ -134,6 +137,8 @@ test("persona uses model output when it satisfies the contract", async () => {
       JSON.stringify({
         tagline: "AI 获客工具创始人,正在找日本市场伙伴",
         tags: ["AI 获客", "早期创始人", "找渠道"],
+        industryTags: ["AI / 软件"],
+        energyStyle: "小圈子深聊型",
         seeking: "想认识做企业服务渠道的人,聊日本市场落地。",
         offering: "能分享 AI 获客的实操打法和数据。",
         openers: ["聊聊你们的获客渠道?", "对 AI 工具进日本市场怎么看?"],
@@ -174,6 +179,8 @@ test("persona rejects oversized model output", async () => {
       JSON.stringify({
         tagline: "x".repeat(100),
         tags: ["a", "b", "c"],
+        industryTags: ["ai"],
+        energyStyle: "listens first",
         seeking: "ok seeking",
         offering: "ok offering",
         openers: ["o1", "o2"],

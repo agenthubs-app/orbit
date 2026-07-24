@@ -88,7 +88,7 @@ test("/app/events/[id]/register renders event-specific optional participant-prof
   assert.match(html, /Seed Investor and Founder Matching Salon/);
   // 新版是一屏一题的自适应问答:SSR 渲染第一题、进度指示与选项胶囊。
   assert.match(html, /data-registration-stage="interview"/);
-  assert.match(html, /1 \/ 5/);
+  assert.match(html, /1 \/ 8/);
   assert.match(html, /data-reg-option/);
   assert.match(html, /Answers stay scoped to this event/);
 });

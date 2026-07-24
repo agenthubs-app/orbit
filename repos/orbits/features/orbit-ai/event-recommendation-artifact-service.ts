@@ -171,7 +171,9 @@ function confidenceLabelFor(
 
 // 活动源标签是「日文 / 中文 / 英文」多语串（title 有时只有日/英两段）；
 // zh 页面挑"有汉字且无假名"的中文段，en 页面挑纯拉丁段，缺段时回退。
-function bilingualSegment(text: string, locale: ArtifactLocale): string {
+// 也被活动报名页复用:live 活动的 title 是「日/中/英」斜杠拼接串,展示与
+// 模型输入前按语言挑出单一段。
+export function bilingualSegment(text: string, locale: ArtifactLocale): string {
   const segments = text
     .split(/\s*\/\s*/)
     .map((segment) => segment.trim())
