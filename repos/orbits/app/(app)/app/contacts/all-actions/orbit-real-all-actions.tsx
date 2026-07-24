@@ -28,15 +28,15 @@ function EntryRow({ entry }: { entry: AgentLedgerEntry }) {
         alignItems: "center",
         borderBottom: "1px solid var(--border)",
         display: "flex",
-        gap: 14,
+        gap: 12,
         padding: "14px 0",
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: "var(--text)", fontSize: 14.5, fontWeight: 600 }}>
+        <div style={{ color: "var(--text)", fontSize: 15, fontWeight: 600 }}>
           {entry.title}
         </div>
-        <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>
+        <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 3 }}>
           来源：{sourceLabels}
         </div>
       </div>
@@ -64,7 +64,7 @@ export function OrbitRealAllActions({
     return (
       <div data-orbit-route="app-all-actions-route-state">
         <div className="eyebrow">All actions</div>
-        <h1 style={{ fontSize: 24, margin: "8px 0 12px" }}>账本暂时读不出来</h1>
+        <h1 style={{ fontSize: 22, margin: "8px 0 12px" }}>账本暂时读不出来</h1>
         <p style={{ color: "var(--text-2)", fontSize: 14 }}>{viewModel.failureMessage}</p>
       </div>
     );

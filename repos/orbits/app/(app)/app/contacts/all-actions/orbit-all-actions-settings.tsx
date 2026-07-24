@@ -49,7 +49,7 @@ export function OrbitAllActionsSettings() {
       <div className="eyebrow" style={{ marginBottom: 4 }}>
         权限与通知
       </div>
-      <p style={{ color: "var(--text-3)", fontSize: 12.5, margin: "0 0 8px" }}>
+      <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 8px" }}>
         改动尚未保存 —— 设置的持久化会随 agent settings 一起接入。
       </p>
 

@@ -1620,6 +1620,26 @@ const reactReferenceIsolationStyles = `
    Loaded AFTER the prototype styles so these win on shared selectors.
    =================================================================== */
 
+/* ---------------------------------------------------------------------
+   Type & spacing scale (P4 T6). New literals in app/(app)/app must snap
+   to these values; the ratchet test (tests/ui/orbit-scale-ratchet.test.ts)
+   counts violations sitewide and fails the build if the count increases.
+
+   fontSize (px):     11, 12, 13, 14, 15, 18, 22, 28
+                       (+16 allowed where iOS auto-zoom matters, e.g. mobile
+                       text inputs; 0 allowed for visually-hidden text)
+   fontWeight:         400, 500, 600, 700, 800
+                       (800 kept legal — already present sitewide per audit)
+   lineHeight:         1.2 / 1.5 / 1.65 (conceptual tiers; snap only where
+                       a line is touched for another reason — no dedicated
+                       ratchet)
+   gap (px):           0, 4, 8, 12, 16, 20, 24, 32, 48
+   borderRadius:       use var(--r-xs|sm|md|lg|xl|pill) wherever the style
+                       prop accepts a string. Numeric-only contexts (e.g.
+                       canvas/SVG props) snap to the token VALUES:
+                       7, 10, 14, 18, 24, 999.
+   --------------------------------------------------------------------- */
+
 /* Centralized tokens that were previously hardcoded across pages. */
 [data-orbit-real-page] {
   --scrim: rgba(20, 20, 28, 0.42);
