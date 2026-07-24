@@ -107,6 +107,16 @@ textarea {
   width: 100%;
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  min-height: 0;
+  padding: 0;
+  width: auto;
+}
+
 textarea {
   min-height: 96px;
   resize: vertical;

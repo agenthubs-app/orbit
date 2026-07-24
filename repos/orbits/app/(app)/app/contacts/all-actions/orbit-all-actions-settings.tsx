@@ -33,7 +33,7 @@ function ToggleRow({
       <input
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        style={{ flexShrink: 0, height: 16, minHeight: 0, padding: 0, width: 16 }}
+        style={{ flexShrink: 0, height: 16, width: 16 }}
         type="checkbox"
       />
     </label>

@@ -91,7 +91,7 @@ export function OrbitTodayDecisionForm({
                     : current.filter((id) => id !== operation.operationId),
                 )
               }
-              style={{ flexShrink: 0, height: 16, marginTop: 2, minHeight: 0, padding: 0, width: 16 }}
+              style={{ flexShrink: 0, height: 16, marginTop: 2, width: 16 }}
               type="checkbox"
             />
             <span>
