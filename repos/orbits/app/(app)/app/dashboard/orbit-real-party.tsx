@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactK
 
 import { getOrbitPartyViewModel, type OrbitPartyPersonView, type OrbitPartyViewModel } from "../orbit-party-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
+import { ModalShell } from "../orbit-account-shell";
 import { PublicTopNav } from "../orbit-public-shell";
 import { Icon, Logo } from "../orbit-reference-primitives";
 import { ORBIT_Z } from "../orbit-z";
@@ -675,49 +676,39 @@ function SocialGraphLite({
 }
 
 function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; person: OrbitPartyPersonView; t: Translate }) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
   return (
-    <div onClick={onClose} style={{ alignItems: "flex-end", background: "var(--scrim)", display: "flex", inset: 0, justifyContent: "center", padding: 16, position: "fixed", zIndex: ORBIT_Z.modal }}>
-      <div className="card" onClick={(event) => event.stopPropagation()} style={{ borderRadius: "var(--r-xl)", maxHeight: "88vh", overflowY: "auto", width: "min(100%, 460px)" }}>
-        <div style={{ background: "var(--surface)", padding: "16px 18px 0", position: "sticky", top: 0 }}>
-          <button aria-label={t({ en: "Back to graph", zh: "返回图谱" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
-            <Icon name="chevL" size={16} />
-            {t({ en: "Back to graph", zh: "返回图谱" })}
-          </button>
+    <ModalShell bare label={person.name} onClose={onClose} variant="bottom-sheet">
+      <div style={{ background: "var(--surface)", padding: "16px 18px 0", position: "sticky", top: 0 }}>
+        <button aria-label={t({ en: "Back to graph", zh: "返回图谱" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
+          <Icon name="chevL" size={16} />
+          {t({ en: "Back to graph", zh: "返回图谱" })}
+        </button>
+      </div>
+      <div style={{ padding: 20 }}>
+        <div className="eyebrow">{person.company}</div>
+        <h2 className="h-display" style={{ marginTop: 10 }}>
+          {person.name}
+        </h2>
+        <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>
+          {person.company} · {person.title}
         </div>
-        <div style={{ padding: 20 }}>
-          <div className="eyebrow">{person.company}</div>
-          <h2 className="h-display" style={{ marginTop: 10 }}>
-            {person.name}
-          </h2>
-          <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>
-            {person.company} · {person.title}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-            <span className="chip chip-accent">{person.industry}</span>
-            <span className="chip">
-              {t({ en: `Group ${person.groupNumber}`, zh: `第${person.groupNumber}组` })} / {person.seat}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+          <span className="chip chip-accent">{person.industry}</span>
+          <span className="chip">
+            {t({ en: `Group ${person.groupNumber}`, zh: `第${person.groupNumber}组` })} / {person.seat}
+          </span>
+        </div>
+        <p style={{ color: "var(--text)", lineHeight: 1.8, marginTop: 18 }}>{person.summary}</p>
+        <p style={{ color: "var(--text-2)", lineHeight: 1.8, marginTop: 12 }}>{person.reason}</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
+          {person.topics.map((topic) => (
+            <span className="chip" key={topic}>
+              {topic}
             </span>
-          </div>
-          <p style={{ color: "var(--text)", lineHeight: 1.8, marginTop: 18 }}>{person.summary}</p>
-          <p style={{ color: "var(--text-2)", lineHeight: 1.8, marginTop: 12 }}>{person.reason}</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-            {person.topics.map((topic) => (
-              <span className="chip" key={topic}>
-                {topic}
-              </span>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 

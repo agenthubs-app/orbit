@@ -18,7 +18,10 @@
  *   overlay  — drawers / sheets that cover the viewport with a scrim
  *              (mobile history drawer, relationship inbox sheet).
  *   modal    — centered dialogs / bottom sheets that block the page
- *              (confirm dialogs, person detail overlay).
+ *              (confirm dialogs, person detail overlay). Deliberately above
+ *              `overlay`: a modal opened from within a drawer/sheet (e.g.
+ *              confirming an action from the relationship inbox) must stack
+ *              on top of it, never behind it.
  *   toast    — transient status messages; must float above modals.
  *   debug    — dev-only overlays (kept far above product UI).
  */

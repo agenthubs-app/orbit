@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { signIn } from "next-auth/react";
 import type { OrbitAccountAuthViewModel } from "../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
+import { useOrbitModalA11y } from "../orbit-modal-a11y";
 import { Icon, Logo } from "../orbit-reference-primitives";
 
 function productHref(prototypeHref: string) {
@@ -51,22 +52,17 @@ export function OrbitRealAccountAuth({
   const [forgotStep, setForgotStep] = useState(1);
   const [code, setCode] = useState("");
 
-  function handleClose() {
+  const handleClose = useCallback(() => {
     if (onClose) {
       onClose();
       return;
     }
     navigate("/");
-  }
+  }, [onClose]);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") handleClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Shared focus-trap/Esc/aria-modal behavior (audit P0-7) — this dialog
+  // previously hand-rolled its own Esc listener with no focus trap.
+  const cardRef = useOrbitModalA11y(handleClose);
 
   const isSignup = viewModel.mode === "signup";
   const isForgot = viewModel.mode === "forgot";
@@ -146,8 +142,16 @@ export function OrbitRealAccountAuth({
 
   return (
     <main className="orbit-account-auth-page" data-orbit-real-page>
-      <div className="orbit-account-auth-backdrop" />
-      <section aria-modal="true" className="orbit-account-auth-modal" role="dialog">
+      <div className="orbit-account-auth-backdrop" onClick={handleClose} />
+      <section
+        aria-label={viewModel.title}
+        aria-modal="true"
+        className="orbit-account-auth-modal"
+        ref={cardRef}
+        role="dialog"
+        style={{ outline: "none" }}
+        tabIndex={-1}
+      >
         <div aria-hidden="true" className="orbit-account-auth-grip" />
         <header className="orbit-account-auth-modal-head">
           <Logo size={22} />

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { useOrbitLanguage } from "./orbit-language-context";
+import { useOrbitModalA11y } from "./orbit-modal-a11y";
 import { OrbitTopNav, productHref } from "./orbit-public-shell";
 import { Icon, Logo } from "./orbit-reference-primitives";
 import { RelationshipInboxTrigger } from "./inbox/relationship-inbox-panel";
@@ -122,89 +123,80 @@ export function MobileBar({
   );
 }
 
+/**
+ * Shared dialog chrome for every modal surface: scrim, centered/bottom-sheet
+ * card, and the shared focus-trap/Esc/aria-modal behavior from
+ * useOrbitModalA11y (audit P0-7 — previously reimplemented inline here and
+ * independently by several dialogs). Pass `bare` to take over the card's
+ * inner content entirely (own header, own scroll region) while still
+ * getting the overlay, scrim, positioning, and a11y hook for free — used by
+ * dialogs whose header doesn't match the default Logo/step/close row (the
+ * admin create-event wizard, the party person-detail bottom sheet).
+ */
 export function ModalShell({
+  bare = false,
   children,
+  className,
   label,
   maxW = 440,
   onClose,
   step,
+  variant = "dialog",
 }: {
+  bare?: boolean;
   children: ReactNode;
+  className?: string;
   label?: string;
   maxW?: number;
   onClose: () => void;
   step?: string;
+  variant?: "dialog" | "bottom-sheet";
 }) {
   const { t } = useOrbitLanguage();
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const previouslyFocused = useRef<HTMLElement | null>(null);
-
-  const focusable = useCallback(() => {
-    const root = cardRef.current;
-    if (!root) return [] as HTMLElement[];
-    return Array.from(
-      root.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ),
-    ).filter((node) => node.offsetParent !== null || node === document.activeElement);
-  }, []);
-
-  useEffect(() => {
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const items = focusable();
-    (items[0] ?? cardRef.current)?.focus();
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-
-      const nodes = focusable();
-      if (!nodes.length) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      const activeEl = document.activeElement;
-
-      if (event.shiftKey && activeEl === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && activeEl === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      previouslyFocused.current?.focus?.();
-    };
-  }, [focusable, onClose]);
+  const cardRef = useOrbitModalA11y(onClose);
+  const isSheet = variant === "bottom-sheet";
 
   return (
-    <div className="orbit-modal-overlay" style={{ alignItems: "center", display: "flex", inset: 0, justifyContent: "center", position: "absolute", zIndex: ORBIT_Z.modal }}>
+    <div className="orbit-modal-overlay" style={{ alignItems: isSheet ? "flex-end" : "center", display: "flex", inset: 0, justifyContent: "center", position: "fixed", zIndex: ORBIT_Z.modal }}>
       <div className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
       <div
         aria-label={label ?? t({ en: "Dialog", zh: "对话框" })}
         aria-modal="true"
-        className="orbit-modal-card card"
+        className={`orbit-modal-card card${className ? ` ${className}` : ""}`}
         ref={cardRef}
         role="dialog"
-        style={{ animation: "pop .2s cubic-bezier(.22,1,.36,1)", borderRadius: 20, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", margin: 16, maxHeight: "92%", outline: "none", overflow: "hidden", position: "relative", width: `min(100%, ${maxW}px)`, zIndex: ORBIT_Z.raised }}
+        style={{
+          animation: "pop .2s cubic-bezier(.22,1,.36,1)",
+          borderRadius: isSheet ? "var(--r-xl) var(--r-xl) 0 0" : 20,
+          boxShadow: "var(--sh-pop)",
+          display: "flex",
+          flexDirection: "column",
+          margin: isSheet ? 0 : 16,
+          maxHeight: isSheet ? "88vh" : "92%",
+          outline: "none",
+          overflowX: "hidden",
+          overflowY: isSheet ? "auto" : "hidden",
+          position: "relative",
+          width: isSheet ? "min(100%, 460px)" : `min(100%, ${maxW}px)`,
+          zIndex: ORBIT_Z.raised,
+        }}
         tabIndex={-1}
       >
-        <div style={{ alignItems: "center", display: "flex", gap: 12, padding: "20px 22px 6px" }}>
-          <Logo size={22} />
-          <div style={{ flex: 1 }} />
-          {step ? <span className="mono" style={{ color: "var(--text-3)", fontSize: 12, whiteSpace: "nowrap" }}>{step}</span> : null}
-          <button type="button" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
-            <Icon name="x" size={17} />
-          </button>
-        </div>
-        <div className="scroll" style={{ overflowY: "auto", padding: "10px 28px 28px" }}>{children}</div>
+        {bare ? (
+          children
+        ) : (
+          <>
+            <div style={{ alignItems: "center", display: "flex", gap: 12, padding: "20px 22px 6px" }}>
+              <Logo size={22} />
+              <div style={{ flex: 1 }} />
+              {step ? <span className="mono" style={{ color: "var(--text-3)", fontSize: 12, whiteSpace: "nowrap" }}>{step}</span> : null}
+              <button type="button" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: 999, color: "var(--text-2)", cursor: "pointer", display: "flex", height: 32, justifyContent: "center", width: 32 }}>
+                <Icon name="x" size={17} />
+              </button>
+            </div>
+            <div className="scroll" style={{ overflowY: "auto", padding: "10px 28px 28px" }}>{children}</div>
+          </>
+        )}
       </div>
     </div>
   );
