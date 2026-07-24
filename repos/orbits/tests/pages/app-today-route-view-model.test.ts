@@ -7,7 +7,11 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadAppTodayRouteViewModel } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
+import { AGENT_LEDGER_ENTRY_STATUSES } from "../../features/agent/ledger/contract";
+import {
+  loadAppTodayRouteViewModel,
+  TODAY_SECTION_BY_STATUS,
+} from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
 
 test("today buckets ledger entries into decide, prepared, and recent", async () => {
   const model = await loadAppTodayRouteViewModel();
@@ -81,4 +85,23 @@ test("the empty scenario yields an empty view model with no sections", async () 
   assert.equal(model.state, "empty");
   assert.equal(model.sections.length, 0);
   assert.equal(model.decideCount, 0);
+});
+
+test("every ledger status has an explicit Today routing decision", () => {
+  for (const status of AGENT_LEDGER_ENTRY_STATUSES) {
+    assert.ok(
+      status in TODAY_SECTION_BY_STATUS,
+      `${status} has no Today routing decision and would be silently dropped`,
+    );
+  }
+});
+
+test("failed entries are visible on Today; only deferred is hidden", () => {
+  assert.equal(TODAY_SECTION_BY_STATUS.failed, "recent");
+  assert.equal(TODAY_SECTION_BY_STATUS.deferred, null);
+
+  const hidden = AGENT_LEDGER_ENTRY_STATUSES.filter(
+    (status) => TODAY_SECTION_BY_STATUS[status] === null,
+  );
+  assert.deepEqual(hidden, ["deferred"]);
 });

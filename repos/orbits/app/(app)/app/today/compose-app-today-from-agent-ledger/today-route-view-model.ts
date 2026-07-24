@@ -10,6 +10,7 @@
 import {
   agentLedgerFailureToAppError,
   type AgentLedgerEntry,
+  type AgentLedgerEntryStatus,
 } from "../../../../../features/agent/ledger/contract";
 import { createAgentLedgerService } from "../../../../../features/agent/service-factory";
 
@@ -42,14 +43,22 @@ const SECTION_TITLES: Record<TodaySectionKey, string> = {
   recent: "最近完成",
 };
 
-const SECTION_STATUSES: Record<
-  TodaySectionKey,
-  readonly AgentLedgerEntry["status"][]
+/** 每个账本状态在 Today 的归属。null = 刻意不在 Today 出现（只在 All actions 可见）。
+ *  用 Record 而不是数组，这样新增状态时 TypeScript 会强制做出归属决定。 */
+export const TODAY_SECTION_BY_STATUS: Record<
+  AgentLedgerEntryStatus,
+  TodaySectionKey | null
 > = {
-  decide: ["awaiting_confirmation"],
-  prepared: ["executing"],
-  recent: ["completed", "partially_failed", "undone"],
+  awaiting_confirmation: "decide",
+  completed: "recent",
+  deferred: null,
+  executing: "prepared",
+  failed: "recent",
+  partially_failed: "recent",
+  undone: "recent",
 };
+
+const SECTION_ORDER: readonly TodaySectionKey[] = ["decide", "prepared", "recent"];
 
 function readParam(
   params: AppTodaySearchParams | undefined,
@@ -84,15 +93,11 @@ export async function loadAppTodayRouteViewModel(
   }
 
   const entries = result.data.entries;
-  const sections = (Object.keys(SECTION_STATUSES) as TodaySectionKey[])
-    .map((key) => ({
-      entries: entries.filter((entry) =>
-        SECTION_STATUSES[key].includes(entry.status),
-      ),
-      key,
-      title: SECTION_TITLES[key],
-    }))
-    .filter((section) => section.entries.length > 0);
+  const sections = SECTION_ORDER.map((key) => ({
+    entries: entries.filter((entry) => TODAY_SECTION_BY_STATUS[entry.status] === key),
+    key,
+    title: SECTION_TITLES[key],
+  })).filter((section) => section.entries.length > 0);
 
   const decideEntries =
     sections.find((section) => section.key === "decide")?.entries ?? [];
@@ -109,6 +114,6 @@ export async function loadAppTodayRouteViewModel(
     failureMessage: null,
     sections,
     selectedEntry,
-    state: entries.length === 0 ? "empty" : "success",
+    state: sections.length === 0 ? "empty" : "success",
   };
 }
