@@ -4,6 +4,7 @@
  * 与 hub 页共用 live-capable Home route model，只通过 `mode="events"` 切换到活动视图。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
+import { presentOrbitEvents } from "../../orbit-event-presentation";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import {
@@ -32,7 +33,13 @@ export default async function AppPersonalHomeEventsPage({
         <div data-orbit-route="app-home-events-route">
           <OrbitRealHome
             mode="events"
-            viewModel={localizeOrbitTree(routeModel.home, language ?? "zh")}
+            viewModel={localizeOrbitTree(
+              {
+                ...routeModel.home,
+                events: presentOrbitEvents(routeModel.home.events, language ?? "zh"),
+              },
+              language ?? "zh",
+            )}
           />
         </div>
       ) : (

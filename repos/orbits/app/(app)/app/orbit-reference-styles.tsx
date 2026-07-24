@@ -930,9 +930,415 @@ const reactReferenceIsolationStyles = `
   font-weight: 400;
 }
 
-[data-orbit-real-page="home-events"] button.orbit-account-event-card {
+[data-orbit-real-page="home-events"] button.orbit-account-event-poster-card {
   font-size: 13px;
   font-weight: 400;
+}
+
+[data-orbit-real-page="home-events"] button.orbit-account-event-module-card {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 1120px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-cover {
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+  min-height: 0;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-cover-top {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  left: 14px;
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 2;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 17px 17px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-copy span {
+  color: var(--text-3);
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-copy h2 {
+  color: var(--ink);
+  font-family: var(--ff-tight);
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.18;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-topic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-topic-row span {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 9px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-meta {
+  color: var(--text-2);
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-meta span {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-foot {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  display: flex;
+  font-size: 13px;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 13px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-module-foot strong {
+  align-items: center;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 13px;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  [data-orbit-real-page="explore"] .orbit-event-module-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-filter-row {
+  margin-top: 18px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-list {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 980px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-card {
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-cover {
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+  min-height: 0;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-cover-top {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  left: 14px;
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 2;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 17px 17px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-copy span {
+  color: var(--text-3);
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-copy strong {
+  color: var(--ink);
+  display: block;
+  font-family: var(--ff-tight);
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-topic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-topic-row span {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 9px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-meta {
+  color: var(--text-2);
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-meta span {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-foot {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  display: flex;
+  font-size: 13px;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 13px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-module-foot strong {
+  align-items: center;
+  color: var(--accent);
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  [data-orbit-real-page="home-events"] .orbit-account-event-module-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 980px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-card {
+  color: inherit;
+  display: block;
+  min-height: 340px;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-cover {
+  border-radius: inherit;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-end;
+  min-height: 340px;
+  padding: 18px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-scrim {
+  background: linear-gradient(180deg, rgba(5, 4, 12, 0.08), rgba(5, 4, 12, 0.22) 42%, rgba(5, 4, 12, 0.82));
+  inset: 0;
+  position: absolute;
+  z-index: 1;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-top {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  left: 16px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 2;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-top .orbit-card-date {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  display: grid;
+  min-width: 52px;
+  padding: 8px 9px;
+  text-align: center;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-bottom {
+  display: grid;
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-copy span {
+  color: rgba(255, 255, 255, 0.78);
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-copy strong {
+  color: #fff;
+  display: block;
+  font-family: var(--ff-tight);
+  font-size: clamp(27px, 3.5vw, 42px);
+  font-weight: 600;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-meta span {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.86);
+  display: inline-flex;
+  font-size: 13px;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-topic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-topic-row span {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--r-pill);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-foot {
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.72);
+  display: flex;
+  font-size: 13px;
+  gap: 14px;
+  justify-content: space-between;
+  padding-top: 14px;
+}
+
+[data-orbit-real-page="home-events"] .orbit-account-event-poster-foot strong {
+  align-items: center;
+  color: #fff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  [data-orbit-real-page="home-events"] .orbit-account-event-poster-card {
+    min-height: 300px;
+  }
+
+  [data-orbit-real-page="home-events"] .orbit-account-event-poster-cover {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-orbit-real-page="home-events"] .orbit-account-event-poster-list {
+    gap: 14px;
+    max-width: none;
+  }
+
+  [data-orbit-real-page="home-events"] .orbit-account-event-poster-card,
+  [data-orbit-real-page="home-events"] .orbit-account-event-poster-cover {
+    min-height: 284px;
+  }
+
+  [data-orbit-real-page="home-events"] .orbit-account-event-poster-cover {
+    padding: 16px;
+  }
+
+  [data-orbit-real-page="home-events"] .orbit-account-event-poster-copy strong {
+    font-size: 26px;
+  }
+
+  [data-orbit-real-page="home-events"] .orbit-account-event-poster-foot {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 [data-orbit-real-page] .card {
@@ -951,6 +1357,183 @@ const reactReferenceIsolationStyles = `
   border-color: var(--border-2);
   box-shadow: var(--sh-md);
   transform: translateY(-2px);
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 980px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-card {
+  display: block;
+  min-height: 340px;
+  overflow: hidden;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-cover {
+  border-radius: inherit;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-end;
+  min-height: 340px;
+  padding: 18px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-scrim {
+  background: linear-gradient(180deg, rgba(5, 4, 12, 0.08), rgba(5, 4, 12, 0.22) 42%, rgba(5, 4, 12, 0.82));
+  inset: 0;
+  position: absolute;
+  z-index: 1;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-top {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  left: 16px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 2;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-date {
+  background: rgba(13, 11, 30, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: var(--ink);
+  min-width: 52px;
+  padding: 8px 9px;
+  text-align: center;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-date div {
+  color: var(--rose);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-date strong {
+  color: #fff;
+  display: block;
+  font-family: var(--ff-tight);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  margin-top: 3px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-bottom {
+  display: grid;
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-copy span {
+  color: rgba(255, 255, 255, 0.78);
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-copy h2 {
+  color: #fff;
+  font-family: var(--ff-tight);
+  font-size: clamp(27px, 3.5vw, 42px);
+  font-weight: 600;
+  line-height: 1.08;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-meta span {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.86);
+  display: inline-flex;
+  font-size: 13px;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-topic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-topic-row span {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--r-pill);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-foot {
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.72);
+  display: flex;
+  font-size: 13px;
+  gap: 14px;
+  justify-content: space-between;
+  padding-top: 14px;
+}
+
+[data-orbit-real-page="explore"] .orbit-event-poster-foot strong {
+  align-items: center;
+  color: #fff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  [data-orbit-real-page="explore"] .orbit-event-poster-card,
+  [data-orbit-real-page="explore"] .orbit-event-poster-cover {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-orbit-real-page="explore"] .orbit-event-poster-list {
+    gap: 14px;
+    max-width: none;
+  }
+
+  [data-orbit-real-page="explore"] .orbit-event-poster-card,
+  [data-orbit-real-page="explore"] .orbit-event-poster-cover {
+    min-height: 284px;
+  }
+
+  [data-orbit-real-page="explore"] .orbit-event-poster-cover {
+    padding: 16px;
+  }
+
+  [data-orbit-real-page="explore"] .orbit-event-poster-copy h2 {
+    font-size: 26px;
+  }
+
+  [data-orbit-real-page="explore"] .orbit-event-poster-foot {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-network-person.card {

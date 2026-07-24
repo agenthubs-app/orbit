@@ -3,12 +3,21 @@ import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
+import type {
+  BusinessCardImageMimeType,
+  BusinessCardReviewIssue,
+  BusinessCardStructuredExtraction,
+} from "./business-card-cloud-ocr";
 
 // Business Card OCR contract 描述名片扫描到联系人草稿的流程。
 // mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const BUSINESS_CARD_SCAN_OCR_ERROR_CODES = [
   "BUSINESS_CARD_IMAGE_REQUIRED",
+  "BUSINESS_CARD_IMAGE_UNSUPPORTED",
+  "BUSINESS_CARD_IMAGE_TOO_LARGE",
+  "BUSINESS_CARD_OCR_UNCONFIGURED",
+  "BUSINESS_CARD_OCR_PROVIDER_FAILED",
   "BUSINESS_CARD_DRAFT_NOT_FOUND",
   "BUSINESS_CARD_SCAN_NOT_READY",
   "BUSINESS_CARD_SCAN_OCR_MOCK_FAILED",
@@ -33,8 +42,11 @@ export type BusinessCardConfirmationState = "pending";
 // imageText 允许测试用纯文本模拟名片图像内容；imageName 只用于展示来源。
 export interface BusinessCardScanOcrInput {
   scenario?: BusinessCardScanOcrScenario | string | null;
+  imageBase64?: string | null;
   imageText?: string | null;
   imageName?: string | null;
+  imageSizeBytes?: number | null;
+  mimeType?: BusinessCardImageMimeType | string | null;
 }
 
 export interface BusinessCardDraftLookupInput {
@@ -54,9 +66,37 @@ export const BUSINESS_CARD_SCAN_OCR_ERROR_DEFINITIONS = {
   BUSINESS_CARD_IMAGE_REQUIRED: {
     code: "BUSINESS_CARD_IMAGE_REQUIRED",
     appCode: "VALIDATION_ERROR",
-    message: "A readable business card image is required before mock OCR.",
+    message: "A readable business card image is required before OCR.",
     recovery:
       "Keep the card scan in the empty state and ask the operator for a readable image.",
+  },
+  BUSINESS_CARD_IMAGE_UNSUPPORTED: {
+    code: "BUSINESS_CARD_IMAGE_UNSUPPORTED",
+    appCode: "VALIDATION_ERROR",
+    message: "The business card image must be JPEG, PNG, or WebP.",
+    recovery:
+      "Ask the operator to upload a JPEG, PNG, or WebP business card image.",
+  },
+  BUSINESS_CARD_IMAGE_TOO_LARGE: {
+    code: "BUSINESS_CARD_IMAGE_TOO_LARGE",
+    appCode: "VALIDATION_ERROR",
+    message: "The business card image exceeds the 10 MiB upload limit.",
+    recovery:
+      "Ask the operator to upload a business card image no larger than 10 MiB.",
+  },
+  BUSINESS_CARD_OCR_UNCONFIGURED: {
+    code: "BUSINESS_CARD_OCR_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "Cloud business card OCR is not configured.",
+    recovery:
+      "Configure GEMINI_API_KEY before scanning an uploaded business card.",
+  },
+  BUSINESS_CARD_OCR_PROVIDER_FAILED: {
+    code: "BUSINESS_CARD_OCR_PROVIDER_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The cloud business card OCR provider could not extract this image.",
+    recovery:
+      "Keep the contact graph unchanged and retry with a readable business card image.",
   },
   BUSINESS_CARD_DRAFT_NOT_FOUND: {
     code: "BUSINESS_CARD_DRAFT_NOT_FOUND",
@@ -113,16 +153,25 @@ export interface BusinessCardScanOcrProvenance {
   privacy:
     | "demo-business-card-scan-ocr-only"
     | "live-business-card-scan-ocr";
-  generationMethod: "fixture" | "live-store-query" | "rule-based-card-ocr";
+  generationMethod:
+    | "fixture"
+    | "live-store-query"
+    | "rule-based-card-ocr"
+    | "cloud-structured-ocr";
+  provider?: string;
+  model?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  latencyMs?: number;
   liveDatabaseReadExecuted?: boolean;
   databaseWriteExecuted?: false;
   contactWriteExecuted?: false;
   cameraRequested?: false;
   uploadStorageRequested?: false;
   storageWriteExecuted?: false;
-  externalNetworkRequested?: false;
-  ocrProviderRequested?: false;
-  aiProviderRequested?: false;
+  externalNetworkRequested?: boolean;
+  ocrProviderRequested?: boolean;
+  aiProviderRequested?: boolean;
   notificationDelivered?: false;
 }
 
@@ -132,9 +181,10 @@ export interface BusinessCardCapture {
   captureMethod:
     | "fixture-camera-frame"
     | "live-store-business-card-record"
-    | "rule-based-image-text";
+    | "rule-based-image-text"
+    | "uploaded-business-card";
   imageName: string;
-  imageMimeType: "image/jpeg" | "text/plain";
+  imageMimeType: BusinessCardImageMimeType | "text/plain";
   imageDigest: string;
   deviceCameraAccessed: false;
   uploadStorageExecuted: false;
@@ -147,8 +197,10 @@ export interface BusinessCardOcrExtraction {
   rawText: string;
   rawTextLines: readonly string[];
   extractedFields: readonly string[];
-  ocrProviderCalled: false;
-  aiExtractionExecuted: false;
+  structuredExtraction?: BusinessCardStructuredExtraction;
+  reviewIssues?: readonly BusinessCardReviewIssue[];
+  ocrProviderCalled: boolean;
+  aiExtractionExecuted: boolean;
 }
 
 // Evidence 把提取字段和来源片段关联起来，供复核界面解释字段来源。

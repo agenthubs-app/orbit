@@ -128,6 +128,21 @@ test("theme exports Sprint 70 semantic visual tokens", async () => {
   );
 });
 
+test("product light mode uses the Agent white palette without restyling authentication", () => {
+  const source = readProjectFile("app/(app)/app/orbit-theme.tsx");
+
+  assert.match(
+    source,
+    /html\[data-theme="light"\] \[data-orbit-real-page\]\s*\{[\s\S]*--bg:\s*#ffffff;[\s\S]*--surface:\s*#ffffff;[\s\S]*--accent:\s*#176a73;/i,
+  );
+  assert.match(
+    source,
+    /html\[data-theme="light"\] \[data-orbit-real-page\]\.orbit-account-auth-page\s*\{[\s\S]*--bg:\s*#f4f7f5;[\s\S]*--surface:\s*#ffffff;/i,
+  );
+  assert.match(source, /type OrbitTheme = "light" \| "dark"/);
+  assert.match(source, /localStorage\.setItem\("orbit-theme", next\)/);
+});
+
 test("global CSS mirrors tokens and forbids loose generated styling", () => {
   const css = readProjectFile("app/globals.css");
 

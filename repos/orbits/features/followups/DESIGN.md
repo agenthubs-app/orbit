@@ -29,6 +29,12 @@ Live 可以接任务数据库、调度器、AI 草稿 provider、邮箱或通知
 
 产品入口是 `/app/followups`。API 包括 task list、generate、message drafts 和 notification queue 的关联读取。页面应按“承诺工作流”展示任务，不做成普通 todo list。
 
+### 名片联系人 Orbit 邀请
+
+联系人由 Contacts 明确确认后，Followups 才能通过 `ContactInvitationService` 生成 Orbit 邀请预览。准备邀请和确认编辑后的邀请是两个动作，且都独立于联系人写入。当前测试阶段没有邮件投递 provider：确认后状态只到 `ready_for_delivery`，`externalSendRequested`、`emailProviderRequested` 和 `messageSent` 必须始终为 `false`，界面不得展示为已发送。
+
+邀请文案复用现有 `invitation` message-draft 规则，并允许用户在第二次确认前编辑主题和正文。进程内 staged 状态不等于投递队列；接入真实邮件 provider 时仍需新增持久化、投递幂等和发送审计边界。
+
 ## 测试要求
 
 - task generation 测试覆盖 eligible、empty、pending、failure。

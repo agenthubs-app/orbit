@@ -8,6 +8,7 @@ import type { OrbitLanguage } from "../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
+import { enabledOAuthProviders } from "../../../../../features/auth/oauth-providers";
 import {
   loadAppAccountAuthRouteViewModel,
   type AppAccountAuthRouteStateViewModel,
@@ -75,6 +76,7 @@ export default async function AppAccountLoginPage({
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-account-login-route">
           <OrbitRealAccountAuth
+            oauthProviders={enabledOAuthProviders()}
             viewModel={localizeOrbitTree(routeModel.auth, language)}
           />
         </div>

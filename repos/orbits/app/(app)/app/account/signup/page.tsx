@@ -13,6 +13,7 @@ import {
   type AppAccountAuthRouteStateViewModel,
   type AppAccountAuthSearchParams,
 } from "../compose-app-account-auth-from-previously-approved-mock-first-capabilities/account-auth-route-view-model";
+import { enabledOAuthProviders } from "../../../../../features/auth/oauth-providers";
 import { OrbitRealAccountAuth } from "../orbit-real-account-auth";
 
 async function getAccountSignupPageLanguage(): Promise<OrbitLanguage> {
@@ -75,6 +76,7 @@ export default async function AppAccountSignupPage({
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-account-signup-route">
           <OrbitRealAccountAuth
+            oauthProviders={enabledOAuthProviders()}
             viewModel={localizeOrbitTree(routeModel.auth, language)}
           />
         </div>

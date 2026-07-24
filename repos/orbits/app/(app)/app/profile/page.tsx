@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+
+import { auth } from "../../../../auth";
 import { StateView } from "../../../../shared/ui/state-view";
 import type { OrbitLanguage } from "../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
@@ -125,7 +128,9 @@ function buildFounderProfileViewModel(
       ...viewModel.profile,
       bio: copy.bio,
       company: copy.company,
-      fullName: copy.fullName,
+      // 身份来自数据层(live 库的 operator profile,如"小雨");
+      // 硬编码文案只补数据没有的富字段,不覆盖用户是谁。
+      fullName: viewModel.profile.fullName?.trim() || copy.fullName,
       headline: copy.headline,
       industry: copy.industry,
       intro: copy.intro,
@@ -179,6 +184,13 @@ export default async function AppProfilePage({
 }: {
   searchParams?: Promise<AppProfileSearchParams>;
 } = {}) {
+  // 个人资料是登录后的页面:未登录跳登录页,带回跳地址。
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fprofile");
+  }
+
   const routeModel = await loadAppProfileRouteViewModel(await searchParams);
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;

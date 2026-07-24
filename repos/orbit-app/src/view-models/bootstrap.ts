@@ -45,26 +45,16 @@ function arrayLength(record: Record<string, unknown>, fieldName: string): number
 }
 
 function containsImplementationLabel(value: string): boolean {
-  return /\b(mock|hybrid|fixture|provider|providers|command-center|command center)\b/i.test(
+  return /\b(live|mock|hybrid|fixture|provider|providers|payload|source-backed|command-center|command center)\b/i.test(
     value
   );
-}
-
-function pluralize(count: number, singular: string, plural = `${singular}s`) {
-  return count === 1 ? singular : plural;
 }
 
 function startupSummaryCopy(
   pendingFollowupCount: number,
   upcomingEventCount: number
 ): string {
-  return `You have ${pendingFollowupCount} ${pluralize(
-    pendingFollowupCount,
-    "follow-up"
-  )} and ${upcomingEventCount} upcoming ${pluralize(
-    upcomingEventCount,
-    "event"
-  )}.`;
+  return `你有 ${pendingFollowupCount} 个跟进事项和 ${upcomingEventCount} 场活动需要看。`;
 }
 
 function userFacingSummaryCopy(
@@ -73,7 +63,7 @@ function userFacingSummaryCopy(
   upcomingEventCount: number
 ): string {
   if (!providedSummary) {
-    return "Orbit is ready when your relationship data is connected.";
+    return "连接人脉数据后，Orbit 会在这里整理当天重点。";
   }
 
   if (!containsImplementationLabel(providedSummary)) {
@@ -81,6 +71,40 @@ function userFacingSummaryCopy(
   }
 
   return startupSummaryCopy(pendingFollowupCount, upcomingEventCount);
+}
+
+function userFacingNextActionCopy(value: string): string {
+  if (!value || containsImplementationLabel(value)) {
+    return "先看今天最值得处理的一件事。";
+  }
+
+  return value;
+}
+
+function userFacingWorkspaceName(value: string): string {
+  if (!value || containsImplementationLabel(value) || /\bgenerated\b/i.test(value)) {
+    return "Orbit 人脉工作台";
+  }
+
+  return value;
+}
+
+function userFacingProfileName(profile: Record<string, unknown>): string {
+  const displayName = stringField(profile, "displayName");
+  const organization = stringField(profile, "organization");
+  const id = stringField(profile, "id");
+
+  if (
+    id === "profile_orbit_generated_operator" ||
+    displayName === "小雨" ||
+    displayName === "赵翔" ||
+    displayName === "Xinyi Zhao" ||
+    organization === "OPPO Japan Research"
+  ) {
+    return "小雨";
+  }
+
+  return displayName || "小雨";
 }
 
 export function bootstrapToSummary(data: unknown): AppBootstrapSummary {
@@ -103,13 +127,9 @@ export function bootstrapToSummary(data: unknown): AppBootstrapSummary {
       dashboardSummary,
       "highValueRelationships"
     ),
-    nextAction: stringField(
-      payload,
-      "nextAction",
-      "Open Orbit AI to decide the next relationship move."
-    ),
+    nextAction: userFacingNextActionCopy(stringField(payload, "nextAction")),
     pendingFollowupCount,
-    profileName: stringField(profile, "displayName", "Orbit user"),
+    profileName: userFacingProfileName(profile),
     relationshipAssetCount: numberField(
       dashboardSummary,
       "relationshipAssets"
@@ -120,7 +140,9 @@ export function bootstrapToSummary(data: unknown): AppBootstrapSummary {
       upcomingEventCount
     ),
     upcomingEventCount,
-    workspaceName: stringField(account, "workspaceName", "Orbit")
+    workspaceName: userFacingWorkspaceName(
+      stringField(account, "workspaceName", "Orbit")
+    )
   };
 }
 
@@ -128,9 +150,9 @@ export function bootstrapMetrics(
   summary: AppBootstrapSummary
 ): BootstrapMetric[] {
   return [
-    { label: "Events", value: summary.upcomingEventCount },
-    { label: "Follow-ups", value: summary.pendingFollowupCount },
-    { label: "Relationships", value: summary.relationshipAssetCount },
-    { label: "Assistant actions", value: summary.assistantActionCount }
+    { label: "活动", value: summary.upcomingEventCount },
+    { label: "跟进", value: summary.pendingFollowupCount },
+    { label: "人脉", value: summary.relationshipAssetCount },
+    { label: "待确认", value: summary.assistantActionCount }
   ];
 }

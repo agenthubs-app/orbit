@@ -72,9 +72,13 @@ test("app contacts new route loader returns a controlled live failure when stora
 
 test("/app/contacts/new page renders the capability-first acquisition route boundary", async () => {
   const pageSource = source("app/(app)/app/contacts/new/page.tsx");
+  const importWorkspaceSource = source(
+    "app/(app)/app/contacts/orbit-real-cards-import.tsx",
+  );
 
   assert.match(pageSource, /loadAppContactsNewRouteViewModel/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
+  assert.match(importWorkspaceSource, /BusinessCardCaptureWorkspace/);
 
   await withUnconfiguredLiveAcquisition(async () => {
     const Page = (await import("../../app/(app)/app/contacts/new/page")).default;

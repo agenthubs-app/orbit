@@ -1,7 +1,7 @@
 # Orbit AI Chat UI Refresh Design
 
-**Date:** 2026-07-24  
-**Status:** Approved through visual direction review  
+**Date:** 2026-07-24
+**Status:** Approved through visual direction review
 **Scope:** `/app/agent` and the shared `OrbitRealAgent` chat surface
 
 ## Goal

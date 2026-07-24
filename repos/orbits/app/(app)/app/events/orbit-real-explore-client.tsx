@@ -6,6 +6,7 @@ import type { OrbitLandingEventView, OrbitLandingViewModel } from "../orbit-land
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref, PublicTopNav } from "../orbit-public-shell";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
+import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 
 const tz = { timeZone: "Asia/Tokyo" };
 const statusFilters = ["all", "upcoming", "active", "ended"] as const;
@@ -51,12 +52,13 @@ function eventTopics(event: OrbitLandingEventView) {
 function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEvent {
   const date = formatEventDate(event, language);
   const name = event.name || event.code || (language === "en" ? "Untitled event" : "未命名活动");
+  const sceneAsset = getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
   return {
     code: event.code,
     day: date.day,
     g: gradientFromString(event.code || name),
     id: event.id || event.code,
-    imageUrl: event.logoUrl,
+    imageUrl: event.detailLogoUrl || event.logoUrl || sceneAsset?.src || "",
     month: date.month,
     name,
     people: event.participantCount,
@@ -68,40 +70,70 @@ function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEv
   };
 }
 
-function EventCard({ event }: { event: OrbitLandingEventView }) {
+function EventModuleGrid({
+  events,
+}: {
+  events: OrbitLandingEventView[];
+}) {
+  return (
+    <div className="orbit-event-module-grid">
+      {events.map((event) => (
+        <EventModuleCard event={event} key={event.id} />
+      ))}
+    </div>
+  );
+}
+
+function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
   const { language, preserveHref, t } = useOrbitLanguage();
   const mapped = mapEvent(event, language === "ja" ? "en" : language);
   const actionLabel = event.status === "upcoming" || event.status === "active" ? t({ en: "Register", zh: "报名" }) : t({ en: "View", zh: "查看" });
   const canEnter = Boolean(event.stats.youRsvped) && (event.status === "active" || event.status === "ended");
   const enterLabel = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : t({ en: "Enter", zh: "进入现场" });
   const cardTime = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", ...tz }).format(new Date(event.startsAt));
+  const sceneAsset = getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
+  const topics = eventTopics(event).slice(0, 3);
 
   return (
     <a className="orbit-card-link" href={preserveHref(productHref(`/events/${event.code}`))}>
-      <article className="card card-hover orbit-event-card">
-        <Cover className="orbit-card-cover" g={mapped.g} imageAlt={mapped.name} imageUrl={mapped.imageUrl} monogram={mapped.imageUrl ? null : { text: mapped.name.slice(0, 1), size: 46 }} style={{ height: undefined, opacity: event.status === "ended" ? 0.72 : 1 }}>
-          <div style={{ left: 12, position: "absolute", top: 12 }}><StatusBadge language={language} status={event.status} /></div>
-          <div className="orbit-card-date">
-            <div style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
-            <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
+      <article
+        className="card card-hover orbit-event-module-card"
+        data-demo-visual-asset-id={sceneAsset?.assetId}
+        data-demo-visual-source={sceneAsset?.sourceLabel}
+        data-demo-visual-source-label={sceneAsset?.sourceLabel}
+      >
+        <Cover className="orbit-event-module-cover" g={mapped.g} imageAlt={mapped.name} imageUrl={mapped.imageUrl} monogram={mapped.imageUrl ? null : { text: mapped.name.slice(0, 1), size: 46 }} style={{ opacity: event.status === "ended" ? 0.74 : 1 }}>
+          <div className="orbit-event-module-cover-top">
+            <StatusBadge language={language} status={event.status} />
+            <div className="orbit-card-date">
+              <div style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
+              <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
+            </div>
           </div>
         </Cover>
-        <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 10, padding: "15px 16px 16px" }}>
-          <div>
-            <h3 className="h-section" style={{ color: "var(--ink)", margin: 0, overflowWrap: "anywhere" }}>{mapped.name}</h3>
-            <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{[event.theme, event.host].filter(Boolean).join(" · ")}</div>
+        <div className="orbit-event-module-body">
+          <div className="orbit-event-module-copy">
+            <span>{[event.theme, event.host].filter(Boolean).join(" · ")}</span>
+            <h2>{mapped.name}</h2>
           </div>
-          <div style={{ color: "var(--text-2)", display: "flex", flexDirection: "column", fontSize: 13, gap: 6 }}>
-            <div style={{ alignItems: "center", display: "flex", gap: 8 }}><Icon color="var(--text-3)" name="clock" size={15} />{cardTime}</div>
-            <div style={{ alignItems: "center", display: "flex", gap: 8 }}><Icon color="var(--text-3)" name="pin" size={15} />{mapped.place}</div>
+          {topics.length > 0 ? (
+            <div className="orbit-event-module-topic-row">
+              {topics.map((topicItem) => (
+                <span key={topicItem}>{topicItem}</span>
+              ))}
+            </div>
+          ) : null}
+          <div className="orbit-event-module-meta">
+            <span><Icon color="var(--text-3)" name="clock" size={15} />{cardTime}</span>
+            <span><Icon color="var(--text-3)" name="pin" size={15} />{mapped.place}</span>
+            <span><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
           </div>
-          <div style={{ flex: 1 }} />
-          <div style={{ alignItems: "center", borderTop: "1px solid var(--border)", display: "flex", gap: 12, justifyContent: "space-between", paddingTop: 11 }}>
-            <span style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 13, gap: 6 }}><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
+          <div className="orbit-event-module-foot">
+            <span>{event.status === "ended" ? t({ en: "Review event context", zh: "回看活动背景" }) : t({ en: "Open event context", zh: "打开活动背景" })}</span>
             {canEnter ? (
               <span role="button" tabIndex={0} onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.assign(preserveHref(productHref("/party"))); }} className="btn btn-soft btn-sm" style={{ height: 30, fontSize: 12.5 }}>{enterLabel}<Icon name="arrowUR" size={14} /></span>
             ) : (
-              <span style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4 }}>{actionLabel}<Icon name="chevR" size={14} /></span>
+              <strong>{actionLabel}<Icon name="chevR" size={14} /></strong>
             )}
           </div>
         </div>
@@ -199,7 +231,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [topic, setTopic] = useState("all");
-  const [mode, setMode] = useState("list");
+  const [mode, setMode] = useState("modules");
   const [selectedId, setSelectedId] = useState("");
   const events = viewModel.events;
   const topicFilters = useMemo(() => [...new Set(events.flatMap(eventTopics))].slice(0, 8), [events]);
@@ -212,7 +244,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
   const mapItems = useMemo(() => filtered.map((event) => mapEvent(event, language === "ja" ? "en" : language)), [filtered, language]);
   const located = mapItems.filter((item) => Number.isFinite(item.pos.x) && Number.isFinite(item.pos.y));
   const canShowMap = located.length > 0;
-  const effMode = mode === "map" && canShowMap ? "map" : "list";
+  const effMode = mode === "map" && canShowMap ? "map" : "modules";
   const selectedItem = located.find((item) => item.id === selectedId) ?? located[0] ?? null;
   const resultLabel = filtered.length === 0 ? t({ en: "No matching open events.", zh: "没有匹配的开放活动。" }) : t({ en: `${filtered.length} events`, zh: `${filtered.length} 场活动` });
   const statusLabels = {
@@ -231,7 +263,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
             <div><div className="eyebrow" style={{ marginBottom: 8 }}>{t({ en: "EXPLORE · Tokyo", zh: "EXPLORE · 东京" })}</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
             <div className="orbit-browse-tools">
               <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", display: "inline-flex", padding: 3 }}>
-                <button type="button" onClick={() => setMode("list")} style={{ alignItems: "center", background: effMode === "list" ? "var(--ink)" : "none", border: "none", borderRadius: "var(--r-pill)", color: effMode === "list" ? "var(--on-dark)" : "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, padding: "7px 14px" }}><Icon color={effMode === "list" ? "var(--on-dark)" : undefined} name="list" size={15} />{t({ en: "List", zh: "列表" })}</button>
+                <button type="button" onClick={() => setMode("modules")} style={{ alignItems: "center", background: effMode === "modules" ? "var(--ink)" : "none", border: "none", borderRadius: "var(--r-pill)", color: effMode === "modules" ? "var(--on-dark)" : "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, padding: "7px 14px" }}><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容" })}</button>
                 {canShowMap ? <button type="button" onClick={() => setMode("map")} style={{ alignItems: "center", background: effMode === "map" ? "var(--ink)" : "none", border: "none", borderRadius: "var(--r-pill)", color: effMode === "map" ? "var(--on-dark)" : "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, padding: "7px 14px" }}><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button> : null}
               </div>
               <div className="orbit-search-box">
@@ -245,7 +277,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
             {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div style={{ display: "flex", gap: 8 }}>{topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{item}</button>)}</div></> : null}
           </div>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 16, marginTop: 20 }}>{resultLabel}</div>
-          {effMode === "list" && filtered.length > 0 ? <div className="orbit-grid">{filtered.map((event) => <EventCard event={event} key={event.id} />)}</div> : null}
+          {effMode === "modules" && filtered.length > 0 ? <EventModuleGrid events={filtered} /> : null}
           {effMode === "map" && mapItems.length > 0 ? (
             <section className="orbit-map-shell" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-sm)", display: "grid", gridTemplateColumns: "380px 1fr", height: "min(680px, calc(100dvh - 220px))", minHeight: 520, overflow: "hidden" }}>
               <div className="orbit-map-rail scroll" style={{ borderRight: "1px solid var(--border)", overflowY: "auto", padding: "20px 18px" }}>
@@ -279,7 +311,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
         <div style={{ flexShrink: 0, padding: "16px 18px 0" }}>
           <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", marginBottom: 14 }}>
             <div><div className="eyebrow" style={{ marginBottom: 4 }}>EXPLORE</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
-            <button disabled={!canShowMap} onClick={() => canShowMap && setMode(mode === "map" ? "list" : "map")} style={{ alignItems: "center", background: mode === "map" && canShowMap ? "var(--ink)" : "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-xs)", color: mode === "map" && canShowMap ? "var(--on-dark)" : "var(--text)", cursor: canShowMap ? "pointer" : "not-allowed", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, height: 38, justifyContent: "center", opacity: canShowMap ? 1 : 0.45, padding: "0 13px" }} type="button"><Icon name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button>
+            <button disabled={!canShowMap} onClick={() => canShowMap && setMode(mode === "map" ? "modules" : "map")} style={{ alignItems: "center", background: mode === "map" && canShowMap ? "var(--ink)" : "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-xs)", color: mode === "map" && canShowMap ? "var(--on-dark)" : "var(--text)", cursor: canShowMap ? "pointer" : "not-allowed", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, height: 38, justifyContent: "center", opacity: canShowMap ? 1 : 0.45, padding: "0 13px" }} type="button"><Icon name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button>
           </div>
           <div style={{ position: "relative" }}>
             <Icon color="var(--text-3)" name="search" size={17} style={{ left: 13, position: "absolute", top: 14 }} />
@@ -294,7 +326,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
         <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 36px" }}>
           <div style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 14px" }}>{resultLabel}</div>
           {effMode === "map" ? <section className="card" style={{ height: 360, marginBottom: 14, overflow: "hidden" }}><div style={{ height: "100%", position: "relative", width: "100%" }}><MapCanvas items={located} onSelect={(item) => setSelectedId(item.id)} selected={selectedItem} /></div></section> : null}
-          {filtered.length > 0 ? <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{mapItems.map((item) => <MobileExploreCard item={item} key={item.id} />)}</div> : null}
+          {filtered.length > 0 ? <EventModuleGrid events={filtered} /> : null}
         </div>
       </div>
     </div>

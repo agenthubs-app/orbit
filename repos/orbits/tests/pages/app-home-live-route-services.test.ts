@@ -18,7 +18,9 @@ function source(path: string): string {
 
 type RoutePage = (props: {
   searchParams: Promise<Record<string, string>>;
-}) => Promise<Parameters<typeof renderToStaticMarkup>[0]>;
+}) =>
+  | Parameters<typeof renderToStaticMarkup>[0]
+  | Promise<Parameters<typeof renderToStaticMarkup>[0]>;
 
 async function renderLiveModePage(importPath: string): Promise<string> {
   const pageModule = (await import(importPath)) as { default: RoutePage };

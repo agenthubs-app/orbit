@@ -115,7 +115,11 @@ test("/app/profile page applies the founder's Chinese matching profile copy", ()
   const pageSource = source("app/(app)/app/profile/page.tsx");
 
   assert.match(pageSource, /buildFounderProfileViewModel/);
-  assert.match(pageSource, /fullName: "Xinyi Zhao"/);
+  // 身份来自数据层(live 库 operator profile);硬编码文案只作兜底。
+  assert.match(
+    pageSource,
+    /fullName: viewModel\.profile\.fullName\?\.trim\(\) \|\| copy\.fullName/,
+  );
   assert.match(pageSource, /Orbit 的创始人/);
   assert.match(pageSource, /帮企业把 AI 放进销售、客服、运营和内部知识库这些真实流程里/);
   assert.match(pageSource, /AI 落地方案拆解/);

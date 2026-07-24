@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../../orbit-language-context";
 import { productHref, PublicTopNav } from "../../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
+import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -85,30 +86,49 @@ function ActionButton({
   );
 }
 
-function primaryAction(event: OrbitLandingEventView, t: Translate, flex = 1) {
-  const youRsvped = Boolean(event.stats.youRsvped);
+type RegistrationStatus = "cancelled" | "rsvped" | null;
+
+function primaryAction(
+  event: OrbitLandingEventView,
+  t: Translate,
+  registrationStatus: RegistrationStatus,
+  flex = 1,
+) {
+  const registrationHref = `/app/events/${encodeURIComponent(event.id)}/register`;
 
   if (event.status === "ended") {
     return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{t({ en: "Ended", zh: "已结束" })}</ActionButton>;
   }
 
-  if (youRsvped) {
+  if (registrationStatus === "rsvped") {
     return (
-      <ActionButton className="btn btn-soft" disabled style={{ flex }}>
-        <Icon name="check" size={17} />{t({ en: "Registered", zh: "已报名" })}
+      <ActionButton className="btn btn-soft" href={registrationHref} style={{ flex }}>
+        <Icon name="check" size={17} />{t({ en: "Manage registration", zh: "管理报名" })}
+      </ActionButton>
+    );
+  }
+
+  if (registrationStatus === "cancelled") {
+    return (
+      <ActionButton className="btn btn-primary" href={registrationHref} style={{ background: event.brandColor || undefined, flex }}>
+        {t({ en: "Register again", zh: "重新报名" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
       </ActionButton>
     );
   }
 
   return (
-    <ActionButton className="btn btn-primary" href={productHref(`/register?code=${event.code}`)} style={{ background: event.brandColor || undefined, flex }}>
+    <ActionButton className="btn btn-primary" href={registrationHref} style={{ background: event.brandColor || undefined, flex }}>
       {t({ en: "Register", zh: "报名参加" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
     </ActionButton>
   );
 }
 
-function enterAction(event: OrbitLandingEventView, t: Translate, flex = 1) {
-  const youRsvped = Boolean(event.stats.youRsvped);
+function enterAction(
+  event: OrbitLandingEventView,
+  t: Translate,
+  youRsvped: boolean,
+  flex = 1,
+) {
   const canEnter = youRsvped && (event.status === "active" || event.status === "ended");
   const label = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : event.status === "upcoming" && youRsvped ? t({ en: "Not started", zh: "未开始" }) : t({ en: "Enter event", zh: "进入活动" });
 
@@ -158,11 +178,41 @@ const ATTENDEE_PREVIEW_COUNT = 12;
 
 function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate }) {
   const [showAllAttendees, setShowAllAttendees] = useState(false);
-  const youRsvped = Boolean(event.stats.youRsvped);
+  const [registrationStatus, setRegistrationStatus] =
+    useState<RegistrationStatus>(null);
+  const youRsvped = registrationStatus === "rsvped";
   const canSeeAttendees = youRsvped || event.status === "ended";
   const allAttendees = event.stats.attendees;
   const attendees = showAllAttendees ? allAttendees : allAttendees.slice(0, ATTENDEE_PREVIEW_COUNT);
   const hiddenAttendeeCount = allAttendees.length - attendees.length;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void fetch(
+      `/api/events/${encodeURIComponent(event.id)}/registration?questions=false`,
+      { signal: controller.signal },
+    )
+      .then(async (response) => {
+        const body = (await response.json()) as {
+          data?: {
+            registration?: { status?: RegistrationStatus } | null;
+          };
+          success?: boolean;
+        };
+
+        if (response.ok && body.success === true) {
+          setRegistrationStatus(body.data?.registration?.status ?? null);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setRegistrationStatus(null);
+        }
+      });
+
+    return () => controller.abort();
+  }, [event.id]);
 
   return (
     <>
@@ -171,7 +221,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
           <div><div style={{ fontSize: 13, color: "var(--text-3)" }}>{t({ en: "Registration", zh: "报名" })}</div><h3 className="h-section" style={{ color: "var(--ink)", whiteSpace: "nowrap" }}>{event.feeLabel}</h3></div>
           <StatusBadge language={language} status={event.status} />
         </div>
-        <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t)}{enterAction(event, t)}</div>
+        <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped)}</div>
         {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
       </section>
 
@@ -252,7 +302,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
       </section>
 
       <div className="orbit-mobile-only orbit-sticky-cta" style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "var(--glass-chip)", backdropFilter: "blur(14px)", borderTop: "1px solid var(--border)", gap: 10, zIndex: 40 }}>
-        {primaryAction(event, t, 1.2)}{enterAction(event, t)}
+        {primaryAction(event, t, registrationStatus, 1.2)}{enterAction(event, t, youRsvped)}
       </div>
     </>
   );
@@ -265,17 +315,30 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
   const name = event.name || event.code || t({ en: "Event", zh: "活动" });
   const monogram = name.slice(0, 1);
   const codeUpper = String(event.code || "").toUpperCase();
+  const sceneAsset = getDemoEventSceneAsset(event.id);
 
   return (
     <div className="orbit-shell" data-appscroll data-orbit-real-page="event-detail">
       <PublicTopNav active="events" />
       <main>
-        <div className="orbit-desktop-only" style={{ position: "relative", height: 220, overflow: "hidden" }}>
+        <div
+          className="orbit-desktop-only"
+          data-demo-visual-asset-id={sceneAsset?.assetId}
+          data-demo-visual-source={sceneAsset?.sourceLabel}
+          data-demo-visual-source-label={sceneAsset?.sourceLabel}
+          style={{ position: "relative", height: 220, overflow: "hidden" }}
+        >
           <Cover g={cover} imageUrl={event.detailLogoUrl} imageAlt={name} style={{ position: "absolute", inset: 0 }} />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.18))" }} />
           <BackButton t={t} style={{ position: "absolute", top: 18, left: 40, border: "none", background: "var(--glass-chip)", height: 36, padding: "0 14px", borderRadius: "var(--r-pill)", display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--ink)", textDecoration: "none", boxShadow: "var(--sh-sm)" }} />
         </div>
-        <div className="orbit-mobile-only" style={{ position: "relative", height: 248, display: "block" }}>
+        <div
+          className="orbit-mobile-only"
+          data-demo-visual-asset-id={sceneAsset?.assetId}
+          data-demo-visual-source={sceneAsset?.sourceLabel}
+          data-demo-visual-source-label={sceneAsset?.sourceLabel}
+          style={{ position: "relative", height: 248, display: "block" }}
+        >
           <Cover g={cover} imageUrl={event.detailLogoUrl} imageAlt={name} monogram={event.detailLogoUrl ? null : { text: monogram, size: 64 }} style={{ position: "absolute", inset: 0 }} />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.22) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.25))" }} />
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 52, display: "flex", alignItems: "center", padding: "0 16px", gap: 10 }}>

@@ -10,6 +10,7 @@ export type FetchLike = (
 ) => Promise<Response>;
 
 export interface OrbitApiClientOptions {
+  authCookieHeader?: string;
   baseUrl?: string;
   fetchImpl?: FetchLike;
 }
@@ -25,7 +26,15 @@ export interface OrbitApiClient {
     path: string,
     options?: OrbitApiRequestOptions
   ) => Promise<ApiResult<TData>>;
+  patch: <TData>(
+    path: string,
+    options?: OrbitApiRequestOptions
+  ) => Promise<ApiResult<TData>>;
   post: <TData>(
+    path: string,
+    options?: OrbitApiRequestOptions
+  ) => Promise<ApiResult<TData>>;
+  put: <TData>(
     path: string,
     options?: OrbitApiRequestOptions
   ) => Promise<ApiResult<TData>>;
@@ -107,20 +116,26 @@ async function readJson(response: Response): Promise<
 }
 
 function requestInit(
-  method: "GET" | "POST",
-  options: OrbitApiRequestOptions
+  method: "GET" | "PATCH" | "POST" | "PUT",
+  options: OrbitApiRequestOptions,
+  authCookieHeader: string
 ): RequestInit {
   const headers: Record<string, string> = {
     Accept: "application/json",
     ...(options.headers ?? {})
   };
 
+  if (authCookieHeader.trim()) {
+    headers.Cookie = authCookieHeader.trim();
+  }
+
   if (options.body === undefined) {
-    return { headers, method };
+    return { credentials: "include", headers, method };
   }
 
   return {
     body: JSON.stringify(options.body),
+    credentials: "include",
     headers: {
       ...headers,
       "Content-Type": "application/json"
@@ -131,8 +146,9 @@ function requestInit(
 
 async function request<TData>(
   baseUrl: string,
+  authCookieHeader: string,
   fetchImpl: FetchLike,
-  method: "GET" | "POST",
+  method: "GET" | "PATCH" | "POST" | "PUT",
   path: string,
   options: OrbitApiRequestOptions = {}
 ): Promise<ApiResult<TData>> {
@@ -141,7 +157,7 @@ async function request<TData>(
   try {
     response = await fetchImpl(
       pathToUrl(baseUrl, path),
-      requestInit(method, options)
+      requestInit(method, options, authCookieHeader)
     );
   } catch (error) {
     return failureResult(
@@ -192,6 +208,7 @@ async function request<TData>(
 }
 
 export function createOrbitApiClient({
+  authCookieHeader = "",
   baseUrl = configuredBaseUrl(),
   fetchImpl = fetch
 }: OrbitApiClientOptions = {}): OrbitApiClient {
@@ -200,13 +217,41 @@ export function createOrbitApiClient({
   return {
     baseUrl: normalizedBaseUrl,
     get<TData>(path: string, options?: OrbitApiRequestOptions) {
-      return request<TData>(normalizedBaseUrl, fetchImpl, "GET", path, options);
+      return request<TData>(
+        normalizedBaseUrl,
+        authCookieHeader,
+        fetchImpl,
+        "GET",
+        path,
+        options
+      );
+    },
+    patch<TData>(path: string, options?: OrbitApiRequestOptions) {
+      return request<TData>(
+        normalizedBaseUrl,
+        authCookieHeader,
+        fetchImpl,
+        "PATCH",
+        path,
+        options
+      );
     },
     post<TData>(path: string, options?: OrbitApiRequestOptions) {
       return request<TData>(
         normalizedBaseUrl,
+        authCookieHeader,
         fetchImpl,
         "POST",
+        path,
+        options
+      );
+    },
+    put<TData>(path: string, options?: OrbitApiRequestOptions) {
+      return request<TData>(
+        normalizedBaseUrl,
+        authCookieHeader,
+        fetchImpl,
+        "PUT",
         path,
         options
       );

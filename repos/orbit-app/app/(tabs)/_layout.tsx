@@ -53,7 +53,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="calendar-outline" size={size} />
           ),
-          title: "Events"
+          title: "活动"
         }}
       />
       <Tabs.Screen
@@ -62,7 +62,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="people-outline" size={size} />
           ),
-          title: "Contacts"
+          title: "人脉"
         }}
       />
       <Tabs.Screen
@@ -71,7 +71,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="checkmark-done-outline" size={size} />
           ),
-          title: "Schedule"
+          title: "日程"
         }}
       />
       <Tabs.Screen
@@ -80,7 +80,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="person-circle-outline" size={size} />
           ),
-          title: "Profile"
+          title: "档案"
         }}
       />
     </Tabs>

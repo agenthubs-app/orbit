@@ -1,0 +1,211 @@
+<style>
+  .orbit-dir * { box-sizing: border-box; }
+  .orbit-dir { color: #191d25; }
+  .orbit-dir .intro { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; margin-bottom:22px; }
+  .orbit-dir .intro-note { max-width:560px; color:#667085; font-size:13px; line-height:1.55; }
+  .orbit-dir .direction-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+  .orbit-dir .direction {
+    border:1px solid #dfe3ea; border-radius:18px; background:#fff; padding:12px;
+    cursor:pointer; transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .orbit-dir .direction:hover { transform:translateY(-2px); border-color:#7566e8; box-shadow:0 14px 32px rgba(40,35,90,.12); }
+  .orbit-dir .direction.selected { border-color:#6556dc; box-shadow:0 0 0 3px rgba(101,86,220,.14),0 16px 34px rgba(40,35,90,.14); }
+  .orbit-dir .mock-window { height:500px; border-radius:13px; overflow:hidden; background:#eef0f4; position:relative; border:1px solid #e2e5eb; }
+  .orbit-dir .app-bg { position:absolute; inset:0; padding:15px; background:linear-gradient(135deg,#f4f4f6,#e9ecf1); }
+  .orbit-dir .app-nav { height:30px; border-radius:8px; background:rgba(255,255,255,.78); border:1px solid rgba(215,219,227,.8); }
+  .orbit-dir .app-cards { display:grid; grid-template-columns:1.15fr .85fr; gap:10px; margin-top:10px; }
+  .orbit-dir .app-card { height:110px; border-radius:10px; background:rgba(255,255,255,.62); border:1px solid rgba(220,223,230,.75); }
+  .orbit-dir .scrim { position:absolute; inset:0; background:rgba(24,27,34,.18); }
+  .orbit-dir .drawer {
+    position:absolute; top:0; right:0; bottom:0; background:#fbfbfc; border-left:1px solid #dfe2e8;
+    box-shadow:-12px 0 30px rgba(26,30,40,.13); display:flex; flex-direction:column;
+  }
+  .orbit-dir .drawer-a { width:92%; }
+  .orbit-dir .drawer-b { width:67%; }
+  .orbit-dir .drawer-c { width:98%; }
+  .orbit-dir .resize {
+    position:absolute; left:-6px; top:0; bottom:0; width:12px; cursor:ew-resize; display:flex; align-items:center; justify-content:center; z-index:4;
+  }
+  .orbit-dir .resize::before { content:""; width:2px; height:58px; border-radius:4px; background:#8d82e8; box-shadow:0 0 0 4px rgba(111,96,222,.12); }
+  .orbit-dir .resize-tip {
+    position:absolute; left:12px; top:12px; white-space:nowrap; background:#28243d; color:#fff; border-radius:6px; padding:4px 6px; font-size:8px; letter-spacing:.02em;
+  }
+  .orbit-dir .topbar { height:50px; display:flex; align-items:center; gap:8px; padding:0 12px; border-bottom:1px solid #e6e8ed; background:rgba(255,255,255,.92); }
+  .orbit-dir .brand { font-weight:760; font-size:13px; margin-right:auto; }
+  .orbit-dir .tab { font-size:9px; color:#7b8190; padding:5px 8px; border-radius:999px; }
+  .orbit-dir .tab.on { background:#eeeafd; color:#5b4cd0; font-weight:700; }
+  .orbit-dir .icon-btn { width:24px; height:24px; border-radius:50%; background:#eff1f5; color:#707683; display:grid; place-items:center; font-size:11px; }
+  .orbit-dir .body { flex:1; min-height:0; display:flex; }
+  .orbit-dir .thread-list { width:36%; min-width:110px; border-right:1px solid #e4e6eb; background:#f7f7f9; padding:9px 7px; }
+  .orbit-dir .list-head { display:flex; align-items:center; gap:6px; padding:2px 5px 8px; font-size:9px; font-weight:700; color:#7c8290; }
+  .orbit-dir .search { height:25px; border:1px solid #e0e3e8; border-radius:7px; background:white; color:#a0a5af; font-size:8px; padding:7px; margin:0 2px 7px; }
+  .orbit-dir .thread { display:grid; grid-template-columns:25px 1fr auto; gap:6px; padding:8px 6px; border-radius:8px; margin-bottom:3px; }
+  .orbit-dir .thread.active { background:#ebe8fb; box-shadow:inset 2px 0 #6758d7; }
+  .orbit-dir .avatar { width:25px; height:25px; border-radius:50%; display:grid; place-items:center; font-size:9px; font-weight:800; color:#fff; background:linear-gradient(135deg,#8375e8,#b193d9); }
+  .orbit-dir .thread-name { font-size:9px; font-weight:740; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .orbit-dir .thread-preview { font-size:7.5px; color:#858b97; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+  .orbit-dir .time { font-size:7px; color:#a0a5af; }
+  .orbit-dir .conversation { flex:1; min-width:0; display:flex; flex-direction:column; background:#fff; }
+  .orbit-dir .conv-head { min-height:56px; padding:9px 11px; border-bottom:1px solid #e7e9ed; display:flex; align-items:center; gap:8px; }
+  .orbit-dir .conv-person { font-size:10px; font-weight:760; }
+  .orbit-dir .conv-sub { font-size:7.5px; color:#828895; margin-top:2px; }
+  .orbit-dir .chips { display:flex; gap:4px; margin-left:auto; }
+  .orbit-dir .chip-mini { font-size:6.7px; color:#6053c8; background:#f0edff; border-radius:999px; padding:3px 5px; }
+  .orbit-dir .messages { flex:1; min-height:0; padding:11px; overflow:hidden; background:linear-gradient(#fff,#fcfcfd); }
+  .orbit-dir .day { text-align:center; color:#a4a8b1; font-size:7px; margin:2px 0 9px; }
+  .orbit-dir .msg-row { display:flex; align-items:flex-end; gap:5px; margin:7px 0; }
+  .orbit-dir .msg-row.me { justify-content:flex-end; }
+  .orbit-dir .bubble { max-width:76%; padding:7px 8px; border-radius:9px 9px 9px 3px; background:#f0f1f4; font-size:8px; line-height:1.4; color:#484e59; }
+  .orbit-dir .msg-row.me .bubble { background:#6758d7; color:#fff; border-radius:9px 9px 3px 9px; }
+  .orbit-dir .composer { margin:7px 9px 9px; border:1px solid #dcdfe5; border-radius:10px; background:#fff; box-shadow:0 4px 14px rgba(35,39,50,.08); padding:8px; }
+  .orbit-dir .composer-text { font-size:8px; color:#6e7480; line-height:1.4; height:34px; }
+  .orbit-dir .composer-foot { display:flex; align-items:center; gap:5px; border-top:1px solid #eeeff2; padding-top:6px; }
+  .orbit-dir .ai { font-size:7px; color:#6657d5; font-weight:700; }
+  .orbit-dir .send { margin-left:auto; background:#6253d3; color:#fff; border-radius:6px; padding:4px 7px; font-size:7px; font-weight:700; }
+  .orbit-dir .safety { color:#979ca6; font-size:6.5px; }
+  .orbit-dir .focused { padding:9px 10px 0; display:flex; flex-direction:column; flex:1; min-height:0; }
+  .orbit-dir .back { font-size:8px; color:#6860c8; margin-right:2px; }
+  .orbit-dir .context-pane { width:27%; min-width:92px; border-left:1px solid #e5e7eb; padding:10px 8px; background:#fafafd; }
+  .orbit-dir .context-title { font-size:8px; text-transform:uppercase; letter-spacing:.05em; font-weight:800; color:#858a96; margin-bottom:8px; }
+  .orbit-dir .context-card { border:1px solid #e2e3eb; border-radius:8px; background:white; padding:7px; margin-bottom:6px; }
+  .orbit-dir .context-label { font-size:7px; color:#8c919b; }
+  .orbit-dir .context-value { font-size:8px; font-weight:700; margin-top:3px; line-height:1.35; }
+  .orbit-dir .ai-card { background:#f0edff; border-color:#ded8ff; }
+  .orbit-dir .card-copy { padding:14px 6px 4px; }
+  .orbit-dir .card-kicker { font-size:10px; font-weight:800; color:#6557d6; text-transform:uppercase; letter-spacing:.07em; }
+  .orbit-dir .card-title { font-size:16px; font-weight:780; margin:5px 0 6px; }
+  .orbit-dir .card-desc { font-size:12px; color:#6d7380; line-height:1.5; min-height:54px; }
+  .orbit-dir .badges { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+  .orbit-dir .badge { font-size:9px; border-radius:999px; padding:4px 6px; background:#f1f2f5; color:#696f7b; }
+  .orbit-dir .badge.reco { background:#e9f8ef; color:#23764a; font-weight:750; }
+  .orbit-dir .refs { margin-top:18px; padding:13px 15px; border-radius:12px; background:#f7f7fa; color:#6d7380; font-size:11px; line-height:1.55; }
+  @media (max-width: 980px) {
+    .orbit-dir .direction-grid { grid-template-columns:1fr; }
+    .orbit-dir .mock-window { height:460px; }
+  }
+</style>
+
+<div class="orbit-dir">
+  <div class="intro">
+    <div>
+      <div class="label">Inbox redesign · Layout direction</div>
+      <h2>哪种“对话工作台”更像你想要的收件箱？</h2>
+      <p class="subtitle">三种方案都支持拖动左侧边缘调整整个收件箱宽度；差别在于信息密度与关系上下文的占比。</p>
+    </div>
+    <div class="intro-note">请关注：打开历史对话是否自然、长消息是否好读、回复区是否稳定、扩宽后是否真正利用了空间。</div>
+  </div>
+
+  <div class="direction-grid">
+    <div class="direction" data-choice="a" onclick="toggleSelect(this)">
+      <div class="mock-window">
+        <div class="app-bg"><div class="app-nav"></div><div class="app-cards"><div class="app-card"></div><div class="app-card"></div></div></div>
+        <div class="scrim"></div>
+        <div class="drawer drawer-a">
+          <div class="resize"><span class="resize-tip">↔ 拖动调宽</span></div>
+          <div class="topbar"><span class="brand">收件箱</span><span class="tab on">对话 3</span><span class="tab">提醒 5</span><span class="icon-btn">＋</span><span class="icon-btn">×</span></div>
+          <div class="body">
+            <div class="thread-list">
+              <div class="list-head"><span>对话</span><span style="margin-left:auto;color:#9a9faa">全部⌄</span></div>
+              <div class="search">⌕ 搜索联系人或主题</div>
+              <div class="thread active"><span class="avatar">青</span><span><div class="thread-name">青叶</div><div class="thread-preview">创始人早餐要点回顾</div></span><span class="time">10:42</span></div>
+              <div class="thread"><span class="avatar" style="background:linear-gradient(135deg,#e48b8b,#d469a6)">莉</span><span><div class="thread-name">莉娜 · Helio</div><div class="thread-preview">投资人引荐背景</div></span><span class="time">周三</span></div>
+              <div class="thread"><span class="avatar" style="background:linear-gradient(135deg,#70a7d8,#6cc0a9)">K</span><span><div class="thread-name">Kenji</div><div class="thread-preview">确认下周的见面时间</div></span><span class="time">7/18</span></div>
+            </div>
+            <div class="conversation">
+              <div class="conv-head"><span class="avatar">青</span><span><div class="conv-person">青叶 · Kaze Ventures</div><div class="conv-sub">创始人早餐要点回顾</div></span><span class="chips"><span class="chip-mini">活动来源</span><span class="chip-mini">跟进任务</span></span></div>
+              <div class="messages">
+                <div class="day">7 月 24 日 · 今天</div>
+                <div class="msg-row"><span class="avatar" style="width:19px;height:19px;font-size:7px">青</span><span class="bubble">代代木的气候创始人早餐很有收获。沟通前能发我两点要点吗？</span></div>
+                <div class="msg-row me"><span class="bubble">可以，我会保持简短，并对应场地方最关心的问题。</span></div>
+                <div class="msg-row"><span class="avatar" style="width:19px;height:19px;font-size:7px">青</span><span class="bubble">很好，也请注明下一步由谁负责。</span></div>
+              </div>
+              <div class="composer">
+                <div class="composer-text">青叶，早餐的两点要点如下：场地团队最看重创始人契合度……</div>
+                <div class="composer-foot"><span class="ai">✦ AI 改写</span><span class="safety">草稿待确认，不会自动发送</span><span class="send">复核并发送</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-copy">
+        <div class="card-kicker">A · 推荐</div>
+        <div class="card-title">Relationship Desk</div>
+        <div class="card-desc">Intercom/Gmail 式双栏：左侧保持会话上下文，右侧专注历史与回复。扩宽后空间利用最明显，学习成本低。</div>
+        <div class="badges"><span class="badge reco">平衡最好</span><span class="badge">默认 760px</span><span class="badge">480px–92vw</span></div>
+      </div>
+    </div>
+
+    <div class="direction" data-choice="b" onclick="toggleSelect(this)">
+      <div class="mock-window">
+        <div class="app-bg"><div class="app-nav"></div><div class="app-cards"><div class="app-card"></div><div class="app-card"></div></div></div>
+        <div class="scrim"></div>
+        <div class="drawer drawer-b">
+          <div class="resize"><span class="resize-tip">↔ 拖动调宽</span></div>
+          <div class="topbar"><span class="back">‹</span><span class="brand">青叶</span><span class="icon-btn">⋯</span><span class="icon-btn">×</span></div>
+          <div class="focused">
+            <div class="conv-head" style="padding-left:0;padding-right:0"><span class="avatar">青</span><span><div class="conv-person">创始人早餐要点回顾</div><div class="conv-sub">Kaze Ventures · 今天活跃</div></span></div>
+            <div class="messages">
+              <div class="day">今天</div>
+              <div class="msg-row"><span class="bubble">代代木的气候创始人早餐很有收获。能发我两点要点吗？</span></div>
+              <div class="msg-row me"><span class="bubble">可以，我会保持简短，并对应场地方的问题。</span></div>
+              <div class="msg-row"><span class="bubble">很好，也请注明下一步由谁负责。</span></div>
+            </div>
+            <div class="composer" style="margin-left:0;margin-right:0">
+              <div class="composer-text">写一条回复…</div>
+              <div class="composer-foot"><span class="ai">✦</span><span class="safety">发送需确认</span><span class="send">发送</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-copy">
+        <div class="card-kicker">B · 保守升级</div>
+        <div class="card-title">Focused Drawer</div>
+        <div class="card-desc">Slack 移动式单栏：列表和详情仍分步切换，只改善视觉层级与可拖拽宽度。改动最小，但宽屏时价值有限。</div>
+        <div class="badges"><span class="badge">默认 520px</span><span class="badge">420px–720px</span><span class="badge">移动端自然</span></div>
+      </div>
+    </div>
+
+    <div class="direction" data-choice="c" onclick="toggleSelect(this)">
+      <div class="mock-window">
+        <div class="app-bg"><div class="app-nav"></div><div class="app-cards"><div class="app-card"></div><div class="app-card"></div></div></div>
+        <div class="scrim"></div>
+        <div class="drawer drawer-c">
+          <div class="resize"><span class="resize-tip">↔ 拖动调宽</span></div>
+          <div class="topbar"><span class="brand">关系收件箱</span><span class="tab on">对话</span><span class="tab">提醒</span><span class="icon-btn">⌕</span><span class="icon-btn">×</span></div>
+          <div class="body">
+            <div class="thread-list" style="width:27%">
+              <div class="search">⌕ 搜索</div>
+              <div class="thread active"><span class="avatar">青</span><span><div class="thread-name">青叶</div><div class="thread-preview">早餐要点回顾</div></span><span class="time">10:42</span></div>
+              <div class="thread"><span class="avatar" style="background:#cb75a8">莉</span><span><div class="thread-name">莉娜</div><div class="thread-preview">投资人引荐</div></span><span class="time">周三</span></div>
+            </div>
+            <div class="conversation">
+              <div class="conv-head"><span class="avatar">青</span><span><div class="conv-person">青叶 · Kaze Ventures</div><div class="conv-sub">创始人早餐要点回顾</div></span></div>
+              <div class="messages">
+                <div class="day">今天</div>
+                <div class="msg-row"><span class="bubble">早餐很有收获。沟通前能发我两点要点吗？</span></div>
+                <div class="msg-row me"><span class="bubble">可以，我会保持简短。</span></div>
+              </div>
+              <div class="composer"><div class="composer-text">写一条回复…</div><div class="composer-foot"><span class="ai">✦ AI 辅助</span><span class="send">复核</span></div></div>
+            </div>
+            <div class="context-pane">
+              <div class="context-title">关系上下文</div>
+              <div class="context-card"><div class="context-label">联系人</div><div class="context-value">青叶<br><span style="font-weight:500;color:#7e8490">Kaze Ventures</span></div></div>
+              <div class="context-card"><div class="context-label">来源</div><div class="context-value">代代木气候创始人早餐</div></div>
+              <div class="context-card ai-card"><div class="context-label" style="color:#6557d6">✦ Orbit AI</div><div class="context-value">建议先回答“场地方最关心什么”，再确认负责人。</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-copy">
+        <div class="card-kicker">C · 高信息密度</div>
+        <div class="card-title">Relationship Console</div>
+        <div class="card-desc">Intercom 式三栏：会话、历史、联系人/来源/AI 建议同时可见。关系工作最强，但小屏与实现复杂度最高。</div>
+        <div class="badges"><span class="badge">默认 980px</span><span class="badge">720px–96vw</span><span class="badge">上下文优先</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="refs">
+    <strong>参考模式：</strong>Slack 的 split view 强调“无需来回切换即可并排查看”，Intercom Inbox 将对话与 Details/Copilot 置于同一工作台。Orbit 不直接复制它们，而是保留“来源证据 + 发送需确认”的关系工作流。
+  </div>
+</div>

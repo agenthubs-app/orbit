@@ -279,3 +279,15 @@ test("/app/events/[id] page uses the live route service instead of the legacy ev
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
   });
 });
+
+test("event detail reads registration state from the registration record API", () => {
+  const detailSource = source(
+    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+  );
+
+  assert.match(detailSource, /\/api\/events\/.*\/registration\?questions=false/);
+  assert.match(detailSource, /registrationStatus/);
+  assert.match(detailSource, /Manage registration|管理报名/);
+  assert.match(detailSource, /Register again|重新报名/);
+  assert.match(detailSource, /\/app\/events\/.*\/register/);
+});

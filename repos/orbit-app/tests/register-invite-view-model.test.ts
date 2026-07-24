@@ -1,0 +1,118 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { registerInviteToView } from "../src/view-models/register-invite";
+
+test("registerInviteToView combines event and profile into a Chinese mobile invite preview", () => {
+  const view = registerInviteToView({
+    eventPayload: {
+      event: {
+        description:
+          "JA: 投資家向け。 ZH: 投资人与创业者提前登记融资阶段和想认识的人。 EN: Investor founder intake.",
+        evidence: [
+          {
+            excerpt:
+              "JA: 投資家向け。 ZH: 报名信息会用于会前整理介绍重点。 EN: Signup context."
+          }
+        ],
+        id: "event_signup_03",
+        nextAction: "Review the source-backed event in Orbit.",
+        recommendedPreparation:
+          "Review the source-backed event before taking action.",
+        relationshipContext:
+          "event_signup_03 profile_orbit_generated_operator JA: 投資家向け。 ZH: 根据报名信息提前整理融资阶段、介绍诉求和会谈主题。 EN: Prepare from signup data.",
+        sourceMetadata: {
+          captureMethod: "signup_invite",
+          label:
+            "日中投資家・創業者申込サロン / 日中投资人与创业者报名沙龙 / Japan-China Investor Founder Signup Salon"
+        },
+        startsAt: "2026-07-04T10:00:00.000Z",
+        status: "confirmed",
+        title: "Tokyo founder salon",
+        venue: "Shibuya"
+      }
+    },
+    inviteCode: "event_signup_03",
+    profilePayload: {
+      profile: {
+        bio: "Orbit 的创始人，主要做 AI 在企业里的真实落地。",
+        displayName: "赵翔",
+        headline: "Orbit 创始人，用 AI 帮企业提效、降本、落地增长",
+        industry: "AI 企业应用 · 日本市场 · B2B",
+        offering: ["企业知识库 / RAG / 内部助手方案", "中日市场资源"],
+        organization: "Orbit",
+        relationshipGoal: "找到能长期互相帮忙的人。",
+        role: "创始人",
+        seeking: ["正在导入 AI 的企业", "日本市场合作伙伴"],
+        timezone: "Tokyo",
+        topics: ["企业 AI 降本增效", "Agent 工作流"]
+      }
+    }
+  });
+
+  assert.deepEqual(view, {
+    actions: [
+      {
+        href: "/events/event_signup_03/register",
+        label: "继续填写活动问题"
+      },
+      { href: "/profile", label: "检查个人资料" }
+    ],
+    event: {
+      code: "EVENTSIGNUP03",
+      description: "投资人与创业者提前登记融资阶段和想认识的人。",
+      id: "event_signup_03",
+      sourceLabel: "日中投资人与创业者报名沙龙",
+      startsAt: "7月4日 周六 19:00",
+      status: "已确认",
+      theme: "报名邀请",
+      title: "日中投资人与创业者报名沙龙",
+      venue: "Shibuya"
+    },
+    guardrail: "这里只准备资料，不会创建账号、写入报名或发送消息。",
+    profile: {
+      company: "Orbit",
+      headline: "Orbit 创始人，帮企业把 AI 用到销售、客服、运营和内部知识库里",
+      name: "小雨",
+      offering: [
+        "企业 AI 导入路径梳理",
+        "知识库 / 内部检索 / 员工助手方案",
+        "销售、客服、运营流程自动化",
+        "日本落地服务商与合作方连接",
+        "创业者、投资人、企业服务资源引荐"
+      ],
+      role: "创始人",
+      seeking: [
+        "正在导入 AI 或准备做试点的企业",
+        "有日本市场落地经验的合作伙伴",
+        "企业服务、SaaS、自动化和数据治理资源"
+      ],
+      topics: [
+        "企业 AI 导入",
+        "知识库与内部检索",
+        "Agent 工作流",
+        "销售和客服自动化",
+        "中日商务合作"
+      ]
+    },
+    summary: "先确认别人会看到的资料，再回答这场活动的问题。",
+    title: "报名资料准备"
+  });
+});
+
+test("registerInviteToView has a controlled empty state when event context is missing", () => {
+  const view = registerInviteToView({
+    eventPayload: null,
+    profilePayload: null
+  });
+
+  assert.equal(view.title, "报名资料准备");
+  assert.equal(view.event.title, "活动待确认");
+  assert.equal(view.event.code, "EVENT");
+  assert.equal(view.guardrail, "这里只准备资料，不会创建账号、写入报名或发送消息。");
+  assert.equal(view.profile.name, "小雨");
+  assert.deepEqual(view.actions, [
+    { href: "/events", label: "查看活动列表" },
+    { href: "/profile", label: "检查个人资料" }
+  ]);
+});

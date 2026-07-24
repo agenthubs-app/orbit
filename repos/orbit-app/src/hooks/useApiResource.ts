@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { createOrbitApiClient } from "../api/client";
 import type { RouteState } from "../view-models/route-state";
@@ -26,7 +27,15 @@ export function useApiResource<TData>(
   isEmpty: (data: TData) => boolean
 ): ApiResourceState<TData> {
   const { baseUrl } = useOrbitApiBaseUrl();
-  const client = useMemo(() => createOrbitApiClient({ baseUrl }), [baseUrl]);
+  const auth = useOrbitAuthSession();
+  const client = useMemo(
+    () =>
+      createOrbitApiClient({
+        authCookieHeader: auth.cookieHeader,
+        baseUrl
+      }),
+    [auth.cookieHeader, baseUrl]
+  );
   const isEmptyRef = useRef(isEmpty);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,6 +51,13 @@ export function useApiResource<TData>(
   useEffect(() => {
     let active = true;
     const isRefresh = refreshIndex > 0;
+
+    if (!auth.ready) {
+      setState({ kind: "loading" });
+      return () => {
+        active = false;
+      };
+    }
 
     if (isRefresh) {
       setRefreshing(true);
@@ -70,7 +86,7 @@ export function useApiResource<TData>(
     return () => {
       active = false;
     };
-  }, [client, path, refreshIndex]);
+  }, [auth.ready, client, path, refreshIndex]);
 
   return {
     ...state,

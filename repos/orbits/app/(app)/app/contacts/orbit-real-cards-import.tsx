@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { useState } from "react";
 
 import { AccountTopNav } from "../orbit-account-shell";
@@ -8,44 +7,11 @@ import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
 import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
-import { Basis } from "./orbit-real-contacts";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
+import { BusinessCardCaptureWorkspace } from "./business-card-capture-workspace";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 type Copy = { en: string; zh: string };
-
-type FieldKey = "displayName" | "role" | "organization" | "email" | "phone";
-type ReviewState = "accepted" | "needs_review";
-
-const EVIDENCE_ID = "evidence:business-card-review-fields-hana";
-
-const REVIEW_FIELDS: {
-  key: FieldKey;
-  label: Copy;
-  value: string;
-  confidence: "high" | "medium";
-}[] = [
-  { key: "displayName", label: { en: "Name", zh: "姓名" }, value: "Hana Sato", confidence: "high" },
-  { key: "role", label: { en: "Role", zh: "职位" }, value: "Head of Robotics Partnerships", confidence: "high" },
-  { key: "organization", label: { en: "Organization", zh: "公司" }, value: "Aki Robotics", confidence: "high" },
-  { key: "email", label: { en: "Email", zh: "邮箱" }, value: "hana.sato@akirobotics.example", confidence: "medium" },
-  { key: "phone", label: { en: "Phone", zh: "电话" }, value: "+81-3-5555-0198", confidence: "medium" },
-];
-
-const INITIAL_STATES: Record<FieldKey, ReviewState> = {
-  displayName: "accepted",
-  role: "accepted",
-  organization: "accepted",
-  email: "needs_review",
-  phone: "needs_review",
-};
-
-const SCAN_STATES: { key: string; label: Copy }[] = [
-  { key: "success", label: { en: "Success", zh: "成功" } },
-  { key: "empty", label: { en: "Empty", zh: "空" } },
-  { key: "pending", label: { en: "Pending", zh: "处理中" } },
-  { key: "failure", label: { en: "Failure", zh: "失败" } },
-];
 
 const SOURCES: {
   key: string;
@@ -105,9 +71,6 @@ const SOURCES: {
   },
 ];
 
-const RELATIONSHIP_CONTEXT =
-  "Business card captured after a robotics investor salon conversation about partner distribution.";
-
 const SIDEBAR_GROUPS: {
   label: Copy;
   items: { href: string; icon: string; label: Copy; active?: boolean }[];
@@ -130,12 +93,6 @@ const SIDEBAR_GROUPS: {
     ],
   },
 ];
-
-function fieldEvidenceCopy(confidence: "high" | "medium"): Copy {
-  return confidence === "high"
-    ? { en: "OCR extracted · confidence high", zh: "OCR 识别 · 置信度 高" }
-    : { en: "OCR extracted · confidence medium, please verify", zh: "OCR 识别 · 置信度 中，建议核对" };
-}
 
 function Sidebar({ t }: { t: Translate }) {
   return (
@@ -174,21 +131,6 @@ function Sidebar({ t }: { t: Translate }) {
   );
 }
 
-function ScannedCard() {
-  return (
-    <div className="nc-scanned-card">
-      <div>
-        <div className="sc-org">Aki Robotics</div>
-      </div>
-      <div>
-        <div className="sc-name">Hana Sato</div>
-        <div className="sc-role">Head of Robotics Partnerships</div>
-      </div>
-      <div className="sc-lines"><i /><i /></div>
-    </div>
-  );
-}
-
 function SourceCard({
   source,
   selected,
@@ -222,99 +164,9 @@ function SourceCard({
   );
 }
 
-function FieldRow({
-  field,
-  state,
-  onToggle,
-  compact,
-  t,
-}: {
-  field: (typeof REVIEW_FIELDS)[number];
-  state: ReviewState;
-  onToggle: () => void;
-  compact?: boolean;
-  t: Translate;
-}) {
-  const accepted = state === "accepted";
-  return (
-    <div className="nc-rev">
-      <div className="nc-rev-k">{t(field.label)}</div>
-      <div className="nc-rev-v">
-        <span
-          className="nc-cdot"
-          style={{ background: field.confidence === "high" ? "var(--live)" : "var(--amber)" }}
-        />
-        <input
-          aria-label={t(field.label)}
-          className="nc-rev-input"
-          defaultValue={field.value}
-        />
-      </div>
-      <div className="nc-rev-meta">
-        {compact ? null : (
-          <Basis
-            align="right"
-            copy={fieldEvidenceCopy(field.confidence)}
-            evidenceId={EVIDENCE_ID}
-            kind="evidence"
-            t={t}
-          />
-        )}
-        <button
-          className={`nc-rev-state ${accepted ? "ok" : "todo"}`}
-          onClick={onToggle}
-          type="button"
-        >
-          <Icon name={accepted ? "check" : "bell"} size={14} />
-          {accepted ? t({ en: "Reviewed", zh: "已确认" }) : t({ en: "Review", zh: "待确认" })}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export function OrbitRealCardsImport() {
   const { t } = useOrbitLanguage();
   const [selectedSource, setSelectedSource] = useState("scan");
-  const [scanState, setScanState] = useState("success");
-  const [states, setStates] = useState<Record<FieldKey, ReviewState>>(INITIAL_STATES);
-
-  const toggleField = (key: FieldKey) =>
-    setStates((current) => ({
-      ...current,
-      [key]: current[key] === "accepted" ? "needs_review" : "accepted",
-    }));
-
-  const pendingCount = REVIEW_FIELDS.filter((field) => states[field.key] === "needs_review").length;
-  const canConfirm = pendingCount === 0;
-  const helper = t({ en: `${pendingCount} fields still need review`, zh: `还有 ${pendingCount} 个字段待复核` });
-
-  const ocrBadge = (
-    <span className="nc-src nc-src-scan"><Icon name="scan" size={12} />{t({ en: "OCR complete", zh: "OCR 完成" })}</span>
-  );
-
-  const scanChips = (items: typeof SCAN_STATES) => (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {items.map((item) => (
-        <button
-          className={`chip${scanState === item.key ? " is-active" : ""}`}
-          key={item.key}
-          onClick={() => setScanState(item.key)}
-          style={{ fontSize: 11 }}
-          type="button"
-        >
-          {t(item.label)}
-        </button>
-      ))}
-    </div>
-  );
-
-  const relationshipField = (
-    <div style={{ marginTop: 14 }}>
-      <label className="nc-field-label">{t({ en: "How you met · relationshipContext", zh: "认识场景 · relationshipContext" })}</label>
-      <textarea aria-label={t({ en: "relationship context", zh: "认识场景" })} className="field" defaultValue={RELATIONSHIP_CONTEXT} />
-    </div>
-  );
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
@@ -363,76 +215,8 @@ export function OrbitRealCardsImport() {
                 </div>
               </section>
 
-              {/* RIGHT · business-card review panel */}
-              <section className="card nc-review-panel">
-                <div style={{ alignItems: "flex-start", display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-                  <div className="eyebrow">{t({ en: "Card review", zh: "名片复核" })}</div>
-                  {scanChips(SCAN_STATES)}
-                </div>
-
-                <div className="nc-rp-top">
-                  <ScannedCard />
-                  <div>
-                    <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-                      {ocrBadge}
-                      <span className="nc-status-pill nc-status-pending"><span className="nc-status-dot" />{t({ en: "Pending review", zh: "待复核" })}</span>
-                    </div>
-                    <div className="nc-provenance">
-                      {t({ en: "Robotics investor salon · business card OCR draft", zh: "机器人投资沙龙 · business card OCR draft" })}
-                      <span style={{ marginLeft: 5, display: "inline-flex", verticalAlign: "middle" }}>
-                        <Basis
-                          align="below"
-                          copy={{
-                            en: "Basis: local OCR draft; nothing written until confirmed",
-                            zh: "依据：本地 OCR 识别草稿，确认前不写库（contactWriteExecuted=false）",
-                          }}
-                          evidenceId={EVIDENCE_ID}
-                          kind="evidence"
-                          t={t}
-                        />
-                      </span>
-                    </div>
-                    <div className="nc-provenance"><span className="mono">source:business-card-review:hana-sato</span></div>
-                    <div className="h-section" style={{ fontSize: 15, marginTop: 12 }}>{t({ en: "Review extracted fields", zh: "请复核识别字段" })}</div>
-                    <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{t({ en: "Accept or edit each field, then confirm", zh: "接受或编辑每个字段后即可确认" })}</div>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 14 }}>
-                  {REVIEW_FIELDS.map((field) => (
-                    <FieldRow field={field} key={field.key} onToggle={() => toggleField(field.key)} state={states[field.key]} t={t} />
-                  ))}
-                </div>
-
-                {relationshipField}
-
-                <div className="nc-note" style={{ marginTop: 12 }}>
-                  <Icon name="sparkle" size={16} color="var(--accent)" />
-                  <span>
-                    <b style={{ color: "var(--text-2)" }}>{t({ en: "Suggested next action · suggestedNextAction: ", zh: "建议下一步 · suggestedNextAction：" })}</b>
-                    {t({ en: "Review the extracted fields, then confirm the business card candidate.", zh: "复核字段后确认名片候选人。" })}
-                  </span>
-                </div>
-
-                <div className="nc-confirm-bar">
-                  <div className="nc-note nc-note-live">
-                    <Icon name="checkCircle" size={16} color="var(--live)" />
-                    <span>
-                      {t({ en: "No contact is written before you confirm", zh: "确认前无联系人写入" })} · <span className="mono">contactWriteExecuted=false · ocrProviderCalled=false</span>
-                    </span>
-                  </div>
-
-                  <div className="nc-confirm-q">{t({ en: "Confirm adding Hana Sato?", zh: "确认加入 佐藤花（Hana Sato）？" })}</div>
-
-                  <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
-                    <span className="nc-trust nc-trust-med"><Icon name="bell" size={14} />{helper}</span>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button className="btn btn-ghost" onClick={() => undefined} type="button"><Icon name="doc" size={16} />{t({ en: "Save draft", zh: "暂存草稿" })}</button>
-                      <button className={`btn btn-primary${canConfirm ? "" : " is-disabled"}`} disabled={!canConfirm} type="button"><Icon name="check" size={16} />{t({ en: "Confirm & add", zh: "确认加入人脉" })}</button>
-                    </div>
-                  </div>
-                </div>
-              </section>
+              {/* RIGHT · real business-card capture and confirmation flow */}
+              <BusinessCardCaptureWorkspace />
             </div>
           </div>
         </div>
@@ -449,39 +233,7 @@ export function OrbitRealCardsImport() {
         </div>
 
         <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 40px" }}>
-          <div className="nc-m-scanned">
-            <ScannedCard />
-            <div>
-              {ocrBadge}
-              <div className="nc-provenance" style={{ marginTop: 8 }}>{t({ en: "Robotics salon · OCR draft", zh: "机器人投资沙龙 · OCR 草稿" })}</div>
-              <div style={{ marginTop: 8 }}>
-                {scanChips(SCAN_STATES.filter((item) => item.key !== "pending"))}
-              </div>
-            </div>
-          </div>
-
-          <div className="h-section" style={{ fontSize: 15 }}>{t({ en: "Review extracted fields", zh: "请复核识别字段" })}</div>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 6, marginTop: 4 }}>{t({ en: "Accept or edit, then confirm", zh: "接受或编辑每个字段后即可确认" })}</div>
-
-          <div className="nc-m-review">
-            {REVIEW_FIELDS.map((field) => (
-              <FieldRow compact field={field} key={field.key} onToggle={() => toggleField(field.key)} state={states[field.key]} t={t} />
-            ))}
-          </div>
-
-          {relationshipField}
-
-          <div className="nc-note nc-note-live" style={{ marginTop: 16 }}>
-            <Icon name="checkCircle" size={16} color="var(--live)" />
-            <span>{t({ en: "Nothing written before confirm", zh: "确认前无联系人写入" })} · <span className="mono">contactWriteExecuted=false</span></span>
-          </div>
-
-          <div className="nc-confirm-q" style={{ fontSize: 15, textAlign: "center" }}>{t({ en: "Confirm adding Hana Sato?", zh: "确认加入 佐藤花？" })}</div>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-            <span className="nc-trust nc-trust-med"><Icon name="bell" size={14} />{helper}</span>
-          </div>
-          <button className={`btn btn-primary btn-block${canConfirm ? "" : " is-disabled"}`} disabled={!canConfirm} type="button"><Icon name="check" size={16} />{t({ en: "Confirm & add", zh: "确认加入人脉" })}</button>
-          <button className="btn btn-ghost btn-block" onClick={() => undefined} style={{ marginTop: 8 }} type="button"><Icon name="doc" size={16} />{t({ en: "Save draft", zh: "暂存草稿" })}</button>
+          <BusinessCardCaptureWorkspace />
 
           <hr className="nc-divider" style={{ margin: "20px 0 14px" }} />
           <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 10 }}>

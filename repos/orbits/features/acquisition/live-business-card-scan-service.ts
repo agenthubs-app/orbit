@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type {
   ContactDTO,
   RelationshipEvidenceDTO,
@@ -22,6 +24,15 @@ import {
   type BusinessCardScanOcrSuccess,
   type BusinessCardSourceReference,
 } from "./business-card-contract";
+import {
+  BUSINESS_CARD_IMAGE_MIME_TYPES,
+  normalizeBusinessCardExtraction,
+  reviewIssuesForBusinessCard,
+  type BusinessCardCloudOcrProvider,
+  type BusinessCardCloudOcrUsage,
+  type BusinessCardImageMimeType,
+  type BusinessCardStructuredExtraction,
+} from "./business-card-cloud-ocr";
 import { BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX } from "./business-card-review-contract";
 import type {
   LiveBusinessCardScanOcrGraph,
@@ -29,6 +40,7 @@ import type {
 } from "./storage/business-card-scan-live-record-provider";
 
 export interface LiveBusinessCardScanOcrServiceOptions {
+  cloudOcrProvider?: BusinessCardCloudOcrProvider | null;
   now?: () => string;
   provider?: LiveBusinessCardScanOcrProvider | null;
 }
@@ -48,6 +60,7 @@ const supportedScanScenarios = new Set<BusinessCardScanOcrScenario>([
   "pending",
   "failure",
 ]);
+const MAX_BUSINESS_CARD_IMAGE_BYTES = 10 * 1024 * 1024;
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
@@ -102,6 +115,262 @@ function compactDigest(value: string): string {
   }
 
   return `sha256:live-card-${hash.toString().padStart(6, "0")}`;
+}
+
+function isBusinessCardImageMimeType(
+  value: string | null | undefined,
+): value is BusinessCardImageMimeType {
+  return BUSINESS_CARD_IMAGE_MIME_TYPES.some((mimeType) => mimeType === value);
+}
+
+function uploadedImageDigest(imageBytes: Uint8Array): string {
+  return `sha256:${createHash("sha256").update(imageBytes).digest("hex")}`;
+}
+
+function uploadedProvenance(input: {
+  digest?: string;
+  now: string;
+  provider?: BusinessCardCloudOcrProvider | null;
+  providerRequested: boolean;
+  usage?: BusinessCardCloudOcrUsage;
+}): BusinessCardScanOcrProvenance {
+  const sourceId = input.digest ?? "unavailable";
+
+  return {
+    source: `cloud-business-card-ocr:${sourceId}`,
+    sourceLabel: input.provider
+      ? `${input.provider.providerName} structured business card OCR`
+      : "Unconfigured cloud business card OCR",
+    evidenceIds: [`evidence:business-card-cloud-ocr:${sourceId}`],
+    collectedAt: input.now,
+    privacy: "live-business-card-scan-ocr",
+    generationMethod: "cloud-structured-ocr",
+    provider: input.provider?.providerName,
+    model: input.provider?.model,
+    inputTokens: input.usage?.inputTokens,
+    outputTokens: input.usage?.outputTokens,
+    latencyMs: input.usage?.latencyMs,
+    liveDatabaseReadExecuted: false,
+    databaseWriteExecuted: false,
+    contactWriteExecuted: false,
+    cameraRequested: false,
+    uploadStorageRequested: false,
+    storageWriteExecuted: false,
+    externalNetworkRequested: input.providerRequested,
+    ocrProviderRequested: input.providerRequested,
+    aiProviderRequested: input.providerRequested,
+    notificationDelivered: false,
+  };
+}
+
+function extractedFieldNames(
+  extraction: BusinessCardStructuredExtraction,
+): readonly string[] {
+  return [
+    extraction.fullName || extraction.nativeFullName ? "name" : "",
+    extraction.title ? "role" : "",
+    extraction.organization ? "organization" : "",
+    extraction.emails.length > 0 ? "email" : "",
+    extraction.contactPoints.length > 0 ? "phone" : "",
+    extraction.website ? "website" : "",
+    extraction.addresses.length > 0 ? "address" : "",
+  ].filter((field) => field.length > 0);
+}
+
+function uploadedPayload(input: {
+  digest: string;
+  extraction: BusinessCardStructuredExtraction;
+  imageName: string;
+  mimeType: BusinessCardImageMimeType;
+  now: string;
+  provider: BusinessCardCloudOcrProvider;
+  usage: BusinessCardCloudOcrUsage;
+}): BusinessCardScanOcrPayload {
+  const extraction = normalizeBusinessCardExtraction(input.extraction);
+  const issues = reviewIssuesForBusinessCard(extraction);
+  const provenance = uploadedProvenance({
+    digest: input.digest,
+    now: input.now,
+    provider: input.provider,
+    providerRequested: true,
+    usage: input.usage,
+  });
+  const source: BusinessCardSourceReference = {
+    id: `business-card:${input.digest}`,
+    label: input.imageName,
+    type: "business_card_ocr",
+  };
+  const displayName =
+    extraction.fullName ??
+    extraction.nativeFullName ??
+    extraction.romanizedFullName ??
+    "";
+  const role =
+    extraction.title ??
+    extraction.departments.join(" · ") ??
+    "Relationship candidate";
+  const organization = extraction.organization ?? "";
+  const email = extraction.emails[0]?.value ?? "";
+  const phone =
+    extraction.contactPoints.find(
+      (point) => point.type === "mobile" || point.type === "phone",
+    )?.value ?? "";
+  const evidence: BusinessCardEvidence = {
+    evidenceId: provenance.evidenceIds[0],
+    source,
+    sourceLabel: `Uploaded business card ${input.imageName}`,
+    excerpt:
+      "Structured fields were extracted from the uploaded card for operator review.",
+    capturedFields: extractedFieldNames(extraction),
+    createdAt: input.now,
+    createdBy: "live-business-card-scan-service",
+  };
+  const draft: BusinessCardContactDraft = {
+    id: `business-card-review:cloud:${input.digest.slice("sha256:".length, 31)}`,
+    status: "pending_confirmation",
+    source,
+    displayName,
+    role: role || "Relationship candidate",
+    organization,
+    email,
+    phone,
+    relationshipContext: organization
+      ? `Met through a business card exchange with ${organization}.`
+      : "Met through a business card exchange.",
+    suggestedNextAction:
+      "Review every extracted field before confirming this person as a contact.",
+    confirmation: {
+      required: true,
+      state: "pending",
+      question: `Confirm adding ${displayName || "this person"} from the uploaded business card?`,
+    },
+    contactWriteExecuted: false,
+    evidence: [evidence],
+    provenance,
+    createdAt: input.now,
+  };
+
+  return {
+    state: "success",
+    capture: {
+      captureId: `capture:business-card-cloud:${input.digest}`,
+      captureMethod: "uploaded-business-card",
+      imageName: input.imageName,
+      imageMimeType: input.mimeType,
+      imageDigest: input.digest,
+      deviceCameraAccessed: false,
+      uploadStorageExecuted: false,
+      storageWriteExecuted: false,
+    },
+    ocr: {
+      status: "complete",
+      rawText: "",
+      rawTextLines: [],
+      extractedFields: extractedFieldNames(extraction),
+      structuredExtraction: extraction,
+      reviewIssues: issues,
+      ocrProviderCalled: true,
+      aiExtractionExecuted: true,
+    },
+    draft,
+    summary:
+      "Cloud OCR extracted a business card into a review-only draft without persisting the image or creating a contact.",
+    provenance,
+    nextAction:
+      issues.length > 0
+        ? "Resolve the highlighted review issues, then confirm the corrected contact fields."
+        : "Review the extracted contact fields, then explicitly confirm the contact.",
+  };
+}
+
+async function scanUploadedBusinessCard(input: {
+  cloudOcrProvider: BusinessCardCloudOcrProvider | null;
+  now: string;
+  scanInput: BusinessCardScanOcrInput;
+}): Promise<BusinessCardScanOcrResult> {
+  const imageBase64 = input.scanInput.imageBase64?.trim();
+
+  if (!imageBase64) {
+    return failure(
+      "BUSINESS_CARD_IMAGE_REQUIRED",
+      uploadedProvenance({
+        now: input.now,
+        provider: input.cloudOcrProvider,
+        providerRequested: false,
+      }),
+    );
+  }
+
+  if (!isBusinessCardImageMimeType(input.scanInput.mimeType)) {
+    return failure(
+      "BUSINESS_CARD_IMAGE_UNSUPPORTED",
+      uploadedProvenance({
+        now: input.now,
+        provider: input.cloudOcrProvider,
+        providerRequested: false,
+      }),
+    );
+  }
+
+  const imageBytes = Buffer.from(imageBase64, "base64");
+  const declaredSize = input.scanInput.imageSizeBytes ?? imageBytes.byteLength;
+
+  if (
+    declaredSize > MAX_BUSINESS_CARD_IMAGE_BYTES ||
+    imageBytes.byteLength > MAX_BUSINESS_CARD_IMAGE_BYTES
+  ) {
+    return failure(
+      "BUSINESS_CARD_IMAGE_TOO_LARGE",
+      uploadedProvenance({
+        now: input.now,
+        provider: input.cloudOcrProvider,
+        providerRequested: false,
+      }),
+    );
+  }
+
+  const digest = uploadedImageDigest(imageBytes);
+
+  if (!input.cloudOcrProvider) {
+    return failure(
+      "BUSINESS_CARD_OCR_UNCONFIGURED",
+      uploadedProvenance({
+        digest,
+        now: input.now,
+        provider: null,
+        providerRequested: false,
+      }),
+    );
+  }
+
+  try {
+    const result = await input.cloudOcrProvider.extract({
+      imageBase64,
+      mimeType: input.scanInput.mimeType,
+    });
+
+    return success(
+      uploadedPayload({
+        digest,
+        extraction: result.extraction,
+        imageName: nonEmpty(input.scanInput.imageName) ?? "business-card",
+        mimeType: input.scanInput.mimeType,
+        now: input.now,
+        provider: input.cloudOcrProvider,
+        usage: result.usage,
+      }),
+    );
+  } catch {
+    return failure(
+      "BUSINESS_CARD_OCR_PROVIDER_FAILED",
+      uploadedProvenance({
+        digest,
+        now: input.now,
+        provider: input.cloudOcrProvider,
+        providerRequested: true,
+      }),
+    );
+  }
 }
 
 function unconfiguredProvenance(now: string): BusinessCardScanOcrProvenance {
@@ -504,11 +773,20 @@ function findContact(input: {
 }
 
 export function createLiveBusinessCardScanOcrService({
+  cloudOcrProvider = null,
   now = () => new Date().toISOString(),
   provider = null,
 }: LiveBusinessCardScanOcrServiceOptions = {}): BusinessCardScanOcrService {
   return {
     async scanBusinessCard(input = {}): Promise<BusinessCardScanOcrResult> {
+      if (typeof input.imageBase64 === "string") {
+        return scanUploadedBusinessCard({
+          cloudOcrProvider,
+          now: now(),
+          scanInput: input,
+        });
+      }
+
       const scenario = normalizeScanScenario(input.scenario);
       const readResult = await readGraph({
         now: now(),

@@ -10,7 +10,7 @@ Acquisition 负责“联系人进入系统之前”的所有采集链路。它�
 
 - `contact-acquisition-draft-pipeline`：统一 contact draft 生命周期。
 - `manual-contact-creation-mock`：手动记录来源。
-- `business-card-scan-ocr-mock`：模拟名片 OCR；live 模式已可从 remote `contacts` 和 `evidence` 中的 `business_card_ocr` 来源记录派生 OCR preview 和 extracted contact draft，但不请求相机、不调用 OCR provider、不上传图片、不写联系人或 contactDrafts。
+- `business-card-scan-ocr-mock`：模拟名片 OCR；live 模式支持两条明确分开的路径：无图片请求继续读取 source-backed preview；真实 JPEG/PNG/WebP 上传调用 Gemini 3.5 Flash-Lite，生成待复核 cloud OCR draft，但不保存原图、不直接写联系人。
 - `business-card-review-and-confirm-flow`：人工复核名片字段；live 模式已可从 remote `contacts` 和 `evidence` 中的 `business_card_ocr` 来源记录派生 review drafts，但不调用 OCR provider、不写联系人或 contactDrafts。
 - `qr-scan-connect-mock`：二维码连接；live 模式已可从 remote `contacts` 和 `evidence` 中的 `qr_scan` 来源记录派生 connection drafts，但不请求相机、不调用 QR decoder、不写联系人或连接。
 - `event-attendee-import-mock`：活动参会者导入；live 模式已可从 remote `events`、`attendees`、`eventParticipantIntents`、`networkPeople`、`contacts`、`evidence` 组合生成参会者名单和待复核 contact drafts。
@@ -35,7 +35,9 @@ Mock 使用本地 fixture 模拟真实采集入口。名片扫描不会调用 OC
 
 每个采集子能力可以单独替换 live。名片扫描可接 OCR provider；外部联系人可接 Google/Microsoft/CSV parser；邮件日历可接授权后的 mailbox/calendar API。替换时必须先经过 mapper，把 provider payload 转成 acquisition contract。页面仍然只看 draft 和 review state。
 
-business card scan OCR 的第一版 live 实现是 source-backed scan preview boundary：`features/acquisition/storage/business-card-scan-live-record-provider.ts` 读取 remote `contacts` 和 `evidence`，`features/acquisition/live-business-card-scan-service.ts` 从 `source.type="business_card_ocr"` 的联系人记录派生 capture metadata、OCR extraction 和 extracted contact draft。draft id 使用 `business-card-review:live:<contactId>`，方便人工复核边界接手；scan 和 draft lookup 都不请求相机权限，不调用 OCR provider，不上传图片，不写 `contacts` 或 `contactDrafts`，不发通知。
+business card scan OCR 的 live 实现保留 source-backed preview，同时增加真实上传分支。`POST /api/contact-drafts/business-card/scan` 接受 multipart 或 JSON 图片输入，只允许 JPEG、PNG、WebP 和 10 MiB 以内文件。上传分支通过 `features/acquisition/gemini-business-card-ocr-provider.ts` 调用 Gemini Interactions API：默认模型 `gemini-3.5-flash-lite`、media resolution `high`、thinking `minimal`、strict JSON schema；密钥优先读取 `GEMINI_API_KEY`，仅以 `GOOGLE_API_KEY` 作为兼容回退。
+
+真实分支只把图片字节用于当次请求，并生成不可逆 SHA-256 摘要；原图、base64 和 provider raw response 均不写入 live storage。provider 输出先规范化，再由代码生成多办公点、共享联系方式、格式错误和原生/罗马字姓名等复核问题。结果仍是 `pending_confirmation` draft，`contactWriteExecuted=false`。缺密钥、超时、无效结构或 provider 失败都会显式失败，不回退到 fixture 或 source-backed 联系人。
 
 活动参会者导入的第一版 live 实现是 storage-backed：`features/acquisition/storage/event-attendee-live-record-provider.ts` 只读 remote live record collections，`features/acquisition/live-event-attendee-import-service.ts` 负责把它们转成 acquisition contract。它不调用 organizer feed，不写联系人库，不执行 bulk import，不发通知；`importEventAttendees` 在当前阶段只表示生成待确认草稿。
 

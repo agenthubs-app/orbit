@@ -1,43 +1,71 @@
-# Registration Profile Guide Live Implementation
+# Event Registration Live Implementation
 
-Sprint 94 uses deterministic demonstration questions because registration is not allowed to write profile updates or call a generation provider yet. The fixture in `features/events/registration-profile-guide.ts` combines three local inputs: the event record, the current test user profile, and profile completeness fields. This keeps every registerable demo event reproducible and proves no event falls back to empty generic questions.
+Orbit event registration now has two separate boundaries:
 
-The current test-user loader resolves the deterministic registerable demonstration events (`demo-event-1`, `demo-event-2`, and `event_001`) before it asks runtime event services. That keeps canonical product routes stable in mock or hybrid runtimes where other event-detail capabilities may not have the recommended event in their live store yet. Unknown event ids still go through the configured event service and return its controlled failure shape.
+- `features/events/registration/question-generator.ts` builds up to four optional, event-specific participant-profile questions.
+- `features/events/registration/service.ts` owns the idempotent registration, cancellation, and reactivation lifecycle.
 
-Each deterministic question now carries a short profile-field explanation beside the technical field name. The UI intentionally keeps terms such as `preferredIntroChannels` visible, but pairs them with Chinese or English context so users understand what relationship data they are staging.
+The older deterministic guide in `features/events/registration-profile-guide.ts` remains available for degraded event-detail routes. It is no longer the write path for `/app/events/[id]/register`.
 
-## Mock Boundary
+## Shared Orbit AI Model
 
-- Deterministic source: `features/events/registration-profile-guide.ts`
-- Current profile source: `features/profile/fixtures.ts`
-- Event source: `features/events/event-crud-and-import/*`
-- Safety contract: `profileWriteExecuted=false`, `liveDatabaseWriteExecuted=false`, `externalNetworkRequested=false`, and `aiProviderRequested=false`
-- Canonical demo route behavior: known registerable demonstration ids use deterministic event fixtures without requiring a `mode=mock` query parameter.
-- Degraded event-detail behavior: if the broader event workspace fails but a known registerable guide exists, `/app/events/[id]` leads with the stable event summary and registration-guide path before showing the workspace failure envelope.
+Question customization calls `runOrbitAgentModelText` from `features/orbit-ai/gemini-provider.ts`. This is the same provider boundary used by Orbit AI, so it inherits:
 
-Answers shown on `/app/events/[id]/register` are staged local form values until the user explicitly confirms them. The primary action is review/confirmation copy only; this sprint does not persist profile changes.
+- `ORBIT_AGENT_PROVIDER`
+- `ORBIT_GEMINI_MODEL`, `ORBIT_DEEPSEEK_MODEL`, or `ORBIT_OPENAI_MODEL`
+- the matching provider credential and endpoint
+- the shared request timeout policy
 
-## Live Replacement Path
+There is no separate registration model setting.
 
-A future provider should add these files beside the event feature boundary:
+Code first selects the allowed intents and participant-profile fields. The model may only customize wording and options for those candidates. Output is accepted only when it:
 
-- `features/events/registration-profile-guide/live-service.ts`
-- `features/events/registration-profile-guide/provider.ts`
-- `features/events/registration-profile-guide/mappers.ts`
-- `features/events/registration-profile-guide/validators.ts`
+- contains zero to four unique questions;
+- preserves the candidate `id`, intent, and field mapping;
+- includes the exact event title;
+- uses two to five concise options;
+- contains no credential, identity-document, financial, or similarly sensitive prompt.
 
-The service should keep the same DTO shape exported by `registration-profile-guide.ts`. `ORBIT_MODULE_MODE=live` can then route through a feature factory once the provider exists. Required runtime inputs should include a live event store, a live profile store, and an explicit generation provider key such as `ORBIT_REGISTRATION_GUIDE_PROVIDER`. Missing providers must fail closed with a controlled service-resolution error, not fall back to deterministic demo questions.
+Missing credentials, provider failures, malformed JSON, and schema violations fall back to deterministic questions containing the same event title. Registration is never blocked by model failure.
 
-## Privacy And Provenance
+## Registration State
 
-The live provider may read only event context, the current user's profile fields, and declared completeness gaps. It must return source evidence ids for each question, mark whether generation was used, and keep answers staged until the user confirms a profile update. It must not send messages, write calendars, notify attendees, or update profile fields during question generation.
+One record exists for each `(eventId, userId)` pair:
 
-The provider must also return field-level explanation copy for each technical profile field so product pages do not invent relationship-data definitions locally.
+```ts
+type EventRegistration = {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: "rsvped" | "cancelled";
+  participantProfileId: string;
+  registeredAt: string;
+  cancelledAt: string | null;
+  reactivatedAt: string | null;
+  updatedAt: string;
+};
+```
 
-## Replacement Tests
+The participant profile is event-specific. Its answers never update the global user profile.
 
-- Keep `tests/capabilities/event-registration-profile-guide.test.ts` for deterministic mock coverage.
-- Add live-store tests proving the provider returns event-specific questions for at least three event types.
-- Add failure tests for missing provider configuration and missing profile permission.
-- Keep page tests proving `/app/events/[id]` and `/app/events/[id]/register` label answers as staged until confirmation.
-- Keep degraded-route tests proving a known registerable event still shows the stable event summary and registration-guide CTA before any event-workspace failure copy.
+- Repeating the same registration request returns the unchanged record.
+- Cancelling an already cancelled registration returns the unchanged record.
+- Re-registering changes the same record back to `rsvped`, preserves `registeredAt`, and sets `reactivatedAt`.
+- Cancellation does not send organizer messages, request refunds, add or remove calendar events, or deliver notifications.
+
+The provider stores records in `event_registrations` through the configured Postgres live-record store. Local runtimes without a database use the process-level memory live-record store so the UI remains testable.
+
+## API And UI
+
+- `GET /api/events/[id]/registration` returns the current registration and, unless disabled, generated questions.
+- `POST /api/events/[id]/registration` creates, updates, or reactivates the current user’s registration.
+- `POST /api/events/[id]/registration/cancel` cancels it.
+
+`/app/events/[id]/register` renders the participant-profile workspace. The activity detail client reads `GET ...?questions=false` and uses that registration record—not fixture RSVP flags—to control its registration CTA and attendee-list gate.
+
+## Verification
+
+- `tests/capabilities/event-registration-live.test.ts`
+- `tests/api/event-registration-routes.test.ts`
+- `tests/pages/app-event-registration-guide.test.tsx`
+- `tests/pages/app-event-detail-live-route-services.test.ts`

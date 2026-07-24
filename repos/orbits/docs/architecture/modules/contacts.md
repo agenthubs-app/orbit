@@ -26,9 +26,11 @@ Contacts live mode 读取共享 live storage 的 generated relationship graph：
 - 联系人详情页不是新的数据层。它组合 Contacts、Connections 和 Analysis 三个 feature service；live 模式下先按 `contactId` 读取一次 shared focused graph，再把同一 graph 复用给 contact detail、connection evidence 和 relationship value scoring，避免重复读取全量 `contacts` / `connections` / `evidence`。
 - `/app/contacts/[id]` 现在通过 `loadAppContactDetailRoute` 初始化页面。页面 adapter 只负责把 route success model 映射到既有详情 UI 的 `OrbitContactsViewModel` 形状；空态、pending 和 failure 通过 shared `StateView` 展示。
 - `/app/contacts/pipeline`、`/app/contacts/graph` 和 `/app/contacts/intros` 现在也通过 `loadAppContactsRouteViewModel` 读取 live-capable contacts payload。它们的 `contacts-subroute-route-adapter.tsx` 只是旧 UI 兼容层：把 contacts payload 映射成既有 `OrbitContactsViewModel`，不新增 storage 查询、不读取 fixture、不绕过 contacts service。
+- 复核后的名片草稿通过独立的 `BusinessCardContactWriteService` 写入 `contacts`。`POST /api/contacts/business-card/confirm` 要求显式 `confirmed=true`、纠正后的字段、图片摘要和 evidence ids；服务用 draft id 派生稳定 contact id，实现同草稿幂等。
+- 写入前按规范化邮箱，再按姓名/公司组合检查现有联系人。命中重复项时返回 `duplicate_review` 并执行零写入；成功创建使用现有关系阶段 `captured` 和 `business_card_ocr` source。原始名片图片不属于 Contacts 数据。
 
 如果 live storage 未配置，feature service 和 page-level route 都必须返回受控失败，不能回退到 mock 数据。
 
 ## 热拔插边界
 
-调用方必须通过 `features/contacts/service-factory.ts` 获取 list/search/filter 和 detail/tag/status 服务。真实联系人存储可以独立接入，不改变页面或 API route。
+调用方必须通过 `features/contacts/service-factory.ts` 获取 list/search/filter、detail/tag/status 和 business-card contact-write 服务。真实联系人存储可以独立接入，不改变页面或 API route。

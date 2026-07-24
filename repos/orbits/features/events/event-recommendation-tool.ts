@@ -131,7 +131,9 @@ function tokensFor(query: string): readonly string[] {
     .filter((token) => token.length >= 2);
   // \u4e2d\u6587/\u65e5\u6587\u53e5\u5b50\u91cc\u5d4c\u7740\u7684\u62c9\u4e01\u8bcd\uff08"\u53c2\u52a0AI\u76f8\u5173\u7684\u6d3b\u52a8"\u91cc\u7684 ai\uff09\u5355\u72ec\u62bd\u51fa\u6765\uff0c
   // \u5426\u5219\u6574\u6bb5 CJK \u8fde\u4e32\u6c38\u8fdc\u5339\u914d\u4e0d\u5230\u6d3b\u52a8\u6587\u672c\u91cc\u7684\u82f1\u6587\u5173\u952e\u8bcd\u3002
-  const embeddedLatinTokens = (lowered.match(/[a-z0-9]+/g) ?? []).filter(
+  const embeddedLatinMatches: readonly string[] =
+    lowered.match(/[a-z0-9]+/g) ?? [];
+  const embeddedLatinTokens = embeddedLatinMatches.filter(
     (token) => token.length >= 2,
   );
 

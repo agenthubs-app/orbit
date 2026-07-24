@@ -7,6 +7,7 @@ import type { OrbitHomeAccountView, OrbitHomeViewModel } from "../orbit-home-rou
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
+import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 import {
   localizeHomeHeadline,
   localizeHomeList,
@@ -185,6 +186,14 @@ function eventPlace(event: OrbitLandingEventView, t: Translate) {
   return event.place || event.venue || t({ en: "Venue TBD", zh: "地点待定" });
 }
 
+function eventImageAsset(event: OrbitLandingEventView) {
+  return getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
+}
+
+function eventImageUrl(event: OrbitLandingEventView) {
+  return event.detailLogoUrl || event.logoUrl || eventImageAsset(event)?.src || "";
+}
+
 function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate }) {
   const date = homeDate(event.startsAt, language, t);
   const place = eventPlace(event, t);
@@ -244,29 +253,59 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
   const enterLabel = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : t({ en: "Enter event", zh: "进入活动" });
   const name = event.name;
   const place = eventPlace(event, t);
+  const imageAsset = eventImageAsset(event);
+  const seenTopics = new Set<string>();
+  const topics = [event.industry, event.theme, ...event.tags]
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seenTopics.has(key)) return false;
+      seenTopics.add(key);
+      return true;
+    })
+    .slice(0, 3);
   const content = (
     <>
-      <Cover className="orbit-account-event-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 46, text: name.slice(0, 1) }} style={{ opacity: event.status === "ended" ? 0.72 : 1 }}>
-        <span className="orbit-account-event-status"><StatusBadge language={language} status={event.status} /></span>
-        <span className="orbit-card-date"><span style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
+      <Cover className="orbit-account-event-module-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={eventImageUrl(event)} monogram={null} style={{ opacity: event.status === "ended" ? 0.78 : 1 }}>
+        <span className="orbit-account-event-module-cover-top">
+          <StatusBadge language={language} status={event.status} />
+          <span className="orbit-card-date"><span style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
+        </span>
       </Cover>
-      <span className="orbit-account-event-body">
-        <span><h3 className="h-section orbit-account-event-name" style={{ margin: 0 }}>{name}</h3>{event.code ? <span className="orbit-account-event-sub">{event.code}</span> : null}</span>
-        <span className="orbit-account-event-meta"><Icon color="var(--text-3)" name="clock" size={15} />{date.time}</span>
-        {place ? <span className="orbit-account-event-meta"><Icon color="var(--text-3)" name="pin" size={15} />{place}</span> : null}
-        <span className="orbit-account-event-foot">
-          <span style={{ color: "var(--text-3)", fontSize: 13 }}>{event.status === "ended" ? t({ en: "Past event", zh: "个人历史活动" }) : t({ en: "Registered event", zh: "个人报名活动" })}</span>
-          <span className={canEnter ? "btn btn-soft btn-sm" : "orbit-account-event-link"}>{canEnter ? enterLabel : t({ en: "View event", zh: "查看活动" })}{canEnter ? <Icon name="arrowUR" size={14} /> : <Icon name="chevR" size={14} />}</span>
+      <span className="orbit-account-event-module-body">
+        <span className="orbit-account-event-module-copy">
+          <span>{event.theme || event.industry || event.host}</span>
+          <strong>{name}</strong>
+        </span>
+        {topics.length ? (
+          <span className="orbit-account-event-module-topic-row">
+            {topics.map((topicItem) => <span key={topicItem}>{topicItem}</span>)}
+          </span>
+        ) : null}
+        <span className="orbit-account-event-module-meta">
+          <span><Icon color="var(--text-3)" name="clock" size={15} />{date.time}</span>
+          {place ? <span><Icon color="var(--text-3)" name="pin" size={15} />{place}</span> : null}
+          <span><Icon color="var(--text-3)" name="users" size={15} />{event.participantCount} 人已报名</span>
+        </span>
+        <span className="orbit-account-event-module-foot">
+          <span>{event.status === "ended" ? t({ en: "Review event context", zh: "回看活动背景" }) : t({ en: "Open event context", zh: "打开活动背景" })}</span>
+          <strong>{canEnter ? enterLabel : t({ en: "View event", zh: "查看活动" })}{canEnter ? <Icon name="arrowUR" size={14} /> : <Icon name="chevR" size={14} />}</strong>
         </span>
       </span>
     </>
   );
+  const dataProps = {
+    "data-demo-visual-asset-id": imageAsset?.assetId,
+    "data-demo-visual-source": imageAsset?.sourceLabel,
+    "data-demo-visual-source-label": imageAsset?.sourceLabel,
+  };
 
   if (!canEnter) {
-    return <a className="card card-hover orbit-account-event-card" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={{ textDecoration: "none" }}>{content}</a>;
+    return <a {...dataProps} className="card card-hover orbit-account-event-module-card" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={{ textDecoration: "none" }}>{content}</a>;
   }
 
-  return <button className="card card-hover orbit-account-event-card" onClick={enterEvent} type="button">{content}</button>;
+  return <button {...dataProps} className="card card-hover orbit-account-event-module-card" onClick={enterEvent} type="button">{content}</button>;
 }
 
 function AccountEventsBlock({ events, language, t }: { events: OrbitLandingEventView[]; language: OrbitLanguage; t: Translate }) {
@@ -276,16 +315,16 @@ function AccountEventsBlock({ events, language, t }: { events: OrbitLandingEvent
 
   return (
     <section>
-      <div className="orbit-filter-row">
+      <div className="orbit-account-event-module-list">
+        {list.map((event) => <AccountEventCard event={event} key={event.id} language={language} t={t} />)}
+        {!list.length ? <div className="card-flat orbit-empty">{t({ en: "No events in this state.", zh: "当前没有这个状态的活动。" })}</div> : null}
+      </div>
+      <div className="orbit-filter-row orbit-account-event-filter-row">
         {homeFilters(t).map(([key, label]) => (
           <button className={`chip${tab === key ? " is-active" : ""}`} key={key} onClick={() => setTab(key)} type="button">
             {label}<span className="mono" style={{ fontSize: 11, marginLeft: 2, opacity: 0.62 }}>{counts[key]}</span>
           </button>
         ))}
-      </div>
-      <div className="orbit-account-events-grid">
-        {list.map((event) => <AccountEventCard event={event} key={event.id} language={language} t={t} />)}
-        {!list.length ? <div className="card-flat orbit-empty">{t({ en: "No events in this state.", zh: "当前没有这个状态的活动。" })}</div> : null}
       </div>
     </section>
   );
