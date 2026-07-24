@@ -6,6 +6,7 @@ import { getOrbitPartyViewModel, type OrbitPartyPersonView, type OrbitPartyViewM
 import { useOrbitLanguage } from "../orbit-language-context";
 import { PublicTopNav } from "../orbit-public-shell";
 import { Icon, Logo } from "../orbit-reference-primitives";
+import { ORBIT_Z } from "../orbit-z";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -683,7 +684,7 @@ function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; pers
   }, [onClose]);
 
   return (
-    <div onClick={onClose} style={{ alignItems: "flex-end", background: "var(--scrim)", display: "flex", inset: 0, justifyContent: "center", padding: 16, position: "fixed", zIndex: 100 }}>
+    <div onClick={onClose} style={{ alignItems: "flex-end", background: "var(--scrim)", display: "flex", inset: 0, justifyContent: "center", padding: 16, position: "fixed", zIndex: ORBIT_Z.modal }}>
       <div className="card" onClick={(event) => event.stopPropagation()} style={{ borderRadius: "var(--r-xl)", maxHeight: "88vh", overflowY: "auto", width: "min(100%, 460px)" }}>
         <div style={{ background: "var(--surface)", padding: "16px 18px 0", position: "sticky", top: 0 }}>
           <button aria-label={t({ en: "Back to graph", zh: "返回图谱" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
@@ -857,7 +858,7 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
 
   return (
     <div className="orbit-party-graph-screen" data-orbit-real-page style={{ minHeight: "100dvh" }}>
-      <div style={{ margin: "0 auto", maxWidth: 720, minHeight: "100dvh", padding: "18px clamp(16px,4vw,32px) 48px", position: "relative", zIndex: 1 }}>
+      <div style={{ margin: "0 auto", maxWidth: 720, minHeight: "100dvh", padding: "18px clamp(16px,4vw,32px) 48px", position: "relative", zIndex: ORBIT_Z.raised }}>
         <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between" }}>
           <button aria-label={t({ en: "Back", zh: "返回" })} className="btn btn-ghost hit-44" onClick={() => navigateTo("/app/party")} style={{ minWidth: 40, padding: 0 }} type="button">
             <Icon name="chevL" size={18} />

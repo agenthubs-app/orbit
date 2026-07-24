@@ -6,6 +6,7 @@ import { useOrbitLanguage } from "./orbit-language-context";
 import { OrbitTopNav, productHref } from "./orbit-public-shell";
 import { Icon, Logo } from "./orbit-reference-primitives";
 import { RelationshipInboxTrigger } from "./inbox/relationship-inbox-panel";
+import { ORBIT_Z } from "./orbit-z";
 
 function accountHref(prototypeHref: string) {
   if (prototypeHref === "/home") return "/app/home";
@@ -89,7 +90,7 @@ export function MobileBar({
         padding: "0 16px",
         position: "relative",
         width: "100%",
-        zIndex: 20,
+        zIndex: ORBIT_Z.raised,
       }}
     >
       {onBack ? (
@@ -184,7 +185,7 @@ export function ModalShell({
   }, [focusable, onClose]);
 
   return (
-    <div className="orbit-modal-overlay" style={{ alignItems: "center", display: "flex", inset: 0, justifyContent: "center", position: "absolute", zIndex: 200 }}>
+    <div className="orbit-modal-overlay" style={{ alignItems: "center", display: "flex", inset: 0, justifyContent: "center", position: "absolute", zIndex: ORBIT_Z.modal }}>
       <div className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
       <div
         aria-label={label ?? t({ en: "Dialog", zh: "对话框" })}
@@ -192,7 +193,7 @@ export function ModalShell({
         className="orbit-modal-card card"
         ref={cardRef}
         role="dialog"
-        style={{ animation: "pop .2s cubic-bezier(.22,1,.36,1)", borderRadius: 20, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", margin: 16, maxHeight: "92%", outline: "none", overflow: "hidden", position: "relative", width: `min(100%, ${maxW}px)`, zIndex: 1 }}
+        style={{ animation: "pop .2s cubic-bezier(.22,1,.36,1)", borderRadius: 20, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", margin: 16, maxHeight: "92%", outline: "none", overflow: "hidden", position: "relative", width: `min(100%, ${maxW}px)`, zIndex: ORBIT_Z.raised }}
         tabIndex={-1}
       >
         <div style={{ alignItems: "center", display: "flex", gap: 12, padding: "20px 22px 6px" }}>

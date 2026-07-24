@@ -16,6 +16,7 @@ import { Avatar, Icon } from "../orbit-reference-primitives";
 import { openRelationshipInboxCompose } from "../inbox/relationship-inbox-panel";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
+import { ORBIT_Z } from "../orbit-z";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -548,7 +549,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             padding: "10px 18px",
             position: "fixed",
             transform: "translateX(-50%)",
-            zIndex: 200,
+            zIndex: ORBIT_Z.toast,
           }}
         >
           {toast}

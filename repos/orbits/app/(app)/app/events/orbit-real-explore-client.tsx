@@ -7,6 +7,7 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref, PublicTopNav } from "../orbit-public-shell";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
+import { ORBIT_Z } from "../orbit-z";
 
 const tz = { timeZone: "Asia/Tokyo" };
 const statusFilters = ["all", "upcoming", "active", "ended"] as const;
@@ -158,7 +159,7 @@ function MapCanvas({ items, selected, onSelect }: { items: MappedEvent[]; select
       {items.map((item) => {
         const on = selected?.id === item.id;
         return (
-          <button key={item.id} type="button" onClick={() => onSelect(item)} style={{ background: "none", border: "none", cursor: "pointer", left: `${item.pos.x}%`, padding: 0, position: "absolute", top: `${item.pos.y}%`, transform: "translate(-50%,-100%)", zIndex: on ? 20 : 10 }}>
+          <button key={item.id} type="button" onClick={() => onSelect(item)} style={{ background: "none", border: "none", cursor: "pointer", left: `${item.pos.x}%`, padding: 0, position: "absolute", top: `${item.pos.y}%`, transform: "translate(-50%,-100%)", zIndex: on ? ORBIT_Z.raised + 10 : ORBIT_Z.raised }}>
             <div style={{ position: "relative", transform: on ? "scale(1.15)" : "scale(1)", transition: "transform .15s" }}>
               <svg aria-hidden height={on ? 56 : 46} style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.22))", height: on ? 56 : 46, maxWidth: "none", width: on ? 44 : 36 }} viewBox="0 0 36 46" width={on ? 44 : 36}>
                 <path d="M18 1C9 1 2 8 2 17c0 11 16 27 16 27s16-16 16-27c0-9-7-16-16-16Z" fill={on ? "var(--accent)" : "#fff"} stroke={on ? "var(--accent)" : "var(--border-2)"} strokeWidth="1" />

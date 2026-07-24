@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { useOrbitLanguage } from "./orbit-language-context";
 import { Avatar, Icon, Logo, gradientFromString } from "./orbit-reference-primitives";
 import { productHref } from "./orbit-product-href";
+import { ORBIT_Z } from "./orbit-z";
 
 export type OrbitNavActive = "home" | "today" | "events" | "schedule" | "cards" | "agent" | "me";
 
@@ -130,7 +131,7 @@ function OrbitNavAccountControl({ meHref }: { meHref: string }) {
             position: "absolute",
             right: 0,
             top: 40,
-            zIndex: 60,
+            zIndex: ORBIT_Z.dropdown,
           }}
         >
           <div style={{ borderBottom: "1px solid var(--border)", margin: "0 4px 5px", padding: "8px 6px 10px" }}>

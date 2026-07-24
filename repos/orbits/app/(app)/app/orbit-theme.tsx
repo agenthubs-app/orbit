@@ -195,7 +195,9 @@ html[data-theme="light"] [data-orbit-real-page] .orbit-view-toggle button.is-act
   position: fixed;
   right: 18px;
   bottom: 18px;
-  z-index: 9999;
+  /* Below overlays/dropdowns/modals/toasts (see app/(app)/app/orbit-z.ts) by
+     design — the toggle must not float above sheets, menus, or dialogs. */
+  z-index: 100;
   display: inline-flex;
   align-items: center;
   justify-content: center;

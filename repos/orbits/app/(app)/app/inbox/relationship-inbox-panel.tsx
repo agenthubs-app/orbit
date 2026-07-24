@@ -26,6 +26,7 @@ import {
   type InboxThreadDetail,
   type InboxThreadListItem,
 } from "./inbox-panel-view-model";
+import { ORBIT_Z } from "../orbit-z";
 
 type InboxTab = "threads" | "alerts";
 
@@ -1093,7 +1094,7 @@ function RelationshipInboxPanel({
   return (
     <div
       data-orbit-real-page="relationship-inbox"
-      style={{ inset: 0, position: "fixed", zIndex: 300 }}
+      style={{ inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}
     >
       <div
         aria-hidden="true"

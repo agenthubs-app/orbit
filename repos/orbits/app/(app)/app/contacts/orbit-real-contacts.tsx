@@ -19,6 +19,7 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
+import { ORBIT_Z } from "../orbit-z";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -484,7 +485,7 @@ function MobilePipeline({
 
         return (
           <div key={status.value} style={{ marginBottom: 14 }}>
-            <div aria-expanded={!isCollapsed} aria-label={isCollapsed ? t({ en: "Expand stage", zh: "展开阶段" }) : t({ en: "Collapse stage", zh: "收起阶段" })} onClick={() => setCollapsed((current) => ({ ...current, [status.value]: !current[status.value] }))} role="button" style={{ alignItems: "center", background: "var(--bg)", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", gap: 8, padding: "10px 0", position: "sticky", top: 0, zIndex: 5 }}>
+            <div aria-expanded={!isCollapsed} aria-label={isCollapsed ? t({ en: "Expand stage", zh: "展开阶段" }) : t({ en: "Collapse stage", zh: "收起阶段" })} onClick={() => setCollapsed((current) => ({ ...current, [status.value]: !current[status.value] }))} role="button" style={{ alignItems: "center", background: "var(--bg)", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", gap: 8, padding: "10px 0", position: "sticky", top: 0, zIndex: ORBIT_Z.sticky }}>
               <Icon name={isCollapsed ? "chevR" : "chevD"} size={16} color="var(--text-3)" />
               <span style={{ background: color, borderRadius: "var(--r-pill)", height: 9, width: 9 }} />
               <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{status.label}</span>
@@ -1310,7 +1311,7 @@ export function OrbitRealCardDetail({
         </div>
         <div style={{ margin: "0 auto", maxWidth: 880, padding: "0 32px 60px", width: "100%" }}>
           {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
-          <div style={{ alignItems: "flex-end", display: "flex", gap: 18, marginTop: -26, position: "relative", zIndex: 1 }}>
+          <div style={{ alignItems: "flex-end", display: "flex", gap: 18, marginTop: -26, position: "relative", zIndex: ORBIT_Z.raised }}>
             <Avatar letter={crmInitial(connection.displayName)} g={cover} ring="var(--bg)" size={92} />
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ margin: 0, whiteSpace: "nowrap" }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 15, marginTop: 3 }}>{roleLine}</div></div>
           </div>
@@ -1328,7 +1329,7 @@ export function OrbitRealCardDetail({
         </div>
         <div style={{ padding: "0 18px 24px 18px" }}>
           {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
-          <div style={{ alignItems: "flex-end", display: "flex", gap: 14, marginTop: -26, position: "relative", zIndex: 1 }}>
+          <div style={{ alignItems: "flex-end", display: "flex", gap: 14, marginTop: -26, position: "relative", zIndex: ORBIT_Z.raised }}>
             <Avatar letter={crmInitial(connection.displayName)} g={cover} ring="var(--bg)" size={80} />
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ margin: 0 }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 3 }}>{roleLine}</div></div>
           </div>

@@ -7,6 +7,7 @@ import { useOrbitLanguage, type OrbitLanguage } from "../../orbit-language-conte
 import { productHref, PublicTopNav } from "../../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
+import { ORBIT_Z } from "../../orbit-z";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -301,7 +302,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
         </div>
       </section>
 
-      <div className="orbit-mobile-only orbit-sticky-cta" style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "var(--glass-chip)", backdropFilter: "blur(14px)", borderTop: "1px solid var(--border)", gap: 10, zIndex: 40 }}>
+      <div className="orbit-mobile-only orbit-sticky-cta" style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "var(--glass-chip)", backdropFilter: "blur(14px)", borderTop: "1px solid var(--border)", gap: 10, zIndex: ORBIT_Z.sticky }}>
         {primaryAction(event, t, registrationStatus, 1.2)}{enterAction(event, t, youRsvped)}
       </div>
     </>

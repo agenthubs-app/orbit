@@ -5,6 +5,7 @@ import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { productHref } from "../orbit-product-href";
 import { PublicTopNav } from "../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
+import { ORBIT_Z } from "../orbit-z";
 
 type T = (copy: { en: string; zh: string }) => string;
 
@@ -93,7 +94,7 @@ export function OrbitRealOrganizerPublic({ language = "zh", viewModel }: { langu
           <a aria-label={t({ en: "Back to events", zh: "返回活动" })} className="hit-44" href="/app/events" style={{ alignItems: "center", background: "var(--glass-chip)", border: "none", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-sm)", color: "var(--ink)", cursor: "pointer", display: "inline-flex", fontSize: 14, fontWeight: 600, gap: 6, height: 36, left: 24, padding: "0 14px", position: "absolute", textDecoration: "none", top: 18 }}><Icon name="back" size={16} />{t({ en: "Back", zh: "返回" })}</a>
         </div>
         <div style={{ margin: "0 auto", maxWidth: 1080, padding: "0 40px 80px" }}>
-          <div style={{ alignItems: "flex-end", display: "flex", gap: 18, paddingTop: 14, position: "relative", zIndex: 1 }}>
+          <div style={{ alignItems: "flex-end", display: "flex", gap: 18, paddingTop: 14, position: "relative", zIndex: ORBIT_Z.raised }}>
             <span style={{ display: "inline-flex", flexShrink: 0, marginTop: -56 }}><Avatar g="g-indigo" letter={viewModel.initial} ring="var(--bg)" size={88} /></span>
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 2 }}>
               <h1 className="h-display" style={{ margin: 0 }}>{viewModel.name}</h1>

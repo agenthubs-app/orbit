@@ -1796,6 +1796,16 @@ const reactReferenceIsolationStyles = `
   --sh-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.55);
   --sh-lg: 0 8px 16px rgba(0, 0, 0, 0.45), 0 24px 56px -12px rgba(123, 108, 232, 0.25);
   --sh-pop: 0 12px 32px rgba(0, 0, 0, 0.6), 0 40px 80px -20px rgba(123, 108, 232, 0.35);
+  /* Radius scale — migrated from public/orbit-reference/orbit-reference.html
+     (the prototype asset previously the ONLY source of these values, extracted
+     at runtime by 152 call sites). This block is now the single source of
+     truth; radius is theme-independent so it is defined once here. */
+  --r-xs: 7px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
   --ff: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --ff-tight: 'Noto Serif SC', 'Songti SC', Georgia, serif;
   --ff-mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace;

@@ -6,6 +6,7 @@ import { AccountTopNav, MobileBar, orbitNavigate, StatusBar } from "../orbit-acc
 import { useOrbitLanguage } from "../orbit-language-context";
 import type { OrbitProfileView, OrbitProfileViewModel } from "../orbit-profile-route-view-model";
 import { Avatar, gradientFromString, Icon, Logo } from "../orbit-reference-primitives";
+import { ORBIT_Z } from "../orbit-z";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -547,7 +548,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
               <EditSections {...editProps} />
             </div>
           </div>
-          <div style={{ backdropFilter: "blur(14px)", background: "var(--glass-bar)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", padding: "14px 40px", position: "sticky", zIndex: 5 }}>
+          <div style={{ backdropFilter: "blur(14px)", background: "var(--glass-bar)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", padding: "14px 40px", position: "sticky", zIndex: ORBIT_Z.sticky }}>
             <button className="btn btn-ghost" onClick={() => orbitNavigate("/home")} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
             <button className="btn btn-primary" disabled={saving} type="submit"><Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save profile", zh: "保存档案" })}</button>
           </div>

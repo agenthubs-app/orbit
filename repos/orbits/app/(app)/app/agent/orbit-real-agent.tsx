@@ -18,6 +18,7 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, gradientFromString } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
+import { ORBIT_Z } from "../orbit-z";
 
 interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
@@ -872,7 +873,7 @@ function AgentHistoryList({
                               position: "absolute",
                               right: 2,
                               top: 36,
-                              zIndex: 20,
+                              zIndex: ORBIT_Z.dropdown,
                             }}
                           >
                             <button
@@ -1909,7 +1910,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       </div>
 
       {histOpen ? (
-        <div className="orbit-mobile-only" style={{ inset: 0, position: "fixed", zIndex: 90 }}>
+        <div className="orbit-mobile-only" style={{ inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}>
           <div onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
           <div style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}>
             <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
