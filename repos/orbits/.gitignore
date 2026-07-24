@@ -5,3 +5,4 @@ build
 npm-debug.log*
 orbit-local-backup.sql
 tsconfig.tsbuildinfo
+.superpowers/

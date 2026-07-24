@@ -6,6 +6,7 @@ import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model
 import { useOrbitLanguage, type OrbitLanguage } from "../../orbit-language-context";
 import { productHref, PublicTopNav } from "../../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
+import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -314,17 +315,30 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
   const name = event.name || event.code || t({ en: "Event", zh: "活动" });
   const monogram = name.slice(0, 1);
   const codeUpper = String(event.code || "").toUpperCase();
+  const sceneAsset = getDemoEventSceneAsset(event.id);
 
   return (
     <div className="orbit-shell" data-appscroll data-orbit-real-page="event-detail">
       <PublicTopNav active="events" />
       <main>
-        <div className="orbit-desktop-only" style={{ position: "relative", height: 220, overflow: "hidden" }}>
+        <div
+          className="orbit-desktop-only"
+          data-demo-visual-asset-id={sceneAsset?.assetId}
+          data-demo-visual-source={sceneAsset?.sourceLabel}
+          data-demo-visual-source-label={sceneAsset?.sourceLabel}
+          style={{ position: "relative", height: 220, overflow: "hidden" }}
+        >
           <Cover g={cover} imageUrl={event.detailLogoUrl} imageAlt={name} style={{ position: "absolute", inset: 0 }} />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.18))" }} />
           <BackButton t={t} style={{ position: "absolute", top: 18, left: 40, border: "none", background: "var(--glass-chip)", height: 36, padding: "0 14px", borderRadius: "var(--r-pill)", display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--ink)", textDecoration: "none", boxShadow: "var(--sh-sm)" }} />
         </div>
-        <div className="orbit-mobile-only" style={{ position: "relative", height: 248, display: "block" }}>
+        <div
+          className="orbit-mobile-only"
+          data-demo-visual-asset-id={sceneAsset?.assetId}
+          data-demo-visual-source={sceneAsset?.sourceLabel}
+          data-demo-visual-source-label={sceneAsset?.sourceLabel}
+          style={{ position: "relative", height: 248, display: "block" }}
+        >
           <Cover g={cover} imageUrl={event.detailLogoUrl} imageAlt={name} monogram={event.detailLogoUrl ? null : { text: monogram, size: 64 }} style={{ position: "absolute", inset: 0 }} />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.22) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.25))" }} />
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 52, display: "flex", alignItems: "center", padding: "0 16px", gap: 10 }}>

@@ -324,4 +324,3 @@ Confirm from code and tests:
 **Step 6: Integrate**
 
 Fast-forward the verified feature branch into `chat-agent` only if the target files remain clean in the user's primary worktree. Preserve all unrelated dirty files and do not stage them.
-
