@@ -1910,3 +1910,6 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 3. **`mockOutcome: "fail"` fixture**：账本的 entry 级 `failed` 状态与 retry-`undoable` 回归测试目前无法被现有 fixture 覆盖（上一份计划终审的已知缺口）。
 4. **i18n 词典**：新增中文文案在 EN 下不翻译，需要扩展 `localizeOrbitTree` 的词典来源。
 5. **Today「即将发生」区**：设计稿里还有"即将发生 + 与目标联系人重叠"，需要 events/schedule 数据，属于另一条数据链路。
+6. **两个新页面的移动端布局**（终审 2026-07-25 记录）：`/app/today` 与 `/app/contacts/all-actions` 目前只有桌面布局（无 `orbit-desktop-only`/`orbit-mobile-only` 变体）。修复移动端汉堡导航时必须同时给这两页移动端布局，否则修好导航反而暴露破版页面。
+7. **账本 UI 帮助函数去重**：`isLedgerSuccess`/`readLedgerError`/`readParam`/状态标签字典在 Today 与 All actions 各有一份，待抽 `ledger-ui-helpers` 共享模块；all-actions controls 的多余导出一并收掉。
+8. **live provider 落地时**：Today 的 `?entry=` 会命中列表不显示的 deferred 条目（面板与列表不一致）；宽度测试改为递归扫描；补 `mockOutcome:"fail"` fixture。
