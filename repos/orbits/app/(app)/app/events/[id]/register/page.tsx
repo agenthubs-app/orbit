@@ -10,6 +10,14 @@ import type { OrbitLanguage } from "../../../orbit-language-core";
 import { getOrbitServerLanguage } from "../../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../orbit-visual-freeze-runtime";
+import { loadEventForRegistration } from "../../../../../../features/events/registration/event-loader";
+import { generateEventRegistrationQuestions } from "../../../../../../features/events/registration/question-generator";
+import {
+  CURRENT_EVENT_REGISTRATION_PROFILE,
+  CURRENT_EVENT_REGISTRATION_USER_ID,
+  eventRegistrationRuntimeService,
+} from "../../../../../../features/events/registration/runtime";
+import { EventRegistrationWorkspace } from "./event-registration-workspace";
 
 type EventRegistrationSearchParams = Record<
   string,
@@ -66,6 +74,17 @@ function finalStepCue(language: RegistrationProfileGuideLanguage): string {
     en: "Final step: answers remain local until you explicitly confirm them; this page does not write profile updates.",
     zh: "最后一步：明确确认前，回答只保留在本地；这个页面不会写入 Profile。",
   });
+}
+
+function isRegisterableEventForWorkspace(
+  event: Awaited<ReturnType<typeof loadEventForRegistration>>,
+): event is NonNullable<
+  Awaited<ReturnType<typeof loadEventForRegistration>>
+> {
+  return (
+    event !== null &&
+    (event.status === "confirmed" || event.status === "imported")
+  );
 }
 
 function failureTitle(result: Exclude<RegistrationProfileGuideResult, { state: "success" }>) {
@@ -384,6 +403,45 @@ export default async function AppEventRegistrationGuidePage({
     mode: readSearchParam(query, "mode"),
     scenario: readSearchParam(query, "scenario"),
   });
+  const event = await loadEventForRegistration(id);
+
+  if (isRegisterableEventForWorkspace(event)) {
+    const [questionSet, registration] = await Promise.all([
+      generateEventRegistrationQuestions({
+        event,
+        language,
+      }),
+      eventRegistrationRuntimeService.get({
+        eventId: event.id,
+        userId: CURRENT_EVENT_REGISTRATION_USER_ID,
+      }),
+    ]);
+    const profile =
+      result.state === "success"
+        ? {
+            displayName: result.guide.currentUser.displayName,
+            headline: result.guide.currentUser.headline,
+          }
+        : CURRENT_EVENT_REGISTRATION_PROFILE;
+
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <EventRegistrationWorkspace
+          event={{
+            id: event.id,
+            title: event.title,
+            venue: event.venue,
+          }}
+          initialRegistration={registration}
+          language={language}
+          profile={profile}
+          questionSet={questionSet}
+        />
+        <OrbitVisualFreezeRuntime />
+      </>
+    );
+  }
 
   return (
     <>

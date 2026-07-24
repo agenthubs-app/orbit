@@ -6,6 +6,8 @@ import { createLiveFollowupTaskGenerationService } from "./live-service";
 import { createLiveMessageDraftGeneratorService } from "./live-message-draft-service";
 import { createMockMessageDraftGeneratorService } from "./mock-message-draft-service";
 import { createMockFollowupTaskGenerationService } from "./mock-service";
+import { createStagedContactInvitationService } from "./staged-contact-invitation-service";
+import type { ContactInvitationService } from "./contact-invitation-contract";
 import type { MessageDraftGeneratorService } from "./message-draft-contract";
 import type { FollowupTaskGenerationService } from "./service";
 import { createConfiguredStorageFollowupTaskProvider } from "./storage/followup-live-record-provider";
@@ -29,6 +31,18 @@ export const messageDraftGeneratorServiceFactory =
     implementations: {
       live: () => createLiveMessageDraftGeneratorService(),
       mock: () => createMockMessageDraftGeneratorService(),
+    },
+  });
+
+const stagedContactInvitationService =
+  createStagedContactInvitationService();
+
+export const contactInvitationServiceFactory =
+  createModuleServiceFactory<ContactInvitationService>({
+    capabilityId: "contact-invitation-staged",
+    implementations: {
+      live: () => stagedContactInvitationService,
+      mock: () => stagedContactInvitationService,
     },
   });
 
@@ -60,6 +74,24 @@ export function createMessageDraftGeneratorService(
   mode?: ModuleMode | string,
 ): MessageDraftGeneratorService {
   const resolution = resolveMessageDraftGeneratorService(mode);
+
+  if (resolution.success === false) {
+    throw new Error(resolution.error.message);
+  }
+
+  return resolution.service;
+}
+
+export function resolveContactInvitationService(
+  mode?: ModuleMode | string,
+) {
+  return contactInvitationServiceFactory.create(mode);
+}
+
+export function createContactInvitationService(
+  mode?: ModuleMode | string,
+): ContactInvitationService {
+  const resolution = resolveContactInvitationService(mode);
 
   if (resolution.success === false) {
     throw new Error(resolution.error.message);

@@ -33,3 +33,9 @@ export function enabledOAuthProviders(): readonly OrbitOAuthProviderId[] {
     return hasId && hasSecret;
   });
 }
+
+export function isOAuthProviderEnabled(
+  providerId: OrbitOAuthProviderId,
+): boolean {
+  return enabledOAuthProviders().includes(providerId);
+}

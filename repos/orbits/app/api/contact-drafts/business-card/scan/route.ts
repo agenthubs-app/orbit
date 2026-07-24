@@ -42,6 +42,17 @@ async function readBusinessCardScanInput(
     contentType.includes("multipart/form-data")
   ) {
     const formData = await request.formData();
+    const image = formData.get("image");
+
+    if (image instanceof File) {
+      return {
+        scenario,
+        imageBase64: Buffer.from(await image.arrayBuffer()).toString("base64"),
+        imageName: image.name,
+        imageSizeBytes: image.size,
+        mimeType: image.type,
+      };
+    }
 
     return {
       scenario,
@@ -67,8 +78,15 @@ async function readBusinessCardScanInput(
 
   return {
     scenario,
+    imageBase64:
+      typeof body.imageBase64 === "string" ? body.imageBase64 : undefined,
     imageText: typeof body.imageText === "string" ? body.imageText : undefined,
     imageName: typeof body.imageName === "string" ? body.imageName : undefined,
+    imageSizeBytes:
+      typeof body.imageSizeBytes === "number"
+        ? body.imageSizeBytes
+        : undefined,
+    mimeType: typeof body.mimeType === "string" ? body.mimeType : undefined,
   };
 }
 

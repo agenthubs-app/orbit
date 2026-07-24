@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { useOrbitLanguage } from "../orbit-language-context";
@@ -20,6 +28,36 @@ import {
 } from "./inbox-panel-view-model";
 
 type InboxTab = "threads" | "alerts";
+
+const RELATIONSHIP_INBOX_WIDTH_STORAGE_KEY =
+  "orbit:relationship-inbox:width";
+const RELATIONSHIP_INBOX_DEFAULT_WIDTH = 940;
+const RELATIONSHIP_INBOX_MIN_WIDTH = 560;
+const RELATIONSHIP_INBOX_MAX_WIDTH = 1_180;
+
+function normalizeRelationshipInboxWidth(value: number): number {
+  return Math.min(
+    RELATIONSHIP_INBOX_MAX_WIDTH,
+    Math.max(RELATIONSHIP_INBOX_MIN_WIDTH, Math.round(value)),
+  );
+}
+
+function clampRelationshipInboxWidth(
+  value: number,
+  viewportWidth =
+    typeof window === "undefined" ? RELATIONSHIP_INBOX_MAX_WIDTH : window.innerWidth,
+): number {
+  const maxWidth = Math.max(
+    320,
+    Math.min(RELATIONSHIP_INBOX_MAX_WIDTH, viewportWidth - 24),
+  );
+  const minWidth = Math.min(RELATIONSHIP_INBOX_MIN_WIDTH, maxWidth);
+
+  return Math.min(
+    maxWidth,
+    Math.max(minWidth, normalizeRelationshipInboxWidth(value)),
+  );
+}
 
 interface NewThreadSeed {
   recipient?: string;
@@ -367,14 +405,21 @@ function AlertsTab() {
 }
 
 function ThreadRow({
+  active,
   thread,
   onOpen,
 }: {
+  active: boolean;
   thread: InboxThreadListItem;
   onOpen: () => void;
 }) {
   return (
-    <button className="ri-row" onClick={onOpen} type="button">
+    <button
+      aria-current={active ? "true" : undefined}
+      className={`ri-row${active ? " is-active" : ""}`}
+      onClick={onOpen}
+      type="button"
+    >
       <Avatar letter={initialOf(thread.participantName)} g="g-violet" size={38} />
       <span className="ri-row-main">
         <span className="ri-row-top">
@@ -521,6 +566,69 @@ function ThreadDetailView({
   );
 }
 
+function ThreadContextRail({
+  detail,
+  t,
+}: {
+  detail: InboxThreadDetail;
+  t: (copy: { en: string; zh: string }) => string;
+}) {
+  return (
+    <aside className="ri-thread-context">
+      <div className="ri-context-person">
+        <Avatar
+          letter={initialOf(detail.participantName)}
+          g="g-violet"
+          size={46}
+        />
+        <div>
+          <div className="ri-context-name">{detail.participantName}</div>
+          <div className="ri-context-org">
+            {detail.organization ||
+              t({ en: "Organization not listed", zh: "未填写组织" })}
+          </div>
+        </div>
+      </div>
+
+      <div className="ri-context-section">
+        <div className="ri-context-label">
+          {t({ en: "Relationship context", zh: "关系上下文" })}
+        </div>
+        <p className="ri-context-summary">
+          {detail.summary ||
+            t({
+              en: "Review the conversation before deciding the next follow-up.",
+              zh: "先复核对话，再决定下一步跟进。",
+            })}
+        </p>
+      </div>
+
+      {detail.sourceContextLabels.length ? (
+        <div className="ri-context-section">
+          <div className="ri-context-label">
+            {t({ en: "Source signals", zh: "来源线索" })}
+          </div>
+          <div className="ri-context-signals">
+            {detail.sourceContextLabels.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="ri-context-safety">
+        <Icon name="lock" size={14} />
+        <span>
+          {t({
+            en: "Draft-only workspace. Nothing is delivered without confirmation.",
+            zh: "仅用于草稿复核。未经确认不会投递任何内容。",
+          })}
+        </span>
+      </div>
+    </aside>
+  );
+}
+
 // 发起新对话：填写收件人 → AI 生成草稿 → 确认创建 staged 线程。
 // 生成走 message-draft-generator，创建走 async createConversationFromDraft，
 // 全程草稿优先、不发送、无外部副作用。
@@ -641,6 +749,7 @@ function ThreadsTab({
   const [openId, setOpenId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [created, setCreated] = useState<ReturnType<typeof toCreatedThread>[]>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -677,26 +786,6 @@ function ThreadsTab({
       .catch(() => undefined);
   };
 
-  if (composing) {
-    return (
-      <NewThreadForm
-        initialOrganization={newThreadSeed?.organization}
-        initialRecipient={newThreadSeed?.recipient}
-        onCancel={() => {
-          setComposing(false);
-          onNewThreadConsumed?.();
-        }}
-        onCreated={(entry) => {
-          setCreated((prev) => [entry, ...prev]);
-          setComposing(false);
-          setOpenId(entry.detail.conversationId);
-          onNewThreadConsumed?.();
-        }}
-        t={t}
-      />
-    );
-  }
-
   if (state === "loading") {
     return <EmptyState hint={t({ en: "Loading conversations…", zh: "正在加载对话…" })} icon="message" title={t({ en: "Loading", zh: "加载中" })} />;
   }
@@ -710,36 +799,126 @@ function ThreadsTab({
     openId && viewModel.selected && viewModel.selected.conversationId === openId
       ? viewModel.selected
       : null;
-  const detail = createdDetail ?? fetchedDetail;
-
-  if (openId && detail) {
-    return (
-      <ThreadDetailView
-        currentUserName={viewModel.currentUserName}
-        detail={detail}
-        onBack={() => setOpenId(null)}
-        t={t}
-      />
-    );
-  }
+  const detail =
+    createdDetail ??
+    fetchedDetail ??
+    (openId === null ? viewModel.selected : null);
 
   const allThreads = [...created.map((entry) => entry.item), ...viewModel.threads];
+  const query = search.trim().toLocaleLowerCase();
+  const visibleThreads = query
+    ? allThreads.filter((thread) =>
+        [
+          thread.participantName,
+          thread.subject,
+          thread.preview,
+        ]
+          .join(" ")
+          .toLocaleLowerCase()
+          .includes(query),
+      )
+    : allThreads;
+  const activeId = detail?.conversationId ?? null;
 
   return (
-    <div>
-      <div className="ri-list-head">
-        <span className="ri-list-count">{t({ en: "Conversations", zh: "对话" })}</span>
-        <button className="btn btn-primary btn-sm" onClick={() => setComposing(true)} type="button">
-          <Icon name="mail" size={15} />
-          {t({ en: "New", zh: "发起" })}
-        </button>
-      </div>
-      {allThreads.length ? (
-        allThreads.map((thread) => (
-          <ThreadRow key={thread.conversationId} onOpen={() => openThread(thread.conversationId)} thread={thread} />
-        ))
+    <div
+      className={`ri-thread-workspace${openId || composing ? " has-open-thread" : ""}`}
+    >
+      <aside className="ri-thread-list">
+        <div className="ri-list-head">
+          <div>
+            <span className="ri-list-count">
+              {t({ en: "Conversation history", zh: "对话历史" })}
+            </span>
+            <span className="ri-list-total">
+              {allThreads.length}
+            </span>
+          </div>
+          <button
+            aria-label={t({ en: "New conversation", zh: "发起新对话" })}
+            className="ri-new-thread"
+            onClick={() => setComposing(true)}
+            type="button"
+          >
+            <Icon name="plus" size={16} />
+          </button>
+        </div>
+        <label className="ri-thread-search">
+          <Icon name="search" size={15} />
+          <input
+            aria-label={t({
+              en: "Search conversation history",
+              zh: "搜索对话历史",
+            })}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t({ en: "Search conversations", zh: "搜索对话" })}
+            type="search"
+            value={search}
+          />
+        </label>
+        <div className="ri-thread-scroll scroll">
+          {visibleThreads.length ? (
+            visibleThreads.map((thread) => (
+              <ThreadRow
+                active={thread.conversationId === activeId}
+                key={thread.conversationId}
+                onOpen={() => openThread(thread.conversationId)}
+                thread={thread}
+              />
+            ))
+          ) : (
+            <EmptyState
+              hint={t({
+                en: "Try another name or subject.",
+                zh: "换一个姓名或主题试试。",
+              })}
+              icon="search"
+              title={t({ en: "No matches", zh: "没有匹配对话" })}
+            />
+          )}
+        </div>
+      </aside>
+
+      <section className="ri-thread-main">
+        {composing ? (
+          <NewThreadForm
+            initialOrganization={newThreadSeed?.organization}
+            initialRecipient={newThreadSeed?.recipient}
+            onCancel={() => {
+              setComposing(false);
+              onNewThreadConsumed?.();
+            }}
+            onCreated={(entry) => {
+              setCreated((previous) => [entry, ...previous]);
+              setComposing(false);
+              setOpenId(entry.detail.conversationId);
+              onNewThreadConsumed?.();
+            }}
+            t={t}
+          />
+        ) : detail ? (
+          <ThreadDetailView
+            currentUserName={viewModel.currentUserName}
+            detail={detail}
+            onBack={() => setOpenId(null)}
+            t={t}
+          />
+        ) : (
+          <EmptyState
+            hint={t({
+              en: "Select a conversation to review its history and prepare a reply.",
+              zh: "选择一段对话，查看往来历史并准备回复。",
+            })}
+            icon="message"
+            title={t({ en: "Choose a conversation", zh: "选择对话" })}
+          />
+        )}
+      </section>
+
+      {detail && !composing ? (
+        <ThreadContextRail detail={detail} t={t} />
       ) : (
-        <EmptyState hint={t({ en: "Start a new conversation with a contact.", zh: "与联系人发起一段新对话。" })} icon="message" title={t({ en: "No conversations yet", zh: "暂无对话" })} />
+        <aside className="ri-thread-context ri-thread-context-empty" />
       )}
     </div>
   );
@@ -756,8 +935,16 @@ function RelationshipInboxPanel({
   // 带 seed（来自联系人详情页"起草邮件"）时默认进对话 tab。
   const [tab, setTab] = useState<InboxTab>("threads");
   const [seed, setSeed] = useState<NewThreadSeed | null>(initialSeed ?? null);
+  const [panelWidth, setPanelWidth] = useState(
+    RELATIONSHIP_INBOX_DEFAULT_WIDTH,
+  );
+  const [widthHydrated, setWidthHydrated] = useState(false);
+  const [resizing, setResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const resizeOrigin = useRef<{ pointerX: number; width: number } | null>(
+    null,
+  );
 
   const focusable = useCallback(() => {
     const root = panelRef.current;
@@ -804,6 +991,100 @@ function RelationshipInboxPanel({
     };
   }, [focusable, onClose]);
 
+  useEffect(() => {
+    const storedWidth = Number(
+      window.localStorage.getItem(RELATIONSHIP_INBOX_WIDTH_STORAGE_KEY),
+    );
+    if (Number.isFinite(storedWidth) && storedWidth > 0) {
+      setPanelWidth(normalizeRelationshipInboxWidth(storedWidth));
+    } else {
+      setPanelWidth(RELATIONSHIP_INBOX_DEFAULT_WIDTH);
+    }
+    setWidthHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!widthHydrated) return;
+    window.localStorage.setItem(
+      RELATIONSHIP_INBOX_WIDTH_STORAGE_KEY,
+      String(panelWidth),
+    );
+  }, [panelWidth, widthHydrated]);
+
+  useEffect(() => {
+    if (!resizing) return;
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+
+    function onPointerMove(event: PointerEvent) {
+      const origin = resizeOrigin.current;
+      if (!origin) return;
+      setPanelWidth(
+        clampRelationshipInboxWidth(
+          origin.width + origin.pointerX - event.clientX,
+        ),
+      );
+    }
+
+    function onPointerUp() {
+      resizeOrigin.current = null;
+      setResizing(false);
+    }
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [resizing]);
+
+  const startPanelResize = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    resizeOrigin.current = {
+      pointerX: event.clientX,
+      width: panelWidth,
+    };
+    setResizing(true);
+  };
+
+  const resizePanelFromKeyboard = (
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+  ) => {
+    const step = event.shiftKey ? 96 : 32;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      setPanelWidth((current) =>
+        clampRelationshipInboxWidth(current + step),
+      );
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      setPanelWidth((current) =>
+        clampRelationshipInboxWidth(current - step),
+      );
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setPanelWidth(
+        clampRelationshipInboxWidth(RELATIONSHIP_INBOX_DEFAULT_WIDTH),
+      );
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setPanelWidth(
+        clampRelationshipInboxWidth(RELATIONSHIP_INBOX_MIN_WIDTH),
+      );
+    }
+  };
+
   const tabs: { id: InboxTab; icon: string; label: ReactNode }[] = [
     { id: "threads", icon: "message", label: t({ en: "Threads", zh: "对话" }) },
     { id: "alerts", icon: "bell", label: t({ en: "Alerts", zh: "提醒" }) },
@@ -822,7 +1103,7 @@ function RelationshipInboxPanel({
       <div
         aria-label={t({ en: "Relationship inbox", zh: "关系收件箱" })}
         aria-modal="true"
-        className="ri-panel"
+        className={`ri-panel${resizing ? " is-resizing" : ""}`}
         ref={panelRef}
         role="dialog"
         style={{
@@ -832,17 +1113,24 @@ function RelationshipInboxPanel({
           boxShadow: "var(--sh-pop, -8px 0 40px rgba(10,12,16,0.18))",
           display: "flex",
           flexDirection: "column",
-          maxWidth: "92vw",
+          maxWidth: "calc(100vw - 24px)",
           outline: "none",
           position: "absolute",
           right: 0,
           top: 0,
-          width: 420,
+          width: panelWidth,
         }}
         tabIndex={-1}
       >
-        <div style={{ alignItems: "center", borderBottom: "1px solid var(--hairline)", display: "flex", gap: 10, padding: "16px 18px" }}>
-          <h2 className="h-section" style={{ flex: 1, margin: 0 }}>{t({ en: "Inbox", zh: "收件箱" })}</h2>
+        <div className="ri-panel-header">
+          <div>
+            <h2 className="h-section" style={{ margin: 0 }}>
+              {t({ en: "Inbox", zh: "收件箱" })}
+            </h2>
+            <div className="ri-panel-kicker">
+              {t({ en: "Relationships and follow-ups", zh: "关系与跟进" })}
+            </div>
+          </div>
           <button
             aria-label={t({ en: "Close", zh: "关闭" })}
             className="hit-44"
@@ -854,7 +1142,35 @@ function RelationshipInboxPanel({
           </button>
         </div>
 
-        <div role="tablist" style={{ display: "flex", gap: 4, padding: "10px 14px 0" }}>
+        <button
+          aria-label={t({
+            en: "Resize inbox. Use left and right arrow keys.",
+            zh: "调整收件箱宽度，可使用左右方向键。",
+          })}
+          aria-orientation="vertical"
+          aria-valuemax={RELATIONSHIP_INBOX_MAX_WIDTH}
+          aria-valuemin={RELATIONSHIP_INBOX_MIN_WIDTH}
+          aria-valuenow={panelWidth}
+          className="ri-resize-handle"
+          data-relationship-inbox-resize-handle
+          onDoubleClick={() =>
+            setPanelWidth(
+              clampRelationshipInboxWidth(RELATIONSHIP_INBOX_DEFAULT_WIDTH),
+            )
+          }
+          onKeyDown={resizePanelFromKeyboard}
+          onPointerDown={startPanelResize}
+          role="separator"
+          title={t({
+            en: "Drag to resize · Double-click to reset",
+            zh: "拖动调整宽度 · 双击恢复默认",
+          })}
+          type="button"
+        >
+          <span aria-hidden="true" />
+        </button>
+
+        <div className="ri-panel-tabs" role="tablist">
           {tabs.map((item) => (
             <button
               aria-selected={tab === item.id}
@@ -870,7 +1186,7 @@ function RelationshipInboxPanel({
           ))}
         </div>
 
-        <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 8px 16px" }}>
+        <div className={`ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
           {tab === "threads" ? (
             <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} />
           ) : (
@@ -880,7 +1196,7 @@ function RelationshipInboxPanel({
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
-[data-orbit-real-page="relationship-inbox"] .ri-panel { animation: ri-slide .22s cubic-bezier(.22,1,.36,1); }
+[data-orbit-real-page="relationship-inbox"] .ri-panel { animation:ri-slide .22s cubic-bezier(.22,1,.36,1); container:relationship-inbox / inline-size; }
 @keyframes ri-slide { from { transform: translateX(24px); opacity: .6; } to { transform: translateX(0); opacity: 1; } }
 [data-orbit-real-page="relationship-inbox"] .ri-tab { display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; border-radius:var(--r-pill, 999px); border:1px solid transparent; background:transparent; color:var(--text-3); font-family:var(--ff); font-size:13.5px; font-weight:600; cursor:pointer; transition:background .15s, color .15s; }
 [data-orbit-real-page="relationship-inbox"] .ri-tab:hover { color:var(--text); }
@@ -944,6 +1260,97 @@ function RelationshipInboxPanel({
 [data-orbit-real-page="relationship-inbox"] .ri-alert-link { display:inline-flex; align-items:center; gap:5px; margin-top:3px; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none; width:fit-content; }
 [data-orbit-real-page="relationship-inbox"] .ri-alert-dismiss { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:0; border-radius:999px; background:transparent; color:var(--text-3); cursor:pointer; flex-shrink:0; }
 [data-orbit-real-page="relationship-inbox"] .ri-alert-dismiss:hover { background:var(--surface-3); color:var(--text); }
+
+[data-orbit-real-page="relationship-inbox"] .ri-panel-header { min-height:74px; padding:16px 20px 13px; border-bottom:1px solid var(--hairline); display:flex; align-items:center; justify-content:space-between; gap:16px; }
+[data-orbit-real-page="relationship-inbox"] .ri-panel-kicker { margin-top:3px; color:var(--text-3); font-size:11.5px; line-height:1.3; }
+[data-orbit-real-page="relationship-inbox"] .ri-panel-tabs { height:47px; padding:7px 18px 6px; border-bottom:1px solid var(--hairline); display:flex; align-items:center; gap:3px; }
+[data-orbit-real-page="relationship-inbox"] .ri-panel-body { flex:1; min-height:0; overflow:hidden; }
+[data-orbit-real-page="relationship-inbox"] .ri-panel-body.scroll { overflow-y:auto; padding:14px 16px 18px; }
+
+[data-orbit-real-page="relationship-inbox"] .ri-resize-handle { position:absolute; z-index:4; top:0; bottom:0; left:-7px; width:14px; padding:0; border:0; background:transparent; cursor:ew-resize; touch-action:none; }
+[data-orbit-real-page="relationship-inbox"] .ri-resize-handle::before { content:""; position:absolute; inset:0 6px; background:transparent; transition:background .15s; }
+[data-orbit-real-page="relationship-inbox"] .ri-resize-handle span { position:absolute; top:50%; left:3px; width:7px; height:52px; border:1px solid var(--border); border-radius:999px; background:var(--bg); box-shadow:0 2px 10px rgba(22,18,40,.12); opacity:0; transform:translateY(-50%) scale(.9); transition:opacity .15s, transform .15s; }
+[data-orbit-real-page="relationship-inbox"] .ri-resize-handle:hover::before,
+[data-orbit-real-page="relationship-inbox"] .ri-resize-handle:focus-visible::before,
+[data-orbit-real-page="relationship-inbox"] .ri-panel.is-resizing .ri-resize-handle::before { background:var(--accent); }
+[data-orbit-real-page="relationship-inbox"] .ri-resize-handle:hover span,
+[data-orbit-real-page="relationship-inbox"] .ri-resize-handle:focus-visible span,
+[data-orbit-real-page="relationship-inbox"] .ri-panel.is-resizing .ri-resize-handle span { opacity:1; transform:translateY(-50%) scale(1); }
+[data-orbit-real-page="relationship-inbox"] .ri-resize-handle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+[data-orbit-real-page="relationship-inbox"] .ri-thread-workspace { display:grid; grid-template-columns:minmax(248px, 29%) minmax(340px, 1fr) 220px; height:100%; min-height:0; background:var(--bg); }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-list { display:flex; min-width:0; min-height:0; flex-direction:column; border-right:1px solid var(--hairline); background:color-mix(in srgb, var(--surface-2) 52%, var(--bg)); }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-main { min-width:0; min-height:0; overflow-y:auto; background:var(--bg); }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-context { min-width:0; min-height:0; overflow-y:auto; padding:22px 18px; border-left:1px solid var(--hairline); background:color-mix(in srgb, var(--surface-2) 38%, var(--bg)); }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-context-empty { display:block; }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-scroll { flex:1; min-height:0; overflow-y:auto; padding:0 8px 14px; }
+
+[data-orbit-real-page="relationship-inbox"] .ri-list-head { padding:16px 14px 10px; }
+[data-orbit-real-page="relationship-inbox"] .ri-list-count { color:var(--text-2); font-size:12.5px; letter-spacing:0; text-transform:none; }
+[data-orbit-real-page="relationship-inbox"] .ri-list-total { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; margin-left:7px; padding:0 6px; border-radius:999px; background:var(--surface-3); color:var(--text-3); font-size:10.5px; font-weight:700; }
+[data-orbit-real-page="relationship-inbox"] .ri-new-thread { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--accent); cursor:pointer; transition:border-color .15s, background .15s; }
+[data-orbit-real-page="relationship-inbox"] .ri-new-thread:hover { border-color:var(--accent); background:var(--accent-softer); }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-search { height:34px; margin:0 12px 10px; padding:0 10px; border:1px solid var(--hairline); border-radius:9px; background:var(--bg); color:var(--text-3); display:flex; align-items:center; gap:7px; transition:border-color .15s, box-shadow .15s; }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-search:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-softer); }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-search input { width:100%; min-width:0; border:0; outline:0; background:transparent; color:var(--text); font:12.5px/1.3 var(--ff); }
+[data-orbit-real-page="relationship-inbox"] .ri-thread-search input::placeholder { color:var(--text-3); }
+
+[data-orbit-real-page="relationship-inbox"] .ri-row { position:relative; grid-template-columns:36px minmax(0,1fr) auto; gap:10px; padding:11px 10px; border-radius:10px; }
+[data-orbit-real-page="relationship-inbox"] .ri-row::before { content:""; position:absolute; left:0; top:10px; bottom:10px; width:2px; border-radius:999px; background:transparent; }
+[data-orbit-real-page="relationship-inbox"] .ri-row.is-active { background:var(--bg); box-shadow:0 1px 0 rgba(20,16,36,.04), 0 4px 16px rgba(20,16,36,.05); }
+[data-orbit-real-page="relationship-inbox"] .ri-row.is-active::before { background:var(--accent); }
+[data-orbit-real-page="relationship-inbox"] .ri-row.is-active .ri-row-subject { color:var(--text); }
+[data-orbit-real-page="relationship-inbox"] .ri-row-name { font-size:13px; }
+[data-orbit-real-page="relationship-inbox"] .ri-row-subject { font-size:12.5px; }
+[data-orbit-real-page="relationship-inbox"] .ri-row-preview { -webkit-line-clamp:1; font-size:11.75px; }
+
+[data-orbit-real-page="relationship-inbox"] .ri-detail { min-height:100%; gap:0; padding:0; }
+[data-orbit-real-page="relationship-inbox"] .ri-detail-head { position:sticky; z-index:2; top:0; min-height:72px; padding:17px 22px 14px; border-bottom:1px solid var(--hairline); background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(14px); }
+[data-orbit-real-page="relationship-inbox"] .ri-detail > .ri-detail-head .ri-back { display:none; }
+[data-orbit-real-page="relationship-inbox"] .ri-detail-subject { font-size:16px; letter-spacing:-.01em; }
+[data-orbit-real-page="relationship-inbox"] .ri-detail-summary { max-width:620px; }
+[data-orbit-real-page="relationship-inbox"] .ri-src-row { padding:12px 22px 0; }
+[data-orbit-real-page="relationship-inbox"] .ri-msgs { flex:1; gap:15px; padding:22px clamp(20px, 4cqi, 42px) 28px; }
+[data-orbit-real-page="relationship-inbox"] .ri-msg { max-width:min(82%, 560px); padding:10px 13px; border:1px solid var(--hairline); border-radius:5px 14px 14px 14px; background:var(--surface-2); }
+[data-orbit-real-page="relationship-inbox"] .ri-msg.is-me { border-color:color-mix(in srgb, var(--accent) 20%, transparent); border-radius:14px 5px 14px 14px; background:var(--accent-softer); }
+[data-orbit-real-page="relationship-inbox"] .ri-msg-body { font-size:13.75px; line-height:1.58; }
+[data-orbit-real-page="relationship-inbox"] .ri-composer,
+[data-orbit-real-page="relationship-inbox"] .ri-staged { position:sticky; bottom:0; margin:0 20px 18px; padding:14px; border:1px solid var(--border); border-radius:13px; background:color-mix(in srgb, var(--bg) 94%, transparent); box-shadow:0 10px 30px rgba(20,16,36,.09); backdrop-filter:blur(16px); }
+[data-orbit-real-page="relationship-inbox"] .ri-composer-input { min-height:82px; }
+[data-orbit-real-page="relationship-inbox"] .ri-boundary { border:1px solid var(--hairline); background:color-mix(in srgb, var(--surface-2) 70%, var(--bg)); }
+[data-orbit-real-page="relationship-inbox"] .ri-new { max-width:680px; margin:0 auto; padding:22px; }
+
+[data-orbit-real-page="relationship-inbox"] .ri-context-person { display:flex; align-items:center; gap:11px; padding-bottom:19px; border-bottom:1px solid var(--hairline); }
+[data-orbit-real-page="relationship-inbox"] .ri-context-name { color:var(--text); font-size:13.5px; font-weight:700; line-height:1.3; }
+[data-orbit-real-page="relationship-inbox"] .ri-context-org { margin-top:3px; color:var(--text-3); font-size:11.5px; line-height:1.35; }
+[data-orbit-real-page="relationship-inbox"] .ri-context-section { padding:18px 0; border-bottom:1px solid var(--hairline); }
+[data-orbit-real-page="relationship-inbox"] .ri-context-label { margin-bottom:8px; color:var(--text-3); font-size:10.5px; font-weight:750; letter-spacing:.07em; text-transform:uppercase; }
+[data-orbit-real-page="relationship-inbox"] .ri-context-summary { margin:0; color:var(--text-2); font-size:12px; line-height:1.58; }
+[data-orbit-real-page="relationship-inbox"] .ri-context-signals { display:flex; flex-wrap:wrap; gap:6px; }
+[data-orbit-real-page="relationship-inbox"] .ri-context-signals span { padding:5px 7px; border:1px solid var(--hairline); border-radius:7px; background:var(--bg); color:var(--text-2); font-size:10.75px; line-height:1.3; }
+[data-orbit-real-page="relationship-inbox"] .ri-context-safety { display:flex; align-items:flex-start; gap:7px; margin-top:18px; color:var(--text-3); font-size:10.75px; line-height:1.5; }
+[data-orbit-real-page="relationship-inbox"] .ri-context-safety svg { flex:0 0 auto; margin-top:1px; color:var(--accent); }
+
+@container relationship-inbox (max-width: 880px) {
+  [data-orbit-real-page="relationship-inbox"] .ri-thread-workspace { grid-template-columns:minmax(228px, 34%) minmax(0, 1fr); }
+  [data-orbit-real-page="relationship-inbox"] .ri-thread-context { display:none; }
+}
+
+@container relationship-inbox (max-width: 680px) {
+  [data-orbit-real-page="relationship-inbox"] .ri-thread-workspace { display:block; }
+  [data-orbit-real-page="relationship-inbox"] .ri-thread-list,
+  [data-orbit-real-page="relationship-inbox"] .ri-thread-main { width:100%; height:100%; border:0; }
+  [data-orbit-real-page="relationship-inbox"] .ri-thread-main { display:none; }
+  [data-orbit-real-page="relationship-inbox"] .ri-thread-workspace.has-open-thread .ri-thread-list { display:none; }
+  [data-orbit-real-page="relationship-inbox"] .ri-thread-workspace.has-open-thread .ri-thread-main { display:block; }
+  [data-orbit-real-page="relationship-inbox"] .ri-detail > .ri-detail-head .ri-back { display:inline-flex; }
+  [data-orbit-real-page="relationship-inbox"] .ri-detail-head { padding-left:14px; }
+}
+
+@media (max-width: 640px) {
+  [data-orbit-real-page="relationship-inbox"] .ri-panel { width:100vw !important; max-width:100vw !important; border-left:0 !important; }
+  [data-orbit-real-page="relationship-inbox"] .ri-resize-handle { display:none; }
+}
 ` }} />
     </div>
   );

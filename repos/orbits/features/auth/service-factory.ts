@@ -9,6 +9,8 @@ import {
   createStorageAuthUserProvider,
 } from "./storage/auth-user-live-record-provider";
 
+const mockAuthUserStore = createMemoryLiveRecordStore();
+
 export const authUserServiceFactory =
   createModuleServiceFactory<AuthUserService>({
     capabilityId: "auth-user",
@@ -20,7 +22,7 @@ export const authUserServiceFactory =
       mock: () =>
         createAuthUserService({
           provider: createStorageAuthUserProvider({
-            store: createMemoryLiveRecordStore(),
+            store: mockAuthUserStore,
             workspaceId: "workspace:mock",
           }),
         }),

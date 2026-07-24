@@ -118,3 +118,28 @@ test("Chinese relationship inbox draft generation uses pure Chinese demo copy", 
     globalThis.fetch = previousFetch;
   }
 });
+
+test("relationship inbox provides a three-pane conversation workspace with persistent edge resizing", async () => {
+  const source = await import("node:fs").then((fs) =>
+    fs.readFileSync(
+      new URL(
+        "../../app/(app)/app/inbox/relationship-inbox-panel.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+
+  assert.match(source, /className="ri-thread-list"/);
+  assert.match(source, /className="ri-thread-main"/);
+  assert.match(source, /className="ri-thread-context"/);
+  assert.match(source, /data-relationship-inbox-resize-handle/);
+  assert.match(source, /role="separator"/);
+  assert.match(source, /pointermove/);
+  assert.match(source, /pointerup/);
+  assert.match(source, /localStorage\.(?:getItem|setItem)/);
+  assert.match(source, /orbit:relationship-inbox:width/);
+  assert.match(source, /aria-valuemin/);
+  assert.match(source, /aria-valuemax/);
+  assert.match(source, /@container relationship-inbox/);
+});

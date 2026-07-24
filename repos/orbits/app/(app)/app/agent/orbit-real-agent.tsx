@@ -1501,11 +1501,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     let cancelled = false;
 
     const hydrateHistory = async () => {
-      const sessionId =
-        currentAgentSessionId() ||
-        (typeof window !== "undefined"
-          ? window.localStorage.getItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY) ?? ""
-          : "");
+      const sessionId = currentAgentSessionId();
       const sessions = await loadStoredAgentChatSessions();
 
       if (cancelled) {

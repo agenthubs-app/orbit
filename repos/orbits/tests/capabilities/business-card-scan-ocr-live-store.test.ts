@@ -12,6 +12,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 const WORKSPACE_ID = "workspace:business-card-scan-live-test";
 const NOW = "2026-07-02T16:10:00.000Z";
 const LIVE_DRAFT_ID = "business-card-review:live:contact_012";
+const TEST_IMAGE_BASE64 = "aW1hZ2U=";
 
 async function createSeedStore() {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
@@ -104,6 +105,161 @@ test("business card scan live service fails closed when storage is unconfigured"
   assert.equal(result.error.provenance.databaseWriteExecuted, false);
 });
 
+test("business card scan live service extracts an uploaded image without reading or writing storage", async () => {
+  const service = createLiveBusinessCardScanOcrService({
+    cloudOcrProvider: {
+      model: "gemini-3.5-flash-lite",
+      providerName: "google-gemini-interactions",
+      async extract(input) {
+        assert.deepEqual(input, {
+          imageBase64: TEST_IMAGE_BASE64,
+          mimeType: "image/jpeg",
+        });
+
+        return {
+          extraction: {
+            addresses: [{ label: "Tokyo", value: "Chiyoda, Tokyo" }],
+            certifications: [],
+            contactPoints: [
+              { label: "Mobile", type: "mobile", value: "+81 90 0000 0000" },
+            ],
+            departments: ["Partnerships"],
+            detectedLanguages: ["ja", "en"],
+            emails: [{ label: "Email", value: "person@example.com" }],
+            fullName: "青空 太郎",
+            nativeFullName: "青空 太郎",
+            organization: "架空技研株式会社",
+            romanizedFullName: null,
+            title: "室長",
+            website: "https://example.test",
+          },
+          usage: {
+            inputTokens: 1156,
+            latencyMs: 25,
+            outputTokens: 236,
+          },
+        };
+      },
+    },
+    now: () => NOW,
+    provider: null,
+  });
+
+  const result = await service.scanBusinessCard({
+    imageBase64: TEST_IMAGE_BASE64,
+    imageName: "card.jpg",
+    imageSizeBytes: 5,
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data.state, "success");
+  assert.equal(result.data.capture.captureMethod, "uploaded-business-card");
+  assert.match(result.data.capture.imageDigest, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(result.data.ocr.ocrProviderCalled, true);
+  assert.equal(result.data.ocr.aiExtractionExecuted, true);
+  assert.equal(result.data.ocr.structuredExtraction?.fullName, "青空 太郎");
+  assert.equal(result.data.draft?.displayName, "青空 太郎");
+  assert.equal(result.data.draft?.email, "person@example.com");
+  assert.equal(result.data.draft?.contactWriteExecuted, false);
+  assert.equal(result.data.provenance.provider, "google-gemini-interactions");
+  assert.equal(result.data.provenance.model, "gemini-3.5-flash-lite");
+  assert.equal(result.data.provenance.inputTokens, 1156);
+  assert.equal(result.data.provenance.liveDatabaseReadExecuted, false);
+  assert.equal(result.data.provenance.databaseWriteExecuted, false);
+  assert.equal(result.data.provenance.storageWriteExecuted, false);
+});
+
+test("uploaded business card scan fails visibly when cloud OCR is unconfigured", async () => {
+  const service = createLiveBusinessCardScanOcrService({
+    cloudOcrProvider: null,
+    provider: null,
+  });
+
+  const result = await service.scanBusinessCard({
+    imageBase64: TEST_IMAGE_BASE64,
+    imageName: "card.jpg",
+    imageSizeBytes: 5,
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "BUSINESS_CARD_OCR_UNCONFIGURED");
+  assert.equal(result.error.provenance.liveDatabaseReadExecuted, false);
+  assert.equal(result.error.provenance.ocrProviderRequested, false);
+});
+
+test("uploaded business card scan rejects unsupported images before calling OCR", async () => {
+  let providerCalled = false;
+  const service = createLiveBusinessCardScanOcrService({
+    cloudOcrProvider: {
+      model: "gemini-3.5-flash-lite",
+      providerName: "google-gemini-interactions",
+      async extract() {
+        providerCalled = true;
+        throw new Error("Should not be called.");
+      },
+    },
+  });
+
+  const result = await service.scanBusinessCard({
+    imageBase64: TEST_IMAGE_BASE64,
+    imageName: "card.gif",
+    imageSizeBytes: 5,
+    mimeType: "image/gif",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "BUSINESS_CARD_IMAGE_UNSUPPORTED");
+  assert.equal(providerCalled, false);
+});
+
+test("uploaded business card scan rejects images larger than ten MiB", async () => {
+  const service = createLiveBusinessCardScanOcrService({
+    cloudOcrProvider: {
+      model: "gemini-3.5-flash-lite",
+      providerName: "google-gemini-interactions",
+      async extract() {
+        throw new Error("Should not be called.");
+      },
+    },
+  });
+
+  const result = await service.scanBusinessCard({
+    imageBase64: TEST_IMAGE_BASE64,
+    imageName: "card.jpg",
+    imageSizeBytes: 10 * 1024 * 1024 + 1,
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "BUSINESS_CARD_IMAGE_TOO_LARGE");
+});
+
+test("uploaded business card scan redacts cloud OCR failures", async () => {
+  const service = createLiveBusinessCardScanOcrService({
+    cloudOcrProvider: {
+      model: "gemini-3.5-flash-lite",
+      providerName: "google-gemini-interactions",
+      async extract() {
+        throw new Error("printed-card-content");
+      },
+    },
+  });
+
+  const result = await service.scanBusinessCard({
+    imageBase64: TEST_IMAGE_BASE64,
+    imageName: "card.jpg",
+    imageSizeBytes: 5,
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "BUSINESS_CARD_OCR_PROVIDER_FAILED");
+  assert.equal(result.error.message.includes("printed-card-content"), false);
+  assert.equal(result.error.provenance.ocrProviderRequested, true);
+});
+
 test("business card scan OCR factory exposes live mode without breaking default mock", async () => {
   const previousModuleMode = process.env.ORBIT_MODULE_MODE;
   const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
@@ -168,5 +324,77 @@ test("business card scan API resolves ORBIT_MODULE_MODE=live", async () => {
     process.env.ORBIT_EVENT_DATABASE_URL = previousEventDatabaseUrl;
     process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
+  }
+});
+
+test("business card scan API accepts JSON image uploads and reaches the cloud OCR boundary", async () => {
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+  const previousGeminiApiKey = process.env.GEMINI_API_KEY;
+  const previousGoogleApiKey = process.env.GOOGLE_API_KEY;
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "live";
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GOOGLE_API_KEY;
+
+    const response = await scanCard(
+      new Request("https://orbit.local/api/contact-drafts/business-card/scan", {
+        body: JSON.stringify({
+          imageBase64: TEST_IMAGE_BASE64,
+          imageName: "card.jpg",
+          imageSizeBytes: 5,
+          mimeType: "image/jpeg",
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    );
+    const body = await response.json();
+
+    assert.equal(response.status, 503);
+    assert.equal(
+      body.error.context.businessCardScanOcrErrorCode,
+      "BUSINESS_CARD_OCR_UNCONFIGURED",
+    );
+  } finally {
+    process.env.ORBIT_MODULE_MODE = previousModuleMode;
+    process.env.GEMINI_API_KEY = previousGeminiApiKey;
+    process.env.GOOGLE_API_KEY = previousGoogleApiKey;
+  }
+});
+
+test("business card scan API accepts multipart image uploads and reaches the cloud OCR boundary", async () => {
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+  const previousGeminiApiKey = process.env.GEMINI_API_KEY;
+  const previousGoogleApiKey = process.env.GOOGLE_API_KEY;
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "live";
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GOOGLE_API_KEY;
+
+    const formData = new FormData();
+    formData.append(
+      "image",
+      new Blob(["image"], { type: "image/png" }),
+      "card.png",
+    );
+    const response = await scanCard(
+      new Request("https://orbit.local/api/contact-drafts/business-card/scan", {
+        body: formData,
+        method: "POST",
+      }),
+    );
+    const body = await response.json();
+
+    assert.equal(response.status, 503);
+    assert.equal(
+      body.error.context.businessCardScanOcrErrorCode,
+      "BUSINESS_CARD_OCR_UNCONFIGURED",
+    );
+  } finally {
+    process.env.ORBIT_MODULE_MODE = previousModuleMode;
+    process.env.GEMINI_API_KEY = previousGeminiApiKey;
+    process.env.GOOGLE_API_KEY = previousGoogleApiKey;
   }
 });

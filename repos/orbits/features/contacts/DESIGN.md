@@ -43,6 +43,12 @@ Contacts 不应把推荐策略下放到 Search，也不应让 Orbit AI 长期拥
 
 产品入口包括 `/app/contacts`、`/app/contacts/[id]` 和 `/app/contacts/new` 的后续复核。Contacts API 包括 list、detail、search 和状态更新。列表页应优先展示当前需要关注的人，而不是做成通讯录表格。
 
+### 名片确认写入
+
+Acquisition 的云端 OCR 只生成待复核草稿；真正创建联系人由 Contacts 的 `BusinessCardContactWriteService` 负责。`POST /api/contacts/business-card/confirm` 必须收到显式确认、纠正后的字段、图片摘要和至少一个 evidence id。服务用 draft id 派生稳定 contact id，先处理同草稿幂等，再按规范化邮箱和姓名/公司组合阻断重复写入。
+
+成功创建的联系人使用现有领域阶段 `captured`，来源为 `business_card_ocr`。原始名片图片不进入 Contacts 存储。联系人确认与后续 Orbit 邀请是两个独立动作；联系人写入成功不代表邀请已发送。
+
 ## 测试要求
 
 - list/search/filter 测试覆盖 query、source、tag、empty、failure。

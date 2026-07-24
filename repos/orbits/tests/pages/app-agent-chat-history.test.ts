@@ -199,6 +199,18 @@ test("agent sidebar persists sessions through the Orbit Agent sessions API", () 
   assert.doesNotMatch(source, /history=\{viewModel\.history\}/);
 });
 
+test("agent home starts fresh unless the URL explicitly selects a session", () => {
+  const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+
+  assert.match(source, /const sessionId = currentAgentSessionId\(\);/);
+  assert.doesNotMatch(
+    source,
+    /currentAgentSessionId\(\)\s*\|\|[\s\S]{0,240}AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY/,
+  );
+  assert.match(source, /if \(session\) \{\s*restoreSession\(session\);/);
+  assert.match(source, /const query = currentAgentQuery\(\);/);
+});
+
 test("agent sidebar exposes deletion and width resizing controls for history", () => {
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
 

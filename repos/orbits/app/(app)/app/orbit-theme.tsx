@@ -5,9 +5,10 @@
 // The new-UI product surface is dark by default: its entire palette is a token
 // remap under `[data-orbit-real-page]` (see orbit-reference-styles.tsx). Because
 // every component colors via those CSS variables, a light theme is a single
-// token override — no per-component work. The light palette below is the current
-// Orbit teal design-token family (globals.css `:root`), so "light mode" reads as
-// our existing brand rather than a naive inversion.
+// token override — no per-component work. The light palette below shares the
+// continuous white canvas established by Orbit AI while retaining Orbit's teal
+// signal color. Authentication pages restore the previous palette in their own
+// scope so this product update does not redesign login.
 //
 // Theme selection lives on `document.documentElement[data-theme]`; the inline
 // init script (mounted in the root layout <head>) sets it before first paint to
@@ -21,6 +22,54 @@ export const ORBIT_THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getIt
 const LIGHT_THEME_CSS = `
 html[data-theme="light"] [data-orbit-real-page] {
   color-scheme: light;
+  --bg: #ffffff;
+  --bg-soft: #ffffff;
+  --bg-sunken: #fafbfb;
+  --surface: #ffffff;
+  --surface-2: #f7f8f8;
+  --surface-3: #f1f3f3;
+  --ink: #171a1c;
+  --text: #2b3034;
+  --text-2: #687078;
+  --text-3: #7b838a;
+  --text-4: #969da3;
+  --border: #e6e9eb;
+  --border-2: #d9dee1;
+  --border-strong: #c7cdd1;
+  --hairline: #e6e9eb;
+  --accent: #176a73;
+  --accent-hover: #125b63;
+  --accent-press: #0e4b52;
+  --accent-soft: #eef7f6;
+  --accent-softer: #f4f8f7;
+  --accent-ring: rgba(23, 106, 115, 0.28);
+  --on-accent: #ffffff;
+  --on-dark: #ffffff;
+  --accent-grad: #176a73;
+  --accent-grad-bar: #176a73;
+  --live: #16a34a;
+  --live-soft: rgba(22, 163, 74, 0.12);
+  --amber: #b45309;
+  --amber-soft: rgba(180, 83, 9, 0.12);
+  --rose: #be123c;
+  --rose-soft: rgba(190, 18, 60, 0.12);
+  --sky: #1d4ed8;
+  --sky-soft: rgba(29, 78, 216, 0.12);
+  --sh-xs: none;
+  --sh-sm: none;
+  --sh-md: none;
+  --sh-lg: none;
+  --sh-pop: none;
+  --scrim: rgba(23, 33, 31, 0.40);
+  --glass-bar: #ffffff;
+  --glass-chip: #ffffff;
+}
+
+html[data-theme="light"] body:has([data-orbit-real-page]) {
+  background: #ffffff;
+}
+
+html[data-theme="light"] [data-orbit-real-page].orbit-account-auth-page {
   --accent: #155e75;
   --accent-hover: #0e7490;
   --accent-press: #0f4758;
@@ -63,25 +112,27 @@ html[data-theme="light"] [data-orbit-real-page] {
   --glass-chip: rgba(249, 251, 250, 0.88);
 }
 
-html[data-theme="light"] body:has([data-orbit-real-page]) {
+html[data-theme="light"] body:has(.orbit-account-auth-page) {
   background: radial-gradient(130% 100% at 50% 14%, #ffffff 0%, #f4f7f5 42%, #eef2f0 100%) fixed #f4f7f5;
 }
 
 /* Chrome surfaces that hardcode dark glass (not token-driven) — restated in
    light glass so bars/badges/sidebars don't read as grey blocks in light mode. */
 html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav {
-  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: #ffffff;
   border-bottom: 1px solid var(--hairline);
 }
 html[data-theme="light"] [data-orbit-real-page] .orbit-organizer-topnav {
-  background: rgba(255, 255, 255, 0.78);
+  background: #ffffff;
 }
 html[data-theme="light"] [data-orbit-real-page] .orbit-mobile-bar,
 html[data-theme="light"] [data-orbit-real-page] .orbit-sticky-cta,
 html[data-theme="light"] [data-orbit-real-page] .orbit-subpage-header,
 html[data-theme="light"] [data-orbit-real-page] .orbit-host-mobile-next-bar,
 html[data-theme="light"] [data-orbit-real-page] .orbit-host-mobile-create-bar {
-  background: rgba(255, 255, 255, 0.88);
+  background: #ffffff;
 }
 html[data-theme="light"] [data-orbit-real-page] .orbit-graph-legend,
 html[data-theme="light"] [data-orbit-real-page] .orbit-party-icon-button,

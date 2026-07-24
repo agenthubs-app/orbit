@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createAuthUserService } from "../../features/auth/auth-user-service";
+import { resolveAuthUserService } from "../../features/auth/service-factory";
 import { createStorageAuthUserProvider } from "../../features/auth/storage/auth-user-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
@@ -153,4 +154,19 @@ test("unconfigured live store fails closed", async () => {
   assert.equal(result.state, "failure");
   if (result.state !== "failure") return;
   assert.equal(result.error.code, "AUTH_LIVE_STORE_UNCONFIGURED");
+});
+
+test("mock service resolution preserves users across register and login requests", async () => {
+  const email = `factory-${Date.now()}@example.com`;
+  const registered = await resolveAuthUserService("mock").registerUser({
+    email,
+    password: "12345678",
+  });
+  const verified = await resolveAuthUserService("mock").verifyCredentials({
+    email,
+    password: "12345678",
+  });
+
+  assert.equal(registered.state, "success");
+  assert.equal(verified.state, "success");
 });

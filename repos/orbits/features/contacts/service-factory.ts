@@ -4,9 +4,12 @@ import { createModuleServiceFactory, type ModuleMode } from "../../shared/servic
 import { createHybridContactsListSearchAndFilterService } from "./contact-graph-query";
 import { createLiveContactDetailTagStatusService } from "./live-detail-service";
 import { createLiveContactsListSearchAndFilterService } from "./live-service";
+import { createLiveBusinessCardContactWriteService } from "./live-contact-write-service";
 import { createMockContactDetailTagStatusService } from "./mock-detail-service";
 import { createMockContactsListSearchAndFilterService } from "./mock-service";
 import { createConfiguredStorageContactGraphProvider } from "./storage/contact-live-record-provider";
+import { createConfiguredStorageBusinessCardContactWriteProvider } from "./storage/contact-write-live-record-provider";
+import type { BusinessCardContactWriteService } from "./contact-write-contract";
 import type { ContactDetailTagStatusService } from "./detail-contract";
 import type { ContactsListSearchAndFilterService } from "./service";
 
@@ -32,6 +35,21 @@ export const contactDetailTagStatusServiceFactory =
           provider: createConfiguredStorageContactGraphProvider(),
         }),
       mock: () => createMockContactDetailTagStatusService(),
+    },
+  });
+
+export const businessCardContactWriteServiceFactory =
+  createModuleServiceFactory<BusinessCardContactWriteService>({
+    capabilityId: "business-card-contact-write",
+    implementations: {
+      live: () =>
+        createLiveBusinessCardContactWriteService({
+          provider: createConfiguredStorageBusinessCardContactWriteProvider(),
+        }),
+      mock: () =>
+        createLiveBusinessCardContactWriteService({
+          provider: null,
+        }),
     },
   });
 
@@ -63,6 +81,24 @@ export function createContactDetailTagStatusService(
   mode?: ModuleMode | string,
 ): ContactDetailTagStatusService {
   const resolution = resolveContactDetailTagStatusService(mode);
+
+  if (resolution.success === false) {
+    throw new Error(resolution.error.message);
+  }
+
+  return resolution.service;
+}
+
+export function resolveBusinessCardContactWriteService(
+  mode?: ModuleMode | string,
+) {
+  return businessCardContactWriteServiceFactory.create(mode);
+}
+
+export function createBusinessCardContactWriteService(
+  mode?: ModuleMode | string,
+): BusinessCardContactWriteService {
+  const resolution = resolveBusinessCardContactWriteService(mode);
 
   if (resolution.success === false) {
     throw new Error(resolution.error.message);
