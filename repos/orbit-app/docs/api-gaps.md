@@ -15,6 +15,24 @@ the screen does not show the wrong person. The backend should expose a stable
 current-user profile or workspace profile endpoint with locale-ready display
 fields.
 
+Mobile now also reads the profile signal review queue:
+
+- `GET /api/profile/update-suggestions`
+
+The native profile screen shows sourced profile update suggestions in Chinese:
+which field would change, current value, suggested value, source signal,
+confidence, rationale, and evidence excerpt. This stays review-only on mobile:
+it does not accept suggestions, apply patches, save profile changes, extract
+documents, or run AI from the profile page.
+
+Remaining parity gaps:
+
+- `PUT /api/profile` for manual profile edits
+- `POST /api/profile/update-suggestions/:id/accept` with a clear profile-save
+  confirmation boundary
+- business-card and resume extraction flows
+- native file/image upload and extraction review
+
 ## Locale-Scoped Display Fields
 
 `GET /api/contacts/:id` and `GET /api/events/:id` can expose mixed Japanese,
@@ -394,9 +412,13 @@ Remaining parity gaps:
 Mobile now has an account and workspace screen backed by:
 
 - `GET /api/account/me`
-- `GET /api/auth/csrf`
-- `POST /api/auth/callback/credentials`
+- `GET /api/auth/mobile/providers`
+- `POST /api/auth/mobile/credentials`
+- `GET /api/auth/mobile/google/start`
+- `GET /api/auth/mobile/google/complete`
+- `POST /api/auth/mobile/google/exchange`
 - `POST /api/auth/register`
+- `GET /api/auth/session`
 - `POST /api/auth/signout`
 
 The screen shows account state, workspace name, identity, timezone, and
@@ -404,27 +426,34 @@ relationship goal. It also exposes native `/account/login`, `/account/signup`,
 and `/account/forgot-password` form screens so web account links no longer fall
 back to Orbit AI in the iOS app.
 
-The login form mirrors the web NextAuth credentials flow: it reads CSRF,
-posts credentials, stores the returned auth cookie for this API base URL, and
-sends that cookie with later Orbit API requests. Signup calls the web register
-API and then returns to login. The login screen now exposes the native
+The login form now uses the web mobile-auth bridge. Email login posts to the
+mobile credentials route and stores the returned Auth.js cookie in SecureStore
+after validating it through `/api/auth/session`. Google login starts the web
+broker with the fixed `orbit://account/oauth` callback, exchanges the returned
+code through the mobile exchange route, then stores the validated session for
+later Orbit API requests. On startup, iOS restores the SecureStore value and
+keeps it only after `/api/auth/session` confirms a real user. Signup calls the
+web register API and then returns to login. The login screen exposes the native
 forgot-password route as a recovery helper, while that route remains a boundary
 screen until the backend exposes password reset delivery. Sign-out calls the
 NextAuth sign-out route and clears the saved device session.
+
+Google login is available when the Web deployment has `AUTH_GOOGLE_ID`,
+`AUTH_GOOGLE_SECRET`, and `AUTH_SECRET` configured. The iOS app does not store
+those server credentials.
 
 Remaining gaps:
 
 - `/api/account/me` still reads the account-session service, not the NextAuth
   session user, so backend account identity may lag behind the saved cookie.
 - password reset code delivery and verification
-- OAuth/deep-link callback handling
-- storing auth cookies in a hardened native secure store instead of AsyncStorage
+- full in-app account management after registration
 
 ## Wider Web Parity
 
 Most web app pages now have native mobile routes or thin mobile review surfaces.
 The remaining gaps are narrower capability boundaries: registration-gated roster
-permissions, post-event review, encounter notes, profile update suggestions,
-password reset delivery, OAuth/deep-link callbacks, external-send confirmation,
-and admin write flows. Some of these are desktop/admin workflows and should not
-be copied one-to-one into the iOS tab structure without mobile-safe contracts.
+permissions, post-event review, encounter notes, profile update acceptance,
+password reset delivery, external-send confirmation, and admin write flows.
+Some of these are desktop/admin workflows and should not be copied one-to-one
+into the iOS tab structure without mobile-safe contracts.
