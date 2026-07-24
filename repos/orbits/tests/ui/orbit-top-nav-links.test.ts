@@ -19,12 +19,24 @@ const shellSource = readFileSync(
 );
 
 function navHrefs(): readonly string[] {
-  const block = shellSource.slice(
-    shellSource.indexOf("const links = ["),
-    shellSource.indexOf("] as const;", shellSource.indexOf("const links = [")),
+  const start = shellSource.indexOf("const links = [");
+  assert.ok(
+    start >= 0,
+    "could not locate the links array in orbit-public-shell.tsx — the nav shape changed and this gate is blind",
   );
 
-  return [...block.matchAll(/\["(\/[^"]*)"/g)].map((match) => match[1]);
+  const end = shellSource.indexOf("] as const;", start);
+  assert.ok(end > start, "could not locate the end of the links array");
+
+  const hrefs = [...shellSource.slice(start, end).matchAll(/\["(\/[^"]*)"/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(
+    hrefs.length > 0,
+    "nav href extraction returned nothing — the links array shape changed and this gate is blind",
+  );
+
+  return hrefs;
 }
 
 test("the nav exposes Today plus events, schedule, and contacts", () => {
@@ -57,6 +69,12 @@ test("the retired prototype hrefs are gone", () => {
   }
 });
 
-test("today is a valid nav active key", () => {
-  assert.ok(shellSource.includes('"today"'));
+test("today is a member of the OrbitNavActive union", () => {
+  const declaration = /export type OrbitNavActive =[^;]*;/.exec(shellSource)?.[0];
+
+  assert.ok(declaration, "OrbitNavActive declaration not found");
+  assert.ok(
+    declaration.includes('"today"'),
+    `OrbitNavActive must include "today": ${declaration}`,
+  );
 });
