@@ -63,7 +63,7 @@ test("mergeSetCookieHeaders stores, replaces, and clears auth cookies", () => {
   );
 });
 
-test("signInWithCredentials mirrors NextAuth credentials flow and returns a cookie header", async () => {
+test("signInWithCredentials uses the mobile bridge and returns a cookie header", async () => {
   const calls: Array<{
     body: string;
     headers: Headers;
@@ -79,37 +79,24 @@ test("signInWithCredentials mirrors NextAuth credentials flow and returns a cook
       url: String(input)
     });
 
-    if (String(input).endsWith("/api/auth/csrf")) {
-      return jsonResponse(
-        { csrfToken: "csrf-token" },
-        {
-          setCookie: "authjs.csrf-token=csrf-token.hash; Path=/; HttpOnly"
+    assert.equal(headers.get("Content-Type"), "application/json");
+    assert.deepEqual(JSON.parse(calls.at(-1)?.body ?? "{}"), {
+      email: "xiaoyu@example.com",
+      password: "correct-password"
+    });
+
+    return jsonResponse({
+      success: true,
+      data: {
+        cookieHeader: "authjs.session-token=session-token",
+        expiresAt: "2026-08-24T00:00:00.000Z",
+        user: {
+          email: "xiaoyu@example.com",
+          id: "user_1",
+          name: "小雨"
         }
-      );
-    }
-
-    if (String(input).endsWith("/api/auth/callback/credentials")) {
-      assert.equal(headers.get("Cookie"), "authjs.csrf-token=csrf-token.hash");
-      assert.equal(
-        headers.get("Content-Type"),
-        "application/x-www-form-urlencoded"
-      );
-      assert.match(calls.at(-1)?.body ?? "", /email=xiaoyu%40example.com/u);
-      assert.match(calls.at(-1)?.body ?? "", /password=correct-password/u);
-      assert.match(calls.at(-1)?.body ?? "", /csrfToken=csrf-token/u);
-
-      return jsonResponse(
-        { url: "http://localhost:3000/app/dashboard" },
-        {
-          setCookie: [
-            "authjs.session-token=session-token; Path=/; HttpOnly",
-            "authjs.csrf-token=; Path=/; Max-Age=0"
-          ]
-        }
-      );
-    }
-
-    throw new Error(`Unexpected request ${String(input)}`);
+      }
+    });
   };
 
   const result = await signInWithCredentials({
@@ -122,27 +109,24 @@ test("signInWithCredentials mirrors NextAuth credentials flow and returns a cook
 
   assert.equal(result.success, true);
   assert.equal(result.cookieHeader, "authjs.session-token=session-token");
-  assert.equal(calls[0]?.url, "http://localhost:3000/api/auth/csrf");
   assert.equal(
-    calls[1]?.url,
-    "http://localhost:3000/api/auth/callback/credentials"
+    calls[0]?.url,
+    "http://localhost:3000/api/auth/mobile/credentials"
   );
-  assert.equal(calls[1]?.headers.get("X-Auth-Return-Redirect"), "1");
 });
 
 test("signInWithCredentials reports credential errors without storing a session", async () => {
   const fetchImpl: AuthFetchLike = async (input) => {
-    if (String(input).endsWith("/api/auth/csrf")) {
-      return jsonResponse(
-        { csrfToken: "csrf-token" },
-        { setCookie: "authjs.csrf-token=csrf-token.hash; Path=/; HttpOnly" }
-      );
-    }
-
     return jsonResponse(
       {
-        url:
-          "http://localhost:3000/app/account/login?error=CredentialsSignin&code=credentials"
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          context: {
+            mobileAuthErrorCode: "MOBILE_AUTH_UNAUTHORIZED"
+          },
+          message: "Email or password is incorrect."
+        }
       },
       { status: 401 }
     );

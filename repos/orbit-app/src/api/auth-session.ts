@@ -1,5 +1,6 @@
 import { normalizeOrbitApiBaseUrl } from "./base-url";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
+import { signInWithMobileCredentials } from "./mobile-auth";
 
 export type AuthFetchLike = (
   input: RequestInfo | URL,
@@ -269,73 +270,26 @@ export async function signInWithCredentials({
   password: string;
   redirectTo?: string;
 }): Promise<AuthSessionResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+  const result = await signInWithMobileCredentials({
+    baseUrl,
+    email,
+    fetchImpl,
+    password
+  });
 
-  if (!normalizedEmail || !password) {
+  if (result.success === false) {
     return authFailure(
-      "ORBIT_APP_AUTH_MISSING_CREDENTIALS",
-      "请输入邮箱和密码。"
-    );
-  }
-
-  const csrf = await getCsrfToken({ baseUrl, cookieHeader, fetchImpl });
-
-  if (!csrf.success) {
-    return csrf;
-  }
-
-  let response: Response;
-
-  try {
-    response = await fetchImpl(
-      authUrl(baseUrl, ORBIT_API_ENDPOINTS.authCredentialsCallback),
-      {
-        body: new URLSearchParams({
-          callbackUrl: callbackUrl(baseUrl, redirectTo),
-          csrfToken: csrf.csrfToken,
-          email: normalizedEmail,
-          password
-        }),
-        credentials: "include",
-        headers: requestHeaders(csrf.cookieHeader, {
-          Accept: "application/json",
-          "Content-Type": "application/x-www-form-urlencoded",
-          "X-Auth-Return-Redirect": "1"
-        }),
-        method: "POST"
-      }
-    );
-  } catch (error) {
-    return authFailure(
-      "ORBIT_APP_AUTH_NETWORK_ERROR",
-      error instanceof Error ? error.message : "网络连接失败。"
-    );
-  }
-
-  const payload = await readJson(response);
-  const redirectUrl = stringField(payload, "url");
-  const redirectError = authErrorCodeFromRedirect(redirectUrl);
-  const nextCookieHeader = mergeSetCookieHeaders(csrf.cookieHeader, response);
-
-  if (!response.ok || redirectError) {
-    return authFailure(
-      "ORBIT_APP_AUTH_INVALID_CREDENTIALS",
-      "邮箱或密码不正确。",
-      response.status
-    );
-  }
-
-  if (!hasSessionCookie(nextCookieHeader)) {
-    return authFailure(
-      "ORBIT_APP_AUTH_SESSION_MISSING",
-      "登录成功，但没有拿到可保存的会话。",
-      response.status
+      result.error.code === "MOBILE_AUTH_UNAUTHORIZED"
+        ? "ORBIT_APP_AUTH_INVALID_CREDENTIALS"
+        : result.error.code,
+      result.error.message,
+      result.error.status
     );
   }
 
   return {
-    cookieHeader: nextCookieHeader,
-    redirectUrl,
+    cookieHeader: result.data.cookieHeader,
+    redirectUrl: callbackUrl(baseUrl, redirectTo),
     success: true
   };
 }

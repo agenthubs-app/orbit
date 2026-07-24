@@ -12,6 +12,8 @@ const config: ExpoConfig = {
     tsconfigPaths: true
   },
   plugins: [
+    "expo-secure-store",
+    "expo-web-browser",
     [
       "expo-image-picker",
       {

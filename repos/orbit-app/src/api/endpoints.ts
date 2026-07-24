@@ -3,7 +3,12 @@ export const ORBIT_API_ENDPOINTS = {
   bootstrap: "/api/app/bootstrap",
   authCredentialsCallback: "/api/auth/callback/credentials",
   authCsrf: "/api/auth/csrf",
+  authMobileCredentials: "/api/auth/mobile/credentials",
+  authMobileGoogleExchange: "/api/auth/mobile/google/exchange",
+  authMobileGoogleStart: "/api/auth/mobile/google/start",
+  authMobileProviders: "/api/auth/mobile/providers",
   authRegister: "/api/auth/register",
+  authSession: "/api/auth/session",
   authSignOut: "/api/auth/signout",
   chatConversations: "/api/chat/conversations",
   contactDraftBusinessCardScan: "/api/contact-drafts/business-card/scan",
@@ -26,6 +31,7 @@ export const ORBIT_API_ENDPOINTS = {
   events: "/api/events",
   health: "/api/health",
   profile: "/api/profile",
+  profileUpdateSuggestions: "/api/profile/update-suggestions",
   tasks: "/api/tasks"
 } as const;
 
@@ -170,4 +176,8 @@ export function relationshipInboxPath(conversationId?: string | null): string {
   return `${ORBIT_API_ENDPOINTS.relationshipInbox}?conversationId=${encodeURIComponent(
     conversationId.trim()
   )}`;
+}
+
+export function profileUpdateSuggestionAcceptPath(id: string): string {
+  return `${detailPath(ORBIT_API_ENDPOINTS.profileUpdateSuggestions, id)}/accept`;
 }

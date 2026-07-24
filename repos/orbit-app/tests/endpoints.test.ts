@@ -12,7 +12,8 @@ import {
   eventOpeningLinePath,
   eventReadinessPath,
   eventRecommendationsPath,
-  ORBIT_API_ENDPOINTS
+  ORBIT_API_ENDPOINTS,
+  profileUpdateSuggestionAcceptPath
 } from "../src/api/endpoints";
 import * as endpoints from "../src/api/endpoints";
 
@@ -113,6 +114,34 @@ test("Orbit API endpoints expose the current account session route", () => {
   );
   assert.equal(ORBIT_API_ENDPOINTS.authRegister, "/api/auth/register");
   assert.equal(ORBIT_API_ENDPOINTS.authSignOut, "/api/auth/signout");
+  assert.equal(
+    ORBIT_API_ENDPOINTS.authMobileCredentials,
+    "/api/auth/mobile/credentials"
+  );
+  assert.equal(
+    ORBIT_API_ENDPOINTS.authMobileGoogleExchange,
+    "/api/auth/mobile/google/exchange"
+  );
+  assert.equal(
+    ORBIT_API_ENDPOINTS.authMobileGoogleStart,
+    "/api/auth/mobile/google/start"
+  );
+  assert.equal(
+    ORBIT_API_ENDPOINTS.authMobileProviders,
+    "/api/auth/mobile/providers"
+  );
+  assert.equal(ORBIT_API_ENDPOINTS.authSession, "/api/auth/session");
+});
+
+test("Orbit API endpoints expose profile update suggestion routes", () => {
+  assert.equal(
+    ORBIT_API_ENDPOINTS.profileUpdateSuggestions,
+    "/api/profile/update-suggestions"
+  );
+  assert.equal(
+    profileUpdateSuggestionAcceptPath("suggestion 001/next"),
+    "/api/profile/update-suggestions/suggestion%20001%2Fnext/accept"
+  );
 });
 
 test("Orbit API endpoints expose relationship chat conversation routes", () => {
