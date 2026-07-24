@@ -3,6 +3,8 @@
  *
  * 这里声明全局 metadata 和基础样式，所有 App Router 页面都会包在这个 layout 下。
  */
+import { normalizeOrbitLanguage, orbitHtmlLang } from "./(app)/app/orbit-language-core";
+
 export const metadata = {
   title: "Orbit",
   description: "An event-grounded relationship operating system.",
@@ -284,9 +286,21 @@ const globalStyles = `
 // (the new-UI identity); honours a saved choice or the OS light preference.
 const themeInitScript = `(function(){try{var t=localStorage.getItem('orbit-theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  let rawLanguage: string | undefined;
+  try {
+    const { cookies, headers } = await import("next/headers");
+    const requestHeaders = await headers();
+    const cookieStore = await cookies();
+    rawLanguage =
+      requestHeaders.get("x-orbit-lang") ?? cookieStore.get("orbit-lang")?.value ?? undefined;
+  } catch {
+    rawLanguage = undefined;
+  }
+  const htmlLang = orbitHtmlLang(normalizeOrbitLanguage(rawLanguage));
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={htmlLang} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

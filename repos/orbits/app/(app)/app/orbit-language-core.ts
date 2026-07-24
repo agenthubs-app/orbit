@@ -23,3 +23,10 @@ export function withOrbitLanguageHref(href: string, language: OrbitLanguage): st
   const search = params.toString();
   return `${pathname}${search ? `?${search}` : ""}${hash ? `#${hash}` : ""}`;
 }
+
+// <html lang> 值：屏幕阅读器与 html[lang="en"] 的衬线字体规则都依赖它。
+export function orbitHtmlLang(language: OrbitLanguage): "en" | "ja" | "zh-CN" {
+  if (language === "en") return "en";
+  if (language === "ja") return "ja";
+  return "zh-CN";
+}

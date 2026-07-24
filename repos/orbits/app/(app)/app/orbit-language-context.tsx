@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { withOrbitLanguageHref, type OrbitLanguage } from "./orbit-language-core";
+import { withOrbitLanguageHref, orbitHtmlLang, type OrbitLanguage } from "./orbit-language-core";
 
 export type { OrbitLanguage } from "./orbit-language-core";
 
@@ -29,6 +29,10 @@ export function OrbitLanguageProvider({
   initialLanguage: OrbitLanguage;
 }) {
   const [language, setLanguageState] = useState<OrbitLanguage>(initialLanguage);
+
+  useEffect(() => {
+    document.documentElement.lang = orbitHtmlLang(language);
+  }, [language]);
 
   const value = useMemo<OrbitLanguageContextValue>(() => {
     // preserveHref 在生成站内链接时保留当前语言参数，避免页面切换后语言回退。
