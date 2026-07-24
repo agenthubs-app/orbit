@@ -60,3 +60,18 @@ test("no contacts surface hardcodes the sidebar column width", () => {
 
   assert.deepEqual(offenders, []);
 });
+
+test("the two ledger pages collapse to one column on mobile", () => {
+  for (const file of [
+    "app/(app)/app/today/page.tsx",
+    "app/(app)/app/contacts/all-actions/page.tsx",
+  ]) {
+    const pageSource = readFileSync(join(projectRoot, file), "utf8");
+    assert.ok(pageSource.includes("@media (max-width: 760px)"), file);
+  }
+});
+
+test("the mobile bar uses a theme token, not hardcoded light glass", () => {
+  const shellSource = source("app/(app)/app/orbit-account-shell.tsx");
+  assert.ok(shellSource.includes("var(--glass-bar"));
+});

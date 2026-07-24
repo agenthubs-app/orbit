@@ -32,7 +32,11 @@ export default async function AppTodayPage({
       <main data-orbit-real-page="today" style={{ background: "var(--bg)", color: "var(--text)", minHeight: "100dvh" }}>
         <AccountTopNav active="today" />
         <div data-orbit-route="app-today-route" style={{ margin: "0 auto", maxWidth: 1180, padding: "28px 24px 96px" }}>
-          <div style={{ alignItems: "start", display: "grid", gap: 28, gridTemplateColumns: "minmax(0, 1fr) minmax(0, 380px)" }}>
+          <style>{`
+            .orbit-today-columns { align-items: start; display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); }
+            @media (max-width: 760px) { .orbit-today-columns { grid-template-columns: 1fr; } }
+          `}</style>
+          <div className="orbit-today-columns">
             <OrbitRealToday viewModel={localizeOrbitTree(viewModel, language)} />
             <OrbitTodayDecisionPanel entry={localizeOrbitTree(viewModel.selectedEntry, language)} />
           </div>
