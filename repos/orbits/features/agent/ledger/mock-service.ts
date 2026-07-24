@@ -131,13 +131,14 @@ export function createMockAgentLedgerService(): AgentLedgerService & {
           ? entries.filter((entry) => entry.status === input.status)
           : entries;
       const state = input?.scenario === "empty" || filtered.length === 0 ? "empty" : "success";
+      const visibleEntries = input?.scenario === "empty" ? [] : filtered;
 
       return {
         success: true,
         data: {
           state,
-          entries: state === "empty" && input?.scenario === "empty" ? [] : filtered,
-          summary: `账本共 ${filtered.length} 条记录，可追溯、可撤销。`,
+          entries: visibleEntries,
+          summary: `账本共 ${visibleEntries.length} 条记录，可追溯、可撤销。`,
           provenance: mockAgentLedgerProvenance,
           nextAction: "在 All actions 中复核等待确认的条目。",
         },
@@ -218,6 +219,9 @@ export function createMockAgentLedgerService(): AgentLedgerService & {
             }
           }
           entry.status = deriveEntryStatus(entry.operations);
+          entry.undoable = entry.operations.some(
+            (operation) => operation.status === "succeeded",
+          );
           return mutationSuccess(entry, "retry", actorLabel);
         }
       }

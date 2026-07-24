@@ -52,6 +52,7 @@ test("POST transition with unknown entry returns 404 envelope", async () => {
   assert.equal(response.status, 404);
   const body = await response.json();
   assert.equal(body.success, false);
+  assert.equal(body.error.context.agentLedgerErrorCode, "AGENT_LEDGER_ENTRY_NOT_FOUND");
 });
 
 test("PATCH draft updates the draft preview", async () => {

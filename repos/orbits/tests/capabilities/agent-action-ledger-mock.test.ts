@@ -101,10 +101,22 @@ test("retry re-runs only failed operations; succeeded operations are never re-ex
   assert.equal(retried.success, true);
   if (retried.success) {
     assert.equal(retried.data.entry.status, "completed");
+    assert.equal(retried.data.entry.undoable, true);
   }
   assert.equal(service.getExecutionCount("sync:demo-day:2026-07-23"), 0);
   assert.equal(service.getExecutionCount("sync:dinner-review:2026-07-23"), 0);
   assert.equal(service.getExecutionCount("sync:kansai-matchup:2026-07-23"), 1);
+});
+
+test("scenario=empty returns an empty payload whose summary matches", async () => {
+  const service = createMockAgentLedgerService();
+  const result = await service.listEntries({ scenario: "empty" });
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.equal(result.data.state, "empty");
+    assert.equal(result.data.entries.length, 0);
+    assert.ok(result.data.summary.includes("0 条"));
+  }
 });
 
 test("draft edits only work on awaiting/deferred save_message_draft operations", async () => {
