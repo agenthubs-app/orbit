@@ -275,7 +275,7 @@ export function Basis({
   const mmBg = { ai: "var(--live-soft)", rule: "var(--accent-soft)", evidence: "var(--sky-soft)", you: "var(--surface-2)" }[kind];
   return (
     <span
-      className={`nc-basis nc-basis-${kind}`}
+      className={`nc-basis nc-basis-${kind} hit-44`}
       tabIndex={0}
       role="button"
       aria-label={t({ en: "Show basis", zh: "查看依据" })}

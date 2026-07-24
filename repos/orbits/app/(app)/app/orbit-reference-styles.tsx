@@ -1987,6 +1987,16 @@ body:has([data-orbit-real-page]) {
   font: inherit;
   letter-spacing: inherit;
   padding: 6px 3px;
+  position: relative;
+}
+[data-orbit-real-page] .orbit-lang-toggle button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 40px;
+  width: 36px;
+  transform: translate(-50%, -50%);
 }
 [data-orbit-real-page] .orbit-lang-toggle button.is-active {
   color: var(--ink);
@@ -2260,7 +2270,20 @@ html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
 
 [data-orbit-real-page="agent"] .orbit-agent-history-resize {
   border-right-color: var(--border) !important;
+  position: relative;
   width: 7px !important;
+}
+
+/* Invisible overlay widens the grab strip to 16px without moving the
+   7px visible line — same technique as .hit-44 above. */
+[data-orbit-real-page="agent"] .orbit-agent-history-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 16px;
+  transform: translateX(-50%);
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-resize:hover,

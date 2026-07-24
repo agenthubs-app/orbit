@@ -1193,6 +1193,7 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
     <div className="orbit-agent-composer" style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, boxShadow: "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)", padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
       <textarea
         className="orbit-agent-composer-input"
+        aria-label={t({ en: "Ask Orbit", zh: "问问 Orbit" })}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => {
