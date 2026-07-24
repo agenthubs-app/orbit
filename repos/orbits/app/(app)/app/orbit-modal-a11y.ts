@@ -11,6 +11,16 @@ import { useCallback, useEffect, useRef } from "react";
 export function useOrbitModalA11y(onClose: () => void) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  // Callers often pass an inline closure for onClose, which would otherwise
+  // change identity every render and re-run the mount effect below (stealing
+  // focus back to the first focusable element on every parent re-render).
+  // Keeping the latest onClose in a ref lets the effect depend only on the
+  // stable `focusable` callback.
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const focusable = useCallback(() => {
     const root = cardRef.current;
@@ -30,7 +40,7 @@ export function useOrbitModalA11y(onClose: () => void) {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -55,7 +65,7 @@ export function useOrbitModalA11y(onClose: () => void) {
       document.removeEventListener("keydown", onKeyDown);
       previouslyFocused.current?.focus?.();
     };
-  }, [focusable, onClose]);
+  }, [focusable]);
 
   return cardRef;
 }

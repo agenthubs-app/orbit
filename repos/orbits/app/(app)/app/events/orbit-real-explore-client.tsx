@@ -264,8 +264,8 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
             <div><div className="eyebrow" style={{ marginBottom: 8 }}>{t({ en: "EXPLORE · Tokyo", zh: "EXPLORE · 东京" })}</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
             <div className="orbit-browse-tools">
               <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", display: "inline-flex", padding: 3 }}>
-                <button type="button" onClick={() => setMode("modules")} style={{ alignItems: "center", background: effMode === "modules" ? "var(--ink)" : "none", border: "none", borderRadius: "var(--r-pill)", color: effMode === "modules" ? "var(--on-dark)" : "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, padding: "7px 14px" }}><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容" })}</button>
-                {canShowMap ? <button type="button" onClick={() => setMode("map")} style={{ alignItems: "center", background: effMode === "map" ? "var(--ink)" : "none", border: "none", borderRadius: "var(--r-pill)", color: effMode === "map" ? "var(--on-dark)" : "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, padding: "7px 14px" }}><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button> : null}
+                <button className={`btn btn-sm ${effMode === "modules" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("modules")} type="button"><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容" })}</button>
+                {canShowMap ? <button className={`btn btn-sm ${effMode === "map" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("map")} type="button"><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button> : null}
               </div>
               <div className="orbit-search-box">
                 <Icon color="var(--text-3)" name="search" size={18} style={{ left: 14, position: "absolute", top: 15 }} />
@@ -312,7 +312,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
         <div style={{ flexShrink: 0, padding: "16px 18px 0" }}>
           <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", marginBottom: 14 }}>
             <div><div className="eyebrow" style={{ marginBottom: 4 }}>EXPLORE</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
-            <button disabled={!canShowMap} onClick={() => canShowMap && setMode(mode === "map" ? "modules" : "map")} style={{ alignItems: "center", background: mode === "map" && canShowMap ? "var(--ink)" : "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-xs)", color: mode === "map" && canShowMap ? "var(--on-dark)" : "var(--text)", cursor: canShowMap ? "pointer" : "not-allowed", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, height: 38, justifyContent: "center", opacity: canShowMap ? 1 : 0.45, padding: "0 13px" }} type="button"><Icon name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button>
+            <button className={`btn btn-sm ${mode === "map" && canShowMap ? "btn-dark" : "btn-ghost"}`} disabled={!canShowMap} onClick={() => canShowMap && setMode(mode === "map" ? "modules" : "map")} type="button"><Icon name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button>
           </div>
           <div style={{ position: "relative" }}>
             <Icon color="var(--text-3)" name="search" size={17} style={{ left: 13, position: "absolute", top: 14 }} />

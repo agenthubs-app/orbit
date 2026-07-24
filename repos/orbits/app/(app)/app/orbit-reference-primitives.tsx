@@ -141,7 +141,7 @@ export function IconButton({
   type?: "button" | "submit";
   variant?: "default" | "plain";
 }) {
-  const base = variant === "plain" ? "icon-btn icon-btn-plain" : "icon-btn";
+  const base = `btn btn-icon ${variant === "plain" ? "btn-ghost" : "btn-quiet"}`;
 
   return (
     <button

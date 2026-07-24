@@ -56,6 +56,13 @@ test("ModalShell exposes a dialog/bottom-sheet variant and routes through ORBIT_
   assert.match(shell, /zIndex:\s*ORBIT_Z\.modal/);
 });
 
+test("ModalShell's bottom-sheet variant keeps its geometry: pinned to the bottom edge, capped width, top-only rounding", () => {
+  const shell = source(MODAL_SHELL_PATH);
+  assert.match(shell, /flex-end/);
+  assert.match(shell, /min\(100%, 460px\)/);
+  assert.match(shell, /var\(--r-xl\)/);
+});
+
 // ---- (b) migrated dialogs no longer hand-roll their own Esc listener ----
 
 test("account-auth, party, and admin no longer own an independent keydown/Esc listener", () => {

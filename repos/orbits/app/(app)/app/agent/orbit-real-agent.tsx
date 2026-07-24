@@ -16,7 +16,7 @@ import { AccountTopNav } from "../orbit-account-shell";
 import { eventCoverPhoto } from "../orbit-landing-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
-import { Avatar, Cover, Icon, gradientFromString } from "../orbit-reference-primitives";
+import { Avatar, Cover, Icon, IconButton, gradientFromString } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 
@@ -807,24 +807,13 @@ function AgentHistoryList({
                       </form>
                     ) : (
                       <button
+                        className="btn btn-quiet"
                         type="button"
                         onClick={() => {
                           setHistoryMenuOpenId(null);
                           onPick(item);
                         }}
-                        style={{
-                          alignItems: "center",
-                          background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          display: "flex",
-                          flex: 1,
-                          fontFamily: "var(--ff)",
-                          gap: 10,
-                          minWidth: 0,
-                          padding: "7px 0",
-                          textAlign: "left",
-                        }}
+                        style={{ flex: 1, height: "auto", justifyContent: "flex-start", minWidth: 0, padding: "7px 0" }}
                       >
                         <Icon name="message" size={15} color={active ? "var(--accent)" : "var(--text-4)"} />
                         <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -838,21 +827,15 @@ function AgentHistoryList({
                           aria-expanded={menuOpen}
                           aria-haspopup="menu"
                           aria-label={t({ en: "More actions", zh: "更多操作" })}
+                          className="btn btn-icon btn-quiet"
                           data-orbit-agent-history-menu-button={item.sessionId}
                           onClick={() => setHistoryMenuOpenId(menuOpen ? null : item.id)}
                           title={t({ en: "More actions", zh: "更多操作" })}
                           type="button"
                           style={{
-                            alignItems: "center",
-                            background: menuOpen ? "var(--surface-2)" : "transparent",
-                            border: "none",
-                            borderRadius: 8,
+                            background: menuOpen ? "var(--surface-2)" : undefined,
                             color: active ? "var(--accent)" : "var(--text-4)",
-                            cursor: "pointer",
-                            display: "flex",
-                            flexShrink: 0,
                             height: 28,
-                            justifyContent: "center",
                             opacity: controlsVisible ? 1 : 0.46,
                             width: 28,
                           }}
@@ -884,23 +867,8 @@ function AgentHistoryList({
                               }}
                               role="menuitem"
                               type="button"
-                              style={{
-                                alignItems: "center",
-                                background: "transparent",
-                                border: "none",
-                                borderRadius: 8,
-                                color: "var(--text)",
-                                cursor: "pointer",
-                                display: "flex",
-                                fontFamily: "var(--ff)",
-                                fontSize: 13,
-                                fontWeight: 600,
-                                gap: 8,
-                                height: 34,
-                                padding: "0 10px",
-                                textAlign: "left",
-                                width: "100%",
-                              }}
+                              className="btn btn-sm btn-quiet"
+                              style={{ height: 34, justifyContent: "flex-start", width: "100%" }}
                             >
                               <Icon name="pin" size={14} />
                               {item.pinned ? t({ en: "Unpin", zh: "取消置顶" }) : t({ en: "Pin", zh: "置顶" })}
@@ -910,23 +878,8 @@ function AgentHistoryList({
                               onClick={() => startRename(item)}
                               role="menuitem"
                               type="button"
-                              style={{
-                                alignItems: "center",
-                                background: "transparent",
-                                border: "none",
-                                borderRadius: 8,
-                                color: "var(--text)",
-                                cursor: "pointer",
-                                display: "flex",
-                                fontFamily: "var(--ff)",
-                                fontSize: 13,
-                                fontWeight: 600,
-                                gap: 8,
-                                height: 34,
-                                padding: "0 10px",
-                                textAlign: "left",
-                                width: "100%",
-                              }}
+                              className="btn btn-sm btn-quiet"
+                              style={{ height: 34, justifyContent: "flex-start", width: "100%" }}
                             >
                               <Icon name="edit" size={14} />
                               {t({ en: "Rename", zh: "重命名" })}
@@ -940,23 +893,8 @@ function AgentHistoryList({
                               }}
                               role="menuitem"
                               type="button"
-                              style={{
-                                alignItems: "center",
-                                background: "transparent",
-                                border: "none",
-                                borderRadius: 8,
-                                color: "var(--danger, #C2410C)",
-                                cursor: "pointer",
-                                display: "flex",
-                                fontFamily: "var(--ff)",
-                                fontSize: 13,
-                                fontWeight: 600,
-                                gap: 8,
-                                height: 34,
-                                padding: "0 10px",
-                                textAlign: "left",
-                                width: "100%",
-                              }}
+                              className="btn btn-sm btn-quiet"
+                              style={{ color: "var(--danger, #C2410C)", height: 34, justifyContent: "flex-start", width: "100%" }}
                             >
                               {t({ en: "Delete", zh: "删除对话" })}
                             </button>
@@ -1834,7 +1772,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <aside className="orbit-agent-history" data-orbit-agent-history-sidebar style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, maxWidth: HISTORY_SIDEBAR_MAX_WIDTH, minWidth: HISTORY_SIDEBAR_MIN_WIDTH, width: historySidebarWidth }}>
           <div style={{ padding: 14 }}>
-            <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, height: 40, justifyContent: "center", width: "100%" }}>
+            <button className="btn btn-ghost btn-block" type="button" onClick={newChat}>
               <Icon name="plus" size={16} color="var(--accent)" />
               {t({ en: "New chat", zh: "新对话" })}
             </button>
@@ -1916,10 +1854,10 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
               <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{t({ en: "Chat history", zh: "对话历史" })}</span>
               <div style={{ flex: 1 }} />
-              <button type="button" className="hit-44" onClick={() => setHistOpen(false)} aria-label={t({ en: "Close", zh: "关闭" })} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 15, height: 30, justifyContent: "center", width: 30 }}><Icon name="x" size={16} /></button>
+              <IconButton ariaLabel={t({ en: "Close", zh: "关闭" })} name="x" onClick={() => setHistOpen(false)} size={16} />
             </div>
             <div style={{ padding: 12 }}>
-              <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, height: 40, justifyContent: "center", width: "100%" }}>
+              <button className="btn btn-ghost btn-block" type="button" onClick={newChat}>
                 <Icon name="plus" size={16} color="var(--accent)" />
                 {t({ en: "New chat", zh: "新对话" })}
               </button>
@@ -1932,7 +1870,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                 ["/home/schedule", "clock", t({ en: "Calendar", zh: "日程" })],
                 ["/home/cards", "wallet", t({ en: "Contacts", zh: "人脉" })],
               ].map(([href, icon, label]) => (
-                <button key={href} type="button" onClick={() => { setHistOpen(false); navigate(href); }} style={{ alignItems: "center", background: "none", border: "none", borderRadius: 9, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 12, padding: "9px 8px", textAlign: "left", width: "100%" }}>
+                <button className="btn btn-quiet" key={href} type="button" onClick={() => { setHistOpen(false); navigate(href); }} style={{ height: "auto", justifyContent: "flex-start", padding: "9px 8px", width: "100%" }}>
                   <Icon name={icon} size={17} color="var(--accent)" />
                   {label}
                 </button>

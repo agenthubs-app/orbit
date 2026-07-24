@@ -17,7 +17,7 @@ import { CrmSidebar } from "./orbit-crm-sidebar";
 import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
-import { Avatar, Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
+import { Avatar, Cover, gradientFromString, Icon, IconButton } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 
@@ -931,7 +931,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <MobileCrmHeader
-          action={<button aria-label={t({ en: "Make introduction", zh: "发起引荐" })} className="hit-44" style={{ alignItems: "center", background: "var(--accent-soft)", border: "none", borderRadius: "var(--r-pill)", color: "var(--accent)", cursor: "pointer", display: "flex", height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="plus" size={19} /></button>}
+          action={<IconButton ariaLabel={t({ en: "Make introduction", zh: "发起引荐" })} name="plus" size={19} style={{ background: "var(--accent-soft)", color: "var(--accent)" }} />}
           active="intros"
           onQueryChange={setQuery}
           placeholder={t({ en: "Search contacts / intro notes", zh: "搜索联系人 / 引荐词" })}
@@ -1186,9 +1186,10 @@ export function OrbitRealCardDetail({
 
           return (
             <button
+              className="btn btn-sm"
               key={status.value}
               onClick={() => setStatus(status.value)}
-              style={{ background: selected ? meta.soft : "var(--surface-2)", border: `1px solid ${selected ? "transparent" : "var(--border)"}`, borderRadius: "var(--r-sm)", color: selected ? meta.color : "var(--text-3)", cursor: "pointer", flex: 1, fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, padding: "9px 0", textAlign: "center" }}
+              style={{ background: selected ? meta.soft : "var(--surface-2)", border: `1px solid ${selected ? "transparent" : "var(--border)"}`, color: selected ? meta.color : "var(--text-3)", flex: 1 }}
               type="button"
             >
               {status.label}
@@ -1286,7 +1287,7 @@ export function OrbitRealCardDetail({
               <div style={{ color: "var(--text-4)", fontSize: 11 }}>{row.label}</div>
               <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.value}</div>
             </div>
-            <button aria-label={t({ en: "Copy", zh: "复制" })} className="hit-44" onClick={() => copyValue(row.key)} style={{ alignItems: "center", background: copiedKey === row.key ? "var(--live-soft)" : "var(--surface-2)", border: "none", borderRadius: 8, color: copiedKey === row.key ? "var(--live)" : "var(--text-3)", cursor: "pointer", display: "flex", flexShrink: 0, height: 28, justifyContent: "center", width: 28 }} title={t({ en: "Copy", zh: "复制" })} type="button">
+            <button aria-label={t({ en: "Copy", zh: "复制" })} className="btn btn-icon btn-quiet" onClick={() => copyValue(row.key)} style={{ background: copiedKey === row.key ? "var(--live-soft)" : undefined, color: copiedKey === row.key ? "var(--live)" : "var(--text-3)" }} title={t({ en: "Copy", zh: "复制" })} type="button">
               {copiedKey === row.key ? <Icon name="check" size={14} /> : <CdGlyph name="copy" size={14} />}
             </button>
           </div>
@@ -1307,7 +1308,7 @@ export function OrbitRealCardDetail({
         <AccountTopNav active="cards" />
         <div style={{ height: 120, position: "relative" }}>
           <Cover g={cover} style={{ inset: 0, position: "absolute" }} />
-          <button onClick={() => orbitNavigate("/home/cards")} style={{ alignItems: "center", background: "var(--glass-chip)", border: "none", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-sm)", color: "var(--ink)", cursor: "pointer", display: "flex", fontSize: 14, fontWeight: 600, gap: 6, height: 36, left: 24, padding: "0 14px", position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />{t({ en: "Contacts", zh: "名片夹" })}</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => orbitNavigate("/home/cards")} style={{ left: 24, position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />{t({ en: "Contacts", zh: "名片夹" })}</button>
         </div>
         <div style={{ margin: "0 auto", maxWidth: 880, padding: "0 32px 60px", width: "100%" }}>
           {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}

@@ -593,6 +593,11 @@ const reactReferenceIsolationStyles = `
   transform: translateY(0.5px);
 }
 
+[data-orbit-real-page] .btn:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
 [data-orbit-real-page] .btn-primary {
   background: var(--accent);
   box-shadow: var(--sh-xs);
@@ -659,6 +664,13 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page] .btn-block {
   width: 100%;
+}
+
+[data-orbit-real-page] .btn-icon {
+  border-radius: var(--r-sm);
+  height: 40px;
+  padding: 0;
+  width: 40px;
 }
 
 [data-orbit-real-page] .btn[disabled],
