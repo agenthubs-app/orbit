@@ -1308,7 +1308,7 @@ export function OrbitRealCardDetail({
         <AccountTopNav active="cards" />
         <div style={{ height: 120, position: "relative" }}>
           <Cover g={cover} style={{ inset: 0, position: "absolute" }} />
-          <button className="btn btn-ghost btn-sm" onClick={() => orbitNavigate("/home/cards")} style={{ left: 24, position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />{t({ en: "Contacts", zh: "名片夹" })}</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => orbitNavigate("/home/cards")} style={{ background: "var(--glass-chip)", backdropFilter: "blur(8px)", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-sm)", left: 24, position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />{t({ en: "Contacts", zh: "名片夹" })}</button>
         </div>
         <div style={{ margin: "0 auto", maxWidth: 880, padding: "0 32px 60px", width: "100%" }}>
           {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
