@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -94,6 +95,7 @@ test("homeToView combines profile, events, and contacts into a Chinese mobile hu
     aiMinHeight: 560,
     askInputMinHeight: 138,
     entryVariant: "compact",
+    pipelineVariant: "single-row",
     secondaryEventLimit: 2
   });
   assert.deepEqual(view.pipeline, [
@@ -179,6 +181,24 @@ test("homeToView combines profile, events, and contacts into a Chinese mobile hu
     flattenedText(view),
     /\b(mock|fixture|provider|source-backed|implementation|command-center)\b/iu
   );
+});
+
+test("home relationship workbench is a fixed three-cell row", () => {
+  const source = readFileSync(
+    new URL("../src/screens/home/HomeScreen.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /pipelineRail:\s*\{[^}]*flexDirection:\s*"row"/su
+  );
+  assert.doesNotMatch(
+    source,
+    /pipelineRail:\s*\{[^}]*flexWrap:\s*"wrap"/su
+  );
+  assert.match(source, /pipelineCell:\s*\{[^}]*minWidth:\s*0/su);
+  assert.match(source, /pipelineDivider:\s*\{/u);
 });
 
 test("homeFilteredEvents applies the same filters as the web home events view", () => {

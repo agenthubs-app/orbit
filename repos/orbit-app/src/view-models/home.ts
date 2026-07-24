@@ -47,6 +47,7 @@ export interface HomeHubLayoutView {
   aiMinHeight: number;
   askInputMinHeight: number;
   entryVariant: "compact";
+  pipelineVariant: "single-row";
   secondaryEventLimit: number;
 }
 
@@ -220,6 +221,7 @@ function homeHubLayout(): HomeHubLayoutView {
     aiMinHeight: 560,
     askInputMinHeight: 138,
     entryVariant: "compact",
+    pipelineVariant: "single-row",
     secondaryEventLimit: 2
   };
 }

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   ImageBackground,
   Pressable,
@@ -425,20 +425,17 @@ function HomeEventsContent({
 function PipelineRail({ items }: { items: HomePipelineItemView[] }) {
   return (
     <View style={styles.pipelineRail}>
-      {items.map((item) => (
-        <PipelineCell item={item} key={item.label} />
+      {items.map((item, index) => (
+        <Fragment key={item.label}>
+          {index > 0 ? <View style={styles.pipelineDivider} /> : null}
+          <PipelineCell item={item} />
+        </Fragment>
       ))}
     </View>
   );
 }
 
 function PipelineCell({ item }: { item: HomePipelineItemView }) {
-  const toneStyle =
-    item.tone === "live"
-      ? styles.pipelineCellLive
-      : item.tone === "sky"
-        ? styles.pipelineCellSky
-        : styles.pipelineCellAccent;
   const textStyle =
     item.tone === "live"
       ? styles.pipelineValueLive
@@ -447,10 +444,18 @@ function PipelineCell({ item }: { item: HomePipelineItemView }) {
         : styles.pipelineValueAccent;
 
   return (
-    <View style={[styles.pipelineCell, toneStyle]}>
-      <Text style={[styles.pipelineValue, textStyle]}>{item.value}</Text>
-      <Text style={styles.pipelineLabel}>{item.label}</Text>
-      <Text numberOfLines={2} style={styles.pipelineDetail}>
+    <View style={styles.pipelineCell}>
+      <Text numberOfLines={1} style={[styles.pipelineValue, textStyle]}>
+        {item.value}
+      </Text>
+      <Text numberOfLines={1} style={styles.pipelineLabel}>
+        {item.label}
+      </Text>
+      <Text
+        ellipsizeMode="tail"
+        numberOfLines={2}
+        style={styles.pipelineDetail}
+      >
         {item.detail}
       </Text>
     </View>
@@ -773,37 +778,39 @@ const styles = StyleSheet.create({
     lineHeight: 19
   },
   pipelineCell: {
-    borderRadius: radius.md,
+    alignItems: "center",
     flex: 1,
-    gap: spacing.xs,
-    minHeight: 94,
-    minWidth: 92,
-    padding: spacing.md
-  },
-  pipelineCellAccent: {
-    backgroundColor: colors.accentSofter
-  },
-  pipelineCellLive: {
-    backgroundColor: colors.liveSoft
-  },
-  pipelineCellSky: {
-    backgroundColor: colors.skySoft
+    gap: spacing.xxs,
+    minHeight: 82,
+    minWidth: 0,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.md
   },
   pipelineDetail: {
     color: colors.text3,
     fontSize: 11,
-    lineHeight: 15
+    lineHeight: 15,
+    textAlign: "center"
+  },
+  pipelineDivider: {
+    alignSelf: "stretch",
+    backgroundColor: colors.border,
+    width: StyleSheet.hairlineWidth
   },
   pipelineLabel: {
     color: colors.text2,
     fontSize: typography.caption,
     fontWeight: "700",
-    lineHeight: 16
+    lineHeight: 16,
+    textAlign: "center"
   },
   pipelineRail: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
+    overflow: "hidden"
   },
   pipelineValue: {
     fontSize: 24,
