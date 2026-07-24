@@ -11,6 +11,15 @@ const config: ExpoConfig = {
     typedRoutes: true,
     tsconfigPaths: true
   },
+  plugins: [
+    [
+      "expo-image-picker",
+      {
+        cameraPermission: "拍摄名片图片，用于生成待确认联系人候选。",
+        photosPermission: "选择名片图片，用于生成待确认联系人候选。"
+      }
+    ]
+  ],
   ios: {
     supportsTablet: false,
     bundleIdentifier: "app.agenthubs.orbit"

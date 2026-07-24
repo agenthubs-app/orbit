@@ -31,7 +31,7 @@ test("bootstrapToSummary maps first-screen aggregate counts", () => {
     highValueRelationships: 5,
     nextAction: "Review today's follow-ups.",
     pendingFollowupCount: 4,
-    profileName: "Xinyi Zhao",
+    profileName: "小雨",
     relationshipAssetCount: 42,
     summary: "You have 4 follow-ups and 2 upcoming events.",
     upcomingEventCount: 2,
@@ -54,11 +54,11 @@ test("bootstrapToSummary falls back for empty aggregate payloads", () => {
   assert.deepEqual(summary, {
     assistantActionCount: 0,
     highValueRelationships: 0,
-    nextAction: "Open Orbit AI to decide the next relationship move.",
+    nextAction: "先看今天最值得处理的一件事。",
     pendingFollowupCount: 0,
-    profileName: "Orbit user",
+    profileName: "小雨",
     relationshipAssetCount: 0,
-    summary: "Orbit is ready when your relationship data is connected.",
+    summary: "连接人脉数据后，Orbit 会在这里整理当天重点。",
     upcomingEventCount: 0,
     workspaceName: "Orbit"
   });
@@ -66,20 +66,58 @@ test("bootstrapToSummary falls back for empty aggregate payloads", () => {
 
 test("bootstrapToSummary hides implementation labels from startup copy", () => {
   const summary = bootstrapToSummary({
+    account: {
+      workspaceName: "Orbit Generated Relationship Workspace"
+    },
     dashboardSummary: {
       pendingFollowups: 7,
       relationshipAssets: 42
     },
+    profile: {
+      displayName: "小雨",
+      id: "profile_orbit_generated_operator",
+      organization: "OPPO Japan Research"
+    },
     summary:
-      "Mock app bootstrap assembled account, profile, events, providers, and fixture records.",
+      "Live app bootstrap assembled first-screen data from remote live storage.",
+    nextAction:
+      "Use this source-backed bootstrap payload for live relationship workflow testing.",
     topAgentActions: [{ actionId: "action-1" }],
     upcomingEvents: [{ eventId: "event-1" }, { eventId: "event-2" }]
   });
 
   assert.equal(
     summary.summary,
-    "You have 7 follow-ups and 2 upcoming events."
+    "你有 7 个跟进事项和 2 场活动需要看。"
   );
+  assert.equal(
+    summary.nextAction,
+    "先看今天最值得处理的一件事。"
+  );
+  assert.equal(summary.profileName, "小雨");
+  assert.equal(summary.workspaceName, "Orbit 人脉工作台");
+});
+
+test("bootstrapToSummary normalizes the old Orbit main profile name", () => {
+  const summary = bootstrapToSummary({
+    account: {
+      workspaceName: "Orbit"
+    },
+    dashboardSummary: {
+      highValueRelationships: 2,
+      pendingFollowups: 1,
+      relationshipAssets: 12
+    },
+    profile: {
+      displayName: "赵翔",
+      organization: "Orbit"
+    },
+    summary: "今天有 1 个跟进事项。",
+    topAgentActions: [],
+    upcomingEvents: []
+  });
+
+  assert.equal(summary.profileName, "小雨");
 });
 
 test("bootstrapMetrics creates compact home metrics", () => {
@@ -96,9 +134,9 @@ test("bootstrapMetrics creates compact home metrics", () => {
   });
 
   assert.deepEqual(metrics, [
-    { label: "Events", value: 2 },
-    { label: "Follow-ups", value: 4 },
-    { label: "Relationships", value: 42 },
-    { label: "Assistant actions", value: 2 }
+    { label: "活动", value: 2 },
+    { label: "跟进", value: 4 },
+    { label: "人脉", value: 42 },
+    { label: "待确认", value: 2 }
   ]);
 });

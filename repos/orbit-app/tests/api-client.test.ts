@@ -65,6 +65,100 @@ test("Orbit API client returns failure envelopes without throwing", async () => 
   assert.equal(result.status, 503);
 });
 
+test("Orbit API client sends PATCH requests with JSON bodies", async () => {
+  const calls: Array<{
+    init: RequestInit | undefined;
+    input: RequestInfo | URL;
+  }> = [];
+  const fetchImpl: FetchLike = async (input, init) => {
+    calls.push({ init, input });
+    return response(
+      JSON.stringify({ success: true, data: { relationshipStage: "active" } })
+    );
+  };
+  const client = createOrbitApiClient({
+    baseUrl: "http://localhost:3000/",
+    fetchImpl
+  });
+
+  const result = await client.patch<{ relationshipStage: string }>(
+    "/api/connections/connection_001/stage",
+    {
+      body: { relationshipStage: "active" }
+    }
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(String(calls[0]?.input), "http://localhost:3000/api/connections/connection_001/stage");
+  assert.equal(calls[0]?.init?.method, "PATCH");
+  assert.equal(
+    (calls[0]?.init?.headers as Record<string, string>)["Content-Type"],
+    "application/json"
+  );
+  assert.equal(
+    calls[0]?.init?.body,
+    JSON.stringify({ relationshipStage: "active" })
+  );
+});
+
+test("Orbit API client sends PUT requests with JSON bodies", async () => {
+  const calls: Array<{
+    init: RequestInit | undefined;
+    input: RequestInfo | URL;
+  }> = [];
+  const fetchImpl: FetchLike = async (input, init) => {
+    calls.push({ init, input });
+    return response(
+      JSON.stringify({ success: true, data: { currentLevel: "high" } })
+    );
+  };
+  const client = createOrbitApiClient({
+    baseUrl: "http://localhost:3000/",
+    fetchImpl
+  });
+
+  const result = await client.put<{ currentLevel: string }>("/api/agent/settings", {
+    body: { actorLabel: "移动端用户", requestedLevel: "high" }
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(String(calls[0]?.input), "http://localhost:3000/api/agent/settings");
+  assert.equal(calls[0]?.init?.method, "PUT");
+  assert.equal(
+    (calls[0]?.init?.headers as Record<string, string>)["Content-Type"],
+    "application/json"
+  );
+  assert.equal(
+    calls[0]?.init?.body,
+    JSON.stringify({ actorLabel: "移动端用户", requestedLevel: "high" })
+  );
+});
+
+test("Orbit API client includes stored auth cookies when provided", async () => {
+  const calls: Array<{
+    init: RequestInit | undefined;
+    input: RequestInfo | URL;
+  }> = [];
+  const fetchImpl: FetchLike = async (input, init) => {
+    calls.push({ init, input });
+    return response(JSON.stringify({ success: true, data: { ok: true } }));
+  };
+  const client = createOrbitApiClient({
+    authCookieHeader: "authjs.session-token=session-token",
+    baseUrl: "http://localhost:3000/",
+    fetchImpl
+  });
+
+  const result = await client.get<{ ok: boolean }>("/api/account/me");
+
+  assert.equal(result.success, true);
+  assert.equal(
+    (calls[0]?.init?.headers as Record<string, string>).Cookie,
+    "authjs.session-token=session-token"
+  );
+  assert.equal(calls[0]?.init?.credentials, "include");
+});
+
 test("Orbit API client reports non JSON responses as controlled failures", async () => {
   const client = createOrbitApiClient({
     baseUrl: "http://localhost:3000",
