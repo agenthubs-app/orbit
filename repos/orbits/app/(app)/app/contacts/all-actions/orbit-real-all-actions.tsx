@@ -6,6 +6,7 @@
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
 import type { AppAllActionsRouteViewModel } from "./compose-app-all-actions-from-agent-ledger/all-actions-route-view-model";
 import { OrbitAllActionsControls } from "./orbit-all-actions-controls";
+import { OrbitAllActionsSettings } from "./orbit-all-actions-settings";
 
 const STATUS_LABELS: Record<AgentLedgerEntry["status"], string> = {
   awaiting_confirmation: "等待确认",
@@ -69,6 +70,18 @@ export function OrbitRealAllActions({
     );
   }
 
+  if (viewModel.state === "empty") {
+    return (
+      <div data-orbit-route="app-all-actions-route-empty">
+        <div className="eyebrow">人脉</div>
+        <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>All actions</h1>
+        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
+          账本还没有任何操作记录。Orbit 执行的每一次写操作都会出现在这里。
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div data-orbit-all-actions>
       <div className="eyebrow">人脉</div>
@@ -108,6 +121,7 @@ export function OrbitRealAllActions({
           <EntryRow entry={entry} key={entry.entryId} />
         ))}
       </ul>
+      <OrbitAllActionsSettings />
     </div>
   );
 }
