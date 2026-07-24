@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { useOrbitLanguage } from "./orbit-language-context";
 import { Icon, Logo } from "./orbit-reference-primitives";
 
-export type OrbitNavActive = "home" | "events" | "schedule" | "cards" | "agent" | "me";
+export type OrbitNavActive = "home" | "today" | "events" | "schedule" | "cards" | "agent" | "me";
 
 export function productHref(prototypeHref: string) {
   if (
@@ -50,9 +50,10 @@ export function OrbitTopNav({
   const { language, preserveHref, setLanguage, t } = useOrbitLanguage();
   const isAgent = agentActive ?? active === "agent";
   const links = [
-    ["/explore", t({ en: "Events", zh: "活动" }), "events"],
-    ["/home/schedule", t({ en: "Calendar", zh: "日程" }), "schedule"],
-    ["/home/cards", t({ en: "Contacts", zh: "人脉" }), "cards"],
+    ["/today", t({ en: "Today", zh: "Today" }), "today"],
+    ["/events", t({ en: "Events", zh: "活动" }), "events"],
+    ["/schedule", t({ en: "Calendar", zh: "日程" }), "schedule"],
+    ["/contacts", t({ en: "Contacts", zh: "人脉" }), "cards"],
   ] as const;
 
   return (
