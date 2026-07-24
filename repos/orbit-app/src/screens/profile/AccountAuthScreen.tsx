@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import type { MobileAuthUser } from "../../api/mobile-auth";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
@@ -60,12 +61,14 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.accountMe,
     (data) =>
-      accountSessionToView(data, { authenticated: auth.signedIn }).statusLabel !==
-      "已登录"
+      accountSessionToView(data, {
+        authenticated: auth.signedIn,
+        authUser: auth.user
+      }).statusLabel !== "已登录"
   );
   const view = useMemo(
-    () => accountAuthToView(mode, { forgotStep }),
-    [forgotStep, mode]
+    () => accountAuthToView(mode, { forgotStep, googleEnabled: auth.googleEnabled }),
+    [auth.googleEnabled, forgotStep, mode]
   );
   const next = firstParam(params.next, view.defaultNext);
   const created = firstParam(params.created) === "1";
@@ -135,6 +138,30 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     }
   }
 
+  async function startGoogleSignIn() {
+    setSubmitting(true);
+    setNotice(null);
+    setError(null);
+
+    try {
+      const result = await auth.startGoogleSignIn({ redirectTo: next });
+
+      if (!result.success) {
+        if (result.message === "已取消 Google 登录。") {
+          setNotice(result.message);
+        } else {
+          setError(result.message ?? "Google 登录没有完成，请重新登录。");
+        }
+        return;
+      }
+
+      state.refresh();
+      router.replace(next as Href);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <AppScreen
       eyebrow="账号"
@@ -177,12 +204,39 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             </Text>
             <Ionicons color={colors.onAccent} name="arrow-forward" size={17} />
           </Pressable>
+          {view.oauthActions.length > 0 ? (
+            <View style={styles.oauthStack}>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>或</Text>
+                <View style={styles.dividerLine} />
+              </View>
+              {view.oauthActions.map((action) => (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={submitting || !auth.ready}
+                  key={action.id}
+                  onPress={startGoogleSignIn}
+                  style={({ pressed }) => [
+                    styles.oauthButton,
+                    pressed ? styles.pressed : null,
+                    submitting || !auth.ready ? styles.disabledButton : null
+                  ]}
+                >
+                  <Ionicons color={colors.ink} name="logo-google" size={17} />
+                  <Text style={styles.oauthButtonText}>{action.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
           <Pressable
             accessibilityRole="button"
+            disabled={submitting}
             onPress={() => navigateTo(`${view.switchHref}?next=${encodeURIComponent(next)}`)}
             style={({ pressed }) => [
               styles.secondaryButton,
-              pressed ? styles.pressed : null
+              pressed ? styles.pressed : null,
+              submitting ? styles.disabledButton : null
             ]}
           >
             <Text style={styles.secondaryButtonText}>{view.switchLabel}</Text>
@@ -192,6 +246,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
               {view.helperLinks.map((helperLink) => (
                 <Pressable
                   accessibilityRole="link"
+                  disabled={submitting}
                   key={helperLink.href}
                   onPress={() =>
                     navigateTo(
@@ -200,7 +255,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
                   }
                   style={({ pressed }) => [
                     styles.helperLink,
-                    pressed ? styles.pressed : null
+                    pressed ? styles.pressed : null,
+                    submitting ? styles.disabledButton : null
                   ]}
                 >
                   <Text style={styles.helperLinkText}>{helperLink.label}</Text>
@@ -213,7 +269,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
       <DataCard detail={view.boundary} title="登录说明">
         <Text style={styles.bodyText}>
-          邮箱密码账号会同步到网页版。Google 登录先从网页版进入。
+          邮箱密码账号会同步到网页版。Google 登录会打开网页授权，完成后回到 Orbit。
         </Text>
       </DataCard>
 
@@ -225,7 +281,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         <ErrorState message={state.error.message} title="账号状态不可用" />
       ) : null}
       {state.kind === "success" || state.kind === "empty" ? (
-        <SessionPreview data={state.data} signedIn={auth.signedIn} />
+        <SessionPreview
+          data={state.data}
+          signedIn={auth.signedIn}
+          user={auth.user}
+        />
       ) : null}
     </AppScreen>
   );
@@ -240,34 +300,61 @@ function AuthField({
   onChange: (value: string) => void;
   value: string;
 }) {
+  const [passwordVisible, setPasswordVisible] = useState(false);
+
   return (
     <View style={styles.fieldWrap}>
       <View style={styles.labelRow}>
         <Text style={styles.fieldLabel}>{field.label}</Text>
         {field.helper ? <Text style={styles.fieldHelper}>{field.helper}</Text> : null}
       </View>
-      <TextInput
-        autoCapitalize="none"
-        keyboardType={field.name === "email" ? "email-address" : "default"}
-        onChangeText={onChange}
-        placeholder={field.placeholder}
-        placeholderTextColor={colors.text4}
-        secureTextEntry={field.secure}
-        style={styles.input}
-        value={value}
-      />
+      <View style={styles.inputShell}>
+        <TextInput
+          autoCapitalize="none"
+          keyboardType={field.name === "email" ? "email-address" : "default"}
+          onChangeText={onChange}
+          placeholder={field.placeholder}
+          placeholderTextColor={colors.text4}
+          secureTextEntry={field.secure && !passwordVisible}
+          style={styles.input}
+          value={value}
+        />
+        {field.secure ? (
+          <Pressable
+            accessibilityLabel={passwordVisible ? "隐藏密码" : "显示密码"}
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => setPasswordVisible((current) => !current)}
+            style={({ pressed }) => [
+              styles.passwordToggle,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Ionicons
+              color={colors.text3}
+              name={passwordVisible ? "eye-off-outline" : "eye-outline"}
+              size={19}
+            />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
 
 function SessionPreview({
   data,
-  signedIn
+  signedIn,
+  user
 }: {
   data: unknown;
   signedIn: boolean;
+  user: MobileAuthUser | null;
 }) {
-  const session = accountSessionToView(data, { authenticated: signedIn });
+  const session = accountSessionToView(data, {
+    authenticated: signedIn,
+    authUser: user
+  });
 
   return (
     <DataCard detail={session.summary} title="账号状态">
@@ -288,6 +375,21 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.72
+  },
+  dividerLine: {
+    backgroundColor: colors.border,
+    flex: 1,
+    height: StyleSheet.hairlineWidth
+  },
+  dividerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md
+  },
+  dividerText: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 16
   },
   errorText: {
     backgroundColor: "#FEF2F2",
@@ -333,15 +435,21 @@ const styles = StyleSheet.create({
     lineHeight: 18
   },
   input: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
-    borderWidth: 1,
     color: colors.ink,
+    flex: 1,
     fontSize: typography.body,
     minHeight: 48,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
+  },
+  inputShell: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderColor: colors.border2,
+    borderRadius: radius.input,
+    borderWidth: 1,
+    flexDirection: "row",
+    overflow: "hidden"
   },
   labelRow: {
     alignItems: "center",
@@ -357,6 +465,34 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 19,
     padding: spacing.md
+  },
+  oauthButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "center",
+    minHeight: 46,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md
+  },
+  oauthButtonText: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  oauthStack: {
+    gap: spacing.sm
+  },
+  passwordToggle: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    justifyContent: "center",
+    minWidth: 48
   },
   pressed: {
     opacity: 0.84,

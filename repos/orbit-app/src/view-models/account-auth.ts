@@ -14,6 +14,11 @@ export interface AccountAuthHelperLinkView {
   label: string;
 }
 
+export interface AccountAuthOauthActionView {
+  id: "google";
+  label: string;
+}
+
 export interface AccountAuthView {
   boundary: string;
   busyLabel: string;
@@ -22,6 +27,7 @@ export interface AccountAuthView {
   fields: AccountAuthFieldView[];
   helperLinks: AccountAuthHelperLinkView[];
   mode: AccountAuthMode;
+  oauthActions: AccountAuthOauthActionView[];
   primaryLabel: string;
   switchHref: string;
   switchLabel: string;
@@ -30,6 +36,7 @@ export interface AccountAuthView {
 
 interface AccountAuthOptions {
   forgotStep?: 1 | 2;
+  googleEnabled?: boolean;
 }
 
 const defaultNext = "/dashboard";
@@ -39,7 +46,12 @@ const modeCopy: Record<
   AccountAuthMode,
   Omit<
     AccountAuthView,
-    "boundary" | "defaultNext" | "fields" | "helperLinks" | "mode"
+    | "boundary"
+    | "defaultNext"
+    | "fields"
+    | "helperLinks"
+    | "mode"
+    | "oauthActions"
   >
 > = {
   forgot: {
@@ -133,6 +145,17 @@ function helperLinksForMode(mode: AccountAuthMode): AccountAuthHelperLinkView[] 
   return [];
 }
 
+function oauthActionsForMode(
+  mode: AccountAuthMode,
+  googleEnabled: boolean
+): AccountAuthOauthActionView[] {
+  if (!googleEnabled || mode === "forgot") {
+    return [];
+  }
+
+  return [{ id: "google", label: "使用 Google 登录" }];
+}
+
 function normalizedNext(next: string | undefined): string {
   if (!next?.trim().startsWith("/")) {
     return defaultNext;
@@ -146,6 +169,7 @@ export function accountAuthToView(
   options: AccountAuthOptions = {}
 ): AccountAuthView {
   const forgotStep = options.forgotStep ?? 1;
+  const googleEnabled = options.googleEnabled === true;
 
   return {
     ...modeCopy[mode],
@@ -153,7 +177,8 @@ export function accountAuthToView(
     defaultNext,
     fields: fieldsForMode(mode, forgotStep),
     helperLinks: helperLinksForMode(mode),
-    mode
+    mode,
+    oauthActions: oauthActionsForMode(mode, googleEnabled)
   };
 }
 

@@ -21,8 +21,10 @@ export function AccountScreen() {
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.accountMe,
     (data) =>
-      accountSessionToView(data, { authenticated: auth.signedIn }).statusLabel !==
-      "已登录"
+      accountSessionToView(data, {
+        authenticated: auth.signedIn,
+        authUser: auth.user
+      }).statusLabel !== "已登录"
   );
 
   return (
@@ -49,7 +51,8 @@ export function AccountScreen() {
           onRefresh={state.refresh}
           signedIn={auth.signedIn}
           view={accountSessionToView(state.data, {
-            authenticated: auth.signedIn
+            authenticated: auth.signedIn,
+            authUser: auth.user
           })}
         />
       ) : null}

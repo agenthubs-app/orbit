@@ -13,3 +13,9 @@ test("account auth screen renders helper links such as forgot password", () => {
   assert.match(screenSource, /view\.helperLinks/u);
   assert.match(screenSource, /helperLink/u);
 });
+
+test("account auth screen can start the mobile Google login bridge", () => {
+  assert.match(screenSource, /googleEnabled/u);
+  assert.match(screenSource, /startGoogleSignIn/u);
+  assert.match(screenSource, /oauthActions/u);
+});

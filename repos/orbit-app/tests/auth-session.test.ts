@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildMobileGoogleStartUrl,
+  exchangeMobileGoogleCode,
+  fetchMobileAuthProviders,
   mergeSetCookieHeaders,
   registerOrbitAccount,
   signInWithCredentials,
@@ -145,6 +148,78 @@ test("signInWithCredentials reports credential errors without storing a session"
     assert.fail("Expected failed sign-in");
   }
   assert.equal(result.error.code, "ORBIT_APP_AUTH_INVALID_CREDENTIALS");
+});
+
+test("fetchMobileAuthProviders reads the web mobile auth provider list", async () => {
+  const result = await fetchMobileAuthProviders({
+    baseUrl: "http://localhost:3000",
+    fetchImpl: async (input, init = {}) => {
+      assert.equal(String(input), "http://localhost:3000/api/auth/mobile/providers");
+      assert.equal(init.method, "GET");
+      return jsonResponse({
+        success: true,
+        data: { providers: ["credentials", "google"] }
+      });
+    }
+  });
+
+  assert.equal(result.success, true);
+  if (!result.success) {
+    assert.fail("Expected providers to load");
+  }
+  assert.deepEqual(result.providers, ["credentials", "google"]);
+});
+
+test("buildMobileGoogleStartUrl composes the Orbit deep-link broker request", () => {
+  const url = new URL(
+    buildMobileGoogleStartUrl({
+      baseUrl: "http://localhost:3000",
+      codeChallenge: "c".repeat(43),
+      next: "/profile",
+      state: "s".repeat(32)
+    })
+  );
+
+  assert.equal(url.origin, "http://localhost:3000");
+  assert.equal(url.pathname, "/api/auth/mobile/google/start");
+  assert.equal(url.searchParams.get("code_challenge"), "c".repeat(43));
+  assert.equal(url.searchParams.get("redirect_uri"), "orbit://account/oauth");
+  assert.equal(url.searchParams.get("state"), "s".repeat(32));
+  assert.equal(url.searchParams.get("next"), "/profile");
+});
+
+test("exchangeMobileGoogleCode stores the exchanged mobile session cookie", async () => {
+  const result = await exchangeMobileGoogleCode({
+    baseUrl: "http://localhost:3000",
+    code: "oauth-code",
+    codeVerifier: "v".repeat(64),
+    fetchImpl: async (input, init = {}) => {
+      assert.equal(String(input), "http://localhost:3000/api/auth/mobile/google/exchange");
+      assert.equal(init.method, "POST");
+      assert.deepEqual(JSON.parse(String(init.body)), {
+        code: "oauth-code",
+        codeVerifier: "v".repeat(64),
+        state: "oauth-state"
+      });
+
+      return jsonResponse({
+        success: true,
+        data: {
+          cookieHeader: "__Secure-authjs.session-token=google-session",
+          expiresAt: "2026-08-24T00:00:00.000Z",
+          user: {
+            email: "xiaoyu@example.com",
+            id: "auth_user_001",
+            name: "小雨"
+          }
+        }
+      });
+    },
+    state: "oauth-state"
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.cookieHeader, "__Secure-authjs.session-token=google-session");
 });
 
 test("registerOrbitAccount posts to the web register API envelope", async () => {

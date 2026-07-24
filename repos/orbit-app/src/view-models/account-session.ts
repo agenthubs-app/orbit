@@ -19,6 +19,11 @@ export interface AccountSessionView {
 
 export interface AccountSessionOptions {
   authenticated?: boolean | null;
+  authUser?: {
+    email: string;
+    id: string;
+    name: string;
+  } | null;
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -174,6 +179,8 @@ export function accountSessionToView(
     return {
       ...founderAccountView,
       authActions: authActions(status),
+      displayName:
+        options.authUser?.name.trim() || founderAccountView.displayName,
       emptyMessage: "当前账号接口没有返回可展示的登录信息。",
       emptyTitle: "账号状态不可用",
       statusLabel: statusLabel(status),
@@ -192,7 +199,9 @@ export function accountSessionToView(
 
   return {
     displayName: userFacingText(
-      stringField(user, "displayName") || stringField(account, "displayName"),
+      options.authUser?.name ||
+        stringField(user, "displayName") ||
+        stringField(account, "displayName"),
       founderAccountView.displayName
     ),
     emptyMessage: "当前账号接口没有返回可展示的登录信息。",

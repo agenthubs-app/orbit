@@ -5,6 +5,10 @@ import test from "node:test";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
 const screensRoot = join(repoRoot, "src", "screens");
+const authProviderSource = readFileSync(
+  join(repoRoot, "src", "api", "AuthSessionProvider.tsx"),
+  "utf8"
+);
 const allowedDirectClientFiles = new Set([
   join("src", "screens", "settings", "ApiSettingsScreen.tsx")
 ]);
@@ -34,4 +38,15 @@ test("action screens use the authenticated Orbit API client", () => {
     .map((filePath) => relative(repoRoot, filePath));
 
   assert.deepEqual(offenders, []);
+});
+
+test("auth session provider restores a validated SecureStore-backed session", () => {
+  assert.match(authProviderSource, /nativeAuthSessionStorage/u);
+  assert.match(authProviderSource, /validateAuthSession/u);
+  assert.match(authProviderSource, /user/u);
+  assert.doesNotMatch(authProviderSource, /AsyncStorage\.setItem/u);
+  assert.doesNotMatch(
+    authProviderSource,
+    /signedIn:\s*cookieHeader\.trim\(\)\.length\s*>\s*0/u
+  );
 });

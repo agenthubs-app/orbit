@@ -1,5 +1,6 @@
 import { type Href, useRouter } from "expo-router";
 import { RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
@@ -21,6 +22,7 @@ import {
 
 export function ProfileScreen() {
   const router = useRouter();
+  const auth = useOrbitAuthSession();
   const state = useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false);
   const suggestionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.profileUpdateSuggestions,
@@ -42,14 +44,29 @@ export function ProfileScreen() {
       }
       title="个人资料"
     >
-      {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "offline" ? (
+      {!auth.ready ? <LoadingState /> : null}
+      {auth.ready && !auth.signedIn ? (
+        <DataCard
+          detail="登录后，才能查看和维护只属于你的个人名片。"
+          onPress={() =>
+            router.push("/account/login?next=%2Fprofile" as Href)
+          }
+          title="登录后查看个人资料"
+        >
+          <Text style={styles.bodyText}>
+            继续使用邮箱或 Google 登录，完成后会回到这里。
+          </Text>
+        </DataCard>
+      ) : null}
+      {auth.signedIn && state.kind === "loading" ? <LoadingState /> : null}
+      {auth.signedIn && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />
       ) : null}
-      {state.kind === "failure" ? (
+      {auth.signedIn && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {state.kind === "success" || state.kind === "empty" ? (
+      {auth.signedIn &&
+      (state.kind === "success" || state.kind === "empty") ? (
         <ProfileCard
           data={state.data}
           onOpenAccount={() => router.push("/account" as Href)}

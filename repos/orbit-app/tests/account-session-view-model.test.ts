@@ -143,3 +143,33 @@ test("accountSessionToView normalizes the old main user account to Xiaoyu", () =
   assert.equal(view.roleLabel, "创始人");
   assert.equal(view.goal, "用 Orbit 找到能互相帮忙的人：AI 落地客户、合作伙伴、日本本地资源和靠谱引荐。");
 });
+
+test("accountSessionToView prefers the validated mobile session identity", () => {
+  const view = accountSessionToView(
+    {
+      account: {
+        plan: "live-relationship-os",
+        role: "operator",
+        workspaceName: "Orbit"
+      },
+      profile: {
+        homeMarket: "Tokyo"
+      },
+      session: {
+        status: "signed-out"
+      }
+    },
+    {
+      authenticated: true,
+      authUser: {
+        email: "person@example.com",
+        id: "user_1",
+        name: "田中美咲"
+      }
+    }
+  );
+
+  assert.equal(view.displayName, "田中美咲");
+  assert.equal(view.statusLabel, "已登录");
+  assert.deepEqual(view.authActions, []);
+});

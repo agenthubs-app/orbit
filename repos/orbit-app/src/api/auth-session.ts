@@ -1,6 +1,12 @@
 import { normalizeOrbitApiBaseUrl } from "./base-url";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
-import { signInWithMobileCredentials } from "./mobile-auth";
+import {
+  exchangeGoogleOAuthCode,
+  fetchMobileAuthProviders as fetchMobileAuthProviderEnvelope,
+  MOBILE_AUTH_CALLBACK_URI,
+  signInWithMobileCredentials,
+  type MobileAuthProviderId
+} from "./mobile-auth";
 
 export type AuthFetchLike = (
   input: RequestInfo | URL,
@@ -41,11 +47,22 @@ export type RegisterAccountResult =
   | RegisterAccountSuccess
   | RegisterAccountFailure;
 
+export type MobileAuthProvidersResult =
+  | {
+      providers: MobileAuthProviderId[];
+      success: true;
+    }
+  | AuthSessionFailure;
+
 interface JsonBody {
   [key: string]: unknown;
 }
 
 function authUrl(baseUrl: string, path: string): string {
+  return `${normalizeOrbitApiBaseUrl(baseUrl)}${path}`;
+}
+
+function authEndpoint(baseUrl: string, path: string): string {
   return `${normalizeOrbitApiBaseUrl(baseUrl)}${path}`;
 }
 
@@ -159,6 +176,91 @@ export function mergeSetCookieHeaders(
     .filter(([name]) => Boolean(name))
     .map(([name, value]) => `${name}=${value}`)
     .join("; ");
+}
+
+export async function fetchMobileAuthProviders({
+  baseUrl,
+  fetchImpl = fetch
+}: {
+  baseUrl: string;
+  fetchImpl?: AuthFetchLike;
+}): Promise<MobileAuthProvidersResult> {
+  const result = await fetchMobileAuthProviderEnvelope({ baseUrl, fetchImpl });
+
+  if (!result.success) {
+    return authFailure(
+      result.error.code,
+      result.error.message,
+      result.error.status
+    );
+  }
+
+  return {
+    providers: result.data.providers,
+    success: true
+  };
+}
+
+export function buildMobileGoogleStartUrl({
+  baseUrl,
+  codeChallenge,
+  next = "/profile",
+  state
+}: {
+  baseUrl: string;
+  codeChallenge: string;
+  next?: string;
+  state: string;
+}): string {
+  const startUrl = new URL(
+    authEndpoint(baseUrl, ORBIT_API_ENDPOINTS.authMobileGoogleStart)
+  );
+
+  startUrl.searchParams.set("code_challenge", codeChallenge);
+  startUrl.searchParams.set("code_challenge_method", "S256");
+  startUrl.searchParams.set(
+    "next",
+    next.startsWith("/") && !next.startsWith("//") ? next : "/profile"
+  );
+  startUrl.searchParams.set("redirect_uri", MOBILE_AUTH_CALLBACK_URI);
+  startUrl.searchParams.set("state", state);
+
+  return startUrl.toString();
+}
+
+export async function exchangeMobileGoogleCode({
+  baseUrl,
+  code,
+  codeVerifier,
+  fetchImpl = fetch,
+  state
+}: {
+  baseUrl: string;
+  code: string;
+  codeVerifier: string;
+  fetchImpl?: AuthFetchLike;
+  state: string;
+}): Promise<AuthSessionResult> {
+  const result = await exchangeGoogleOAuthCode({
+    baseUrl,
+    code,
+    codeVerifier,
+    fetchImpl,
+    state
+  });
+
+  if (!result.success) {
+    return authFailure(
+      result.error.code,
+      result.error.message,
+      result.error.status
+    );
+  }
+
+  return {
+    cookieHeader: result.data.cookieHeader,
+    success: true
+  };
 }
 
 function requestHeaders(

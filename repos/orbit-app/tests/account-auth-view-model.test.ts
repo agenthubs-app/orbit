@@ -95,6 +95,23 @@ test("accountAuthToView exposes account recovery helper links", () => {
   assert.deepEqual(accountAuthToView("signup").helperLinks, []);
 });
 
+test("accountAuthToView exposes Google when the mobile auth provider is enabled", () => {
+  assert.deepEqual(accountAuthToView("login", { googleEnabled: true }).oauthActions, [
+    {
+      id: "google",
+      label: "使用 Google 登录",
+    }
+  ]);
+  assert.deepEqual(accountAuthToView("signup", { googleEnabled: true }).oauthActions, [
+    {
+      id: "google",
+      label: "使用 Google 登录",
+    }
+  ]);
+  assert.deepEqual(accountAuthToView("forgot", { googleEnabled: true }).oauthActions, []);
+  assert.deepEqual(accountAuthToView("login").oauthActions, []);
+});
+
 test("nextHrefForAccountAuthSubmit keeps fallback navigation deterministic", () => {
   assert.equal(
     nextHrefForAccountAuthSubmit({
