@@ -4,7 +4,7 @@
  * Today 不持有自己的数据，它只是操作账本的一个视图：
  *   awaiting_confirmation → 需要你决定
  *   executing             → ORBIT 已准备
- *   completed / partially_failed / undone → 最近完成
+ *   completed / failed / partially_failed / undone → 最近完成
  * deferred（稍后处理）刻意不在 Today 出现，只在 All actions 可见。
  */
 import {
