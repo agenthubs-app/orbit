@@ -9,6 +9,7 @@ export type CrmSidebarActive =
   | "graph"
   | "intros"
   | "dashboard"
+  | "allActions"
   | "import"
   | "scan";
 
@@ -26,6 +27,7 @@ const WALLET_ITEMS: Item[] = [
   { key: "graph", icon: "share", href: "/app/contacts/graph", label: { en: "Network graph", zh: "人脉图谱" } },
   { key: "intros", icon: "users", href: "/app/contacts/intros", count: 6, label: { en: "Introductions", zh: "引荐记录" } },
   { key: "dashboard", icon: "grid", href: "/app/contacts/dashboard", label: { en: "Dashboard", zh: "人脉表盘" } },
+  { key: "allActions", icon: "list", href: "/app/contacts/all-actions", label: { en: "All actions", zh: "All actions" } },
 ];
 
 const CAPTURE_ITEMS: Item[] = [
@@ -80,7 +82,7 @@ function NavGroup({
 }
 
 /** Shared CRM left sidebar — one source of truth so every 名片夹 page is pixel-identical.
- *  Renders the full 212px column (bg + border + padding). */
+ *  Renders the full ORBIT_LEFT_SIDEBAR_WIDTH column (bg + border + padding). */
 export function CrmSidebar({ active }: { active?: CrmSidebarActive }) {
   const { t } = useOrbitLanguage();
   return (

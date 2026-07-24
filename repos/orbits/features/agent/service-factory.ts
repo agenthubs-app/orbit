@@ -12,6 +12,9 @@ import { createConfiguredStorageAgentActionQueueProvider } from "./storage/agent
 import type { ExternalActionSandboxService } from "./external-action-contract";
 import type { AgentActionQueueService } from "./service";
 import type { AgentAutonomySettingsService } from "./settings-contract";
+import { createLiveAgentLedgerService } from "./ledger/live-service";
+import { createMockAgentLedgerService } from "./ledger/mock-service";
+import type { AgentLedgerService } from "./ledger/service";
 
 export type {
   AgentAutonomySettingsInput,
@@ -93,6 +96,31 @@ export function createExternalActionSandboxService(
   mode?: ModuleMode | string,
 ): ExternalActionSandboxService {
   const resolution = resolveExternalActionSandboxService(mode);
+
+  if (resolution.success === false) {
+    throw new Error(resolution.error.message);
+  }
+
+  return resolution.service;
+}
+
+export const agentLedgerServiceFactory =
+  createModuleServiceFactory<AgentLedgerService>({
+    capabilityId: "agent-action-ledger",
+    implementations: {
+      live: () => createLiveAgentLedgerService(),
+      mock: () => createMockAgentLedgerService(),
+    },
+  });
+
+export function resolveAgentLedgerService(mode?: ModuleMode | string) {
+  return agentLedgerServiceFactory.create(mode);
+}
+
+export function createAgentLedgerService(
+  mode?: ModuleMode | string,
+): AgentLedgerService {
+  const resolution = resolveAgentLedgerService(mode);
 
   if (resolution.success === false) {
     throw new Error(resolution.error.message);

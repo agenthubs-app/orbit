@@ -9,6 +9,7 @@ import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
+import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import type {
   OrbitContactPipelineStatus,
   OrbitContactView,
@@ -568,7 +569,7 @@ export function OrbitRealCardsPipelineView({ viewModel }: { viewModel: OrbitCont
       {/* ===================== DESKTOP ===================== */}
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
-        <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <SharedCrmSidebar active="pipeline" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 22 }}>

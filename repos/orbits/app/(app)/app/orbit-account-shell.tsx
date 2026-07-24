@@ -23,7 +23,7 @@ export function AccountTopNav({
   rightExtra,
 }: {
   accountInitial?: string;
-  active?: "agent" | "events" | "schedule" | "cards" | "me";
+  active?: "agent" | "today" | "events" | "schedule" | "cards" | "me";
   agentTone?: "default" | "selected";
   rightExtra?: ReactNode;
 }) {

@@ -9,6 +9,7 @@ import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
 import { Basis } from "./orbit-real-contacts";
+import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 type Copy = { en: string; zh: string };
@@ -323,7 +324,7 @@ export function OrbitRealCardsImport() {
       {/* ============ DESKTOP ============ */}
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
-        <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <SharedCrmSidebar active="import" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ marginBottom: 22 }}>

@@ -17,6 +17,7 @@ import { eventCoverPhoto } from "../orbit-landing-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, gradientFromString } from "../orbit-reference-primitives";
+import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 
 interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
@@ -42,9 +43,9 @@ type AgentHistoryLanguage = "en" | "zh" | "ja";
 const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
 const AGENT_CHAT_SESSIONS_API_PATH = "/api/ai/conversations/sessions";
 const MAX_AGENT_CHAT_HISTORY_SESSIONS = 12;
-const HISTORY_SIDEBAR_DEFAULT_WIDTH = 248;
+const HISTORY_SIDEBAR_DEFAULT_WIDTH = ORBIT_LEFT_SIDEBAR_WIDTH;
 const HISTORY_SIDEBAR_MAX_WIDTH = 380;
-const HISTORY_SIDEBAR_MIN_WIDTH = 220;
+const HISTORY_SIDEBAR_MIN_WIDTH = 180;
 const MAX_AGENT_CHAT_TITLE_LENGTH = 18;
 
 function depthFor(t: Translate) {
