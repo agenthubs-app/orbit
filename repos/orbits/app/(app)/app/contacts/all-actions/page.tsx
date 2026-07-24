@@ -27,21 +27,23 @@ export default async function AppAllActionsPage({
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      <AccountTopNav active="cards" />
-      <div
-        data-orbit-route="app-all-actions-route"
-        style={{
-          display: "grid",
-          gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`,
-          height: "calc(100dvh - 64px)",
-          minHeight: 0,
-        }}
-      >
-        <CrmSidebar active="allActions" />
-        <div style={{ overflowY: "auto", padding: "28px 32px 80px" }}>
-          <OrbitRealAllActions viewModel={localizeOrbitTree(viewModel, language)} />
+      <main data-orbit-real-page="all-actions" style={{ background: "var(--bg)", color: "var(--text)", minHeight: "100dvh" }}>
+        <AccountTopNav active="cards" />
+        <div
+          data-orbit-route="app-all-actions-route"
+          style={{
+            display: "grid",
+            gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`,
+            height: "calc(100dvh - 64px)",
+            minHeight: 0,
+          }}
+        >
+          <CrmSidebar active="allActions" />
+          <div style={{ overflowY: "auto", padding: "28px 32px 80px" }}>
+            <OrbitRealAllActions viewModel={localizeOrbitTree(viewModel, language)} />
+          </div>
         </div>
-      </div>
+      </main>
     </>
   );
 }

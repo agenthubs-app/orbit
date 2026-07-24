@@ -70,3 +70,13 @@ test("session account control and inbox extras stay in the actions segment", () 
   assert.ok(actions.includes("OrbitNavAccountControl"));
   assert.ok(actions.includes("{rightExtra}"));
 });
+
+test("the ledger pages carry the real-page scope the nav CSS requires", () => {
+  for (const file of [
+    "app/(app)/app/today/page.tsx",
+    "app/(app)/app/contacts/all-actions/page.tsx",
+  ]) {
+    const pageSource = readFileSync(join(projectRoot, file), "utf8");
+    assert.ok(pageSource.includes("data-orbit-real-page="), file);
+  }
+});

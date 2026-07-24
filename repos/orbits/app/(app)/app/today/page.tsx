@@ -29,13 +29,15 @@ export default async function AppTodayPage({
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      <AccountTopNav active="today" />
-      <div data-orbit-route="app-today-route" style={{ margin: "0 auto", maxWidth: 1180, padding: "28px 24px 96px" }}>
-        <div style={{ alignItems: "start", display: "grid", gap: 28, gridTemplateColumns: "minmax(0, 1fr) minmax(0, 380px)" }}>
-          <OrbitRealToday viewModel={localizeOrbitTree(viewModel, language)} />
-          <OrbitTodayDecisionPanel entry={localizeOrbitTree(viewModel.selectedEntry, language)} />
+      <main data-orbit-real-page="today" style={{ background: "var(--bg)", color: "var(--text)", minHeight: "100dvh" }}>
+        <AccountTopNav active="today" />
+        <div data-orbit-route="app-today-route" style={{ margin: "0 auto", maxWidth: 1180, padding: "28px 24px 96px" }}>
+          <div style={{ alignItems: "start", display: "grid", gap: 28, gridTemplateColumns: "minmax(0, 1fr) minmax(0, 380px)" }}>
+            <OrbitRealToday viewModel={localizeOrbitTree(viewModel, language)} />
+            <OrbitTodayDecisionPanel entry={localizeOrbitTree(viewModel.selectedEntry, language)} />
+          </div>
         </div>
-      </div>
+      </main>
     </>
   );
 }
