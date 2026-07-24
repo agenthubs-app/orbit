@@ -15,6 +15,7 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { openRelationshipInboxCompose } from "../inbox/relationship-inbox-panel";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
+import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -452,7 +453,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
       {/* ============ DESKTOP ============ */}
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
-        <div style={{ display: "grid", gridTemplateColumns: "212px 1fr", height: "calc(100dvh - 64px)", minHeight: 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <SharedCrmSidebar />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <a className="nc-back" href="/app/contacts"><Icon name="chevL" size={16} />{t({ en: "Back to contacts", zh: "返回名片夹" })}</a>

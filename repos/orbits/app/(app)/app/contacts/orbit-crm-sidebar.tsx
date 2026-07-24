@@ -80,7 +80,7 @@ function NavGroup({
 }
 
 /** Shared CRM left sidebar — one source of truth so every 名片夹 page is pixel-identical.
- *  Renders the full 212px column (bg + border + padding). */
+ *  Renders the full ORBIT_LEFT_SIDEBAR_WIDTH column (bg + border + padding). */
 export function CrmSidebar({ active }: { active?: CrmSidebarActive }) {
   const { t } = useOrbitLanguage();
   return (
