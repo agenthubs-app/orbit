@@ -193,6 +193,7 @@ export interface AgentLedgerDraftUpdateInput {
   entryId?: string | null;
   operationId?: string | null;
   draftText?: string | null;
+  field?: "draftText" | "goal" | "title" | "dueAt" | string | null;
 }
 
 export interface AgentLedgerListPayload {

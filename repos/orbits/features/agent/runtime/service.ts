@@ -69,6 +69,7 @@ export interface AgentRuntimeService {
     actionId: string;
     operationId: string;
     draftText: string;
+    field?: "draftText" | "goal" | "title" | "dueAt";
   }) => Promise<AgentActionRecord>;
   undoAction: (actionId: string) => Promise<AgentActionRecord>;
   markActionViewed: (actionId: string) => Promise<AgentActionRecord>;
@@ -605,31 +606,68 @@ export function createAgentRuntimeService({
       const action = await requireAction(input.actionId);
       assertStatus(action, ["awaiting_confirmation", "deferred"]);
       const operationIndex = action.operations.findIndex(
-        (operation) =>
-          operation.operationId === input.operationId &&
-          (operation.operationType === "save_message_draft" ||
-            operation.operationType === "save_event_goal"),
+        (operation) => operation.operationId === input.operationId,
       );
       if (operationIndex < 0) {
         throw new Error(
           `Operation ${input.operationId} is not an editable draft.`,
         );
       }
+      const operation = action.operations[operationIndex];
+      const inferredField =
+        operation.operationType === "save_message_draft"
+          ? "draftText"
+          : operation.operationType === "save_event_goal"
+            ? "goal"
+            : undefined;
+      const field = input.field ?? inferredField;
+      const fieldIsEditable =
+        (operation.operationType === "save_message_draft" &&
+          field === "draftText") ||
+        (operation.operationType === "save_event_goal" && field === "goal") ||
+        ((operation.operationType === "create_followup_task" ||
+          operation.operationType === "create_followup_reminder") &&
+          (field === "title" || field === "dueAt"));
+      if (!fieldIsEditable || !field) {
+        throw new Error(
+          `Operation ${input.operationId} is not editable through field ${input.field ?? "default"}.`,
+        );
+      }
       const draftText = input.draftText.trim();
-      if (!draftText) {
+      const taskDueDateCleared =
+        operation.operationType === "create_followup_task" &&
+        field === "dueAt" &&
+        !draftText;
+      if (!draftText && !taskDueDateCleared) {
         throw new Error("Editable draft text cannot be empty.");
       }
+      if (field === "dueAt" && draftText && Number.isNaN(Date.parse(draftText))) {
+        throw new Error("Editable due date must be a valid date.");
+      }
+      const value =
+        field === "dueAt" && draftText
+          ? new Date(draftText).toISOString()
+          : taskDueDateCleared
+            ? null
+            : draftText;
+      const payload = {
+        ...operation.payload,
+        [field]: value,
+      };
+      const operationPreview =
+        operation.operationType === "create_followup_task"
+          ? `创建「${String(payload.title ?? "跟进任务")}」任务${
+              payload.dueAt ? `，截止 ${String(payload.dueAt)}` : ""
+            }`
+          : operation.operationType === "create_followup_reminder"
+            ? `在 ${String(payload.dueAt)} 提醒「${String(payload.title)}」`
+            : String(value);
       const operations = action.operations.map((operation, index) =>
         index === operationIndex
           ? {
               ...operation,
-              payload: {
-                ...operation.payload,
-                ...(operation.operationType === "save_event_goal"
-                  ? { goal: draftText }
-                  : { draftText }),
-              },
-              preview: draftText,
+              payload,
+              preview: operationPreview,
             }
           : operation,
       );
@@ -637,7 +675,8 @@ export function createAgentRuntimeService({
       const updated: AgentActionRecord = {
         ...action,
         operations,
-        preview: draftText,
+        preview:
+          operations.length === 1 ? operationPreview : action.preview,
         updatedAt: timestamp,
         immutablePayloadHash: stablePayloadHash(
           immutablePayloadFor({

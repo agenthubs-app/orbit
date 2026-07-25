@@ -45,6 +45,7 @@ export async function PATCH(
   const result = await service.updateDraft({
     draftText: readString(body.draftText),
     entryId: id,
+    field: readString(body.field),
     operationId: readString(body.operationId),
   });
 

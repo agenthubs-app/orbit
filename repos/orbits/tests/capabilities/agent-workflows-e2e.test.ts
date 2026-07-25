@@ -120,6 +120,41 @@ test("post-event workflow persists only a confirmed transcript, draft, task, and
   assert.equal(task?.status, "awaiting_confirmation");
   assert.equal(reminder?.status, "awaiting_confirmation");
 
+  const originalTaskHash = task!.immutablePayloadHash;
+  await harness.runtime.updateDraft({
+    actionId: task!.actionId,
+    operationId: task!.operations[0].operationId,
+    field: "title",
+    draftText: "与 Maya 确认日本发布伙伴",
+  });
+  const editedTask = await harness.runtime.updateDraft({
+    actionId: task!.actionId,
+    operationId: task!.operations[0].operationId,
+    field: "dueAt",
+    draftText: "2026-07-30T09:30:00.000Z",
+  });
+  assert.notEqual(editedTask.immutablePayloadHash, originalTaskHash);
+  assert.equal(
+    editedTask.operations[0].payload.title,
+    "与 Maya 确认日本发布伙伴",
+  );
+  assert.equal(
+    editedTask.operations[0].payload.dueAt,
+    "2026-07-30T09:30:00.000Z",
+  );
+  await harness.runtime.updateDraft({
+    actionId: reminder!.actionId,
+    operationId: reminder!.operations[0].operationId,
+    field: "title",
+    draftText: "提醒我联系 Maya",
+  });
+  await harness.runtime.updateDraft({
+    actionId: reminder!.actionId,
+    operationId: reminder!.operations[0].operationId,
+    field: "dueAt",
+    draftText: "2026-07-30T08:30:00.000Z",
+  });
+
   await harness.runtime.approveAction({
     actionId: task!.actionId,
     actorLabel: "Orbit user",
@@ -140,6 +175,13 @@ test("post-event workflow persists only a confirmed transcript, draft, task, and
   assert.equal(drafts.length, 1);
   assert.equal(tasks.length, 1);
   assert.equal(reminders.length, 1);
+  assert.equal(tasks[0].payload.title, "与 Maya 确认日本发布伙伴");
+  assert.equal(tasks[0].payload.dueAt, "2026-07-30T09:30:00.000Z");
+  assert.equal(reminders[0].payload.title, "提醒我联系 Maya");
+  assert.equal(
+    reminders[0].payload.scheduledFor,
+    "2026-07-30T08:30:00.000Z",
+  );
 
   const ledger = await createRuntimeBackedAgentLedgerService({
     runtime: harness.runtime,

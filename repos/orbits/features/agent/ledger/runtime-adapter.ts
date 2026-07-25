@@ -281,11 +281,22 @@ export function createRuntimeBackedAgentLedgerService({
       if (!input.operationId || typeof input.draftText !== "string") {
         return failure("AGENT_LEDGER_DRAFT_NOT_EDITABLE");
       }
+      const field =
+        input.field === "draftText" ||
+        input.field === "goal" ||
+        input.field === "title" ||
+        input.field === "dueAt"
+          ? input.field
+          : undefined;
+      if (input.field && !field) {
+        return failure("AGENT_LEDGER_DRAFT_NOT_EDITABLE");
+      }
       return mutation(input.entryId, "update_draft", "Orbit user", () =>
         runtime.updateDraft({
           actionId: input.entryId as string,
           operationId: input.operationId as string,
           draftText: input.draftText as string,
+          field,
         }),
       );
     },
