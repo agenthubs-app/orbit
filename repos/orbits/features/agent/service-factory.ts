@@ -11,7 +11,7 @@ import type { ExternalActionSandboxService } from "./external-action-contract";
 import type { AgentActionQueueService } from "./service";
 import type { AgentAutonomySettingsService } from "./settings-contract";
 import { createLiveAgentLedgerService } from "./ledger/live-service";
-import { createMockAgentLedgerService } from "./ledger/mock-service";
+import { createSharedMockAgentLedgerService } from "./ledger/mock-runtime-service";
 import type { AgentLedgerService } from "./ledger/service";
 import { createLedgerAgentActionQueueAdapter } from "./ledger/queue-adapter";
 
@@ -108,7 +108,7 @@ export const agentLedgerServiceFactory =
     capabilityId: "agent-action-ledger",
     implementations: {
       live: () => createLiveAgentLedgerService(),
-      mock: () => createMockAgentLedgerService(),
+      mock: () => createSharedMockAgentLedgerService(),
     },
   });
 

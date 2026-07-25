@@ -12,7 +12,17 @@ import { createAgentDomainExecutors } from "./domain-executors";
 import { createAgentExecutorRegistry } from "./executor-registry";
 import { createAgentRuntimeService, type AgentRuntimeService } from "./service";
 
-const cachedServices = new Map<ModuleMode, AgentRuntimeService>();
+interface OrbitAgentRuntimeGlobal {
+  __orbitAgentRuntimeServices?: Map<ModuleMode, AgentRuntimeService>;
+}
+
+const runtimeGlobal = globalThis as typeof globalThis & OrbitAgentRuntimeGlobal;
+const cachedServices =
+  runtimeGlobal.__orbitAgentRuntimeServices ??
+  (runtimeGlobal.__orbitAgentRuntimeServices = new Map<
+    ModuleMode,
+    AgentRuntimeService
+  >());
 
 export function createOrbitAgentRuntimeService(
   requestedMode?: ModuleMode | string,
@@ -73,4 +83,8 @@ export function createOrbitAgentRuntimeService(
   const service = createAgentRuntimeService({ executors, repository });
   cachedServices.set(mode, service);
   return service;
+}
+
+export function resetOrbitAgentRuntimeServicesForTests(): void {
+  cachedServices.clear();
 }

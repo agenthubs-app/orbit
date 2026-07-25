@@ -6,6 +6,13 @@ import test from "node:test";
 import { GET as listLedger } from "../../app/api/agent/ledger/route";
 import { POST as applyTransition } from "../../app/api/agent/ledger/[id]/transition/route";
 import { PATCH as updateDraft } from "../../app/api/agent/ledger/[id]/draft/route";
+import { resetSharedMockAgentLedgerServiceForTests } from "../../features/agent/ledger/mock-runtime-service";
+import { resetOrbitAgentRuntimeServicesForTests } from "../../features/agent/runtime/service-factory";
+
+test.beforeEach(() => {
+  resetSharedMockAgentLedgerServiceForTests();
+  resetOrbitAgentRuntimeServicesForTests();
+});
 
 function routeContext(id: string) {
   return { params: Promise.resolve({ id }) };
