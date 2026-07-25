@@ -14,16 +14,23 @@ async function importProjectModule<TModule>(
   return (await import(pathToFileURL(path.join(projectRoot, relativePath)).href)) as TModule;
 }
 
-function withoutLiveDatabaseEnv<TValue>(run: () => Promise<TValue>): Promise<TValue> {
+function withSessionApiEnv<TValue>(
+  mode: "live" | "mock",
+  run: () => Promise<TValue>,
+): Promise<TValue> {
   const previous = {
     ORBIT_DATABASE_URL: process.env.ORBIT_DATABASE_URL,
     ORBIT_EVENT_DATABASE_URL: process.env.ORBIT_EVENT_DATABASE_URL,
+    ORBIT_FEATURE_MODE: process.env.ORBIT_FEATURE_MODE,
     ORBIT_LIVE_DATABASE_URL: process.env.ORBIT_LIVE_DATABASE_URL,
+    ORBIT_MODULE_MODE: process.env.ORBIT_MODULE_MODE,
   };
 
   delete process.env.ORBIT_DATABASE_URL;
   delete process.env.ORBIT_EVENT_DATABASE_URL;
   delete process.env.ORBIT_LIVE_DATABASE_URL;
+  delete process.env.ORBIT_FEATURE_MODE;
+  process.env.ORBIT_MODULE_MODE = mode;
 
   return run().finally(() => {
     for (const [key, value] of Object.entries(previous)) {
@@ -37,7 +44,7 @@ function withoutLiveDatabaseEnv<TValue>(run: () => Promise<TValue>): Promise<TVa
 }
 
 test("Orbit Agent chat session API is safe when live storage is unconfigured", async () => {
-  await withoutLiveDatabaseEnv(async () => {
+  await withSessionApiEnv("live", async () => {
     const route = await importProjectModule<{
       GET: () => Promise<Response>;
       POST: (request: Request) => Promise<Response>;
@@ -93,5 +100,100 @@ test("Orbit Agent chat session API is safe when live storage is unconfigured", a
     assert.equal(deleteEnvelope.success, true);
     assert.equal(deleteEnvelope.data.deleted, false);
     assert.equal(deleteEnvelope.data.storage.configured, false);
+  });
+});
+
+test("Orbit Agent chat session API restores mock sessions across requests", async () => {
+  await withSessionApiEnv("mock", async () => {
+    const route = await importProjectModule<{
+      GET: () => Promise<Response>;
+      POST: (request: Request) => Promise<Response>;
+    }>("app/api/ai/conversations/sessions/route.ts");
+    const sessionId = `agent-session-mock-${Date.now()}`;
+    const session = {
+      createdAt: "2026-07-26T03:00:00.000Z",
+      id: sessionId,
+      messages: [
+        { role: "user", text: "创建会后跟进" },
+        {
+          actionIds: ["action:followup-task:session-test"],
+          role: "assistant",
+          runId: "run:post-event-followup:session-test",
+          text: "已创建 4 个待确认动作。",
+        },
+      ],
+      title: "创建会后跟进",
+      updatedAt: "2026-07-26T03:01:00.000Z",
+    };
+
+    const saveResponse = await route.POST(
+      new Request("https://orbit.local/api/ai/conversations/sessions", {
+        body: JSON.stringify({ session }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    );
+    const saveEnvelope = await saveResponse.json();
+
+    assert.equal(saveResponse.status, 200);
+    assert.equal(saveEnvelope.success, true);
+    assert.equal(saveEnvelope.data.storage.configured, true);
+    assert.equal(saveEnvelope.data.storage.persisted, true);
+
+    const listResponse = await route.GET();
+    const listEnvelope = await listResponse.json();
+    const listedSession = listEnvelope.data.sessions.find(
+      (item: { id?: string }) => item.id === sessionId,
+    );
+
+    assert.equal(listResponse.status, 200);
+    assert.equal(listEnvelope.success, true);
+    assert.equal(listedSession.id, sessionId);
+    assert.equal(
+      listedSession.messages[1].runId,
+      "run:post-event-followup:session-test",
+    );
+    assert.deepEqual(listedSession.messages[1].actionIds, [
+      "action:followup-task:session-test",
+    ]);
+
+    const byIdRoute = await importProjectModule<{
+      GET: (
+        request: Request,
+        context: { params: Promise<{ id: string }> },
+      ) => Promise<Response>;
+      DELETE: (
+        request: Request,
+        context: { params: Promise<{ id: string }> },
+      ) => Promise<Response>;
+    }>("app/api/ai/conversations/sessions/[id]/route.ts");
+    const routeContext = { params: Promise.resolve({ id: sessionId }) };
+    const getResponse = await byIdRoute.GET(
+      new Request(
+        `https://orbit.local/api/ai/conversations/sessions/${sessionId}`,
+      ),
+      routeContext,
+    );
+    const getEnvelope = await getResponse.json();
+
+    assert.equal(getResponse.status, 200);
+    assert.equal(getEnvelope.data.session.id, sessionId);
+
+    const deleteResponse = await byIdRoute.DELETE(
+      new Request(
+        `https://orbit.local/api/ai/conversations/sessions/${sessionId}`,
+        { method: "DELETE" },
+      ),
+      { params: Promise.resolve({ id: sessionId }) },
+    );
+    assert.equal(deleteResponse.status, 200);
+
+    const deletedResponse = await byIdRoute.GET(
+      new Request(
+        `https://orbit.local/api/ai/conversations/sessions/${sessionId}`,
+      ),
+      { params: Promise.resolve({ id: sessionId }) },
+    );
+    assert.equal(deletedResponse.status, 404);
   });
 });

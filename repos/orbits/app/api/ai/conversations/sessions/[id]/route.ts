@@ -9,7 +9,7 @@ import {
   AppError,
   getHttpStatusForAppErrorCode,
 } from "../../../../../../shared/errors/app-error";
-import { createConfiguredStorageOrbitAgentChatSessionProvider } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import { createOrbitAgentChatSessionProvider } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,7 @@ export async function GET(
 ): Promise<Response> {
   const mode = resolveFeatureMode();
   const { id } = await context.params;
-  const provider = createConfiguredStorageOrbitAgentChatSessionProvider();
+  const provider = createOrbitAgentChatSessionProvider(mode);
 
   if (!provider) {
     return NextResponse.json(
@@ -84,7 +84,7 @@ export async function DELETE(
 ): Promise<Response> {
   const mode = resolveFeatureMode();
   const { id } = await context.params;
-  const provider = createConfiguredStorageOrbitAgentChatSessionProvider();
+  const provider = createOrbitAgentChatSessionProvider(mode);
 
   if (!provider) {
     return NextResponse.json(

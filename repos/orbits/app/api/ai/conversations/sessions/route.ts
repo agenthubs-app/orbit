@@ -10,10 +10,10 @@ import {
   getHttpStatusForAppErrorCode,
 } from "../../../../../shared/errors/app-error";
 import {
-  createConfiguredStorageOrbitAgentChatSessionProvider,
   normalizeOrbitAgentChatSessionSnapshot,
   type OrbitAgentChatSessionProvider,
 } from "../../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import { createOrbitAgentChatSessionProvider } from "../../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -47,13 +47,15 @@ function responseForError(error: unknown, status?: number): Response {
   });
 }
 
-function sessionProvider(): OrbitAgentChatSessionProvider | null {
-  return createConfiguredStorageOrbitAgentChatSessionProvider();
+function sessionProvider(
+  mode: ReturnType<typeof resolveFeatureMode>,
+): OrbitAgentChatSessionProvider | null {
+  return createOrbitAgentChatSessionProvider(mode);
 }
 
 export async function GET(): Promise<Response> {
   const mode = resolveFeatureMode();
-  const provider = sessionProvider();
+  const provider = sessionProvider(mode);
 
   if (!provider) {
     return NextResponse.json(
@@ -102,7 +104,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const provider = sessionProvider();
+  const provider = sessionProvider(mode);
 
   if (!provider) {
     return NextResponse.json(
