@@ -134,6 +134,33 @@ test("Orbit API client sends PUT requests with JSON bodies", async () => {
   );
 });
 
+test("Orbit API client sends DELETE requests without a body", async () => {
+  const calls: Array<{
+    init: RequestInit | undefined;
+    input: RequestInfo | URL;
+  }> = [];
+  const fetchImpl: FetchLike = async (input, init) => {
+    calls.push({ init, input });
+    return response(JSON.stringify({ success: true, data: { deleted: true } }));
+  };
+  const client = createOrbitApiClient({
+    baseUrl: "http://localhost:3000/",
+    fetchImpl
+  });
+
+  const result = await client.delete<{ deleted: boolean }>(
+    "/api/ai/conversations/sessions/agent-session%2F001"
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(
+    String(calls[0]?.input),
+    "http://localhost:3000/api/ai/conversations/sessions/agent-session%2F001"
+  );
+  assert.equal(calls[0]?.init?.method, "DELETE");
+  assert.equal(calls[0]?.init?.body, undefined);
+});
+
 test("Orbit API client includes stored auth cookies when provided", async () => {
   const calls: Array<{
     init: RequestInit | undefined;
@@ -176,6 +203,11 @@ test("Orbit API client reports non JSON responses as controlled failures", async
     assert.fail("Expected a failed API result");
   }
   assert.equal(result.error.code, "ORBIT_APP_NON_JSON_RESPONSE");
+  assert.equal(
+    result.error.message,
+    "Orbit 服务返回了无法识别的内容，请稍后重试。"
+  );
+  assert.doesNotMatch(result.error.message, /Expected JSON|text\/html/u);
   assert.equal(result.status, 502);
 });
 
@@ -196,14 +228,40 @@ test("Orbit API client reports invalid JSON as controlled failures", async () =>
     assert.fail("Expected a failed API result");
   }
   assert.equal(result.error.code, "ORBIT_APP_INVALID_JSON");
+  assert.equal(
+    result.error.message,
+    "Orbit 服务返回的数据暂时无法解析，请稍后重试。"
+  );
+  assert.doesNotMatch(result.error.message, /JSON|Unexpected|parse/u);
   assert.equal(result.status, 502);
+});
+
+test("Orbit API client reports invalid envelopes with Chinese failure copy", async () => {
+  const client = createOrbitApiClient({
+    baseUrl: "http://localhost:3000",
+    fetchImpl: async () => response(JSON.stringify({ ok: true }))
+  });
+
+  const result = await client.get("/api/health");
+
+  assert.equal(result.success, false);
+  if (result.success) {
+    assert.fail("Expected a failed API result");
+  }
+  assert.equal(result.error.code, "ORBIT_APP_INVALID_ENVELOPE");
+  assert.equal(
+    result.error.message,
+    "Orbit 服务返回的数据格式暂时无法识别，请稍后重试。"
+  );
+  assert.doesNotMatch(result.error.message, /Response|envelope|did not match/u);
+  assert.equal(result.status, 200);
 });
 
 test("Orbit API client reports network failures as offline failures", async () => {
   const client = createOrbitApiClient({
     baseUrl: "http://localhost:3000",
     fetchImpl: async () => {
-      throw new Error("connection refused");
+      throw new Error("Network request failed");
     }
   });
 
@@ -214,5 +272,10 @@ test("Orbit API client reports network failures as offline failures", async () =
     assert.fail("Expected a failed API result");
   }
   assert.equal(result.error.code, "ORBIT_APP_NETWORK_ERROR");
+  assert.equal(
+    result.error.message,
+    "暂时无法连接 Orbit 服务，请检查网络后再试。"
+  );
+  assert.doesNotMatch(result.error.message, /Network request failed/u);
   assert.equal(result.status, 0);
 });

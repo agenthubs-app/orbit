@@ -12,6 +12,7 @@ const config: ExpoConfig = {
     tsconfigPaths: true
   },
   plugins: [
+    "./plugins/with-ios-build-settings",
     "expo-secure-store",
     "expo-web-browser",
     [
@@ -24,7 +25,13 @@ const config: ExpoConfig = {
   ],
   ios: {
     supportsTablet: false,
-    bundleIdentifier: "app.agenthubs.orbit"
+    bundleIdentifier: "app.agenthubs.orbit",
+    infoPlist: {
+      NSCameraUsageDescription:
+        "扫描二维码和拍摄名片，用于生成待确认联系人候选。",
+      NSPhotoLibraryUsageDescription:
+        "选择名片图片，用于生成待确认联系人候选。"
+    }
   },
   extra: {
     orbitApiBaseUrl:

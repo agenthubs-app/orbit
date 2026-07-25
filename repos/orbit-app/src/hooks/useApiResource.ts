@@ -10,12 +10,12 @@ export type ApiResourceState<TData> = RouteState<TData> & {
   refreshing: boolean;
 };
 
-function unexpectedErrorState<TData>(error: unknown): RouteState<TData> {
+function unexpectedErrorState<TData>(_error: unknown): RouteState<TData> {
   return {
     kind: "failure",
     error: {
       code: "ORBIT_APP_UNEXPECTED_ERROR",
-      message: error instanceof Error ? error.message : "Unexpected request error"
+      message: "请求暂时无法完成，请稍后重试。"
     },
     meta: { featureMode: null, privacy: null, runtimeBoundary: null },
     status: 0

@@ -70,17 +70,11 @@ export const typography = {
 export const shadows = {
   card: {
     elevation: 2,
-    shadowColor: "#12121C",
-    shadowOffset: { height: 2, width: 0 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8
+    boxShadow: "0 2px 8px rgba(18,18,28,0.06)"
   },
   subtle: {
     elevation: 1,
-    shadowColor: "#12121C",
-    shadowOffset: { height: 1, width: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3
+    boxShadow: "0 1px 3px rgba(18,18,28,0.05)"
   },
   webCard: {
     boxShadow: "0 1px 2px rgba(18,18,28,0.04), 0 2px 6px rgba(18,18,28,0.05)"

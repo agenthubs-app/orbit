@@ -52,7 +52,7 @@ export function OrbitApiBaseUrlProvider({ children }: PropsWithChildren) {
           setError(
             storageError instanceof Error
               ? storageError.message
-              : "Could not read saved server address."
+              : "无法读取已保存的服务器地址。"
           );
         }
       })

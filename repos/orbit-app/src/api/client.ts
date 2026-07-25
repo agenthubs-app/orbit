@@ -22,6 +22,10 @@ export interface OrbitApiRequestOptions {
 
 export interface OrbitApiClient {
   readonly baseUrl: string;
+  delete: <TData>(
+    path: string,
+    options?: OrbitApiRequestOptions
+  ) => Promise<ApiResult<TData>>;
   get: <TData>(
     path: string,
     options?: OrbitApiRequestOptions
@@ -39,6 +43,15 @@ export interface OrbitApiClient {
     options?: OrbitApiRequestOptions
   ) => Promise<ApiResult<TData>>;
 }
+
+type OrbitApiMethod = "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
+
+const INVALID_ENVELOPE_MESSAGE =
+  "Orbit 服务返回的数据格式暂时无法识别，请稍后重试。";
+const INVALID_JSON_MESSAGE = "Orbit 服务返回的数据暂时无法解析，请稍后重试。";
+const NETWORK_ERROR_MESSAGE = "暂时无法连接 Orbit 服务，请检查网络后再试。";
+const NON_JSON_RESPONSE_MESSAGE =
+  "Orbit 服务返回了无法识别的内容，请稍后重试。";
 
 function configuredBaseUrl(): string {
   return DEFAULT_ORBIT_API_BASE_URL;
@@ -107,16 +120,16 @@ async function readJson(response: Response): Promise<
 > {
   try {
     return { ok: true, value: await response.json() };
-  } catch (error) {
+  } catch {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Could not parse JSON"
+      message: INVALID_JSON_MESSAGE
     };
   }
 }
 
 function requestInit(
-  method: "GET" | "PATCH" | "POST" | "PUT",
+  method: OrbitApiMethod,
   options: OrbitApiRequestOptions,
   authCookieHeader: string
 ): RequestInit {
@@ -148,7 +161,7 @@ async function request<TData>(
   baseUrl: string,
   authCookieHeader: string,
   fetchImpl: FetchLike,
-  method: "GET" | "PATCH" | "POST" | "PUT",
+  method: OrbitApiMethod,
   path: string,
   options: OrbitApiRequestOptions = {}
 ): Promise<ApiResult<TData>> {
@@ -159,12 +172,12 @@ async function request<TData>(
       pathToUrl(baseUrl, path),
       requestInit(method, options, authCookieHeader)
     );
-  } catch (error) {
+  } catch {
     return failureResult(
       0,
       { featureMode: null, privacy: null, runtimeBoundary: null },
       "ORBIT_APP_NETWORK_ERROR",
-      error instanceof Error ? error.message : "Network request failed"
+      NETWORK_ERROR_MESSAGE
     );
   }
 
@@ -176,7 +189,7 @@ async function request<TData>(
       response.status,
       meta,
       "ORBIT_APP_NON_JSON_RESPONSE",
-      `Expected JSON from ${path}, received ${contentType || "unknown content type"}`
+      NON_JSON_RESPONSE_MESSAGE
     );
   }
 
@@ -196,7 +209,7 @@ async function request<TData>(
       response.status,
       meta,
       "ORBIT_APP_INVALID_ENVELOPE",
-      `Response from ${path} did not match the Orbit API envelope`
+      INVALID_ENVELOPE_MESSAGE
     );
   }
 
@@ -216,6 +229,16 @@ export function createOrbitApiClient({
 
   return {
     baseUrl: normalizedBaseUrl,
+    delete<TData>(path: string, options?: OrbitApiRequestOptions) {
+      return request<TData>(
+        normalizedBaseUrl,
+        authCookieHeader,
+        fetchImpl,
+        "DELETE",
+        path,
+        options
+      );
+    },
     get<TData>(path: string, options?: OrbitApiRequestOptions) {
       return request<TData>(
         normalizedBaseUrl,
