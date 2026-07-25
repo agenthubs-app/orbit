@@ -16,6 +16,7 @@ import {
 } from "./auth-session";
 import { useOrbitApiBaseUrl } from "./ApiBaseUrlProvider";
 import { onSessionExpired } from "./session-expiry";
+import { clearSnapshots } from "../data/snapshot-store";
 import {
   createGoogleOAuthAttempt,
   exchangeGoogleOAuthCode,
@@ -279,6 +280,8 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       };
     }
 
+    // 登出后设备上不该再留着这个账号的人脉数据。
+    await clearSnapshots();
     setCookieHeader("");
     setUser(null);
     return { success: true };
@@ -298,6 +301,8 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
     return onSessionExpired(() => {
       void nativeAuthSessionStorage.clear(baseUrl).catch(() => undefined);
+      // 快照里是这个账号的人脉数据，会话失效就不该继续留在设备上。
+      void clearSnapshots();
       setCookieHeader("");
       setUser(null);
       router.replace("/account/login" as Href);
