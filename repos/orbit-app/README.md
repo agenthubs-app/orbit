@@ -36,6 +36,10 @@ at a different Orbit server.
 
 - The app consumes `/api/**` routes from `repos/orbits`.
 - The app does not import Next.js pages or feature services.
+- Response shapes come from the shared contract. `src/api/contract/` is a copy of
+  `../orbits/shared/contract/`; run `npm run sync:contract` after the server
+  changes it. `npm test` fails when the copy is stale, and `npm run typecheck`
+  then points at the view-models that need updating.
 - The app does not read Postgres, Supabase, `orbit_records`, or web localStorage.
 - Orbit AI remains the single assistant inbox, including proactive turns.
 

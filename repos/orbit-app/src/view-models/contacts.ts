@@ -1,4 +1,5 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
+import type { ContactListItemContract } from "../api/contract/contacts";
 
 export interface ContactSummary {
   id: string;
@@ -212,6 +213,18 @@ function stringField(
 ): string {
   const value = record[fieldName];
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+// contactField 和 stringField 的区别是字段名受契约约束：
+// 服务端把 ContactListItemContract 的字段改名，这里立刻编译报错，
+// 而不是等到运行时静默拿到空字符串。
+// 契约之外的兼容字段（比如老 payload 的 name）继续走 stringField。
+function contactField(
+  record: Record<string, unknown>,
+  fieldName: keyof ContactListItemContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
 }
 
 function numberField(
@@ -1091,22 +1104,19 @@ export function contactsToSummaries(data: unknown): ContactSummary[] {
 
       return {
         ...(imageUrl ? { imageUrl } : {}),
-        id: stringField(contact, "id", "contact"),
-        name: stringField(
+        id: contactField(contact, "id", "contact"),
+        name: contactField(
           contact,
           "displayName",
           stringField(contact, "name", "Contact")
         ),
-        nextAction: stringField(
-          contact,
-          "nextAction"
-        ),
+        nextAction: contactField(contact, "nextAction"),
         organization: organizationLabel(
-          stringField(contact, "organization", "Independent")
+          contactField(contact, "organization", "Independent")
         ),
         relationship: relationshipText(contact),
-        role: roleLabel(stringField(contact, "role")),
-        status: statusLabel(stringField(contact, "status")),
+        role: roleLabel(contactField(contact, "role")),
+        status: statusLabel(contactField(contact, "status")),
         valueLabels: valueLabels(contact),
         valueScore: valueScore(contact)
       };
