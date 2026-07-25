@@ -58,6 +58,7 @@ export interface EventRegistrationQuestionSet {
 export interface EventParticipantProfile {
   answers: EventParticipantProfileAnswers;
   createdAt: string;
+  displayName?: string;
   eventId: string;
   id: string;
   updatedAt: string;
@@ -87,6 +88,7 @@ export interface EventRegistration {
 
 export interface RegisterForEventInput {
   answers?: EventParticipantProfileAnswers | null;
+  displayName?: string | null;
   eventId: string;
   userId: string;
 }

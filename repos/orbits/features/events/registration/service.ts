@@ -11,6 +11,9 @@ export interface EventRegistrationProvider {
     eventId: string,
     userId: string,
   ) => Promise<EventRegistration | null>;
+  listRegistrations: (
+    eventId: string,
+  ) => Promise<readonly EventRegistration[]>;
   saveRegistration: (
     registration: EventRegistration,
   ) => Promise<EventRegistration>;
@@ -23,6 +26,9 @@ export interface EventRegistrationService {
   get: (
     input: CancelEventRegistrationInput,
   ) => Promise<EventRegistration | null>;
+  list: (input: {
+    eventId: string;
+  }) => Promise<readonly EventRegistration[]>;
   register: (input: RegisterForEventInput) => Promise<EventRegistration>;
 }
 
@@ -90,6 +96,11 @@ export function createMemoryEventRegistrationProvider(
 
       return registration ? clone(registration) : null;
     },
+    async listRegistrations(eventId) {
+      return [...registrations.values()]
+        .filter((registration) => registration.eventId === eventId)
+        .map(clone);
+    },
     async saveRegistration(registration) {
       const next = clone(registration);
 
@@ -130,7 +141,10 @@ export function createEventRegistrationService(input: {
     get({ eventId, userId }) {
       return input.provider.getRegistration(eventId, userId);
     },
-    async register({ answers, eventId, userId }) {
+    list({ eventId }) {
+      return input.provider.listRegistrations(eventId);
+    },
+    async register({ answers, displayName, eventId, userId }) {
       const normalizedAnswers = normalizeAnswers(answers);
       const existing = await input.provider.getRegistration(eventId, userId);
 
@@ -149,6 +163,8 @@ export function createEventRegistrationService(input: {
           participantProfile: {
             ...existing.participantProfile,
             answers: normalizedAnswers,
+            displayName:
+              displayName?.trim() || existing.participantProfile.displayName,
             updatedAt: timestamp,
           },
           reactivatedAt:
@@ -170,6 +186,7 @@ export function createEventRegistrationService(input: {
         participantProfile: {
           answers: normalizedAnswers,
           createdAt: timestamp,
+          displayName: displayName?.trim() || undefined,
           eventId,
           id: participantProfileId,
           updatedAt: timestamp,

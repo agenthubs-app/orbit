@@ -119,6 +119,10 @@ export interface EventMatchmakingService {
     relationshipHistoryIncluded: false;
     privateFollowupIncluded: false;
   }>;
+  listRequests: (input: {
+    eventId: string;
+    actorId: string;
+  }) => Promise<readonly MatchmakingIntroductionRequest[]>;
   getRequest: (input: {
     requestId: string;
     actorId: string;
@@ -452,6 +456,29 @@ export function createEventMatchmakingService(input: {
         privateFollowupIncluded: false,
       };
     },
+    async listRequests({ eventId, actorId }) {
+      const records = await input.store.listRecords({
+        workspaceId: input.workspaceId,
+        collectionName: "matchmakingIntroductionRequests",
+        targetId: eventId,
+        targetType: "event",
+      });
+      return records.flatMap((record) => {
+        const payload = record.payload;
+        if (
+          typeof payload.requestId !== "string" ||
+          payload.eventId !== eventId
+        ) {
+          return [];
+        }
+        const request =
+          payload as unknown as MatchmakingIntroductionRequest;
+        return request.requesterActorId === actorId ||
+          request.targetActorId === actorId
+          ? [request]
+          : [];
+      });
+    },
     async getRequest({ requestId, actorId }) {
       const request = await getRequestRecord(requestId);
       if (!request) return null;
@@ -467,19 +494,30 @@ export function createEventMatchmakingService(input: {
   return service;
 }
 
-let cachedDefault: EventMatchmakingService | null = null;
+interface EventMatchmakingRuntimeGlobal {
+  __orbitEventMatchmakingServices?: Map<string, EventMatchmakingService>;
+}
 
 export function createConfiguredEventMatchmakingService(): EventMatchmakingService {
-  if (cachedDefault) return cachedDefault;
+  const runtimeGlobal = globalThis as typeof globalThis &
+    EventMatchmakingRuntimeGlobal;
+  const services =
+    runtimeGlobal.__orbitEventMatchmakingServices ??
+    new Map<string, EventMatchmakingService>();
+  runtimeGlobal.__orbitEventMatchmakingServices = services;
   const configured = createConfiguredPostgresLiveRecordStore();
-  cachedDefault = configured
+  const workspaceId = configured?.workspaceId ?? "mock-event-matchmaking";
+  const cached = services.get(workspaceId);
+  if (cached) return cached;
+  const service = configured
     ? createEventMatchmakingService({
         store: configured.store,
         workspaceId: configured.workspaceId,
       })
     : createEventMatchmakingService({
         store: createMemoryLiveRecordStore(),
-        workspaceId: "mock-event-matchmaking",
+        workspaceId,
       });
-  return cachedDefault;
+  services.set(workspaceId, service);
+  return service;
 }

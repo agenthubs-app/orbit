@@ -9,6 +9,7 @@ import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbi
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../../orbit-z";
 import { OrbitPostEventFollowupCapture } from "./orbit-post-event-followup-capture";
+import { OrbitEventMatchmaking } from "./orbit-event-matchmaking";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -236,6 +237,8 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
           eventTitle={event.name}
         />
       ) : null}
+
+      <OrbitEventMatchmaking eventId={event.id} />
 
       {event.about && event.about.length ? (
         <section>

@@ -1,4 +1,5 @@
 import { StateView } from "../../../../../../shared/ui/state-view";
+import { auth } from "../../../../../../auth";
 import {
   loadRegistrationProfileGuideForCurrentTestUser,
   normalizeRegistrationProfileGuideLanguage,
@@ -18,7 +19,6 @@ import { bilingualSegment } from "../../../../../../features/orbit-ai/event-reco
 import { generateEventRegistrationQuestions } from "../../../../../../features/events/registration/question-generator";
 import {
   CURRENT_EVENT_REGISTRATION_PROFILE,
-  CURRENT_EVENT_REGISTRATION_USER_ID,
   eventRegistrationRuntimeService,
 } from "../../../../../../features/events/registration/runtime";
 import { EventRegistrationWorkspace } from "./event-registration-workspace";
@@ -65,6 +65,20 @@ function copy(
   text: { en: string; zh: string },
 ): string {
   return language === "en" ? text.en : text.zh;
+}
+
+async function currentRegistrationActor() {
+  try {
+    return (await auth())?.user ?? null;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("outside a request scope")
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 function eventHref(
@@ -417,18 +431,28 @@ export default async function AppEventRegistrationGuidePage({
       title: localizedEventTitle(event, language === "en" ? "en" : "zh"),
       venue: bilingualSegment(event.venue, language === "en" ? "en" : "zh"),
     };
+    const actor = await currentRegistrationActor();
     const [questionSet, registration] = await Promise.all([
       generateEventRegistrationQuestions({
         event: localizedEvent,
         language,
       }),
-      eventRegistrationRuntimeService.get({
-        eventId: event.id,
-        userId: CURRENT_EVENT_REGISTRATION_USER_ID,
-      }),
+      actor?.id
+        ? eventRegistrationRuntimeService.get({
+            eventId: event.id,
+            userId: actor.id,
+          })
+        : null,
     ]);
-    const profile =
-      result.state === "success"
+    const profile = actor
+      ? {
+          displayName: actor.name || CURRENT_EVENT_REGISTRATION_PROFILE.displayName,
+          headline:
+            result.state === "success"
+              ? result.guide.currentUser.headline
+              : CURRENT_EVENT_REGISTRATION_PROFILE.headline,
+        }
+      : result.state === "success"
         ? {
             displayName: result.guide.currentUser.displayName,
             headline: result.guide.currentUser.headline,

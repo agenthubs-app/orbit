@@ -112,6 +112,20 @@ export function createEventRegistrationLiveRecordProvider({
 
       return clone(registration);
     },
+    async listRegistrations(eventId) {
+      const records = await store.listRecords({
+        collectionName: EVENT_REGISTRATION_COLLECTION,
+        targetId: eventId,
+        targetType: "event",
+        workspaceId,
+      });
+
+      return records.flatMap((record) => {
+        if (!isStoredEventRegistration(record.payload)) return [];
+        const registration = record.payload.registration;
+        return registration.eventId === eventId ? [clone(registration)] : [];
+      });
+    },
     async saveRegistration(registration) {
       const next = clone(registration);
 
@@ -129,8 +143,16 @@ export function createEventRegistrationLiveRecordProvider({
   };
 }
 
+interface EventRegistrationRuntimeGlobal {
+  __orbitEventRegistrationStore?: LiveRecordStoreLike<Record<string, unknown>>;
+}
+
+const runtimeGlobal = globalThis as typeof globalThis &
+  EventRegistrationRuntimeGlobal;
 const fallbackMemoryStore =
+  runtimeGlobal.__orbitEventRegistrationStore ??
   createMemoryLiveRecordStore<Record<string, unknown>>();
+runtimeGlobal.__orbitEventRegistrationStore = fallbackMemoryStore;
 
 export function createConfiguredEventRegistrationProvider(): EventRegistrationProvider {
   const configured = createConfiguredPostgresLiveRecordStore<
@@ -151,4 +173,3 @@ export function createConfiguredEventRegistrationProvider(): EventRegistrationPr
     workspaceId: "workspace:local-runtime",
   });
 }
-

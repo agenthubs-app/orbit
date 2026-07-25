@@ -2,10 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  GET as getRegistration,
-  POST as register,
-} from "../../app/api/events/[id]/registration/route";
-import { POST as cancelRegistration } from "../../app/api/events/[id]/registration/cancel/route";
+  createEventRegistrationRouteHandlers,
+} from "../../app/api/events/[id]/registration/route-handlers";
+import { createEventRegistrationCancelRouteHandler } from "../../app/api/events/[id]/registration/cancel/route-handler";
+
+const actor = { id: "user:registration-route-test", name: "Route Tester" };
+const { GET: getRegistration, POST: register } =
+  createEventRegistrationRouteHandlers({
+    resolveActor: async () => actor,
+  });
+const cancelRegistration = createEventRegistrationCancelRouteHandler({
+  resolveActor: async () => actor,
+});
 
 const context = {
   params: Promise.resolve({ id: "demo-event-1" }),
@@ -75,7 +83,10 @@ test("event registration routes create cancel and reactivate the same record", a
 });
 
 test("cancelling without a registration returns a stable not-found envelope", async () => {
-  const response = await cancelRegistration(
+  const cancelWithoutRegistration = createEventRegistrationCancelRouteHandler({
+    resolveActor: async () => ({ id: "user:no-registration" }),
+  });
+  const response = await cancelWithoutRegistration(
     new Request(
       "http://orbit.local/api/events/demo-event-2/registration/cancel",
       { method: "POST" },
@@ -87,4 +98,17 @@ test("cancelling without a registration returns a stable not-found envelope", as
   assert.equal(response.status, 404);
   assert.equal(body.success, false);
   assert.equal(body.error.code, "NOT_FOUND");
+});
+
+test("event registration route rejects requests without an authenticated actor", async () => {
+  const { GET } = createEventRegistrationRouteHandlers({
+    resolveActor: async () => null,
+  });
+  const response = await GET(
+    new Request(
+      "http://orbit.local/api/events/demo-event-1/registration?questions=false",
+    ),
+    context,
+  );
+  assert.equal(response.status, 401);
 });
