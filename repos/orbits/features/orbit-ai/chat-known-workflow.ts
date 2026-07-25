@@ -126,6 +126,16 @@ function isPostEventFollowupIntent(message: string): boolean {
   );
 }
 
+// Route 层用这个纯识别函数先分流已知工作流。它不能读取上下文、调用
+// planner/provider 或创建 Action；真正的权威数据校验仍由 orchestrator.handle 完成。
+export function isChatKnownWorkflowInput(
+  input: OrbitAgentSendMessageInput,
+): boolean {
+  const message = input.message?.trim() ?? "";
+
+  return Boolean(message) && isPostEventFollowupIntent(message);
+}
+
 function successfulResultWithMessage(
   result: OrbitAgentConversationResult,
   message: string,

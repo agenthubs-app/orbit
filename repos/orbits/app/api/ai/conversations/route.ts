@@ -16,7 +16,10 @@ import {
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
 import { createOrbitAgentRuntimeService } from "../../../../features/agent/runtime/service-factory";
 import { latestConversationRuntimeLink } from "../../../../features/orbit-ai/conversation-runtime-links";
-import { createChatKnownWorkflowOrchestrator } from "../../../../features/orbit-ai/chat-known-workflow";
+import {
+  createChatKnownWorkflowOrchestrator,
+  isChatKnownWorkflowInput,
+} from "../../../../features/orbit-ai/chat-known-workflow";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -232,17 +235,28 @@ export async function POST(request: Request): Promise<Response> {
   timing.finish("orbit-read-body", readBodyStartedAt);
   const serviceStartedAt = timing.now();
   const service = createOrbitAgentConversationService();
-  const conversationResult = await service.sendMessage(input);
-  const workflowResponse = await createChatKnownWorkflowOrchestrator({
-    processOutboxAfterStart: mode === "mock",
-  }).handle({
-    conversationInput: input,
-    conversationResult,
-  });
-  const result =
-    workflowResponse.outcome === "clarification"
-      ? workflowResponse.result
-      : await withRuntimeLinks(workflowResponse.result);
+  let result: OrbitAgentConversationResult;
+
+  if (isChatKnownWorkflowInput(input)) {
+    // 已知工作流必须在 bounded planner/provider 之前命中。listConversations
+    // 只读取会话基态，用来保留 activeConversationId；它不会生成模型回复。
+    const conversationResult = await service.listConversations({
+      scenario: input.scenario,
+    });
+    const workflowResponse = await createChatKnownWorkflowOrchestrator({
+      processOutboxAfterStart: mode === "mock",
+    }).handle({
+      conversationInput: input,
+      conversationResult,
+    });
+    result =
+      workflowResponse.outcome === "clarification"
+        ? workflowResponse.result
+        : await withRuntimeLinks(workflowResponse.result);
+  } else {
+    // 未命中已知工作流的普通请求保持原 bounded planner 路径，并且只调用一次。
+    result = await withRuntimeLinks(await service.sendMessage(input));
+  }
   timing.finish("orbit-service", serviceStartedAt);
 
   return responseForResult(result, mode, timing);
