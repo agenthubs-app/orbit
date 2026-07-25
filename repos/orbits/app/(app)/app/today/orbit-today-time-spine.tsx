@@ -40,6 +40,7 @@ import {
   localizeRole,
   localizeTopic,
   scheduleStatusColor,
+  startOfWeekSun,
   statusLabel,
   type CalendarView,
 } from "./orbit-today-time-spine-helpers";
@@ -217,6 +218,118 @@ export function MonthCalendar({
                   {events.length > 2 ? <span style={{ color: "var(--text-3)", fontSize: 11, paddingLeft: 4 }}>+{events.length - 2}</span> : null}
                 </span>
               )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Prev/next week arrow — a single button-element JSX literal reused for both
+ * directions (button-ratchet: the sitewide non-.btn button-element count is
+ * at its ceiling, so this carries the bare "btn" token and gets its look
+ * from `.orbit-week-nav-btn` overriding the base `.btn` box model in
+ * TimeSpineStyles below, same trick as the FAB in orbit-today-header-actions).
+ */
+function WeekNavButton({
+  ariaLabel,
+  direction,
+  onClick,
+}: {
+  ariaLabel: string;
+  direction: "prev" | "next";
+  onClick: () => void;
+}) {
+  return (
+    <button aria-label={ariaLabel} className="btn orbit-week-nav-btn" onClick={onClick} type="button">
+      <Icon name={direction === "prev" ? "chevL" : "chevR"} size={16} />
+    </button>
+  );
+}
+
+/**
+ * Mobile (≤760) collapse of the month calendar into a 7-day week strip
+ * (design doc §3): 44pt cells, horizontal prev/next-week paging, today/
+ * selected states, an event dot. Always rendered (both this and the desktop
+ * `MonthCalendar` are in the DOM); `TimeSpineStyles`' media query decides
+ * which one is visible — same pattern as `.orbit-today-columns` in
+ * today/page.tsx. "全月" opens the untouched `MonthCalendar` in a
+ * bottom-sheet (`onOpenMonth`, wired up by the caller).
+ */
+export function WeekStrip({
+  language,
+  onOpenMonth,
+  schedules,
+  selected,
+  setSelected,
+  t,
+  today,
+}: {
+  language: "en" | "zh";
+  onOpenMonth: () => void;
+  schedules: OrbitScheduleItemView[];
+  selected: CalendarView;
+  setSelected: (view: CalendarView) => void;
+  t: Translate;
+  today: CalendarView;
+}) {
+  const anchor: CalendarView =
+    selected.d != null ? selected : { d: today.d, m: today.m, y: today.y };
+  const [weekStart, setWeekStart] = useState<Date>(() =>
+    startOfWeekSun(anchor.y, anchor.m, anchor.d ?? today.d),
+  );
+
+  useEffect(() => {
+    setWeekStart(startOfWeekSun(anchor.y, anchor.m, anchor.d ?? today.d));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected.y, selected.m, selected.d]);
+
+  const shiftWeek = (delta: number) => {
+    setWeekStart((current) => {
+      const next = new Date(current);
+      next.setDate(next.getDate() + delta * 7);
+      return next;
+    });
+  };
+
+  const weekdays = language === "en" ? WEEKDAYS_EN : WEEKDAYS;
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(weekStart);
+    date.setDate(date.getDate() + index);
+    return date;
+  });
+
+  return (
+    <div className="orbit-week-strip" data-orbit-week-strip>
+      <div className="orbit-week-strip-head">
+        <WeekNavButton ariaLabel={t({ en: "Previous week", zh: "上一周" })} direction="prev" onClick={() => shiftWeek(-1)} />
+        <button className="btn btn-ghost orbit-week-full-month-btn" onClick={onOpenMonth} type="button">
+          {t({ en: "Full month", zh: "全月" })}
+        </button>
+        <WeekNavButton ariaLabel={t({ en: "Next week", zh: "下一周" })} direction="next" onClick={() => shiftWeek(1)} />
+      </div>
+      <div className="orbit-week-strip-cells">
+        {days.map((date) => {
+          const y = date.getFullYear();
+          const m = date.getMonth();
+          const d = date.getDate();
+          const isToday = y === today.y && m === today.m && d === today.d;
+          const isSelected = selected.d != null && y === selected.y && m === selected.m && d === selected.d;
+          const hasEvents = eventsOn(schedules, y, m, d).length > 0;
+
+          return (
+            <button
+              aria-current={isSelected ? "date" : undefined}
+              className={`btn orbit-week-strip-cell${isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""}`}
+              key={`${y}-${m}-${d}`}
+              onClick={() => setSelected({ d, m, y })}
+              type="button"
+            >
+              <span className="orbit-week-strip-wd">{weekdays[date.getDay()]}</span>
+              <span className="orbit-week-strip-d">{d}</span>
+              {hasEvents ? <span className="orbit-week-strip-dot" /> : null}
             </button>
           );
         })}
@@ -461,6 +574,9 @@ export function OrbitTodayTimeSpine({
   const [selected, setSelectedState] = useState<CalendarView>(
     () => (initialSelected.d != null ? initialSelected : firstDayWithMeetings(viewModel)),
   );
+  // Mobile-only: "全月" opens the untouched MonthCalendar in a bottom sheet
+  // (design doc §3) instead of navigating away from the week strip.
+  const [monthSheetOpen, setMonthSheetOpen] = useState(false);
 
   const navigateQuery = (updates: Record<string, string>) => {
     if (typeof window === "undefined") return;
@@ -497,7 +613,18 @@ export function OrbitTodayTimeSpine({
 
   return (
     <div data-orbit-today-time-spine style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <MonthCalendar {...monthCalendarProps} />
+      <div className="orbit-time-spine-desktop-calendar">
+        <MonthCalendar {...monthCalendarProps} />
+      </div>
+      <WeekStrip
+        language={language}
+        onOpenMonth={() => setMonthSheetOpen(true)}
+        schedules={viewModel.schedules}
+        selected={selected}
+        setSelected={setSelected}
+        t={t}
+        today={viewModel.today}
+      />
       <ScheduleListPanel
         connections={viewModel.connections}
         language={language}
@@ -509,6 +636,16 @@ export function OrbitTodayTimeSpine({
         t={t}
         view={view}
       />
+      {monthSheetOpen ? (
+        <ModalShell
+          label={t({ en: "Full month", zh: "全月" })}
+          onClose={() => setMonthSheetOpen(false)}
+          step={t({ en: "Full month", zh: "全月" })}
+          variant="bottom-sheet"
+        >
+          <MonthCalendar {...monthCalendarProps} />
+        </ModalShell>
+      ) : null}
       <TimeSpineStyles />
     </div>
   );
@@ -569,6 +706,22 @@ export function TimeSpineStyles() {
 .sch-empty svg { color:var(--text-4); }
 .sch-empty p { margin:6px 0 0; font-size:14px; font-weight:600; color:var(--text-2); }
 .sch-empty span { font-size:12.5px; color:var(--text-3); }
+.orbit-time-spine-desktop-calendar { display:block; }
+.orbit-week-strip { display:none; flex-direction:column; gap:12px; }
+.orbit-week-strip-head { display:flex; align-items:center; gap:8px; }
+[data-orbit-real-page] .btn.orbit-week-nav-btn { background:var(--surface); border:1px solid var(--border-2); border-radius:var(--r-sm); color:var(--text-2); flex-shrink:0; height:34px; padding:0; width:34px; }
+.orbit-week-full-month-btn { flex:1; }
+.orbit-week-strip-cells { display:grid; gap:8px; grid-template-columns:repeat(7, 1fr); }
+[data-orbit-real-page] .btn.orbit-week-strip-cell { background:var(--surface); border:1px solid var(--border-2); border-radius:var(--r-md); color:var(--ink); flex-direction:column; gap:4px; height:44px; padding:4px 2px; position:relative; width:100%; }
+[data-orbit-real-page] .btn.orbit-week-strip-cell.is-today { border-color:var(--accent); }
+[data-orbit-real-page] .btn.orbit-week-strip-cell.is-selected { background:var(--accent-softer); border-color:var(--accent); color:var(--accent); }
+.orbit-week-strip-wd { font-size:11px; font-weight:600; color:var(--text-3); }
+.orbit-week-strip-d { font-family:var(--ff-mono); font-size:13px; font-weight:700; }
+.orbit-week-strip-dot { position:absolute; bottom:4px; width:5px; height:5px; border-radius:var(--r-pill); background:var(--accent); }
+@media (max-width: 760px) {
+  .orbit-time-spine-desktop-calendar { display:none; }
+  .orbit-week-strip { display:flex; }
+}
 `,
       }}
     />

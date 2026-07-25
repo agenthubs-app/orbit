@@ -39,8 +39,8 @@ function navHrefs(): readonly string[] {
   return hrefs;
 }
 
-test("the nav exposes Today plus events, schedule, and contacts", () => {
-  assert.deepEqual(navHrefs(), ["/today", "/events", "/schedule", "/contacts"]);
+test("the nav exposes Schedule (formerly Today) plus events and contacts — schedule folded in (T3)", () => {
+  assert.deepEqual(navHrefs(), ["/today", "/events", "/contacts"]);
 });
 
 test("every nav href resolves to a real App Router page", () => {
@@ -58,6 +58,21 @@ test("every nav href resolves to a real App Router page", () => {
       `nav href ${href} resolves to ${resolved} but ${pagePath} does not exist`,
     );
   }
+});
+
+// The nav no longer links to /schedule (T3), but the two retired route
+// entry points still exist as page.tsx redirect shells (deep-link
+// preservation, design doc §1/§7) — a page.tsx that redirects is still a
+// "real" page for the dead-href gate above and for direct/bookmarked visits.
+test("the retired /schedule and /followups routes still have a page.tsx (redirect shells, not 404s)", () => {
+  for (const route of ["schedule", "followups"]) {
+    const pagePath = join(projectRoot, "app/(app)/app", route, "page.tsx");
+    assert.ok(existsSync(pagePath), `${route}/page.tsx should still exist as a redirect shell`);
+  }
+});
+
+test("the nav label for the merged entry is 日程/Schedule, not the old Today wording", () => {
+  assert.match(shellSource, /const links = \[\s*\["\/today", t\(\{ en: "Schedule", zh: "日程" \}\), "today"\]/);
 });
 
 test("the retired prototype hrefs are gone", () => {

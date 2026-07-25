@@ -345,6 +345,32 @@ function sourceForEscapeGate(path: string): string {
   return readFileSync(join(projectRootForEscapeGate, path), "utf8");
 }
 
+// ---- T3 (today-schedule 合并 P3): nav consolidation, redirects, mobile ----
+
+test("the arrangements section container carries id=\"arrangements\" (schedule/page.tsx now redirects to /app/today#arrangements)", async () => {
+  const Page = (await import("../../app/(app)/app/today/page")).default;
+  const html = renderToStaticMarkup(await Page());
+
+  assert.match(html, /id="arrangements"/);
+});
+
+test("the time spine source carries the mobile week-strip markers", () => {
+  const timeSpineSource = sourceForEscapeGate("app/(app)/app/today/orbit-today-time-spine.tsx");
+
+  assert.match(timeSpineSource, /data-orbit-week-strip/);
+  assert.match(timeSpineSource, /orbit-week-strip-cell/);
+  assert.match(timeSpineSource, /orbit-week-full-month-btn/);
+  assert.match(timeSpineSource, /@media \(max-width: 760px\)/);
+});
+
+test("the header actions source carries the mobile FAB marker", () => {
+  const headerActionsSource = sourceForEscapeGate("app/(app)/app/today/orbit-today-header-actions.tsx");
+
+  assert.match(headerActionsSource, /orbit-today-fab/);
+  assert.match(headerActionsSource, /ORBIT_Z\.sticky/);
+  assert.match(headerActionsSource, /@media \(max-width: 760px\)/);
+});
+
 test("an open modal stops Escape from also reaching page-level hotkey listeners", () => {
   const modalA11y = sourceForEscapeGate("app/(app)/app/orbit-modal-a11y.ts");
   const escapeMatch = modalA11y.match(

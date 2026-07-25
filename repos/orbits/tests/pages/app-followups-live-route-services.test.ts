@@ -3,7 +3,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
 
 import type {
   FollowupTask,
@@ -462,47 +461,82 @@ test("app followups route renders a diverse dense schedule from more than the to
   );
 });
 
-test("/app/followups page renders the live-capable product schedule UI", async () => {
+// T3 (today-schedule merge): /app/followups and /app/schedule collapsed into
+// redirect shells pointing at /app/today (design doc §1/§7) — the live
+// schedule UI these two tests used to render through the retired routes now
+// lives at /app/today (covered by tests/pages/app-today-merged.test.ts) and
+// its source components (`OrbitRealSchedule`, `orbit-real-schedule-page.tsx`)
+// stay in the repo unused by any page (T3 brief). These tests now assert the
+// redirect itself instead of rendering through the old route.
+
+interface RedirectDigest {
+  destination: string;
+  statusCode: number;
+  type: string;
+}
+
+// next/navigation's redirect() throws an Error whose `digest` encodes the
+// target: "NEXT_REDIRECT;<type>;<destination>;<statusCode>;".
+function parseRedirectDigest(error: unknown): RedirectDigest {
+  assert.ok(error instanceof Error, "expected redirect() to throw an Error");
+  const digest = (error as Error & { digest?: string }).digest;
+  assert.ok(
+    digest?.startsWith("NEXT_REDIRECT;"),
+    `expected a NEXT_REDIRECT digest, got: ${digest}`,
+  );
+  const parts = digest.split(";");
+  return {
+    destination: parts.slice(2, -2).join(";"),
+    statusCode: Number(parts.at(-2)),
+    type: parts[1],
+  };
+}
+
+test("/app/followups redirects to /app/today?view=day, preserving the deep link", async () => {
   const pageSource = source("app/(app)/app/followups/page.tsx");
 
-  assert.match(pageSource, /OrbitRealSchedule/);
-  assert.match(pageSource, /followupsRouteToOrbitScheduleViewModel/);
-  assert.doesNotMatch(pageSource, /AppFollowupsCommandCenter/);
+  assert.match(pageSource, /redirect\("\/app\/today\?view=day"\)/);
+  assert.match(pageSource, /from "next\/navigation"/);
 
-  await withUnconfiguredLiveFollowups(async () => {
-    const Page = (await import("../../app/(app)/app/followups/page")).default;
-    const html = renderToStaticMarkup(await Page());
+  const Page = (await import("../../app/(app)/app/followups/page")).default;
 
-    assert.match(html, /shared-ui-state-view/);
-    assert.match(html, /Follow-ups could not load/);
-  });
+  let thrown: unknown;
+  try {
+    Page();
+  } catch (error) {
+    thrown = error;
+  }
+
+  const redirect = parseRedirectDigest(thrown);
+  assert.equal(redirect.destination, "/app/today?view=day");
+  assert.equal(redirect.statusCode, 307);
 });
 
-test("/app/schedule compatibility route renders the same live schedule UI", async () => {
+test("/app/schedule redirects to /app/today#arrangements, preserving the deep link", async () => {
   const scheduleRoutePath = "app/(app)/app/schedule/page.tsx";
 
   assert.equal(
     existsSync(join(projectRoot, scheduleRoutePath)),
     true,
-    "/app/schedule should remain a working product route for the schedule entry point",
+    "/app/schedule should remain a real route (a redirect shell, not a 404)",
   );
 
   const pageSource = source(scheduleRoutePath);
-  const realPageSource = source(
-    "app/(app)/app/schedule/orbit-real-schedule-page.tsx",
-  );
-  assert.match(pageSource, /loadAppScheduleRouteViewModel/);
-  assert.match(realPageSource, /AppScheduleSuccessView/);
-  assert.doesNotMatch(pageSource, /AppFollowupsCommandCenter/);
+  assert.match(pageSource, /redirect\("\/app\/today#arrangements"\)/);
+  assert.match(pageSource, /from "next\/navigation"/);
 
-  await withUnconfiguredLiveFollowups(async () => {
-    const Page = (await import("../../app/(app)/app/schedule/page")).default;
-    const html = renderToStaticMarkup(await Page());
+  const Page = (await import("../../app/(app)/app/schedule/page")).default;
 
-    assert.match(html, /data-orbit-route="app-schedule-route"/);
-    assert.match(html, /关系安排|Schedule/);
-    assert.doesNotMatch(html, /Follow-ups could not load/);
-  });
+  let thrown: unknown;
+  try {
+    Page();
+  } catch (error) {
+    thrown = error;
+  }
+
+  const redirect = parseRedirectDigest(thrown);
+  assert.equal(redirect.destination, "/app/today#arrangements");
+  assert.equal(redirect.statusCode, 307);
 });
 
 test("app followups live storage providers reuse the configured postgres record store", () => {

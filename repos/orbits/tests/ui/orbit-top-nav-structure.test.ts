@@ -63,6 +63,22 @@ test("the mobile hamburger and menu layer are back, with Today in the menu", () 
   assert.ok(menuBlock.includes('"me"'), "Me present in the mobile menu");
 });
 
+// T3 (today-schedule merge): the hamburger used to carry a standalone
+// "schedule" entry (clock icon) alongside "today". Schedule folded into
+// Today (now labeled 日程/Schedule, calendar icon) — the standalone entry
+// must be gone.
+test("the standalone schedule menu item is gone; the today item carries the calendar icon", () => {
+  const menuIdx = shell.indexOf("const menuItems");
+  const menuBlock = shell.slice(menuIdx, shell.indexOf("];", menuIdx));
+
+  assert.ok(!/key: "schedule"/.test(menuBlock), "no standalone schedule entry in the mobile menu");
+  assert.match(
+    menuBlock,
+    /active === "today"[^}]*icon: "calendar"[^}]*key: "today"/,
+    "the today entry uses the calendar icon",
+  );
+});
+
 test("session account control and inbox extras stay in the actions segment", () => {
   const actionsIdx = shell.indexOf('className="orbit-top-actions"');
   const headerEnd = shell.indexOf("</header>", actionsIdx);

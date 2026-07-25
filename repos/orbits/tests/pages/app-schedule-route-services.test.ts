@@ -232,15 +232,22 @@ test("schedule route view model owns arrangement mapping outside the page compon
   const routeModelSource = source(
     "app/(app)/app/schedule/schedule-route-view-model.ts",
   );
-  const pageSource = source("app/(app)/app/schedule/page.tsx");
+  // T3 (today-schedule merge): schedule/page.tsx itself no longer calls
+  // loadAppScheduleRouteViewModel — it's a redirect shell to
+  // /app/today#arrangements now. The loader moved to
+  // today/compose-app-today-from-agent-ledger/today-merged-view-model.ts,
+  // which is what actually owns rendering the arrangement mapping today.
+  const mergedViewModelSource = source(
+    "app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts",
+  );
 
   assert.match(routeModelSource, /createContactDetailTagStatusService/);
   assert.match(routeModelSource, /createEventCrudAndImportService/);
   assert.match(routeModelSource, /createFollowupTaskGenerationService/);
   assert.match(routeModelSource, /AppScheduleArrangementViewModel/);
   assert.doesNotMatch(routeModelSource, /Review follow-up for/);
-  assert.match(pageSource, /loadAppScheduleRouteViewModel/);
-  assert.doesNotMatch(pageSource, /AppFollowupsPage/);
+  assert.match(mergedViewModelSource, /loadAppScheduleRouteViewModel/);
+  assert.doesNotMatch(mergedViewModelSource, /AppFollowupsPage/);
 });
 
 test("schedule live implementation doc records replacement boundary", () => {

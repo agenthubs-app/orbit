@@ -71,6 +71,15 @@ export function statusLabel(status: string, language: "en" | "zh"): string {
   return status === "已确认" ? "Confirmed" : "To confirm";
 }
 
+// Sunday of the week containing (y, m, d) — anchor for the mobile week strip
+// (T3, today-schedule merge §3): it needs a 7-day window to page through
+// independently of the month grid MonthCalendar renders.
+export function startOfWeekSun(y: number, m: number, d: number): Date {
+  const date = new Date(y, m, d);
+  date.setDate(date.getDate() - date.getDay());
+  return date;
+}
+
 // Default the selected day to today if it has meetings, else the first day in
 // the current month that does — so the day panel is never empty on load.
 export function firstDayWithMeetings(

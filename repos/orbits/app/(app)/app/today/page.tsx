@@ -211,7 +211,7 @@ export default async function AppTodayPage({
               />
             </div>
 
-            <div data-orbit-today-arrangements-column>
+            <div data-orbit-today-arrangements-column id="arrangements">
               {localizedSchedule.state === "success" ? (
                 <OrbitTodayArrangements
                   arrangements={localizedSchedule.arrangements}

@@ -8,6 +8,13 @@ import { Avatar, Icon, Logo, gradientFromString } from "./orbit-reference-primit
 import { productHref } from "./orbit-product-href";
 import { ORBIT_Z } from "./orbit-z";
 
+// "schedule" no longer has a nav entry of its own (T3, today-schedule merge —
+// folded into "today", now labeled 日程/Schedule) but stays in the union:
+// app/(app)/app/schedule/orbit-real-schedule-page.tsx and
+// app/(app)/app/followups/orbit-real-schedule.tsx still reference
+// `active="schedule"` — both files stay in place (unreachable from normal
+// navigation now that schedule/page.tsx and followups/page.tsx redirect to
+// /app/today, but not deleted; see those route adapters).
 export type OrbitNavActive = "home" | "today" | "events" | "schedule" | "cards" | "agent" | "me";
 
 export { productHref } from "./orbit-product-href";
@@ -199,19 +206,19 @@ export function OrbitTopNav({
     events: { en: "Events", zh: "活动" },
     home: { en: "Me", zh: "我的" },
     me: { en: "Me", zh: "我的" },
+    // Unreachable via the nav (see the OrbitNavActive comment above) but kept
+    // for the two orphaned components that still pass active="schedule".
     schedule: { en: "Calendar", zh: "日程" },
-    today: { en: "Today", zh: "Today" },
+    today: { en: "Schedule", zh: "日程" },
   };
   const links = [
-    ["/today", t({ en: "Today", zh: "Today" }), "today"],
+    ["/today", t({ en: "Schedule", zh: "日程" }), "today"],
     ["/events", t({ en: "Events", zh: "活动" }), "events"],
-    ["/schedule", t({ en: "Calendar", zh: "日程" }), "schedule"],
     ["/contacts", t({ en: "Contacts", zh: "人脉" }), "cards"],
   ] as const;
   const menuItems = [
-    { active: active === "today", href: productHref("/today"), icon: "target", key: "today", label: t({ en: "Today", zh: "Today" }) },
+    { active: active === "today", href: productHref("/today"), icon: "calendar", key: "today", label: t({ en: "Schedule", zh: "日程" }) },
     { active: active === "events", href: productHref("/events"), icon: "calendar", key: "events", label: t({ en: "Events", zh: "活动" }) },
-    { active: active === "schedule", href: productHref("/schedule"), icon: "clock", key: "schedule", label: t({ en: "Calendar", zh: "日程" }) },
     { active: active === "cards", href: productHref("/contacts"), icon: "users", key: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
     { active: active === "me" || active === "home", href: meHref, icon: "user", key: "me", label: t({ en: "Me", zh: "我的" }) },
   ];
