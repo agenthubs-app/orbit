@@ -4,7 +4,10 @@ import type {
 } from "./contract";
 import type { AgentLedgerService } from "./service";
 import { createMockAgentLedgerService } from "./mock-service";
-import { createRuntimeBackedAgentLedgerService } from "./runtime-adapter";
+import {
+  agentActionToLedgerEntry,
+  createRuntimeBackedAgentLedgerService,
+} from "./runtime-adapter";
 import { createOrbitAgentRuntimeService } from "../runtime/service-factory";
 
 interface OrbitAgentLedgerGlobal {
@@ -62,9 +65,39 @@ function createMockRuntimeLedgerCompatibilityService(): AgentLedgerService {
       return mergeListResults(fixtureResult, runtimeResult);
     },
     async applyTransition(input): Promise<AgentLedgerMutationResult> {
-      return (await runtimeHasEntry(input.entryId ?? ""))
-        ? runtimeLedger.applyTransition(input)
-        : fixtures.applyTransition(input);
+      if (!(await runtimeHasEntry(input.entryId ?? ""))) {
+        return fixtures.applyTransition(input);
+      }
+      const result = await runtimeLedger.applyTransition(input);
+      if (
+        result.success === false ||
+        (input.transition !== "confirm" && input.transition !== "retry")
+      ) {
+        return result;
+      }
+      await runtime.processOutbox({
+        actionId: input.entryId ?? undefined,
+        limit: 20,
+        workerId: "mock-agent-request-worker",
+      });
+      const action = (await runtime.listActions({})).find(
+        (candidate) => candidate.actionId === input.entryId,
+      );
+      if (!action) return result;
+      return {
+        ...result,
+        data: {
+          ...result.data,
+          entry: agentActionToLedgerEntry(
+            action,
+            await runtime.getRun(action.runId),
+          ),
+          nextAction:
+            action.status === "completed"
+              ? "操作已完成，结果已同步到操作账本。"
+              : result.data.nextAction,
+        },
+      };
     },
     async updateDraft(input): Promise<AgentLedgerMutationResult> {
       return (await runtimeHasEntry(input.entryId ?? ""))

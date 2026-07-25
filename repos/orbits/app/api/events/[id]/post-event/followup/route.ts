@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createOrbitAgentRuntimeService } from "../../../../../../features/agent/runtime/service-factory";
 import { createPostEventFollowupWorkflow } from "../../../../../../features/orbit-ai/workflows/post-event-followup-v1";
+import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode";
 
 export const dynamic = "force-dynamic";
 
@@ -72,10 +73,9 @@ export async function POST(
   }
 
   try {
-    const workflow = createPostEventFollowupWorkflow(
-      createOrbitAgentRuntimeService(),
-    );
-    const result = await workflow.run({
+    const runtime = createOrbitAgentRuntimeService();
+    const workflow = createPostEventFollowupWorkflow(runtime);
+    let result = await workflow.run({
       eventId,
       eventTitle: optionalText(body.eventTitle, 240) ?? "活动",
       contactId,
@@ -96,6 +96,20 @@ export async function POST(
           : "typed",
       trigger: "manual",
     });
+    if (resolveFeatureMode() === "mock") {
+      await runtime.processOutbox({
+        limit: 20,
+        workerId: "mock-post-event-request-worker",
+      });
+      const detail = await runtime.getRun(result.run.runId);
+      if (detail) {
+        result = {
+          ...result,
+          run: detail.run,
+          actions: detail.actions,
+        };
+      }
+    }
     return NextResponse.json({ data: result }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
