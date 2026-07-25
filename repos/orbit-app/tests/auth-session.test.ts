@@ -261,28 +261,27 @@ test("registerOrbitAccount posts to the web register API envelope", async () => 
   assert.equal(result.success, true);
 });
 
-test("signOutOrbitSession clears the stored session when NextAuth signs out", async () => {
+test("signOutOrbitSession clears the stored session through the account sign-out bridge", async () => {
+  const calls: string[] = [];
   const fetchImpl: AuthFetchLike = async (input, init = {}) => {
-    if (String(input).endsWith("/api/auth/csrf")) {
-      assert.equal(init.headers ? new Headers(init.headers).get("Cookie") : "", "authjs.session-token=session-token");
-      return jsonResponse(
-        { csrfToken: "csrf-token" },
-        { setCookie: "authjs.csrf-token=csrf-token.hash; Path=/; HttpOnly" }
-      );
-    }
+    calls.push(String(input));
 
-    assert.equal(String(input), "http://localhost:3000/api/auth/signout");
-    assert.equal(new Headers(init.headers).get("Cookie"), "authjs.session-token=session-token; authjs.csrf-token=csrf-token.hash");
-
-    return jsonResponse(
-      { url: "http://localhost:3000/app" },
-      {
-        setCookie: [
-          "authjs.session-token=; Path=/; Max-Age=0",
-          "authjs.csrf-token=; Path=/; Max-Age=0"
-        ]
-      }
+    assert.equal(
+      String(input),
+      "http://localhost:3000/api/account/session/sign-out"
     );
+    assert.equal(init.method, "POST");
+    assert.equal(
+      new Headers(init.headers).get("Cookie"),
+      "authjs.session-token=session-token"
+    );
+
+    return jsonResponse({
+      success: true,
+      data: {
+        session: { status: "signed-out" }
+      }
+    });
   };
 
   const result = await signOutOrbitSession({
@@ -293,4 +292,5 @@ test("signOutOrbitSession clears the stored session when NextAuth signs out", as
 
   assert.equal(result.success, true);
   assert.equal(result.cookieHeader, "");
+  assert.deepEqual(calls, ["http://localhost:3000/api/account/session/sign-out"]);
 });
