@@ -503,7 +503,11 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
         <AccountTopNav active="cards" />
         <div style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 8, padding: "12px 18px 4px" }}>
           <a aria-label={t({ en: "Back to contacts", zh: "返回名片夹" })} href="/app/contacts" style={{ color: "var(--text-2)", display: "inline-flex" }}><Icon name="chevL" size={22} /></a>
-          <span className="h-section" style={{ fontSize: 16 }}>{contact.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</span>
+          {/* Mobile audit P2: this used to repeat the person's name — the
+              hero right below it already shows that. Show the section
+              context (matches the desktop "nc-back" label's intent) instead
+              so the two lines aren't identical. */}
+          <span className="h-section" style={{ fontSize: 16 }}>{t({ en: "Contacts", zh: "人脉" })}</span>
         </div>
         <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0, overflowY: "auto", padding: "10px 18px 36px" }}>
           <div className="nc-mhero">

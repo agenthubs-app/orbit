@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import type { OrbitAccountAuthViewModel } from "../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
@@ -19,10 +19,21 @@ function navigate(prototypeHref: string) {
   window.location.href = productHref(prototypeHref);
 }
 
-function readAccountAuthQuery(defaultNext: string) {
-  const searchParams = typeof window === "undefined"
-    ? new URLSearchParams()
-    : new URLSearchParams(window.location.search);
+type AccountAuthQuery = { created: boolean; email: string; next: string };
+
+// Server-safe fallback: no window access, so this returns the exact same
+// value during SSR and during the client's first (pre-hydration) render.
+// The real query string is only read post-mount (see the useEffect below) —
+// reading window.location.search here would make the client's first render
+// diverge from the server's markup (server always guesses `defaultNext`;
+// the client would immediately compute the real `next` from the URL),
+// producing a hydration mismatch on every `?next=` href in this form.
+function accountAuthQueryFallback(defaultNext: string): AccountAuthQuery {
+  return { created: false, email: "", next: defaultNext };
+}
+
+function readAccountAuthQueryFromLocation(defaultNext: string): AccountAuthQuery {
+  const searchParams = new URLSearchParams(window.location.search);
   const rawNext = searchParams.get("next") ?? "";
   const next = rawNext.startsWith("/") ? rawNext : defaultNext;
 
@@ -43,7 +54,9 @@ export function OrbitRealAccountAuth({
   viewModel: OrbitAccountAuthViewModel;
 }) {
   const { t } = useOrbitLanguage();
-  const [query] = useState(() => readAccountAuthQuery(viewModel.defaultNext));
+  const [query, setQuery] = useState<AccountAuthQuery>(() =>
+    accountAuthQueryFallback(viewModel.defaultNext),
+  );
   const [email, setEmail] = useState(query.email);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -51,6 +64,16 @@ export function OrbitRealAccountAuth({
   const [submitting, setSubmitting] = useState(false);
   const [forgotStep, setForgotStep] = useState(1);
   const [code, setCode] = useState("");
+
+  // Post-hydration update (legal — it runs after the first paint matches
+  // SSR): now that we're definitely on the client, read the real ?next=/
+  // ?email=/?created= from the URL and correct the state that was seeded
+  // with the server-safe fallback above.
+  useEffect(() => {
+    const real = readAccountAuthQueryFromLocation(viewModel.defaultNext);
+    setQuery(real);
+    setEmail((current) => current || real.email);
+  }, [viewModel.defaultNext]);
 
   const handleClose = useCallback(() => {
     if (onClose) {
