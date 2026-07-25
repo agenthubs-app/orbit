@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactK
 
 import { getOrbitPartyViewModel, type OrbitPartyPersonView, type OrbitPartyViewModel } from "../orbit-party-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
+import { ModalShell } from "../orbit-account-shell";
 import { PublicTopNav } from "../orbit-public-shell";
 import { Icon, Logo } from "../orbit-reference-primitives";
+import { ORBIT_Z } from "../orbit-z";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -650,7 +652,7 @@ function SocialGraphLite({
             <g key={node.id} onClick={() => onSelect(node)} style={{ cursor: "pointer" }} transform={`translate(${node.x} ${node.y})`}>
               <circle fill={color} fillOpacity={0.1} r={node.r + 5} />
               <circle fill="#fff" r={node.r} stroke={color} strokeWidth="1.6" />
-              <text dominantBaseline="central" fill="#1D1D22" fontFamily="var(--ff-tight)" fontSize={Math.max(11, node.r * 0.7)} fontWeight="600" textAnchor="middle">
+              <text dominantBaseline="central" fill="#1D1D22" fontFamily="var(--ff-display)" fontSize={Math.max(11, node.r * 0.7)} fontWeight="600" textAnchor="middle">
                 {node.initial}
               </text>
               <text fill="rgba(29,29,34,0.6)" fontFamily="var(--ff)" fontSize="10" fontWeight="500" textAnchor="middle" y={node.r + 13}>
@@ -662,7 +664,7 @@ function SocialGraphLite({
         <circle fill="var(--accent)" fillOpacity="0.05" r="56" />
         <circle fill="var(--accent)" fillOpacity="0.1" r="44" />
         <circle fill="rgba(99,89,233,0.14)" r="34" stroke="var(--accent)" strokeWidth="2.4" />
-        <text dominantBaseline="central" fill="var(--accent)" fontFamily="var(--ff-tight)" fontSize="24" fontWeight="700" textAnchor="middle">
+        <text dominantBaseline="central" fill="var(--accent)" fontFamily="var(--ff-display)" fontSize="24" fontWeight="700" textAnchor="middle">
           {me.initial}
         </text>
         <text fill="var(--accent)" fontFamily="var(--ff-mono)" fontSize="9" fontWeight="600" letterSpacing="0.28em" textAnchor="middle" y="-46">
@@ -674,49 +676,39 @@ function SocialGraphLite({
 }
 
 function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; person: OrbitPartyPersonView; t: Translate }) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
   return (
-    <div onClick={onClose} style={{ alignItems: "flex-end", background: "var(--scrim)", display: "flex", inset: 0, justifyContent: "center", padding: 16, position: "fixed", zIndex: 100 }}>
-      <div className="card" onClick={(event) => event.stopPropagation()} style={{ borderRadius: "var(--r-xl)", maxHeight: "88vh", overflowY: "auto", width: "min(100%, 460px)" }}>
-        <div style={{ background: "var(--surface)", padding: "16px 18px 0", position: "sticky", top: 0 }}>
-          <button aria-label={t({ en: "Back to graph", zh: "返回图谱" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
-            <Icon name="chevL" size={16} />
-            {t({ en: "Back to graph", zh: "返回图谱" })}
-          </button>
+    <ModalShell bare label={person.name} onClose={onClose} variant="bottom-sheet">
+      <div style={{ background: "var(--surface)", padding: "16px 18px 0", position: "sticky", top: 0 }}>
+        <button aria-label={t({ en: "Back to graph", zh: "返回图谱" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
+          <Icon name="chevL" size={16} />
+          {t({ en: "Back to graph", zh: "返回图谱" })}
+        </button>
+      </div>
+      <div style={{ padding: 20 }}>
+        <div className="eyebrow">{person.company}</div>
+        <h2 className="h-display" style={{ marginTop: 10 }}>
+          {person.name}
+        </h2>
+        <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>
+          {person.company} · {person.title}
         </div>
-        <div style={{ padding: 20 }}>
-          <div className="eyebrow">{person.company}</div>
-          <h2 className="h-display" style={{ marginTop: 10 }}>
-            {person.name}
-          </h2>
-          <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>
-            {person.company} · {person.title}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-            <span className="chip chip-accent">{person.industry}</span>
-            <span className="chip">
-              {t({ en: `Group ${person.groupNumber}`, zh: `第${person.groupNumber}组` })} / {person.seat}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+          <span className="chip chip-accent">{person.industry}</span>
+          <span className="chip">
+            {t({ en: `Group ${person.groupNumber}`, zh: `第${person.groupNumber}组` })} / {person.seat}
+          </span>
+        </div>
+        <p style={{ color: "var(--text)", lineHeight: 1.8, marginTop: 18 }}>{person.summary}</p>
+        <p style={{ color: "var(--text-2)", lineHeight: 1.8, marginTop: 12 }}>{person.reason}</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
+          {person.topics.map((topic) => (
+            <span className="chip" key={topic}>
+              {topic}
             </span>
-          </div>
-          <p style={{ color: "var(--text)", lineHeight: 1.8, marginTop: 18 }}>{person.summary}</p>
-          <p style={{ color: "var(--text-2)", lineHeight: 1.8, marginTop: 12 }}>{person.reason}</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-            {person.topics.map((topic) => (
-              <span className="chip" key={topic}>
-                {topic}
-              </span>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -857,7 +849,7 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
 
   return (
     <div className="orbit-party-graph-screen" data-orbit-real-page style={{ minHeight: "100dvh" }}>
-      <div style={{ margin: "0 auto", maxWidth: 720, minHeight: "100dvh", padding: "18px clamp(16px,4vw,32px) 48px", position: "relative", zIndex: 1 }}>
+      <div style={{ margin: "0 auto", maxWidth: 720, minHeight: "100dvh", padding: "18px clamp(16px,4vw,32px) 48px", position: "relative", zIndex: ORBIT_Z.raised }}>
         <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between" }}>
           <button aria-label={t({ en: "Back", zh: "返回" })} className="btn btn-ghost hit-44" onClick={() => navigateTo("/app/party")} style={{ minWidth: 40, padding: 0 }} type="button">
             <Icon name="chevL" size={18} />

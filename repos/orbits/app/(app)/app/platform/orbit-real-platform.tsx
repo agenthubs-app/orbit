@@ -53,7 +53,7 @@ export function OrbitRealPlatform({ viewModel }: { viewModel: OrbitPlatformViewM
 
       {view === "review" ? (
         <div className="orbit-platform-main">
-          {toast ? <div className="orbit-platform-error" style={{ background: "var(--live-soft)", color: "var(--live)" }}>{toast}</div> : null}
+          {toast ? <div className="orbit-platform-error" style={{ background: "var(--live-soft)", color: "var(--live-text)" }}>{toast}</div> : null}
           {queue.length === 0 ? (
             <div className="orbit-platform-empty-detail"><div className="orbit-platform-lock"><Icon name="checkCircle" size={22} /></div><h2>{t({ en: "Review queue cleared", zh: "审核队列已清空" })}</h2><p>{t({ en: "There are no events awaiting review.", zh: "当前没有待审核的活动。" })}</p></div>
           ) : (

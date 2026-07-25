@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { signIn } from "next-auth/react";
 import type { OrbitAccountAuthViewModel } from "../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
-import { Icon, Logo } from "../orbit-reference-primitives";
+import { useOrbitModalA11y } from "../orbit-modal-a11y";
+import { FormField, Icon, Logo } from "../orbit-reference-primitives";
 
 function productHref(prototypeHref: string) {
   if (prototypeHref === "/") return "/app";
@@ -51,22 +52,17 @@ export function OrbitRealAccountAuth({
   const [forgotStep, setForgotStep] = useState(1);
   const [code, setCode] = useState("");
 
-  function handleClose() {
+  const handleClose = useCallback(() => {
     if (onClose) {
       onClose();
       return;
     }
     navigate("/");
-  }
+  }, [onClose]);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") handleClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Shared focus-trap/Esc/aria-modal behavior (audit P0-7) — this dialog
+  // previously hand-rolled its own Esc listener with no focus trap.
+  const cardRef = useOrbitModalA11y(handleClose);
 
   const isSignup = viewModel.mode === "signup";
   const isForgot = viewModel.mode === "forgot";
@@ -146,8 +142,16 @@ export function OrbitRealAccountAuth({
 
   return (
     <main className="orbit-account-auth-page" data-orbit-real-page>
-      <div className="orbit-account-auth-backdrop" />
-      <section aria-modal="true" className="orbit-account-auth-modal" role="dialog">
+      <div className="orbit-account-auth-backdrop" onClick={handleClose} />
+      <section
+        aria-label={viewModel.title}
+        aria-modal="true"
+        className="orbit-account-auth-modal"
+        ref={cardRef}
+        role="dialog"
+        style={{ outline: "none" }}
+        tabIndex={-1}
+      >
         <div aria-hidden="true" className="orbit-account-auth-grip" />
         <header className="orbit-account-auth-modal-head">
           <Logo size={22} />
@@ -170,11 +174,11 @@ export function OrbitRealAccountAuth({
             <p>{viewModel.description}</p>
           </div>
           <form className="orbit-account-auth-form" onSubmit={onSubmit}>
-            <label className="orbit-account-auth-field">
-              <span className="field-label">{t({ en: "Email", zh: "邮箱" })}</span>
+            <FormField className="orbit-account-auth-field" id="orbit-auth-email" label={t({ en: "Email", zh: "邮箱" })}>
               <input
                 autoComplete="email"
                 className="field"
+                id="orbit-auth-email"
                 inputMode="email"
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder={t({ en: "Enter your email address", zh: "输入邮箱地址" })}
@@ -182,12 +186,11 @@ export function OrbitRealAccountAuth({
                 type="email"
                 value={email}
               />
-            </label>
+            </FormField>
 
             {isForgot && forgotStep === 2 ? (
               <>
-                <div className="orbit-account-auth-field">
-                  <label className="field-label" htmlFor="orbit-auth-code">{t({ en: "Verification code", zh: "验证码" })}</label>
+                <FormField className="orbit-account-auth-field" id="orbit-auth-code" label={t({ en: "Verification code", zh: "验证码" })}>
                   <input
                     className="field mono"
                     id="orbit-auth-code"
@@ -197,9 +200,8 @@ export function OrbitRealAccountAuth({
                     placeholder={t({ en: "6-digit code", zh: "6 位验证码" })}
                     value={code}
                   />
-                </div>
-                <div className="orbit-account-auth-field">
-                  <label className="field-label" htmlFor="orbit-auth-new-password">{t({ en: "New password", zh: "新密码" })}</label>
+                </FormField>
+                <FormField className="orbit-account-auth-field" id="orbit-auth-new-password" label={t({ en: "New password", zh: "新密码" })}>
                   <span style={{ display: "flex", gap: 8 }}>
                     <input
                       autoComplete="new-password"
@@ -221,30 +223,31 @@ export function OrbitRealAccountAuth({
                       <Icon name="eye" size={17} />
                     </button>
                   </span>
-                </div>
+                </FormField>
               </>
             ) : !isForgot ? (
-              <div className="orbit-account-auth-field">
-                <span style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between" }}>
-                  <label className="field-label" htmlFor="orbit-auth-password" style={{ marginBottom: 0 }}>{t({ en: "Password", zh: "密码" })}</label>
-                  {!isSignup ? (
-                    <a
-                      href={`/app/account/forgot-password?next=${encodeURIComponent(query.next)}`}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        navigate(`/account/forgot-password?next=${encodeURIComponent(query.next)}`);
-                      }}
-                      style={{
-                        color: "var(--accent)",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        textDecoration: "none",
-                      }}
-                    >
-                      {t({ en: "Forgot password?", zh: "忘记密码?" })}
-                    </a>
-                  ) : null}
-                </span>
+              <FormField
+                className="orbit-account-auth-field"
+                id="orbit-auth-password"
+                label={t({ en: "Password", zh: "密码" })}
+                labelExtra={!isSignup ? (
+                  <a
+                    href={`/app/account/forgot-password?next=${encodeURIComponent(query.next)}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      navigate(`/account/forgot-password?next=${encodeURIComponent(query.next)}`);
+                    }}
+                    style={{
+                      color: "var(--accent)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    {t({ en: "Forgot password?", zh: "忘记密码?" })}
+                  </a>
+                ) : undefined}
+              >
                 <span style={{ display: "flex", gap: 8 }}>
                   <input
                     autoComplete={isSignup ? "new-password" : "current-password"}
@@ -266,7 +269,7 @@ export function OrbitRealAccountAuth({
                     <Icon name="eye" size={17} />
                   </button>
                 </span>
-              </div>
+              </FormField>
             ) : null}
 
             {error ? <div className="orbit-alert error" role="alert">{error}</div> : null}

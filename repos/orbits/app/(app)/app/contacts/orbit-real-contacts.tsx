@@ -17,8 +17,9 @@ import { CrmSidebar } from "./orbit-crm-sidebar";
 import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
-import { Avatar, Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
+import { Avatar, Cover, gradientFromString, Icon, IconButton } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
+import { ORBIT_Z } from "../orbit-z";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -108,7 +109,7 @@ function CrmNav({
             style={{
               alignItems: "center",
               background: on ? "var(--accent-soft)" : "transparent",
-              borderRadius: 11,
+              borderRadius: "var(--r-sm)",
               color: on ? "var(--accent)" : "var(--text-2)",
               display: "flex",
               fontFamily: "var(--ff)",
@@ -219,7 +220,7 @@ function StageDot({
   const meta = stageMeta(viewModel, status);
 
   return (
-    <span style={{ alignItems: "center", background: withLabel ? meta.soft : "transparent", borderRadius: "var(--r-pill)", display: "inline-flex", gap: 6, height: 24, padding: withLabel ? "0 9px 0 8px" : 0 }}>
+    <span style={{ alignItems: "center", background: withLabel ? meta.soft : "transparent", borderRadius: "var(--r-pill)", display: "inline-flex", gap: 4, height: 24, padding: withLabel ? "0 9px 0 8px" : 0 }}>
       <span style={{ background: meta.color, borderRadius: "var(--r-pill)", height: 7, width: 7 }} />
       {withLabel ? <span style={{ color: meta.color, fontSize: 12, fontWeight: 600 }}>{meta.label}</span> : null}
     </span>
@@ -306,17 +307,17 @@ function PersonCard({
       <Avatar letter={crmInitial(item.displayName)} g={item.g || "g-violet"} size={56} />
       <div style={{ minWidth: 0 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          <h3 className="h-section" style={{ color: "var(--ink)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h3>
+          <h2 className="h-section" style={{ color: "var(--ink)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h2>
           <SourceBadge source={item.source} t={t} />
         </div>
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(item, t)}{item.industry ? ` · ${item.industry}` : ""}</div>
         {item.valueTags.length ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
             {item.valueTags.map((tag) => <span className="nc-tag nc-tag-value" key={tag}>{tag}</span>)}
           </div>
         ) : null}
       </div>
-      <div className="nc-right" style={{ alignItems: "flex-end", display: "flex", flexDirection: "column", flexShrink: 0, gap: 9 }}>
+      <div className="nc-right" style={{ alignItems: "flex-end", display: "flex", flexDirection: "column", flexShrink: 0, gap: 8 }}>
         <StageDot status={item.pipelineStatus} viewModel={viewModel} withLabel />
         <StrengthTag strength={item.strength} t={t} />
       </div>
@@ -368,7 +369,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
                 <h1 className="h-display" style={{ margin: 0 }}>{t({ en: "All contacts", zh: "全部人脉" })}</h1>
                 <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>{subtitle}</div>
               </div>
-              <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                 <a className="btn btn-ghost btn-sm" href="/app/contacts/new"><Icon name="scan" size={16} />{t({ en: "Scan", zh: "扫名片" })}</a>
                 <a className="btn btn-primary btn-sm" href="/app/contacts/new"><Icon name="download" size={16} />{t({ en: "Import", zh: "导入人脉" })}</a>
               </div>
@@ -395,7 +396,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
               ))}
             </div>
             {!filtered.length ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 14, padding: 18 }}>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</div> : null}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
           </div>
         </div>
       </div>
@@ -404,7 +405,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
         <MobileCrmHeader active="list" onQueryChange={setQuery} query={query} t={t} />
         <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0, overflowY: "auto", padding: "2px 18px 36px" }}>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 10 }}>{subtitle}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
         </div>
       </div>
     </main>
@@ -416,9 +417,9 @@ function PipelineCard({ connection, t }: { connection: OrbitContactView; t: Tran
     <a
       className="card-hover"
       href={`/app/contacts/${connection.id}`}
-      style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, color: "inherit", cursor: "pointer", display: "block", padding: 13, textDecoration: "none" }}
+      style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", color: "inherit", cursor: "pointer", display: "block", padding: 13, textDecoration: "none" }}
     >
-      <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
+      <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
         <Avatar letter={crmInitial(connection.displayName)} g="g-violet" size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{connection.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</div>
@@ -440,7 +441,7 @@ function PipelineBoard({
   viewModel: OrbitContactsViewModel;
 }) {
   return (
-    <div style={{ display: "flex", gap: 14, height: "100%" }}>
+    <div style={{ display: "flex", gap: 16, height: "100%" }}>
       {viewModel.pipelineStatuses.map((status, index) => {
         const items = grouped[status.value] || [];
         const color = stageColors[index % 3];
@@ -453,7 +454,7 @@ function PipelineBoard({
               <span style={{ color: "var(--text-4)", fontFamily: "var(--ff-mono)", fontSize: 12 }}>{items.length}</span>
               <div style={{ flex: 1 }} />
             </div>
-            <div className="scroll" style={{ display: "flex", flex: 1, flexDirection: "column", gap: 10, overflowY: "auto", padding: "0 11px 14px" }}>
+            <div className="scroll" style={{ display: "flex", flex: 1, flexDirection: "column", gap: 12, overflowY: "auto", padding: "0 11px 14px" }}>
               {items.length ? items.map((contact) => <PipelineCard connection={contact} key={contact.id} t={t} />) : <div style={{ color: "var(--text-4)", fontSize: 13, padding: "4px 2px" }}>{t({ en: "No contacts yet.", zh: "暂无联系人。" })}</div>}
             </div>
           </div>
@@ -484,7 +485,7 @@ function MobilePipeline({
 
         return (
           <div key={status.value} style={{ marginBottom: 14 }}>
-            <div aria-expanded={!isCollapsed} aria-label={isCollapsed ? t({ en: "Expand stage", zh: "展开阶段" }) : t({ en: "Collapse stage", zh: "收起阶段" })} onClick={() => setCollapsed((current) => ({ ...current, [status.value]: !current[status.value] }))} role="button" style={{ alignItems: "center", background: "var(--bg)", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", gap: 8, padding: "10px 0", position: "sticky", top: 0, zIndex: 5 }}>
+            <div aria-expanded={!isCollapsed} aria-label={isCollapsed ? t({ en: "Expand stage", zh: "展开阶段" }) : t({ en: "Collapse stage", zh: "收起阶段" })} onClick={() => setCollapsed((current) => ({ ...current, [status.value]: !current[status.value] }))} role="button" style={{ alignItems: "center", background: "var(--bg)", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", gap: 8, padding: "10px 0", position: "sticky", top: 0, zIndex: ORBIT_Z.sticky }}>
               <Icon name={isCollapsed ? "chevR" : "chevD"} size={16} color="var(--text-3)" />
               <span style={{ background: color, borderRadius: "var(--r-pill)", height: 9, width: 9 }} />
               <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{status.label}</span>
@@ -492,7 +493,7 @@ function MobilePipeline({
               <div style={{ flex: 1 }} />
             </div>
             {!isCollapsed ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
                 {items.map((contact) => <PipelineCard connection={contact} key={contact.id} t={t} />)}
                 {items.length === 0 ? <div style={{ color: "var(--text-4)", fontSize: 13, padding: "4px 2px" }}>{t({ en: "None", zh: "暂无" })}</div> : null}
               </div>
@@ -837,7 +838,7 @@ function IntroComposerModal({
         </div>
         <div className="scroll" style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
           {selectable.map((item) => (
-            <button className="card-hover" key={item.id} onClick={() => pick(item.id)} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: 11, textAlign: "left" }} type="button">
+            <button className="card-hover" key={item.id} onClick={() => pick(item.id)} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: 11, textAlign: "left" }} type="button">
               <Avatar letter={crmInitial(item.displayName)} g="g-violet" size={38} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{item.displayName}</div>
@@ -863,7 +864,7 @@ function IntroComposerModal({
         </div>
         <label className="field-label" htmlFor="intro-note" style={{ marginTop: 18 }}>{t({ en: "Intro note", zh: "引荐词" })}</label>
         <textarea className="field" id="intro-note" onChange={(event) => setBlurb(event.target.value)} placeholder={t({ en: "Leave blank to try AI generation; if no AI is configured, it will error clearly.", zh: "留空则尝试用 AI 生成；如果当前没配 AI，会明确报错。" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={blurb} />
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
           <button className="btn btn-ghost" onClick={onClose} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
           <button className="btn btn-primary" disabled={!aId || !bId} type="submit"><Icon name="share" size={16} color="var(--on-dark)" />{t({ en: "Save introduction", zh: "保存引荐" })}</button>
         </div>
@@ -930,7 +931,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <MobileCrmHeader
-          action={<button aria-label={t({ en: "Make introduction", zh: "发起引荐" })} className="hit-44" style={{ alignItems: "center", background: "var(--accent-soft)", border: "none", borderRadius: "var(--r-pill)", color: "var(--accent)", cursor: "pointer", display: "flex", height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="plus" size={19} /></button>}
+          action={<IconButton ariaLabel={t({ en: "Make introduction", zh: "发起引荐" })} name="plus" size={19} style={{ background: "var(--accent-soft)", color: "var(--accent)" }} />}
           active="intros"
           onQueryChange={setQuery}
           placeholder={t({ en: "Search contacts / intro notes", zh: "搜索联系人 / 引荐词" })}
@@ -1039,7 +1040,7 @@ function CdStageDot({
   const meta = cdStageMeta(viewModel, status);
 
   return (
-    <span style={{ alignItems: "center", background: withLabel ? meta.soft : "transparent", borderRadius: "var(--r-pill)", display: "inline-flex", gap: 6, height: 24, padding: withLabel ? "0 9px 0 8px" : 0 }}>
+    <span style={{ alignItems: "center", background: withLabel ? meta.soft : "transparent", borderRadius: "var(--r-pill)", display: "inline-flex", gap: 4, height: 24, padding: withLabel ? "0 9px 0 8px" : 0 }}>
       <span style={{ background: meta.color, borderRadius: "var(--r-pill)", height: 7, width: 7 }} />
       {withLabel ? <span style={{ color: meta.color, fontSize: 12, fontWeight: 600 }}>{meta.label}</span> : null}
     </span>
@@ -1086,9 +1087,9 @@ function EventPublicProfileCard({ profile, t }: { profile: OrbitContactPublicPro
       {profile.conversationPrompts.length ? (
         <div style={{ marginTop: 14 }}>
           <div style={{ color: "var(--ink)", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t({ en: "AI icebreakers", zh: "AI 破冰问题" })}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {profile.conversationPrompts.slice(0, 3).map((prompt, index) => (
-              <div key={prompt} style={{ display: "flex", gap: 10 }}>
+              <div key={prompt} style={{ display: "flex", gap: 8 }}>
                 <span className="mono" style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: "var(--r-pill)", color: "var(--text-3)", display: "flex", flexShrink: 0, fontSize: 11, height: 24, justifyContent: "center", width: 24 }}>0{index + 1}</span>
                 <span style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.55 }}>{prompt}</span>
               </div>
@@ -1185,9 +1186,10 @@ export function OrbitRealCardDetail({
 
           return (
             <button
+              className="btn btn-sm"
               key={status.value}
               onClick={() => setStatus(status.value)}
-              style={{ background: selected ? meta.soft : "var(--surface-2)", border: `1px solid ${selected ? "transparent" : "var(--border)"}`, borderRadius: "var(--r-sm)", color: selected ? meta.color : "var(--text-3)", cursor: "pointer", flex: 1, fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, padding: "9px 0", textAlign: "center" }}
+              style={{ background: selected ? meta.soft : "var(--surface-2)", border: `1px solid ${selected ? "transparent" : "var(--border)"}`, color: selected ? meta.color : "var(--text-3)", flex: 1 }}
               type="button"
             >
               {status.label}
@@ -1195,7 +1197,7 @@ export function OrbitRealCardDetail({
           );
         })}
       </div>
-      <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 14, padding: 13 }}>
+      <div style={{ background: "var(--accent-softer)", borderRadius: "var(--r-sm)", display: "flex", gap: 8, marginTop: 14, padding: 13 }}>
         <Icon name="sparkle" size={17} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
           <div style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600 }}>{t({ en: "Next step", zh: "下一步建议" })}</div>
@@ -1216,9 +1218,9 @@ export function OrbitRealCardDetail({
         ))}
       </div>
       {aiDrafts.length ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
           {aiDrafts.map((draft) => (
-            <div key={draft.id} style={{ background: "var(--surface-2)", borderRadius: 11, padding: 12 }}>
+            <div key={draft.id} style={{ background: "var(--surface-2)", borderRadius: "var(--r-sm)", padding: 12 }}>
               <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{aiActionList(t).find((action) => action.kind === draft.kind)?.label || draft.kind}</div>
               <div style={{ color: "var(--text)", fontSize: 14, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{draft.content}</div>
             </div>
@@ -1230,14 +1232,14 @@ export function OrbitRealCardDetail({
   const NotesCard = ({ pad }: { pad: number }) => (
     <div className="card" style={{ padding: pad }}>
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 12 }}><span className="eyebrow">{t({ en: "Notes", zh: "笔记" })}</span><span style={{ color: "var(--text-4)", fontSize: 12 }}>{notes.length} {t({ en: "notes", zh: "条" })}</span></div>
-      <form onSubmit={addNote} style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: notes.length ? 12 : 0 }}>
+      <form onSubmit={addNote} style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: notes.length ? 12 : 0 }}>
         <textarea className="field" onChange={(event) => setNoteBody(event.target.value)} placeholder={t({ en: "Jot down next steps, their preferences, or partnership leads", zh: "记录下一步、对方偏好或合作线索" })} rows={3} style={{ height: "auto", lineHeight: 1.5, padding: "11px 13px", resize: "vertical" }} value={noteBody} />
         <button className="btn btn-primary btn-sm" disabled={!noteBody.trim()} style={{ alignSelf: "flex-start" }} type="submit"><Icon name="plus" size={15} color="var(--on-dark)" />{t({ en: "Add note", zh: "添加笔记" })}</button>
       </form>
       {notes.length ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {notes.map((note) => (
-            <div key={note.id} style={{ background: "var(--surface-2)", borderRadius: 11, padding: 12 }}>
+            <div key={note.id} style={{ background: "var(--surface-2)", borderRadius: "var(--r-sm)", padding: 12 }}>
               <div style={{ color: "var(--text)", fontSize: 14, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{note.body}</div>
               <div style={{ color: "var(--text-4)", fontSize: 12, marginTop: 6 }}>{cdDate(note.createdAt, language)}</div>
             </div>
@@ -1255,7 +1257,7 @@ export function OrbitRealCardDetail({
           const context = encounter.context;
 
           return (
-            <div key={encounter.id} style={{ display: "flex", gap: 14, paddingBottom: last ? 0 : 16 }}>
+            <div key={encounter.id} style={{ display: "flex", gap: 16, paddingBottom: last ? 0 : 16 }}>
               <div style={{ alignItems: "center", display: "flex", flexDirection: "column" }}>
                 <span style={{ background: "var(--text-4)", borderRadius: "var(--r-pill)", height: 10, width: 10 }} />
                 {last ? null : <span style={{ background: "var(--border-2)", flex: 1, marginTop: 3, width: 2 }} />}
@@ -1285,7 +1287,7 @@ export function OrbitRealCardDetail({
               <div style={{ color: "var(--text-4)", fontSize: 11 }}>{row.label}</div>
               <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.value}</div>
             </div>
-            <button aria-label={t({ en: "Copy", zh: "复制" })} className="hit-44" onClick={() => copyValue(row.key)} style={{ alignItems: "center", background: copiedKey === row.key ? "var(--live-soft)" : "var(--surface-2)", border: "none", borderRadius: 8, color: copiedKey === row.key ? "var(--live)" : "var(--text-3)", cursor: "pointer", display: "flex", flexShrink: 0, height: 28, justifyContent: "center", width: 28 }} title={t({ en: "Copy", zh: "复制" })} type="button">
+            <button aria-label={t({ en: "Copy", zh: "复制" })} className="btn btn-icon btn-quiet" onClick={() => copyValue(row.key)} style={{ background: copiedKey === row.key ? "var(--live-soft)" : undefined, color: copiedKey === row.key ? "var(--live)" : "var(--text-3)" }} title={t({ en: "Copy", zh: "复制" })} type="button">
               {copiedKey === row.key ? <Icon name="check" size={14} /> : <CdGlyph name="copy" size={14} />}
             </button>
           </div>
@@ -1306,16 +1308,16 @@ export function OrbitRealCardDetail({
         <AccountTopNav active="cards" />
         <div style={{ height: 120, position: "relative" }}>
           <Cover g={cover} style={{ inset: 0, position: "absolute" }} />
-          <button onClick={() => orbitNavigate("/home/cards")} style={{ alignItems: "center", background: "var(--glass-chip)", border: "none", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-sm)", color: "var(--ink)", cursor: "pointer", display: "flex", fontSize: 14, fontWeight: 600, gap: 6, height: 36, left: 24, padding: "0 14px", position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />{t({ en: "Contacts", zh: "名片夹" })}</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => orbitNavigate("/home/cards")} style={{ background: "var(--glass-chip)", backdropFilter: "blur(8px)", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-sm)", left: 24, position: "absolute", top: 18 }} type="button"><Icon name="chevL" size={17} />{t({ en: "Contacts", zh: "名片夹" })}</button>
         </div>
         <div style={{ margin: "0 auto", maxWidth: 880, padding: "0 32px 60px", width: "100%" }}>
-          {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
-          <div style={{ alignItems: "flex-end", display: "flex", gap: 18, marginTop: -26, position: "relative", zIndex: 1 }}>
+          {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
+          <div style={{ alignItems: "flex-end", display: "flex", gap: 20, marginTop: -26, position: "relative", zIndex: ORBIT_Z.raised }}>
             <Avatar letter={crmInitial(connection.displayName)} g={cover} ring="var(--bg)" size={92} />
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ margin: 0, whiteSpace: "nowrap" }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 15, marginTop: 3 }}>{roleLine}</div></div>
           </div>
-          <div style={{ alignItems: "start", display: "grid", gap: 28, gridTemplateColumns: "1fr 300px", marginTop: 28 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}><StatusCard pad={18} /><EventPublicProfileCard profile={profile} t={t} /><AiCard pad={18} /><NotesCard pad={18} /><Timeline pad={18} /></div>
+          <div style={{ alignItems: "start", display: "grid", gap: 32, gridTemplateColumns: "1fr 300px", marginTop: 28 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}><StatusCard pad={18} /><EventPublicProfileCard profile={profile} t={t} /><AiCard pad={18} /><NotesCard pad={18} /><Timeline pad={18} /></div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}><ContactCard pad={16} showSource /></div>
           </div>
         </div>
@@ -1327,8 +1329,8 @@ export function OrbitRealCardDetail({
           <MobileBar dark onBack={() => orbitNavigate("/home/cards")} transparent />
         </div>
         <div style={{ padding: "0 18px 24px 18px" }}>
-          {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
-          <div style={{ alignItems: "flex-end", display: "flex", gap: 14, marginTop: -26, position: "relative", zIndex: 1 }}>
+          {notice ? <div style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginTop: 12, padding: "10px 12px" }}>{notice}</div> : null}
+          <div style={{ alignItems: "flex-end", display: "flex", gap: 16, marginTop: -26, position: "relative", zIndex: ORBIT_Z.raised }}>
             <Avatar letter={crmInitial(connection.displayName)} g={cover} ring="var(--bg)" size={80} />
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}><h1 className="h-display" style={{ margin: 0 }}>{connection.displayName}</h1><div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 3 }}>{roleLine}</div></div>
           </div>
@@ -1360,7 +1362,7 @@ function ScanContent({
             <div style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-lg)", color: "var(--accent)", display: "flex", height: 64, justifyContent: "center", margin: "0 auto 16px", width: 64 }}><Icon name="ticket" size={30} /></div>
             <h3 className="h-section" style={{ color: "var(--ink)", margin: 0 }}>{loading ? t({ en: "Scanning…", zh: "正在扫描…" }) : t({ en: "Tap to upload a card", zh: "点击上传名片" })}</h3>
             <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>{t({ en: "Supports JPG / PNG / PDF · AI extracts fields automatically", zh: "支持 JPG / PNG / PDF · AI 自动提取字段" })}</div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}><span className="btn btn-primary btn-sm"><Icon name="share" size={16} color="var(--on-dark)" />{t({ en: "Upload file", zh: "上传文件" })}</span></div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 18 }}><span className="btn btn-primary btn-sm"><Icon name="share" size={16} color="var(--on-dark)" />{t({ en: "Upload file", zh: "上传文件" })}</span></div>
           </button>
           <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 13, gap: 8, marginTop: 16 }}><Icon name="sparkle" size={15} color="var(--accent)" />{t({ en: "After extraction it auto-dedupes into your card holder, smartly merging duplicate contacts", zh: "提取后自动去重并并入名片夹，重复人脉会智能合并" })}</div>
         </>
@@ -1374,7 +1376,7 @@ function ScanContent({
               <div><div style={{ color: "var(--text-2)", fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{t({ en: "Company / title", zh: "公司 / 职位" })}</div><div style={{ color: "var(--text)", fontSize: 14 }}>{crmRole(connection, t)}</div></div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
             <button className="btn btn-ghost" onClick={onPick} style={{ flex: 1 }} type="button">{t({ en: "Upload again", zh: "重新上传" })}</button>
             <a className="btn btn-primary" href={`/app/contacts/${connection.id}`} style={{ flex: 1 }}><Icon name="chevR" size={16} color="var(--on-dark)" />{t({ en: "View card", zh: "查看名片" })}</a>
           </div>

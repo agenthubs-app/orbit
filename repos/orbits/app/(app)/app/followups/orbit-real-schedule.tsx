@@ -236,7 +236,7 @@ function MonthCalendar({
               style={{ background: selectedCell ? "var(--accent-softer)" : todayCell ? "var(--surface-2)" : "transparent", border: `1px solid ${selectedCell ? "var(--accent)" : "transparent"}`, borderRadius: 12, cursor: "pointer", display: "flex", flexDirection: "column", fontFamily: "var(--ff)", gap: 4, minHeight: compact ? 46 : 76, overflow: "hidden", padding: compact ? "5px 3px" : "7px 7px", textAlign: "left" }}
             >
               <span style={{ alignItems: "center", display: "flex", justifyContent: compact ? "center" : "flex-start" }}>
-                <span style={{ alignItems: "center", background: todayCell ? "var(--accent)" : "transparent", borderRadius: "var(--r-pill)", color: todayCell ? "var(--on-dark)" : selectedCell ? "var(--accent)" : "var(--ink)", display: "flex", fontFamily: "var(--ff-tight)", fontSize: 14, fontWeight: todayCell ? 800 : 600, height: 24, justifyContent: "center", width: 24 }}>{day}</span>
+                <span style={{ alignItems: "center", background: todayCell ? "var(--accent)" : "transparent", borderRadius: "var(--r-pill)", color: todayCell ? "var(--on-dark)" : selectedCell ? "var(--accent)" : "var(--ink)", display: "flex", fontFamily: "var(--ff-display)", fontSize: 14, fontWeight: todayCell ? 800 : 600, height: 24, justifyContent: "center", width: 24 }}>{day}</span>
               </span>
               {compact ? (
                 events.length ? (
@@ -552,7 +552,7 @@ export function OrbitRealSchedule({ viewModel }: OrbitRealScheduleProps) {
 [data-orbit-real-page="schedule"] .sch-month { display:flex; flex-direction:column; }
 [data-orbit-real-page="schedule"] .sch-day-head { display:flex; align-items:center; justify-content:space-between; width:100%; padding:8px 4px; background:transparent; border:0; border-bottom:1px solid var(--border); cursor:pointer; margin-bottom:11px; }
 [data-orbit-real-page="schedule"] .sch-day-head:hover .sch-day-date, [data-orbit-real-page="schedule"] .sch-day-head.is-selected .sch-day-date { color:var(--accent); }
-[data-orbit-real-page="schedule"] .sch-day-date { display:inline-flex; align-items:baseline; gap:8px; font-family:var(--ff-tight); font-size:15px; font-weight:600; color:var(--ink); }
+[data-orbit-real-page="schedule"] .sch-day-date { display:inline-flex; align-items:baseline; gap:8px; font-family:var(--ff-display); font-size:15px; font-weight:600; color:var(--ink); }
 [data-orbit-real-page="schedule"] .sch-day-wd { font-size:12px; font-weight:500; color:var(--text-3); }
 [data-orbit-real-page="schedule"] .sch-day-count { min-width:20px; height:20px; padding:0 6px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--r-pill); background:var(--surface-2); color:var(--text-3); font-size:12px; font-weight:600; }
 [data-orbit-real-page="schedule"] .sch-empty { display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; padding:40px 20px; border:1px dashed var(--border-strong); border-radius:var(--r-md); }

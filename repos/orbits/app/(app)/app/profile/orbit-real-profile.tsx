@@ -6,6 +6,7 @@ import { AccountTopNav, MobileBar, orbitNavigate, StatusBar } from "../orbit-acc
 import { useOrbitLanguage } from "../orbit-language-context";
 import type { OrbitProfileView, OrbitProfileViewModel } from "../orbit-profile-route-view-model";
 import { Avatar, gradientFromString, Icon, Logo } from "../orbit-reference-primitives";
+import { ORBIT_Z } from "../orbit-z";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -77,7 +78,7 @@ function BusinessCardPreview({
           <Logo color="rgba(255,255,255,0.55)" size={20} withText={false} />
         </div>
         <div>
-          <div style={{ color: "#fff", fontFamily: "var(--ff-tight)", fontSize: 24, fontWeight: 650, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+          <div style={{ color: "#fff", fontFamily: "var(--ff-display)", fontSize: 24, fontWeight: 650, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
             {profile.fullName.trim() || t({ en: "Your name", zh: "你的名字" })}
           </div>
           {profile.headline.trim() ? (
@@ -140,7 +141,7 @@ function Section({
   return (
     <section style={{ padding: "24px 26px 26px" }}>
       <header style={{ marginBottom: 18 }}>
-        <h2 style={{ alignItems: "center", color: "var(--ink)", display: "flex", fontFamily: "var(--ff-tight)", fontSize: 16, fontWeight: 650, gap: 9, letterSpacing: "-0.01em", margin: 0 }}>
+        <h2 style={{ alignItems: "center", color: "var(--ink)", display: "flex", fontFamily: "var(--ff-display)", fontSize: 16, fontWeight: 650, gap: 9, letterSpacing: "-0.01em", margin: 0 }}>
           <span aria-hidden style={{ background: "var(--accent)", borderRadius: 2, flexShrink: 0, height: 14, width: 3 }} />
           {title}
         </h2>
@@ -520,7 +521,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   const extractProps = { extractText, extracting, method, onFilePick: fakeExtract, onTextExtract: fakeExtract, setExtractText, setMethod, t };
   const editProps = { extractProps, profile, selectRenderKey, t, toggleTag, update, viewModel };
   const alert = message ? (
-    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
+    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
   ) : null;
 
   return (
@@ -533,7 +534,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
             <div style={{ alignItems: "center", display: "flex", gap: 10, marginBottom: 16 }}>
               <button aria-label={t({ en: "Back", zh: "返回" })} className="btn btn-quiet btn-sm hit-44" onClick={() => orbitNavigate("/home")} style={{ paddingLeft: 8 }} type="button"><Icon name="chevL" size={16} />{t({ en: "Back", zh: "返回" })}</button>
               <span aria-hidden style={{ background: "var(--border-2)", height: 16, width: 1 }} />
-              <h1 style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 16, fontWeight: 650, letterSpacing: "-0.01em", margin: 0 }}>{t({ en: "Universal profile", zh: "通用档案" })}</h1>
+              <h1 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 16, fontWeight: 650, letterSpacing: "-0.01em", margin: 0 }}>{t({ en: "Universal profile", zh: "通用档案" })}</h1>
               <span style={{ color: "var(--text-3)", fontSize: 13 }}>{subText}</span>
             </div>
             {alert}
@@ -547,7 +548,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
               <EditSections {...editProps} />
             </div>
           </div>
-          <div style={{ backdropFilter: "blur(14px)", background: "var(--glass-bar)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", padding: "14px 40px", position: "sticky", zIndex: 5 }}>
+          <div style={{ backdropFilter: "blur(14px)", background: "var(--glass-bar)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", padding: "14px 40px", position: "sticky", zIndex: ORBIT_Z.sticky }}>
             <button className="btn btn-ghost" onClick={() => orbitNavigate("/home")} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
             <button className="btn btn-primary" disabled={saving} type="submit"><Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save profile", zh: "保存档案" })}</button>
           </div>

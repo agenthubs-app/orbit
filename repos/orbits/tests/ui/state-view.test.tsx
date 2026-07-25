@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { StateView } from "../../shared/ui/state-view";
+import { Chip, WorkbenchSurface } from "../../shared/ui/primitives";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -130,4 +131,69 @@ test("state view recovery controls have wrapping styles for long visible labels"
   assert.match(source, /overflow-wrap:\s*anywhere/);
   assert.match(source, /white-space:\s*normal/);
   assert.match(source, /min-width:\s*0/);
+});
+
+test("state view and primitives ship their own styling instead of relying on globals.css", () => {
+  // Product routes (app/(app)/app/**) never load app/globals.css — every rule
+  // in that file is scoped under `.orbit-dev-root`. StateView renders as the
+  // route-state boundary on ~20 of those routes, so it (and the primitives it
+  // wraps: WorkbenchSurface, Chip) must carry their own <style> text for every
+  // class they render, instead of depending on globals.css or --orbit-* vars.
+  const stateViewSource = fs.readFileSync(
+    path.join(projectRoot, "shared/ui/state-view.tsx"),
+    "utf8",
+  );
+  const primitivesSource = fs.readFileSync(
+    path.join(projectRoot, "shared/ui/primitives.tsx"),
+    "utf8",
+  );
+
+  for (const selector of [
+    ".action-guard",
+    ".guard-list",
+    ".chip-row",
+    ".privacy-note",
+    ".type-body",
+  ]) {
+    assert.match(
+      stateViewSource,
+      new RegExp(`\\${selector}\\s*\\{`),
+      `state-view.tsx must ship its own "${selector}" rule`,
+    );
+  }
+
+  for (const selector of [".workbench-surface", ".surface-heading", ".orbit-chip"]) {
+    assert.match(
+      primitivesSource,
+      new RegExp(`\\${selector}\\s*\\{`),
+      `primitives.tsx must ship its own "${selector}" rule`,
+    );
+  }
+
+  // Neither file should depend on the dev-workbench --orbit-* token scope or
+  // import the dev-only stylesheet — that scope is absent on product routes.
+  assert.doesNotMatch(stateViewSource, /var\(--orbit-/);
+  assert.doesNotMatch(primitivesSource, /var\(--orbit-/);
+  assert.doesNotMatch(stateViewSource, /(?:import|from)\s+["'][^"']*globals\.css["']/);
+  assert.doesNotMatch(primitivesSource, /(?:import|from)\s+["'][^"']*globals\.css["']/);
+});
+
+test("WorkbenchSurface and Chip render their own <style> tag so product routes stay styled", () => {
+  const surfaceHtml = renderToStaticMarkup(
+    React.createElement(
+      WorkbenchSurface as React.ComponentType<Record<string, unknown>>,
+      { eyebrow: "Eyebrow", title: "Title" },
+      React.createElement("p", null, "Body"),
+    ),
+  );
+  assert.match(surfaceHtml, /<style>[\s\S]*\.workbench-surface[\s\S]*<\/style>/);
+
+  const chipHtml = renderToStaticMarkup(
+    React.createElement(
+      Chip as React.ComponentType<Record<string, unknown>>,
+      { tone: "evidence" },
+      "source:demo",
+    ),
+  );
+  assert.match(chipHtml, /<style>[\s\S]*\.orbit-chip[\s\S]*<\/style>/);
 });

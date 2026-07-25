@@ -276,8 +276,8 @@ const LOCAL_STYLE = `
 
 [data-orbit-real-page] .nc-trust { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: var(--r-pill); font-size: 11.5px; font-weight: 600; }
 [data-orbit-real-page] .nc-trust .nc-trust-dot { width: 6px; height: 6px; border-radius: 50%; }
-[data-orbit-real-page] .nc-trust-high { background: var(--live-soft); color: var(--live); } [data-orbit-real-page] .nc-trust-high .nc-trust-dot { background: var(--live); }
-[data-orbit-real-page] .nc-trust-med { background: var(--amber-soft); color: var(--amber); } [data-orbit-real-page] .nc-trust-med .nc-trust-dot { background: var(--amber); }
+[data-orbit-real-page] .nc-trust-high { background: var(--live-soft); color: var(--live-text); } [data-orbit-real-page] .nc-trust-high .nc-trust-dot { background: var(--live); }
+[data-orbit-real-page] .nc-trust-med { background: var(--amber-soft); color: var(--amber-text); } [data-orbit-real-page] .nc-trust-med .nc-trust-dot { background: var(--amber); }
 [data-orbit-real-page] .nc-trust-low { background: var(--surface-3); color: var(--text-3); } [data-orbit-real-page] .nc-trust-low .nc-trust-dot { background: var(--text-3); }
 
 [data-orbit-real-page] .nc-review-panel { padding: 18px; }
@@ -285,7 +285,7 @@ const LOCAL_STYLE = `
 
 [data-orbit-real-page] .nc-scanned-card { aspect-ratio: 3.3 / 2; padding: 12px 13px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; border: 1px solid var(--border-2); border-radius: var(--r-md); background: var(--surface); }
 [data-orbit-real-page] .nc-scanned-card::after { content: ""; position: absolute; right: -20px; top: -20px; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle, var(--accent-softer), transparent 70%); }
-[data-orbit-real-page] .nc-scanned-card .sc-name { font-family: var(--ff-tight); font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.1; }
+[data-orbit-real-page] .nc-scanned-card .sc-name { font-family: var(--ff-display); font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.1; }
 [data-orbit-real-page] .nc-scanned-card .sc-role { font-size: 9.5px; color: var(--text-2); margin-top: 2px; }
 [data-orbit-real-page] .nc-scanned-card .sc-lines { display: flex; flex-direction: column; gap: 4px; }
 [data-orbit-real-page] .nc-scanned-card .sc-lines i { display: block; height: 4px; border-radius: 2px; background: var(--border-2); }
@@ -295,7 +295,7 @@ const LOCAL_STYLE = `
 
 [data-orbit-real-page] .nc-status-pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 600; }
 [data-orbit-real-page] .nc-status-pill .nc-status-dot { width: 7px; height: 7px; border-radius: 50%; }
-[data-orbit-real-page] .nc-status-pending { background: var(--amber-soft); color: var(--amber); } [data-orbit-real-page] .nc-status-pending .nc-status-dot { background: var(--amber); }
+[data-orbit-real-page] .nc-status-pending { background: var(--amber-soft); color: var(--amber-text); } [data-orbit-real-page] .nc-status-pending .nc-status-dot { background: var(--amber); }
 
 [data-orbit-real-page] .nc-rev { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 14px; padding: 14px 2px; border-bottom: 1px solid var(--hairline); }
 [data-orbit-real-page] .nc-rev:last-of-type { border-bottom: 0; }
@@ -308,11 +308,11 @@ const LOCAL_STYLE = `
 [data-orbit-real-page] .nc-rev-meta { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 [data-orbit-real-page] .nc-rev-state { font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; background: none; border: 0; cursor: pointer; padding: 0; min-height: 0; }
 [data-orbit-real-page] .nc-rev-state.ok { color: var(--text-3); }
-[data-orbit-real-page] .nc-rev-state.todo { color: var(--amber); }
+[data-orbit-real-page] .nc-rev-state.todo { color: var(--amber-text); }
 
 [data-orbit-real-page] .nc-provenance { font-size: 11.5px; color: var(--text-3); margin-top: 6px; }
 [data-orbit-real-page] .nc-confirm-bar { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }
-[data-orbit-real-page] .nc-confirm-q { font-family: var(--ff-tight); font-size: 16px; color: var(--ink); margin: 10px 0 12px; }
+[data-orbit-real-page] .nc-confirm-q { font-family: var(--ff-display); font-size: 16px; color: var(--ink); margin: 10px 0 12px; }
 
 [data-orbit-real-page] .nc-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-md); background: var(--accent-softer); color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
 [data-orbit-real-page] .nc-note-live { background: var(--live-soft); }

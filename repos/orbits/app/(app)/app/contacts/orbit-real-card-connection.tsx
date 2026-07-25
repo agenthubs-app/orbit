@@ -16,6 +16,7 @@ import { Avatar, Icon } from "../orbit-reference-primitives";
 import { openRelationshipInboxCompose } from "../inbox/relationship-inbox-panel";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
+import { ORBIT_Z } from "../orbit-z";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -548,7 +549,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             padding: "10px 18px",
             position: "fixed",
             transform: "translateX(-50%)",
-            zIndex: 200,
+            zIndex: ORBIT_Z.toast,
           }}
         >
           {toast}
@@ -590,7 +591,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 [data-orbit-real-page] .nc-vblock + .nc-vblock { margin-top:14px; padding-top:14px; border-top:1px solid var(--hairline); }
 [data-orbit-real-page] .nc-vhead { display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; margin-bottom:9px; }
 [data-orbit-real-page] .nc-vblock.nc-give .nc-vhead { color:var(--accent); }
-[data-orbit-real-page] .nc-vblock.nc-get .nc-vhead { color:var(--live); }
+[data-orbit-real-page] .nc-vblock.nc-get .nc-vhead { color:var(--live-text); }
 [data-orbit-real-page] .nc-vlist { display:flex; flex-direction:column; gap:8px; }
 [data-orbit-real-page] .nc-vitem { display:grid; grid-template-columns:18px 1fr; gap:9px; align-items:start; font-size:13.5px; color:var(--text); line-height:1.4; }
 [data-orbit-real-page] .nc-vitem svg { margin-top:1px; }

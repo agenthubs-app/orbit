@@ -31,10 +31,86 @@ export interface StateViewProps {
   recoveryActions?: StateViewRecoveryAction[];
 }
 
+// StateView 是产品路由（app/(app)/app/**）的 route-state 边界，那些路由不会
+// 加载 app/globals.css（其中的规则全限定在 `.orbit-dev-root` 下）。所以这里把
+// StateView 自己直接渲染的 class（action-guard / guard-list / chip-row /
+// privacy-note / type-body）连同原有的 state-recovery-* 规则一起，复制成不依赖
+// --orbit-* token、不依赖 `.orbit-dev-root` 作用域的字面量值。
 const stateViewStyles = `
+.type-body {
+  color: #52615d;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.action-guard {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.guard-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.guard-list div {
+  border-top: 1px solid #d5ddd9;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 0;
+}
+
+.guard-list div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.guard-list dt {
+  color: #0f4758;
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.guard-list dd {
+  color: #52615d;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.chip-row {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), max-content));
+  max-width: 100%;
+  min-width: 0;
+}
+
+.privacy-note {
+  background: #e8f2f0;
+  border: 1px solid rgba(81, 68, 122, 0.18);
+  border-left: 3px solid #51447a;
+  border-radius: 6px;
+  color: #51447a;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+  padding: 9px 10px;
+}
+
 .state-recovery-actions {
   display: grid;
-  gap: var(--orbit-space-sm);
+  gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   max-width: 100%;
   min-width: 0;
@@ -42,21 +118,21 @@ const stateViewStyles = `
 
 .state-recovery-action {
   align-content: start;
-  background: var(--orbit-color-surface);
-  border: 1px solid var(--orbit-color-border);
-  border-radius: var(--orbit-radius-control);
+  background: #ffffff;
+  border: 1px solid #d5ddd9;
+  border-radius: 6px;
   display: grid;
   gap: 6px;
   min-width: 0;
-  padding: var(--orbit-space-sm);
+  padding: 12px;
 }
 
 .state-recovery-control {
   align-items: center;
-  background: var(--orbit-color-primary);
-  border: 1px solid var(--orbit-color-primary-strong);
-  border-radius: var(--orbit-radius-control);
-  color: var(--orbit-color-primary-text);
+  background: #155e75;
+  border: 1px solid #0f4758;
+  border-radius: 6px;
+  color: #ffffff;
   display: inline-flex;
   font-size: 0.9rem;
   font-weight: 760;
@@ -73,7 +149,7 @@ const stateViewStyles = `
 }
 
 .state-recovery-action p {
-  color: var(--orbit-color-muted);
+  color: #52615d;
   font-size: 0.86rem;
   line-height: 1.45;
   margin: 0;

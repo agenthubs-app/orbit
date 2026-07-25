@@ -2,8 +2,12 @@
  * `/app` 分组 layout。
  *
  * 这里从请求头或 cookie 中恢复 Orbit 语言设置，然后把语言上下文提供给所有内部页面。
+ *
+ * 不 import `../../globals.css`：那是 `/dev` workbench 的内部样式表（裸
+ * button/input/select/textarea 重置、`--orbit-*` token），规则全部收在
+ * `.orbit-dev-root` 前缀下，产品页面不需要也不应该继承它。见
+ * `.superpowers/sdd/p4-t8-report.md`。
  */
-import "../../globals.css";
 import type { ReactNode } from "react";
 import { cookies, headers } from "next/headers";
 

@@ -7,6 +7,7 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref, PublicTopNav } from "../orbit-public-shell";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
+import { ORBIT_Z } from "../orbit-z";
 
 const tz = { timeZone: "Asia/Tokyo" };
 const statusFilters = ["all", "upcoming", "active", "ended"] as const;
@@ -106,8 +107,8 @@ function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
           <div className="orbit-event-module-cover-top">
             <StatusBadge language={language} status={event.status} />
             <div className="orbit-card-date">
-              <div style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
-              <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
+              <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
+              <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
             </div>
           </div>
         </Cover>
@@ -158,12 +159,12 @@ function MapCanvas({ items, selected, onSelect }: { items: MappedEvent[]; select
       {items.map((item) => {
         const on = selected?.id === item.id;
         return (
-          <button key={item.id} type="button" onClick={() => onSelect(item)} style={{ background: "none", border: "none", cursor: "pointer", left: `${item.pos.x}%`, padding: 0, position: "absolute", top: `${item.pos.y}%`, transform: "translate(-50%,-100%)", zIndex: on ? 20 : 10 }}>
+          <button key={item.id} type="button" onClick={() => onSelect(item)} style={{ background: "none", border: "none", cursor: "pointer", left: `${item.pos.x}%`, padding: 0, position: "absolute", top: `${item.pos.y}%`, transform: "translate(-50%,-100%)", zIndex: on ? ORBIT_Z.raised + 10 : ORBIT_Z.raised }}>
             <div style={{ position: "relative", transform: on ? "scale(1.15)" : "scale(1)", transition: "transform .15s" }}>
               <svg aria-hidden height={on ? 56 : 46} style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.22))", height: on ? 56 : 46, maxWidth: "none", width: on ? 44 : 36 }} viewBox="0 0 36 46" width={on ? 44 : 36}>
                 <path d="M18 1C9 1 2 8 2 17c0 11 16 27 16 27s16-16 16-27c0-9-7-16-16-16Z" fill={on ? "var(--accent)" : "#fff"} stroke={on ? "var(--accent)" : "var(--border-2)"} strokeWidth="1" />
               </svg>
-              <div style={{ alignItems: "center", background: on ? "#fff" : undefined, borderRadius: "var(--r-pill)", color: on ? "var(--accent)" : "#fff", display: "flex", fontFamily: "var(--ff-tight)", fontSize: on ? 13 : 11, fontWeight: 600, height: on ? 26 : 22, justifyContent: "center", left: "50%", position: "absolute", top: on ? 7 : 6, transform: "translateX(-50%)", width: on ? 26 : 22 }}>
+              <div style={{ alignItems: "center", background: on ? "#fff" : undefined, borderRadius: "var(--r-pill)", color: on ? "var(--accent)" : "#fff", display: "flex", fontFamily: "var(--ff-display)", fontSize: on ? 13 : 11, fontWeight: 600, height: on ? 26 : 22, justifyContent: "center", left: "50%", position: "absolute", top: on ? 7 : 6, transform: "translateX(-50%)", width: on ? 26 : 22 }}>
                 {on ? item.name.slice(0, 1) : <span className={`avatar ${item.g}`} style={{ fontSize: 11, height: "100%", width: "100%" }}>{item.name.slice(0, 1)}</span>}
               </div>
             </div>
@@ -206,8 +207,8 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
       <Cover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
         <div style={{ left: 11, position: "absolute", top: 11 }}><StatusBadge language={language} status={item.status} /></div>
         <div style={{ background: "var(--glass-chip)", borderRadius: 9, minWidth: 42, padding: "4px 8px", position: "absolute", right: 11, textAlign: "center", top: 11 }}>
-          <div style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600 }}>{item.month}</div>
-          {item.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.day}</div> : null}
+          <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{item.month}</div>
+          {item.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.day}</div> : null}
         </div>
       </Cover>
       <div style={{ padding: "14px 14px 13px" }}>
@@ -263,8 +264,8 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
             <div><div className="eyebrow" style={{ marginBottom: 8 }}>{t({ en: "EXPLORE · Tokyo", zh: "EXPLORE · 东京" })}</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
             <div className="orbit-browse-tools">
               <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", display: "inline-flex", padding: 3 }}>
-                <button type="button" onClick={() => setMode("modules")} style={{ alignItems: "center", background: effMode === "modules" ? "var(--ink)" : "none", border: "none", borderRadius: "var(--r-pill)", color: effMode === "modules" ? "var(--on-dark)" : "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, padding: "7px 14px" }}><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容" })}</button>
-                {canShowMap ? <button type="button" onClick={() => setMode("map")} style={{ alignItems: "center", background: effMode === "map" ? "var(--ink)" : "none", border: "none", borderRadius: "var(--r-pill)", color: effMode === "map" ? "var(--on-dark)" : "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, padding: "7px 14px" }}><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button> : null}
+                <button className={`btn btn-sm ${effMode === "modules" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("modules")} type="button"><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容" })}</button>
+                {canShowMap ? <button className={`btn btn-sm ${effMode === "map" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("map")} type="button"><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button> : null}
               </div>
               <div className="orbit-search-box">
                 <Icon color="var(--text-3)" name="search" size={18} style={{ left: 14, position: "absolute", top: 15 }} />
@@ -311,7 +312,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
         <div style={{ flexShrink: 0, padding: "16px 18px 0" }}>
           <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", marginBottom: 14 }}>
             <div><div className="eyebrow" style={{ marginBottom: 4 }}>EXPLORE</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
-            <button disabled={!canShowMap} onClick={() => canShowMap && setMode(mode === "map" ? "modules" : "map")} style={{ alignItems: "center", background: mode === "map" && canShowMap ? "var(--ink)" : "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-pill)", boxShadow: "var(--sh-xs)", color: mode === "map" && canShowMap ? "var(--on-dark)" : "var(--text)", cursor: canShowMap ? "pointer" : "not-allowed", display: "flex", fontSize: 13, fontWeight: 600, gap: 6, height: 38, justifyContent: "center", opacity: canShowMap ? 1 : 0.45, padding: "0 13px" }} type="button"><Icon name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button>
+            <button className={`btn btn-sm ${mode === "map" && canShowMap ? "btn-dark" : "btn-ghost"}`} disabled={!canShowMap} onClick={() => canShowMap && setMode(mode === "map" ? "modules" : "map")} type="button"><Icon name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button>
           </div>
           <div style={{ position: "relative" }}>
             <Icon color="var(--text-3)" name="search" size={17} style={{ left: 13, position: "absolute", top: 14 }} />

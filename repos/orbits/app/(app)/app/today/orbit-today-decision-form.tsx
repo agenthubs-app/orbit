@@ -78,7 +78,7 @@ export function OrbitTodayDecisionForm({
         {operations.map((operation) => (
           <label
             key={operation.operationId}
-            style={{ alignItems: "flex-start", cursor: "pointer", display: "flex", gap: 10 }}
+            style={{ alignItems: "flex-start", cursor: "pointer", display: "flex", gap: 8 }}
           >
             {/* globals.css 把裸 input 当文本框重置（width:100%、边框、min-height），
                 这里显式覆盖回正常的复选框尺寸。 */}
@@ -91,14 +91,14 @@ export function OrbitTodayDecisionForm({
                     : current.filter((id) => id !== operation.operationId),
                 )
               }
-              style={{ flexShrink: 0, height: 16, marginTop: 2, minHeight: 0, padding: 0, width: 16 }}
+              style={{ flexShrink: 0, height: 16, marginTop: 2, width: 16 }}
               type="checkbox"
             />
             <span>
               <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 500 }}>
                 {operation.title}
               </span>
-              <span style={{ color: "var(--text-3)", display: "block", fontSize: 12.5 }}>
+              <span style={{ color: "var(--text-3)", display: "block", fontSize: 13 }}>
                 {operation.effectSummary}
               </span>
             </span>
@@ -112,7 +112,7 @@ export function OrbitTodayDecisionForm({
         </p>
       ) : null}
 
-      <div style={{ display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", gap: 8 }}>
         <button
           className="btn btn-primary"
           disabled={pending || selected.length === 0}
@@ -122,7 +122,7 @@ export function OrbitTodayDecisionForm({
           确认执行
         </button>
         <button
-          className="btn"
+          className="btn btn-quiet"
           disabled={pending}
           onClick={() => void applyTransition("defer")}
           type="button"

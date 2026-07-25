@@ -300,7 +300,8 @@ function TriageCard({
 }
 
 function QueueRow({ current, onPick, t, triage }: { current: boolean; onPick: () => void; t: Translate; triage: Triage }) {
-  const color = triage.done ? "var(--live)" : "var(--amber)";
+  const dotColor = triage.done ? "var(--live)" : "var(--amber)";
+  const textColor = triage.done ? "var(--live-text)" : "var(--amber)";
   return (
     <button className={`nc-qrow${current ? " is-cur" : ""}`} onClick={onPick} type="button">
       <Avatar g={triage.p.g} letter={triage.p.ini} size={34} />
@@ -308,8 +309,8 @@ function QueueRow({ current, onPick, t, triage }: { current: boolean; onPick: ()
         <div className="nc-qn">{triage.p.qn}</div>
         <div className="nc-qs">{t(triage.qs)}</div>
       </div>
-      <span className="nc-qbadge" style={{ color }}>
-        <span className="nc-d" style={{ background: color }} />
+      <span className="nc-qbadge" style={{ color: textColor }}>
+        <span className="nc-d" style={{ background: dotColor }} />
         {triage.done ? t({ en: "Done", zh: "已整理" }) : t({ en: "To do", zh: "待整理" })}
       </span>
     </button>
@@ -391,7 +392,7 @@ function CrmSidebar({ t }: { t: Translate }) {
 }
 
 const LOCAL_STYLES = `
-[data-orbit-real-page="contacts-pipeline"] .nc-evt { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:var(--r-pill); background:var(--amber-soft); color:var(--amber); font-size:13px; font-weight:600; border:1px solid transparent; }
+[data-orbit-real-page="contacts-pipeline"] .nc-evt { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:var(--r-pill); background:var(--amber-soft); color:var(--amber-text); font-size:13px; font-weight:600; border:1px solid transparent; }
 [data-orbit-real-page="contacts-pipeline"] .nc-evt svg { color:var(--amber); }
 [data-orbit-real-page="contacts-pipeline"] .nc-evt .nc-x { color:var(--amber); opacity:.7; margin-left:2px; }
 

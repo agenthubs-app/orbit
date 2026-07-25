@@ -379,7 +379,7 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-agenda-status {
-  color: var(--live);
+  color: var(--live-text);
   font-size: 13px;
   font-weight: 600;
   padding-top: 2px;
@@ -593,6 +593,11 @@ const reactReferenceIsolationStyles = `
   transform: translateY(0.5px);
 }
 
+[data-orbit-real-page] .btn:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
 [data-orbit-real-page] .btn-primary {
   background: var(--accent);
   box-shadow: var(--sh-xs);
@@ -659,6 +664,13 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page] .btn-block {
   width: 100%;
+}
+
+[data-orbit-real-page] .btn-icon {
+  border-radius: var(--r-sm);
+  height: 40px;
+  padding: 0;
+  width: 40px;
 }
 
 [data-orbit-real-page] .btn[disabled],
@@ -920,7 +932,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page] .chip.badge-live {
   background: var(--live-soft);
-  color: var(--live);
+  color: var(--live-text);
 }
 
 [data-orbit-real-page="explore"] .orbit-map-rail button,
@@ -989,7 +1001,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page="explore"] .orbit-event-module-copy h2 {
   color: var(--ink);
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 23px;
   font-weight: 600;
   line-height: 1.18;
@@ -1112,7 +1124,7 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page="home-events"] .orbit-account-event-module-copy strong {
   color: var(--ink);
   display: block;
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 23px;
   font-weight: 600;
   line-height: 1.18;
@@ -1246,7 +1258,7 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page="home-events"] .orbit-account-event-poster-copy strong {
   color: #fff;
   display: block;
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: clamp(27px, 3.5vw, 42px);
   font-weight: 600;
   line-height: 1.08;
@@ -1411,7 +1423,7 @@ const reactReferenceIsolationStyles = `
 }
 
 [data-orbit-real-page="explore"] .orbit-event-poster-date div {
-  color: var(--rose);
+  color: var(--rose-text);
   font-size: 11px;
   font-weight: 700;
 }
@@ -1419,7 +1431,7 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page="explore"] .orbit-event-poster-date strong {
   color: #fff;
   display: block;
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 22px;
   font-weight: 600;
   line-height: 1;
@@ -1443,7 +1455,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page="explore"] .orbit-event-poster-copy h2 {
   color: #fff;
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: clamp(27px, 3.5vw, 42px);
   font-weight: 600;
   line-height: 1.08;
@@ -1608,6 +1620,26 @@ const reactReferenceIsolationStyles = `
    Loaded AFTER the prototype styles so these win on shared selectors.
    =================================================================== */
 
+/* ---------------------------------------------------------------------
+   Type & spacing scale (P4 T6). New literals in app/(app)/app must snap
+   to these values; the ratchet test (tests/ui/orbit-scale-ratchet.test.ts)
+   counts violations sitewide and fails the build if the count increases.
+
+   fontSize (px):     11, 12, 13, 14, 15, 18, 22, 28
+                       (+16 allowed where iOS auto-zoom matters, e.g. mobile
+                       text inputs; 0 allowed for visually-hidden text)
+   fontWeight:         400, 500, 600, 700, 800
+                       (800 kept legal — already present sitewide per audit)
+   lineHeight:         1.2 / 1.5 / 1.65 (conceptual tiers; snap only where
+                       a line is touched for another reason — no dedicated
+                       ratchet)
+   gap (px):           0, 4, 8, 12, 16, 20, 24, 32, 48
+   borderRadius:       use var(--r-xs|sm|md|lg|xl|pill) wherever the style
+                       prop accepts a string. Numeric-only contexts (e.g.
+                       canvas/SVG props) snap to the token VALUES:
+                       7, 10, 14, 18, 24, 999.
+   --------------------------------------------------------------------- */
+
 /* Centralized tokens that were previously hardcoded across pages. */
 [data-orbit-real-page] {
   --scrim: rgba(20, 20, 28, 0.42);
@@ -1667,37 +1699,6 @@ const reactReferenceIsolationStyles = `
   [data-orbit-real-page] .h-display { font-size: 24px; }
   [data-orbit-real-page] .h-title { font-size: 19px; }
   [data-orbit-real-page] .h-section { font-size: 16px; }
-}
-
-/* S3 — standardized icon button. Visual chrome stays compact, but the hit
-   area is never below 44px (Apple HIG / Material minimum). */
-[data-orbit-real-page] .icon-btn {
-  align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 10px;
-  box-shadow: var(--sh-xs);
-  color: var(--ink);
-  cursor: pointer;
-  display: inline-flex;
-  flex-shrink: 0;
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0;
-}
-[data-orbit-real-page] .icon-btn:hover {
-  background: var(--surface-2);
-  border-color: var(--border-strong);
-}
-[data-orbit-real-page] .icon-btn-plain {
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-}
-[data-orbit-real-page] .icon-btn-plain:hover {
-  background: var(--surface-3);
-  border-color: transparent;
 }
 
 /* S3 — hit-area expander for compact controls (copy/zoom/seat/graph nodes)
@@ -1781,19 +1782,40 @@ const reactReferenceIsolationStyles = `
   --hairline: rgba(150, 145, 200, 0.10);
   --live: #34C98E;
   --live-soft: rgba(52, 201, 142, 0.14);
+  --live-text: #7FE0B4;
   --amber: #E0B472;
   --amber-soft: rgba(216, 176, 106, 0.15);
+  --amber-text: #F0C374;
   --rose: #F0718B;
   --rose-soft: rgba(224, 65, 95, 0.17);
+  --rose-text: #F09AA4;
   --sky: #6FA8F8;
   --sky-soft: rgba(45, 127, 240, 0.17);
+  --signal: #C8323B;
   --sh-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
   --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
   --sh-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.55);
   --sh-lg: 0 8px 16px rgba(0, 0, 0, 0.45), 0 24px 56px -12px rgba(123, 108, 232, 0.25);
   --sh-pop: 0 12px 32px rgba(0, 0, 0, 0.6), 0 40px 80px -20px rgba(123, 108, 232, 0.35);
+  /* Radius scale — migrated from public/orbit-reference/orbit-reference.html
+     (the prototype asset previously the ONLY source of these values, extracted
+     at runtime by 152 call sites). This block is now the single source of
+     truth; radius is theme-independent so it is defined once here. */
+  --r-xs: 7px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
   --ff: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --ff-tight: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  /* --ff-serif: serif for in-content body headings. --ff-display: serif for
+     hero/display headlines and large numerals (the landing block below
+     overrides only this one, to Newsreader). --ff-tight is the pre-split
+     name, kept as a deprecated alias so any consumer we missed keeps
+     resolving instead of silently falling back to the system font. */
+  --ff-serif: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --ff-display: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --ff-tight: var(--ff-serif);
   --ff-mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace;
   --scrim: rgba(4, 3, 10, 0.62);
   /* Dark-glass surfaces for bars/chips that previously used white glass. */
@@ -1814,7 +1836,7 @@ const reactReferenceIsolationStyles = `
 /* EN display serif follows the homepage: Newsreader replaces Noto Serif SC
    when the document language is English. */
 html[lang="en"] [data-orbit-real-page] {
-  --ff-tight: 'Newsreader', Georgia, serif;
+  --ff-display: 'Newsreader', Georgia, serif;
 }
 
 /* Cosmic page canvas behind every product screen — the homepage scene
@@ -1944,7 +1966,7 @@ body:has([data-orbit-real-page]) {
    homepage's warm gold — the same accent as its "RELATIONSHIP STARFIELD"
    label — tying every section header back to the hero. */
 [data-orbit-real-page] .eyebrow {
-  color: var(--amber);
+  color: var(--amber-text);
 }
 
 /* Avatars share the coordinated cosmic palette (muted, violet-leaning, with
@@ -2034,7 +2056,7 @@ body:has([data-orbit-real-page]) {
 }
 [data-orbit-real-page] .btn-danger-soft {
   background: var(--rose-soft);
-  color: var(--rose);
+  color: var(--rose-text);
 }
 [data-orbit-real-page] .btn-danger-soft:hover {
   background: rgba(224, 65, 95, 0.26);
@@ -2063,7 +2085,7 @@ body:has([data-orbit-real-page]) {
   [data-orbit-real-page] .orbit-nav-menu .orbit-nav-page-title {
     color: var(--ink);
     display: inline;
-    font-family: var(--ff-tight);
+    font-family: var(--ff-display);
     font-size: 17px;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -2139,7 +2161,7 @@ body:has([data-orbit-real-page]) {
 }
 [data-orbit-real-page] .field-error-text {
   align-items: center;
-  color: var(--rose);
+  color: var(--rose-text);
   display: flex;
   font-size: 13px;
   gap: 6px;
@@ -2209,7 +2231,7 @@ html[data-theme="light"] [data-orbit-real-page="agent"] {
   --border-2: #D9DEE1;
   --border-strong: #C7CDD1;
   --hairline: var(--agent-hairline);
-  --ff-tight: var(--ff);
+  --ff-display: var(--ff);
   --sh-xs: none;
   --sh-sm: none;
   --sh-md: none;
@@ -2686,25 +2708,25 @@ const orbitNamecardStyles = `
 [data-orbit-real-page] .nc-src svg { width:12px; height:12px; }
 [data-orbit-real-page] .nc-src-scan { background:var(--accent-soft); color:var(--accent); }
 [data-orbit-real-page] .nc-src-qr { background:var(--sky-soft); color:var(--sky); }
-[data-orbit-real-page] .nc-src-event { background:var(--amber-soft); color:var(--amber); }
+[data-orbit-real-page] .nc-src-event { background:var(--amber-soft); color:var(--amber-text); }
 [data-orbit-real-page] .nc-src-contact { background:var(--surface-3); color:var(--text-2); }
-[data-orbit-real-page] .nc-src-referral { background:var(--rose-soft); color:var(--rose); }
+[data-orbit-real-page] .nc-src-referral { background:var(--rose-soft); color:var(--rose-text); }
 
 [data-orbit-real-page] .nc-tag { display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:var(--r-pill); font-size:12px; font-weight:500; background:var(--surface-2); color:var(--text-2); border:1px solid var(--hairline); }
 [data-orbit-real-page] .nc-tag-value { background:var(--accent-softer); color:var(--accent); border-color:transparent; }
 
 [data-orbit-real-page] .nc-strength { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-strength .nc-dot { width:8px; height:8px; border-radius:50%; }
-[data-orbit-real-page] .nc-st-strong { color:var(--live); } [data-orbit-real-page] .nc-st-strong .nc-dot { background:var(--live); }
+[data-orbit-real-page] .nc-st-strong { color:var(--live-text); } [data-orbit-real-page] .nc-st-strong .nc-dot { background:var(--live); }
 [data-orbit-real-page] .nc-st-medium { color:var(--sky); } [data-orbit-real-page] .nc-st-medium .nc-dot { background:var(--sky); }
-[data-orbit-real-page] .nc-st-weak { color:var(--amber); } [data-orbit-real-page] .nc-st-weak .nc-dot { background:var(--amber); }
+[data-orbit-real-page] .nc-st-weak { color:var(--amber-text); } [data-orbit-real-page] .nc-st-weak .nc-dot { background:var(--amber); }
 [data-orbit-real-page] .nc-st-dormant { color:var(--text-3); } [data-orbit-real-page] .nc-st-dormant .nc-dot { background:var(--text-3); }
 
 [data-orbit-real-page] .nc-status { display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-status .nc-dot { width:7px; height:7px; border-radius:50%; }
-[data-orbit-real-page] .nc-ps-to_contact { background:var(--amber-soft); color:var(--amber); } [data-orbit-real-page] .nc-ps-to_contact .nc-dot { background:var(--amber); }
+[data-orbit-real-page] .nc-ps-to_contact { background:var(--amber-soft); color:var(--amber-text); } [data-orbit-real-page] .nc-ps-to_contact .nc-dot { background:var(--amber); }
 [data-orbit-real-page] .nc-ps-in_progress { background:var(--sky-soft); color:var(--sky); } [data-orbit-real-page] .nc-ps-in_progress .nc-dot { background:var(--sky); }
-[data-orbit-real-page] .nc-ps-partnered { background:var(--live-soft); color:var(--live); } [data-orbit-real-page] .nc-ps-partnered .nc-dot { background:var(--live); }
+[data-orbit-real-page] .nc-ps-partnered { background:var(--live-soft); color:var(--live-text); } [data-orbit-real-page] .nc-ps-partnered .nc-dot { background:var(--live); }
 
 [data-orbit-real-page] .nc-basis { position:relative; display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0; border:0; background:transparent; border-radius:50%; color:var(--text-4); cursor:pointer; vertical-align:middle; }
 [data-orbit-real-page] .nc-basis svg { width:13px; height:13px; }

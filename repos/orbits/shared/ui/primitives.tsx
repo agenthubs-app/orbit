@@ -3,7 +3,120 @@
  *
  * 这些组件是 dev dashboard、mock capability 页面和产品样张共同使用的轻量积木。
  * 它们只负责稳定 className、tone 白名单和基础结构，不包含业务数据读取逻辑。
+ *
+ * WorkbenchSurface 和 Chip 会在产品路由（app/(app)/app/**）里被当作 route-state
+ * 边界渲染，那些路由不加载 app/globals.css（globals.css 的规则全部限定在
+ * `.orbit-dev-root` 下）。所以这两个组件必须自带样式：下面的 <style> 块把它们
+ * 依赖的 globals.css 规则复制成字面量值，不引用 --orbit-* token、不依赖
+ * `.orbit-dev-root` 作用域。
  */
+const primitivesStyles = `
+.workbench-surface {
+  background: #ffffff;
+  border: 1px solid #d5ddd9;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(23, 33, 31, 0.08);
+  display: grid;
+  gap: 16px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 16px;
+}
+
+.workbench-surface-raised {
+  background: #f9fbfa;
+  box-shadow: 0 16px 36px rgba(23, 33, 31, 0.1);
+}
+
+.surface-heading {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.surface-eyebrow {
+  color: #0f4758;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.74rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.surface-heading h2 {
+  font-family: Aptos Display, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 760;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.orbit-chip {
+  align-items: center;
+  border: 1px solid #aebbb5;
+  border-radius: 6px;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 750;
+  justify-content: center;
+  line-height: 1.2;
+  max-width: 100%;
+  min-height: 28px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 5px 10px;
+  text-align: center;
+  width: fit-content;
+}
+
+.orbit-chip-neutral {
+  background: #f9fbfa;
+  color: #17211f;
+}
+
+.orbit-chip-primary {
+  background: rgba(21, 94, 117, 0.1);
+  border-color: rgba(21, 94, 117, 0.3);
+  color: #0f4758;
+}
+
+.orbit-chip-evidence {
+  background: rgba(29, 78, 216, 0.08);
+  border-color: rgba(29, 78, 216, 0.24);
+  color: #1d4ed8;
+}
+
+.orbit-chip-confirmation {
+  background: rgba(111, 78, 55, 0.09);
+  border-color: rgba(111, 78, 55, 0.24);
+  color: #6f4e37;
+}
+
+.orbit-chip-privacy {
+  background: rgba(81, 68, 122, 0.08);
+  border-color: rgba(81, 68, 122, 0.24);
+  color: #51447a;
+}
+
+.orbit-chip-warning {
+  background: rgba(154, 52, 18, 0.08);
+  border-color: rgba(154, 52, 18, 0.24);
+  color: #9a3412;
+}
+
+.orbit-chip-success {
+  background: rgba(22, 101, 52, 0.08);
+  border-color: rgba(22, 101, 52, 0.24);
+  color: #166534;
+}
+`;
+
 function classNames(...names) {
   // 统一过滤 falsy class，避免组件里反复手写 className 拼接。
   return names.filter(Boolean).join(" ");
@@ -61,6 +174,7 @@ export function ProductSurface({
         className,
       )}
     >
+      <style>{primitivesStyles}</style>
       {(eyebrow || title) && (
         <header className="surface-heading">
           {eyebrow && <p className="surface-eyebrow">{eyebrow}</p>}
@@ -78,6 +192,7 @@ export function Chip({ children, tone = "neutral" }) {
 
   return (
     <span className={classNames("orbit-chip", `orbit-chip-${resolvedTone}`)}>
+      <style>{primitivesStyles}</style>
       {children}
     </span>
   );

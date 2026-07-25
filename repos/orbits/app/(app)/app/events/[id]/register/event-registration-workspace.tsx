@@ -10,6 +10,10 @@
 // 与服务端的分工:题目顺序/字段/敏感词校验全在 adaptive-interview-service;
 // 本组件只负责流程状态机与展示。第一题用服务端预生成的 questionSet(零等待),
 // 之后每题调 /registration/interview;答案通过既有 /registration 端点持久化。
+//
+// 表单统一豁免(审计 P1-6 / T7):本文件字段多、结构复杂(逐题动态渲染,
+// 非常规 label+input 布局),不强迁 orbit-reference-primitives 的 FormField
+// 原语;仅将错误态标记对齐到标准组合(aria-invalid + role="alert")。
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -551,7 +555,7 @@ export function EventRegistrationWorkspace({
               <Icon name="sparkle" size={13} />
               {copy(language, { en: "Event persona", zh: "活动个人画像" })}
             </span>
-            <h1 style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: "clamp(1.4rem, 3.2vw, 2rem)", fontWeight: 680, lineHeight: 1.22, margin: "8px 0 0", overflowWrap: "anywhere" }}>
+            <h1 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.4rem, 3.2vw, 2rem)", fontWeight: 680, lineHeight: 1.22, margin: "8px 0 0", overflowWrap: "anywhere" }}>
               {event.title}
             </h1>
             <p style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: "4px 10px", margin: "7px 0 0" }}>
@@ -579,7 +583,7 @@ export function EventRegistrationWorkspace({
               background: "var(--surface)",
               border: "1px solid var(--border)",
               borderRadius: 24,
-              boxShadow: "0 1px 2px rgba(18,18,28,.04), 0 24px 60px -32px color-mix(in srgb, var(--accent) 22%, rgba(18,18,28,.28))",
+              boxShadow: "var(--sh-lg)",
               overflow: "hidden",
               position: "relative",
             }}
@@ -602,7 +606,7 @@ export function EventRegistrationWorkspace({
                 aria-hidden="true"
                 style={{
                   color: "color-mix(in srgb, var(--accent) 8%, transparent)",
-                  fontFamily: "var(--ff-tight)",
+                  fontFamily: "var(--ff-display)",
                   fontSize: "clamp(5rem, 12vw, 7.5rem)",
                   fontWeight: 800,
                   lineHeight: 1,
@@ -643,7 +647,7 @@ export function EventRegistrationWorkspace({
                 </p>
               ) : null}
 
-              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: "clamp(1.3rem, 2.8vw, 1.7rem)", fontWeight: 660, lineHeight: 1.38, margin: "0 0 24px", maxWidth: "88%" }}>
+              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.3rem, 2.8vw, 1.7rem)", fontWeight: 660, lineHeight: 1.38, margin: "0 0 24px", maxWidth: "88%" }}>
                 {question.prompt}
               </h2>
 
@@ -731,6 +735,7 @@ export function EventRegistrationWorkspace({
                       style={{ display: "flex", gap: 10, marginTop: 14 }}
                     >
                       <input
+                        aria-invalid={error ? true : undefined}
                         autoFocus
                         className="field"
                         onChange={(changeEvent) => setFreeText(changeEvent.target.value)}
@@ -802,7 +807,7 @@ export function EventRegistrationWorkspace({
               background: "var(--surface)",
               border: "1px solid var(--border)",
               borderRadius: 24,
-              boxShadow: "0 1px 2px rgba(18,18,28,.04), 0 24px 60px -32px color-mix(in srgb, var(--accent) 22%, rgba(18,18,28,.28))",
+              boxShadow: "var(--sh-lg)",
               display: "flex",
               flexDirection: "column",
               padding: "62px 30px 56px",
@@ -881,7 +886,7 @@ export function EventRegistrationWorkspace({
               background: "var(--surface)",
               border: "1px solid var(--border)",
               borderRadius: 24,
-              boxShadow: "0 1px 2px rgba(18,18,28,.04), 0 28px 70px -34px color-mix(in srgb, var(--accent) 30%, rgba(18,18,28,.3))",
+              boxShadow: "var(--sh-pop)",
               overflow: "hidden",
             }}
           >
@@ -905,7 +910,7 @@ export function EventRegistrationWorkspace({
                 <Icon name="sparkle" size={13} />
                 {copy(language, { en: "Your persona for this event", zh: "你的本场活动画像" })}
               </span>
-              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: "clamp(1.4rem, 3.2vw, 1.9rem)", fontWeight: 720, lineHeight: 1.3, margin: "12px 0 16px", maxWidth: "86%" }}>
+              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.4rem, 3.2vw, 1.9rem)", fontWeight: 720, lineHeight: 1.3, margin: "12px 0 16px", maxWidth: "86%" }}>
                 {persona.tagline}
               </h2>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

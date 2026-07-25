@@ -270,7 +270,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
       <Cover className="orbit-account-event-module-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={eventImageUrl(event)} monogram={null} style={{ opacity: event.status === "ended" ? 0.78 : 1 }}>
         <span className="orbit-account-event-module-cover-top">
           <StatusBadge language={language} status={event.status} />
-          <span className="orbit-card-date"><span style={{ color: "var(--rose)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
+          <span className="orbit-card-date"><span style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
         </span>
       </Cover>
       <span className="orbit-account-event-module-body">
@@ -349,7 +349,7 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
           {([[t({ en: "Events", zh: "报名活动" }), viewModel.stats.events], [t({ en: "Contacts", zh: "名片夹" }), viewModel.stats.people], [t({ en: "In progress", zh: "在推进" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
-            <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
+            <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
           ))}
         </div>
         <ProfileSummary account={viewModel.account} language={language} t={t} />
@@ -389,7 +389,7 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", justifyContent: "space-between", marginTop: 16, padding: "14px 16px" }}>
           {([[t({ en: "Events", zh: "报名" }), viewModel.stats.events], [t({ en: "Cards", zh: "名片" }), viewModel.stats.people], [t({ en: "Active", zh: "在推进" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
-            <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 22, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 12 }}>{label}</div></div>
+            <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 12 }}>{label}</div></div>
           ))}
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 16 }}>

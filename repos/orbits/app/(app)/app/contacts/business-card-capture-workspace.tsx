@@ -907,11 +907,11 @@ export function BusinessCardCaptureWorkspace() {
 const CAPTURE_STYLE = `
 .bcc-shell { background: color-mix(in srgb, var(--surface) 96%, var(--accent)); border: 1px solid var(--border); border-radius: 22px; box-shadow: 0 24px 70px rgba(6,5,13,.16); overflow: hidden; padding: clamp(18px, 3vw, 30px); position: relative; }
 .bcc-shell::before { background: linear-gradient(90deg, var(--accent), var(--sky), var(--live)); content: ""; height: 2px; inset: 0 0 auto; position: absolute; }
-.bcc-shell h2 { color: var(--ink); font-family: var(--ff-tight); font-size: clamp(22px, 3vw, 34px); letter-spacing: -.035em; line-height: 1.08; margin: 8px 0 10px; }
+.bcc-shell h2 { color: var(--ink); font-family: var(--ff-display); font-size: clamp(22px, 3vw, 34px); letter-spacing: -.035em; line-height: 1.08; margin: 8px 0 10px; }
 .bcc-kicker { color: var(--accent); font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .15em; }
 .bcc-lede { color: var(--text-2); font-size: 14px; line-height: 1.7; margin: 0 0 22px; max-width: 680px; }
 .bcc-dropzone { align-items: center; background: color-mix(in srgb, var(--surface-2) 82%, transparent); border: 1px dashed var(--border-2); border-radius: 18px; display: flex; flex-direction: column; gap: 9px; justify-content: center; min-height: 300px; padding: 28px; text-align: center; }
-.bcc-dropzone strong { color: var(--ink); font-family: var(--ff-tight); font-size: 18px; }
+.bcc-dropzone strong { color: var(--ink); font-family: var(--ff-display); font-size: 18px; }
 .bcc-dropzone > span:not(.bcc-scan-mark) { color: var(--text-3); font-family: var(--mono); font-size: 11px; }
 .bcc-scan-mark { background: var(--accent-soft); border-radius: 16px; color: var(--accent); display: grid; height: 62px; place-items: center; width: 62px; }
 .bcc-actions, .bcc-footer-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 12px; }
@@ -937,17 +937,17 @@ const CAPTURE_STYLE = `
 .bcc-field input:focus, .bcc-field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-softer); outline: 0; }
 .bcc-field-pair { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
 .bcc-issues { background: var(--amber-soft); border-radius: 13px; display: flex; flex-direction: column; gap: 8px; padding: 12px; }
-.bcc-issues > strong { color: var(--amber); font-size: 12px; }
+.bcc-issues > strong { color: var(--amber-text); font-size: 12px; }
 .bcc-issues button { align-items: center; background: transparent; border: 0; color: var(--text-2); cursor: pointer; display: grid; font: inherit; font-size: 12px; gap: 8px; grid-template-columns: auto 1fr auto; padding: 5px 0; text-align: left; }
-.bcc-issues button b { color: var(--amber); font-size: 11px; }.bcc-issues button.is-done { color: var(--text-3); }.bcc-issues button.is-done b { color: var(--live); }
+.bcc-issues button b { color: var(--amber-text); font-size: 11px; }.bcc-issues button.is-done { color: var(--text-3); }.bcc-issues button.is-done b { color: var(--live-text); }
 .bcc-check, .bcc-invite-choice { align-items: flex-start; color: var(--text-2); cursor: pointer; display: flex; font-size: 13px; gap: 10px; line-height: 1.5; }
 .bcc-check input, .bcc-invite-choice input { accent-color: var(--accent); margin-top: 3px; }
 .bcc-confirm { align-items: center; border-top: 1px solid var(--hairline); display: flex; gap: 14px; justify-content: space-between; padding-top: 14px; }.bcc-confirm > span { color: var(--text-3); font-size: 12px; }
 .bcc-success { align-items: flex-start; display: flex; gap: 14px; }.bcc-success > span { background: var(--live-soft); border-radius: 50%; color: var(--live); display: grid; flex: 0 0 42px; height: 42px; place-items: center; }.bcc-success p { color: var(--text-2); font-size: 13px; line-height: 1.6; margin: 0; }
 .bcc-invite-choice { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; margin-top: 20px; padding: 14px; }.bcc-invite-choice span { display: flex; flex-direction: column; }.bcc-invite-choice b { color: var(--ink); }.bcc-invite-choice small { color: var(--text-3); margin-top: 3px; }
 .bcc-invitation { background: var(--surface-2); border-radius: 14px; display: flex; flex-direction: column; gap: 13px; margin-top: 12px; padding: 15px; }
-.bcc-ready { align-items: center; background: var(--live-soft); border-radius: 11px; color: var(--live); display: flex; font-weight: 700; gap: 8px; padding: 12px; }
-.bcc-error-note { background: var(--amber-soft); border-radius: 11px; color: var(--amber); font-size: 12px; padding: 10px; }
+.bcc-ready { align-items: center; background: var(--live-soft); border-radius: 11px; color: var(--live-text); display: flex; font-weight: 700; gap: 8px; padding: 12px; }
+.bcc-error-note { background: var(--amber-soft); border-radius: 11px; color: var(--amber-text); font-size: 12px; padding: 10px; }
 .bcc-send-boundary { color: var(--text-4); font-family: var(--mono); font-size: 9px; }
 .bcc-failure { align-items: center; display: flex; flex-direction: column; min-height: 320px; justify-content: center; text-align: center; }.bcc-failure > svg { color: var(--amber); }.bcc-failure p { color: var(--text-2); max-width: 480px; }
 @keyframes bcc-pulse { 0%,100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.25); } }

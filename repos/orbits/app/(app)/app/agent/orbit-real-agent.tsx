@@ -16,8 +16,9 @@ import { AccountTopNav } from "../orbit-account-shell";
 import { eventCoverPhoto } from "../orbit-landing-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
-import { Avatar, Cover, Icon, gradientFromString } from "../orbit-reference-primitives";
+import { Avatar, Cover, Icon, IconButton, gradientFromString } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
+import { ORBIT_Z } from "../orbit-z";
 
 interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
@@ -50,9 +51,9 @@ const MAX_AGENT_CHAT_TITLE_LENGTH = 18;
 
 function depthFor(t: Translate) {
   return {
-    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--amber)", soft: "var(--amber-soft)" },
-    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--sky)", soft: "var(--sky-soft)" },
-    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--live)", soft: "var(--live-soft)" },
+    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--amber)", soft: "var(--amber-soft)", text: "var(--amber)" },
+    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--sky)", soft: "var(--sky-soft)", text: "var(--sky)" },
+    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--live)", soft: "var(--live-soft)", text: "var(--live-text)" },
   };
 }
 
@@ -627,7 +628,7 @@ function AgentMarkdown({ text }: { text: string }) {
             <a href={href} rel="noreferrer" style={{ color: "var(--accent)" }} target="_blank">{children}</a>
           ),
           code: ({ children }) => (
-            <code className="mono" style={{ background: "var(--surface-2)", borderRadius: 4, fontSize: 13, padding: "1px 5px" }}>{children}</code>
+            <code className="mono" style={{ background: "var(--surface-2)", borderRadius: "var(--r-xs)", fontSize: 13, padding: "1px 5px" }}>{children}</code>
           ),
           li: ({ children }) => <li style={{ margin: "3px 0" }}>{children}</li>,
           ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 20 }}>{children}</ol>,
@@ -658,7 +659,7 @@ function AgentMessageCopyButton({ text }: { text: string }) {
         alignItems: "center",
         background: copied ? "var(--accent-soft)" : "var(--surface)",
         border: "1px solid var(--border)",
-        borderRadius: 9,
+        borderRadius: "var(--r-sm)",
         color: copied ? "var(--accent)" : "var(--text-3)",
         cursor: "pointer",
         display: "inline-flex",
@@ -737,7 +738,7 @@ function AgentHistoryList({
           <div className="eyebrow" style={{ padding: "0 8px 6px" }}>
             {group}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {history
               .filter((item) => item.group === group)
               .map((item) => {
@@ -762,7 +763,7 @@ function AgentHistoryList({
                       background: active ? "var(--accent-softer)" : "transparent",
                       borderRadius: "var(--r-sm)",
                       display: "flex",
-                      gap: 10,
+                      gap: 8,
                       padding: "2px 4px 2px 10px",
                       position: "relative",
                       width: "100%",
@@ -792,7 +793,7 @@ function AgentHistoryList({
                           style={{
                             background: "var(--surface)",
                             border: "1px solid var(--accent)",
-                            borderRadius: 8,
+                            borderRadius: "var(--r-xs)",
                             color: "var(--ink)",
                             flex: 1,
                             fontFamily: "var(--ff)",
@@ -806,24 +807,13 @@ function AgentHistoryList({
                       </form>
                     ) : (
                       <button
+                        className="btn btn-quiet"
                         type="button"
                         onClick={() => {
                           setHistoryMenuOpenId(null);
                           onPick(item);
                         }}
-                        style={{
-                          alignItems: "center",
-                          background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          display: "flex",
-                          flex: 1,
-                          fontFamily: "var(--ff)",
-                          gap: 10,
-                          minWidth: 0,
-                          padding: "7px 0",
-                          textAlign: "left",
-                        }}
+                        style={{ flex: 1, height: "auto", justifyContent: "flex-start", minWidth: 0, padding: "7px 0" }}
                       >
                         <Icon name="message" size={15} color={active ? "var(--accent)" : "var(--text-4)"} />
                         <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -837,21 +827,15 @@ function AgentHistoryList({
                           aria-expanded={menuOpen}
                           aria-haspopup="menu"
                           aria-label={t({ en: "More actions", zh: "更多操作" })}
+                          className="btn btn-icon btn-quiet"
                           data-orbit-agent-history-menu-button={item.sessionId}
                           onClick={() => setHistoryMenuOpenId(menuOpen ? null : item.id)}
                           title={t({ en: "More actions", zh: "更多操作" })}
                           type="button"
                           style={{
-                            alignItems: "center",
-                            background: menuOpen ? "var(--surface-2)" : "transparent",
-                            border: "none",
-                            borderRadius: 8,
+                            background: menuOpen ? "var(--surface-2)" : undefined,
                             color: active ? "var(--accent)" : "var(--text-4)",
-                            cursor: "pointer",
-                            display: "flex",
-                            flexShrink: 0,
                             height: 28,
-                            justifyContent: "center",
                             opacity: controlsVisible ? 1 : 0.46,
                             width: 28,
                           }}
@@ -865,14 +849,14 @@ function AgentHistoryList({
                             style={{
                               background: "var(--surface)",
                               border: "1px solid var(--border)",
-                              borderRadius: 10,
+                              borderRadius: "var(--r-sm)",
                               boxShadow: "var(--sh-pop)",
                               minWidth: 156,
                               padding: 6,
                               position: "absolute",
                               right: 2,
                               top: 36,
-                              zIndex: 20,
+                              zIndex: ORBIT_Z.dropdown,
                             }}
                           >
                             <button
@@ -883,23 +867,8 @@ function AgentHistoryList({
                               }}
                               role="menuitem"
                               type="button"
-                              style={{
-                                alignItems: "center",
-                                background: "transparent",
-                                border: "none",
-                                borderRadius: 8,
-                                color: "var(--text)",
-                                cursor: "pointer",
-                                display: "flex",
-                                fontFamily: "var(--ff)",
-                                fontSize: 13,
-                                fontWeight: 600,
-                                gap: 8,
-                                height: 34,
-                                padding: "0 10px",
-                                textAlign: "left",
-                                width: "100%",
-                              }}
+                              className="btn btn-sm btn-quiet"
+                              style={{ height: 34, justifyContent: "flex-start", width: "100%" }}
                             >
                               <Icon name="pin" size={14} />
                               {item.pinned ? t({ en: "Unpin", zh: "取消置顶" }) : t({ en: "Pin", zh: "置顶" })}
@@ -909,23 +878,8 @@ function AgentHistoryList({
                               onClick={() => startRename(item)}
                               role="menuitem"
                               type="button"
-                              style={{
-                                alignItems: "center",
-                                background: "transparent",
-                                border: "none",
-                                borderRadius: 8,
-                                color: "var(--text)",
-                                cursor: "pointer",
-                                display: "flex",
-                                fontFamily: "var(--ff)",
-                                fontSize: 13,
-                                fontWeight: 600,
-                                gap: 8,
-                                height: 34,
-                                padding: "0 10px",
-                                textAlign: "left",
-                                width: "100%",
-                              }}
+                              className="btn btn-sm btn-quiet"
+                              style={{ height: 34, justifyContent: "flex-start", width: "100%" }}
                             >
                               <Icon name="edit" size={14} />
                               {t({ en: "Rename", zh: "重命名" })}
@@ -939,23 +893,8 @@ function AgentHistoryList({
                               }}
                               role="menuitem"
                               type="button"
-                              style={{
-                                alignItems: "center",
-                                background: "transparent",
-                                border: "none",
-                                borderRadius: 8,
-                                color: "var(--danger, #C2410C)",
-                                cursor: "pointer",
-                                display: "flex",
-                                fontFamily: "var(--ff)",
-                                fontSize: 13,
-                                fontWeight: 600,
-                                gap: 8,
-                                height: 34,
-                                padding: "0 10px",
-                                textAlign: "left",
-                                width: "100%",
-                              }}
+                              className="btn btn-sm btn-quiet"
+                              style={{ color: "var(--danger, #C2410C)", height: 34, justifyContent: "flex-start", width: "100%" }}
                             >
                               {t({ en: "Delete", zh: "删除对话" })}
                             </button>
@@ -990,26 +929,26 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
 
   return (
     <div className="orbit-agent-welcome" style={{ alignItems: "center", display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "50vh", padding: "24px 8px", textAlign: "center" }}>
-      <span className="avatar g-indigo orbit-agent-mark" style={{ alignItems: "center", borderRadius: 16, display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
+      <span className="avatar g-indigo orbit-agent-mark" style={{ alignItems: "center", borderRadius: "var(--r-lg)", display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
         <Icon name="sparkle" size={26} color="var(--on-dark)" />
       </span>
-      <h2 className="h-title" style={{ margin: "16px 0 6px" }}>
+      <h1 className="h-title" style={{ margin: "16px 0 6px" }}>
         {t({ en: "I am iOrbit", zh: "我是 iOrbit" })}
-      </h2>
+      </h1>
       <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.65, margin: "0 0 22px", maxWidth: 380 }}>
         {t({
           en: "Tell me what you want to do. I will find the right people in your network, the right events to join, and how to start the conversation.",
           zh: "说出你想做的事，我帮你从人脉里找对的人、从活动里找对的局，并告诉你该怎么开口。",
         })}
       </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "min(420px, 100%)" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "min(420px, 100%)" }}>
         {viewModel.suggests.map((suggest) => (
           <button
             className="orbit-agent-suggestion"
             key={suggest.label}
             type="button"
             onClick={() => onPick(suggest.q)}
-            style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 13, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: "13px 15px", textAlign: "left" }}
+            style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-md)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: "13px 15px", textAlign: "left" }}
           >
             <Icon name={suggest.icon} size={17} color="var(--accent)" />
             <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{agentSuggestLabel(suggest.label, language === "ja" ? "en" : language)}</span>
@@ -1038,15 +977,15 @@ function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultVi
           </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
-          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 600, lineHeight: 1 }}>{item.match}%</div>
+          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.match}%</div>
           <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Match", zh: "匹配度" })}</div>
         </div>
       </div>
-      <div style={{ background: "var(--surface-3)", borderRadius: 99, height: 6, marginTop: 12, overflow: "hidden" }}>
+      <div style={{ background: "var(--surface-3)", borderRadius: "var(--r-pill)", height: 6, marginTop: 12, overflow: "hidden" }}>
         <span style={{ background: "var(--accent-grad-bar)", display: "block", height: "100%", width: `${item.match}%` }} />
       </div>
-      <div style={{ alignItems: "center", display: "flex", gap: 6, marginTop: 11 }}>
-        <span style={{ alignItems: "center", background: status.soft, borderRadius: "var(--r-pill)", color: status.color, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 6, height: 24, padding: "0 10px" }}>
+      <div style={{ alignItems: "center", display: "flex", gap: 8, marginTop: 11 }}>
+        <span style={{ alignItems: "center", background: status.soft, borderRadius: "var(--r-pill)", color: status.text, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 4, height: 24, padding: "0 10px" }}>
           <span style={{ background: status.color, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
           {status.label}
         </span>
@@ -1055,7 +994,7 @@ function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultVi
         ) : null}
       </div>
       <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>
-      <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 11, padding: 11 }}>
+      <div style={{ background: "var(--accent-softer)", borderRadius: "var(--r-sm)", display: "flex", gap: 8, marginTop: 11, padding: 11 }}>
         <Icon name="message" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
         <div style={{ minWidth: 0 }}>
           <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "Why this person", zh: "推荐依据" })}</div>
@@ -1080,8 +1019,8 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
 
   return (
     <button type="button" className="card card-hover" style={{ cursor: "pointer", display: "block", fontFamily: "var(--ff)", overflow: "hidden", padding: 0, textAlign: "left", width: "100%" }} onClick={() => navigate(`/events/${event.code}`)}>
-      <div style={{ display: "flex", gap: 14, padding: 15 }}>
-        <Cover g={gradientFromString(event.code)} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 22 }} style={{ borderRadius: 13, flexShrink: 0, height: 60, width: 60 }} />
+      <div style={{ display: "flex", gap: 16, padding: 15 }}>
+        <Cover g={gradientFromString(event.code)} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 22 }} style={{ borderRadius: "var(--r-md)", flexShrink: 0, height: 60, width: 60 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ alignItems: "flex-start", display: "flex", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -1089,7 +1028,7 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
               <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>{dateLabel}</div>
             </div>
             <div style={{ flexShrink: 0, textAlign: "right" }}>
-              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 600, lineHeight: 1 }}>{item.score}</div>
+              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.score}</div>
               <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Score", zh: "匹配分" })}</div>
             </div>
           </div>
@@ -1101,7 +1040,7 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
       </div>
       <div style={{ padding: "0 15px 15px" }}>
         <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>{item.reason}</div>
-        <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 11, padding: 11 }}>
+        <div style={{ background: "var(--accent-softer)", borderRadius: "var(--r-sm)", display: "flex", gap: 8, marginTop: 11, padding: 11 }}>
           <Icon name="sparkle" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
           <div>
             <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "How to network on site", zh: "怎么在现场社交" })}</div>
@@ -1137,12 +1076,12 @@ function AgentTodoCard({ item, navigate, t }: { item: OrbitAgentTodoResultView; 
           </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
-          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 17, fontWeight: 600, lineHeight: 1 }}>{item.due}</div>
+          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.due}</div>
           <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Due", zh: "到期" })}</div>
         </div>
       </div>
-      <div style={{ alignItems: "center", display: "flex", gap: 6, marginTop: 11 }}>
-        <span style={{ alignItems: "center", background: priorityColor.soft, borderRadius: "var(--r-pill)", color: priorityColor.color, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 6, height: 24, padding: "0 10px" }}>
+      <div style={{ alignItems: "center", display: "flex", gap: 8, marginTop: 11 }}>
+        <span style={{ alignItems: "center", background: priorityColor.soft, borderRadius: "var(--r-pill)", color: priorityColor.color, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 4, height: 24, padding: "0 10px" }}>
           <span style={{ background: priorityColor.color, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
           {item.priority}
         </span>
@@ -1154,7 +1093,7 @@ function AgentTodoCard({ item, navigate, t }: { item: OrbitAgentTodoResultView; 
         <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>
       ) : null}
       {item.task ? (
-        <div style={{ background: "var(--accent-softer)", borderRadius: 11, display: "flex", gap: 10, marginTop: 11, padding: 11 }}>
+        <div style={{ background: "var(--accent-softer)", borderRadius: "var(--r-sm)", display: "flex", gap: 8, marginTop: 11, padding: 11 }}>
           <Icon name="clock" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
           <div style={{ minWidth: 0 }}>
             <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "Suggested action", zh: "建议动作" })}</div>
@@ -1186,11 +1125,20 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
   );
 }
 
+// custom-shadow: the composer's violet focus glow is a distinct brand accent
+// treatment, not a generic elevation shadow — the flat --sh-* tokens (which
+// go to `none` in the light theme) would remove this always-on affordance.
+const AGENT_COMPOSER_GLOW =
+  "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)";
+// custom-shadow: saturated accent-magenta halo signals "ready to send" —
+// a state cue, not decorative elevation, so it stays independent of theme.
+const AGENT_SEND_READY_GLOW = "0 8px 18px rgba(99,76,226,0.28)";
+
 function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (value: string) => void; onSend: () => void; value: string }) {
   const { t } = useOrbitLanguage();
 
   return (
-    <div className="orbit-agent-composer" style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, boxShadow: "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)", padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
+    <div className="orbit-agent-composer" style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-lg)", boxShadow: AGENT_COMPOSER_GLOW, padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
       <textarea
         className="orbit-agent-composer-input"
         aria-label={t({ en: "Ask Orbit", zh: "问问 Orbit" })}
@@ -1208,7 +1156,7 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
       />
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginTop: big ? 8 : 4 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          <span className="orbit-agent-capability" style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 6, height: 32, padding: "0 12px" }}>
+          <span className="orbit-agent-capability" style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 4, height: 32, padding: "0 12px" }}>
             <Icon name="sparkle" size={14} />
             iOrbit
           </span>
@@ -1220,7 +1168,7 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
           onClick={onSend}
           disabled={!value.trim()}
           aria-label={t({ en: "Send", zh: "发送" })}
-          style={{ alignItems: "center", background: value.trim() ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: 12, boxShadow: value.trim() ? "0 8px 18px rgba(99,76,226,0.28)" : "none", color: value.trim() ? "var(--on-dark)" : "var(--text-4)", cursor: value.trim() ? "pointer" : "default", display: "flex", height: 40, justifyContent: "center", width: 40 }}
+          style={{ alignItems: "center", background: value.trim() ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: "var(--r-sm)", boxShadow: value.trim() ? AGENT_SEND_READY_GLOW : "none", color: value.trim() ? "var(--on-dark)" : "var(--text-4)", cursor: value.trim() ? "pointer" : "default", display: "flex", height: 40, justifyContent: "center", width: 40 }}
         >
           <Icon name="arrow" size={19} style={{ transform: "rotate(-90deg)" }} />
         </button>
@@ -1267,7 +1215,7 @@ function ThinkingIndicator({ t }: { t: Translate }) {
   }, []);
 
   return (
-    <span aria-live="polite" className="orbit-agent-thinking-indicator" style={{ alignItems: "center", display: "inline-flex", gap: 9 }}>
+    <span aria-live="polite" className="orbit-agent-thinking-indicator" style={{ alignItems: "center", display: "inline-flex", gap: 8 }}>
       <span style={{ color: "var(--text-2)", fontSize: 14 }}>{t(THINKING_PHASES[phase])}</span>
       <TypingDots />
     </span>
@@ -1777,7 +1725,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               {message.note ? (
-                <div style={{ alignItems: "center", background: "var(--amber-soft)", borderRadius: 12, color: "var(--amber)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 8, marginBottom: 10, padding: "7px 12px" }}>
+                <div style={{ alignItems: "center", background: "var(--amber-soft)", borderRadius: "var(--r-sm)", color: "var(--amber-text)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 8, marginBottom: 10, padding: "7px 12px" }}>
                   <Icon name="eye" size={14} />
                   {message.note}
                 </div>
@@ -1833,7 +1781,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <aside className="orbit-agent-history" data-orbit-agent-history-sidebar style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, maxWidth: HISTORY_SIDEBAR_MAX_WIDTH, minWidth: HISTORY_SIDEBAR_MIN_WIDTH, width: historySidebarWidth }}>
           <div style={{ padding: 14 }}>
-            <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, height: 40, justifyContent: "center", width: "100%" }}>
+            <button className="btn btn-ghost btn-block" type="button" onClick={newChat}>
               <Icon name="plus" size={16} color="var(--accent)" />
               {t({ en: "New chat", zh: "新对话" })}
             </button>
@@ -1881,7 +1829,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           <aside className="orbit-agent-results" key={`${panel.panelTitle}-${messages.length}`} style={{ animation: "agentpanel .32s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, width: 444 }}>
             <div className="orbit-agent-results-header" style={{ borderBottom: "1px solid var(--border)", padding: "18px 20px 12px" }}>
               <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-                <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 9, color: "var(--accent)", display: "flex", height: 30, justifyContent: "center", width: 30 }}>
+                <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-sm)", color: "var(--accent)", display: "flex", height: 30, justifyContent: "center", width: 30 }}>
                   <Icon name={panel.kind === "people" ? "users" : "calendar"} size={17} />
                 </span>
                 <h3 className="h-section">{panel.panelTitle}</h3>
@@ -1909,21 +1857,21 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       </div>
 
       {histOpen ? (
-        <div className="orbit-mobile-only" style={{ inset: 0, position: "fixed", zIndex: 90 }}>
+        <div className="orbit-mobile-only" style={{ inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}>
           <div onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
           <div style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}>
             <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
               <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{t({ en: "Chat history", zh: "对话历史" })}</span>
               <div style={{ flex: 1 }} />
-              <button type="button" className="hit-44" onClick={() => setHistOpen(false)} aria-label={t({ en: "Close", zh: "关闭" })} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--text-2)", cursor: "pointer", display: "flex", fontSize: 15, height: 30, justifyContent: "center", width: 30 }}><Icon name="x" size={16} /></button>
+              <IconButton ariaLabel={t({ en: "Close", zh: "关闭" })} name="x" onClick={() => setHistOpen(false)} size={16} />
             </div>
             <div style={{ padding: 12 }}>
-              <button type="button" onClick={newChat} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 11, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, height: 40, justifyContent: "center", width: "100%" }}>
+              <button className="btn btn-ghost btn-block" type="button" onClick={newChat}>
                 <Icon name="plus" size={16} color="var(--accent)" />
                 {t({ en: "New chat", zh: "新对话" })}
               </button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 1, padding: "0 12px 4px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "0 12px 4px" }}>
               <div className="eyebrow" style={{ padding: "2px 8px 6px" }}>{t({ en: "Go to", zh: "前往" })}</div>
               {[
                 ["/", "home", t({ en: "Home", zh: "首页" })],
@@ -1931,7 +1879,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                 ["/home/schedule", "clock", t({ en: "Calendar", zh: "日程" })],
                 ["/home/cards", "wallet", t({ en: "Contacts", zh: "人脉" })],
               ].map(([href, icon, label]) => (
-                <button key={href} type="button" onClick={() => { setHistOpen(false); navigate(href); }} style={{ alignItems: "center", background: "none", border: "none", borderRadius: 9, color: "var(--ink)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 12, padding: "9px 8px", textAlign: "left", width: "100%" }}>
+                <button className="btn btn-quiet" key={href} type="button" onClick={() => { setHistOpen(false); navigate(href); }} style={{ height: "auto", justifyContent: "flex-start", padding: "9px 8px", width: "100%" }}>
                   <Icon name={icon} size={17} color="var(--accent)" />
                   {label}
                 </button>

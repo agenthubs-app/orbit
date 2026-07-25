@@ -45,7 +45,7 @@ function EntryRow({
         alignItems: "center",
         background: selected ? "var(--accent-soft)" : "var(--surface)",
         border: "1px solid var(--border)",
-        borderRadius: 14,
+        borderRadius: "var(--r-md)",
         display: "flex",
         gap: 12,
         padding: "14px 16px",
@@ -86,7 +86,7 @@ export function OrbitRealToday({
     return (
       <div data-orbit-route="app-today-route-state" style={{ padding: 32 }}>
         <div className="eyebrow">Today</div>
-        <h1 style={{ fontSize: 24, margin: "8px 0 12px" }}>账本暂时读不出来</h1>
+        <h1 style={{ fontSize: 22, margin: "8px 0 12px" }}>账本暂时读不出来</h1>
         <p style={{ color: "var(--text-2)", fontSize: 14 }}>
           {viewModel.failureMessage}
         </p>
@@ -98,7 +98,7 @@ export function OrbitRealToday({
     return (
       <div data-orbit-route="app-today-route-empty" style={{ padding: 32 }}>
         <div className="eyebrow">Today</div>
-        <h1 style={{ fontSize: 24, margin: "8px 0 12px" }}>今天没有需要你决定的事</h1>
+        <h1 style={{ fontSize: 22, margin: "8px 0 12px" }}>今天没有需要你决定的事</h1>
         <p style={{ color: "var(--text-2)", fontSize: 14 }}>
           Orbit 会在有新的跟进窗口时把决策放到这里。
         </p>
@@ -107,10 +107,10 @@ export function OrbitRealToday({
   }
 
   return (
-    <div data-orbit-today-list style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+    <div data-orbit-today-list style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <header>
         <div className="eyebrow">Today</div>
-        <h1 style={{ fontSize: 30, lineHeight: 1.25, margin: "10px 0 8px" }}>
+        <h1 style={{ fontSize: 28, lineHeight: 1.25, margin: "10px 0 8px" }}>
           今晚有 {viewModel.decideCount} 件事需要你决定。
         </h1>
         <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
@@ -137,7 +137,7 @@ export function OrbitRealToday({
               {section.entries.length}
             </span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {section.entries.map((entry) => (
               <EntryRow
                 entry={entry}
