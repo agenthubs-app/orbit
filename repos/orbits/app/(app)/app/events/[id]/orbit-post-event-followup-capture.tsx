@@ -45,6 +45,34 @@ function contactChoices(body: unknown): ContactChoice[] {
   });
 }
 
+function workflowContactCandidates(body: unknown): ContactChoice[] {
+  if (
+    !isRecord(body) ||
+    !isRecord(body.data) ||
+    !Array.isArray(body.data.contactCandidates)
+  ) {
+    return [];
+  }
+  return body.data.contactCandidates.flatMap((value) => {
+    if (
+      !isRecord(value) ||
+      typeof value.id !== "string" ||
+      typeof value.displayName !== "string"
+    ) {
+      return [];
+    }
+    return [
+      {
+        id: value.id,
+        displayName: value.displayName,
+        organization:
+          typeof value.organization === "string" ? value.organization : "",
+        role: typeof value.role === "string" ? value.role : "",
+      },
+    ];
+  });
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunkSize = 32_768;
@@ -85,6 +113,10 @@ export function OrbitPostEventFollowupCapture({
   const [contacts, setContacts] = useState<readonly ContactChoice[]>([]);
   const [selectedContact, setSelectedContact] =
     useState<ContactChoice | null>(null);
+  const [reviewContacts, setReviewContacts] = useState<
+    readonly ContactChoice[]
+  >([]);
+  const [resolvedContactId, setResolvedContactId] = useState("");
   const [noteText, setNoteText] = useState("");
   const [noteSource, setNoteSource] = useState<
     "typed" | "voice_transcript"
@@ -258,7 +290,9 @@ export function OrbitPostEventFollowupCapture({
     }
   }
 
-  async function submit(): Promise<void> {
+  async function submit(
+    confirmedResolvedContactId?: string,
+  ): Promise<void> {
     if (!selectedContact) {
       setError("请选择一位已存在的联系人。");
       return;
@@ -269,7 +303,6 @@ export function OrbitPostEventFollowupCapture({
     }
     setSubmitting(true);
     setError(null);
-    const duplicates = duplicateContactIds(contacts, selectedContact);
     try {
       const response = await fetch(
         `/api/events/${encodeURIComponent(eventId)}/post-event/followup`,
@@ -281,7 +314,7 @@ export function OrbitPostEventFollowupCapture({
             eventTitle,
             contactId: selectedContact.id,
             contactName: selectedContact.displayName,
-            duplicateContactIds: duplicates,
+            resolvedContactId: confirmedResolvedContactId,
             organization: selectedContact.organization,
             encounterId: `encounter:${eventId}:${selectedContact.id}`,
             noteText: noteText.trim(),
@@ -302,9 +335,10 @@ export function OrbitPostEventFollowupCapture({
         isRecord(body.data.artifact) &&
         body.data.artifact.contactResolution === "merge_review_required"
       ) {
-        setError(
-          "检测到同名重复联系人，已进入合并复核；复核完成前不会创建任务、提醒或消息草稿。",
-        );
+        const candidates = workflowContactCandidates(body);
+        setReviewContacts(candidates);
+        setResolvedContactId(candidates[0]?.id ?? "");
+        setError(null);
         setSubmitting(false);
         return;
       }
@@ -382,6 +416,8 @@ export function OrbitPostEventFollowupCapture({
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setSelectedContact(null);
+                  setReviewContacts([]);
+                  setResolvedContactId("");
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -412,6 +448,8 @@ export function OrbitPostEventFollowupCapture({
                   onClick={() => {
                     setQuery(name);
                     setSelectedContact(null);
+                    setReviewContacts([]);
+                    setResolvedContactId("");
                   }}
                   type="button"
                 >
@@ -432,7 +470,11 @@ export function OrbitPostEventFollowupCapture({
                   aria-selected={selectedContact?.id === contact.id}
                   className="btn btn-quiet"
                   key={contact.id}
-                  onClick={() => setSelectedContact(contact)}
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setReviewContacts([]);
+                    setResolvedContactId("");
+                  }}
                   role="option"
                   style={{ justifyContent: "flex-start", textAlign: "left" }}
                   type="button"
@@ -462,6 +504,75 @@ export function OrbitPostEventFollowupCapture({
               <a href="/app/contacts/new">联系人导入与合并</a>
               {" "}处理重复项。
             </p>
+          ) : null}
+          {reviewContacts.length > 1 ? (
+            <section
+              aria-label="重复联系人复核"
+              className="card-flat"
+              style={{ display: "grid", gap: 10, marginTop: 12, padding: 12 }}
+            >
+              <div>
+                <strong>选择本次跟进对应的联系人</strong>
+                <p
+                  style={{
+                    color: "var(--text-3)",
+                    fontSize: 13,
+                    lineHeight: 1.55,
+                    margin: "4px 0 0",
+                  }}
+                >
+                  服务端检测到同名记录。选择前不会创建任务、提醒或消息草稿；这里只确认本次关联，不会静默合并联系人。
+                </p>
+              </div>
+              <div aria-label="同名联系人候选" role="radiogroup">
+                {reviewContacts.map((contact) => (
+                  <label
+                    key={contact.id}
+                    style={{
+                      alignItems: "flex-start",
+                      display: "flex",
+                      gap: 8,
+                      padding: "8px 0",
+                    }}
+                  >
+                    <input
+                      checked={resolvedContactId === contact.id}
+                      name="resolved-contact"
+                      onChange={() => setResolvedContactId(contact.id)}
+                      type="radio"
+                      value={contact.id}
+                    />
+                    <span>
+                      <strong>{contact.displayName}</strong>
+                      <span
+                        style={{
+                          color: "var(--text-3)",
+                          display: "block",
+                          fontSize: 12,
+                        }}
+                      >
+                        {[contact.role, contact.organization]
+                          .filter(Boolean)
+                          .join(" · ") || contact.id}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <button
+                  className="btn btn-primary"
+                  disabled={submitting || !resolvedContactId}
+                  onClick={() => void submit(resolvedContactId)}
+                  type="button"
+                >
+                  {submitting ? "正在继续…" : "使用选中的联系人继续"}
+                </button>
+                <a className="btn btn-ghost" href="/app/contacts/new">
+                  前往联系人合并
+                </a>
+              </div>
+            </section>
           ) : null}
 
           <div style={{ marginTop: 16 }}>

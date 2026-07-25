@@ -12,6 +12,12 @@ interface Context {
   params: Promise<{ id: string }>;
 }
 
+interface VerifiedContactResolution {
+  contact: ContactListItem;
+  candidates: readonly ContactListItem[];
+  duplicateContactIds: readonly string[];
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -35,27 +41,59 @@ function strings(value: unknown): string[] {
     : [];
 }
 
-async function verifiedContactContext(
+async function verifiedContactResolution(
   contactId: string,
   fallbackName: string | undefined,
-): Promise<ContactListItem | null> {
+  resolvedContactId: string | undefined,
+): Promise<VerifiedContactResolution | null> {
   const result = await createContactsListSearchAndFilterService(
     resolveFeatureMode(),
   ).listContacts({});
   if (!result.success || result.data.state !== "success") return null;
 
-  const exact = result.data.contacts.find((contact) => contact.id === contactId);
-  if (exact) return exact;
+  const exact =
+    result.data.contacts.find((contact) => contact.id === contactId) ??
+    // `demo-contact-1` is the historical detail-route alias for the Kenji list
+    // fixture. Keep that compatibility at this boundary without accepting an
+    // arbitrary client-provided name as authoritative contact data.
+    (contactId === "demo-contact-1" && fallbackName
+      ? result.data.contacts.find(
+          (contact) => contact.displayName === fallbackName,
+        )
+      : undefined);
+  if (!exact) return null;
 
-  // `demo-contact-1` is the historical detail-route alias for the Kenji list
-  // fixture. Keep that compatibility at this boundary without accepting an
-  // arbitrary client-provided name as authoritative contact data.
-  if (contactId !== "demo-contact-1" || !fallbackName) return null;
-  return (
-    result.data.contacts.find(
-      (contact) => contact.displayName === fallbackName,
-    ) ?? null
+  const normalizedName = exact.displayName.trim().toLocaleLowerCase();
+  const candidates = result.data.contacts.filter(
+    (contact) =>
+      contact.displayName.trim().toLocaleLowerCase() === normalizedName,
   );
+
+  if (resolvedContactId) {
+    const resolved = candidates.find(
+      (contact) =>
+        contact.id === resolvedContactId ||
+        (resolvedContactId === contactId && contact.id === exact.id),
+    );
+    if (!resolved) {
+      throw new Error(
+        "The resolved contact must be one of the server-verified duplicate candidates.",
+      );
+    }
+    return {
+      contact: resolved,
+      candidates,
+      duplicateContactIds: [],
+    };
+  }
+
+  return {
+    contact: exact,
+    candidates,
+    duplicateContactIds: candidates
+      .filter((contact) => contact.id !== exact.id)
+      .map((contact) => contact.id),
+  };
 }
 
 export async function POST(
@@ -99,10 +137,24 @@ export async function POST(
 
   try {
     const submittedContactName = optionalText(body.contactName, 240);
-    const verifiedContact = await verifiedContactContext(
+    const contactResolution = await verifiedContactResolution(
       contactId,
       submittedContactName,
+      optionalText(body.resolvedContactId, 240),
     ).catch(() => null);
+    if (!contactResolution) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "CONTACT_RESOLUTION_FAILED",
+            message:
+              "The selected contact could not be verified against the current contact list.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+    const verifiedContact = contactResolution.contact;
     const submittedEvidenceIds = strings(body.evidenceIds);
     const evidenceIds = Array.from(
       new Set([
@@ -116,22 +168,21 @@ export async function POST(
     let result = await workflow.run({
       eventId,
       eventTitle: optionalText(body.eventTitle, 240) ?? "活动",
-      contactId,
-      contactName: verifiedContact?.displayName ?? submittedContactName,
+      contactId: verifiedContact.id,
+      contactName: verifiedContact.displayName,
       organization:
-        verifiedContact?.organization ??
-        optionalText(body.organization, 240),
+        verifiedContact.organization ?? optionalText(body.organization, 240),
       connectionId: optionalText(body.connectionId, 240),
       encounterId: optionalText(body.encounterId, 240),
       noteText,
       conversationId: optionalText(body.conversationId, 240),
-      duplicateContactIds: strings(body.duplicateContactIds),
+      duplicateContactIds: contactResolution.duplicateContactIds,
       followupDueAt: optionalText(body.followupDueAt, 80),
       reminderDueAt: optionalText(body.reminderDueAt, 80),
       evidenceIds,
-      relationshipContext: verifiedContact?.relationshipContext,
-      lastInteractionAt: verifiedContact?.lastInteractionAt,
-      nextAction: verifiedContact?.nextAction,
+      relationshipContext: verifiedContact.relationshipContext,
+      lastInteractionAt: verifiedContact.lastInteractionAt,
+      nextAction: verifiedContact.nextAction,
       messageDraft: optionalText(body.messageDraft, 4_000),
       noteSource:
         body.noteSource === "voice_transcript"
@@ -153,7 +204,23 @@ export async function POST(
         };
       }
     }
-    return NextResponse.json({ data: result }, { status: 201 });
+    return NextResponse.json(
+      {
+        data: {
+          ...result,
+          contactCandidates:
+            result.artifact.contactResolution === "merge_review_required"
+              ? contactResolution.candidates.map((contact) => ({
+                  id: contact.id,
+                  displayName: contact.displayName,
+                  organization: contact.organization,
+                  role: contact.role,
+                }))
+              : [],
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     return NextResponse.json(
       {
