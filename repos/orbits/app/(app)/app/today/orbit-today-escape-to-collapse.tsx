@@ -25,6 +25,11 @@ export function OrbitTodayEscapeToCollapse({
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
+      // Defense in depth: an open modal should own Escape exclusively (see
+      // orbit-modal-a11y.ts's stopPropagation on its own Escape branch).
+      // This guard additionally covers any modal-like surface that isn't
+      // built on that shared hook.
+      if (document.querySelector('[role="dialog"]')) return;
       window.location.assign(collapseHref);
     }
 

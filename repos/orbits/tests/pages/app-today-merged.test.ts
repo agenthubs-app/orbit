@@ -10,7 +10,10 @@
  *    渲染时间脊柱组件，不依赖系统当前日期是否命中 mock fixtures。
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -323,4 +326,51 @@ test("the expanded card's header link collapses back to a plain ?date=/?view= UR
   );
 
   assert.match(html, /href="\/app\/today\?date=2026-07-20&amp;view=month"/);
+});
+
+// ---- Escape key ownership (review fix: an open modal must own Escape
+// exclusively — with a decision card expanded via ?entry= AND the 安排约见
+// modal open, one Escape press used to both close the modal (document-level
+// listener in useOrbitModalA11y) *and* collapse the accordion (window-level
+// listener in OrbitTodayEscapeToCollapse), because document-phase bubble
+// handlers run before window-phase ones and nothing stopped propagation.
+// renderToStaticMarkup never attaches DOM listeners, so this can't be
+// exercised behaviorally here (no jsdom in this suite) — assert the source
+// directly. Live-browser reproduction of the reviewer's scenario covered
+// this fix during development. ----
+
+const projectRootForEscapeGate = join(fileURLToPath(import.meta.url), "../../..");
+
+function sourceForEscapeGate(path: string): string {
+  return readFileSync(join(projectRootForEscapeGate, path), "utf8");
+}
+
+test("an open modal stops Escape from also reaching page-level hotkey listeners", () => {
+  const modalA11y = sourceForEscapeGate("app/(app)/app/orbit-modal-a11y.ts");
+  const escapeMatch = modalA11y.match(
+    /if\s*\(event\.key === "Escape"\)\s*\{([\s\S]*?)\n {6}\}/,
+  );
+  assert.ok(escapeMatch, "expected an `if (event.key === \"Escape\")` branch in orbit-modal-a11y.ts");
+  assert.match(
+    escapeMatch![1],
+    /event\.stopPropagation\(\)/,
+    "the modal's Escape branch must call event.stopPropagation() so a window-level " +
+      "listener (e.g. today's escape-to-collapse) never sees the same keypress",
+  );
+});
+
+test("escape-to-collapse bails when a dialog is open, as defense in depth", () => {
+  const escapeToCollapse = sourceForEscapeGate(
+    "app/(app)/app/today/orbit-today-escape-to-collapse.tsx",
+  );
+  const handlerMatch = escapeToCollapse.match(
+    /function handleKeyDown\(event: KeyboardEvent\) \{([\s\S]*?)\n {4}\}/,
+  );
+  assert.ok(handlerMatch, "expected a handleKeyDown function in orbit-today-escape-to-collapse.tsx");
+  assert.match(
+    handlerMatch![1],
+    /document\.querySelector\(\s*['"]\[role="dialog"\]['"]\s*\)/,
+    'handleKeyDown must bail when document.querySelector(\'[role="dialog"]\') finds an open ' +
+      "modal, covering modals that don't go through useOrbitModalA11y",
+  );
 });
