@@ -1,3 +1,3 @@
-import { ScheduleScreen } from "../src/screens/schedule/ScheduleScreen";
+import { TodayAgentLedgerScreen } from "../src/screens/agent/AgentLedgerScreen";
 
-export default ScheduleScreen;
+export default TodayAgentLedgerScreen;

@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   agentActionAcceptPath,
   agentActionDismissPath,
+  agentLedgerTransitionPath,
   aiRunPath,
   externalActionSandboxAuditPath,
   externalActionSandboxSendMessagePath,
@@ -465,6 +466,7 @@ test("Orbit API endpoints expose read-only dashboard analytics routes", () => {
 
 test("Orbit API endpoints expose actionable Agent action routes", () => {
   assert.equal(ORBIT_API_ENDPOINTS.agentActions, "/api/agent/actions");
+  assert.equal(ORBIT_API_ENDPOINTS.agentLedger, "/api/agent/ledger");
   assert.equal(ORBIT_API_ENDPOINTS.agentSettings, "/api/agent/settings");
   assert.equal(
     ORBIT_API_ENDPOINTS.externalActionSandboxAudit,
@@ -497,6 +499,10 @@ test("Orbit API endpoints expose actionable Agent action routes", () => {
   assert.equal(
     agentActionDismissPath("agent action/001"),
     "/api/agent/actions/agent%20action%2F001/dismiss"
+  );
+  assert.equal(
+    agentLedgerTransitionPath("action:followup/task 001"),
+    "/api/agent/ledger/action%3Afollowup%2Ftask%20001/transition"
   );
 });
 

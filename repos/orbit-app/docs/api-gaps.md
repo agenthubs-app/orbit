@@ -661,6 +661,25 @@ record an approve or reject decision through the shared confirmation guard. The
 result card keeps the boundary explicit: the decision is recorded, and the
 external action is still not executed by the iOS route.
 
+Native Today and All Actions now use the durable Agent Ledger instead of the
+older suggestion queue or schedule timeline:
+
+- `GET /api/agent/ledger`
+- `POST /api/agent/ledger/:id/transition`
+
+Both surfaces preserve the server Action ID, Run ID, workflow, status,
+operations, evidence, source, and idempotency keys. They offer only the
+transition controls that make sense for the returned state: confirm, defer,
+reject, cancel, undo, and retry. Confirm sends the user-selected operation IDs;
+the backend remains responsible for status validation, execution, compensation,
+and retry idempotency.
+
+Contract gap: the Agent Ledger wire types still live in the web feature package
+instead of `shared/contract`. Mobile therefore keeps a narrow HTTP shape in
+`src/api/agent-ledger-contract.ts`. Promote the ledger contract into
+`shared/contract` and regenerate the mobile copy before adding new ledger fields
+or statuses.
+
 Remaining parity gaps:
 
 - Production external-send confirmation still needs a mobile-safe provider

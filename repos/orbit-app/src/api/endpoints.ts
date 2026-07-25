@@ -31,6 +31,7 @@ export const ORBIT_API_ENDPOINTS = {
   contactBusinessCardConfirm: "/api/contacts/business-card/confirm",
   contactInvitations: "/api/contact-invitations",
   agentActions: "/api/agent/actions",
+  agentLedger: "/api/agent/ledger",
   agentSettings: "/api/agent/settings",
   connections: "/api/connections",
   contacts: "/api/contacts",
@@ -84,6 +85,10 @@ export function agentActionAcceptPath(id: string): string {
 
 export function agentActionDismissPath(id: string): string {
   return `${detailPath(ORBIT_API_ENDPOINTS.agentActions, id)}/dismiss`;
+}
+
+export function agentLedgerTransitionPath(id: string): string {
+  return `${detailPath(ORBIT_API_ENDPOINTS.agentLedger, id)}/transition`;
 }
 
 export function confirmationApprovePath(

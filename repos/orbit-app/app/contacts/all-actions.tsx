@@ -1,3 +1,3 @@
-import { AgentActionsScreen } from "../../src/screens/ai/AgentActionsScreen";
+import { AllActionsAgentLedgerScreen } from "../../src/screens/agent/AgentLedgerScreen";
 
-export default AgentActionsScreen;
+export default AllActionsAgentLedgerScreen;
