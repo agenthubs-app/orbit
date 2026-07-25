@@ -22,7 +22,7 @@ export function validateOrbitApiBaseUrl(
 
   if (!normalizedValue) {
     return {
-      error: "Enter a server address.",
+      error: "请输入服务器地址。",
       success: false
     };
   }
@@ -33,14 +33,14 @@ export function validateOrbitApiBaseUrl(
     parsedUrl = new URL(normalizedValue);
   } catch {
     return {
-      error: "Enter a valid server address.",
+      error: "请输入有效的服务器地址。",
       success: false
     };
   }
 
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
     return {
-      error: "Use an http:// or https:// server address.",
+      error: "请使用 http:// 或 https:// 开头的服务器地址。",
       success: false
     };
   }

@@ -311,52 +311,6 @@ function hasSessionCookie(cookieHeader: string): boolean {
   );
 }
 
-async function getCsrfToken({
-  baseUrl,
-  cookieHeader,
-  fetchImpl
-}: {
-  baseUrl: string;
-  cookieHeader: string;
-  fetchImpl: AuthFetchLike;
-}): Promise<
-  | { cookieHeader: string; csrfToken: string; success: true }
-  | AuthSessionFailure
-> {
-  let response: Response;
-
-  try {
-    response = await fetchImpl(authUrl(baseUrl, ORBIT_API_ENDPOINTS.authCsrf), {
-      credentials: "include",
-      headers: requestHeaders(cookieHeader, { Accept: "application/json" }),
-      method: "GET"
-    });
-  } catch (error) {
-    return authFailure(
-      "ORBIT_APP_AUTH_NETWORK_ERROR",
-      error instanceof Error ? error.message : "网络连接失败。"
-    );
-  }
-
-  const payload = await readJson(response);
-  const csrfToken = stringField(payload, "csrfToken");
-  const nextCookieHeader = mergeSetCookieHeaders(cookieHeader, response);
-
-  if (!response.ok || !csrfToken) {
-    return authFailure(
-      "ORBIT_APP_AUTH_CSRF_UNAVAILABLE",
-      "登录入口暂时不可用，请稍后再试。",
-      response.status
-    );
-  }
-
-  return {
-    cookieHeader: nextCookieHeader,
-    csrfToken,
-    success: true
-  };
-}
-
 export async function signInWithCredentials({
   baseUrl,
   cookieHeader = "",
@@ -473,28 +427,17 @@ export async function signOutOrbitSession({
   cookieHeader: string;
   fetchImpl?: AuthFetchLike;
 }): Promise<AuthSessionResult> {
-  const csrf = await getCsrfToken({ baseUrl, cookieHeader, fetchImpl });
-
-  if (!csrf.success) {
-    return csrf;
-  }
-
   let response: Response;
 
   try {
-    response = await fetchImpl(authUrl(baseUrl, ORBIT_API_ENDPOINTS.authSignOut), {
-      body: new URLSearchParams({
-        callbackUrl: `${normalizeOrbitApiBaseUrl(baseUrl)}/app`,
-        csrfToken: csrf.csrfToken
-      }),
-      credentials: "include",
-      headers: requestHeaders(csrf.cookieHeader, {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-Auth-Return-Redirect": "1"
-      }),
-      method: "POST"
-    });
+    response = await fetchImpl(
+      authUrl(baseUrl, ORBIT_API_ENDPOINTS.accountSessionSignOut),
+      {
+        credentials: "include",
+        headers: requestHeaders(cookieHeader, { Accept: "application/json" }),
+        method: "POST"
+      }
+    );
   } catch (error) {
     return authFailure(
       "ORBIT_APP_AUTH_NETWORK_ERROR",
@@ -510,8 +453,22 @@ export async function signOutOrbitSession({
     );
   }
 
+  const payload = await readJson(response);
+  if (payload?.success === false) {
+    const errorBody =
+      typeof payload.error === "object" && payload.error !== null
+        ? (payload.error as JsonBody)
+        : {};
+
+    return authFailure(
+      stringField(errorBody, "code") || "ORBIT_APP_AUTH_SIGN_OUT_FAILED",
+      stringField(errorBody, "message") || "退出登录失败，请稍后再试。",
+      response.status
+    );
+  }
+
   return {
-    cookieHeader: mergeSetCookieHeaders(csrf.cookieHeader, response),
+    cookieHeader: "",
     success: true
   };
 }

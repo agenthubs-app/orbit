@@ -1,26 +1,71 @@
 import { Ionicons } from "@expo/vector-icons";
+import {
+  CameraView,
+  useCameraPermissions,
+  type BarcodeScanningResult
+} from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   Image,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
   View
 } from "react-native";
-import { contactDraftConfirmPath } from "../../api/endpoints";
+import {
+  ORBIT_API_ENDPOINTS,
+  contactDraftConfirmPath,
+  contactDraftMergeSuggestionApplyPath
+} from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { colors, radius, spacing, typography } from "../../design/tokens";
+import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import {
+  buildEventAttendeeContactDraftImportRequest,
+  eventAttendeeContactDraftImportToView,
+  type EventAttendeeDraftImportView
+} from "../../view-models/event-attendees";
 import {
   acquisitionResultToSummary,
   buildContactAcquisitionRequest,
+  buildBusinessCardContactWriteRequest,
+  buildContactDraftReviewRequest,
+  buildExternalContactsImportRequest,
+  buildContactMergeApplyRequest,
+  buildRecommendedContactConfirmRequest,
+  buildReferralRecommendationsRequest,
+  businessCardContactWriteToView,
+  contactExternalCandidatesToView,
+  contactExternalImportToView,
+  contactDraftQueueToView,
+  contactDraftReviewFormFromSummary,
+  contactMergeApplyToView,
+  contactMergeReviewToView,
+  contactReferralRecommendationsToView,
+  recommendedContactConfirmationToView,
   type ContactAcquisitionFormState,
   type ContactAcquisitionMode,
-  type ContactAcquisitionSummary
+  type ContactAcquisitionSummary,
+  type ContactBusinessCardWriteView,
+  type ContactDraftQueueView,
+  type ContactDraftReviewFieldName,
+  type ContactDraftReviewFormState,
+  type ContactExternalCandidatesView,
+  type ContactExternalCandidateView,
+  type ContactExternalImportView,
+  type ContactExternalSourceView,
+  type ContactMergeApplyView,
+  type ContactMergeSuggestionView,
+  type ContactMergeReviewView,
+  type ContactRecommendedConfirmView,
+  type ContactReferralRecommendationsView,
+  type ContactReferralSourceKind
 } from "../../view-models/contact-acquisition";
 
 const emptyForm: ContactAcquisitionFormState = {
@@ -50,22 +95,260 @@ const modes: Array<{
   { icon: "create-outline", label: "手动", mode: "manual" }
 ];
 
+const referralSourceOptions: Array<{
+  countLabel: string;
+  id: ContactReferralSourceKind;
+  label: string;
+}> = [
+  { countLabel: "按来源生成", id: "founder_referral", label: "创始人引荐" },
+  { countLabel: "按来源生成", id: "investor_intro", label: "投资人介绍" },
+  { countLabel: "按来源生成", id: "community_referral", label: "社区引荐" }
+];
+
+const localDismissText = "本次先隐藏，刷新或重新生成后仍可复核。";
+
+function firstParam(value?: string | string[]): string {
+  return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
+}
+
+function keepBusinessCardWriteCandidate(
+  next: ContactAcquisitionSummary,
+  current: ContactAcquisitionSummary | null
+): ContactAcquisitionSummary {
+  if (next.contactWrite || !current?.contactWrite) {
+    return next;
+  }
+
+  return {
+    ...next,
+    contactWrite: current.contactWrite,
+    ...(current.contactWriteLabel
+      ? { contactWriteLabel: current.contactWriteLabel }
+      : {})
+  };
+}
+
 export function ContactAcquisitionScreen() {
   const router = useRouter();
+  const { eventId: eventIdParam } = useLocalSearchParams<{
+    eventId?: string | string[];
+  }>();
+  const eventId = firstParam(eventIdParam);
   const client = useOrbitApiClient();
   const [form, setForm] = useState<ContactAcquisitionFormState>(emptyForm);
   const [mode, setMode] = useState<ContactAcquisitionMode>("businessCard");
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [result, setResult] = useState<ContactAcquisitionSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [businessCardWriteResult, setBusinessCardWriteResult] =
+    useState<ContactBusinessCardWriteView | null>(null);
+  const [contactsRefreshToken, setContactsRefreshToken] =
+    useState<string | null>(null);
+  const [dismissedDraftIds, setDismissedDraftIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [applyingMergeSuggestionId, setApplyingMergeSuggestionId] =
+    useState<string | null>(null);
+  const [externalImportResult, setExternalImportResult] =
+    useState<ContactExternalImportView | null>(null);
+  const [confirmingRecommendationId, setConfirmingRecommendationId] =
+    useState<string | null>(null);
+  const [importingExternalSource, setImportingExternalSource] =
+    useState<string | null>(null);
+  const [eventDraftImportResult, setEventDraftImportResult] =
+    useState<EventAttendeeDraftImportView | null>(null);
+  const [importingEventDrafts, setImportingEventDrafts] = useState(false);
+  const [mergeApplyResult, setMergeApplyResult] =
+    useState<ContactMergeApplyView | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
+  const [qrCameraOpen, setQrCameraOpen] = useState(false);
+  const [qrScannerReady, setQrScannerReady] = useState(true);
+  const [reviewFields, setReviewFields] =
+    useState<ContactDraftReviewFormState | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+  const [referralResult, setReferralResult] =
+    useState<ContactReferralRecommendationsView | null>(null);
+  const [recommendedConfirmResult, setRecommendedConfirmResult] =
+    useState<ContactRecommendedConfirmView | null>(null);
+  const [selectedExternalSource, setSelectedExternalSource] =
+    useState<string | null>(null);
+  const [selectedReferralSource, setSelectedReferralSource] =
+    useState<ContactReferralSourceKind | null>(null);
+  const [stagingReferralSource, setStagingReferralSource] =
+    useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [writingContact, setWritingContact] = useState(false);
+  const externalCandidatesState = useApiResource<unknown>(
+    ORBIT_API_ENDPOINTS.contactDraftExternalCandidates,
+    (data) => contactExternalCandidatesToView(data).candidates.length === 0
+  );
+  const externalCandidates =
+    externalCandidatesState.kind === "success" ||
+    externalCandidatesState.kind === "empty"
+      ? contactExternalCandidatesToView(externalCandidatesState.data)
+      : null;
+  const draftQueueState = useApiResource<unknown>(
+    ORBIT_API_ENDPOINTS.contactDrafts,
+    (data) => contactDraftQueueToView(data).drafts.length === 0
+  );
+  const draftQueue =
+    draftQueueState.kind === "success" || draftQueueState.kind === "empty"
+      ? contactDraftQueueToView(draftQueueState.data)
+      : null;
+  const mergeReviewState = useApiResource<unknown>(
+    ORBIT_API_ENDPOINTS.contactDraftMergeSuggestions,
+    (data) => contactMergeReviewToView(data).suggestions.length === 0
+  );
+  const mergeReview =
+    mergeReviewState.kind === "success" || mergeReviewState.kind === "empty"
+      ? contactMergeReviewToView(mergeReviewState.data)
+      : null;
+
+  useEffect(() => {
+    if (result?.reviewFields?.length) {
+      setReviewFields(contactDraftReviewFormFromSummary(result));
+    } else {
+      setReviewFields(null);
+    }
+  }, [result?.draftId, result?.reviewFields?.length]);
 
   function updateField(field: keyof ContactAcquisitionFormState, value: string) {
     setForm((current) => ({
       ...current,
       [field]: value
     }));
+  }
+
+  async function openQrScanner() {
+    setError(null);
+
+    if (!cameraPermission?.granted) {
+      const permission = await requestCameraPermission();
+
+      if (!permission.granted) {
+        setError("需要允许使用相机，才能扫描 QR。");
+        return;
+      }
+    }
+
+    setQrScannerReady(true);
+    setQrCameraOpen(true);
+  }
+
+  function closeQrScanner() {
+    setQrCameraOpen(false);
+    setQrScannerReady(true);
+  }
+
+  function handleQrBarcodeScanned(result: BarcodeScanningResult) {
+    if (!qrScannerReady) {
+      return;
+    }
+
+    const qrText = result.data?.trim();
+
+    if (!qrText) {
+      return;
+    }
+
+    setQrScannerReady(false);
+    updateField("qrText", qrText);
+    setMode("qr");
+    setQrCameraOpen(false);
+  }
+
+  function refreshReviewSurfaces() {
+    externalCandidatesState.refresh();
+    draftQueueState.refresh();
+    mergeReviewState.refresh();
+  }
+
+  function dismissDraft(draftId: string) {
+    const cleanedDraftId = draftId.trim();
+
+    if (!cleanedDraftId) {
+      return;
+    }
+
+    setDismissedDraftIds((current) => {
+      const next = new Set(current);
+      next.add(cleanedDraftId);
+      return next;
+    });
+    setResult((current) =>
+      current?.draftId === cleanedDraftId ? null : current
+    );
+    setBusinessCardWriteResult(null);
+    setError(null);
+  }
+
+  function onOpenContacts() {
+    router.push({
+      pathname: "/contacts/list",
+      params: { refreshToken: contactsRefreshToken ?? Date.now().toString() }
+    });
+  }
+
+  function onOpenContact(contactId: string) {
+    router.push({
+      pathname: "/contacts/[id]",
+      params: { id: contactId }
+    });
+  }
+
+  function updateReviewField(
+    field: ContactDraftReviewFieldName,
+    value: string
+  ) {
+    setReviewFields((current) =>
+      current
+        ? {
+            ...current,
+            [field]: value
+          }
+        : current
+    );
+  }
+
+  async function saveReviewFields() {
+    if (!result || !reviewFields) {
+      return;
+    }
+
+    const request = buildContactDraftReviewRequest(result.draftId, reviewFields);
+
+    if (!request.success) {
+      setError(request.error);
+      return;
+    }
+
+    setReviewing(true);
+    setError(null);
+
+    try {
+      const response = await client.patch<unknown>(request.request.endpoint, {
+        body: request.request.body
+      });
+
+      if (response.success) {
+        const nextSummary = acquisitionResultToSummary(response.data);
+        setResult((current) =>
+          keepBusinessCardWriteCandidate(nextSummary, current)
+        );
+        refreshReviewSurfaces();
+      } else {
+        setError(response.error.message);
+      }
+    } catch (reviewError) {
+      setError(
+        reviewError instanceof Error
+          ? reviewError.message
+          : "名片字段暂时保存不了。"
+      );
+    } finally {
+      setReviewing(false);
+    }
   }
 
   async function submitSource() {
@@ -78,6 +361,7 @@ export function ContactAcquisitionScreen() {
 
     setSubmitting(true);
     setError(null);
+    setBusinessCardWriteResult(null);
 
     try {
       const response = await client.post<unknown>(request.request.endpoint, {
@@ -86,6 +370,7 @@ export function ContactAcquisitionScreen() {
 
       if (response.success) {
         setResult(acquisitionResultToSummary(response.data));
+        refreshReviewSurfaces();
       } else {
         setError(response.error.message);
       }
@@ -106,12 +391,14 @@ export function ContactAcquisitionScreen() {
 
     setConfirming(true);
     setError(null);
+    setBusinessCardWriteResult(null);
 
     try {
       const response = await client.post<unknown>(contactDraftConfirmPath(draftId));
 
       if (response.success) {
         setResult(acquisitionResultToSummary(response.data));
+        refreshReviewSurfaces();
       } else {
         setError(response.error.message);
       }
@@ -123,6 +410,213 @@ export function ContactAcquisitionScreen() {
       );
     } finally {
       setConfirming(false);
+    }
+  }
+
+  async function writeBusinessCardContact(summary: ContactAcquisitionSummary) {
+    const request = buildBusinessCardContactWriteRequest(summary, reviewFields);
+
+    if (!request.success) {
+      setError(request.error);
+      return;
+    }
+
+    setWritingContact(true);
+    setError(null);
+    setBusinessCardWriteResult(null);
+
+    try {
+      const response = await client.post<unknown>(request.request.endpoint, {
+        body: request.request.body
+      });
+
+      if (response.success) {
+        setBusinessCardWriteResult(
+          businessCardContactWriteToView(response.data)
+        );
+        setContactsRefreshToken(Date.now().toString());
+        refreshReviewSurfaces();
+      } else {
+        setError(response.error.message);
+      }
+    } catch (writeError) {
+      setError(
+        writeError instanceof Error
+          ? writeError.message
+          : "这张名片暂时写入不了。"
+      );
+    } finally {
+      setWritingContact(false);
+    }
+  }
+
+  async function applyMergeSuggestion(suggestion: ContactMergeSuggestionView) {
+    const request = buildContactMergeApplyRequest(suggestion.id);
+
+    if (!request.success) {
+      setError(request.error);
+      return;
+    }
+
+    setApplyingMergeSuggestionId(suggestion.id);
+    setError(null);
+
+    try {
+      const response = await client.post<unknown>(
+        request.request.endpoint ||
+          contactDraftMergeSuggestionApplyPath(suggestion.id),
+        {
+          body: request.request.body
+        }
+      );
+
+      if (response.success) {
+        setMergeApplyResult(contactMergeApplyToView(response.data));
+        refreshReviewSurfaces();
+      } else {
+        setError(response.error.message);
+      }
+    } catch (applyError) {
+      setError(
+        applyError instanceof Error
+          ? applyError.message
+          : "这条重复建议暂时确认不了。"
+      );
+    } finally {
+      setApplyingMergeSuggestionId(null);
+    }
+  }
+
+  async function importExternalContacts(sourceKind?: string | null) {
+    const request = buildExternalContactsImportRequest(sourceKind);
+    const importKey = sourceKind?.trim() || "all";
+
+    setImportingExternalSource(importKey);
+    setError(null);
+
+    try {
+      const response = await client.post<unknown>(request.request.endpoint, {
+        body: request.request.body
+      });
+
+      if (response.success) {
+        setExternalImportResult(contactExternalImportToView(response.data));
+        refreshReviewSurfaces();
+      } else {
+        setError(response.error.message);
+      }
+    } catch (importError) {
+      setError(
+        importError instanceof Error
+          ? importError.message
+          : "外部候选暂时导入不了。"
+      );
+    } finally {
+      setImportingExternalSource(null);
+    }
+  }
+
+  async function importEventAttendeesAsDrafts() {
+    const request = buildEventAttendeeContactDraftImportRequest(eventId);
+
+    if (!request.success) {
+      setError(request.error);
+      return;
+    }
+
+    setImportingEventDrafts(true);
+    setError(null);
+
+    try {
+      const response = await client.post<unknown>(
+        ORBIT_API_ENDPOINTS.contactDraftEventAttendeesImport,
+        {
+          body: request.request.body
+        }
+      );
+
+      if (response.success) {
+        setEventDraftImportResult(
+          eventAttendeeContactDraftImportToView(response.data)
+        );
+        refreshReviewSurfaces();
+      } else {
+        setError(response.error.message);
+      }
+    } catch (importError) {
+      setError(
+        importError instanceof Error
+          ? importError.message
+          : "活动名单暂时导入不了。"
+      );
+    } finally {
+      setImportingEventDrafts(false);
+    }
+  }
+
+  async function stageReferralRecommendations(
+    sourceKind?: ContactReferralSourceKind | null
+  ) {
+    const request = buildReferralRecommendationsRequest(sourceKind);
+    const sourceKey = sourceKind?.trim() || "all";
+
+    setStagingReferralSource(sourceKey);
+    setError(null);
+
+    try {
+      const response = await client.post<unknown>(request.request.endpoint, {
+        body: request.request.body
+      });
+
+      if (response.success) {
+        setReferralResult(contactReferralRecommendationsToView(response.data));
+        refreshReviewSurfaces();
+      } else {
+        setError(response.error.message);
+      }
+    } catch (referralError) {
+      setError(
+        referralError instanceof Error
+          ? referralError.message
+          : "引荐候选暂时生成不了。"
+      );
+    } finally {
+      setStagingReferralSource(null);
+    }
+  }
+
+  async function confirmReferralRecommendation(recommendationId: string) {
+    const request = buildRecommendedContactConfirmRequest(recommendationId);
+
+    if (!request.success) {
+      setError(request.error);
+      return;
+    }
+
+    setConfirmingRecommendationId(recommendationId);
+    setError(null);
+
+    try {
+      const response = await client.post<unknown>(request.request.endpoint, {
+        body: request.request.body
+      });
+
+      if (response.success) {
+        setRecommendedConfirmResult(
+          recommendedContactConfirmationToView(response.data)
+        );
+        refreshReviewSurfaces();
+      } else {
+        setError(response.error.message);
+      }
+    } catch (confirmError) {
+      setError(
+        confirmError instanceof Error
+          ? confirmError.message
+          : "这条引荐推荐暂时确认不了。"
+      );
+    } finally {
+      setConfirmingRecommendationId(null);
     }
   }
 
@@ -210,7 +704,21 @@ export function ContactAcquisitionScreen() {
   }
 
   return (
-    <AppScreen eyebrow="来源采集" title="添加人脉">
+    <AppScreen
+      eyebrow="来源采集"
+      refreshControl={
+        <RefreshControl
+          onRefresh={refreshReviewSurfaces}
+          refreshing={
+            externalCandidatesState.refreshing ||
+            draftQueueState.refreshing ||
+            mergeReviewState.refreshing
+          }
+          tintColor={colors.accent}
+        />
+      }
+      title="添加人脉"
+    >
       <DataCard detail="确认前不会写入联系人" title="选择来源">
         <View style={styles.modeRow}>
           {modes.map((item) => {
@@ -249,7 +757,16 @@ export function ContactAcquisitionScreen() {
         {mode === "manual" ? (
           <ManualFields form={form} updateField={updateField} />
         ) : null}
-        {mode === "qr" ? <QrFields form={form} updateField={updateField} /> : null}
+        {mode === "qr" ? (
+          <QrFields
+            form={form}
+            onCloseScanner={closeQrScanner}
+            onOpenScanner={openQrScanner}
+            onQrBarcodeScanned={handleQrBarcodeScanned}
+            qrCameraOpen={qrCameraOpen}
+            updateField={updateField}
+          />
+        ) : null}
         {mode === "businessCard" ? (
           <BusinessCardFields
             form={form}
@@ -276,13 +793,95 @@ export function ContactAcquisitionScreen() {
           </Text>
         </Pressable>
       </DataCard>
+      {eventId ? (
+        <EventContextDraftImportCard
+          eventId={eventId}
+          importing={importingEventDrafts}
+          onImport={importEventAttendeesAsDrafts}
+          view={eventDraftImportResult}
+        />
+      ) : null}
+      {externalCandidates ? (
+        <ContactExternalCandidatesCard
+          importingSource={importingExternalSource}
+          onImport={importExternalContacts}
+          onSelectSource={setSelectedExternalSource}
+          selectedSource={selectedExternalSource}
+          view={externalCandidates}
+        />
+      ) : null}
+      {externalImportResult ? (
+        <ContactExternalImportResultCard
+          confirming={confirming}
+          dismissedDraftIds={dismissedDraftIds}
+          onConfirm={confirmDraft}
+          onDismiss={dismissDraft}
+          view={externalImportResult}
+        />
+      ) : null}
+      <ReferralRecommendationsCard
+        confirming={confirming}
+        confirmingRecommendationId={confirmingRecommendationId}
+        dismissedDraftIds={dismissedDraftIds}
+        onConfirm={confirmDraft}
+        onConfirmRecommendation={confirmReferralRecommendation}
+        onDismiss={dismissDraft}
+        onSelectSource={setSelectedReferralSource}
+        onStage={stageReferralRecommendations}
+        selectedSource={selectedReferralSource}
+        stagingSource={stagingReferralSource}
+        view={referralResult}
+      />
+      {recommendedConfirmResult ? (
+        <RecommendedContactConfirmCard view={recommendedConfirmResult} />
+      ) : null}
       {result ? (
         <AcquisitionResultCard
+          contactWriteResult={businessCardWriteResult}
           confirming={confirming}
-          onBack={() => router.push("/contacts")}
           onConfirm={confirmDraft}
+          onDismiss={dismissDraft}
+          onOpenContact={onOpenContact}
+          onOpenContacts={onOpenContacts}
+          onReviewFieldChange={updateReviewField}
+          onSaveReview={saveReviewFields}
+          onWriteContact={writeBusinessCardContact}
+          reviewFields={reviewFields}
+          reviewing={reviewing}
           result={result}
+          writingContact={writingContact}
         />
+      ) : null}
+      {mergeReview ? (
+        <ContactMergeReviewCard
+          applyingSuggestionId={applyingMergeSuggestionId}
+          onApply={applyMergeSuggestion}
+          review={mergeReview}
+        />
+      ) : null}
+      {mergeApplyResult ? (
+        <ContactMergeApplyResultCard view={mergeApplyResult} />
+      ) : null}
+      {draftQueue ? (
+        <ContactDraftQueueCard
+          confirming={confirming}
+          dismissedDraftIds={dismissedDraftIds}
+          onConfirm={confirmDraft}
+          onDismiss={dismissDraft}
+          queue={draftQueue}
+        />
+      ) : null}
+      {draftQueueState.kind === "failure" ||
+      draftQueueState.kind === "offline" ? (
+        <Text style={styles.errorText}>{draftQueueState.error.message}</Text>
+      ) : null}
+      {mergeReviewState.kind === "failure" ||
+      mergeReviewState.kind === "offline" ? (
+        <Text style={styles.errorText}>{mergeReviewState.error.message}</Text>
+      ) : null}
+      {externalCandidatesState.kind === "failure" ||
+      externalCandidatesState.kind === "offline" ? (
+        <Text style={styles.errorText}>{externalCandidatesState.error.message}</Text>
       ) : null}
     </AppScreen>
   );
@@ -364,13 +963,67 @@ function ManualFields({
 
 function QrFields({
   form,
+  onCloseScanner,
+  onOpenScanner,
+  onQrBarcodeScanned,
+  qrCameraOpen,
   updateField
 }: {
   form: ContactAcquisitionFormState;
+  onCloseScanner: () => void;
+  onOpenScanner: () => void;
+  onQrBarcodeScanned: (result: BarcodeScanningResult) => void;
+  qrCameraOpen: boolean;
   updateField: (field: keyof ContactAcquisitionFormState, value: string) => void;
 }) {
   return (
     <>
+      {qrCameraOpen ? (
+        <View style={styles.qrScannerPanel}>
+          <CameraView
+            active={qrCameraOpen}
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            facing="back"
+            onBarcodeScanned={onQrBarcodeScanned}
+            style={styles.qrCamera}
+          />
+          <View style={styles.qrScanFrame}>
+            <View style={styles.qrScanCorner} />
+            <View style={[styles.qrScanCorner, styles.qrScanCornerRight]} />
+            <View style={[styles.qrScanCorner, styles.qrScanCornerBottom]} />
+            <View
+              style={[
+                styles.qrScanCorner,
+                styles.qrScanCornerRight,
+                styles.qrScanCornerBottom
+              ]}
+            />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onCloseScanner}
+            style={({ pressed }) => [
+              styles.scannerCloseButton,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Ionicons color={colors.onAccent} name="close-outline" size={18} />
+            <Text style={styles.scannerCloseText}>关闭扫描</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenScanner}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.accent} name="scan-outline" size={18} />
+          <Text style={styles.secondaryButtonText}>扫 QR</Text>
+        </Pressable>
+      )}
       <Input
         label="QR 内容"
         multiline
@@ -517,16 +1170,107 @@ function Input({
   );
 }
 
-function AcquisitionResultCard({
-  confirming,
-  onBack,
-  onConfirm,
-  result
+function EventContextDraftImportCard({
+  eventId,
+  importing,
+  onImport,
+  view
 }: {
+  eventId: string;
+  importing: boolean;
+  onImport: () => void;
+  view: EventAttendeeDraftImportView | null;
+}) {
+  return (
+    <DataCard detail={eventId} title="导入活动名单">
+      <Text style={styles.bodyText}>
+        把这场活动的参会者先放入待确认候选，逐条复核后再决定是否写入联系人。
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        disabled={importing}
+        onPress={onImport}
+        style={({ pressed }) => [
+          styles.secondaryButton,
+          importing ? styles.disabled : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.accent} name="person-add-outline" size={18} />
+        <Text style={styles.secondaryButtonText}>
+          {importing ? "导入中" : "导入为待确认候选"}
+        </Text>
+      </Pressable>
+      {view ? (
+        <View style={styles.draftQueueStack}>
+          <Text style={styles.helperText}>{view.summary}</Text>
+          {view.drafts.map((draft) => (
+            <View key={draft.id} style={styles.draftQueueItem}>
+              <View style={styles.draftQueueHeader}>
+                <View style={styles.draftQueueTitleGroup}>
+                  <Text numberOfLines={1} style={styles.draftQueueTitle}>
+                    {draft.name}
+                  </Text>
+                  {draft.detail ? (
+                    <Text numberOfLines={2} style={styles.draftQueueMeta}>
+                      {draft.detail}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.queueStateText}>{draft.statusLabel}</Text>
+              </View>
+              <Text style={styles.bodyText}>{draft.writeState}</Text>
+              <Text style={styles.bodyText}>{draft.relationship}</Text>
+              <Text style={styles.bodyText}>{draft.nextAction}</Text>
+              {draft.evidence.length > 0 ? (
+                <View style={styles.evidenceStack}>
+                  {draft.evidence.map((evidence) => (
+                    <Text key={`${draft.id}:${evidence}`} style={styles.evidenceText}>
+                      {evidence}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ))}
+          <Text style={styles.helperText}>{view.nextAction}</Text>
+          <Text style={styles.helperText}>
+            这里仍是待确认候选，不会跳过复核直接写入联系人。
+          </Text>
+        </View>
+      ) : null}
+    </DataCard>
+  );
+}
+
+function AcquisitionResultCard({
+  contactWriteResult,
+  confirming,
+  onConfirm,
+  onDismiss,
+  onOpenContact,
+  onOpenContacts,
+  onReviewFieldChange,
+  onSaveReview,
+  onWriteContact,
+  reviewFields,
+  reviewing,
+  result,
+  writingContact
+}: {
+  contactWriteResult: ContactBusinessCardWriteView | null;
   confirming: boolean;
-  onBack: () => void;
   onConfirm: (draftId: string) => void;
+  onDismiss: (draftId: string) => void;
+  onOpenContact: (contactId: string) => void;
+  onOpenContacts: () => void;
+  onReviewFieldChange: (field: ContactDraftReviewFieldName, value: string) => void;
+  onSaveReview: () => void;
+  onWriteContact: (summary: ContactAcquisitionSummary) => void;
+  reviewFields: ContactDraftReviewFormState | null;
+  reviewing: boolean;
   result: ContactAcquisitionSummary;
+  writingContact: boolean;
 }) {
   return (
     <DataCard
@@ -539,6 +1283,16 @@ function AcquisitionResultCard({
       ) : null}
       <Text style={styles.bodyText}>{result.confirmationText}</Text>
       <Text style={styles.bodyText}>{result.nextAction}</Text>
+      {result.reviewFields?.length && reviewFields ? (
+        <BusinessCardReviewFields
+          fields={result.reviewFields}
+          form={reviewFields}
+          onChange={onReviewFieldChange}
+          onSave={onSaveReview}
+          reviewing={reviewing}
+          saveLabel={result.reviewLabel ?? "保存复核字段"}
+        />
+      ) : null}
       {result.evidenceExcerpts.length > 0 ? (
         <View style={styles.evidenceStack}>
           {result.evidenceExcerpts.map((excerpt) => (
@@ -548,7 +1302,30 @@ function AcquisitionResultCard({
           ))}
         </View>
       ) : null}
-      {result.canConfirm ? (
+      {contactWriteResult ? (
+        <ContactBusinessCardWriteResultCard
+          onOpenContact={onOpenContact}
+          view={contactWriteResult}
+        />
+      ) : null}
+      {result.contactWrite ? (
+        <Pressable
+          accessibilityRole="button"
+          disabled={writingContact}
+          onPress={() => onWriteContact(result)}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            writingContact ? styles.disabled : null,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.onAccent} name="person-add-outline" size={18} />
+          <Text style={styles.primaryButtonText}>
+            {writingContact ? "写入中" : result.contactWriteLabel ?? "写入联系人"}
+          </Text>
+        </Pressable>
+      ) : null}
+      {result.canConfirm && !result.contactWrite ? (
         <Pressable
           accessibilityRole="button"
           disabled={confirming}
@@ -564,12 +1341,15 @@ function AcquisitionResultCard({
             {confirming ? "确认中" : result.confirmLabel}
           </Text>
         </Pressable>
-      ) : (
+      ) : !result.contactWrite ? (
         <Text style={styles.confirmedText}>{result.confirmLabel}</Text>
-      )}
+      ) : null}
+      {result.canConfirm ? (
+        <DismissDraftButton onPress={() => onDismiss(result.draftId)} />
+      ) : null}
       <Pressable
         accessibilityRole="button"
-        onPress={onBack}
+        onPress={onOpenContacts}
         style={({ pressed }) => [
           styles.secondaryButton,
           pressed ? styles.pressed : null
@@ -578,6 +1358,745 @@ function AcquisitionResultCard({
         <Ionicons color={colors.accent} name="people-outline" size={18} />
         <Text style={styles.secondaryButtonText}>回到人脉</Text>
       </Pressable>
+    </DataCard>
+  );
+}
+
+function ContactBusinessCardWriteResultCard({
+  onOpenContact,
+  view
+}: {
+  onOpenContact: (contactId: string) => void;
+  view: ContactBusinessCardWriteView;
+}) {
+  return (
+    <View style={styles.contactWriteResult}>
+      <View style={styles.contactWriteHeader}>
+        <Text style={styles.contactWriteTitle}>{view.title}</Text>
+        <Text style={styles.contactWriteStatus}>{view.statusLabel}</Text>
+      </View>
+      <Text style={styles.bodyText}>{view.detail}</Text>
+      <Text style={styles.helperText}>{view.nextAction}</Text>
+      {view.contactId ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onOpenContact(view.contactId!)}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.accent} name="person-circle-outline" size={18} />
+          <Text style={styles.secondaryButtonText}>
+            {view.openContactLabel}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function BusinessCardReviewFields({
+  fields,
+  form,
+  onChange,
+  onSave,
+  reviewing,
+  saveLabel
+}: {
+  fields: NonNullable<ContactAcquisitionSummary["reviewFields"]>;
+  form: ContactDraftReviewFormState;
+  onChange: (field: ContactDraftReviewFieldName, value: string) => void;
+  onSave: () => void;
+  reviewing: boolean;
+  saveLabel: string;
+}) {
+  return (
+    <View style={styles.reviewPanel}>
+      <View style={styles.reviewHeader}>
+        <Text style={styles.reviewTitle}>名片字段复核</Text>
+        <Text style={styles.helperText}>保存后仍然只是候选，不会写入联系人。</Text>
+      </View>
+      {fields.map((field) => (
+        <View key={field.field} style={styles.reviewFieldBlock}>
+          <View style={styles.reviewFieldHeader}>
+            <Text style={styles.inputLabel}>{field.label}</Text>
+            <Text style={styles.reviewMetaText}>
+              {field.confidenceLabel} · {field.stateLabel}
+            </Text>
+          </View>
+          <TextInput
+            onChangeText={(value) => onChange(field.field, value)}
+            placeholder={field.value || field.label}
+            placeholderTextColor={colors.text4}
+            style={styles.input}
+            value={form[field.field]}
+          />
+        </View>
+      ))}
+      <Pressable
+        accessibilityRole="button"
+        disabled={reviewing}
+        onPress={onSave}
+        style={({ pressed }) => [
+          styles.secondaryButton,
+          reviewing ? styles.disabled : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.accent} name="save-outline" size={18} />
+        <Text style={styles.secondaryButtonText}>
+          {reviewing ? "保存中" : saveLabel}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ContactExternalCandidatesCard({
+  importingSource,
+  onImport,
+  onSelectSource,
+  selectedSource,
+  view
+}: {
+  importingSource: string | null;
+  onImport: (sourceKind?: string | null) => void;
+  onSelectSource: (sourceKind: string | null) => void;
+  selectedSource: string | null;
+  view: ContactExternalCandidatesView;
+}) {
+  const activeSource = selectedSource?.trim() || null;
+  const visibleCandidates = activeSource
+    ? view.candidates.filter((candidate) => candidate.sourceKind === activeSource)
+    : view.candidates;
+  const importKey = activeSource || "all";
+  const importing = importingSource === importKey;
+
+  return (
+    <DataCard detail={view.summary} title="外部导入">
+      <Text style={styles.bodyText}>{view.nextAction}</Text>
+      {view.sources.length > 0 ? (
+        <View style={styles.externalSourceRow}>
+          <SourceChip
+            active={!activeSource}
+            countLabel={`${view.candidates.length} 个候选`}
+            label="全部"
+            onPress={() => onSelectSource(null)}
+          />
+          {view.sources.map((source) => (
+            <SourceChip
+              active={activeSource === source.id}
+              countLabel={source.countLabel}
+              key={source.id}
+              label={source.label}
+              onPress={() => onSelectSource(source.id)}
+              stateLabel={source.stateLabel}
+            />
+          ))}
+        </View>
+      ) : null}
+      {view.emptyText ? (
+        <Text style={styles.helperText}>{view.emptyText}</Text>
+      ) : null}
+      {visibleCandidates.length > 0 ? (
+        <View style={styles.draftQueueStack}>
+          {visibleCandidates.map((candidate) => (
+            <ExternalCandidateItem candidate={candidate} key={candidate.id} />
+          ))}
+        </View>
+      ) : null}
+      <Text style={styles.helperText}>生成待确认候选，不会直接写联系人。</Text>
+      <Pressable
+        accessibilityRole="button"
+        disabled={Boolean(importingSource) || view.candidates.length === 0}
+        onPress={() => onImport(activeSource)}
+        style={({ pressed }) => [
+          styles.primaryButton,
+          Boolean(importingSource) || view.candidates.length === 0
+            ? styles.disabled
+            : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.onAccent} name="cloud-upload-outline" size={18} />
+        <Text style={styles.primaryButtonText}>
+          {importing ? "导入中" : "导入为候选"}
+        </Text>
+      </Pressable>
+    </DataCard>
+  );
+}
+
+function SourceChip({
+  active,
+  countLabel,
+  label,
+  onPress,
+  stateLabel
+}: {
+  active: boolean;
+  countLabel: string;
+  label: string;
+  onPress: () => void;
+  stateLabel?: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.sourceChip,
+        active ? styles.sourceChipActive : null,
+        pressed ? styles.pressed : null
+      ]}
+    >
+      <Text style={[styles.sourceChipTitle, active ? styles.sourceChipTitleActive : null]}>
+        {label}
+      </Text>
+      <Text style={[styles.sourceChipMeta, active ? styles.sourceChipMetaActive : null]}>
+        {[countLabel, stateLabel].filter(Boolean).join(" · ")}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ExternalCandidateItem({
+  candidate
+}: {
+  candidate: ContactExternalCandidateView;
+}) {
+  return (
+    <View style={styles.externalCandidateItem}>
+      <View style={styles.draftQueueHeader}>
+        <View style={styles.draftQueueTitleGroup}>
+          <Text numberOfLines={1} style={styles.draftQueueTitle}>
+            {candidate.name}
+          </Text>
+          {candidate.detail ? (
+            <Text numberOfLines={2} style={styles.draftQueueMeta}>
+              {candidate.detail}
+            </Text>
+          ) : null}
+        </View>
+        <Text style={styles.mergeReviewBadge}>{candidate.confidenceLabel}</Text>
+      </View>
+      <View style={styles.externalMetaRow}>
+        <Text style={styles.sourceText}>{candidate.sourceLabel}</Text>
+        <Text style={styles.queueStateText}>{candidate.duplicateText}</Text>
+      </View>
+      <Text style={styles.bodyText}>{candidate.nextAction}</Text>
+    </View>
+  );
+}
+
+function ContactExternalImportResultCard({
+  confirming,
+  dismissedDraftIds,
+  onConfirm,
+  onDismiss,
+  view
+}: {
+  confirming: boolean;
+  dismissedDraftIds: Set<string>;
+  onConfirm: (draftId: string) => void;
+  onDismiss: (draftId: string) => void;
+  view: ContactExternalImportView;
+}) {
+  const visibleDrafts = view.drafts.filter(
+    (draft) => !dismissedDraftIds.has(draft.draftId)
+  );
+
+  return (
+    <DataCard detail={view.summary} title={view.title}>
+      <Text style={styles.bodyText}>{view.nextAction}</Text>
+      <Text style={styles.helperText}>{view.safetyText}</Text>
+      {visibleDrafts.length > 0 ? (
+        <View style={styles.draftQueueStack}>
+          {visibleDrafts.map((draft) => (
+            <View key={draft.draftId || draft.title} style={styles.draftQueueItem}>
+              <View style={styles.draftQueueHeader}>
+                <View style={styles.draftQueueTitleGroup}>
+                  <Text numberOfLines={1} style={styles.draftQueueTitle}>
+                    {draft.title}
+                  </Text>
+                  {draft.detail ? (
+                    <Text numberOfLines={2} style={styles.draftQueueMeta}>
+                      {draft.detail}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.queueStateText}>{draft.stateLabel}</Text>
+              </View>
+              {draft.sourceLabel ? (
+                <Text style={styles.sourceText}>{draft.sourceLabel}</Text>
+              ) : null}
+              <Text style={styles.bodyText}>{draft.confirmationText}</Text>
+              <Text style={styles.bodyText}>{draft.nextAction}</Text>
+              {draft.canConfirm ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={confirming}
+                  onPress={() => onConfirm(draft.draftId)}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    confirming ? styles.disabled : null,
+                    pressed ? styles.pressed : null
+                  ]}
+                >
+                  <Ionicons
+                    color={colors.accent}
+                    name="checkmark-circle-outline"
+                    size={18}
+                  />
+                  <Text style={styles.secondaryButtonText}>
+                    {confirming ? "确认中" : draft.confirmLabel}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {draft.canConfirm ? (
+                <DismissDraftButton onPress={() => onDismiss(draft.draftId)} />
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : view.drafts.length > 0 ? (
+        <Text style={styles.helperText}>{localDismissText}</Text>
+      ) : null}
+    </DataCard>
+  );
+}
+
+function ReferralRecommendationsCard({
+  confirming,
+  confirmingRecommendationId,
+  dismissedDraftIds,
+  onConfirm,
+  onConfirmRecommendation,
+  onDismiss,
+  onSelectSource,
+  onStage,
+  selectedSource,
+  stagingSource,
+  view
+}: {
+  confirming: boolean;
+  confirmingRecommendationId: string | null;
+  dismissedDraftIds: Set<string>;
+  onConfirm: (draftId: string) => void;
+  onConfirmRecommendation: (recommendationId: string) => void;
+  onDismiss: (draftId: string) => void;
+  onSelectSource: (sourceKind: ContactReferralSourceKind | null) => void;
+  onStage: (sourceKind?: ContactReferralSourceKind | null) => void;
+  selectedSource: ContactReferralSourceKind | null;
+  stagingSource: string | null;
+  view: ContactReferralRecommendationsView | null;
+}) {
+  const sources = view?.sources.length ? view.sources : referralSourceOptions;
+  const activeSource = selectedSource;
+  const visibleRecommendations = activeSource
+    ? view?.recommendations.filter(
+        (recommendation) => recommendation.sourceKind === activeSource
+      ) ?? []
+    : view?.recommendations ?? [];
+  const visibleDrafts = activeSource
+    ? view?.drafts.filter((draft) => draft.sourceLabel === "朋友引荐") ?? []
+    : view?.drafts ?? [];
+  const visibleReviewDrafts = visibleDrafts.filter(
+    (draft) => !dismissedDraftIds.has(draft.draftId)
+  );
+  const sourceKey = activeSource ?? "all";
+  const staging = stagingSource === sourceKey;
+
+  return (
+    <DataCard
+      detail={view?.summary ?? "从可信推荐人生成候选"}
+      title="朋友引荐"
+    >
+      <Text style={styles.bodyText}>
+        {view?.nextAction ?? "选择一个引荐来源，先生成待确认候选。"}
+      </Text>
+      <View style={styles.externalSourceRow}>
+        <SourceChip
+          active={!activeSource}
+          countLabel={
+            view ? `${view.recommendations.length} 条推荐` : "全部来源"
+          }
+          label="全部"
+          onPress={() => onSelectSource(null)}
+        />
+        {sources.map((source) => (
+          <SourceChip
+            active={activeSource === source.id}
+            countLabel={source.countLabel}
+            key={source.id}
+            label={source.label}
+            onPress={() => onSelectSource(source.id)}
+          />
+        ))}
+      </View>
+      <Text style={styles.helperText}>
+        {view?.safetyText ?? "只生成待确认候选，不会发消息，也不会写联系人。"}
+      </Text>
+      {view?.emptyText ? (
+        <Text style={styles.helperText}>{view.emptyText}</Text>
+      ) : null}
+      {visibleRecommendations.length > 0 ? (
+        <View style={styles.draftQueueStack}>
+          {visibleRecommendations.map((recommendation) => (
+            <ReferralRecommendationItem
+              confirming={confirmingRecommendationId === recommendation.id}
+              key={recommendation.id}
+              onConfirm={onConfirmRecommendation}
+              recommendation={recommendation}
+            />
+          ))}
+        </View>
+      ) : null}
+      {visibleReviewDrafts.length > 0 ? (
+        <View style={styles.draftQueueStack}>
+          {visibleReviewDrafts.map((draft) => (
+            <View key={draft.draftId || draft.title} style={styles.draftQueueItem}>
+              <View style={styles.draftQueueHeader}>
+                <View style={styles.draftQueueTitleGroup}>
+                  <Text numberOfLines={1} style={styles.draftQueueTitle}>
+                    {draft.title}
+                  </Text>
+                  {draft.detail ? (
+                    <Text numberOfLines={2} style={styles.draftQueueMeta}>
+                      {draft.detail}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.queueStateText}>{draft.stateLabel}</Text>
+              </View>
+              <Text style={styles.sourceText}>{draft.sourceLabel}</Text>
+              <Text style={styles.bodyText}>{draft.confirmationText}</Text>
+              <Text style={styles.bodyText}>{draft.nextAction}</Text>
+              {draft.canConfirm ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={confirming}
+                  onPress={() => onConfirm(draft.draftId)}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    confirming ? styles.disabled : null,
+                    pressed ? styles.pressed : null
+                  ]}
+                >
+                  <Ionicons
+                    color={colors.accent}
+                    name="checkmark-circle-outline"
+                    size={18}
+                  />
+                  <Text style={styles.secondaryButtonText}>
+                    {confirming ? "确认中" : draft.confirmLabel}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {draft.canConfirm ? (
+                <DismissDraftButton onPress={() => onDismiss(draft.draftId)} />
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : visibleDrafts.length > 0 ? (
+        <Text style={styles.helperText}>{localDismissText}</Text>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        disabled={Boolean(stagingSource)}
+        onPress={() => onStage(activeSource)}
+        style={({ pressed }) => [
+          styles.primaryButton,
+          Boolean(stagingSource) ? styles.disabled : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.onAccent} name="git-network-outline" size={18} />
+        <Text style={styles.primaryButtonText}>
+          {staging ? "生成中" : "生成引荐候选"}
+        </Text>
+      </Pressable>
+    </DataCard>
+  );
+}
+
+function ReferralRecommendationItem({
+  confirming,
+  onConfirm,
+  recommendation
+}: {
+  confirming: boolean;
+  onConfirm: (recommendationId: string) => void;
+  recommendation: ContactReferralRecommendationsView["recommendations"][number];
+}) {
+  return (
+    <View style={styles.externalCandidateItem}>
+      <View style={styles.draftQueueHeader}>
+        <View style={styles.draftQueueTitleGroup}>
+          <Text numberOfLines={1} style={styles.draftQueueTitle}>
+            {recommendation.name}
+          </Text>
+          {recommendation.detail ? (
+            <Text numberOfLines={2} style={styles.draftQueueMeta}>
+              {recommendation.detail}
+            </Text>
+          ) : null}
+        </View>
+        <Text style={styles.mergeReviewBadge}>
+          {recommendation.confidenceLabel}
+        </Text>
+      </View>
+      <View style={styles.externalMetaRow}>
+        <Text style={styles.sourceText}>{recommendation.sourceLabel}</Text>
+      </View>
+      <Text style={styles.bodyText}>{recommendation.recommenderLine}</Text>
+      <Text style={styles.bodyText}>{recommendation.reason}</Text>
+      <Text style={styles.bodyText}>{recommendation.introductionPath}</Text>
+      <Text style={styles.helperText}>{recommendation.nextAction}</Text>
+      <Pressable
+        accessibilityRole="button"
+        disabled={confirming}
+        onPress={() => onConfirm(recommendation.id)}
+        style={({ pressed }) => [
+          styles.secondaryButton,
+          confirming ? styles.disabled : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.accent} name="checkmark-outline" size={18} />
+        <Text style={styles.secondaryButtonText}>
+          {confirming ? "确认中" : "确认推荐"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function RecommendedContactConfirmCard({
+  view
+}: {
+  view: ContactRecommendedConfirmView;
+}) {
+  return (
+    <DataCard detail={view.summary} title={view.title}>
+      {view.detail ? <Text style={styles.bodyText}>{view.detail}</Text> : null}
+      <Text style={styles.sourceText}>确认人：{view.confirmedBy}</Text>
+      {view.evidenceExcerpts.length > 0 ? (
+        <View style={styles.evidenceStack}>
+          {view.evidenceExcerpts.map((excerpt) => (
+            <Text key={excerpt} style={styles.evidenceText}>
+              {excerpt}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+      <Text style={styles.bodyText}>{view.nextAction}</Text>
+      <Text style={styles.helperText}>{view.safetyText}</Text>
+    </DataCard>
+  );
+}
+
+function ContactDraftQueueCard({
+  confirming,
+  dismissedDraftIds,
+  onConfirm,
+  onDismiss,
+  queue
+}: {
+  confirming: boolean;
+  dismissedDraftIds: Set<string>;
+  onConfirm: (draftId: string) => void;
+  onDismiss: (draftId: string) => void;
+  queue: ContactDraftQueueView;
+}) {
+  const visibleDrafts = queue.drafts.filter(
+    (draft) => !dismissedDraftIds.has(draft.draftId)
+  );
+
+  return (
+    <DataCard detail={queue.summary} title="待确认候选">
+      <Text style={styles.bodyText}>{queue.nextAction}</Text>
+      {queue.emptyText ? (
+        <Text style={styles.helperText}>{queue.emptyText}</Text>
+      ) : null}
+      {visibleDrafts.length > 0 ? (
+        <View style={styles.draftQueueStack}>
+          {visibleDrafts.map((draft) => (
+            <View key={draft.draftId || draft.title} style={styles.draftQueueItem}>
+              <View style={styles.draftQueueHeader}>
+                <View style={styles.draftQueueTitleGroup}>
+                  <Text numberOfLines={1} style={styles.draftQueueTitle}>
+                    {draft.title}
+                  </Text>
+                  {draft.detail ? (
+                    <Text numberOfLines={2} style={styles.draftQueueMeta}>
+                      {draft.detail}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.queueStateText}>{draft.stateLabel}</Text>
+              </View>
+              {draft.sourceLabel ? (
+                <Text style={styles.sourceText}>{draft.sourceLabel}</Text>
+              ) : null}
+              <Text style={styles.bodyText}>{draft.writeState}</Text>
+              <Text style={styles.bodyText}>{draft.confirmationText}</Text>
+              {draft.evidenceExcerpts.length > 0 ? (
+                <View style={styles.evidenceStack}>
+                  {draft.evidenceExcerpts.map((excerpt) => (
+                    <Text key={excerpt} style={styles.evidenceText}>
+                      {excerpt}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+              <Text style={styles.bodyText}>{draft.nextAction}</Text>
+              {draft.canConfirm ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={confirming}
+                  onPress={() => onConfirm(draft.draftId)}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    confirming ? styles.disabled : null,
+                    pressed ? styles.pressed : null
+                  ]}
+                >
+                  <Ionicons
+                    color={colors.accent}
+                    name="checkmark-circle-outline"
+                    size={18}
+                  />
+                  <Text style={styles.secondaryButtonText}>
+                    {confirming ? "确认中" : draft.confirmLabel}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {draft.canConfirm ? (
+                <DismissDraftButton onPress={() => onDismiss(draft.draftId)} />
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : queue.drafts.length > 0 ? (
+        <Text style={styles.helperText}>{localDismissText}</Text>
+      ) : null}
+    </DataCard>
+  );
+}
+
+function DismissDraftButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.secondaryButton,
+        pressed ? styles.pressed : null
+      ]}
+    >
+      <Ionicons color={colors.text3} name="archive-outline" size={18} />
+      <Text style={styles.dismissButtonText}>暂不处理</Text>
+    </Pressable>
+  );
+}
+
+function ContactMergeReviewCard({
+  applyingSuggestionId,
+  onApply,
+  review
+}: {
+  applyingSuggestionId: string | null;
+  onApply: (suggestion: ContactMergeSuggestionView) => void;
+  review: ContactMergeReviewView;
+}) {
+  return (
+    <DataCard detail={review.summary} title="重复检查">
+      <Text style={styles.bodyText}>{review.nextAction}</Text>
+      {review.emptyText ? (
+        <Text style={styles.helperText}>{review.emptyText}</Text>
+      ) : null}
+      {review.suggestions.length > 0 ? (
+        <View style={styles.draftQueueStack}>
+          {review.suggestions.map((suggestion) => (
+            <View key={suggestion.id} style={styles.mergeReviewItem}>
+              <View style={styles.mergeReviewHeader}>
+                <View style={styles.draftQueueTitleGroup}>
+                  <Text numberOfLines={2} style={styles.mergeReviewTitle}>
+                    {suggestion.title}
+                  </Text>
+                  <Text style={styles.mergeReviewDecision}>
+                    {suggestion.decisionLabel}
+                  </Text>
+                </View>
+                <Text style={styles.mergeReviewBadge}>
+                  {suggestion.confidenceLabel}
+                </Text>
+              </View>
+              <Text style={styles.bodyText}>{suggestion.importedLabel}</Text>
+              <Text style={styles.bodyText}>{suggestion.existingLabel}</Text>
+              <Text style={styles.helperText}>{suggestion.reviewQuestion}</Text>
+              {suggestion.fieldDecisions.length > 0 ? (
+                <View style={styles.mergeFieldStack}>
+                  {suggestion.fieldDecisions.map((line) => (
+                    <Text key={line} style={styles.evidenceText}>
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+              <Text style={styles.helperText}>{suggestion.guardrail}</Text>
+              <Pressable
+                accessibilityRole="button"
+                disabled={applyingSuggestionId === suggestion.id}
+                onPress={() => onApply(suggestion)}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  applyingSuggestionId === suggestion.id ? styles.disabled : null,
+                  pressed ? styles.pressed : null
+                ]}
+              >
+                <Ionicons
+                  color={colors.accent}
+                  name="git-merge-outline"
+                  size={18}
+                />
+                <Text style={styles.secondaryButtonText}>
+                  {applyingSuggestionId === suggestion.id
+                    ? "确认中"
+                    : "确认合并预览"}
+                </Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </DataCard>
+  );
+}
+
+function ContactMergeApplyResultCard({
+  view
+}: {
+  view: ContactMergeApplyView;
+}) {
+  return (
+    <DataCard detail={view.summary} title={view.title}>
+      {view.detail ? <Text style={styles.bodyText}>{view.detail}</Text> : null}
+      <Text style={styles.sourceText}>确认人：{view.confirmedBy}</Text>
+      {view.fieldDecisions.length > 0 ? (
+        <View style={styles.mergeFieldStack}>
+          {view.fieldDecisions.map((line) => (
+            <Text key={line} style={styles.evidenceText}>
+              {line}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+      <Text style={styles.bodyText}>{view.nextAction}</Text>
+      <Text style={styles.helperText}>{view.safetyText}</Text>
     </DataCard>
   );
 }
@@ -629,8 +2148,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5
   },
+  contactWriteHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between"
+  },
+  contactWriteResult: {
+    backgroundColor: colors.liveSoft,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.md
+  },
+  contactWriteStatus: {
+    color: colors.live,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 16
+  },
+  contactWriteTitle: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 20
+  },
   disabled: {
     opacity: 0.55
+  },
+  dismissButtonText: {
+    color: colors.text3,
+    fontSize: typography.body,
+    fontWeight: "700"
+  },
+  draftQueueHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between"
+  },
+  draftQueueItem: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.md
+  },
+  draftQueueMeta: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 18
+  },
+  draftQueueStack: {
+    gap: spacing.sm
+  },
+  draftQueueTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "700",
+    lineHeight: 21
+  },
+  draftQueueTitleGroup: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0
   },
   errorText: {
     color: colors.rose,
@@ -648,6 +2232,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     overflow: "hidden",
     padding: spacing.md
+  },
+  externalCandidateItem: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.md
+  },
+  externalMetaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs
+  },
+  externalSourceRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
   },
   helperText: {
     color: colors.text3,
@@ -708,6 +2311,45 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm
   },
+  mergeFieldStack: {
+    gap: spacing.xs
+  },
+  mergeReviewBadge: {
+    backgroundColor: colors.amberSoft,
+    borderRadius: radius.pill,
+    color: colors.amber,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  mergeReviewDecision: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  mergeReviewHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between"
+  },
+  mergeReviewItem: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.md
+  },
+  mergeReviewTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "700",
+    lineHeight: 21
+  },
   placeholderText: {
     color: colors.text2,
     fontSize: typography.small,
@@ -734,6 +2376,95 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     fontWeight: "700"
   },
+  queueStateText: {
+    backgroundColor: colors.accentSofter,
+    borderRadius: radius.pill,
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  qrCamera: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0
+  },
+  qrScanCorner: {
+    borderColor: colors.onAccent,
+    borderLeftWidth: 3,
+    borderTopWidth: 3,
+    height: 32,
+    left: 0,
+    position: "absolute",
+    top: 0,
+    width: 32
+  },
+  qrScanCornerBottom: {
+    bottom: 0,
+    top: "auto",
+    transform: [{ rotate: "270deg" }]
+  },
+  qrScanCornerRight: {
+    left: "auto",
+    right: 0,
+    transform: [{ rotate: "90deg" }]
+  },
+  qrScanFrame: {
+    alignSelf: "center",
+    aspectRatio: 1,
+    borderColor: "rgba(255, 255, 255, 0.28)",
+    borderRadius: radius.control,
+    borderWidth: 1,
+    height: "58%",
+    pointerEvents: "none",
+    position: "absolute",
+    top: "18%"
+  },
+  qrScannerPanel: {
+    aspectRatio: 0.82,
+    backgroundColor: colors.ink,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    overflow: "hidden",
+    position: "relative"
+  },
+  reviewFieldBlock: {
+    gap: spacing.xs
+  },
+  reviewFieldHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between"
+  },
+  reviewHeader: {
+    gap: spacing.xs
+  },
+  reviewMetaText: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  reviewPanel: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: spacing.md,
+    padding: spacing.md
+  },
+  reviewTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "700",
+    lineHeight: 21
+  },
   secondaryButton: {
     alignItems: "center",
     alignSelf: "flex-start",
@@ -749,6 +2480,58 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: typography.small,
     fontWeight: "700"
+  },
+  scannerCloseButton: {
+    alignItems: "center",
+    alignSelf: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.82)",
+    borderColor: "rgba(255, 255, 255, 0.25)",
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    bottom: spacing.md,
+    flexDirection: "row",
+    gap: spacing.xs,
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
+    position: "absolute"
+  },
+  scannerCloseText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "800"
+  },
+  sourceChip: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border2,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: 3,
+    minHeight: 50,
+    minWidth: 112,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  sourceChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent
+  },
+  sourceChipMeta: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 17
+  },
+  sourceChipMetaActive: {
+    color: colors.onAccent
+  },
+  sourceChipTitle: {
+    color: colors.text,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 19
+  },
+  sourceChipTitleActive: {
+    color: colors.onAccent
   },
   sourceText: {
     alignSelf: "flex-start",

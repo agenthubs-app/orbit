@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
+import { useState } from "react";
 import {
+  ImageBackground,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
   dashboardAggregatePath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -24,6 +27,15 @@ import {
   type PlatformReviewItemView,
   type PlatformStatView
 } from "../../view-models/platform";
+
+function assetUrl(baseUrl: string, path: string): string {
+  if (/^https?:\/\//iu.test(path)) {
+    return path;
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
+}
 
 export function PlatformScreen() {
   const eventsState = useApiResource<unknown>(
@@ -97,11 +109,33 @@ function PlatformContent({
   profile: unknown;
 }) {
   const router = useRouter();
+  const [decidedReviewIds, setDecidedReviewIds] = useState<
+    Record<string, "approved" | "rejected">
+  >({});
+  const [decisionFeedback, setDecisionFeedback] = useState<string | null>(null);
   const view = platformToView({
     dashboard,
     events,
     profile
   });
+  const reviewQueue = view.reviewQueue.filter(
+    (item) => !decidedReviewIds[item.id]
+  );
+
+  function onDecideReviewItem(
+    item: PlatformReviewItemView,
+    decision: "approved" | "rejected"
+  ) {
+    setDecidedReviewIds((current) => ({
+      ...current,
+      [item.id]: decision
+    }));
+    setDecisionFeedback(
+      decision === "approved"
+        ? `已批准并发布 ${item.title}。`
+        : `已驳回 ${item.title}，请主办方补充后再提交。`
+    );
+  }
 
   return (
     <>
@@ -109,15 +143,29 @@ function PlatformContent({
         <StatGrid stats={view.stats} />
       </DataCard>
 
-      {view.reviewQueue.length > 0 ? (
+      {decisionFeedback ? (
+        <View style={styles.decisionFeedback}>
+          <Ionicons color={colors.live} name="checkmark-circle-outline" size={17} />
+          <Text style={styles.decisionFeedbackText}>{decisionFeedback}</Text>
+        </View>
+      ) : null}
+
+      {reviewQueue.length > 0 ? (
         <ReviewQueueCard
-          items={view.reviewQueue}
+          items={reviewQueue}
+          onDecideReviewItem={onDecideReviewItem}
           onOpenEvent={(href) => router.push(href)}
         />
       ) : (
         <EmptyState
-          message={view.emptyReviewMessage}
-          title={view.emptyReviewTitle}
+          message={
+            view.reviewQueue.length > 0
+              ? "当前没有待审核的活动。"
+              : view.emptyReviewMessage
+          }
+          title={
+            view.reviewQueue.length > 0 ? "审核队列已清空" : view.emptyReviewTitle
+          }
         />
       )}
 
@@ -149,42 +197,99 @@ function StatGrid({ stats }: { stats: PlatformStatView[] }) {
 
 function ReviewQueueCard({
   items,
+  onDecideReviewItem,
   onOpenEvent
 }: {
   items: PlatformReviewItemView[];
+  onDecideReviewItem: (
+    item: PlatformReviewItemView,
+    decision: "approved" | "rejected"
+  ) => void;
   onOpenEvent: (href: Href) => void;
 }) {
+  const { baseUrl } = useOrbitApiBaseUrl();
+
   return (
     <DataCard detail={`${items.length} 个活动需要优先确认`} title="待复核活动">
       <View style={styles.list}>
         {items.map((item) => (
-          <Pressable
-            accessibilityRole="button"
-            key={item.id}
-            onPress={() => onOpenEvent(item.href)}
-            style={({ pressed }) => [
-              styles.eventRow,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <View style={styles.eventIcon}>
-              <Text style={styles.eventIconText}>{item.title.slice(0, 1)}</Text>
+          <View key={item.id} style={styles.reviewItem}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => onOpenEvent(item.href)}
+              style={({ pressed }) => [
+                styles.eventRow,
+                pressed ? styles.pressed : null
+              ]}
+            >
+              {item.coverPath ? (
+                <ImageBackground
+                  imageStyle={styles.eventThumbImage}
+                  source={{ uri: assetUrl(baseUrl, item.coverPath) }}
+                  style={styles.eventThumbFrame}
+                >
+                  <View style={styles.eventThumbOverlay} />
+                </ImageBackground>
+              ) : (
+                <View style={styles.eventIcon}>
+                  <Text style={styles.eventFallbackText}>
+                    {item.title.slice(0, 1)}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.eventCopy}>
+                <View style={styles.eventTitleRow}>
+                  <Text numberOfLines={2} style={styles.itemTitle}>
+                    {item.title}
+                  </Text>
+                  <View style={styles.stateBadge}>
+                    <Text style={styles.stateText}>{item.stateLabel}</Text>
+                  </View>
+                </View>
+                <View style={styles.eventMetaStack}>
+                  <View style={styles.eventMetaLine}>
+                    <Ionicons color={colors.text3} name="time-outline" size={14} />
+                    <Text numberOfLines={1} style={styles.metaText}>
+                      {item.submitted}
+                    </Text>
+                  </View>
+                  <View style={styles.eventMetaLine}>
+                    <Ionicons color={colors.text3} name="location-outline" size={14} />
+                    <Text numberOfLines={1} style={styles.metaText}>
+                      {item.location}
+                    </Text>
+                  </View>
+                </View>
+                <Text numberOfLines={2} style={styles.detailText}>
+                  {item.detail}
+                </Text>
+              </View>
+            </Pressable>
+            <View style={styles.reviewActionRow}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onDecideReviewItem(item, "rejected")}
+                style={({ pressed }) => [
+                  styles.rejectButton,
+                  pressed ? styles.pressed : null
+                ]}
+              >
+                <Ionicons color={colors.rose} name="close-outline" size={16} />
+                <Text style={styles.rejectButtonText}>驳回</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onDecideReviewItem(item, "approved")}
+                style={({ pressed }) => [
+                  styles.approveButton,
+                  pressed ? styles.pressed : null
+                ]}
+              >
+                <Ionicons color={colors.onAccent} name="checkmark-outline" size={16} />
+                <Text style={styles.approveButtonText}>批准并发布</Text>
+              </Pressable>
             </View>
-            <View style={styles.eventCopy}>
-              <Text numberOfLines={2} style={styles.itemTitle}>
-                {item.title}
-              </Text>
-              <Text numberOfLines={1} style={styles.metaText}>
-                {item.submitted} · {item.location}
-              </Text>
-              <Text numberOfLines={2} style={styles.detailText}>
-                {item.detail}
-              </Text>
-            </View>
-            <View style={styles.stateBadge}>
-              <Text style={styles.stateText}>{item.stateLabel}</Text>
-            </View>
-          </Pressable>
+          </View>
         ))}
       </View>
     </DataCard>
@@ -250,6 +355,39 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md
   },
+  approveButton: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.control,
+    flexDirection: "row",
+    gap: spacing.xs,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  approveButtonText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "700"
+  },
+  decisionFeedback: {
+    alignItems: "flex-start",
+    backgroundColor: colors.liveSoft,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    padding: spacing.md
+  },
+  decisionFeedbackText: {
+    color: colors.live,
+    flex: 1,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 20
+  },
   detailText: {
     color: colors.text2,
     fontSize: typography.small,
@@ -260,6 +398,11 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     minWidth: 0
   },
+  eventFallbackText: {
+    color: colors.accent,
+    fontSize: typography.section,
+    fontWeight: "700"
+  },
   eventIcon: {
     alignItems: "center",
     backgroundColor: colors.accentSofter,
@@ -268,13 +411,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 48
   },
-  eventIconText: {
-    color: colors.accent,
-    fontSize: typography.section,
-    fontWeight: "700"
+  eventMetaLine: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    maxWidth: "100%",
+    minWidth: 0
+  },
+  eventMetaStack: {
+    gap: spacing.xxs
   },
   eventRow: {
-    alignItems: "center",
+    alignItems: "flex-start",
     backgroundColor: colors.bgSunken,
     borderColor: colors.border,
     borderRadius: radius.md,
@@ -284,8 +432,29 @@ const styles = StyleSheet.create({
     minHeight: 92,
     padding: spacing.md
   },
+  eventThumbFrame: {
+    backgroundColor: colors.surface3,
+    borderRadius: radius.md,
+    height: 76,
+    overflow: "hidden",
+    width: 76
+  },
+  eventThumbImage: {
+    borderRadius: radius.md
+  },
+  eventThumbOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10,10,16,0.08)"
+  },
+  eventTitleRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between"
+  },
   itemTitle: {
     color: colors.ink,
+    flexShrink: 1,
     fontSize: typography.body,
     fontWeight: "700",
     lineHeight: 20
@@ -300,6 +469,38 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.82,
     transform: [{ translateY: 0.5 }]
+  },
+  rejectButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  rejectButtonText: {
+    color: colors.rose,
+    fontSize: typography.small,
+    fontWeight: "700"
+  },
+  reviewActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    justifyContent: "flex-end"
+  },
+  reviewItem: {
+    backgroundColor: colors.bgSunken,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.sm
   },
   statCell: {
     backgroundColor: colors.bgSunken,

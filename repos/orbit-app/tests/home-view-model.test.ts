@@ -201,6 +201,118 @@ test("home relationship workbench is a fixed three-cell row", () => {
   assert.match(source, /pipelineDivider:\s*\{/u);
 });
 
+test("home events route renders events as an image-first list", () => {
+  const source = readFileSync(
+    new URL("../src/screens/home/HomeScreen.tsx", import.meta.url),
+    "utf8"
+  );
+  const contentStart = source.indexOf("function HomeEventsContent");
+  const imageListStart = source.indexOf("function EventImageList");
+  const contentSource = source.slice(contentStart, imageListStart);
+
+  assert.ok(contentStart > -1);
+  assert.ok(imageListStart > contentStart);
+  assert.match(source, /filterEventSummaries/u);
+  assert.match(source, /eventDiscoveryFilterCounts/u);
+  assert.match(source, /eventDiscoveryTopics/u);
+  assert.match(source, /function HomeEventDiscoveryControls/u);
+  assert.match(
+    source,
+    /const homeEventFilterOrder: HomeEventFilter\[\] = \[\s*"all",\s*"upcoming",\s*"active",\s*"ended"\s*\]/su
+  );
+  assert.match(source, /eventQuery,\s*setEventQuery/u);
+  assert.match(source, /eventTopicFilter,\s*setEventTopicFilter/u);
+  assert.match(source, /placeholder="搜索活动、地点或主题"/u);
+  assert.match(source, /function EventImageList/u);
+  assert.match(source, /function EventImageCard/u);
+  assert.match(source, /styles\.homeEventImageList/u);
+  assert.match(source, /styles\.homeEventImageCard/u);
+  assert.match(source, /styles\.homeEventImageFrame/u);
+  assert.match(source, /styles\.homeEventImageContent/u);
+  assert.match(source, /styles\.homeEventImageTopRow/u);
+  assert.match(source, /styles\.homeEventImageBottom/u);
+  assert.match(source, /styles\.homeEventImageDateChip/u);
+  assert.match(source, /styles\.homeEventImageStatusPill/u);
+  assert.match(source, /styles\.homeEventImageTitle/u);
+  assert.match(source, /styles\.homeEventImageMetaRow/u);
+  assert.match(source, /event\.participantCountLabel/u);
+  assert.match(source, /event\.actionLabel/u);
+  assert.match(
+    source,
+    /homeEventImageFrame:\s*\{[^}]*height:\s*300[^}]*width:\s*"100%"/su
+  );
+  assert.doesNotMatch(source, /homeEventImageFrame:\s*\{[^}]*padding:/su);
+  assert.match(
+    source,
+    /homeEventImageContent:\s*\{[^}]*\.\.\.StyleSheet\.absoluteFill[^}]*padding:\s*spacing\.lg/su
+  );
+  assert.doesNotMatch(source, /function EventModuleList/u);
+  assert.doesNotMatch(source, /function EventModuleCard/u);
+  assert.doesNotMatch(source, /styles\.homeEventModuleCoverFrame/u);
+  assert.doesNotMatch(source, /styles\.homeEventImageBody/u);
+  assert.doesNotMatch(source, /styles\.homeEventImageTopicRow/u);
+
+  const coverIndex = source.indexOf("style={styles.homeEventImageFrame}");
+  const titleIndex = source.indexOf("style={styles.homeEventImageTitle}");
+  const ctaIndex = source.indexOf("style={styles.homeEventImageCta}");
+  const coverCloseIndex = source.indexOf("</ImageBackground>", coverIndex);
+
+  assert.ok(titleIndex > -1);
+  assert.ok(coverIndex > -1);
+  assert.ok(coverIndex < titleIndex);
+  assert.ok(titleIndex < coverCloseIndex);
+  assert.ok(ctaIndex > titleIndex);
+  assert.ok(ctaIndex < coverCloseIndex);
+  assert.match(contentSource, /<EventImageList/u);
+  assert.match(contentSource, /events=\{filteredEvents\}/u);
+  assert.ok(
+    contentSource.indexOf("<EventImageList") <
+      contentSource.indexOf("<HomeEventDiscoveryControls"),
+    "home events should open with image modules before discovery controls"
+  );
+  assert.doesNotMatch(contentSource, /homeEventFilterBlock/u);
+  assert.doesNotMatch(contentSource, /title="活动状态"/u);
+  assert.doesNotMatch(contentSource, /<EventRow/u);
+});
+
+test("home hub event preview also uses the image-first event list", () => {
+  const source = readFileSync(
+    new URL("../src/screens/home/HomeScreen.tsx", import.meta.url),
+    "utf8"
+  );
+  const hubStart = source.indexOf("function HomeHubContent");
+  const profileStart = source.indexOf("function HomeProfilePanel");
+  const hubSource = source.slice(hubStart, profileStart);
+
+  assert.match(hubSource, /<EventImageList/u);
+  assert.doesNotMatch(hubSource, /<EventRow/u);
+});
+
+test("home event image cards keep time and location labels readable", () => {
+  const source = readFileSync(
+    new URL("../src/screens/home/HomeScreen.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /homeEventImageMetaRow:\s*\{[^}]*gap:\s*spacing\.xs/su
+  );
+  assert.doesNotMatch(
+    source,
+    /homeEventImageMetaRow:\s*\{[^}]*flexDirection:\s*"row"/su
+  );
+  assert.match(
+    source,
+    /homeEventImageMetaLine:\s*\{[^}]*maxWidth:\s*"100%"/su
+  );
+  assert.match(
+    source,
+    /homeEventImageDetail:\s*\{[^}]*flexShrink:\s*1/su
+  );
+  assert.doesNotMatch(source, /homeEventImageDetail:\s*\{[^}]*flex:\s*1/su);
+});
+
 test("homeFilteredEvents applies the same filters as the web home events view", () => {
   const view = homeToView({
     contacts: contactsPayload,

@@ -29,7 +29,7 @@ export function ApiSettingsScreen() {
 
   async function saveBaseUrl() {
     const result = await setBaseUrl(draftBaseUrl);
-    setMessage(result.success ? "Server address saved." : result.error);
+    setMessage(result.success ? "服务器地址已保存。" : result.error);
   }
 
   async function checkServerHealth() {
@@ -56,7 +56,7 @@ export function ApiSettingsScreen() {
       setHealthMessage(
         checkError instanceof Error
           ? checkError.message
-          : "Could not check this server."
+          : "暂时无法检查这台服务器。"
       );
     } finally {
       setCheckingHealth(false);
@@ -66,18 +66,18 @@ export function ApiSettingsScreen() {
   async function resetServerAddress() {
     await resetBaseUrl();
     setHealthMessage(null);
-    setMessage("Server address reset.");
+    setMessage("服务器地址已重置。");
   }
 
   return (
-    <AppScreen eyebrow="Development" title="Server">
+    <AppScreen eyebrow="开发设置" title="服务器">
       <DataCard
-        detail={ready ? baseUrl : "Loading saved address"}
-        title="Current server"
+        detail={ready ? baseUrl : "正在读取已保存地址"}
+        title="当前服务器"
       />
       <DataCard
-        detail="Use localhost for the iOS simulator. Use your Mac LAN address or remote server for a physical iPhone."
-        title="Server address"
+        detail="iOS 模拟器使用 localhost；真机请填写 Mac 的局域网地址或远程服务器地址。"
+        title="服务器地址"
       >
         <View style={styles.form}>
           <TextInput
@@ -99,7 +99,7 @@ export function ApiSettingsScreen() {
                 pressed ? styles.pressed : null
               ]}
             >
-              <Text style={styles.primaryButtonText}>Save</Text>
+              <Text style={styles.primaryButtonText}>保存</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -112,7 +112,7 @@ export function ApiSettingsScreen() {
               ]}
             >
               <Text style={styles.secondaryButtonText}>
-                {checkingHealth ? "Checking" : "Check"}
+                {checkingHealth ? "检查中" : "检查"}
               </Text>
             </Pressable>
             <Pressable
@@ -123,7 +123,7 @@ export function ApiSettingsScreen() {
                 pressed ? styles.pressed : null
               ]}
             >
-              <Text style={styles.secondaryButtonText}>Reset</Text>
+              <Text style={styles.secondaryButtonText}>重置</Text>
             </Pressable>
           </View>
           {message || error ? (

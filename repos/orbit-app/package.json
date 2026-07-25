@@ -5,21 +5,25 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
+    "sync:contract": "node scripts/sync-contract.mjs",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --import tsx \"tests/**/*.test.ts\""
+    "test": "node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs \"tests/**/*.test.ts\" \"tests/**/*.test.tsx\""
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.2",
     "@expo/vector-icons": "latest",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.8",
+    "expo-camera": "~57.0.3",
     "expo-constants": "latest",
     "expo-crypto": "~57.0.1",
+    "expo-document-picker": "~57.0.1",
     "expo-image-picker": "^57.0.6",
     "expo-linking": "~57.0.4",
     "expo-router": "~57.0.8",
     "expo-secure-store": "~57.0.1",
+    "expo-sqlite": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "expo-web-browser": "~57.0.2",
     "react": "^19.2.3",

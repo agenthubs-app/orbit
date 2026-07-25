@@ -14,6 +14,43 @@ export interface EventRegistrationView {
   statusLabel: string;
 }
 
+export interface EventRegistrationInterviewTurn {
+  answer: string;
+  field: string;
+  prompt: string;
+}
+
+export interface EventRegistrationAdaptiveBody {
+  language: "zh";
+  transcript: EventRegistrationInterviewTurn[];
+}
+
+export interface EventRegistrationAdaptiveQuestionView {
+  acknowledgment: string;
+  field: string;
+  options: string[];
+  prompt: string;
+}
+
+export interface EventRegistrationAdaptiveStepView {
+  done: boolean;
+  question: EventRegistrationAdaptiveQuestionView | null;
+  statusText: string;
+}
+
+export interface EventRegistrationPersonaView {
+  energyStyle: string;
+  industryTags: string[];
+  nextAction: string;
+  offering: string;
+  openers: string[];
+  safetyText: string;
+  seeking: string;
+  tagline: string;
+  tags: string[];
+  title: string;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -51,6 +88,26 @@ function containsImplementationLabel(value: string): boolean {
 
 function userFacingText(value: string): string {
   return containsImplementationLabel(value) ? "" : value.trim();
+}
+
+function userFacingList(value: unknown, limit = 5): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map(userFacingText)
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function envelopeData(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  return value.success === true && "data" in value ? value.data : value;
 }
 
 function questionPrompt(value: string): string {
@@ -158,4 +215,73 @@ export function buildEventRegistrationAnswers(
       .map((question) => [question.field, rawAnswers[question.field]?.trim() ?? ""])
       .filter(([, value]) => value)
   );
+}
+
+export function buildEventRegistrationAdaptiveBody(
+  questions: EventRegistrationQuestionView[],
+  rawAnswers: Record<string, string>,
+  extraTurns: EventRegistrationInterviewTurn[] = []
+): EventRegistrationAdaptiveBody {
+  const questionTurns = questions
+    .map((question) => ({
+      answer: rawAnswers[question.field]?.trim() ?? "",
+      field: question.field,
+      prompt: question.prompt
+    }))
+    .filter((turn) => turn.answer && turn.field && turn.prompt);
+  const transcript = [...questionTurns, ...extraTurns]
+    .map((turn) => ({
+      answer: turn.answer.trim(),
+      field: turn.field.trim(),
+      prompt: turn.prompt.trim()
+    }))
+    .filter((turn) => turn.answer && turn.field && turn.prompt);
+
+  return {
+    language: "zh",
+    transcript
+  };
+}
+
+export function eventRegistrationAdaptiveStepToView(
+  data: unknown
+): EventRegistrationAdaptiveStepView {
+  const payload = envelopeData(data);
+  const record = isRecord(payload) ? payload : {};
+  const done = record.done === true;
+  const question = isRecord(record.question) ? record.question : null;
+
+  return {
+    done,
+    question: question
+      ? {
+          acknowledgment: userFacingText(stringField(question, "acknowledgment")),
+          field: stringField(question, "field"),
+          options: userFacingList(question.options, 4),
+          prompt: userFacingText(stringField(question, "prompt"))
+        }
+      : null,
+    statusText: done ? "画像信息够了" : "继续补充画像"
+  };
+}
+
+export function eventRegistrationPersonaToView(
+  data: unknown
+): EventRegistrationPersonaView {
+  const payload = envelopeData(data);
+  const record = isRecord(payload) ? payload : {};
+  const persona = isRecord(record.persona) ? record.persona : record;
+
+  return {
+    energyStyle: userFacingText(stringField(persona, "energyStyle")),
+    industryTags: userFacingList(persona.industryTags, 3),
+    nextAction: "检查这段介绍。确认报名后，它只服务这场活动的匹配。",
+    offering: userFacingText(stringField(persona, "offering")),
+    openers: userFacingList(persona.openers, 3),
+    safetyText: "不会写入个人主页，也不会自动发消息。",
+    seeking: userFacingText(stringField(persona, "seeking")),
+    tagline: userFacingText(stringField(persona, "tagline")),
+    tags: userFacingList(persona.tags, 5),
+    title: "活动画像"
+  };
 }

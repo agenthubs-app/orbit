@@ -20,12 +20,26 @@ type ScheduleTimelineModule = typeof schedule & {
         href: string;
         id: string;
         kind: "event" | "followup";
+        coverPath?: string;
         reason: string;
+        participantCountLabel?: string;
+        location?: string;
         statusLabel: string;
         subtitle: string;
         timeLabel: string;
         title: string;
       }>;
+      title: string;
+    }>;
+    eventHighlights: Array<{
+      coverPath?: string;
+      href: string;
+      id: string;
+      kind: "event" | "followup";
+      location?: string;
+      participantCountLabel?: string;
+      statusLabel: string;
+      timeLabel: string;
       title: string;
     }>;
     stats: Array<{ label: string; value: string }>;
@@ -129,6 +143,12 @@ test("scheduleToTimelineView combines followups and upcoming events into a Chine
     view.sections[0]?.items[1]?.reason,
     "先看活动时间、地点和参会目标，再决定要准备的介绍。"
   );
+  assert.equal(
+    view.sections[0]?.items[1]?.coverPath,
+    "/orbit-covers/events/investor-founder-salon.jpg"
+  );
+  assert.equal(view.sections[0]?.items[1]?.location, "Shibuya");
+  assert.equal(view.sections[0]?.items[1]?.participantCountLabel, "报名人数待确认");
   assert.doesNotMatch(
     JSON.stringify(view),
     /\b(mock|fixture|provider|source-backed|implementation|command-center)\b/iu
@@ -195,4 +215,24 @@ test("scheduleToTimelineView keeps stale today followups from hiding upcoming ev
   );
   assert.equal(view.sections[1]?.title, "8月4日 周二");
   assert.equal(view.sections[1]?.items[0]?.kind, "event");
+  assert.deepEqual(
+    view.eventHighlights.map((item) => ({
+      coverPath: item.coverPath,
+      href: item.href,
+      kind: item.kind,
+      statusLabel: item.statusLabel,
+      timeLabel: item.timeLabel,
+      title: item.title
+    })),
+    [
+      {
+        coverPath: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
+        href: "/schedule/events/event_signup_02",
+        kind: "event",
+        statusLabel: "已确认",
+        timeLabel: "14:00",
+        title: "东京 AI 落地伙伴报名会"
+      }
+    ]
+  );
 });

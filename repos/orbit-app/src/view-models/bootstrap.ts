@@ -83,7 +83,7 @@ function userFacingNextActionCopy(value: string): string {
 
 function userFacingWorkspaceName(value: string): string {
   if (!value || containsImplementationLabel(value) || /\bgenerated\b/i.test(value)) {
-    return "Orbit 人脉工作台";
+    return "Orbit";
   }
 
   return value;

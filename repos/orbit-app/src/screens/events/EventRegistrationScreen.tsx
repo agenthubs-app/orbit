@@ -12,6 +12,8 @@ import {
 import {
   eventDetailPath,
   eventRegistrationCancelPath,
+  eventRegistrationInterviewPath,
+  eventRegistrationPersonaPath,
   eventRegistrationPath
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -23,7 +25,13 @@ import { colors, radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
+  buildEventRegistrationAdaptiveBody,
   buildEventRegistrationAnswers,
+  eventRegistrationAdaptiveStepToView,
+  eventRegistrationPersonaToView,
+  type EventRegistrationAdaptiveQuestionView,
+  type EventRegistrationInterviewTurn,
+  type EventRegistrationPersonaView,
   eventRegistrationToView,
   type EventRegistrationQuestionView,
   type EventRegistrationView
@@ -67,6 +75,21 @@ export function EventRegistrationScreen() {
       ? eventDetailToSummary(eventState.data)
       : null;
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [adaptiveAnswer, setAdaptiveAnswer] = useState("");
+  const [adaptiveError, setAdaptiveError] = useState<string | null>(null);
+  const [adaptivePending, setAdaptivePending] = useState<
+    "interview" | "persona" | null
+  >(null);
+  const [adaptiveQuestion, setAdaptiveQuestion] =
+    useState<EventRegistrationAdaptiveQuestionView | null>(null);
+  const [adaptiveStatusText, setAdaptiveStatusText] =
+    useState("继续补充画像");
+  const [adaptiveTurns, setAdaptiveTurns] = useState<
+    EventRegistrationInterviewTurn[]
+  >([]);
+  const [persona, setPersona] = useState<EventRegistrationPersonaView | null>(
+    null
+  );
   const [feedback, setFeedback] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<"cancel" | "register" | null>(
@@ -75,6 +98,12 @@ export function EventRegistrationScreen() {
 
   useEffect(() => {
     setAnswers(answersFromView(registrationView));
+    setAdaptiveAnswer("");
+    setAdaptiveError(null);
+    setAdaptiveQuestion(null);
+    setAdaptiveStatusText("继续补充画像");
+    setAdaptiveTurns([]);
+    setPersona(null);
   }, [registrationData]);
 
   function refresh() {
@@ -87,6 +116,85 @@ export function EventRegistrationScreen() {
       ...current,
       [question.field]: value
     }));
+  }
+
+  function adaptiveBody() {
+    const nextTurns =
+      adaptiveQuestion && adaptiveAnswer.trim()
+        ? [
+            ...adaptiveTurns,
+            {
+              answer: adaptiveAnswer,
+              field: adaptiveQuestion.field,
+              prompt: adaptiveQuestion.prompt
+            }
+          ]
+        : adaptiveTurns;
+
+    return buildEventRegistrationAdaptiveBody(
+      registrationView?.questions ?? [],
+      answers,
+      nextTurns
+    );
+  }
+
+  async function requestAdaptiveQuestion() {
+    if (!registrationView) {
+      return;
+    }
+
+    const body = adaptiveBody();
+
+    setAdaptivePending("interview");
+    setAdaptiveError(null);
+
+    const result = await client.post<unknown>(
+      eventRegistrationInterviewPath(eventId),
+      { body }
+    );
+
+    if (result.success) {
+      const nextStep = eventRegistrationAdaptiveStepToView(result.data);
+      setAdaptiveTurns(body.transcript);
+      setAdaptiveAnswer("");
+      setAdaptiveQuestion(nextStep.question);
+      setAdaptiveStatusText(nextStep.statusText);
+    } else {
+      setAdaptiveError(result.error.message);
+    }
+
+    setAdaptivePending(null);
+  }
+
+  async function generateAdaptivePersona() {
+    if (!registrationView) {
+      return;
+    }
+
+    const body = adaptiveBody();
+
+    if (body.transcript.length === 0) {
+      setAdaptiveError("先回答一题，再生成活动画像。");
+      return;
+    }
+
+    setAdaptivePending("persona");
+    setAdaptiveError(null);
+
+    const result = await client.post<unknown>(
+      eventRegistrationPersonaPath(eventId),
+      { body }
+    );
+
+    if (result.success) {
+      setAdaptiveTurns(body.transcript);
+      setAdaptiveAnswer("");
+      setPersona(eventRegistrationPersonaToView(result.data));
+    } else {
+      setAdaptiveError(result.error.message);
+    }
+
+    setAdaptivePending(null);
   }
 
   async function submitRegistration() {
@@ -166,10 +274,16 @@ export function EventRegistrationScreen() {
       ) : null}
       {event && registrationView ? (
         <RegistrationForm
+          adaptiveAnswer={adaptiveAnswer}
+          adaptiveError={adaptiveError}
+          adaptivePending={adaptivePending}
+          adaptiveQuestion={adaptiveQuestion}
+          adaptiveStatusText={adaptiveStatusText}
           answers={answers}
           eventMeta={[event.startsAt, event.location].filter(Boolean).join(" · ")}
           eventTitle={event.title}
           feedback={feedback}
+          onAdaptiveAnswerChange={setAdaptiveAnswer}
           onBack={() =>
             router.push({
               params: { id: eventId },
@@ -177,9 +291,12 @@ export function EventRegistrationScreen() {
             })
           }
           onCancel={cancelRegistration}
+          onGenerateAdaptivePersona={generateAdaptivePersona}
+          onRequestAdaptiveQuestion={requestAdaptiveQuestion}
           onSetAnswer={setAnswer}
           onSubmit={submitRegistration}
           pendingAction={pendingAction}
+          persona={persona}
           registration={registrationView}
           submitError={submitError}
         />
@@ -189,27 +306,45 @@ export function EventRegistrationScreen() {
 }
 
 function RegistrationForm({
+  adaptiveAnswer,
+  adaptiveError,
+  adaptivePending,
+  adaptiveQuestion,
+  adaptiveStatusText,
   answers,
   eventMeta,
   eventTitle,
   feedback,
+  onAdaptiveAnswerChange,
   onBack,
   onCancel,
+  onGenerateAdaptivePersona,
+  onRequestAdaptiveQuestion,
   onSetAnswer,
   onSubmit,
   pendingAction,
+  persona,
   registration,
   submitError
 }: {
+  adaptiveAnswer: string;
+  adaptiveError: string | null;
+  adaptivePending: "interview" | "persona" | null;
+  adaptiveQuestion: EventRegistrationAdaptiveQuestionView | null;
+  adaptiveStatusText: string;
   answers: Record<string, string>;
   eventMeta: string;
   eventTitle: string;
   feedback: string | null;
+  onAdaptiveAnswerChange: (value: string) => void;
   onBack: () => void;
   onCancel: () => void;
+  onGenerateAdaptivePersona: () => void;
+  onRequestAdaptiveQuestion: () => void;
   onSetAnswer: (question: EventRegistrationQuestionView, value: string) => void;
   onSubmit: () => void;
   pendingAction: "cancel" | "register" | null;
+  persona: EventRegistrationPersonaView | null;
   registration: EventRegistrationView;
   submitError: string | null;
 }) {
@@ -283,7 +418,142 @@ function RegistrationForm({
           </Pressable>
         ) : null}
       </DataCard>
+      <AdaptiveRegistrationCard
+        answer={adaptiveAnswer}
+        error={adaptiveError}
+        onAnswerChange={onAdaptiveAnswerChange}
+        onGeneratePersona={onGenerateAdaptivePersona}
+        onRequestQuestion={onRequestAdaptiveQuestion}
+        pending={adaptivePending}
+        persona={persona}
+        question={adaptiveQuestion}
+        statusText={adaptiveStatusText}
+      />
     </>
+  );
+}
+
+function AdaptiveRegistrationCard({
+  answer,
+  error,
+  onAnswerChange,
+  onGeneratePersona,
+  onRequestQuestion,
+  pending,
+  persona,
+  question,
+  statusText
+}: {
+  answer: string;
+  error: string | null;
+  onAnswerChange: (value: string) => void;
+  onGeneratePersona: () => void;
+  onRequestQuestion: () => void;
+  pending: "interview" | "persona" | null;
+  persona: EventRegistrationPersonaView | null;
+  question: EventRegistrationAdaptiveQuestionView | null;
+  statusText: string;
+}) {
+  return (
+    <DataCard detail={statusText} title="活动画像">
+      <Text style={styles.bodyText}>
+        用几轮问答，把你在这场活动里的介绍写清楚。
+      </Text>
+      {question ? (
+        <View style={styles.adaptiveQuestionBlock}>
+          {question.acknowledgment ? (
+            <Text style={styles.feedbackText}>{question.acknowledgment}</Text>
+          ) : null}
+          <RegistrationQuestion
+            answer={answer}
+            onChange={onAnswerChange}
+            question={{
+              answer: "",
+              field: question.field,
+              id: question.field,
+              options: question.options,
+              prompt: question.prompt
+            }}
+          />
+        </View>
+      ) : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {persona ? <PersonaPreview persona={persona} /> : null}
+      <View style={styles.adaptiveActionsRow}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={pending !== null}
+          onPress={onRequestQuestion}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            pending ? styles.disabled : null,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.accent} name="chatbubble-outline" size={17} />
+          <Text style={styles.secondaryButtonText}>
+            {pending === "interview" ? "生成中" : "下一题"}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          disabled={pending !== null}
+          onPress={onGeneratePersona}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            pending ? styles.disabled : null,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.onAccent} name="sparkles-outline" size={17} />
+          <Text style={styles.primaryButtonText}>
+            {pending === "persona" ? "生成中" : "生成活动画像"}
+          </Text>
+        </Pressable>
+      </View>
+    </DataCard>
+  );
+}
+
+function PersonaPreview({
+  persona
+}: {
+  persona: EventRegistrationPersonaView;
+}) {
+  return (
+    <View style={styles.personaPreview}>
+      <Text style={styles.personaTitle}>{persona.tagline}</Text>
+      {persona.tags.length > 0 ? (
+        <View style={styles.personaTagsRow}>
+          {persona.tags.map((tag) => (
+            <Text key={tag} style={styles.personaTag}>
+              {tag}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+      {persona.industryTags.length > 0 ? (
+        <Text style={styles.bodyText}>{persona.industryTags.join(" · ")}</Text>
+      ) : null}
+      {persona.energyStyle ? (
+        <Text style={styles.bodyText}>{persona.energyStyle}</Text>
+      ) : null}
+      {persona.seeking ? <Text style={styles.bodyText}>{persona.seeking}</Text> : null}
+      {persona.offering ? (
+        <Text style={styles.bodyText}>{persona.offering}</Text>
+      ) : null}
+      {persona.openers.length > 0 ? (
+        <View style={styles.openersStack}>
+          {persona.openers.map((opener) => (
+            <Text key={opener} style={styles.evidenceText}>
+              {opener}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+      <Text style={styles.evidenceText}>{persona.safetyText}</Text>
+      <Text style={styles.evidenceText}>{persona.nextAction}</Text>
+    </View>
   );
 }
 
@@ -338,6 +608,14 @@ function RegistrationQuestion({
 }
 
 const styles = StyleSheet.create({
+  adaptiveActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  adaptiveQuestionBlock: {
+    gap: spacing.sm
+  },
   answerInput: {
     backgroundColor: colors.surface2,
     borderColor: colors.border2,
@@ -349,6 +627,11 @@ const styles = StyleSheet.create({
     minHeight: 86,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md
+  },
+  bodyText: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 20
   },
   cancelButton: {
     alignItems: "center",
@@ -378,6 +661,11 @@ const styles = StyleSheet.create({
     color: colors.text3,
     fontSize: typography.caption,
     fontWeight: "600"
+  },
+  evidenceText: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 17
   },
   feedbackText: {
     color: colors.live,
@@ -409,6 +697,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.xs
+  },
+  openersStack: {
+    gap: spacing.xs
+  },
+  personaPreview: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.md
+  },
+  personaTag: {
+    backgroundColor: colors.accentSofter,
+    borderRadius: radius.pill,
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    overflow: "hidden",
+    paddingHorizontal: 9,
+    paddingVertical: 5
+  },
+  personaTagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs
+  },
+  personaTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 22
   },
   pressed: {
     opacity: 0.82,

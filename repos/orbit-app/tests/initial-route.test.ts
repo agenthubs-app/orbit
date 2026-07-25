@@ -13,7 +13,7 @@ describe("resolveInitialRouteHref", () => {
     assert.equal(resolveInitialRouteHref("/contacts"), "/contacts");
     assert.equal(resolveInitialRouteHref("dashboard"), "/dashboard");
     assert.equal(resolveInitialRouteHref("followups"), "/followups");
-    assert.equal(resolveInitialRouteHref("home"), "/home");
+    assert.equal(resolveInitialRouteHref("home"), "/ai");
     assert.equal(resolveInitialRouteHref("home/events"), "/home/events");
     assert.equal(resolveInitialRouteHref("inbox"), "/inbox");
     assert.equal(resolveInitialRouteHref("login-admin"), "/login-admin");
@@ -24,11 +24,24 @@ describe("resolveInitialRouteHref", () => {
     assert.equal(resolveInitialRouteHref("admin/access"), "/admin/access");
     assert.equal(resolveInitialRouteHref("account"), "/account");
     assert.equal(resolveInitialRouteHref("account/login"), "/account/login");
+    assert.equal(
+      resolveInitialRouteHref("account/mobile-google"),
+      "/account/login"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/account/mobile-google"),
+      "/account/login"
+    );
+    assert.equal(
+      resolveInitialRouteHref("account/permissions"),
+      "/account/permissions"
+    );
     assert.equal(resolveInitialRouteHref("account/signup"), "/account/signup");
     assert.equal(
       resolveInitialRouteHref("account/forgot-password"),
       "/account/forgot-password"
     );
+    assert.equal(resolveInitialRouteHref("settings/api"), "/settings/api");
     assert.equal(resolveInitialRouteHref("party"), "/party");
     assert.equal(resolveInitialRouteHref("platform"), "/platform");
     assert.equal(resolveInitialRouteHref("register"), "/register");
@@ -80,6 +93,71 @@ describe("resolveInitialRouteHref", () => {
     );
     assert.equal(resolveInitialRouteHref("party/checkin"), "/party/checkin");
     assert.equal(resolveInitialRouteHref("party/graph"), "/party/graph");
+  });
+
+  it("normalizes web shell aliases for native startup routes", () => {
+    assert.equal(resolveInitialRouteHref("/app/events"), "/events");
+    assert.equal(resolveInitialRouteHref("/explore"), "/events");
+    assert.equal(resolveInitialRouteHref("/home/cards"), "/contacts/list");
+    assert.equal(resolveInitialRouteHref("/app/home/cards"), "/contacts/list");
+    assert.equal(resolveInitialRouteHref("/home/cards/scan"), "/contacts/new");
+    assert.equal(
+      resolveInitialRouteHref("/app/home/cards/scan"),
+      "/contacts/new"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/home/cards/contact_029"),
+      "/contacts/contact_029"
+    );
+    assert.equal(resolveInitialRouteHref("/home/schedule"), "/followups");
+    assert.equal(resolveInitialRouteHref("/home/profile"), "/profile");
+    assert.equal(
+      resolveInitialRouteHref("/agent?panel=events"),
+      "/agent?panel=events"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/events/event_signup_03?lang=zh"),
+      "/events/event_signup_03?lang=zh"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/register?code=event_signup_03"),
+      "/register/event_signup_03"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/app/register?code=event_signup_03"),
+      "/register/event_signup_03"
+    );
+  });
+
+  it("preserves query context for supported native startup routes", () => {
+    assert.equal(
+      resolveInitialRouteHref("/account/login?next=%2Fprofile"),
+      "/account/login?next=%2Fprofile"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/contacts?query=ai&status=active"),
+      "/contacts/list?query=ai&status=active"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/app/contacts?query=tokyo"),
+      "/contacts/list?query=tokyo"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/app/contacts?source=event_import"),
+      "/contacts/list?source=event_import"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/party?eventId=event_signup_03"),
+      "/party?eventId=event_signup_03"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/party/checkin?eventId=event_signup_03"),
+      "/party/checkin?eventId=event_signup_03"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/inbox?contactId=contact_029"),
+      "/inbox?contactId=contact_029"
+    );
   });
 
   it("falls back to the AI tab for unsupported values", () => {

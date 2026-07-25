@@ -1,5 +1,16 @@
+import type { ContractMatches } from "../contract-check";
+import type {
+  RelationshipStageCode,
+  RelationshipValueTypeCode,
+  SourceReferenceContract,
+  SourceTypeCode,
+} from "../contract/source";
+
 // shared/domain/source-types 是所有 feature contract 共用的枚举源头。
 // 业务模块应从这里复用 source/stage/value/permission 类型，避免各自发明字符串。
+//
+// 跨客户端可见的那几个枚举在 shared/contract/source.ts 里另有一份纯类型声明，
+// 供 iOS App 拷贝。文件末尾的断言保证两边不会漂移。
 export const SOURCE_TYPES = [
   "manual",
   "business_card_ocr",
@@ -273,3 +284,22 @@ export function isRsvpStatus(value: unknown): value is RsvpStatus {
 export function isNetworkCategory(value: unknown): value is NetworkCategory {
   return includesValue(NETWORK_CATEGORY_VALUES, value);
 }
+
+// 跨客户端契约一致性断言。任何一边改了枚举而另一边没跟上，这里就编译不过。
+// 修的时候两边一起改：本文件的常量数组 + shared/contract/source.ts。
+export type SourceTypeMatchesContract = ContractMatches<
+  SourceType,
+  SourceTypeCode
+>;
+export type RelationshipStageMatchesContract = ContractMatches<
+  RelationshipStage,
+  RelationshipStageCode
+>;
+export type RelationshipValueTypeMatchesContract = ContractMatches<
+  RelationshipValueType,
+  RelationshipValueTypeCode
+>;
+export type SourceReferenceMatchesContract = ContractMatches<
+  SourceReferenceDTO,
+  SourceReferenceContract
+>;

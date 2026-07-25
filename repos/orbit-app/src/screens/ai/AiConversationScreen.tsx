@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
+  Image,
   ImageBackground,
   Pressable,
   RefreshControl,
@@ -11,7 +12,11 @@ import {
   View
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { ORBIT_API_ENDPOINTS, aiConversationPath } from "../../api/endpoints";
+import {
+  ORBIT_API_ENDPOINTS,
+  aiConversationPath,
+  aiConversationSessionPath
+} from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -20,13 +25,24 @@ import { colors, radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
+  agentChatSessionPayloadToThreadView,
+  agentSessionUpdateRequestFromThread
+} from "../../view-models/agent-history";
+import {
+  aiRunDetailToView,
+  buildAiRunDetailRequest,
+  conversationAiRunReferencesFor,
   conversationInlinePanelsForThread,
   conversationPayloadToThreadView,
   conversationQuickRoutes,
   markdownBlocksFor,
   pendingConversationThreadView,
+  prioritizeConversationContacts,
+  prioritizeConversationEvents,
   shouldSubmitInitialPrompt,
   type ChatMessageView,
+  type AiRunDetailView,
+  type ConversationAiRunReferenceView,
   type ConversationInlinePanelView,
   type ConversationQuickRouteView,
   type ConversationThreadView,
@@ -78,19 +94,23 @@ function assetUrl(baseUrl: string, path: string): string {
 }
 
 export function AiConversationScreen() {
-  const { id, initialMessage } = useLocalSearchParams<{
+  const { id, initialMessage, source } = useLocalSearchParams<{
     id?: string | string[];
     initialMessage?: string | string[];
+    source?: string | string[];
   }>();
   const conversationId = firstParam(id);
   const initialPrompt = optionalParam(initialMessage).trim();
+  const isStoredAgentSession = optionalParam(source) === "session";
   const isDraftConversation = conversationId === "new" && !!initialPrompt;
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const client = useOrbitApiClient();
   const path = isDraftConversation
     ? ORBIT_API_ENDPOINTS.conversations
-    : aiConversationPath(conversationId);
+    : isStoredAgentSession
+      ? aiConversationSessionPath(conversationId)
+      : aiConversationPath(conversationId);
   const state = useApiResource<unknown>(
     path,
     (data) => conversationPayloadToThreadView(data).messages.length === 0
@@ -118,12 +138,34 @@ export function AiConversationScreen() {
     string | null
   >(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [aiRunError, setAiRunError] = useState<string | null>(null);
+  const [aiRunDetailView, setAiRunDetailView] =
+    useState<AiRunDetailView | null>(null);
+  const [pendingAiRunId, setPendingAiRunId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const submittedInitialPrompt = useRef<string | null>(null);
 
   function refresh() {
     setLatestData(null);
+    setAiRunError(null);
+    setAiRunDetailView(null);
     state.refresh();
+  }
+
+  function conversationHistoryForRequest() {
+    return thread
+      ? thread.messages
+          .map((item) => ({
+            content: item.content,
+            role: item.role
+          }))
+          .filter(
+            (item): item is { content: string; role: "assistant" | "user" } =>
+              Boolean(item.content.trim()) &&
+              (item.role === "assistant" || item.role === "user")
+          )
+          .slice(-8)
+      : undefined;
   }
 
   async function sendMessage() {
@@ -136,14 +178,17 @@ export function AiConversationScreen() {
 
     setSending(true);
     setSendError(null);
+    setAiRunError(null);
+    setAiRunDetailView(null);
 
     const sendPath = resolvedConversationId
       ? aiConversationPath(resolvedConversationId)
-      : isDraftConversation
+      : isDraftConversation || isStoredAgentSession
         ? ORBIT_API_ENDPOINTS.conversations
         : path;
     const result = await client.post<unknown>(sendPath, {
       body: {
+        history: isStoredAgentSession ? conversationHistoryForRequest() : undefined,
         locale: "zh",
         message
       }
@@ -154,6 +199,18 @@ export function AiConversationScreen() {
       setLatestData(result.data);
       setResolvedConversationId(nextThread.activeConversationId);
       setDraftMessage("");
+      if (isStoredAgentSession && previousSessionData) {
+        const sessionUpdate = agentSessionUpdateRequestFromThread({
+          previousSession: previousSessionData,
+          thread: nextThread
+        });
+
+        if (sessionUpdate) {
+          void client.post<unknown>(ORBIT_API_ENDPOINTS.aiConversationSessions, {
+            body: sessionUpdate
+          });
+        }
+      }
       state.refresh();
     } else {
       setSendError(result.error.message);
@@ -178,6 +235,8 @@ export function AiConversationScreen() {
     setResolvedConversationId(null);
     setSending(true);
     setSendError(null);
+    setAiRunError(null);
+    setAiRunDetailView(null);
 
     void client
       .post<unknown>(ORBIT_API_ENDPOINTS.conversations, {
@@ -203,10 +262,33 @@ export function AiConversationScreen() {
       .finally(() => setSending(false));
   }, [client, initialPrompt, isDraftConversation]);
 
+  async function inspectAiRun(reference: ConversationAiRunReferenceView) {
+    const request = buildAiRunDetailRequest(reference.id);
+
+    if (!request.success) {
+      setAiRunError(request.error);
+      return;
+    }
+
+    setPendingAiRunId(reference.id);
+    setAiRunError(null);
+
+    const result = await client.get<unknown>(request.request.path);
+
+    if (result.success) {
+      setAiRunDetailView(aiRunDetailToView(result.data));
+    } else {
+      setAiRunError(result.error.message);
+    }
+
+    setPendingAiRunId(null);
+  }
+
   const loadedData =
     !isDraftConversation && (state.kind === "success" || state.kind === "empty")
       ? state.data
       : null;
+  const previousSessionData = isStoredAgentSession ? loadedData : null;
   const pendingThread = isDraftConversation
     ? pendingConversationThreadView(initialPrompt)
     : null;
@@ -217,8 +299,13 @@ export function AiConversationScreen() {
   const thread = currentLatestData
     ? conversationPayloadToThreadView(currentLatestData)
     : loadedData
-      ? conversationPayloadToThreadView(loadedData)
+      ? isStoredAgentSession
+        ? agentChatSessionPayloadToThreadView(loadedData)
+        : conversationPayloadToThreadView(loadedData)
       : pendingThread;
+  const runReferences = thread
+    ? conversationAiRunReferencesFor(currentLatestData ?? loadedData ?? thread)
+    : [];
   const inlinePanels = thread ? conversationInlinePanelsForThread(thread) : [];
   const eventCards =
     eventsState.kind === "success" ? eventsToSummaries(eventsState.data) : [];
@@ -246,6 +333,7 @@ export function AiConversationScreen() {
           tintColor={colors.accent}
         />
       }
+      showBack={false}
       title="对话"
     >
       {!isDraftConversation && state.kind === "loading" ? <LoadingState /> : null}
@@ -269,8 +357,11 @@ export function AiConversationScreen() {
           followupTasks={followupTasks}
           followupsStateKind={tasksState.kind}
           inlinePanels={inlinePanels}
+          aiRunDetailView={aiRunDetailView}
+          aiRunError={aiRunError}
           onBack={() => router.push("/ai" as Href)}
           onChangeDraft={setDraftMessage}
+          onInspectAiRun={inspectAiRun}
           onOpenContact={(contactId) =>
             router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
           }
@@ -280,6 +371,8 @@ export function AiConversationScreen() {
           onOpenHref={(href) => router.push(href as Href)}
           profile={profile}
           profileStateKind={profileState.kind}
+          pendingAiRunId={pendingAiRunId}
+          runReferences={runReferences}
           scheduleItems={scheduleItems}
           scheduleStateKind={tasksState.kind}
           onSend={sendMessage}
@@ -293,6 +386,8 @@ export function AiConversationScreen() {
 }
 
 function ConversationThread({
+  aiRunDetailView,
+  aiRunError,
   baseUrl,
   contactCards,
   contactsStateKind,
@@ -304,11 +399,14 @@ function ConversationThread({
   inlinePanels,
   onBack,
   onChangeDraft,
+  onInspectAiRun,
   onOpenContact,
   onOpenEvent,
   onOpenHref,
   profile,
   profileStateKind,
+  pendingAiRunId,
+  runReferences,
   scheduleItems,
   scheduleStateKind,
   onSend,
@@ -316,6 +414,8 @@ function ConversationThread({
   sending,
   thread
 }: {
+  aiRunDetailView: AiRunDetailView | null;
+  aiRunError: string | null;
   baseUrl: string;
   contactCards: ContactSummary[];
   contactsStateKind: ResourceKind;
@@ -327,11 +427,14 @@ function ConversationThread({
   inlinePanels: ConversationInlinePanelView[];
   onBack: () => void;
   onChangeDraft: (value: string) => void;
+  onInspectAiRun: (reference: ConversationAiRunReferenceView) => void;
   onOpenContact: (contactId: string) => void;
   onOpenEvent: (eventId: string) => void;
   onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
   profile: ProfileSummary | null;
   profileStateKind: ResourceKind;
+  pendingAiRunId: string | null;
+  runReferences: ConversationAiRunReferenceView[];
   scheduleItems: ScheduleItem[];
   scheduleStateKind: ResourceKind;
   onSend: () => void;
@@ -393,6 +496,7 @@ function ConversationThread({
                     profileStateKind={profileStateKind}
                     scheduleItems={scheduleItems}
                     scheduleStateKind={scheduleStateKind}
+                    thread={thread}
                   />
                 ) : null}
               </Fragment>
@@ -410,6 +514,15 @@ function ConversationThread({
             </View>
           ))}
         </View>
+      ) : null}
+      {runReferences.length > 0 || aiRunDetailView || aiRunError ? (
+        <AiRunAuditPanel
+          detailView={aiRunDetailView}
+          error={aiRunError}
+          onInspectAiRun={onInspectAiRun}
+          pendingAiRunId={pendingAiRunId}
+          runReferences={runReferences}
+        />
       ) : null}
       <View style={styles.composerPanel}>
         <TextInput
@@ -441,6 +554,83 @@ function ConversationThread({
   );
 }
 
+function AiRunAuditPanel({
+  detailView,
+  error,
+  onInspectAiRun,
+  pendingAiRunId,
+  runReferences
+}: {
+  detailView: AiRunDetailView | null;
+  error: string | null;
+  onInspectAiRun: (reference: ConversationAiRunReferenceView) => void;
+  pendingAiRunId: string | null;
+  runReferences: ConversationAiRunReferenceView[];
+}) {
+  return (
+    <View style={styles.aiRunPanel}>
+      <View style={styles.aiRunHeader}>
+        <View style={styles.inlinePanelTitleBlock}>
+          <Text style={styles.panelTitle}>AI 运行依据</Text>
+          <Text style={styles.inlinePanelDetail}>
+            查看这次回复的来源、证据和安全边界。
+          </Text>
+        </View>
+        <Ionicons color={colors.accent} name="shield-checkmark-outline" size={18} />
+      </View>
+      {runReferences.length > 0 ? (
+        <View style={styles.aiRunReferenceStack}>
+          {runReferences.map((reference) => {
+            const pending = pendingAiRunId === reference.id;
+
+            return (
+              <Pressable
+                accessibilityRole="button"
+                disabled={Boolean(pendingAiRunId)}
+                key={reference.id}
+                onPress={() => onInspectAiRun(reference)}
+                style={({ pressed }) => [
+                  styles.aiRunReference,
+                  pending ? styles.disabled : null,
+                  pressed ? styles.pressed : null
+                ]}
+              >
+                <View style={styles.aiRunReferenceText}>
+                  <Text numberOfLines={1} style={styles.eventSuggestionTitle}>
+                    {reference.id}
+                  </Text>
+                  <Text numberOfLines={2} style={styles.inlinePanelDetail}>
+                    {reference.detail}
+                  </Text>
+                </View>
+                <Text style={styles.aiRunActionText}>
+                  {pending ? "读取中" : reference.actionLabel}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+      {detailView ? (
+        <View style={styles.aiRunResult}>
+          <View style={styles.aiRunMetricRow}>
+            {detailView.metrics.map((metric) => (
+              <Text key={metric} numberOfLines={1} style={styles.aiRunMetric}>
+                {metric}
+              </Text>
+            ))}
+          </View>
+          <Text style={styles.bodyText}>{detailView.summary}</Text>
+          <Text style={styles.aiRunOutput}>{detailView.outputPreview}</Text>
+          <Text style={styles.inlinePanelDetail}>{detailView.nextAction}</Text>
+          <Text style={styles.aiRunSafetyText}>{detailView.safetyText}</Text>
+        </View>
+      ) : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  );
+}
+
 function ConversationInlinePanels({
   baseUrl,
   contactCards,
@@ -456,7 +646,8 @@ function ConversationInlinePanels({
   profile,
   profileStateKind,
   scheduleItems,
-  scheduleStateKind
+  scheduleStateKind,
+  thread
 }: {
   baseUrl: string;
   contactCards: ContactSummary[];
@@ -473,6 +664,7 @@ function ConversationInlinePanels({
   profileStateKind: ResourceKind;
   scheduleItems: ScheduleItem[];
   scheduleStateKind: ResourceKind;
+  thread: ConversationThreadView;
 }) {
   return (
     <View style={styles.inlinePanelStack}>
@@ -480,12 +672,14 @@ function ConversationInlinePanels({
         if (panel.kind === "people") {
           return (
             <PeopleInlinePanel
+              baseUrl={baseUrl}
               contactCards={contactCards}
               contactsStateKind={contactsStateKind}
               key={panel.kind}
               onOpenContact={onOpenContact}
               onOpenHref={onOpenHref}
               panel={panel}
+              thread={thread}
             />
           );
         }
@@ -527,15 +721,16 @@ function ConversationInlinePanels({
         }
 
         return (
-          <EventInlinePanel
-            baseUrl={baseUrl}
-            eventCards={eventCards}
-            eventsStateKind={eventsStateKind}
-            key={panel.kind}
-            onOpenEvent={onOpenEvent}
-            onOpenHref={onOpenHref}
-            panel={panel}
-          />
+            <EventInlinePanel
+              baseUrl={baseUrl}
+              eventCards={eventCards}
+              eventsStateKind={eventsStateKind}
+              key={panel.kind}
+              onOpenEvent={onOpenEvent}
+              onOpenHref={onOpenHref}
+              panel={panel}
+              thread={thread}
+            />
         );
       })}
     </View>
@@ -548,7 +743,8 @@ function EventInlinePanel({
   eventsStateKind,
   onOpenEvent,
   onOpenHref,
-  panel
+  panel,
+  thread
 }: {
   baseUrl: string;
   eventCards: EventSummary[];
@@ -556,7 +752,10 @@ function EventInlinePanel({
   onOpenEvent: (eventId: string) => void;
   onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
   panel: ConversationInlinePanelView;
+  thread: ConversationThreadView;
 }) {
+  const prioritizedEvents = prioritizeConversationEvents(thread, eventCards);
+
   return (
     <View style={styles.inlinePanel}>
       <View style={styles.inlinePanelHeader}>
@@ -587,7 +786,7 @@ function EventInlinePanel({
       ) : null}
       {eventCards.length > 0 ? (
         <View style={styles.eventCardStack}>
-          {eventCards.slice(0, 3).map((event) => (
+          {prioritizedEvents.slice(0, 3).map((event) => (
             <Pressable
               accessibilityRole="button"
               key={event.id}
@@ -597,21 +796,54 @@ function EventInlinePanel({
                 pressed ? styles.pressed : null
               ]}
             >
-              <ImageBackground
-                imageStyle={styles.eventImage}
-                source={{ uri: assetUrl(baseUrl, event.coverPath) }}
-                style={styles.eventImageFrame}
-              >
-                <View style={styles.eventImageScrim} />
+              <View style={styles.eventSuggestionMediaColumn}>
+                <ImageBackground
+                  imageStyle={styles.eventSuggestionThumbImage}
+                  source={{ uri: assetUrl(baseUrl, event.coverPath) }}
+                  style={styles.eventSuggestionThumbFrame}
+                >
+                  <View style={styles.eventSuggestionThumbOverlay} />
+                </ImageBackground>
                 <Text style={styles.eventStatusBadge}>{event.status}</Text>
-              </ImageBackground>
+              </View>
               <View style={styles.eventSuggestionText}>
                 <Text numberOfLines={2} style={styles.eventSuggestionTitle}>
                   {event.title}
                 </Text>
-                <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
-                  {[event.startsAt, event.location].filter(Boolean).join(" · ")}
-                </Text>
+                <View style={styles.eventSuggestionMeta}>
+                  <View style={styles.eventSuggestionMetaLine}>
+                    <Ionicons color={colors.text3} name="time-outline" size={13} />
+                    <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
+                      {event.startsAt}
+                    </Text>
+                  </View>
+                  {event.location ? (
+                    <View style={styles.eventSuggestionMetaLine}>
+                      <Ionicons
+                        color={colors.text3}
+                        name="location-outline"
+                        size={13}
+                      />
+                      <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
+                        {event.location}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.eventSuggestionMetaLine}>
+                    <Ionicons color={colors.text3} name="people-outline" size={13} />
+                    <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
+                      {event.participantCountLabel}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.eventSuggestionFooter}>
+                  <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
+                    打开活动背景
+                  </Text>
+                  <Text numberOfLines={1} style={styles.eventSuggestionAction}>
+                    {event.actionLabel}
+                  </Text>
+                </View>
               </View>
             </Pressable>
           ))}
@@ -622,18 +854,24 @@ function EventInlinePanel({
 }
 
 function PeopleInlinePanel({
+  baseUrl,
   contactCards,
   contactsStateKind,
   onOpenContact,
   onOpenHref,
-  panel
+  panel,
+  thread
 }: {
+  baseUrl: string;
   contactCards: ContactSummary[];
   contactsStateKind: ResourceKind;
   onOpenContact: (contactId: string) => void;
   onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
   panel: ConversationInlinePanelView;
+  thread: ConversationThreadView;
 }) {
+  const prioritizedContacts = prioritizeConversationContacts(thread, contactCards);
+
   return (
     <View style={styles.inlinePanel}>
       <View style={styles.inlinePanelHeader}>
@@ -662,9 +900,9 @@ function PeopleInlinePanel({
       {contactsStateKind === "empty" ? (
         <Text style={styles.inlinePanelDetail}>现在还没有可展示的人脉。</Text>
       ) : null}
-      {contactCards.length > 0 ? (
+      {prioritizedContacts.length > 0 ? (
         <View style={styles.contactCardStack}>
-          {contactCards.slice(0, 3).map((contact) => {
+          {prioritizedContacts.slice(0, 3).map((contact) => {
             const avatar = contactAvatarFor(contact);
 
             return (
@@ -683,7 +921,17 @@ function PeopleInlinePanel({
                     contactAvatarToneStyle(avatar.tone)
                   ]}
                 >
-                  <Text style={styles.contactAvatarText}>{avatar.initial}</Text>
+                  {contact.imageUrl ? (
+                    <Image
+                      resizeMode="cover"
+                      source={{ uri: assetUrl(baseUrl, contact.imageUrl) }}
+                      style={styles.contactAvatarImage}
+                    />
+                  ) : (
+                    <Text style={styles.contactAvatarText}>
+                      {avatar.initial}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.contactSuggestionText}>
                   <Text numberOfLines={1} style={styles.eventSuggestionTitle}>
@@ -950,7 +1198,9 @@ function QuickRouteDock({
     href: ConversationQuickRouteView["href"]
   ): keyof typeof Ionicons.glyphMap => {
     if (href === "/events") return "calendar-outline";
-    if (href === "/contacts") return "people-outline";
+    if (href === "/contacts" || href === "/contacts/list") {
+      return "people-outline";
+    }
     if (href === "/followups") return "checkmark-done-outline";
     if (href === "/schedule") return "time-outline";
     return "person-circle-outline";
@@ -1027,13 +1277,24 @@ function MarkdownBlock({
   block: MarkdownBlockView;
   isUser: boolean;
 }) {
+  const textStyle = [
+    styles.messageText,
+    block.quote ? styles.markdownQuoteText : null,
+    isUser ? styles.messageTextUser : null
+  ];
+
   if (block.kind === "listItem") {
     return (
-      <View style={styles.listItemRow}>
+      <View
+        style={[
+          styles.listItemRow,
+          block.quote ? styles.markdownQuoteBlock : null
+        ]}
+      >
         <Text style={[styles.listBullet, isUser ? styles.messageTextUser : null]}>
-          •
+          {block.marker ?? "•"}
         </Text>
-        <Text style={[styles.messageText, isUser ? styles.messageTextUser : null]}>
+        <Text style={textStyle}>
           {block.segments.map((segment, index) => (
             <MarkdownSegment
               isUser={isUser}
@@ -1046,8 +1307,8 @@ function MarkdownBlock({
     );
   }
 
-  return (
-    <Text style={[styles.messageText, isUser ? styles.messageTextUser : null]}>
+  const paragraph = (
+    <Text style={textStyle}>
       {block.segments.map((segment, index) => (
         <MarkdownSegment
           isUser={isUser}
@@ -1057,6 +1318,12 @@ function MarkdownBlock({
       ))}
     </Text>
   );
+
+  if (block.quote) {
+    return <View style={styles.markdownQuoteBlock}>{paragraph}</View>;
+  }
+
+  return paragraph;
 }
 
 function MarkdownSegment({
@@ -1093,6 +1360,88 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   },
+  aiRunActionText: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 16
+  },
+  aiRunHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between"
+  },
+  aiRunMetric: {
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    color: colors.accent,
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: "800",
+    lineHeight: 15,
+    maxWidth: "100%",
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    paddingVertical: 5
+  },
+  aiRunMetricRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs
+  },
+  aiRunOutput: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 20,
+    padding: spacing.md
+  },
+  aiRunPanel: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.md,
+    padding: spacing.md
+  },
+  aiRunReference: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.md
+  },
+  aiRunReferenceStack: {
+    gap: spacing.sm
+  },
+  aiRunReferenceText: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  aiRunResult: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.md
+  },
+  aiRunSafetyText: {
+    color: colors.live,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 16
+  },
   disabled: {
     opacity: 0.54
   },
@@ -1122,6 +1471,11 @@ const styles = StyleSheet.create({
   },
   contactAvatarSky: {
     backgroundColor: colors.skySoft
+  },
+  contactAvatarImage: {
+    borderRadius: radius.pill,
+    height: "100%",
+    width: "100%"
   },
   contactAvatarText: {
     color: colors.ink,
@@ -1165,35 +1519,23 @@ const styles = StyleSheet.create({
   eventCardStack: {
     gap: spacing.sm
   },
-  eventImage: {
-    borderRadius: radius.sm
-  },
-  eventImageFrame: {
-    alignItems: "flex-start",
-    backgroundColor: colors.surface3,
-    borderRadius: radius.sm,
-    height: 74,
-    justifyContent: "flex-start",
-    overflow: "hidden",
-    padding: spacing.sm,
-    width: 92
-  },
-  eventImageScrim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.14)"
-  },
   eventStatusBadge: {
-    backgroundColor: "rgba(255,255,255,0.92)",
+    alignSelf: "stretch",
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.accentSoft,
     borderRadius: radius.pill,
-    color: colors.ink,
+    borderWidth: 1,
+    color: colors.accent,
     fontSize: 11,
     fontWeight: "800",
+    lineHeight: 14,
     overflow: "hidden",
-    paddingHorizontal: 8,
-    paddingVertical: 5
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    textAlign: "center"
   },
   eventSuggestionCard: {
-    alignItems: "center",
+    alignItems: "flex-start",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
     borderRadius: radius.md,
@@ -1204,13 +1546,59 @@ const styles = StyleSheet.create({
   },
   eventSuggestionDetail: {
     color: colors.text3,
+    flex: 1,
     fontSize: typography.caption,
+    lineHeight: 16,
+    minWidth: 0
+  },
+  eventSuggestionAction: {
+    color: colors.accent,
+    flexShrink: 0,
+    fontSize: typography.caption,
+    fontWeight: "800",
     lineHeight: 16
+  },
+  eventSuggestionFooter: {
+    alignItems: "center",
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between",
+    paddingTop: spacing.xs
+  },
+  eventSuggestionMediaColumn: {
+    flexShrink: 0,
+    gap: spacing.xs,
+    width: 64
+  },
+  eventSuggestionMeta: {
+    gap: spacing.xxs
+  },
+  eventSuggestionMetaLine: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    minWidth: 0
   },
   eventSuggestionText: {
     flex: 1,
     gap: spacing.xs,
     minWidth: 0
+  },
+  eventSuggestionThumbFrame: {
+    backgroundColor: colors.surface3,
+    borderRadius: radius.sm,
+    height: 64,
+    overflow: "hidden",
+    width: 64
+  },
+  eventSuggestionThumbImage: {
+    borderRadius: radius.sm
+  },
+  eventSuggestionThumbOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10,10,16,0.10)"
   },
   eventSuggestionTitle: {
     color: colors.ink,
@@ -1379,6 +1767,14 @@ const styles = StyleSheet.create({
   },
   markdownStack: {
     gap: spacing.sm
+  },
+  markdownQuoteBlock: {
+    borderLeftColor: colors.border,
+    borderLeftWidth: 3,
+    paddingLeft: spacing.sm
+  },
+  markdownQuoteText: {
+    color: colors.text2
   },
   markdownStrong: {
     color: colors.ink,

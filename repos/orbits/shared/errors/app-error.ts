@@ -1,3 +1,6 @@
+import type { ContractMatches } from "../contract-check";
+import type { ApiErrorCodeContract } from "../contract/envelope";
+
 // AppErrorCode 是 API 层对外暴露的稳定错误分类。
 // feature 内部可以有更细的错误码，但 route 最终会映射到这些通用类别。
 export const APP_ERROR_CODES = [
@@ -61,3 +64,10 @@ export function toAppError(error: unknown): AppError {
     cause: error,
   });
 }
+
+// 跨客户端契约一致性断言。新增错误码要同时改 shared/contract/envelope.ts，
+// 否则这里编译不过——客户端必须能穷举它会收到的错误码。
+export type AppErrorCodeMatchesContract = ContractMatches<
+  AppErrorCode,
+  ApiErrorCodeContract
+>;

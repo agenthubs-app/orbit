@@ -1,3 +1,5 @@
+import { chatConversationMessagesPath } from "../api/endpoints";
+
 export interface RelationshipChatMetricView {
   label: string;
   value: string;
@@ -35,9 +37,61 @@ export interface RelationshipChatMessageView {
 export interface RelationshipChatThreadView {
   contactId: string;
   context: string;
+  conversationId: string;
   messages: RelationshipChatMessageView[];
   participant: string;
   sendBoundary: string;
+  title: string;
+}
+
+export interface RelationshipChatMessageRequest {
+  endpoint: string;
+  options: {
+    body: {
+      body: string;
+    };
+  };
+}
+
+export type RelationshipChatMessageRequestResult =
+  | {
+      request: RelationshipChatMessageRequest;
+      success: true;
+    }
+  | {
+      error: string;
+      success: false;
+    };
+
+export interface RelationshipChatMessageSendView {
+  nextAction: string;
+  summary: string;
+  thread: RelationshipChatThreadView;
+  title: string;
+}
+
+export interface RelationshipChatSummaryView {
+  evidenceLabel: string;
+  narrative: string;
+  nextAction: string;
+  sourceLabel: string;
+  title: string;
+}
+
+export interface RelationshipChatExtractionItemView {
+  detail: string;
+  id: string;
+  title: string;
+}
+
+export interface RelationshipChatExtractionView {
+  emptyText: string;
+  needs: RelationshipChatExtractionItemView[];
+  nextAction: string;
+  profileSuggestions: RelationshipChatExtractionItemView[];
+  profileUpdates: RelationshipChatExtractionItemView[];
+  sourceLabel: string;
+  tasks: RelationshipChatExtractionItemView[];
   title: string;
 }
 
@@ -121,6 +175,13 @@ function listField(record: UnknownRecord, fieldName: string): UnknownRecord[] {
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 
+function stringListField(record: UnknownRecord, fieldName: string): string[] {
+  const value = record[fieldName];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
 
@@ -155,6 +216,18 @@ function sourceLabel(source: UnknownRecord): string {
   }
 
   return "关系证据";
+}
+
+function extractionSourceLabel(value: string): string {
+  if (/summary/iu.test(value)) {
+    return "对话摘要提取";
+  }
+
+  if (/extraction/iu.test(value)) {
+    return "关系信号提取";
+  }
+
+  return "对话分析";
 }
 
 function titleText(value: string): string {
@@ -238,6 +311,62 @@ function messageBodyText(value: string): string {
   }
 
   return containsCjk(value) ? value : "这条消息需要先看来源再处理。";
+}
+
+function summaryNarrativeText(value: string): string {
+  if (
+    /Maya Chen asked for a pilot timing comparison.+operator readiness.+Kumo Grid/iu.test(
+      value
+    )
+  ) {
+    return "Maya 想比较两个试点时间窗口，重点是运营方准备度。先发一版对比，再问 Kumo Grid 最想先解决哪个问题。";
+  }
+
+  return containsCjk(value) ? value : "已整理出一段对话摘要，使用前先核对来源证据。";
+}
+
+function summaryNextActionText(value: string): string {
+  if (/extracted needs|profile suggestions|confirmation/iu.test(value)) {
+    return "先复核需求、任务和资料建议，再决定是否写入关系资料。";
+  }
+
+  return containsCjk(value) ? value : "先核对摘要，再决定下一步。";
+}
+
+function extractedNeedText(value: string): string {
+  if (/operator readiness comparison.+two pilot timing windows/iu.test(value)) {
+    return "Maya 需要一版运营方准备度和两个试点时间窗口的对比。";
+  }
+
+  return containsCjk(value) ? value : "提取到一条关系需求。";
+}
+
+function extractedTaskTitle(value: string): string {
+  if (/Send Maya the pilot timing comparison/iu.test(value)) {
+    return "给 Maya 发送试点时间对比";
+  }
+
+  return containsCjk(value) ? value : "复核这条后续任务";
+}
+
+function extractedDueHint(value: string): string {
+  if (/Tokyo climate operator breakfast/iu.test(value)) {
+    return "东京气候运营者早餐会后";
+  }
+
+  return containsCjk(value) ? value : "时间待确认";
+}
+
+function profileValueText(value: string): string {
+  if (/Operator readiness pilot timing/iu.test(value)) {
+    return "运营方准备度和试点时间";
+  }
+
+  if (/Maya is comparing pilot timing windows.+operator readiness/iu.test(value)) {
+    return "Maya 正在按运营方准备度比较试点时间窗口。";
+  }
+
+  return containsCjk(value) ? value : "建议值待复核";
 }
 
 function conversationsFromPayload(data: unknown): UnknownRecord[] {
@@ -353,9 +482,145 @@ export function relationshipChatThreadToView(
       stringField(context, "latestContext") ||
         stringField(context, "recommendedFollowup")
     ),
+    conversationId: stringField(conversation, "conversationId", "conversation"),
     messages: listField(record, "messages").map(messageToView),
     participant: [participantName, organization].filter(Boolean).join(" · "),
     sendBoundary: sendBoundaryText(nestedRecord(record, "sendMessageState")),
     title: titleText(stringField(conversation, "title"))
+  };
+}
+
+export function buildRelationshipChatMessageRequest(
+  conversationId: string,
+  body: string
+): RelationshipChatMessageRequestResult {
+  const cleanedConversationId = conversationId.trim();
+  const cleanedBody = body.trim();
+
+  if (!cleanedConversationId) {
+    return {
+      error: "缺少对话 ID，暂时不能保存草稿。",
+      success: false
+    };
+  }
+
+  if (!cleanedBody) {
+    return {
+      error: "先写一版回复草稿。",
+      success: false
+    };
+  }
+
+  return {
+    request: {
+      endpoint: chatConversationMessagesPath(cleanedConversationId),
+      options: {
+        body: {
+          body: cleanedBody
+        }
+      }
+    },
+    success: true
+  };
+}
+
+export function relationshipChatMessageSendToView(
+  data: unknown
+): RelationshipChatMessageSendView {
+  const record = isRecord(data) ? data : {};
+  const context = nestedRecord(record, "oneToOneContext");
+  const participantName = stringField(context, "participantName", "联系人");
+  const conversationId = stringField(record, "conversationId", "conversation");
+  const thread = relationshipChatThreadToView({
+    conversation: {
+      conversationId,
+      organization: stringField(context, "organization"),
+      participantContactId: stringField(context, "contactId"),
+      participantName,
+      title: participantName ? `${participantName} conversation` : "关系对话"
+    },
+    messages: listField(record, "messages"),
+    oneToOneContext: context,
+    sendMessageState: nestedRecord(record, "sendMessageState")
+  });
+
+  return {
+    nextAction: "先复核草稿和上下文，再决定是否确认发送。",
+    summary: "已记录为本地草稿，尚未真正发出。",
+    thread,
+    title: "回复草稿已保存"
+  };
+}
+
+export function relationshipChatSummaryToView(
+  data: unknown
+): RelationshipChatSummaryView | null {
+  const record = isRecord(data) ? data : {};
+  const summary = nestedRecord(record, "summary");
+  const provenance = nestedRecord(record, "provenance");
+  const narrative = stringField(summary, "narrative");
+
+  if (!narrative) {
+    return null;
+  }
+
+  const evidenceCount = stringListField(summary, "evidenceIds").length;
+
+  return {
+    evidenceLabel: evidenceCount ? `${evidenceCount} 条证据` : "没有证据",
+    narrative: summaryNarrativeText(narrative),
+    nextAction: summaryNextActionText(stringField(record, "nextAction")),
+    sourceLabel: extractionSourceLabel(stringField(provenance, "sourceLabel")),
+    title: "对话摘要"
+  };
+}
+
+export function relationshipChatExtractionToView(
+  data: unknown
+): RelationshipChatExtractionView {
+  const record = isRecord(data) ? data : {};
+  const provenance = nestedRecord(record, "provenance");
+  const needs = listField(record, "extractedNeeds").map((need) => ({
+    detail:
+      stringField(need, "priority") === "high" ? "高优先级" : "需要复核",
+    id: stringField(need, "needId", "need"),
+    title: extractedNeedText(stringField(need, "statement"))
+  }));
+  const tasks = listField(record, "extractedTasks").map((task) => ({
+    detail: extractedDueHint(stringField(task, "dueHint")),
+    id: stringField(task, "taskId", "task"),
+    title: extractedTaskTitle(stringField(task, "title"))
+  }));
+  const profileUpdates = listField(record, "relationshipProfileUpdates").map(
+    (update) => ({
+      detail: "暂未写入关系资料",
+      id: stringField(update, "updateId", "profile-update"),
+      title: `${stringField(update, "field", "资料")}：${profileValueText(
+        stringField(update, "proposedValue")
+      )}`
+    })
+  );
+  const profileSuggestions = listField(
+    record,
+    "confirmationRequiredProfileSuggestions"
+  ).map((suggestion) => ({
+    detail: "需要确认后才能写入",
+    id: stringField(suggestion, "suggestionId", "profile-suggestion"),
+    title: `${stringField(suggestion, "field", "资料")}：${profileValueText(
+      stringField(suggestion, "proposedValue")
+    )}`
+  }));
+  const total =
+    needs.length + tasks.length + profileUpdates.length + profileSuggestions.length;
+
+  return {
+    emptyText: total ? "" : "这段对话暂时没有可复核的提取结果。",
+    needs,
+    nextAction: "这些只是提取结果。写入资料或创建任务前，还要你确认。",
+    profileSuggestions,
+    profileUpdates,
+    sourceLabel: extractionSourceLabel(stringField(provenance, "sourceLabel")),
+    tasks,
+    title: "提取结果"
   };
 }

@@ -9,7 +9,7 @@ interface ErrorStateProps {
 
 export function ErrorState({
   message,
-  title = "Could not load this view"
+  title = "页面暂时无法加载"
 }: ErrorStateProps) {
   return (
     <DataCard title={title}>

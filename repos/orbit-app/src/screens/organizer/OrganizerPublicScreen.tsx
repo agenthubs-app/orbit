@@ -1,6 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { RefreshControl, StyleSheet, Text, View, Pressable } from "react-native";
+import {
+  ImageBackground,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View
+} from "react-native";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
@@ -34,6 +42,7 @@ export function OrganizerPublicScreen() {
   const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
   const router = useRouter();
   const organizerSlug = firstParam(slug);
+  const { baseUrl } = useOrbitApiBaseUrl();
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.events,
     () => false
@@ -60,6 +69,7 @@ export function OrganizerPublicScreen() {
       ) : null}
       {state.kind === "success" || state.kind === "empty" ? (
         <OrganizerContent
+          baseUrl={baseUrl}
           onOpen={(href) => router.push(href as Href)}
           view={organizerPublicToView({
             events: state.data,
@@ -71,27 +81,92 @@ export function OrganizerPublicScreen() {
   );
 }
 
+function assetUrl(baseUrl: string, path: string): string {
+  if (/^https?:\/\//iu.test(path)) {
+    return path;
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
+}
+
 function OrganizerContent({
+  baseUrl,
   onOpen,
   view
 }: {
+  baseUrl: string;
   onOpen: (href: string) => void;
   view: OrganizerPublicView;
 }) {
   return (
     <>
-      <DataCard detail={view.handle} title={view.name}>
-        <View style={styles.heroRow}>
+      <OrganizerHero baseUrl={baseUrl} onOpen={onOpen} view={view} />
+
+      <DataCard detail="只展示公开活动，不读取报名名单。" title="公开活动">
+        {view.events.length > 0 ? (
+          <View style={styles.eventGrid}>
+            {view.events.map((event) => (
+              <OrganizerEventCard
+                baseUrl={baseUrl}
+                event={event}
+                key={event.id}
+                onOpen={onOpen}
+              />
+            ))}
+          </View>
+        ) : (
+          <EmptyState
+            message={view.emptyMessage}
+            title={view.emptyTitle}
+          />
+        )}
+      </DataCard>
+    </>
+  );
+}
+
+function OrganizerHero({
+  baseUrl,
+  onOpen,
+  view
+}: {
+  baseUrl: string;
+  onOpen: (href: string) => void;
+  view: OrganizerPublicView;
+}) {
+  const heroImage = view.primaryEvent?.coverPath ?? "/orbit-covers/meeting.jpg";
+
+  return (
+    <View style={styles.organizerHero}>
+      <ImageBackground
+        imageStyle={styles.organizerHeroImage}
+        source={{ uri: assetUrl(baseUrl, heroImage) }}
+        style={styles.organizerHeroCover}
+      >
+        <View style={styles.organizerHeroScrim} />
+        <View style={styles.organizerHeroTop}>
+          <Text style={styles.verifiedBadge}>已认证主办方</Text>
+        </View>
+        <View style={styles.organizerHeroBottom}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{view.initial}</Text>
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.bodyText}>{view.summary}</Text>
+            <Text numberOfLines={2} style={styles.heroName}>
+              {view.name}
+            </Text>
+            <Text numberOfLines={1} style={styles.heroHandle}>
+              {view.handle}
+            </Text>
           </View>
         </View>
+      </ImageBackground>
+      <View style={styles.organizerHeroBody}>
+        <Text style={styles.bodyText}>{view.summary}</Text>
         <View style={styles.statRow}>
           <StatCell label="活动" value={view.stats.events} />
-          <StatCell label="即将" value={view.stats.upcoming} />
+          <StatCell label="累计参会" value={view.stats.participants} />
           <StatCell label="历史" value={view.stats.ended} />
         </View>
         <View style={styles.actionRow}>
@@ -122,23 +197,8 @@ function OrganizerContent({
             </Pressable>
           ))}
         </View>
-      </DataCard>
-
-      <DataCard detail="只展示公开活动，不读取报名名单。" title="公开活动">
-        {view.events.length > 0 ? (
-          <View style={styles.eventStack}>
-            {view.events.map((event) => (
-              <EventRow event={event} key={event.id} onOpen={onOpen} />
-            ))}
-          </View>
-        ) : (
-          <EmptyState
-            message={view.emptyMessage}
-            title={view.emptyTitle}
-          />
-        )}
-      </DataCard>
-    </>
+      </View>
+    </View>
   );
 }
 
@@ -151,10 +211,12 @@ function StatCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EventRow({
+function OrganizerEventCard({
+  baseUrl,
   event,
   onOpen
 }: {
+  baseUrl: string;
   event: OrganizerPublicEventView;
   onOpen: (href: string) => void;
 }) {
@@ -162,18 +224,37 @@ function EventRow({
     <Pressable
       accessibilityRole="button"
       onPress={() => onOpen(event.href)}
-      style={({ pressed }) => [styles.eventRow, pressed ? styles.pressed : null]}
+      style={({ pressed }) => [
+        styles.eventCard,
+        pressed ? styles.pressed : null
+      ]}
     >
-      <View style={styles.eventMark}>
-        <Text style={styles.eventMarkText}>{event.title.slice(0, 1)}</Text>
-      </View>
-      <View style={styles.eventText}>
-        <Text numberOfLines={2} style={styles.eventTitle}>
-          {event.title}
-        </Text>
-        <Text style={styles.eventMeta}>{event.detailLine}</Text>
-      </View>
-      <Text style={styles.statePill}>{stateLabels[event.state]}</Text>
+      <ImageBackground
+        imageStyle={styles.eventImage}
+        source={{ uri: assetUrl(baseUrl, event.coverPath) }}
+        style={styles.eventImageFrame}
+      >
+        <View style={styles.eventImageScrim} />
+        <View style={styles.eventImageTop}>
+          <Text style={styles.statePill}>{stateLabels[event.state]}</Text>
+        </View>
+        <View style={styles.eventImageBottom}>
+          <Text numberOfLines={2} style={styles.eventImageTitle}>
+            {event.title}
+          </Text>
+          <Text numberOfLines={1} style={styles.eventImageMeta}>
+            {event.detailLine}
+          </Text>
+          <View style={styles.eventImageFooter}>
+            <Text style={styles.eventImageMeta}>
+              {event.participantCountLabel}
+            </Text>
+            <Text style={styles.eventImageCta}>
+              {event.state === "ended" ? "查看" : "报名"}
+            </Text>
+          </View>
+        </View>
+      </ImageBackground>
     </Pressable>
   );
 }
@@ -221,57 +302,114 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   },
-  eventMark: {
-    alignItems: "center",
-    backgroundColor: colors.surface3,
-    borderRadius: radius.md,
-    height: 42,
-    justifyContent: "center",
-    width: 42
-  },
-  eventMarkText: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "700",
-    lineHeight: 22
-  },
-  eventMeta: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
-  },
-  eventRow: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
+  eventCard: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md
+    overflow: "hidden"
   },
-  eventStack: {
+  eventGrid: {
+    gap: spacing.lg
+  },
+  eventImage: {
+    borderRadius: radius.lg
+  },
+  eventImageBottom: {
     gap: spacing.sm
   },
-  eventText: {
+  eventImageCta: {
+    color: colors.onAccent,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 17
+  },
+  eventImageFooter: {
+    alignItems: "center",
+    borderTopColor: "rgba(255,255,255,0.18)",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+    paddingTop: spacing.md
+  },
+  eventImageFrame: {
+    aspectRatio: 1.12,
+    backgroundColor: colors.surface3,
+    justifyContent: "space-between",
+    overflow: "hidden",
+    padding: spacing.lg
+  },
+  eventImageMeta: {
+    color: "rgba(255,255,255,0.84)",
     flex: 1,
-    gap: spacing.xs,
+    fontSize: typography.small,
+    fontWeight: "600",
+    lineHeight: 19,
     minWidth: 0
   },
-  eventTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
+  eventImageScrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10,10,16,0.40)"
+  },
+  eventImageTitle: {
+    color: colors.onAccent,
+    fontSize: 22,
+    fontWeight: "800",
+    lineHeight: 28
+  },
+  eventImageTop: {
+    alignItems: "flex-start"
   },
   heroCopy: {
     flex: 1,
     minWidth: 0
   },
-  heroRow: {
+  heroHandle: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 19
+  },
+  heroName: {
+    color: colors.onAccent,
+    fontSize: typography.display,
+    fontWeight: "800",
+    lineHeight: 30
+  },
+  organizerHero: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    overflow: "hidden"
+  },
+  organizerHeroBody: {
+    gap: spacing.md,
+    padding: spacing.lg
+  },
+  organizerHeroBottom: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.md
+  },
+  organizerHeroCover: {
+    aspectRatio: 1.55,
+    backgroundColor: colors.surface3,
+    justifyContent: "space-between",
+    overflow: "hidden",
+    padding: spacing.lg
+  },
+  organizerHeroImage: {
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg
+  },
+  organizerHeroScrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10,10,16,0.38)"
+  },
+  organizerHeroTop: {
+    alignItems: "flex-start"
   },
   pressed: {
     opacity: 0.84,
@@ -317,6 +455,17 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: "700",
     lineHeight: 16,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  verifiedBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: radius.pill,
+    color: colors.ink,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    overflow: "hidden",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   }

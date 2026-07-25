@@ -19,6 +19,15 @@ workspace root for implementation work.
   must explain what changed and why so the work is traceable. Do not include
   unrelated user or generated changes in that commit.
 
+## Cross-Client Contract
+
+- `shared/contract/` 是网页版和 iOS App 共用的响应形状，改它等于同时改两个客户端。
+- 契约文件必须零 import、只含类型声明；枚举的常量数组留在 `features/<module>/contract.ts`
+  或 `shared/domain/`，并在那一侧用 `shared/contract-check.ts` 的 `ContractMatches` 断言一致。
+- 新增或修改契约后，`features/<module>/contract.ts` 用转发导出保持既有引用名不变，
+  并到 `repos/orbit-app` 跑 `npm run sync:contract`，否则移动端测试会红。
+- 完整规则与迁移步骤见 `docs/cross-client-contract.md`。
+
 ## Dev Capability Surfaces
 
 - Routes under `/dev/**`, especially `/dev/capabilities/**`, are internal

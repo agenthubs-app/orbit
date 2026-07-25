@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { contactsPipelineToView } from "../src/view-models/contact-pipeline";
+import * as contactPipeline from "../src/view-models/contact-pipeline";
 
 test("contactsPipelineToView maps contacts and connections into a Chinese pipeline", () => {
   const view = contactsPipelineToView({
@@ -98,6 +99,8 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
     [
       { count: 1, id: "to_contact", label: "待联系" },
       { count: 1, id: "in_progress", label: "在推进" },
+      { count: 0, id: "nurture", label: "长期维护" },
+      { count: 0, id: "archived", label: "暂不跟进" },
       { count: 1, id: "partnered", label: "已合作" }
     ]
   );
@@ -116,6 +119,22 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
       pendingLabel: "推进中",
       successMessage: "已把 Maya Chen 放入在推进。"
     },
+    stageActions: [
+      {
+        connectionId: "connection_001",
+        label: "开始推进",
+        nextRelationshipStage: "active",
+        pendingLabel: "推进中",
+        successMessage: "已把 Maya Chen 放入在推进。"
+      },
+      {
+        connectionId: "connection_001",
+        label: "暂不跟进",
+        nextRelationshipStage: "archived",
+        pendingLabel: "归档中",
+        successMessage: "已把 Maya Chen 标记为暂不跟进。"
+      }
+    ],
     valueLabels: ["战略契合", "引荐路径"],
     valueScoreLabel: "91分"
   });
@@ -131,10 +150,13 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
       strengthLabel: "86分"
     }
   ]);
-  assert.equal(view.introReadiness.apiGap, "引荐记录需要后端列表 API。");
+  assert.equal(
+    view.introReadiness.apiGap,
+    "本次只准备引荐草稿，真正发送前还会再确认。"
+  );
 });
 
-test("contactsPipelineToView exposes safe stage actions for supported connections", () => {
+test("contactsPipelineToView exposes backend-safe actions across pipeline stages", () => {
   const view = contactsPipelineToView({
     connectionsPayload: {
       connections: [
@@ -151,6 +173,11 @@ test("contactsPipelineToView exposes safe stage actions for supported connection
         {
           contactId: "contact_003",
           id: "connection_003",
+          relationshipStage: "nurture"
+        },
+        {
+          contactId: "contact_004",
+          id: "connection_004",
           relationshipStage: "archived"
         }
       ]
@@ -176,15 +203,45 @@ test("contactsPipelineToView exposes safe stage actions for supported connection
         {
           displayName: "李娜",
           id: "contact_003",
-          nextAction: "暂时不用跟进。",
+          nextAction: "保持季度更新。",
           organization: "Orbit",
           role: "Customer Success",
+          status: "active"
+        },
+        {
+          displayName: "Hana Sato",
+          id: "contact_004",
+          nextAction: "暂时不用跟进。",
+          organization: "Orbit",
+          role: "Advisor",
+          status: "partnered"
+        },
+        {
+          displayName: "Kim Park",
+          id: "contact_005",
+          nextAction: "复盘已完成的合作。",
+          organization: "Bridge Labs",
+          role: "Operator",
           status: "partnered"
         }
       ]
     }
   });
 
+  assert.deepEqual(
+    view.stages.map((stage) => ({
+      count: stage.count,
+      id: stage.id,
+      label: stage.label
+    })),
+    [
+      { count: 1, id: "to_contact", label: "待联系" },
+      { count: 1, id: "in_progress", label: "在推进" },
+      { count: 1, id: "nurture", label: "长期维护" },
+      { count: 1, id: "archived", label: "暂不跟进" },
+      { count: 1, id: "partnered", label: "已合作" }
+    ]
+  );
   assert.deepEqual(view.stages[0]?.contacts[0]?.stageAction, {
     connectionId: "connection_001",
     label: "开始推进",
@@ -192,14 +249,37 @@ test("contactsPipelineToView exposes safe stage actions for supported connection
     pendingLabel: "推进中",
     successMessage: "已把 Maya Chen 放入在推进。"
   });
-  assert.deepEqual(view.stages[1]?.contacts[0]?.stageAction, {
-    connectionId: "connection_002",
-    label: "放回待联系",
-    nextRelationshipStage: "needs_follow_up",
-    pendingLabel: "更新中",
-    successMessage: "已把 佐藤 健 放回待联系。"
-  });
-  assert.equal(view.stages[2]?.contacts[0]?.stageAction, null);
+  assert.deepEqual(
+    view.stages[1]?.contacts[0]?.stageActions.map((action) => ({
+      label: action.label,
+      nextRelationshipStage: action.nextRelationshipStage
+    })),
+    [
+      { label: "放回待联系", nextRelationshipStage: "needs_follow_up" },
+      { label: "转长期维护", nextRelationshipStage: "nurture" }
+    ]
+  );
+  assert.deepEqual(
+    view.stages[2]?.contacts[0]?.stageActions.map((action) => ({
+      label: action.label,
+      nextRelationshipStage: action.nextRelationshipStage
+    })),
+    [
+      { label: "开始推进", nextRelationshipStage: "active" },
+      { label: "暂不跟进", nextRelationshipStage: "archived" }
+    ]
+  );
+  assert.deepEqual(view.stages[3]?.contacts[0]?.stageActions, [
+    {
+      connectionId: "connection_004",
+      label: "恢复待联系",
+      nextRelationshipStage: "needs_follow_up",
+      pendingLabel: "恢复中",
+      successMessage: "已把 Hana Sato 恢复到待联系。"
+    }
+  ]);
+  assert.equal(view.stages[4]?.contacts[0]?.stageAction, null);
+  assert.deepEqual(view.stages[4]?.contacts[0]?.stageActions, []);
 });
 
 test("contactsPipelineToView keeps empty pipeline and intros explicit", () => {
@@ -217,8 +297,162 @@ test("contactsPipelineToView keeps empty pipeline and intros explicit", () => {
   ]);
   assert.deepEqual(
     view.stages.map((stage) => stage.count),
-    [0, 0, 0]
+    [0, 0, 0, 0, 0]
   );
   assert.deepEqual(view.introReadiness.candidates, []);
   assert.equal(view.introReadiness.summary, "还没有适合发起引荐的候选。");
+});
+
+test("contact invitation helpers prepare editable invitations through the web API", () => {
+  const buildContactInvitationPrepareRequest = (
+    contactPipeline as typeof contactPipeline & {
+      buildContactInvitationPrepareRequest?: (input: {
+        contactId: string;
+        recipientEmail: string;
+        recipientName: string;
+      }) => unknown;
+    }
+  ).buildContactInvitationPrepareRequest;
+
+  assert.equal(typeof buildContactInvitationPrepareRequest, "function");
+  assert.deepEqual(
+    buildContactInvitationPrepareRequest?.({
+      contactId: " contact_001 ",
+      recipientEmail: " MAYA@EXAMPLE.COM ",
+      recipientName: " Maya Chen "
+    }),
+    {
+      request: {
+        body: {
+          contactId: "contact_001",
+          recipientEmail: "maya@example.com",
+          recipientName: "Maya Chen"
+        },
+        endpoint: "/api/contact-invitations"
+      },
+      success: true
+    }
+  );
+  assert.deepEqual(
+    buildContactInvitationPrepareRequest?.({
+      contactId: "contact_001",
+      recipientEmail: "not-an-email",
+      recipientName: "Maya Chen"
+    }),
+    {
+      error: "需要联系人、姓名和有效邮箱，才能准备邀请。",
+      success: false
+    }
+  );
+});
+
+test("contact invitation helpers confirm reviewed copy without sending", () => {
+  const buildContactInvitationConfirmRequest = (
+    contactPipeline as typeof contactPipeline & {
+      buildContactInvitationConfirmRequest?: (input: {
+        body: string;
+        invitationId: string;
+        subject: string;
+      }) => unknown;
+    }
+  ).buildContactInvitationConfirmRequest;
+  const contactInvitationToView = (
+    contactPipeline as typeof contactPipeline & {
+      contactInvitationToView?: (payload: unknown) => unknown;
+    }
+  ).contactInvitationToView;
+
+  assert.equal(typeof buildContactInvitationConfirmRequest, "function");
+  assert.deepEqual(
+    buildContactInvitationConfirmRequest?.({
+      body: " 很高兴认识你，想邀请你加入 Orbit。 ",
+      invitationId: " contact-invitation:demo ",
+      subject: " Orbit 邀请 "
+    }),
+    {
+      request: {
+        body: {
+          body: "很高兴认识你，想邀请你加入 Orbit。",
+          confirmed: true,
+          invitationId: "contact-invitation:demo",
+          subject: "Orbit 邀请"
+        },
+        endpoint: "/api/contact-invitations"
+      },
+      success: true
+    }
+  );
+  assert.deepEqual(
+    buildContactInvitationConfirmRequest?.({
+      body: "",
+      invitationId: "contact-invitation:demo",
+      subject: "Orbit 邀请"
+    }),
+    {
+      error: "需要邀请 ID、主题和正文，才能确认邀请。",
+      success: false
+    }
+  );
+
+  assert.equal(typeof contactInvitationToView, "function");
+  assert.deepEqual(
+    contactInvitationToView?.({
+      body: "欢迎加入 Orbit。",
+      contactId: "contact_001",
+      emailProviderRequested: false,
+      externalSendRequested: false,
+      invitationId: "contact-invitation:demo",
+      messageSent: false,
+      nextAction:
+        "Review and edit the invitation, then confirm it separately from contact creation.",
+      recipientEmail: "maya@example.com",
+      recipientName: "Maya Chen",
+      status: "draft",
+      subject: "加入 Orbit",
+      updatedAt: "2026-06-25T09:00:00.000Z"
+    }),
+    {
+      body: "欢迎加入 Orbit。",
+      boundaryText:
+        "externalSendRequested=false · emailProviderRequested=false · messageSent=false",
+      canConfirm: true,
+      id: "contact-invitation:demo",
+      nextAction: "复核主题和正文，确认后只会进入待投递。",
+      recipientLine: "Maya Chen · maya@example.com",
+      safetyText: "确认后也不会发送邮件，只会把邀请标记为待投递。",
+      statusLabel: "草稿待确认",
+      subject: "加入 Orbit",
+      title: "邀请草稿"
+    }
+  );
+  assert.deepEqual(
+    contactInvitationToView?.({
+      body: "欢迎加入 Orbit。",
+      contactId: "contact_001",
+      emailProviderRequested: false,
+      externalSendRequested: false,
+      invitationId: "contact-invitation:demo",
+      messageSent: false,
+      nextAction:
+        "Configure an email delivery provider before sending this invitation.",
+      recipientEmail: "maya@example.com",
+      recipientName: "Maya Chen",
+      status: "ready_for_delivery",
+      subject: "加入 Orbit",
+      updatedAt: "2026-06-25T09:10:00.000Z"
+    }),
+    {
+      body: "欢迎加入 Orbit。",
+      boundaryText:
+        "externalSendRequested=false · emailProviderRequested=false · messageSent=false",
+      canConfirm: false,
+      id: "contact-invitation:demo",
+      nextAction: "等邮件投递配置完成后，再决定是否发送。",
+      recipientLine: "Maya Chen · maya@example.com",
+      safetyText: "当前只是待投递记录，没有发送邮件。",
+      statusLabel: "待投递",
+      subject: "加入 Orbit",
+      title: "邀请已确认"
+    }
+  );
 });

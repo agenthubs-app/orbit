@@ -11,7 +11,7 @@ const eventsPayload = {
   events: [
     {
       endsAt: "2026-08-04T16:00:00.000+09:00",
-      id: "event_signup_03",
+      id: "event_signup_02",
       relationshipValue: "为中国企业在日本落地找到可信合作方",
       sourceMetadata: {
         label: "东京 AI 落地伙伴报名会"
@@ -65,6 +65,10 @@ test("platformToView maps live app payloads into a Chinese platform overview", (
   );
   assert.equal(view.reviewQueue[0]?.title, "东京 AI 落地伙伴报名会");
   assert.equal(view.reviewQueue[0]?.stateLabel, "即将开始");
+  assert.equal(
+    view.reviewQueue[0]?.coverPath,
+    "/orbit-covers/events/tokyo-ai-partner-meetup.jpg"
+  );
   assert.equal(view.orgAccounts[0]?.name, "Orbit");
   assert.equal(view.orgAccounts[0]?.owner, "赵翔");
   assert.doesNotMatch(

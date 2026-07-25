@@ -1,3 +1,6 @@
+import { eventsToSummaries } from "./events";
+import type { FollowupTaskContract } from "../api/contract/followups";
+
 export interface ScheduleItem {
   contactName: string;
   dayLabel: string;
@@ -15,11 +18,14 @@ export type ScheduleTimelineItemKind = "event" | "followup";
 
 export interface ScheduleTimelineItem {
   actionLabel: string;
+  coverPath?: string;
   dayLabel: string;
   detail: string;
   href: string;
   id: string;
   kind: ScheduleTimelineItemKind;
+  location?: string;
+  participantCountLabel?: string;
   reason: string;
   statusLabel: string;
   subtitle: string;
@@ -37,6 +43,7 @@ export interface ScheduleTimelineSection {
 export interface ScheduleTimelineView {
   emptyMessage: string;
   emptyTitle: string;
+  eventHighlights: ScheduleTimelineItem[];
   sections: ScheduleTimelineSection[];
   stats: Array<{ label: string; value: string }>;
   summary: string;
@@ -60,6 +67,15 @@ function stringField(
 ): string {
   const value = record[fieldName];
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+// 字段名受跨端契约约束：服务端改名，这里立刻编译报错。
+function taskField(
+  record: Record<string, unknown>,
+  fieldName: keyof FollowupTaskContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
 }
 
 function numberField(
@@ -93,7 +109,7 @@ function nestedStringField(
 }
 
 function dueLabel(task: Record<string, unknown>): string {
-  const dueAt = stringField(task, "dueAt");
+  const dueAt = taskField(task, "dueAt");
   if (dueAt) {
     return dueAt;
   }
@@ -193,7 +209,7 @@ function shouldNormalizeTaskToToday(
   now: Date
 ): boolean {
   const dueInDays = numberField(task, "dueInDays");
-  const priority = stringField(task, "priority").trim().toLowerCase();
+  const priority = taskField(task, "priority").trim().toLowerCase();
 
   if (dueInDays !== 0 && priority !== "today") {
     return false;
@@ -204,7 +220,7 @@ function shouldNormalizeTaskToToday(
 }
 
 function priorityLabel(task: Record<string, unknown>): string {
-  const priority = stringField(task, "priority", "follow-up")
+  const priority = taskField(task, "priority", "follow-up")
     .replace(/[_-]+/gu, " ")
     .trim()
     .toLowerCase();
@@ -222,7 +238,7 @@ function priorityLabel(task: Record<string, unknown>): string {
 }
 
 function contactNameFor(task: Record<string, unknown>): string {
-  return stringField(task, "contactName", "联系人");
+  return taskField(task, "contactName", "联系人");
 }
 
 function taskTitle(task: Record<string, unknown>): string {
@@ -230,7 +246,7 @@ function taskTitle(task: Record<string, unknown>): string {
 }
 
 function recommendedAction(task: Record<string, unknown>): string {
-  const value = stringField(task, "recommendedAction");
+  const value = taskField(task, "recommendedAction");
 
   if (!value || /\bcontact[_:-]?\d+|review follow-up\b/i.test(value)) {
     return `跟进 ${contactNameFor(task)} 的关系进展。`;
@@ -240,7 +256,7 @@ function recommendedAction(task: Record<string, unknown>): string {
 }
 
 function taskToScheduleItem(task: Record<string, unknown>): ScheduleItem {
-  const rawDueAt = stringField(task, "dueAt");
+  const rawDueAt = taskField(task, "dueAt");
   const formatted = rawDueAt ? dateParts(rawDueAt) : null;
   const fallbackDue = dueLabel(task);
   const dueAt = formatted
@@ -251,9 +267,9 @@ function taskToScheduleItem(task: Record<string, unknown>): ScheduleItem {
     contactName: contactNameFor(task),
     dayLabel: formatted?.dayLabel ?? fallbackDue,
     dueAt,
-    id: stringField(task, "taskId", stringField(task, "id", "task")),
+    id: taskField(task, "taskId", stringField(task, "id", "task")),
     monthLabel: formatted?.monthLabel ?? "",
-    organization: stringField(task, "organization"),
+    organization: taskField(task, "organization"),
     priority: priorityLabel(task),
     recommendedAction: recommendedAction(task),
     timeLabel: formatted?.timeLabel ?? "",
@@ -336,7 +352,7 @@ function followupTimelineItems(
     .filter(isRecord)
     .map((task) => {
       const item = taskToScheduleItem(task);
-      const rawDueAt = stringField(task, "dueAt");
+      const rawDueAt = taskField(task, "dueAt");
       const normalizedDueAt = shouldNormalizeTaskToToday(task, rawDueAt, now)
         ? todayTimestampWithTime(now, item.timeLabel)
         : rawDueAt;
@@ -367,6 +383,10 @@ function followupTimelineItems(
 }
 
 function eventTimelineItems(events: unknown, now: Date): TimelineItemWithSort[] {
+  const summaryById = new Map(
+    eventsToSummaries(events).map((event) => [event.id, event])
+  );
+
   return listFromPayload(events, "events")
     .filter(isRecord)
     .filter((event) => shouldShowEvent(event, now.getTime()))
@@ -374,28 +394,38 @@ function eventTimelineItems(events: unknown, now: Date): TimelineItemWithSort[] 
       const rawStartsAt = stringField(event, "startsAt");
       const formatted = rawStartsAt ? dateParts(rawStartsAt) : null;
       const startsAt = timestamp(rawStartsAt) ?? Number.MAX_SAFE_INTEGER;
+      const id = stringField(event, "id", "event");
       const title = eventTitle(event);
+      const summary = summaryById.get(id);
+      const location =
+        summary?.location ||
+        stringField(event, "venue") ||
+        stringField(event, "location");
 
       return {
         actionLabel: "查看活动安排",
+        ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
         dayLabel: formatted?.dayLabel ?? "时间待定",
         detail: [
           formatted?.timeLabel ? `活动时间 ${formatted.timeLabel}` : "",
-          stringField(event, "venue") || stringField(event, "location")
+          location
         ]
           .filter(Boolean)
           .join(" · "),
-        href: `/schedule/events/${encodeURIComponent(stringField(event, "id", "event"))}`,
-        id: stringField(event, "id", "event"),
+        href: `/schedule/events/${encodeURIComponent(id)}`,
+        id,
         kind: "event",
+        ...(location ? { location } : {}),
         monthLabel: formatted?.monthLabel ?? "",
+        ...(summary?.participantCountLabel
+          ? { participantCountLabel: summary.participantCountLabel }
+          : {}),
         reason: "先看活动时间、地点和参会目标，再决定要准备的介绍。",
         sortAt: startsAt,
-        statusLabel: eventStatusLabel(stringField(event, "status", "scheduled")),
-        subtitle:
-          stringField(event, "venue") ||
-          stringField(event, "location") ||
-          "活动安排",
+        statusLabel:
+          summary?.status ??
+          eventStatusLabel(stringField(event, "status", "scheduled")),
+        subtitle: location || "活动安排",
         timeLabel: formatted?.timeLabel ?? "",
         title
       };
@@ -406,25 +436,34 @@ function sectionId(item: TimelineItemWithSort): string {
   return item.monthLabel ? `${item.monthLabel}-${item.dayLabel}` : item.dayLabel;
 }
 
+function publicTimelineItem(item: TimelineItemWithSort): ScheduleTimelineItem {
+  return {
+    actionLabel: item.actionLabel,
+    ...(item.coverPath ? { coverPath: item.coverPath } : {}),
+    dayLabel: item.dayLabel,
+    detail: item.detail,
+    href: item.href,
+    id: item.id,
+    kind: item.kind,
+    ...(item.location ? { location: item.location } : {}),
+    ...(item.participantCountLabel
+      ? { participantCountLabel: item.participantCountLabel }
+      : {}),
+    reason: item.reason,
+    statusLabel: item.statusLabel,
+    subtitle: item.subtitle,
+    timeLabel: item.timeLabel,
+    title: item.title
+  };
+}
+
 function timelineSections(items: TimelineItemWithSort[]): ScheduleTimelineSection[] {
   const sections = new Map<string, ScheduleTimelineSection>();
 
   for (const item of items) {
     const id = sectionId(item);
     const existing = sections.get(id);
-    const publicItem: ScheduleTimelineItem = {
-      actionLabel: item.actionLabel,
-      dayLabel: item.dayLabel,
-      detail: item.detail,
-      href: item.href,
-      id: item.id,
-      kind: item.kind,
-      reason: item.reason,
-      statusLabel: item.statusLabel,
-      subtitle: item.subtitle,
-      timeLabel: item.timeLabel,
-      title: item.title
-    };
+    const publicItem = publicTimelineItem(item);
 
     if (existing) {
       existing.items.push(publicItem);
@@ -477,6 +516,10 @@ export function scheduleToTimelineView({
   return {
     emptyMessage: "跟进、活动和需要提前准备的关系事项会出现在这里。",
     emptyTitle: "暂无安排",
+    eventHighlights: eventItems
+      .sort((left, right) => left.sortAt - right.sortAt)
+      .slice(0, 2)
+      .map(publicTimelineItem),
     sections,
     stats: [
       { label: "跟进", value: String(followups.length) },

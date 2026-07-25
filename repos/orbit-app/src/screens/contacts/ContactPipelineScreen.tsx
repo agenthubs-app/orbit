@@ -94,6 +94,10 @@ export function ContactPipelineScreen() {
   );
 }
 
+function stageActionKey(action: ContactPipelineStageActionView) {
+  return `${action.connectionId}:${action.nextRelationshipStage}`;
+}
+
 function PipelineContent({
   connectionsPayload,
   contactsPayload,
@@ -105,15 +109,15 @@ function PipelineContent({
 }) {
   const router = useRouter();
   const client = useOrbitApiClient();
-  const [pendingConnectionId, setPendingConnectionId] = useState<string | null>(
-    null
-  );
+  const [pendingStageActionKey, setPendingStageActionKey] = useState<
+    string | null
+  >(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const view = contactsPipelineToView({ connectionsPayload, contactsPayload });
 
   async function updateStage(action: ContactPipelineStageActionView) {
-    setPendingConnectionId(action.connectionId);
+    setPendingStageActionKey(stageActionKey(action));
     setFeedback(null);
     setActionError(null);
 
@@ -134,7 +138,7 @@ function PipelineContent({
     } catch {
       setActionError("跟进状态暂时改不了。请刷新后再试一次。");
     } finally {
-      setPendingConnectionId(null);
+      setPendingStageActionKey(null);
     }
   }
 
@@ -156,7 +160,7 @@ function PipelineContent({
             router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
           }
           onStageAction={updateStage}
-          pendingConnectionId={pendingConnectionId}
+          pendingStageActionKey={pendingStageActionKey}
           stage={stage}
         />
       ))}
@@ -197,12 +201,12 @@ function MetricGrid({ metrics }: { metrics: ContactPipelineMetricView[] }) {
 function PipelineStage({
   onContactPress,
   onStageAction,
-  pendingConnectionId,
+  pendingStageActionKey,
   stage
 }: {
   onContactPress: (contactId: string) => void;
   onStageAction: (action: ContactPipelineStageActionView) => void;
-  pendingConnectionId: string | null;
+  pendingStageActionKey: string | null;
   stage: ContactPipelineStageView;
 }) {
   return (
@@ -215,7 +219,7 @@ function PipelineStage({
               key={contact.id}
               onPress={() => onContactPress(contact.id)}
               onStageAction={onStageAction}
-              pendingConnectionId={pendingConnectionId}
+              pendingStageActionKey={pendingStageActionKey}
             />
           ))}
         </View>
@@ -230,17 +234,15 @@ function PipelineContactRow({
   contact,
   onPress,
   onStageAction,
-  pendingConnectionId
+  pendingStageActionKey
 }: {
   contact: ContactPipelineCardView;
   onPress: () => void;
   onStageAction: (action: ContactPipelineStageActionView) => void;
-  pendingConnectionId: string | null;
+  pendingStageActionKey: string | null;
 }) {
-  const action = contact.stageAction;
-  const actionPending =
-    action !== null && pendingConnectionId === action.connectionId;
-  const anyActionPending = pendingConnectionId !== null;
+  const actions = contact.stageActions;
+  const anyActionPending = pendingStageActionKey !== null;
 
   return (
     <View style={styles.row}>
@@ -279,22 +281,36 @@ function PipelineContactRow({
           </View>
         ) : null}
       </Pressable>
-      {action ? (
-        <Pressable
-          accessibilityRole="button"
-          disabled={anyActionPending}
-          onPress={() => onStageAction(action)}
-          style={({ pressed }) => [
-            styles.stageButton,
-            anyActionPending ? styles.disabled : null,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Ionicons color={colors.accent} name="swap-horizontal-outline" size={16} />
-          <Text style={styles.stageButtonText}>
-            {actionPending ? action.pendingLabel : action.label}
-          </Text>
-        </Pressable>
+      {actions.length > 0 ? (
+        <View style={styles.stageActionsRow}>
+          {actions.map((stageAction) => {
+            const actionKey = stageActionKey(stageAction);
+            const actionPending = pendingStageActionKey === actionKey;
+
+            return (
+              <Pressable
+                accessibilityRole="button"
+                disabled={anyActionPending}
+                key={actionKey}
+                onPress={() => onStageAction(stageAction)}
+                style={({ pressed }) => [
+                  styles.stageButton,
+                  anyActionPending ? styles.disabled : null,
+                  pressed ? styles.pressed : null
+                ]}
+              >
+                <Ionicons
+                  color={colors.accent}
+                  name="swap-horizontal-outline"
+                  size={16}
+                />
+                <Text style={styles.stageButtonText}>
+                  {actionPending ? stageAction.pendingLabel : stageAction.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       ) : null}
     </View>
   );
@@ -456,6 +472,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
+  },
+  stageActionsRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
   },
   stageButton: {
     alignItems: "center",

@@ -1,5 +1,5 @@
-import { HomeScreen } from "../src/screens/home/HomeScreen";
+import { Redirect } from "expo-router";
 
 export default function HomeRoute() {
-  return <HomeScreen />;
+  return <Redirect href="/ai" />;
 }

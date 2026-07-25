@@ -16,6 +16,7 @@ const eventsPayload = {
       endsAt: "2026-08-04T16:00:00.000+09:00",
       id: "event_signup_03",
       location: "Tokyo",
+      participantCount: 36,
       sourceMetadata: {
         captureMethod: "live-record",
         label: "日中商务协会 / Japan China Business Association"
@@ -29,6 +30,7 @@ const eventsPayload = {
       endsAt: "2026-07-21T12:00:00.000+09:00",
       id: "kansai-cross-border",
       location: "Osaka",
+      participantCount: 28,
       sourceMetadata: {
         captureMethod: "live-record",
         label: "日中商务协会 / Japan China Business Association"
@@ -67,6 +69,7 @@ test("organizerPublicToView builds a Chinese organizer page from event records",
     active: "0",
     ended: "1",
     events: "2",
+    participants: "64",
     upcoming: "1"
   });
   assert.deepEqual(
@@ -77,6 +80,12 @@ test("organizerPublicToView builds a Chinese organizer page from event records",
     ] satisfies [string, OrganizerPublicEventState][]
   );
   assert.equal(view.primaryEvent?.id, "event_signup_03");
+  assert.equal(
+    view.primaryEvent?.coverPath,
+    "/orbit-covers/events/investor-founder-salon.jpg"
+  );
+  assert.equal(view.primaryEvent?.participantCountLabel, "36 人已报名");
+  assert.equal(view.events[1]?.participantCountLabel, "28 人已报名");
   assert.equal(view.actions[0]?.href, "/events/event_signup_03");
   assert.doesNotMatch(
     flattenedText(view),
@@ -95,6 +104,7 @@ test("organizerPublicToView falls back to a useful empty page", () => {
   assert.equal(view.name, "主办方");
   assert.equal(view.events.length, 0);
   assert.equal(view.emptyTitle, "暂时没有公开活动");
+  assert.equal(view.stats.participants, "0");
 });
 
 test("organizerPublicToView prefers Chinese event labels over mixed-language titles", () => {
@@ -121,4 +131,29 @@ test("organizerPublicToView prefers Chinese event labels over mixed-language tit
 
   assert.equal(view.events[0]?.title, "日中投资人与创业者报名沙龙");
   assert.doesNotMatch(view.events[0]?.title ?? "", /[ぁ-ヿ]|Japan-China/u);
+});
+
+test("organizerPublicToView does not show zero cumulative attendees for public events without counts", () => {
+  const view = organizerPublicToView({
+    events: {
+      events: [
+        {
+          endsAt: "2026-08-18T20:00:00.000+09:00",
+          id: "event_signup_03",
+          sourceMetadata: {
+            label: "日中投资人与创业者报名沙龙"
+          },
+          startsAt: "2026-08-18T18:00:00.000+09:00",
+          status: "scheduled",
+          title: "日中投资人与创业者报名沙龙",
+          venue: "Tokyo"
+        }
+      ]
+    },
+    now: new Date("2026-07-24T00:00:00.000+09:00"),
+    slug: "event_signup_03"
+  });
+
+  assert.equal(view.stats.participants, "待确认");
+  assert.equal(view.events[0]?.participantCountLabel, "报名人数待确认");
 });

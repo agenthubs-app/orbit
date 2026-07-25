@@ -1,3 +1,10 @@
+import { aiRunPath } from "../api/endpoints";
+import type {
+  OrbitAiConversationSummaryContract,
+  OrbitAiMessageContract,
+  OrbitAiProposedToolIntentContract
+} from "../api/contract/orbit-ai";
+
 export interface ConversationSummary {
   id: string;
   preview: string;
@@ -21,6 +28,8 @@ export interface MarkdownInlineView {
 
 export interface MarkdownBlockView {
   kind: MarkdownBlockKind;
+  marker?: string;
+  quote?: boolean;
   segments: MarkdownInlineView[];
 }
 
@@ -55,7 +64,12 @@ export type ConversationInlinePanelKind =
   | "schedule";
 
 export interface ConversationInlinePanelView {
-  actionHref: "/contacts" | "/events" | "/followups" | "/profile" | "/schedule";
+  actionHref:
+    | "/contacts/list"
+    | "/events"
+    | "/followups"
+    | "/profile"
+    | "/schedule";
   actionLabel: string;
   detail: string;
   kind: ConversationInlinePanelKind;
@@ -64,7 +78,64 @@ export interface ConversationInlinePanelView {
 
 export interface ConversationQuickRouteView {
   detail: string;
-  href: "/contacts" | "/events" | "/followups" | "/profile" | "/schedule";
+  href:
+    | "/contacts"
+    | "/contacts/list"
+    | "/events"
+    | "/followups"
+    | "/profile"
+    | "/schedule";
+  title: string;
+}
+
+export interface ConversationAiRunReferenceView {
+  actionLabel: string;
+  detail: string;
+  id: string;
+  title: string;
+}
+
+export interface ConversationContactCandidateView {
+  id: string;
+  name: string;
+  nextAction?: string;
+  organization?: string;
+  relationship?: string;
+  role?: string;
+  status?: string;
+  valueLabels?: readonly string[];
+}
+
+export interface ConversationEventCandidateView {
+  actionLabel: string;
+  id: string;
+  location: string;
+  participantCountLabel: string;
+  startsAt: string;
+  status: string;
+  subtitle: string;
+  title: string;
+  topics: readonly string[];
+}
+
+export type AiRunDetailRequestResult =
+  | {
+      request: {
+        path: string;
+      };
+      success: true;
+    }
+  | {
+      error: string;
+      success: false;
+    };
+
+export interface AiRunDetailView {
+  metrics: string[];
+  nextAction: string;
+  outputPreview: string;
+  safetyText: string;
+  summary: string;
   title: string;
 }
 
@@ -81,6 +152,48 @@ function stringField(
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
+// 下面两个取值器的字段名受跨端契约约束：服务端改名，这里立刻编译报错，
+// 而不是等到运行时静默拿到空字符串。契约之外的兼容字段继续走 stringField。
+function conversationField(
+  record: Record<string, unknown>,
+  fieldName: keyof OrbitAiConversationSummaryContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
+}
+
+function messageField(
+  record: Record<string, unknown>,
+  fieldName: keyof OrbitAiMessageContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
+}
+
+function intentField(
+  record: Record<string, unknown>,
+  fieldName: keyof OrbitAiProposedToolIntentContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
+}
+
+function nestedRecord(
+  record: Record<string, unknown>,
+  fieldName: string
+): Record<string, unknown> {
+  const value = record[fieldName];
+  return isRecord(value) ? value : {};
+}
+
+function envelopeData(data: unknown): unknown {
+  if (!isRecord(data)) {
+    return data;
+  }
+
+  return data.success === true && "data" in data ? data.data : data;
+}
+
 function containsImplementationLabel(value: string): boolean {
   return /\b(live|mock|hybrid|fixture|provider|providers|payload|source-backed|command-center|command center|natural-language request)\b/i.test(
     value
@@ -89,6 +202,20 @@ function containsImplementationLabel(value: string): boolean {
 
 function normalizeOrbitAiName(value: string): string {
   return value.replace(/\bOrbit Agent\b/g, "Orbit AI");
+}
+
+function containsChinese(value: string): boolean {
+  return /[\u3400-\u9fff]/u.test(value);
+}
+
+function userFacingChineseText(value: string, fallback: string): string {
+  const text = normalizeOrbitAiName(value).trim();
+
+  if (!text || containsImplementationLabel(text) || !containsChinese(text)) {
+    return fallback;
+  }
+
+  return text;
 }
 
 function conversationTitle(value: string): string {
@@ -116,7 +243,7 @@ function assistantMessageContent(value: string): string {
   }
 
   if (containsImplementationLabel(content)) {
-    return "把问题发过来。我会按人脉、活动和跟进记录来答。";
+    return "有什么需要我做的吗？找活动、准备会面、整理人脉，我可以先帮您梳理下一步。";
   }
 
   return content;
@@ -153,20 +280,131 @@ function listFromPayload(value: unknown, fieldName: string): readonly unknown[] 
   return Array.isArray(field) ? field : [];
 }
 
+function listField(
+  record: Record<string, unknown>,
+  fieldName: string
+): readonly unknown[] {
+  const value = record[fieldName];
+  return Array.isArray(value) ? value : [];
+}
+
+function addRunId(runIds: Set<string>, value: string): void {
+  const normalized = value.trim();
+
+  if (normalized) {
+    runIds.add(normalized);
+  }
+}
+
+function addRunIdsFromText(runIds: Set<string>, value: string): void {
+  for (const match of value.matchAll(/[A-Za-z0-9:_-]*ai-run[A-Za-z0-9:_-]*/giu)) {
+    addRunId(runIds, match[0]);
+  }
+}
+
+function aiRunRecordId(record: Record<string, unknown>): string {
+  return stringField(record, "runId", stringField(record, "id"));
+}
+
+export function conversationAiRunReferencesFor(
+  data: unknown
+): ConversationAiRunReferenceView[] {
+  const payload = isRecord(data) ? data : {};
+  const runIds = new Set<string>();
+
+  listFromPayload(payload, "aiRuns")
+    .filter(isRecord)
+    .forEach((run) => addRunId(runIds, aiRunRecordId(run)));
+  listFromPayload(payload, "runs")
+    .filter(isRecord)
+    .forEach((run) => addRunId(runIds, aiRunRecordId(run)));
+  addRunId(runIds, stringField(payload, "runId"));
+  addRunId(runIds, stringField(nestedRecord(payload, "provenance"), "runId"));
+  listFromPayload(payload, "messages")
+    .filter(isRecord)
+    .forEach((message) => addRunIdsFromText(runIds, stringField(message, "content")));
+
+  return Array.from(runIds).map((id) => ({
+    actionLabel: "查看依据",
+    detail: `查看 ${id} 的来源、证据和安全边界。`,
+    id,
+    title: "AI 运行依据"
+  }));
+}
+
+export function buildAiRunDetailRequest(
+  runId: string
+): AiRunDetailRequestResult {
+  const normalizedRunId = runId.trim();
+
+  if (!normalizedRunId) {
+    return {
+      error: "这次 AI 运行缺少编号，暂时不能查看依据。",
+      success: false
+    };
+  }
+
+  return {
+    request: {
+      path: aiRunPath(normalizedRunId)
+    },
+    success: true
+  };
+}
+
+function aiRunOutputPreview(output: Record<string, unknown>): string {
+  const text = normalizeOrbitAiName(stringField(output, "text")).trim();
+
+  if (!text || containsImplementationLabel(text)) {
+    return "这次运行没有返回可展示输出。";
+  }
+
+  return text;
+}
+
+export function aiRunDetailToView(data: unknown): AiRunDetailView {
+  const payload = envelopeData(data);
+  const record = isRecord(payload) ? payload : {};
+  const run = nestedRecord(record, "run");
+  const provenance = isRecord(record.provenance)
+    ? nestedRecord(record, "provenance")
+    : nestedRecord(run, "provenance");
+  const output = nestedRecord(run, "output");
+  const runId = stringField(run, "runId", stringField(provenance, "runId", "未标注运行"));
+  const promptTemplateId = stringField(run, "promptTemplateId", "未标注模板");
+  const evidenceCount =
+    listField(run, "evidenceIds").length || listField(provenance, "evidenceIds").length;
+
+  return {
+    metrics: [`运行 ${runId}`, `模板 ${promptTemplateId}`, `证据 ${evidenceCount} 条`],
+    nextAction: userFacingChineseText(
+      stringField(record, "nextAction"),
+      "先核对证据和输出，再决定是否继续。"
+    ),
+    outputPreview: aiRunOutputPreview(output),
+    safetyText: "不会自动发送消息、写日历、改联系人或触发通知。",
+    summary: userFacingChineseText(
+      stringField(record, "summary"),
+      "这次回复有可复核的运行记录。"
+    ),
+    title: "AI 运行依据"
+  };
+}
+
 export function conversationsToSummaries(data: unknown): ConversationSummary[] {
   return listFromPayload(data, "conversations")
     .filter(isRecord)
     .map((conversation) => ({
-      id: stringField(
+      id: conversationField(
         conversation,
         "conversationId",
         stringField(conversation, "id", "conversation")
       ),
       preview:
-        conversationPreview(stringField(conversation, "lastMessagePreview")) ||
+        conversationPreview(conversationField(conversation, "lastMessagePreview")) ||
         conversationPreview(stringField(conversation, "preview")),
       title: conversationTitle(
-        stringField(conversation, "title", "Orbit AI 对话")
+        conversationField(conversation, "title", "Orbit AI 对话")
       )
     }));
 }
@@ -204,11 +442,11 @@ export function conversationPayloadToChatView(
       stringField(payload, "assistantMessage")
     ),
     messages: messages.filter(isRecord).map((message) => {
-      const role = stringField(message, "role", "assistant");
+      const role = messageField(message, "role", "assistant");
 
       return {
-        content: chatMessageContent(role, stringField(message, "content")),
-        createdAt: stringField(message, "createdAt"),
+        content: chatMessageContent(role, messageField(message, "content")),
+        createdAt: messageField(message, "createdAt"),
         id: stringField(
           message,
           "messageId",
@@ -219,7 +457,7 @@ export function conversationPayloadToChatView(
     }),
     proposedToolIntents: proposedToolIntents.filter(isRecord).map((intent) => ({
       id: stringField(intent, "intentId", stringField(intent, "id", "intent")),
-      label: stringField(intent, "label", "Suggested action"),
+      label: intentField(intent, "label", "建议动作"),
       reason: stringField(intent, "reason"),
       requiresUserConfirmation: actionRequiresConfirmation(intent)
     }))
@@ -331,11 +569,42 @@ export function markdownBlocksFor(content: string): MarkdownBlockView[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const listMatch = /^[-*]\s+(.+)$/u.exec(line);
-      const body = listMatch?.[1] ?? line.replace(/^#{1,3}\s+/u, "");
+      const quoteMatch = /^>\s*(.+)$/u.exec(line);
+      const quotedLine = quoteMatch?.[1]?.trim();
+      const lineBody = quotedLine || line;
+      const taskMatch = /^[-*]\s+\[([ xX])\]\s+(.+)$/u.exec(lineBody);
+      const orderedListMatch = /^(\d+)[.)]\s+(.+)$/u.exec(lineBody);
+      const unorderedListMatch = /^[-*]\s+(.+)$/u.exec(lineBody);
+
+      if (taskMatch) {
+        const taskState = taskMatch[1] ?? "";
+        const taskBody = taskMatch[2] ?? "";
+
+        return {
+          kind: "listItem",
+          marker: taskState.toLowerCase() === "x" ? "✓" : "☐",
+          ...(quoteMatch ? { quote: true } : {}),
+          segments: markdownSegmentsFor(taskBody)
+        };
+      }
+
+      if (orderedListMatch) {
+        const orderIndex = orderedListMatch[1] ?? "";
+        const orderBody = orderedListMatch[2] ?? "";
+
+        return {
+          kind: "listItem",
+          marker: `${orderIndex}.`,
+          ...(quoteMatch ? { quote: true } : {}),
+          segments: markdownSegmentsFor(orderBody)
+        };
+      }
+
+      const body = unorderedListMatch?.[1] ?? lineBody.replace(/^#{1,3}\s+/u, "");
 
       return {
-        kind: listMatch ? "listItem" : "paragraph",
+        kind: unorderedListMatch ? "listItem" : "paragraph",
+        ...(quoteMatch ? { quote: true } : {}),
         segments: markdownSegmentsFor(body)
       };
     });
@@ -352,25 +621,161 @@ function threadSearchText(thread: ConversationThreadView): string {
   return messages.join(" ").toLowerCase();
 }
 
+function normalizedMatchText(value: string): string {
+  return value.toLocaleLowerCase().replace(/\s+/gu, "");
+}
+
+function contactMatchTerms(contact: ConversationContactCandidateView): string[] {
+  return [
+    contact.name,
+    contact.organization,
+    contact.role,
+    contact.relationship,
+    contact.status,
+    contact.nextAction,
+    ...(contact.valueLabels ?? [])
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .map(normalizedMatchText)
+    .filter((value) => value.length >= 2);
+}
+
+export function prioritizeConversationContacts<
+  T extends ConversationContactCandidateView
+>(thread: ConversationThreadView, contacts: readonly T[]): T[] {
+  const threadText = normalizedMatchText(
+    thread.messages.map((message) => message.content).join(" ")
+  );
+
+  return contacts
+    .map((contact, index) => {
+      const terms = contactMatchTerms(contact);
+      const matchIndexes = terms
+        .map((term) => threadText.indexOf(term))
+        .filter((matchIndex) => matchIndex >= 0);
+
+      return {
+        contact,
+        firstMatchIndex: Math.min(...matchIndexes),
+        index,
+        score: matchIndexes.length
+      };
+    })
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+
+      if (left.score > 0 && right.score > 0) {
+        return left.firstMatchIndex - right.firstMatchIndex;
+      }
+
+      return left.index - right.index;
+    })
+    .map((item) => item.contact);
+}
+
+const EVENT_TERM_ALIASES: Record<string, string[]> = {
+  kansai: ["关西"],
+  kyoto: ["京都"],
+  osaka: ["大阪", "关西"],
+  shanghai: ["上海"],
+  taipei: ["台北"],
+  tokyo: ["东京", "東京"]
+};
+
+function cjkNgramTerms(value: string): string[] {
+  const terms = new Set<string>();
+
+  for (const match of value.matchAll(/[\u3400-\u9fff]{2,}/gu)) {
+    const text = match[0];
+    const maxSize = Math.min(4, text.length);
+
+    for (let size = 2; size <= maxSize; size += 1) {
+      for (let index = 0; index <= text.length - size; index += 1) {
+        terms.add(text.slice(index, index + size));
+      }
+    }
+  }
+
+  return Array.from(terms);
+}
+
+function eventTermCandidates(value: string): string[] {
+  const normalized = normalizedMatchText(value);
+  const aliases = EVENT_TERM_ALIASES[normalized] ?? [];
+
+  return [normalized, ...aliases.map(normalizedMatchText), ...cjkNgramTerms(value)];
+}
+
+function eventMatchTerms(event: ConversationEventCandidateView): string[] {
+  const fields = [
+    event.title,
+    event.subtitle,
+    event.location,
+    ...event.topics
+  ];
+  const terms = fields
+    .filter((value): value is string => typeof value === "string")
+    .flatMap(eventTermCandidates)
+    .filter((value) => value.length >= 2);
+
+  return Array.from(new Set(terms));
+}
+
+export function prioritizeConversationEvents<
+  T extends ConversationEventCandidateView
+>(thread: ConversationThreadView, events: readonly T[]): T[] {
+  const threadText = normalizedMatchText(
+    thread.messages.map((message) => message.content).join(" ")
+  );
+
+  return events
+    .map((event, index) => {
+      const terms = eventMatchTerms(event);
+      const matchIndexes = terms
+        .map((term) => threadText.indexOf(term))
+        .filter((matchIndex) => matchIndex >= 0);
+
+      return {
+        event,
+        firstMatchIndex: Math.min(...matchIndexes),
+        index,
+        score: matchIndexes.length
+      };
+    })
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+
+      if (left.score > 0 && right.score > 0) {
+        return left.firstMatchIndex - right.firstMatchIndex;
+      }
+
+      return left.index - right.index;
+    })
+    .map((item) => item.event);
+}
+
 export function conversationInlinePanelsForThread(
   thread: ConversationThreadView
 ): ConversationInlinePanelView[] {
   const searchText = threadSearchText(thread);
+  const panels: ConversationInlinePanelView[] = [];
 
   if (
     /跟进|回访|follow|followup|follow-up|提醒|优先级|待处理|下一步/iu.test(
       searchText
     )
   ) {
-    return [
-      {
-        actionHref: "/followups",
-        actionLabel: "查看全部跟进",
-        detail: "根据你的问题，先把今天需要复核的跟进事项放在对话里。",
-        kind: "followups",
-        title: "待跟进"
-      }
-    ];
+    panels.push({
+      actionHref: "/followups",
+      actionLabel: "查看全部跟进",
+      detail: "根据你的问题，先把今天需要复核的跟进事项放在对话里。",
+      kind: "followups",
+      title: "待跟进"
+    });
   }
 
   if (
@@ -378,15 +783,13 @@ export function conversationInlinePanelsForThread(
       searchText
     )
   ) {
-    return [
-      {
-        actionHref: "/contacts",
-        actionLabel: "查看全部人脉",
-        detail: "根据你的问题，先把值得查看和适合推进的人放在对话里。",
-        kind: "people",
-        title: "相关人脉"
-      }
-    ];
+    panels.push({
+      actionHref: "/contacts/list",
+      actionLabel: "查看联系人列表",
+      detail: "根据你的问题，先把值得查看和适合推进的人放在对话里。",
+      kind: "people",
+      title: "相关人脉"
+    });
   }
 
   if (
@@ -394,31 +797,27 @@ export function conversationInlinePanelsForThread(
       searchText
     )
   ) {
-    return [
-      {
-        actionHref: "/events",
-        actionLabel: "查看全部活动",
-        detail: "根据你的问题，先把可参加和需要准备的活动放在对话里。",
-        kind: "events",
-        title: "相关活动"
-      }
-    ];
+    panels.push({
+      actionHref: "/events",
+      actionLabel: "查看全部活动",
+      detail: "根据你的问题，先把可参加和需要准备的活动放在对话里。",
+      kind: "events",
+      title: "相关活动"
+    });
   }
 
   if (
-    /日程|安排|约见|会面|几点|什么时候|calendar|schedule|meeting|appointment/iu.test(
+    /日程|安排|几点|什么时候|calendar|schedule|appointment/iu.test(
       searchText
     )
   ) {
-    return [
-      {
-        actionHref: "/schedule",
-        actionLabel: "查看日程",
-        detail: "根据你的问题，先把最近需要处理的时间和待办放在对话里。",
-        kind: "schedule",
-        title: "近日安排"
-      }
-    ];
+    panels.push({
+      actionHref: "/schedule",
+      actionLabel: "查看日程",
+      detail: "根据你的问题，先把最近需要处理的时间和待办放在对话里。",
+      kind: "schedule",
+      title: "近日安排"
+    });
   }
 
   if (
@@ -426,18 +825,16 @@ export function conversationInlinePanelsForThread(
       searchText
     )
   ) {
-    return [
-      {
-        actionHref: "/profile",
-        actionLabel: "完善档案",
-        detail: "根据你的问题，先把别人会看到的自我介绍和资源标签放在对话里。",
-        kind: "profile",
-        title: "个人档案"
-      }
-    ];
+    panels.push({
+      actionHref: "/profile",
+      actionLabel: "完善档案",
+      detail: "根据你的问题，先把别人会看到的自我介绍和资源标签放在对话里。",
+      kind: "profile",
+      title: "个人档案"
+    });
   }
 
-  return [];
+  return panels;
 }
 
 export function conversationQuickRoutes(): ConversationQuickRouteView[] {
@@ -521,7 +918,7 @@ export function proactiveTurnPayloadToChatView(
       ? [
           {
             content,
-            createdAt: stringField(message, "createdAt"),
+            createdAt: messageField(message, "createdAt"),
             id: stringField(
               message,
               "messageId",
@@ -533,8 +930,8 @@ export function proactiveTurnPayloadToChatView(
       : [],
     proposedToolIntents: suggestedActions.filter(isRecord).map((action) => ({
       id: stringField(action, "actionId", stringField(action, "id", "action")),
-      label: stringField(action, "label", "Suggested action"),
-      reason: stringField(action, "reason", "Suggested by Orbit AI."),
+      label: stringField(action, "label", "建议动作"),
+      reason: stringField(action, "reason", "Orbit AI 建议先处理这一步。"),
       requiresUserConfirmation: actionRequiresConfirmation(action)
     }))
   };

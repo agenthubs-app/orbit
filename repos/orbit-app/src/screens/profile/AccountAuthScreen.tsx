@@ -3,27 +3,20 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
   View
 } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
-import type { MobileAuthUser } from "../../api/mobile-auth";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { ErrorState } from "../../components/ErrorState";
-import { LoadingState } from "../../components/LoadingState";
 import { colors, radius, spacing, typography } from "../../design/tokens";
-import { useApiResource } from "../../hooks/useApiResource";
 import {
   accountAuthToView,
   type AccountAuthFieldView,
   type AccountAuthMode
 } from "../../view-models/account-auth";
-import { accountSessionToView } from "../../view-models/account-session";
 
 function firstParam(value: string | string[] | undefined, fallback = ""): string {
   if (Array.isArray(value)) {
@@ -58,14 +51,6 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     newPassword: "",
     password: ""
   });
-  const state = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.accountMe,
-    (data) =>
-      accountSessionToView(data, {
-        authenticated: auth.signedIn,
-        authUser: auth.user
-      }).statusLabel !== "已登录"
-  );
   const view = useMemo(
     () => accountAuthToView(mode, { forgotStep, googleEnabled: auth.googleEnabled }),
     [auth.googleEnabled, forgotStep, mode]
@@ -93,7 +78,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       if (mode === "forgot") {
         if (forgotStep === 1) {
           setForgotStep(2);
-          setNotice("重置密码暂时不能发送，请先返回登录。");
+          setNotice("验证码邮件还没开通。这里先保留第二步表单，等邮件开通后可直接继续。");
         } else {
           router.replace(`/account/login?next=${encodeURIComponent(next)}` as Href);
         }
@@ -131,7 +116,6 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         return;
       }
 
-      state.refresh();
       router.replace(next as Href);
     } finally {
       setSubmitting(false);
@@ -155,7 +139,6 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         return;
       }
 
-      state.refresh();
       router.replace(next as Href);
     } finally {
       setSubmitting(false);
@@ -165,16 +148,10 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   return (
     <AppScreen
       eyebrow="账号"
-      refreshControl={
-        <RefreshControl
-          onRefresh={state.refresh}
-          refreshing={state.refreshing}
-          tintColor={colors.accent}
-        />
-      }
       title={view.title}
     >
-      <DataCard detail={view.description} title="账号入口">
+      <OrbitAuthLogo />
+      <DataCard title={view.primaryLabel}>
         <View style={styles.form}>
           {view.fields.map((field) => (
             <AuthField
@@ -266,28 +243,20 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           ) : null}
         </View>
       </DataCard>
-
-      <DataCard detail={view.boundary} title="登录说明">
-        <Text style={styles.bodyText}>
-          邮箱密码账号会同步到网页版。Google 登录会打开网页授权，完成后回到 Orbit。
-        </Text>
-      </DataCard>
-
-      {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
-      ) : null}
-      {state.kind === "failure" ? (
-        <ErrorState message={state.error.message} title="账号状态不可用" />
-      ) : null}
-      {state.kind === "success" || state.kind === "empty" ? (
-        <SessionPreview
-          data={state.data}
-          signedIn={auth.signedIn}
-          user={auth.user}
-        />
-      ) : null}
     </AppScreen>
+  );
+}
+
+function OrbitAuthLogo() {
+  return (
+    <View style={styles.brandHeader}>
+      <View accessibilityLabel="Orbit" style={styles.brandMark}>
+        <View style={styles.brandRingPrimary} />
+        <View style={styles.brandRingSecondary} />
+        <View style={styles.brandCore} />
+      </View>
+      <Text style={styles.brandName}>Orbit</Text>
+    </View>
   );
 }
 
@@ -342,36 +311,51 @@ function AuthField({
   );
 }
 
-function SessionPreview({
-  data,
-  signedIn,
-  user
-}: {
-  data: unknown;
-  signedIn: boolean;
-  user: MobileAuthUser | null;
-}) {
-  const session = accountSessionToView(data, {
-    authenticated: signedIn,
-    authUser: user
-  });
-
-  return (
-    <DataCard detail={session.summary} title="账号状态">
-      <View style={styles.sessionRow}>
-        <Text style={styles.sessionName}>{session.displayName}</Text>
-        <Text style={styles.statusPill}>{session.statusLabel}</Text>
-      </View>
-      <Text style={styles.bodyText}>{session.goal}</Text>
-    </DataCard>
-  );
-}
-
 const styles = StyleSheet.create({
-  bodyText: {
-    color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
+  brandCore: {
+    backgroundColor: colors.onAccent,
+    borderRadius: radius.pill,
+    height: 12,
+    width: 12
+  },
+  brandHeader: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingBottom: spacing.xs,
+    paddingTop: spacing.sm
+  },
+  brandMark: {
+    alignItems: "center",
+    backgroundColor: colors.ink,
+    borderRadius: 20,
+    height: 64,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 64
+  },
+  brandName: {
+    color: colors.ink,
+    fontSize: 26,
+    fontWeight: "800",
+    lineHeight: 31
+  },
+  brandRingPrimary: {
+    borderColor: "rgba(255,255,255,0.82)",
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    height: 23,
+    position: "absolute",
+    transform: [{ rotate: "-24deg" }],
+    width: 47
+  },
+  brandRingSecondary: {
+    borderColor: colors.accent,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    height: 25,
+    position: "absolute",
+    transform: [{ rotate: "28deg" }],
+    width: 50
   },
   disabledButton: {
     opacity: 0.72
@@ -531,27 +515,5 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "700",
     lineHeight: 18
-  },
-  sessionName: {
-    color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
-  },
-  sessionRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm
-  },
-  statusPill: {
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
   }
 });

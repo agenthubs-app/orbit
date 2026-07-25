@@ -30,12 +30,22 @@ at a different Orbit server.
 - `npm run ios`: start Expo and open iOS simulator.
 - `npm run start`: start Expo without choosing a target.
 - `npm run typecheck`: run TypeScript.
-- `npm test`: run Node tests through `tsx`.
+- `npm test`: run Node tests through `tsx`, including rendering tests.
+
+Rendering tests live beside the others and use `tests/helpers/render.tsx`. There
+is no Jest here: `tests/helpers/register-render-hooks.mjs` points `react-native`
+at `react-native-web` inside the test process only, so components render to HTML
+under `node --test`. The native build is unaffected. Static rendering covers
+structure and copy; interaction is not simulated yet.
 
 ## Boundaries
 
 - The app consumes `/api/**` routes from `repos/orbits`.
 - The app does not import Next.js pages or feature services.
+- Response shapes come from the shared contract. `src/api/contract/` is a copy of
+  `../orbits/shared/contract/`; run `npm run sync:contract` after the server
+  changes it. `npm test` fails when the copy is stale, and `npm run typecheck`
+  then points at the view-models that need updating.
 - The app does not read Postgres, Supabase, `orbit_records`, or web localStorage.
 - Orbit AI remains the single assistant inbox, including proactive turns.
 
@@ -49,7 +59,9 @@ at a different Orbit server.
   reviewed draft thread from a contact.
 - Relationship chat: reads `/api/chat/conversations` and
   `/api/chat/conversations/:id`, shows one-to-one relationship thread context
-  and message history, and keeps outbound delivery behind review.
+  and message history, can save reply drafts through
+  `/api/chat/conversations/:id/messages`, and keeps outbound delivery behind
+  review.
 - Followups: reads `/api/tasks` and `/api/notifications`, shows due
   relationship work, source counts, trigger labels, and reminder review cards
   without generating tasks, creating reminders, or sending notifications.
@@ -67,10 +79,8 @@ at a different Orbit server.
   to show an organizer admin entry, dashboard, event list, and access boundary
   without sending login email, creating sessions, writing events, running
   matching, or changing member roles from mobile.
-- Home: supports `/home` and `/home/events`, reads `/api/profile`,
-  `/api/events`, and `/api/contacts`, and mirrors the web personal hub with
-  profile summary, entry shortcuts, event status filters, and read-only event
-  navigation.
+- Home: legacy `/home` now redirects to the single Orbit AI home at `/ai`.
+  `/home/events` stays available for the native personal event list and filters.
 - Agent actions: reads `/api/agent/actions` and `/api/agent/settings`, shows
   suggestions that need review and the current action boundary, and can confirm
   or dismiss a suggested action through `/api/agent/actions/:id/accept` and
@@ -83,10 +93,12 @@ at a different Orbit server.
   screens. Email/password login now follows the web NextAuth credentials flow,
   signup calls `/api/auth/register`, and sign-out clears the saved device
   session.
-- Events: reads `/api/events`, shows each event as an image-led content card,
+- Events: reads `/api/events`, shows events as an image-first activity list,
   opens detail pages, manages event-specific registration answers, shows
-  attendee/match context for selected events, and opens a mobile party surface
-  for the selected event.
+  attendee/match context for selected events, can build a local activity
+  persona through the web registration interview routes, can accept review-safe
+  event recommendations, can import event attendees into review-only contact
+  drafts, and opens a mobile party surface for the selected event.
 - Register invite: supports `/register` and `/register/:code`, reads
   `/api/events/:id` plus `/api/profile`, and prepares the attendee profile
   before sending the user into event-specific questions.
@@ -99,14 +111,19 @@ at a different Orbit server.
   from mobile.
 - Contacts: reads `/api/contacts`, supports search and status filters through
   query params, shows avatar-led contact cards with next action, status, and
-  value context, links to source acquisition, and lets contact detail update
-  supported statuses through `PATCH /api/contacts/:id`.
+  value context, loads Chinese relationship search suggestions from
+  `/api/search/suggestions`, can submit `/api/search/relationships` and render
+  source-backed relationship result cards, links to source acquisition, and lets
+  contact detail update supported statuses through `PATCH /api/contacts/:id`
+  and recompute its relationship value card through
+  `/api/analysis/relationship-value/recompute`.
 - Contacts dashboard: reads dashboard analytics routes and maps the web
   contacts dashboard into relationship asset counts, a compact relationship
   map, coverage gaps, distribution, value types, and recent activity.
-- Contacts graph: reads `/api/connections`, shows connection counts, stage
-  distribution, evidence status, and priority relationships without staging or
-  writing evidence.
+- Contacts graph: reads `/api/connections` and `/api/connections/:id`, shows
+  connection counts, stage distribution, evidence status, priority
+  relationships, and evidence chains. It can also post reviewed manual evidence
+  through `/api/connections/:id/evidence`.
 - Contacts pipeline: reads `/api/contacts` and `/api/connections`, groups
   contacts into follow-up stages, opens contact detail, and can move supported
   connection stages through `/api/connections/:id/stage`.
@@ -116,13 +133,34 @@ at a different Orbit server.
 - Schedule: reads `/api/tasks` and shows actionable follow-up context. It also
   supports `/schedule/events/:id` as a read-only activity preview backed by
   `/api/events/:id`.
-- Profile: reads `/api/profile`.
+- Profile: reads `/api/profile`, supports manual public-profile edits, and can
+  turn accepted suggestions or extracted profile fields into pending editor
+  changes before saving.
 
 Each screen renders loading, empty, offline, failure, and success states through
 the shared Orbit API envelope client.
 
-Orbit AI also reads `/api/app/bootstrap` to show the startup relationship
-summary above the composer.
+## Navigation
+
+Orbit AI at `/ai` is the only home. There is no bottom tab bar: every other
+surface — events, contacts, schedule, relationship inbox, dashboard, followups,
+relationship chat, party, agent actions, profile, and settings — opens from the
+drawer behind the top-left button (or a left-edge swipe). The four highest
+traffic destinations sit in a tile grid, the rest as icon rows, and the
+relationship inbox keeps its unread badge through
+`useRelationshipInboxBadgeCount`.
+
+The chat home pins its composer to the bottom of the screen. The top-right
+button opens conversation history (web sessions plus app conversations,
+searchable, web sessions deletable), and the composer `+` menu carries card
+scanning and a new chat. Manual proactive check-ins live in the relationship
+inbox, which already reads `/api/ai/proactive-turns`.
+
+Screens that render through `AppScreen` get a back control automatically; when a
+screen is opened without history it returns to Orbit AI instead.
+
+`app/(app)/` is a plain stack group, so its routes keep their public paths
+(`/ai`, `/inbox`, `/events`, `/contacts`, `/schedule`, `/profile`).
 
 Orbit AI links to a mobile relationship dashboard. The dashboard maps the web
 analytics payloads into Chinese mobile cards, hides backend provenance wording,
@@ -157,7 +195,8 @@ calendar items.
 
 Orbit AI links to a mobile relationship chat workspace. The screen reads the
 legacy `/api/chat/conversations` relationship threads, opens thread details,
-and labels message delivery as review-only rather than live external chat.
+can save reply drafts through the web messages boundary, and labels message
+delivery as review-only rather than live external chat.
 
 Orbit AI links to a mobile follow-up queue. The screen reads `/api/tasks` and
 `/api/notifications`, highlights the next relationship action, and keeps task
@@ -179,7 +218,10 @@ detail screens support pull-to-refresh through the same envelope client.
 Event detail screens link to an event registration workspace. The workspace
 reads generated event questions from `/api/events/:id/registration`, posts
 answers back to the same endpoint, and cancels through
-`/api/events/:id/registration/cancel`.
+`/api/events/:id/registration/cancel`. It can also ask adaptive follow-up
+questions through `/api/events/:id/registration/interview` and generate a local
+activity persona through `/api/events/:id/registration/persona`; that preview
+does not write the profile or send messages.
 
 Register invite links like `/register/:code` open natively. The screen prepares
 the event invite and current profile preview, then links into the event
@@ -187,8 +229,10 @@ registration workspace. It does not create accounts, write attendees, send
 pass-code emails, upload cards or resumes, or run extraction from mobile yet.
 
 Event detail screens also link to an attendee workspace. It reads
-`/api/events/:id/attendees` and `/api/events/:id/matches`, and can record an
-on-site want-to-connect intent through `/api/events/:id/want-to-connect`.
+`/api/events/:id/attendees` and `/api/events/:id/matches`, can record an
+on-site want-to-connect intent through `/api/events/:id/want-to-connect`, and
+can import the roster into review-only contact drafts through
+`/api/contact-drafts/event-attendees/import`.
 
 Event detail screens link to the mobile party surface. It keeps `/app/party`,
 `/app/party/checkin`, and `/app/party/graph` available as native screens for
@@ -205,9 +249,13 @@ guardrail copy without writing calendar records, registering, creating
 reminders, or sending messages.
 
 Contacts also has an iPhone-first source acquisition route for manual notes, QR
-text, and business-card text. It posts to contact draft APIs, can confirm the
-candidate it just created, and still keeps the final contact write outside the
-mobile client.
+text, native QR camera scans, business-card text, and external contact
+candidates. It posts to contact draft APIs, reads
+`/api/contact-drafts/external/candidates`, can stage external sources through
+`/api/contact-drafts/external/import`, can stage referral recommendations
+through `/api/contact-drafts/referral`, can confirm recommended people through
+`/api/contact-drafts/recommended/:id/confirm`, can confirm the candidate it just
+created, and still keeps the final contact write outside the mobile client.
 
 Contacts link to a mobile contacts dashboard. It reuses the dashboard analytics
 payloads but presents them as an asset check for the address book: total
@@ -216,14 +264,16 @@ coverage gaps, and value type distribution. Export, recompute, and bulk
 drill-down actions stay out of mobile until those contracts are explicit.
 
 Contacts link to a mobile relationship graph. The graph reads connection
-evidence, hides backend provenance wording, and opens the related contact
-detail when the user chooses a priority relationship.
+evidence, hides backend provenance wording, opens the related contact detail,
+can show the selected relationship's evidence chain, and can add a reviewed
+manual evidence item through the web connection evidence route.
 
 Contacts link to a mobile follow-up pipeline and an introduction preparation
 screen. These views combine contact status, value labels, and connection
 evidence into Chinese mobile cards. The pipeline can move supported
 connections between 待联系 and 在推进 through the backend stage endpoint; outbound
-introductions and evidence review stay behind future confirmation flows.
+introductions and evidence edit/delete flows stay behind future confirmation
+contracts.
 
 Contact detail screens link into the relationship inbox with the selected
 contact prefilled for a draft follow-up. They can also move supported contact
@@ -236,6 +286,11 @@ identity, and opens native account entry screens for login, signup, and
 password reset. Email/password login and signup now use the same web auth
 routes. Password reset delivery and OAuth callback handling are still web-side
 flows.
+
+The account screen also links to a native permissions center at
+`/account/permissions`. It reads `/api/permissions`, shows the current staged
+permission state in Chinese, and can request calendar review through
+`/api/permissions/calendar/request` without opening a live provider flow.
 
 The Server screen can save a runtime Orbit server address on device. This is
 useful when moving from the iOS simulator to a physical iPhone or a remote API

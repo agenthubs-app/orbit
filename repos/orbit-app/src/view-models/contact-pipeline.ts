@@ -2,10 +2,20 @@ import {
   contactsToSummaries,
   type ContactSummary
 } from "./contacts";
+import { contactInvitationPath } from "../api/endpoints";
 
-export type ContactPipelineStageId = "to_contact" | "in_progress" | "partnered";
+export type ContactPipelineStageId =
+  | "to_contact"
+  | "in_progress"
+  | "nurture"
+  | "archived"
+  | "partnered";
 
-export type ContactPipelineRelationshipStage = "active" | "needs_follow_up";
+export type ContactPipelineRelationshipStage =
+  | "active"
+  | "needs_follow_up"
+  | "nurture"
+  | "archived";
 
 export interface ContactPipelineMetricView {
   label: string;
@@ -19,6 +29,7 @@ export interface ContactPipelineCardView {
   nextAction: string;
   relationship: string;
   stageAction: ContactPipelineStageActionView | null;
+  stageActions: ContactPipelineStageActionView[];
   valueLabels: string[];
   valueScoreLabel: string | null;
 }
@@ -65,6 +76,54 @@ export interface ContactPipelineView {
   title: string;
 }
 
+export interface ContactInvitationView {
+  body: string;
+  boundaryText: string;
+  canConfirm: boolean;
+  id: string;
+  nextAction: string;
+  recipientLine: string;
+  safetyText: string;
+  statusLabel: string;
+  subject: string;
+  title: string;
+}
+
+export type ContactInvitationPrepareRequestResult =
+  | {
+      request: {
+        body: {
+          contactId: string;
+          recipientEmail: string;
+          recipientName: string;
+        };
+        endpoint: string;
+      };
+      success: true;
+    }
+  | {
+      error: string;
+      success: false;
+    };
+
+export type ContactInvitationConfirmRequestResult =
+  | {
+      request: {
+        body: {
+          body: string;
+          confirmed: true;
+          invitationId: string;
+          subject: string;
+        };
+        endpoint: string;
+      };
+      success: true;
+    }
+  | {
+      error: string;
+      success: false;
+    };
+
 interface ContactPipelineInput {
   connectionsPayload: unknown;
   contactsPayload: unknown;
@@ -86,6 +145,16 @@ const STAGES: Array<{
     detail: "已经有明确交流或合作线索。",
     id: "in_progress",
     label: "在推进"
+  },
+  {
+    detail: "适合低频维护，先保留关系温度。",
+    id: "nurture",
+    label: "长期维护"
+  },
+  {
+    detail: "当前不用继续推进，可后续恢复。",
+    id: "archived",
+    label: "暂不跟进"
   },
   {
     detail: "已经形成合作或稳定互助。",
@@ -122,6 +191,18 @@ function stringField(
 ): string {
   const value = record[fieldName];
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function clean(value: string): string {
+  return value.trim();
+}
+
+function normalizedEmail(value: string): string {
+  return clean(value).toLowerCase();
+}
+
+function validEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value);
 }
 
 function numberField(record: UnknownRecord, fieldName: string): number | null {
@@ -185,17 +266,21 @@ function stageFromToken(value: string): ContactPipelineStageId | null {
   if (
     [
       "active",
-      "dormant",
       "in_progress",
-      "nurture",
-      "nurtured",
-      "weak",
       "培养中",
       "推进中",
       "在推进"
     ].includes(normalized)
   ) {
     return "in_progress";
+  }
+
+  if (["dormant", "nurture", "nurtured", "weak", "长期维护"].includes(normalized)) {
+    return "nurture";
+  }
+
+  if (["archived", "archive", "已归档", "暂不跟进"].includes(normalized)) {
+    return "archived";
   }
 
   return null;
@@ -208,8 +293,8 @@ function pipelineStageId(
 ): ContactPipelineStageId {
   return (
     stageFromToken(stringField(rawContact, "pipelineStatus")) ??
-    stageFromToken(stringField(rawContact, "status")) ??
     stageFromToken(connection ? stringField(connection, "relationshipStage") : "") ??
+    stageFromToken(stringField(rawContact, "status")) ??
     stageFromToken(contact.status) ??
     "in_progress"
   );
@@ -284,57 +369,236 @@ function introCandidate(
   };
 }
 
+export function buildContactInvitationPrepareRequest(input: {
+  contactId: string;
+  recipientEmail: string;
+  recipientName: string;
+}): ContactInvitationPrepareRequestResult {
+  const contactId = clean(input.contactId);
+  const recipientName = clean(input.recipientName);
+  const recipientEmail = normalizedEmail(input.recipientEmail);
+
+  if (!contactId || !recipientName || !validEmail(recipientEmail)) {
+    return {
+      error: "需要联系人、姓名和有效邮箱，才能准备邀请。",
+      success: false
+    };
+  }
+
+  return {
+    request: {
+      body: {
+        contactId,
+        recipientEmail,
+        recipientName
+      },
+      endpoint: contactInvitationPath()
+    },
+    success: true
+  };
+}
+
+export function buildContactInvitationConfirmRequest(input: {
+  body: string;
+  invitationId: string;
+  subject: string;
+}): ContactInvitationConfirmRequestResult {
+  const invitationId = clean(input.invitationId);
+  const subject = clean(input.subject);
+  const body = clean(input.body);
+
+  if (!invitationId || !subject || !body) {
+    return {
+      error: "需要邀请 ID、主题和正文，才能确认邀请。",
+      success: false
+    };
+  }
+
+  return {
+    request: {
+      body: {
+        body,
+        confirmed: true,
+        invitationId,
+        subject
+      },
+      endpoint: contactInvitationPath()
+    },
+    success: true
+  };
+}
+
+function invitationNextAction(status: string, value: string): string {
+  if (status === "ready_for_delivery") {
+    return "等邮件投递配置完成后，再决定是否发送。";
+  }
+
+  if (/review and edit/iu.test(value) || /confirm it separately/iu.test(value)) {
+    return "复核主题和正文，确认后只会进入待投递。";
+  }
+
+  return value.trim() || "复核主题和正文，确认后只会进入待投递。";
+}
+
+export function contactInvitationToView(payload: unknown): ContactInvitationView {
+  const record = isRecord(payload) ? payload : {};
+  const status = stringField(record, "status");
+  const ready = status === "ready_for_delivery";
+  const externalSendRequested = record.externalSendRequested === true;
+  const emailProviderRequested = record.emailProviderRequested === true;
+  const messageSent = record.messageSent === true;
+
+  return {
+    body: stringField(record, "body"),
+    boundaryText: `externalSendRequested=${String(
+      externalSendRequested
+    )} · emailProviderRequested=${String(
+      emailProviderRequested
+    )} · messageSent=${String(messageSent)}`,
+    canConfirm: !ready,
+    id: stringField(record, "invitationId"),
+    nextAction: invitationNextAction(status, stringField(record, "nextAction")),
+    recipientLine: [
+      stringField(record, "recipientName", "待确认联系人"),
+      stringField(record, "recipientEmail")
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    safetyText: ready
+      ? "当前只是待投递记录，没有发送邮件。"
+      : "确认后也不会发送邮件，只会把邀请标记为待投递。",
+    statusLabel: ready ? "待投递" : "草稿待确认",
+    subject: stringField(record, "subject"),
+    title: ready ? "邀请已确认" : "邀请草稿"
+  };
+}
+
 function contactCard(
   contact: ContactSummary,
   rawContact: UnknownRecord,
   connection?: UnknownRecord
 ): ContactPipelineCardView {
+  const actions = stageActions(contact, rawContact, connection);
+
   return {
     detail: contactDetail(contact),
     id: contact.id,
     name: contact.name,
     nextAction: contact.nextAction,
     relationship: contact.relationship,
-    stageAction: stageAction(contact, rawContact, connection),
+    stageAction: actions[0] ?? null,
+    stageActions: actions,
     valueLabels: contact.valueLabels,
     valueScoreLabel: valueScoreLabel(contact, rawContact)
   };
 }
 
-function stageAction(
+function buildStageAction({
+  connectionId,
+  label,
+  name,
+  nextRelationshipStage,
+  pendingLabel,
+  successMessage
+}: {
+  connectionId: string;
+  label: string;
+  name: string;
+  nextRelationshipStage: ContactPipelineRelationshipStage;
+  pendingLabel: string;
+  successMessage: (name: string) => string;
+}): ContactPipelineStageActionView {
+  return {
+    connectionId,
+    label,
+    nextRelationshipStage,
+    pendingLabel,
+    successMessage: successMessage(name)
+  };
+}
+
+function stageActions(
   contact: ContactSummary,
   rawContact: UnknownRecord,
   connection?: UnknownRecord
-): ContactPipelineStageActionView | null {
+): ContactPipelineStageActionView[] {
   const connectionId = connection ? stringField(connection, "id") : "";
 
   if (!connectionId) {
-    return null;
+    return [];
   }
 
   const stage = pipelineStageId(contact, rawContact, connection);
+  const action = (
+    label: string,
+    nextRelationshipStage: ContactPipelineRelationshipStage,
+    pendingLabel: string,
+    successMessage: (name: string) => string
+  ) =>
+    buildStageAction({
+      connectionId,
+      label,
+      name: contact.name,
+      nextRelationshipStage,
+      pendingLabel,
+      successMessage
+    });
 
   if (stage === "to_contact") {
-    return {
-      connectionId,
-      label: "开始推进",
-      nextRelationshipStage: "active",
-      pendingLabel: "推进中",
-      successMessage: `已把 ${contact.name} 放入在推进。`
-    };
+    return [
+      action("开始推进", "active", "推进中", (name) => `已把 ${name} 放入在推进。`),
+      action(
+        "暂不跟进",
+        "archived",
+        "归档中",
+        (name) => `已把 ${name} 标记为暂不跟进。`
+      )
+    ];
   }
 
   if (stage === "in_progress") {
-    return {
-      connectionId,
-      label: "放回待联系",
-      nextRelationshipStage: "needs_follow_up",
-      pendingLabel: "更新中",
-      successMessage: `已把 ${contact.name} 放回待联系。`
-    };
+    return [
+      action(
+        "放回待联系",
+        "needs_follow_up",
+        "更新中",
+        (name) => `已把 ${name} 放回待联系。`
+      ),
+      action(
+        "转长期维护",
+        "nurture",
+        "转入中",
+        (name) => `已把 ${name} 转入长期维护。`
+      )
+    ];
   }
 
-  return null;
+  if (stage === "nurture") {
+    return [
+      action("开始推进", "active", "推进中", (name) => `已把 ${name} 放入在推进。`),
+      action(
+        "暂不跟进",
+        "archived",
+        "归档中",
+        (name) => `已把 ${name} 标记为暂不跟进。`
+      )
+    ];
+  }
+
+  if (stage === "archived") {
+    return [
+      action(
+        "恢复待联系",
+        "needs_follow_up",
+        "恢复中",
+        (name) => `已把 ${name} 恢复到待联系。`
+      )
+    ];
+  }
+
+  return [
+    action("放回在推进", "active", "更新中", (name) => `已把 ${name} 放回在推进。`)
+  ];
 }
 
 export function contactsPipelineToView({
@@ -372,7 +636,7 @@ export function contactsPipelineToView({
 
   return {
     introReadiness: {
-      apiGap: "引荐记录需要后端列表 API。",
+      apiGap: "本次只准备引荐草稿，真正发送前还会再确认。",
       candidates: introCandidates.slice(0, 5),
       summary:
         introCandidates.length > 0

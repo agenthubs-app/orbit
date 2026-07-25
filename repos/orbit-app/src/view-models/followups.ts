@@ -1,3 +1,4 @@
+import type { FollowupTaskContract } from "../api/contract/followups";
 export interface FollowupMetricView {
   label: string;
   value: string;
@@ -38,6 +39,84 @@ export interface FollowupsView {
   title: string;
 }
 
+export interface GeneratedFollowupTasksView {
+  nextAction: string;
+  safetyText: string;
+  summary: string;
+  tasks: FollowupTaskView[];
+  title: string;
+}
+
+export interface GeneratedFollowupRemindersView {
+  nextAction: string;
+  reminders: FollowupReminderView[];
+  safetyText: string;
+  summary: string;
+  title: string;
+}
+
+export interface ReminderGenerationRequest {
+  dueWithinDays: 14;
+  includeGroupedLowPriority: true;
+  limit: 5;
+}
+
+export interface MessageDraftRequest {
+  channel: "email";
+  contextNote: string;
+  draftKind: "follow_up";
+  organization: string;
+  recipientName: string;
+}
+
+export interface ChatFollowupDraftRequest {
+  contextNote: string;
+  organization: string;
+  participantName: string;
+  sourceText: string;
+}
+
+export interface MessageDraftReviewRequest {
+  reviewerLabel: "Orbit iOS";
+  status: "ready_for_confirmation";
+}
+
+export interface ChatFollowupDraftView {
+  body: string;
+  id: string;
+  reason: string;
+  recipientLine: string;
+  safetyText: string;
+  sourceLabel: string;
+  title: string;
+}
+
+export interface ChatFollowupDraftsView {
+  drafts: ChatFollowupDraftView[];
+  nextAction: string;
+  summary: string;
+  title: string;
+}
+
+export interface MessageDraftView {
+  body: string;
+  channelLabel: string;
+  id: string;
+  recipientLine: string;
+  reviewLabel: string;
+  safetyText: string;
+  sourceLabel: string;
+  subject: string;
+  windowLabel: string;
+}
+
+export interface MessageDraftsView {
+  drafts: MessageDraftView[];
+  nextAction: string;
+  summary: string;
+  title: string;
+}
+
 export interface FollowupsViewInput {
   notificationsPayload: unknown;
   tasksPayload: unknown;
@@ -58,6 +137,16 @@ function stringField(
 ): string {
   const value = record[fieldName];
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+// 字段名受跨端契约约束：服务端改名，这里立刻编译报错。
+// 只用于跟进任务记录；消息草稿等其他形状继续走 stringField。
+function taskField(
+  record: Record<string, unknown>,
+  fieldName: keyof FollowupTaskContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
 }
 
 function numberField(
@@ -170,7 +259,7 @@ function formatDateTime(value: string): string {
 }
 
 function dueLabel(record: UnknownRecord): string {
-  const dueAt = stringField(record, "dueAt");
+  const dueAt = taskField(record, "dueAt");
   if (dueAt) {
     return formatDateTime(dueAt);
   }
@@ -212,7 +301,7 @@ function triggerLabel(value: string): string {
 }
 
 function contactName(record: UnknownRecord): string {
-  return stringField(record, "contactName", "联系人");
+  return taskField(record, "contactName", "联系人");
 }
 
 function followupTitle(record: UnknownRecord): string {
@@ -220,7 +309,7 @@ function followupTitle(record: UnknownRecord): string {
 }
 
 function recommendedAction(record: UnknownRecord): string {
-  const action = stringField(record, "recommendedAction");
+  const action = taskField(record, "recommendedAction");
 
   if (!action || /\bcontact[_:-]?\d+|review follow-up\b/i.test(action)) {
     return `跟进 ${contactName(record)} 的关系进展。`;
@@ -231,7 +320,7 @@ function recommendedAction(record: UnknownRecord): string {
 
 function rationale(record: UnknownRecord): string {
   return userFacingText(
-    stringField(record, "rationale"),
+    taskField(record, "rationale"),
     "这条跟进来自已记录的关系上下文，先复核再行动。"
   );
 }
@@ -253,14 +342,110 @@ function taskView(record: UnknownRecord): FollowupTaskView {
     contactName: contactName(record),
     dueLabel: dueLabel(record),
     evidenceLabel: evidenceLabel(record),
-    id: stringField(record, "taskId", stringField(record, "id", "task")),
-    organization: stringField(record, "organization"),
-    priorityLabel: priorityLabel(stringField(record, "priority")),
+    id: taskField(record, "taskId", stringField(record, "id", "task")),
+    organization: taskField(record, "organization"),
+    priorityLabel: priorityLabel(taskField(record, "priority")),
     rationale: rationale(record),
     recommendedAction: recommendedAction(record),
     sourceLabel: sourceLabel(record),
     title: followupTitle(record),
-    triggerLabel: triggerLabel(stringField(record, "triggerKind"))
+    triggerLabel: triggerLabel(taskField(record, "triggerKind"))
+  };
+}
+
+function messageDraftChannelLabel(value: string): string {
+  const labels: Record<string, string> = {
+    calendar_note: "日程备注",
+    email: "邮件",
+    internal_note: "内部备注",
+    linkedin: "LinkedIn"
+  };
+
+  return labels[value.trim().toLowerCase()] ?? "消息";
+}
+
+function messageDraftReviewLabel(value: string): string {
+  const labels: Record<string, string> = {
+    draft: "草稿",
+    held_for_review: "待复核",
+    ready_for_confirmation: "可确认",
+    revised: "已修改"
+  };
+
+  return labels[value.trim().toLowerCase()] ?? "待复核";
+}
+
+function messageDraftWindowLabel(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  const labels: Record<string, string> = {
+    "next business day": "下一个工作日",
+    "same day": "当天",
+    "this week": "本周",
+    "within 24 hours": "24 小时内"
+  };
+  const label = labels[normalized] ?? userFacingText(value, "");
+
+  return label ? `建议 ${label}` : "发送时间待定";
+}
+
+function messageDraftView(record: UnknownRecord): MessageDraftView {
+  return {
+    body: stringField(record, "body"),
+    channelLabel: messageDraftChannelLabel(stringField(record, "channel")),
+    id: stringField(record, "draftId", stringField(record, "id", "draft")),
+    recipientLine: [
+      stringField(record, "recipientName", "联系人"),
+      taskField(record, "organization")
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    reviewLabel: messageDraftReviewLabel(stringField(record, "status")),
+    safetyText: "这里只保存草稿，不会自动发送。",
+    sourceLabel: userFacingText(
+      stringField(nestedRecord(record, "source"), "label"),
+      "来源已记录"
+    ),
+    subject: stringField(record, "subject", "跟进消息草稿"),
+    windowLabel: messageDraftWindowLabel(
+      stringField(record, "recommendedSendWindow")
+    )
+  };
+}
+
+function chatFollowupDraftTitle(record: UnknownRecord): string {
+  const kind = stringField(record, "kind").trim().toLowerCase();
+
+  if (kind === "follow_up_draft") {
+    return "跟进草稿";
+  }
+
+  return userFacingText(stringField(record, "label"), "跟进草稿");
+}
+
+function chatFollowupDraftView(record: UnknownRecord): ChatFollowupDraftView {
+  return {
+    body: stringField(
+      record,
+      "suggestedText",
+      stringField(record, "originalText", "先写一版简短跟进，再决定是否保存。")
+    ),
+    id: stringField(record, "assistId", stringField(record, "id", "assist")),
+    reason: userFacingText(
+      taskField(record, "rationale"),
+      "先按自己的语气改一遍，再决定是否保存为正式草稿。"
+    ),
+    recipientLine: [
+      stringField(record, "participantName", "联系人"),
+      taskField(record, "organization")
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    safetyText: "这里只生成文案，不会保存草稿或发送消息。",
+    sourceLabel: userFacingText(
+      stringField(nestedRecord(record, "source"), "label"),
+      "来源已记录"
+    ),
+    title: chatFollowupDraftTitle(record)
   };
 }
 
@@ -294,8 +479,8 @@ function reminderView(
   return {
     dueLabel: dueLabel(record),
     id: stringField(record, "reminderId", "reminder"),
-    organization: stringField(record, "organization"),
-    priorityLabel: priorityLabel(stringField(record, "priority")),
+    organization: taskField(record, "organization"),
+    priorityLabel: priorityLabel(taskField(record, "priority")),
     queueLabel: reminderQueueLabel(record, queueEntries),
     title: reminderTitle(record),
     windowLabel: userFacingText(
@@ -327,6 +512,32 @@ function nextAction(tasksPayload: unknown, tasks: FollowupTaskView[]): string {
   return tasks.length
     ? "先处理今天到期、关系价值最高的那一条。"
     : "先从联系人或活动里记录一个明确的下一步。";
+}
+
+function generatedNextAction(payload: unknown, tasks: FollowupTaskView[]): string {
+  const sourceNextAction = userFacingText(
+    stringField(recordFrom(payload), "nextAction"),
+    ""
+  );
+
+  if (sourceNextAction) {
+    return sourceNextAction;
+  }
+
+  return tasks.length
+    ? "先复核来源，再决定是否写入任务。"
+    : "暂时没有新的候选。";
+}
+
+function generatedReminderNextAction(
+  payload: unknown,
+  reminders: FollowupReminderView[]
+): string {
+  const fallback = reminders.length
+    ? "先复核时间和来源，再决定是否开启提醒。"
+    : "暂时没有新的提醒候选。";
+
+  return userFacingText(stringField(recordFrom(payload), "nextAction"), fallback);
 }
 
 export function followupInlineContextLabel(
@@ -366,5 +577,121 @@ export function followupsToView(input: FollowupsViewInput): FollowupsView {
       : "暂无跟进",
     tasks,
     title: "跟进队列"
+  };
+}
+
+export function generatedFollowupTasksToView(
+  payload: unknown
+): GeneratedFollowupTasksView {
+  const tasks = listFromPayload(payload, "tasks").map(taskView);
+
+  return {
+    nextAction: generatedNextAction(payload, tasks),
+    safetyText: "这些只是候选，不会自动发送消息或写入日程。",
+    summary: tasks.length
+      ? `生成了 ${tasks.length} 个候选跟进`
+      : "暂无可生成的跟进",
+    tasks,
+    title: "新生成的跟进"
+  };
+}
+
+export function generatedFollowupRemindersToView(
+  payload: unknown
+): GeneratedFollowupRemindersView {
+  const record = recordFrom(payload);
+  const queueEntries = listField(record, "notificationQueue").filter(isRecord);
+  const reminders = listFromPayload(payload, "reminders").map((reminder) =>
+    reminderView(reminder, queueEntries)
+  );
+
+  return {
+    nextAction: generatedReminderNextAction(payload, reminders),
+    reminders,
+    safetyText: "这些只是提醒候选，不会发送推送、邮件或短信。",
+    summary: reminders.length
+      ? `生成了 ${reminders.length} 条提醒候选`
+      : "暂无可生成的提醒",
+    title: "新生成的提醒"
+  };
+}
+
+export function buildReminderGenerationRequest(): ReminderGenerationRequest {
+  return {
+    dueWithinDays: 14,
+    includeGroupedLowPriority: true,
+    limit: 5
+  };
+}
+
+export function buildMessageDraftRequestFromTask(
+  task: Pick<
+    FollowupTaskView,
+    "contactName" | "organization" | "recommendedAction"
+  >
+): MessageDraftRequest {
+  return {
+    channel: "email",
+    contextNote: task.recommendedAction.trim(),
+    draftKind: "follow_up",
+    organization: task.organization.trim(),
+    recipientName: task.contactName.trim()
+  };
+}
+
+export function buildChatFollowupDraftRequestFromTask(
+  task: Pick<
+    FollowupTaskView,
+    "contactName" | "organization" | "rationale" | "recommendedAction"
+  >
+): ChatFollowupDraftRequest {
+  return {
+    contextNote: task.recommendedAction.trim(),
+    organization: task.organization.trim(),
+    participantName: task.contactName.trim(),
+    sourceText: task.rationale.trim()
+  };
+}
+
+export function buildMessageDraftReviewRequest(
+  _draft: Pick<MessageDraftView, "id">
+): MessageDraftReviewRequest {
+  return {
+    reviewerLabel: "Orbit iOS",
+    status: "ready_for_confirmation"
+  };
+}
+
+export function chatFollowupDraftsToView(
+  payload: unknown
+): ChatFollowupDraftsView {
+  const drafts = listFromPayload(payload, "assists").map(chatFollowupDraftView);
+  const nextActionText = userFacingText(
+    stringField(recordFrom(payload), "nextAction"),
+    drafts.length
+      ? "先检查文案，再决定是否保存或发送。"
+      : "暂时没有新的 AI 草稿。"
+  );
+
+  return {
+    drafts,
+    nextAction: nextActionText,
+    summary: drafts.length ? `${drafts.length} 条 AI 草稿待复核` : "暂无 AI 草稿",
+    title: "AI 跟进草稿"
+  };
+}
+
+export function messageDraftsToView(payload: unknown): MessageDraftsView {
+  const drafts = listFromPayload(payload, "drafts").map(messageDraftView);
+  const nextActionText = userFacingText(
+    stringField(recordFrom(payload), "nextAction"),
+    "先检查草稿，再决定是否发送。"
+  );
+
+  return {
+    drafts,
+    nextAction: nextActionText,
+    summary: drafts.length ? `${drafts.length} 封草稿待复核` : "暂无草稿",
+    title: "消息草稿"
   };
 }

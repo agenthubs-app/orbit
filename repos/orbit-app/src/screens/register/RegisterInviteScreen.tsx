@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { eventDetailPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
@@ -13,6 +14,8 @@ import {
   registerInviteToView,
   type RegisterInviteAction,
   type RegisterInviteProfileView,
+  type RegisterInviteReadinessStatus,
+  type RegisterInviteReadinessView,
   type RegisterInviteView
 } from "../../view-models/register-invite";
 
@@ -25,6 +28,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function RegisterInviteScreen() {
+  const auth = useOrbitAuthSession();
   const params = useLocalSearchParams<{ code?: string | string[] }>();
   const inviteCode = firstParam(params.code).trim() || "demo-event-1";
   const eventState = useApiResource<unknown>(
@@ -42,7 +46,9 @@ export function RegisterInviteScreen() {
   }
 
   const loading =
-    eventState.kind === "loading" || profileState.kind === "loading";
+    !auth.ready ||
+    eventState.kind === "loading" ||
+    profileState.kind === "loading";
   const offline =
     eventState.kind === "offline" ? eventState : profileState.kind === "offline" ? profileState : null;
 
@@ -64,6 +70,7 @@ export function RegisterInviteScreen() {
       ) : null}
       {!loading && !offline ? (
         <RegisterInviteContent
+          authenticated={auth.signedIn}
           eventPayload={
             eventState.kind === "success" || eventState.kind === "empty"
               ? eventState.data
@@ -82,15 +89,18 @@ export function RegisterInviteScreen() {
 }
 
 function RegisterInviteContent({
+  authenticated,
   eventPayload,
   inviteCode,
   profilePayload
 }: {
+  authenticated: boolean;
   eventPayload: unknown;
   inviteCode: string;
   profilePayload: unknown;
 }) {
   const view = registerInviteToView({
+    authenticated,
     eventPayload,
     inviteCode,
     profilePayload
@@ -98,6 +108,7 @@ function RegisterInviteContent({
 
   return (
     <>
+      <RegistrationReadinessCard readiness={view.readiness} />
       <InviteCard view={view} />
       <ProfilePreview profile={view.profile} />
       <DataCard detail={view.guardrail} title="操作边界">
@@ -110,6 +121,83 @@ function RegisterInviteContent({
       </DataCard>
       <ActionList actions={view.actions} />
     </>
+  );
+}
+
+function readinessIconName(status: RegisterInviteReadinessStatus) {
+  if (status === "complete") {
+    return "checkmark-circle-outline";
+  }
+
+  if (status === "next") {
+    return "arrow-forward-circle-outline";
+  }
+
+  if (status === "blocked") {
+    return "lock-closed-outline";
+  }
+
+  return "alert-circle-outline";
+}
+
+function readinessColor(status: RegisterInviteReadinessStatus) {
+  if (status === "complete") {
+    return colors.live;
+  }
+
+  if (status === "next") {
+    return colors.accent;
+  }
+
+  if (status === "blocked") {
+    return colors.text3;
+  }
+
+  return colors.amber;
+}
+
+function RegistrationReadinessCard({
+  readiness
+}: {
+  readiness: RegisterInviteReadinessView;
+}) {
+  return (
+    <DataCard detail={readiness.summary} title={readiness.title}>
+      <View accessibilityLabel="报名准备" style={styles.readinessTimeline}>
+        {readiness.items.map((item, index) => {
+          const iconColor = readinessColor(item.status);
+
+          return (
+            <View key={item.id} style={styles.readinessStep}>
+              <View style={styles.readinessRail}>
+                <View
+                  style={[
+                    styles.readinessIcon,
+                    item.status === "complete"
+                      ? styles.readinessIconComplete
+                      : null,
+                    item.status === "next" ? styles.readinessIconNext : null
+                  ]}
+                >
+                  <Ionicons
+                    color={iconColor}
+                    name={readinessIconName(item.status)}
+                    size={18}
+                  />
+                </View>
+                {index < readiness.items.length - 1 ? (
+                  <View style={styles.readinessConnector} />
+                ) : null}
+              </View>
+              <View style={styles.readinessCopy}>
+                <Text style={styles.readinessTitle}>{item.title}</Text>
+                <Text style={styles.readinessDetail}>{item.detail}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </DataCard>
   );
 }
 
@@ -267,6 +355,60 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72
+  },
+  readinessConnector: {
+    backgroundColor: colors.border,
+    flex: 1,
+    marginVertical: 4,
+    width: 2
+  },
+  readinessCopy: {
+    flex: 1,
+    gap: 2,
+    paddingBottom: spacing.sm
+  },
+  readinessDetail: {
+    color: colors.text3,
+    fontSize: typography.small,
+    lineHeight: 19
+  },
+  readinessIcon: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    height: 34,
+    justifyContent: "center",
+    width: 34
+  },
+  readinessIconComplete: {
+    backgroundColor: colors.liveSoft,
+    borderColor: colors.liveSoft
+  },
+  readinessIconNext: {
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.accentSofter
+  },
+  readinessRail: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    width: 34
+  },
+  readinessStep: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 58
+  },
+  readinessTimeline: {
+    gap: 0
+  },
+  readinessTitle: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 19
   },
   statusBadge: {
     alignSelf: "flex-start",

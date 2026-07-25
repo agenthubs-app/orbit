@@ -125,6 +125,19 @@ function AccountContent({
 
       {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
 
+      <DataCard
+        detail="本地调试或真机测试时切换 Orbit API 地址"
+        onPress={() => router.push("/settings/api" as Href)}
+        title="服务器设置"
+      >
+        <View style={styles.nextStep}>
+          <Ionicons color={colors.accent} name="server-outline" size={18} />
+          <Text style={styles.nextStepText}>
+            修改后，联系人、活动和 Orbit AI 都会使用新的服务器。
+          </Text>
+        </View>
+      </DataCard>
+
       {view.authActions.length > 0 ? (
         <DataCard detail="先进入账号入口，再回到个人资料完善别人能看到的信息。" title="账号入口">
           <View style={styles.actionRow}>
@@ -142,6 +155,25 @@ function AccountContent({
                 <Ionicons color={colors.onAccent} name="arrow-forward" size={16} />
               </Pressable>
             ))}
+          </View>
+        </DataCard>
+      ) : null}
+
+      {signedIn ? (
+        <DataCard
+          detail="日历、通知、相机和联系人能力"
+          onPress={() => router.push("/account/permissions" as Href)}
+          title="权限中心"
+        >
+          <View style={styles.nextStep}>
+            <Ionicons
+              color={colors.accent}
+              name="shield-checkmark-outline"
+              size={18}
+            />
+            <Text style={styles.nextStepText}>
+              查看哪些能力已经可用，哪些还需要你先复核。
+            </Text>
           </View>
         </DataCard>
       ) : null}

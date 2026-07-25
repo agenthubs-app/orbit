@@ -1,7 +1,16 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
+import type { ContractMatches } from "../../shared/contract-check";
+import type {
+  ContactSourceFilterCode,
+  ContactStatusFilterCode,
+  ContactTagFilterCode,
+  ContactValueFilterCode,
+  ContactsListPayloadContract,
+  ContactsListProvenanceContract,
+  ContactsListStateCode,
+} from "../../shared/contract/contacts";
 import type {
   RelationshipValueType,
-  SourceReferenceDTO,
   SourceType,
 } from "../../shared/domain/source-types";
 
@@ -55,6 +64,25 @@ export const CONTACT_STATUS_FILTERS = [
 
 export type ContactStatusFilter = (typeof CONTACT_STATUS_FILTERS)[number];
 
+// 筛选枚举的常量数组留在这里（service 要用），字符串联合另有一份在
+// shared/contract/contacts.ts 供客户端拷贝。下面的断言保证两边一致。
+export type ContactTagFilterMatchesContract = ContractMatches<
+  ContactTagFilter,
+  ContactTagFilterCode
+>;
+export type ContactSourceFilterMatchesContract = ContractMatches<
+  ContactSourceFilter,
+  ContactSourceFilterCode
+>;
+export type ContactValueFilterMatchesContract = ContractMatches<
+  ContactValueFilter,
+  ContactValueFilterCode
+>;
+export type ContactStatusFilterMatchesContract = ContractMatches<
+  ContactStatusFilter,
+  ContactStatusFilterCode
+>;
+
 export const CONTACTS_LIST_SEARCH_FILTER_ERROR_CODES = [
   "CONTACTS_FILTER_NOT_SUPPORTED",
   "CONTACTS_SEARCH_PENDING",
@@ -71,7 +99,7 @@ export type ContactsListSearchFilterScenario =
   | "pending"
   | "failure";
 
-export type ContactsListSearchFilterState = "success" | "empty" | "pending";
+export type ContactsListSearchFilterState = ContactsListStateCode;
 
 export interface ContactsListSearchFilterInput {
   query?: string | null;
@@ -127,123 +155,31 @@ export const CONTACTS_LIST_SEARCH_FILTER_ERROR_DEFINITIONS = {
   ContactsListSearchFilterErrorDefinition
 >;
 
-export interface ContactSourceReference extends SourceReferenceDTO {
-  type: ContactSourceFilter;
-  label: string;
-  evidenceId: string;
-}
-
-export interface ContactEvidence {
-  evidenceId: string;
-  source: ContactSourceReference;
-  excerpt: string;
-  capturedAt: string;
-  createdBy: string;
-}
-
-export interface ContactRelationshipValue {
-  score: number;
-  valueTypes: readonly ContactValueFilter[];
-  rationale: string;
-  evidenceIds: readonly string[];
-}
-
-// ContactListItem 是列表页卡片的最小完整数据。
-// 安全标记字段必须保留在每条联系人上，方便 UI 证明没有调用真实外部服务。
-export interface ContactListItem {
-  id: string;
-  displayName: string;
-  role: string;
-  organization: string;
-  location: string;
-  profileSnippet: string;
-  relationshipContext: string;
-  lastInteractionAt: string;
-  nextAction: string;
-  source: ContactSourceReference;
-  evidence: readonly ContactEvidence[];
-  tags: readonly ContactTagFilter[];
-  value: ContactRelationshipValue;
-  status: ContactStatusFilter;
-  databaseQueryExecuted: boolean;
-  searchIndexReadExecuted: boolean;
-  externalNetworkRequested: false;
-  aiProviderRequested: false;
-  calendarProviderRequested: false;
-  emailProviderRequested: false;
-  notificationDelivered: false;
-}
-
-export interface ContactFilterOption<TValue extends string> {
-  value: TValue;
-  label: string;
-  count: number;
-  selected: boolean;
-}
-
-export interface ContactsAvailableFilters {
-  tags: readonly ContactFilterOption<ContactTagFilter>[];
-  sources: readonly ContactFilterOption<ContactSourceFilter>[];
-  values: readonly ContactFilterOption<ContactValueFilter>[];
-  statuses: readonly ContactFilterOption<ContactStatusFilter>[];
-}
-
-export interface ContactsAppliedFilters {
-  query: string;
-  sourceFilters: readonly ContactSourceFilter[];
-  statusFilters: readonly ContactStatusFilter[];
-  tagFilters: readonly ContactTagFilter[];
-  valueFilters: readonly ContactValueFilter[];
-}
-
-// provenance 聚合整个列表请求的来源和副作用审计。
-// 即使未来替换成 live search，也应继续明确记录搜索索引、数据库和外部 provider 是否被访问。
-export interface ContactsListSearchProvenance {
-  source: string;
-  sourceLabel: string;
-  evidenceIds: readonly string[];
-  collectedAt: string;
-  privacy:
-    | "demo-contacts-list-search-filter-only"
-    | "live-contacts-list-search-filter";
-  generationMethod:
-    | "fixture"
-    | "live-store-query"
-    | "local-remote-store-query"
-    | "rule-based-contacts-list-search-filter";
-  searchIndexReadExecuted: boolean;
-  databaseQueryExecuted: boolean;
-  externalNetworkRequested: false;
-  deviceRequested: false;
-  aiProviderRequested: false;
-  calendarProviderRequested: false;
-  emailProviderRequested: false;
-  notificationDelivered: false;
-}
-
-// Payload 是 contacts page 的服务端 view model 输入。
-// appliedFilters/availableFilters 支撑筛选 UI，contacts 渲染列表，nextAction 指导安全下一步。
-export interface ContactsListSearchPayload {
-  state: ContactsListSearchFilterState;
-  query: string;
-  appliedFilters: ContactsAppliedFilters;
-  availableFilters: ContactsAvailableFilters;
-  contacts: readonly ContactListItem[];
-  summary: string;
-  provenance: ContactsListSearchProvenance;
-  nextAction: string;
-}
+// 下面这一组是客户端可见的响应形状，声明在 shared/contract/contacts.ts，
+// 这里只做改名转发，保持 features 内既有的引用名不变。
+// 改形状要去契约文件改，网页版和 iOS App 会一起编译报错。
+export type {
+  ContactEvidenceContract as ContactEvidence,
+  ContactFilterOptionContract as ContactFilterOption,
+  ContactListItemContract as ContactListItem,
+  ContactRelationshipValueContract as ContactRelationshipValue,
+  ContactSourceReferenceContract as ContactSourceReference,
+  ContactsAppliedFiltersContract as ContactsAppliedFilters,
+  ContactsAvailableFiltersContract as ContactsAvailableFilters,
+  ContactsListPayloadContract as ContactsListSearchPayload,
+  ContactsListProvenanceContract as ContactsListSearchProvenance,
+} from "../../shared/contract/contacts";
 
 export interface ContactsListSearchSuccess {
   success: true;
-  data: ContactsListSearchPayload;
+  data: ContactsListPayloadContract;
 }
 
 export interface ContactsListSearchFailure {
   success: false;
   error: ContactsListSearchFilterErrorDefinition & {
     state: "failure";
-    provenance: ContactsListSearchProvenance;
+    provenance: ContactsListProvenanceContract;
     evidenceIds: readonly string[];
   };
 }

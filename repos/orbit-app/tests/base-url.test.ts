@@ -25,15 +25,15 @@ test("validateOrbitApiBaseUrl accepts HTTP localhost and HTTPS remote URLs", () 
 
 test("validateOrbitApiBaseUrl rejects empty values and unsupported protocols", () => {
   assert.deepEqual(validateOrbitApiBaseUrl(" "), {
-    error: "Enter a server address.",
+    error: "请输入服务器地址。",
     success: false
   });
   assert.deepEqual(validateOrbitApiBaseUrl("ftp://api.orbit.test"), {
-    error: "Use an http:// or https:// server address.",
+    error: "请使用 http:// 或 https:// 开头的服务器地址。",
     success: false
   });
   assert.deepEqual(validateOrbitApiBaseUrl("not a url"), {
-    error: "Enter a valid server address.",
+    error: "请输入有效的服务器地址。",
     success: false
   });
 });
