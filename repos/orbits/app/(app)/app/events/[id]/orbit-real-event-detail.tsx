@@ -346,7 +346,15 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
             <BackButton mobile t={t} style={{ border: "none", background: "rgba(0,0,0,0.3)", width: 36, height: 36, borderRadius: "var(--r-pill)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--on-dark)", textDecoration: "none" }} />
           </div>
           <div style={{ position: "absolute", bottom: 16, left: 18, right: 18 }}>
-            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}><StatusBadge language={language} status={event.status} /><span style={{ background: "rgba(255,255,255,0.18)", color: "var(--on-dark)", borderRadius: "var(--r-pill)", padding: "4px 10px", fontSize: 12, fontWeight: 600, backdropFilter: "blur(6px)" }}>{event.code}</span></div>
+            {/* Mobile audit P3: this used to sit right up against the code
+                chip with only a 6px gap and no connector — at 390px the tiny
+                gap read as a barely-legible "in". Two clearly separate chips
+                plus an explicit middot make the boundary unambiguous. */}
+            <div style={{ alignItems: "center", display: "flex", gap: 8, marginBottom: 8 }}>
+              <StatusBadge language={language} status={event.status} />
+              <span aria-hidden="true" style={{ color: "var(--on-dark)", fontSize: 12, opacity: 0.6 }}>·</span>
+              <span style={{ background: "rgba(255,255,255,0.18)", color: "var(--on-dark)", borderRadius: "var(--r-pill)", padding: "4px 10px", fontSize: 12, fontWeight: 600, backdropFilter: "blur(6px)" }}>{event.code}</span>
+            </div>
           </div>
         </div>
         <div className="orbit-detail-layout">

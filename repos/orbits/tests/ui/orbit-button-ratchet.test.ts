@@ -130,15 +130,19 @@ const CORE_FILES = [
 // checks — if a line drifts, update it here rather than loosening the gate.
 const EXEMPTIONS: { file: string; line: number; reason: string }[] = [
   // -- contacts/orbit-real-contacts.tsx --
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 384, reason: "filter chip (suggested-query chip, className=\"chip\") — chips are a distinct pattern from .btn, not migrated per audit guidance" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 389, reason: "filter chip (pipeline-stage filter)" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 395, reason: "filter chip (value-type filter)" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 785, reason: "PickerSlot (filled) — card-style contact picker with a stacked avatar+label column layout; .btn's fixed 44px row height would clip it" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 790, reason: "PickerSlot (empty/dashed) — same card-style picker as above" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 841, reason: "className=\"card-hover\" — established sitewide clickable-card pattern (also used in home/agent/events), not part of the .btn system" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 921, reason: "filter chip (intro status filter, desktop)" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 945, reason: "filter chip (intro status filter, mobile)" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 1361, reason: "ScanContent dropzone — large card-style upload control (52px/36px padding, icon + heading + subtext); not a compact action button" },
+  // Line numbers shifted +5 by the mobile-audit PersonCard name fix (2-line
+  // clamp instead of single-line ellipsis, tests/ui/orbit-scale-ratchet
+  // covers the same file's fontSize/gap scale — this file only tracks
+  // <button> lines).
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 389, reason: "filter chip (suggested-query chip, className=\"chip\") — chips are a distinct pattern from .btn, not migrated per audit guidance" },
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 394, reason: "filter chip (pipeline-stage filter)" },
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 400, reason: "filter chip (value-type filter)" },
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 790, reason: "PickerSlot (filled) — card-style contact picker with a stacked avatar+label column layout; .btn's fixed 44px row height would clip it" },
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 795, reason: "PickerSlot (empty/dashed) — same card-style picker as above" },
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 846, reason: "className=\"card-hover\" — established sitewide clickable-card pattern (also used in home/agent/events), not part of the .btn system" },
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 926, reason: "filter chip (intro status filter, desktop)" },
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 950, reason: "filter chip (intro status filter, mobile)" },
+  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 1366, reason: "ScanContent dropzone — large card-style upload control (52px/36px padding, icon + heading + subtext); not a compact action button" },
   // -- agent/orbit-real-agent.tsx --
   { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 651, reason: "AgentMessageCopyButton — pre-existing bespoke .orbit-agent-message-copy component with its own hover/focus-visible CSS and a required data-orbit-agent-message-copy test hook (tests/pages/app-agent-message-copy.test.ts)" },
   { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 946, reason: "welcome-screen suggestion card — pre-existing bespoke .orbit-agent-suggestion component with its own hover/focus-visible CSS" },

@@ -307,7 +307,12 @@ function PersonCard({
       <Avatar letter={crmInitial(item.displayName)} g={item.g || "g-violet"} size={56} />
       <div style={{ minWidth: 0 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          <h2 className="h-section" style={{ color: "var(--ink)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h2>
+          {/* Mobile audit P2: single-line ellipsis truncated names hard
+              ("Kenji Wat…") at 390px because the fixed-width chip cluster on
+              the right squeezes this column. Allow up to 2 lines instead of
+              cutting the name — smaller diff than reshaping the chip
+              cluster's width, and it shows full names in the common case. */}
+          <h2 className="h-section" style={{ color: "var(--ink)", display: "-webkit-box", margin: 0, overflow: "hidden", WebkitBoxOrient: "vertical", WebkitLineClamp: 2 }}>{item.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h2>
           <SourceBadge source={item.source} t={t} />
         </div>
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(item, t)}{item.industry ? ` · ${item.industry}` : ""}</div>

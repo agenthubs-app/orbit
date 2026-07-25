@@ -50,3 +50,17 @@ test("a zero-match filter renders the no-match message instead of a blank list",
   assert.ok(html.includes("data-orbit-all-actions-no-match"));
   assert.ok(html.includes("该状态下没有记录"));
 });
+
+// Mobile audit P1: rows with two action buttons (重试失败项 + 撤销) squeezed
+// the title down to ~1ch and it stacked one character per line at 390px.
+// The fix stacks title+chip / actions into two lines via a scoped class +
+// @media rule (an inline style on the row would beat any external
+// override). This locks in that both the stacking class and the media rule
+// ship with the entry rows.
+test("entry rows carry a scoped mobile-stack rule so two action buttons don't squeeze the title", async () => {
+  const model = await loadAppAllActionsRouteViewModel({});
+  const html = renderToStaticMarkup(<OrbitRealAllActions viewModel={model} />);
+
+  assert.ok(html.includes("orbit-all-actions-entry"), "rows carry the stacking class");
+  assert.ok(html.includes("@media (max-width: 760px)"), "scoped mobile stack rule ships with the rows");
+});

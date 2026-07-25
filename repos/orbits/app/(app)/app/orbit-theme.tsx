@@ -223,6 +223,20 @@ html[data-theme="light"] .orbit-theme-toggle {
 }
 .orbit-theme-toggle:hover { transform: translateY(-1px); }
 .orbit-theme-toggle:focus-visible { outline: 3px solid rgba(14,116,144,0.5); outline-offset: 2px; }
+
+/* Mobile audit P1: the floating toggle sits at right:18/bottom:18 on every
+   page and overlaps sticky bottom CTA bars (event detail's 回看/已结束 bar,
+   the contacts pipeline's mobile create bar, etc.) — those bars don't know
+   the toggle exists and can't reserve space for it. Rather than teach every
+   sticky bar about a fixed corner widget, drop the floating toggle on mobile
+   and surface the same action from the hamburger menu instead (see
+   OrbitNavThemeMenuItem in orbit-public-shell.tsx, which calls
+   toggleOrbitTheme() below). The Today page's own FAB (orbit-today-header-
+   actions.tsx) already stacks above this toggle at bottom:74 — it does not
+   need to change since the toggle it was stacking above is now hidden here. */
+@media (max-width: 640px) {
+  .orbit-theme-toggle { display: none; }
+}
 `;
 
 // Animated avatars (item 4): a subtle orbiting sheen on every Avatar primitive,
@@ -251,26 +265,34 @@ export function OrbitThemeStyles() {
   return <style data-orbit-theme-styles>{`${LIGHT_THEME_CSS}\n${AVATAR_MOTION_CSS}`}</style>;
 }
 
-type OrbitTheme = "light" | "dark";
+export type OrbitTheme = "light" | "dark";
+
+// Shared with OrbitNavThemeMenuItem (orbit-public-shell.tsx), the mobile
+// replacement for this component's floating button (see the
+// `.orbit-theme-toggle` mobile media query above) — both read/write the same
+// document attribute + localStorage key, so either trigger stays in sync.
+export function getOrbitTheme(): OrbitTheme {
+  if (typeof document === "undefined") return "dark";
+  return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+}
+
+export function toggleOrbitTheme(): OrbitTheme {
+  const next: OrbitTheme = getOrbitTheme() === "light" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", next);
+  try {
+    localStorage.setItem("orbit-theme", next);
+  } catch {
+    // ignore storage failures (private mode etc.)
+  }
+  return next;
+}
 
 export function OrbitThemeToggle() {
   const [theme, setTheme] = useState<OrbitTheme>("dark");
 
   useEffect(() => {
-    const current = document.documentElement.getAttribute("data-theme");
-    setTheme(current === "light" ? "light" : "dark");
+    setTheme(getOrbitTheme());
   }, []);
-
-  function toggle() {
-    const next: OrbitTheme = theme === "light" ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", next);
-    try {
-      localStorage.setItem("orbit-theme", next);
-    } catch {
-      // ignore storage failures (private mode etc.)
-    }
-    setTheme(next);
-  }
 
   const isLight = theme === "light";
 
@@ -278,7 +300,7 @@ export function OrbitThemeToggle() {
     <button
       type="button"
       className="orbit-theme-toggle"
-      onClick={toggle}
+      onClick={() => setTheme(toggleOrbitTheme())}
       aria-label={isLight ? "切换到深色模式" : "切换到明亮模式"}
       title={isLight ? "深色模式" : "明亮模式"}
     >
