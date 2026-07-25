@@ -1701,37 +1701,6 @@ const reactReferenceIsolationStyles = `
   [data-orbit-real-page] .h-section { font-size: 16px; }
 }
 
-/* S3 — standardized icon button. Visual chrome stays compact, but the hit
-   area is never below 44px (Apple HIG / Material minimum). */
-[data-orbit-real-page] .icon-btn {
-  align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 10px;
-  box-shadow: var(--sh-xs);
-  color: var(--ink);
-  cursor: pointer;
-  display: inline-flex;
-  flex-shrink: 0;
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0;
-}
-[data-orbit-real-page] .icon-btn:hover {
-  background: var(--surface-2);
-  border-color: var(--border-strong);
-}
-[data-orbit-real-page] .icon-btn-plain {
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-}
-[data-orbit-real-page] .icon-btn-plain:hover {
-  background: var(--surface-3);
-  border-color: transparent;
-}
-
 /* S3 — hit-area expander for compact controls (copy/zoom/seat/graph nodes)
    that must keep their visual size. Extends tap target to 44px without
    shifting layout. Apply to the control and keep it position:relative. */

@@ -51,9 +51,9 @@ const MAX_AGENT_CHAT_TITLE_LENGTH = 18;
 
 function depthFor(t: Translate) {
   return {
-    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--amber)", soft: "var(--amber-soft)" },
-    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--sky)", soft: "var(--sky-soft)" },
-    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--live)", soft: "var(--live-soft)" },
+    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--amber)", soft: "var(--amber-soft)", text: "var(--amber)" },
+    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--sky)", soft: "var(--sky-soft)", text: "var(--sky)" },
+    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--live)", soft: "var(--live-soft)", text: "var(--live-text)" },
   };
 }
 
@@ -985,7 +985,7 @@ function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultVi
         <span style={{ background: "var(--accent-grad-bar)", display: "block", height: "100%", width: `${item.match}%` }} />
       </div>
       <div style={{ alignItems: "center", display: "flex", gap: 8, marginTop: 11 }}>
-        <span style={{ alignItems: "center", background: status.soft, borderRadius: "var(--r-pill)", color: status.color, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 4, height: 24, padding: "0 10px" }}>
+        <span style={{ alignItems: "center", background: status.soft, borderRadius: "var(--r-pill)", color: status.text, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 4, height: 24, padding: "0 10px" }}>
           <span style={{ background: status.color, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
           {status.label}
         </span>

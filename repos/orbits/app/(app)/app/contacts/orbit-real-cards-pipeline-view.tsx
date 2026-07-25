@@ -300,7 +300,8 @@ function TriageCard({
 }
 
 function QueueRow({ current, onPick, t, triage }: { current: boolean; onPick: () => void; t: Translate; triage: Triage }) {
-  const color = triage.done ? "var(--live)" : "var(--amber)";
+  const dotColor = triage.done ? "var(--live)" : "var(--amber)";
+  const textColor = triage.done ? "var(--live-text)" : "var(--amber)";
   return (
     <button className={`nc-qrow${current ? " is-cur" : ""}`} onClick={onPick} type="button">
       <Avatar g={triage.p.g} letter={triage.p.ini} size={34} />
@@ -308,8 +309,8 @@ function QueueRow({ current, onPick, t, triage }: { current: boolean; onPick: ()
         <div className="nc-qn">{triage.p.qn}</div>
         <div className="nc-qs">{t(triage.qs)}</div>
       </div>
-      <span className="nc-qbadge" style={{ color }}>
-        <span className="nc-d" style={{ background: color }} />
+      <span className="nc-qbadge" style={{ color: textColor }}>
+        <span className="nc-d" style={{ background: dotColor }} />
         {triage.done ? t({ en: "Done", zh: "已整理" }) : t({ en: "To do", zh: "待整理" })}
       </span>
     </button>
