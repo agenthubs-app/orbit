@@ -91,9 +91,17 @@ test("post-event workflow persists only a confirmed transcript, draft, task, and
     noteSource: "voice_transcript",
     followupDueAt: "2026-07-28T01:00:00.000Z",
     reminderDueAt: "2026-07-29T01:00:00.000Z",
+    relationshipContext: "Met through the Tokyo launch community.",
+    lastInteractionAt: "2026-07-20T08:00:00.000Z",
+    nextAction: "Introduce Maya to a Japan launch partner.",
   });
 
   assert.equal(result.artifact.rawAudioPersisted, false);
+  assert.match(result.artifact.summary, /本次会面：Maya wants a Japan launch partner/);
+  assert.match(result.artifact.summary, /关系背景：Met through the Tokyo launch community/);
+  assert.match(result.artifact.summary, /上次互动：2026-07-20/);
+  assert.match(result.artifact.summary, /已有下一步：Introduce Maya/);
+  assert.match(result.artifact.messageDraft, /Maya wants a Japan launch partner/);
   assert.equal(result.actions.length, 4);
   const note = result.actions.find((action) =>
     action.operations.some((operation) => operation.operationType === "save_meeting_note"),

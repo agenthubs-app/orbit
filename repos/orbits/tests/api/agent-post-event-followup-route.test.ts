@@ -40,4 +40,12 @@ test("confirmed post-event notes execute before the mock route returns", async (
   );
   assert.equal(note.status, "completed");
   assert.equal(draft.status, "completed");
+  assert.match(body.data.artifact.summary, /关系背景：Met at the climate founders dinner/);
+  assert.match(body.data.artifact.summary, /已有下一步：Send Kenji/);
+  assert.match(body.data.artifact.messageDraft, /Kenji 希望下周继续讨论储能试点/);
+  assert.ok(
+    body.data.artifact.evidenceIds.includes(
+      "evidence:contacts-list-kenji",
+    ),
+  );
 });

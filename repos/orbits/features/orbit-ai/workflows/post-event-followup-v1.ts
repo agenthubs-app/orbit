@@ -21,6 +21,9 @@ export interface PostEventFollowupInput {
   followupDueAt?: string;
   reminderDueAt?: string;
   evidenceIds?: readonly string[];
+  relationshipContext?: string;
+  lastInteractionAt?: string;
+  nextAction?: string;
   messageDraft?: string;
   noteSource?: "typed" | "voice_transcript";
 }
@@ -35,9 +38,29 @@ function sourceFor(input: PostEventFollowupInput): AgentActionSourceReference {
   };
 }
 
+function compactSentence(value: string): string {
+  return value.trim().replace(/[。.!！?？]+$/u, "");
+}
+
+function structuredSummary(input: PostEventFollowupInput): string {
+  const sections = [
+    `本次会面：${input.noteText.trim()}`,
+    input.relationshipContext
+      ? `关系背景：${input.relationshipContext.trim()}`
+      : null,
+    input.lastInteractionAt
+      ? `上次互动：${input.lastInteractionAt.trim()}`
+      : null,
+    input.nextAction ? `已有下一步：${input.nextAction.trim()}` : null,
+  ].filter((section): section is string => Boolean(section));
+
+  return sections.join("\n");
+}
+
 function defaultDraft(input: PostEventFollowupInput): string {
   const name = input.contactName?.trim() || "你好";
-  return `${name}，很高兴在${input.eventTitle}交流。关于我们讨论的下一步，我整理好后想继续和你对齐。`;
+  const discussion = compactSentence(input.noteText);
+  return `${name}，很高兴在${input.eventTitle}交流。我们聊到“${discussion}”，我想按这个方向继续推进，方便时我们再对齐下一步。`;
 }
 
 export function createPostEventFollowupWorkflow(
@@ -95,7 +118,7 @@ export function createPostEventFollowupWorkflow(
         eventId: input.eventId,
         contactId: input.contactId ?? null,
         contactResolution,
-        summary: input.noteText.trim(),
+        summary: structuredSummary(input),
         messageDraft: input.messageDraft?.trim() || defaultDraft(input),
         rawAudioPersisted: false,
         evidenceIds,

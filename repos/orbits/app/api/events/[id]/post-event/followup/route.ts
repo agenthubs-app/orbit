@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { createOrbitAgentRuntimeService } from "../../../../../../features/agent/runtime/service-factory";
+import { createContactsListSearchAndFilterService } from "../../../../../../features/contacts/service-factory";
+import type { ContactListItem } from "../../../../../../features/contacts/contract";
 import { createPostEventFollowupWorkflow } from "../../../../../../features/orbit-ai/workflows/post-event-followup-v1";
 import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode";
 
@@ -31,6 +33,29 @@ function strings(value: unknown): string[] {
         .filter(Boolean)
         .slice(0, 20)
     : [];
+}
+
+async function verifiedContactContext(
+  contactId: string,
+  fallbackName: string | undefined,
+): Promise<ContactListItem | null> {
+  const result = await createContactsListSearchAndFilterService(
+    resolveFeatureMode(),
+  ).listContacts({});
+  if (!result.success || result.data.state !== "success") return null;
+
+  const exact = result.data.contacts.find((contact) => contact.id === contactId);
+  if (exact) return exact;
+
+  // `demo-contact-1` is the historical detail-route alias for the Kenji list
+  // fixture. Keep that compatibility at this boundary without accepting an
+  // arbitrary client-provided name as authoritative contact data.
+  if (contactId !== "demo-contact-1" || !fallbackName) return null;
+  return (
+    result.data.contacts.find(
+      (contact) => contact.displayName === fallbackName,
+    ) ?? null
+  );
 }
 
 export async function POST(
@@ -73,14 +98,29 @@ export async function POST(
   }
 
   try {
+    const submittedContactName = optionalText(body.contactName, 240);
+    const verifiedContact = await verifiedContactContext(
+      contactId,
+      submittedContactName,
+    ).catch(() => null);
+    const submittedEvidenceIds = strings(body.evidenceIds);
+    const evidenceIds = Array.from(
+      new Set([
+        ...submittedEvidenceIds,
+        ...(verifiedContact?.evidence.map((evidence) => evidence.evidenceId) ??
+          []),
+      ]),
+    );
     const runtime = createOrbitAgentRuntimeService();
     const workflow = createPostEventFollowupWorkflow(runtime);
     let result = await workflow.run({
       eventId,
       eventTitle: optionalText(body.eventTitle, 240) ?? "活动",
       contactId,
-      contactName: optionalText(body.contactName, 240),
-      organization: optionalText(body.organization, 240),
+      contactName: verifiedContact?.displayName ?? submittedContactName,
+      organization:
+        verifiedContact?.organization ??
+        optionalText(body.organization, 240),
       connectionId: optionalText(body.connectionId, 240),
       encounterId: optionalText(body.encounterId, 240),
       noteText,
@@ -88,7 +128,10 @@ export async function POST(
       duplicateContactIds: strings(body.duplicateContactIds),
       followupDueAt: optionalText(body.followupDueAt, 80),
       reminderDueAt: optionalText(body.reminderDueAt, 80),
-      evidenceIds: strings(body.evidenceIds),
+      evidenceIds,
+      relationshipContext: verifiedContact?.relationshipContext,
+      lastInteractionAt: verifiedContact?.lastInteractionAt,
+      nextAction: verifiedContact?.nextAction,
       messageDraft: optionalText(body.messageDraft, 4_000),
       noteSource:
         body.noteSource === "voice_transcript"
