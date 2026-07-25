@@ -23,32 +23,35 @@ function EntryRow({ entry }: { entry: AgentLedgerEntry }) {
 
   return (
     <li
+      className="orbit-all-actions-entry"
       data-orbit-all-actions-entry={entry.entryId}
       style={{
-        alignItems: "center",
         borderBottom: "1px solid var(--border)",
-        display: "flex",
-        gap: 12,
         padding: "14px 0",
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: "var(--text)", fontSize: 15, fontWeight: 600 }}>
+      <div className="orbit-all-actions-entry-title" style={{ flex: 1, minWidth: 0 }}>
+        <div
+          className="orbit-all-actions-entry-title-text"
+          style={{ color: "var(--text)", fontSize: 15, fontWeight: 600 }}
+        >
           {entry.title}
         </div>
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 3 }}>
           来源：{sourceLabels}
         </div>
       </div>
-      <OrbitAllActionsControls
-        canRetry={entry.status === "partially_failed" || entry.status === "failed"}
-        canUndo={
-          entry.undoable &&
-          (entry.status === "completed" || entry.status === "partially_failed")
-        }
-        entryId={entry.entryId}
-      />
-      <span className="chip" style={{ flexShrink: 0 }}>
+      <div className="orbit-all-actions-entry-controls">
+        <OrbitAllActionsControls
+          canRetry={entry.status === "partially_failed" || entry.status === "failed"}
+          canUndo={
+            entry.undoable &&
+            (entry.status === "completed" || entry.status === "partially_failed")
+          }
+          entryId={entry.entryId}
+        />
+      </div>
+      <span className="chip orbit-all-actions-entry-status" style={{ flexShrink: 0 }}>
         {STATUS_LABELS[entry.status]}
       </span>
     </li>
@@ -131,6 +134,48 @@ export function OrbitRealAllActions({
         </ul>
       )}
       <OrbitAllActionsSettings />
+      {/* Mobile audit P1: rows with two action buttons (重试失败项 + 撤销)
+          squeezed the title down to ~1ch and it stacked one character per
+          line. Desktop keeps the original single flex row (base rule below
+          matches the inline styles it replaces); at <=760px the row becomes
+          two lines — title+chip, then actions — via a scoped class instead
+          of inline styles so the media query can actually win (an inline
+          style on the <li> would out-specificity any external override). */}
+      <style>{`
+        .orbit-all-actions-entry {
+          align-items: center;
+          display: flex;
+          gap: 12px;
+        }
+        @media (max-width: 760px) {
+          .orbit-all-actions-entry {
+            align-items: flex-start;
+            display: grid;
+            grid-template-areas: "title status" "actions actions";
+            grid-template-columns: 1fr auto;
+            row-gap: 8px;
+          }
+          .orbit-all-actions-entry-title {
+            grid-area: title;
+          }
+          .orbit-all-actions-entry-title-text {
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            display: -webkit-box;
+            overflow: hidden;
+          }
+          .orbit-all-actions-entry-status {
+            grid-area: status;
+            justify-self: end;
+          }
+          .orbit-all-actions-entry-controls {
+            display: flex;
+            gap: 8px;
+            grid-area: actions;
+            justify-content: flex-end;
+          }
+        }
+      `}</style>
     </div>
   );
 }
