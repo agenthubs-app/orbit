@@ -166,6 +166,17 @@ function failure(
   };
 }
 
+function editableDraftField(
+  value: unknown,
+): "draftText" | "goal" | "title" | "dueAt" | undefined {
+  return value === "draftText" ||
+    value === "goal" ||
+    value === "title" ||
+    value === "dueAt"
+    ? value
+    : undefined;
+}
+
 export function createRuntimeBackedAgentLedgerService({
   runtime,
 }: RuntimeBackedAgentLedgerServiceOptions): AgentLedgerService {
@@ -243,13 +254,32 @@ export function createRuntimeBackedAgentLedgerService({
           if (!input.selectedOperationIds?.length) {
             return failure("AGENT_LEDGER_NO_OPERATIONS_SELECTED");
           }
-          return mutation(input.entryId, "confirm", actorLabel, () =>
-            runtime.approveAction({
+          if (
+            input.draftUpdates?.some(
+              (update) =>
+                !update.operationId ||
+                typeof update.draftText !== "string" ||
+                (update.field && !editableDraftField(update.field)) ||
+                !input.selectedOperationIds?.includes(update.operationId),
+            )
+          ) {
+            return failure("AGENT_LEDGER_DRAFT_NOT_EDITABLE");
+          }
+          return mutation(input.entryId, "confirm", actorLabel, async () => {
+            for (const update of input.draftUpdates ?? []) {
+              await runtime.updateDraft({
+                actionId: input.entryId as string,
+                operationId: update.operationId as string,
+                draftText: update.draftText as string,
+                field: editableDraftField(update.field),
+              });
+            }
+            return runtime.approveAction({
               actionId: input.entryId as string,
               actorLabel,
               selectedOperationIds: input.selectedOperationIds ?? undefined,
-            }),
-          );
+            });
+          });
         case "defer":
           return mutation(input.entryId, "defer", actorLabel, () =>
             runtime.deferAction(input.entryId as string),
@@ -281,13 +311,7 @@ export function createRuntimeBackedAgentLedgerService({
       if (!input.operationId || typeof input.draftText !== "string") {
         return failure("AGENT_LEDGER_DRAFT_NOT_EDITABLE");
       }
-      const field =
-        input.field === "draftText" ||
-        input.field === "goal" ||
-        input.field === "title" ||
-        input.field === "dueAt"
-          ? input.field
-          : undefined;
+      const field = editableDraftField(input.field);
       if (input.field && !field) {
         return failure("AGENT_LEDGER_DRAFT_NOT_EDITABLE");
       }

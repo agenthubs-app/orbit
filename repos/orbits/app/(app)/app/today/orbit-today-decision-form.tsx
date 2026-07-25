@@ -9,6 +9,12 @@ type EditableOperationValues = {
   dueAt?: string;
 };
 
+type EditableDraftUpdate = {
+  operationId: string;
+  field: "draftText" | "goal" | "title" | "dueAt";
+  draftText: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -95,33 +101,8 @@ export function OrbitTodayDecisionForm({
     ),
   );
 
-  async function saveEditableField(
-    operationId: string,
-    field: "draftText" | "goal" | "title" | "dueAt",
-    value: string,
-  ): Promise<void> {
-    const response = await fetch(
-      `/api/agent/ledger/${encodeURIComponent(entryId)}/draft`,
-      {
-        body: JSON.stringify({
-          draftText:
-            field === "dueAt" && value
-              ? new Date(value).toISOString()
-              : value,
-          field,
-          operationId,
-        }),
-        headers: { "content-type": "application/json" },
-        method: "PATCH",
-      },
-    );
-    const body = (await response.json()) as unknown;
-    if (!isLedgerSuccess(body)) {
-      throw new Error(readLedgerError(body));
-    }
-  }
-
-  async function saveEditableOperations(): Promise<void> {
+  function editableDraftUpdates(): readonly EditableDraftUpdate[] {
+    const updates: EditableDraftUpdate[] = [];
     for (const operation of operations) {
       if (!selected.includes(operation.operationId)) continue;
       const values = editableValues[operation.operationId];
@@ -138,13 +119,14 @@ export function OrbitTodayDecisionForm({
               : "消息草稿不能为空。",
           );
         }
-        await saveEditableField(
-          operation.operationId,
-          operation.operationType === "save_event_goal"
-            ? "goal"
-            : "draftText",
-          value,
-        );
+        updates.push({
+          operationId: operation.operationId,
+          field:
+            operation.operationType === "save_event_goal"
+              ? "goal"
+              : "draftText",
+          draftText: value,
+        });
       }
       if (
         operation.operationType === "create_followup_task" ||
@@ -158,14 +140,21 @@ export function OrbitTodayDecisionForm({
         ) {
           throw new Error("请先设置提醒时间。");
         }
-        await saveEditableField(operation.operationId, "title", title);
-        await saveEditableField(
-          operation.operationId,
-          "dueAt",
-          values.dueAt ?? "",
-        );
+        updates.push({
+          operationId: operation.operationId,
+          field: "title",
+          draftText: title,
+        });
+        updates.push({
+          operationId: operation.operationId,
+          field: "dueAt",
+          draftText: values.dueAt
+            ? new Date(values.dueAt).toISOString()
+            : "",
+        });
       }
     }
+    return updates;
   }
 
   // 网络异常或非 JSON 响应都必须复位 pending，否则按钮会永久禁用。
@@ -176,13 +165,13 @@ export function OrbitTodayDecisionForm({
     setError(null);
 
     try {
-      if (transition === "confirm") {
-        await saveEditableOperations();
-      }
+      const draftUpdates =
+        transition === "confirm" ? editableDraftUpdates() : undefined;
       const response = await fetch(
         `/api/agent/ledger/${encodeURIComponent(entryId)}/transition`,
         {
           body: JSON.stringify({
+            draftUpdates,
             selectedOperationIds: transition === "confirm" ? selected : undefined,
             transition,
           }),

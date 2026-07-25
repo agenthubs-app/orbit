@@ -9,6 +9,7 @@ import { getHttpStatusForAppErrorCode } from "../../../../../../shared/errors/ap
 import {
   agentLedgerFailureContext,
   agentLedgerFailureToAppError,
+  type AgentLedgerDraftUpdateInput,
   type AgentLedgerTransitionInput,
 } from "../../../../../../features/agent/ledger/contract";
 import {
@@ -43,6 +44,21 @@ function readStringArray(value: unknown): readonly string[] | null {
     : null;
 }
 
+function readDraftUpdates(
+  value: unknown,
+): readonly AgentLedgerDraftUpdateInput[] | null {
+  if (!Array.isArray(value)) return null;
+  return value.slice(0, 20).map((item) =>
+    isRecord(item)
+      ? {
+          operationId: readString(item.operationId),
+          draftText: readString(item.draftText),
+          field: readString(item.field),
+        }
+      : {},
+  );
+}
+
 async function readJsonBody(request: Request): Promise<JsonRecord> {
   try {
     const body = (await request.json()) as unknown;
@@ -62,6 +78,7 @@ async function readInput(
 
   return {
     actorLabel: readString(body.actorLabel),
+    draftUpdates: readDraftUpdates(body.draftUpdates),
     entryId,
     scenario: searchParams.get("scenario") ?? readString(body.scenario),
     selectedOperationIds: readStringArray(body.selectedOperationIds),

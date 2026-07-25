@@ -185,6 +185,7 @@ export interface AgentLedgerTransitionInput {
   entryId?: string | null;
   transition?: AgentLedgerTransition | string | null;
   selectedOperationIds?: readonly string[] | null;
+  draftUpdates?: readonly AgentLedgerDraftUpdateInput[] | null;
   actorLabel?: string | null;
   scenario?: "success" | "failure" | string | null;
 }
