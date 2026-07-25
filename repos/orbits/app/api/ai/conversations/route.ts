@@ -16,6 +16,7 @@ import {
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
 import { createOrbitAgentRuntimeService } from "../../../../features/agent/runtime/service-factory";
 import { latestConversationRuntimeLink } from "../../../../features/orbit-ai/conversation-runtime-links";
+import { createChatKnownWorkflowOrchestrator } from "../../../../features/orbit-ai/chat-known-workflow";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -231,7 +232,17 @@ export async function POST(request: Request): Promise<Response> {
   timing.finish("orbit-read-body", readBodyStartedAt);
   const serviceStartedAt = timing.now();
   const service = createOrbitAgentConversationService();
-  const result = await withRuntimeLinks(await service.sendMessage(input));
+  const conversationResult = await service.sendMessage(input);
+  const workflowResponse = await createChatKnownWorkflowOrchestrator({
+    processOutboxAfterStart: mode === "mock",
+  }).handle({
+    conversationInput: input,
+    conversationResult,
+  });
+  const result =
+    workflowResponse.outcome === "clarification"
+      ? workflowResponse.result
+      : await withRuntimeLinks(workflowResponse.result);
   timing.finish("orbit-service", serviceStartedAt);
 
   return responseForResult(result, mode, timing);
