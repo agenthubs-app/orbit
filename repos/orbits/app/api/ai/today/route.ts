@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
-import { createAgentLedgerService } from "../../../../features/agent/service-factory";
 import { projectLedgerEntriesToTodayWorkItems } from "../../../../features/agent/runtime/today-projection";
+import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
+import {
+  agentRequestUnauthorizedResponse,
+  createAgentLedgerForRequest,
+  resolveAgentRequestContext,
+} from "../../_shared/agent-request-context";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
   const search = new URL(request.url).searchParams;
-  const result = await createAgentLedgerService().listEntries({
+  const agentContext = await resolveAgentRequestContext(resolveFeatureMode());
+  if (!agentContext) return agentRequestUnauthorizedResponse();
+  const result = await createAgentLedgerForRequest(agentContext).listEntries({
     status: search.get("status"),
     workflowKey: search.get("workflow"),
     createdAfter: search.get("createdAfter"),

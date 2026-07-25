@@ -209,6 +209,11 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
     "app/api/agent/actions/[id]/accept/route.ts",
     "app/api/agent/actions/[id]/dismiss/route.ts",
     "app/api/agent/actions/[id]/view/route.ts",
+    "app/api/ai/conversations/route.ts",
+    "app/api/ai/runs/[id]/route.ts",
+    "app/api/ai/today/route.ts",
+    "app/api/events/[id]/encounters/route.ts",
+    "app/api/events/[id]/post-event/followup/route.ts",
   ]) {
     const source = readFileSync(join(process.cwd(), route), "utf8");
     assert.match(source, /resolveAgentRequestContext/);

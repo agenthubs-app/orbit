@@ -12,7 +12,10 @@ import {
   aiProviderFailureToAppError,
   type AiProviderRunResult,
 } from "../../../../../shared/ai/provider";
-import { createOrbitAgentRuntimeService } from "../../../../../features/agent/runtime/service-factory";
+import {
+  agentRequestUnauthorizedResponse,
+  resolveAgentRequestContext,
+} from "../../../_shared/agent-request-context";
 
 export const dynamic = "force-dynamic";
 
@@ -53,10 +56,12 @@ export async function GET(
 ): Promise<Response> {
   // 动态 params 解析后交给 provider service；scenario 只用于 mock 状态切换。
   const mode = resolveFeatureMode();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
   try {
-    const agentRun = await createOrbitAgentRuntimeService().getRun(id);
+    const agentRun = await agentContext.runtime.getRun(id);
     if (agentRun) {
       return NextResponse.json(
         success({ ...agentRun, runKind: "agent" as const }),

@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { createOrbitAgentRuntimeService } from "../../../../../../features/agent/runtime/service-factory";
 import { createContactsListSearchAndFilterService } from "../../../../../../features/contacts/service-factory";
 import type { ContactListItem } from "../../../../../../features/contacts/contract";
 import { createPostEventFollowupWorkflow } from "../../../../../../features/orbit-ai/workflows/post-event-followup-v1";
 import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode";
+import {
+  agentRequestUnauthorizedResponse,
+  resolveAgentRequestContext,
+} from "../../../../_shared/agent-request-context";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +103,11 @@ export async function POST(
   request: Request,
   context: Context,
 ): Promise<Response> {
-  if (!(request.headers.get("content-type") ?? "").includes("application/json")) {
+  const agentContext = await resolveAgentRequestContext(resolveFeatureMode());
+  if (!agentContext) return agentRequestUnauthorizedResponse();
+  if (
+    !(request.headers.get("content-type") ?? "").includes("application/json")
+  ) {
     return NextResponse.json(
       {
         error: {
@@ -163,7 +170,7 @@ export async function POST(
           []),
       ]),
     );
-    const runtime = createOrbitAgentRuntimeService();
+    const runtime = agentContext.runtime;
     const workflow = createPostEventFollowupWorkflow(runtime);
     let result = await workflow.run({
       eventId,
@@ -185,9 +192,7 @@ export async function POST(
       nextAction: verifiedContact.nextAction,
       messageDraft: optionalText(body.messageDraft, 4_000),
       noteSource:
-        body.noteSource === "voice_transcript"
-          ? "voice_transcript"
-          : "typed",
+        body.noteSource === "voice_transcript" ? "voice_transcript" : "typed",
       trigger: "manual",
     });
     if (resolveFeatureMode() === "mock") {

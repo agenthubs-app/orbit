@@ -14,12 +14,16 @@ import {
   type OrbitAgentSendMessageInput,
 } from "../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
-import { createOrbitAgentRuntimeService } from "../../../../features/agent/runtime/service-factory";
+import type { AgentRuntimeService } from "../../../../features/agent/runtime/service";
 import { latestConversationRuntimeLink } from "../../../../features/orbit-ai/conversation-runtime-links";
 import {
   createChatKnownWorkflowOrchestrator,
   isChatKnownWorkflowInput,
 } from "../../../../features/orbit-ai/chat-known-workflow";
+import {
+  agentRequestUnauthorizedResponse,
+  resolveAgentRequestContext,
+} from "../../_shared/agent-request-context";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -30,7 +34,9 @@ type JsonRecord = Record<string, unknown>;
 
 interface RouteTiming {
   finish: (name: string, startedAt: number) => void;
-  headerValue: (extraSpans?: readonly { durationMs: number; name: string }[]) => string;
+  headerValue: (
+    extraSpans?: readonly { durationMs: number; name: string }[],
+  ) => string;
   now: () => number;
 }
 
@@ -104,9 +110,7 @@ function readString(value: unknown): string | null {
 
 // history 是可选的最近对话轮次，用于 planner 消解追问里的指代。
 // 只接受 user/assistant 两种角色，截断条数与单条长度，防止超长 payload 直达模型。
-function readHistory(
-  value: unknown,
-): OrbitAgentSendMessageInput["history"] {
+function readHistory(value: unknown): OrbitAgentSendMessageInput["history"] {
   if (!Array.isArray(value)) {
     return undefined;
   }
@@ -115,7 +119,9 @@ function readHistory(
     .filter(isRecord)
     .map((turn) => ({
       content:
-        typeof turn.content === "string" ? turn.content.trim().slice(0, 2000) : "",
+        typeof turn.content === "string"
+          ? turn.content.trim().slice(0, 2000)
+          : "",
       role: turn.role,
     }))
     .filter(
@@ -190,10 +196,10 @@ function responseForResult(
 
 async function withRuntimeLinks(
   result: OrbitAgentConversationResult,
+  runtime: AgentRuntimeService,
 ): Promise<OrbitAgentConversationResult> {
   if (result.success === false) return result;
   try {
-    const runtime = createOrbitAgentRuntimeService();
     const link = latestConversationRuntimeLink(
       await runtime.listActions({}),
       result.data.activeConversationId,
@@ -216,10 +222,13 @@ export async function GET(request: Request): Promise<Response> {
   // GET 只读取会话列表/状态，不触发模型 provider。
   const timing = createRouteTiming();
   const mode = resolveFeatureMode();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
   const serviceStartedAt = timing.now();
   const service = createOrbitAgentConversationService();
   const result = await withRuntimeLinks(
     await service.listConversations(readListInput(request)),
+    agentContext.runtime,
   );
   timing.finish("orbit-service", serviceStartedAt);
 
@@ -230,6 +239,8 @@ export async function POST(request: Request): Promise<Response> {
   // POST 是用户发消息入口；mock/live 的选择由 service factory 和环境变量决定。
   const timing = createRouteTiming();
   const mode = resolveFeatureMode();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
   const readBodyStartedAt = timing.now();
   const input = await readSendInput(request);
   timing.finish("orbit-read-body", readBodyStartedAt);
@@ -245,6 +256,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     const workflowResponse = await createChatKnownWorkflowOrchestrator({
       processOutboxAfterStart: mode === "mock",
+      runtime: agentContext.runtime,
     }).handle({
       conversationInput: input,
       conversationResult,
@@ -252,10 +264,13 @@ export async function POST(request: Request): Promise<Response> {
     result =
       workflowResponse.outcome === "clarification"
         ? workflowResponse.result
-        : await withRuntimeLinks(workflowResponse.result);
+        : await withRuntimeLinks(workflowResponse.result, agentContext.runtime);
   } else {
     // 未命中已知工作流的普通请求保持原 bounded planner 路径，并且只调用一次。
-    result = await withRuntimeLinks(await service.sendMessage(input));
+    result = await withRuntimeLinks(
+      await service.sendMessage(input),
+      agentContext.runtime,
+    );
   }
   timing.finish("orbit-service", serviceStartedAt);
 

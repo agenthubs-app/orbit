@@ -13,8 +13,12 @@ import {
   type EventEncounterNotePayload,
 } from "../../../../../features/events/encounter-note/contract";
 import { createEventEncounterNoteService } from "../../../../../features/events/service-factory";
-import { createOrbitAgentRuntimeService } from "../../../../../features/agent/runtime/service-factory";
+import type { AgentRuntimeService } from "../../../../../features/agent/runtime/service";
 import { createPostEventFollowupWorkflow } from "../../../../../features/orbit-ai/workflows/post-event-followup-v1";
+import {
+  agentRequestUnauthorizedResponse,
+  resolveAgentRequestContext,
+} from "../../../_shared/agent-request-context";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +111,7 @@ async function readEncounterNoteInput(
 
 async function triggerPostEventFollowup(
   payload: EventEncounterNotePayload,
+  runtime: AgentRuntimeService,
 ): Promise<void> {
   if (
     payload.state !== "success" ||
@@ -127,9 +132,7 @@ async function triggerPostEventFollowup(
         : []),
     ]),
   );
-  await createPostEventFollowupWorkflow(
-    createOrbitAgentRuntimeService(),
-  ).run({
+  await createPostEventFollowupWorkflow(runtime).run({
     eventId: payload.event.id,
     eventTitle: payload.event.name,
     contactId: payload.participant.contactId,
@@ -151,6 +154,8 @@ export async function POST(
 ): Promise<Response> {
   // 创建 encounter note 成功时是资源创建语义，返回 201。
   const mode = resolveFeatureMode();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
   const { id } = await context.params;
   const encounterNoteService = createEventEncounterNoteService();
   const result = await encounterNoteService.createEncounterNote(
@@ -174,9 +179,14 @@ export async function POST(
   // internal Agent trigger must not roll it back if Agent preparation is
   // temporarily unavailable; the note remains the source of truth and a
   // later retry can reuse the workflow's deterministic idempotency key.
-  await triggerPostEventFollowup(result.data).catch((error) => {
-    console.error("post-event Agent trigger failed after encounter note write", error);
-  });
+  await triggerPostEventFollowup(result.data, agentContext.runtime).catch(
+    (error) => {
+      console.error(
+        "post-event Agent trigger failed after encounter note write",
+        error,
+      );
+    },
+  );
 
   return NextResponse.json(success(result.data), {
     headers: runtimeBoundaryHeaders(mode),
