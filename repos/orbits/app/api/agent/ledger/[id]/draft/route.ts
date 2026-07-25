@@ -10,7 +10,11 @@ import {
   agentLedgerFailureContext,
   agentLedgerFailureToAppError,
 } from "../../../../../../features/agent/ledger/contract";
-import { createAgentLedgerService } from "../../../../../../features/agent/service-factory";
+import {
+  agentRequestUnauthorizedResponse,
+  createAgentLedgerForRequest,
+  resolveAgentRequestContext,
+} from "../../../../_shared/agent-request-context";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +39,19 @@ export async function PATCH(
   let body: Record<string, unknown> = {};
   try {
     const parsed = (await request.json()) as unknown;
-    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+    ) {
       body = parsed as Record<string, unknown>;
     }
   } catch {
     body = {};
   }
-  const service = createAgentLedgerService();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
+  const service = createAgentLedgerForRequest(agentContext);
   const result = await service.updateDraft({
     draftText: readString(body.draftText),
     entryId: id,

@@ -11,7 +11,11 @@ import {
   agentActionQueueFailureContext,
   agentActionQueueFailureToAppError,
 } from "../../../../../../features/agent/service";
-import { createAgentActionQueueService } from "../../../../../../features/agent/service-factory";
+import {
+  agentRequestUnauthorizedResponse,
+  createAgentActionQueueForRequest,
+  resolveAgentRequestContext,
+} from "../../../../_shared/agent-request-context";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +70,9 @@ export async function POST(
   // 拒绝动作仍然只改变 queue 中的可复核状态，不在 route 里执行外部副作用。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
-  const agentActionService = createAgentActionQueueService();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
+  const agentActionService = createAgentActionQueueForRequest(agentContext);
   const result = await agentActionService.dismissAction(
     await readInput(request, id),
   );

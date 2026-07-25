@@ -11,7 +11,11 @@ import {
   agentActionQueueFailureContext,
   agentActionQueueFailureToAppError,
 } from "../../../../features/agent/service";
-import { createAgentActionQueueService } from "../../../../features/agent/service-factory";
+import {
+  agentRequestUnauthorizedResponse,
+  createAgentActionQueueForRequest,
+  resolveAgentRequestContext,
+} from "../../_shared/agent-request-context";
 
 // Agent actions route 暴露待确认的 agent 动作队列。
 // 它只列出可复核动作，不执行外部发送、排程或写入。
@@ -33,7 +37,9 @@ function readInput(request: Request): AgentActionQueueListInput {
 export async function GET(request: Request): Promise<Response> {
   // actionType/scenario 用于筛选 mock 队列和测试失败/空态。
   const mode = resolveFeatureMode();
-  const agentActionService = createAgentActionQueueService();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
+  const agentActionService = createAgentActionQueueForRequest(agentContext);
   const result = await agentActionService.listActions(readInput(request));
 
   if (result.success === false) {

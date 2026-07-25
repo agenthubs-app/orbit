@@ -10,7 +10,11 @@ import {
   agentLedgerFailureContext,
   agentLedgerFailureToAppError,
 } from "../../../../features/agent/ledger/contract";
-import { createAgentLedgerService } from "../../../../features/agent/service-factory";
+import {
+  agentRequestUnauthorizedResponse,
+  createAgentLedgerForRequest,
+  resolveAgentRequestContext,
+} from "../../_shared/agent-request-context";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +22,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
   const searchParams = new URL(request.url).searchParams;
-  const service = createAgentLedgerService();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
+  const service = createAgentLedgerForRequest(agentContext);
   const result = await service.listEntries({
     createdAfter: searchParams.get("createdAfter"),
     createdBefore: searchParams.get("createdBefore"),

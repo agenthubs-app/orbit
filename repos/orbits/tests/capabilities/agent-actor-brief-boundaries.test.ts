@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
+import {
+  createAgentLedgerForRequest,
+  resolveAgentRequestContext,
+} from "../../app/api/_shared/agent-request-context";
 import { POST as runAgentWorker } from "../../app/api/internal/agent/worker/route";
 import { createAgentSchedulerRouteHandler } from "../../app/api/internal/agent/scheduler/route-handler";
 import {
@@ -14,6 +20,7 @@ import type {
 } from "../../features/integrations/contract";
 import type { RelationshipNaturalSearchResultItem } from "../../features/search/contract";
 import { createPreEventBriefCandidateCollector } from "../../features/orbit-ai/workflows/pre-event-brief-candidate-source";
+import { createPreEventBriefWorkflow } from "../../features/orbit-ai/workflows/pre-event-brief-v1";
 
 const NOW = "2026-07-26T00:00:00.000Z";
 const STARTS_AT = "2026-07-26T12:00:00.000Z";
@@ -145,6 +152,68 @@ test("actor-scoped runtimes cannot read another actor's Agent runs", async () =>
   assert.ok(await alice.getRun("run:alice-only"));
   assert.equal(await bob.getRun("run:alice-only"), null);
   resetOrbitAgentRuntimeServicesForTests();
+});
+
+test("live request context rejects missing auth and keeps ledger actions actor-scoped", async () => {
+  resetOrbitAgentRuntimeServicesForTests();
+  const missing = await resolveAgentRequestContext("live", {
+    authenticate: async () => null,
+    runtimeForActor() {
+      throw new Error("runtime must not be constructed without auth");
+    },
+  });
+  assert.equal(missing, null);
+
+  async function contextFor(actorId: string) {
+    return resolveAgentRequestContext("live", {
+      authenticate: async () => ({ user: { id: actorId } }),
+      runtimeForActor(_mode, resolvedActorId) {
+        assert.equal(resolvedActorId, actorId);
+        return createOrbitAgentRuntimeService("mock", { actorId });
+      },
+    });
+  }
+  const alice = await contextFor("user:alice");
+  const bob = await contextFor("user:bob");
+  assert.ok(alice);
+  assert.ok(bob);
+  await createPreEventBriefWorkflow(alice.runtime).run({
+    eventId: "event:alice-only",
+    title: "Alice private event",
+    startsAt: STARTS_AT,
+    attendees: [],
+    trigger: "scheduler",
+  });
+
+  const aliceLedger = await createAgentLedgerForRequest(alice).listEntries();
+  const bobLedger = await createAgentLedgerForRequest(bob).listEntries();
+  assert.equal(aliceLedger.success, true);
+  assert.equal(bobLedger.success, true);
+  if (aliceLedger.success && bobLedger.success) {
+    assert.ok(
+      aliceLedger.data.entries.some(
+        (entry) => entry.workflowKey === "pre_event_brief_v1",
+      ),
+    );
+    assert.equal(bobLedger.data.entries.length, 0);
+  }
+  resetOrbitAgentRuntimeServicesForTests();
+});
+
+test("Agent ledger and queue routes resolve server auth instead of request identity fields", () => {
+  for (const route of [
+    "app/api/agent/ledger/route.ts",
+    "app/api/agent/ledger/[id]/transition/route.ts",
+    "app/api/agent/ledger/[id]/draft/route.ts",
+    "app/api/agent/actions/route.ts",
+    "app/api/agent/actions/[id]/accept/route.ts",
+    "app/api/agent/actions/[id]/dismiss/route.ts",
+    "app/api/agent/actions/[id]/view/route.ts",
+  ]) {
+    const source = readFileSync(join(process.cwd(), route), "utf8");
+    assert.match(source, /resolveAgentRequestContext/);
+    assert.doesNotMatch(source, /body\.(actorId|workspaceId)/);
+  }
 });
 
 test("Brief collection preserves Orbit-first priority and metadata-only mail enrichment", async () => {
