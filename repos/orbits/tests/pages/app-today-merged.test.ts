@@ -19,19 +19,38 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { loadAppFollowupsRouteViewModel } from "../../app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model";
 import type { OrbitScheduleViewModel } from "../../app/(app)/app/orbit-schedule-route-view-model";
+import { formatScheduleEventWindow } from "../../app/(app)/app/schedule/schedule-event-display";
 import { loadAppScheduleRouteViewModel } from "../../app/(app)/app/schedule/schedule-route-view-model";
 import {
+  __internal,
   loadAppTodayMergedViewModel,
   type AppTodayMergedLoaders,
 } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model";
 import { loadAppTodayRouteViewModel } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
 import { OrbitTodayTimeSpine } from "../../app/(app)/app/today/orbit-today-time-spine";
+import { mockOrbitAiRecommendedEventDetailRecord } from "../../features/events/event-crud-and-import/fixtures";
 
 const realLoaders: AppTodayMergedLoaders = {
   loadFollowups: loadAppFollowupsRouteViewModel,
   loadSchedule: loadAppScheduleRouteViewModel,
   loadToday: loadAppTodayRouteViewModel,
 };
+
+// ---- timeline-merge parser contract: `eventArrangementDateTime` parses the
+// human-formatted string `formatScheduleEventWindow` produces. Nothing else
+// wired these two together before — a future change to either format could
+// silently break the merge (confirmedEventTimelineItems just drops the
+// event on a parse miss) without any test failing loudly. ----
+
+test("eventArrangementDateTime parses formatScheduleEventWindow's real output format", () => {
+  const formatted = formatScheduleEventWindow(mockOrbitAiRecommendedEventDetailRecord);
+  const parsed = __internal.eventArrangementDateTime(formatted);
+
+  assert.ok(parsed, `expected eventArrangementDateTime to parse "${formatted}"`);
+  assert.equal(parsed!.date, "2026-07-09");
+  assert.equal(parsed!.time, "09:00");
+  assert.equal(parsed!.durationMinutes, 180);
+});
 
 // ---- view-model: ?date= / ?view= ----
 
@@ -116,6 +135,78 @@ test("with all three sources healthy, nothing degrades", async () => {
   assert.equal(merged.schedule.state, "success");
   assert.equal(merged.followups.state, "success");
   assert.notEqual(merged.timeSpine, null);
+});
+
+// ---- timeline merge / filter-dim, exercised through the real loaders end
+// to end (not the parser unit above) — this is what actually breaks if the
+// merge silently drops the event. ----
+
+test("a confirmed arrangement event actually appears in the merged timeSpine", async () => {
+  const merged = await loadAppTodayMergedViewModel(undefined, realLoaders);
+
+  assert.notEqual(merged.timeSpine, null);
+  assert.equal(merged.schedule.state, "success");
+  const confirmedEventArrangement =
+    merged.schedule.state === "success"
+      ? merged.schedule.arrangements.find(
+          (arrangement) =>
+            arrangement.target.kind === "event" && /已确认|confirmed/i.test(arrangement.statusLabel),
+        )
+      : undefined;
+  assert.ok(
+    confirmedEventArrangement,
+    "expected a confirmed event arrangement in the real mock fixtures",
+  );
+  assert.ok(
+    merged.timeSpine!.schedules.some((item) => item.id === confirmedEventArrangement!.id),
+    "expected the confirmed event arrangement to appear as a timeSpine schedule item",
+  );
+});
+
+test("with ?date= set to an unrelated date, dimmedArrangementIds is non-empty", async () => {
+  const merged = await loadAppTodayMergedViewModel({ date: "2099-01-01" }, realLoaders);
+
+  assert.ok(merged.dimmedArrangementIds.size > 0);
+});
+
+// ---- degraded-state cards: TimeSpineErrorCard / ArrangementsErrorCard used
+// to render only eyebrow/title/description, dropping the loaders' guardrail
+// copy and recovery-action links that the old standalone pages rendered.
+// ?scenario=failure drives every source into its normal (non-throw)
+// route-state failure, which is what actually carries copy.guardrail and
+// recoveryActions — the thrown-loader fixtures above use a fixed, shorter
+// fallback copy that doesn't exercise this path. ----
+
+test("a degraded arrangements card shows the guardrail and a recovery link", async () => {
+  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+    searchParams?: Promise<Record<string, string>>;
+  }) => Promise<React.ReactElement>;
+  const html = renderToStaticMarkup(
+    await Page({ searchParams: Promise.resolve({ scenario: "failure" }) }),
+  );
+
+  const cardMatch = html.match(/data-orbit-today-arrangements-error="true"[\s\S]*?<\/div><\/div>/);
+  assert.ok(cardMatch, "expected the arrangements error card to render");
+  const card = cardMatch![0];
+
+  assert.match(card, /不可用期间，Orbit 只显示恢复入口，不会写入日历、提醒、消息或外部系统。/);
+  assert.match(card, /href="\/app\/schedule"/);
+});
+
+test("a degraded time-spine card shows the guardrail and a recovery link", async () => {
+  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+    searchParams?: Promise<Record<string, string>>;
+  }) => Promise<React.ReactElement>;
+  const html = renderToStaticMarkup(
+    await Page({ searchParams: Promise.resolve({ scenario: "failure" }) }),
+  );
+
+  const cardMatch = html.match(/data-orbit-today-time-spine-error="true"[\s\S]*?<\/div><\/div>/);
+  assert.ok(cardMatch, "expected the time-spine error card to render");
+  const card = cardMatch![0];
+
+  assert.match(card, /不可用期间，Orbit 不会保存记录、安排提醒、发送消息或投递通知。/);
+  assert.match(card, /href="\/app\/followups"/);
 });
 
 // ---- full-page render: structural markers that don't depend on which
