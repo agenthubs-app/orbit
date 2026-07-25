@@ -104,22 +104,34 @@ export function createStorageAgentPreferencesService(input: {
   };
 }
 
-let cachedPreferences: AgentPreferencesService | null = null;
+interface OrbitAgentPreferencesGlobal {
+  __orbitAgentPreferencesService?: AgentPreferencesService;
+}
+
+const preferencesGlobal = globalThis as typeof globalThis &
+  OrbitAgentPreferencesGlobal;
 
 export function createAgentPreferencesService(): AgentPreferencesService {
-  if (cachedPreferences) return cachedPreferences;
+  if (preferencesGlobal.__orbitAgentPreferencesService) {
+    return preferencesGlobal.__orbitAgentPreferencesService;
+  }
   const configured =
     createConfiguredPostgresLiveRecordStore<PreferencesPayload>();
-  cachedPreferences = createStorageAgentPreferencesService(
-    configured
-      ? {
-          store: configured.store,
-          workspaceId: configured.workspaceId,
-        }
-      : {
-          store: createMemoryLiveRecordStore<PreferencesPayload>(),
-          workspaceId: "orbit-agent-local",
-        },
-  );
-  return cachedPreferences;
+  preferencesGlobal.__orbitAgentPreferencesService =
+    createStorageAgentPreferencesService(
+      configured
+        ? {
+            store: configured.store,
+            workspaceId: configured.workspaceId,
+          }
+        : {
+            store: createMemoryLiveRecordStore<PreferencesPayload>(),
+            workspaceId: "orbit-agent-local",
+          },
+    );
+  return preferencesGlobal.__orbitAgentPreferencesService;
+}
+
+export function resetAgentPreferencesServiceForTests(): void {
+  delete preferencesGlobal.__orbitAgentPreferencesService;
 }
