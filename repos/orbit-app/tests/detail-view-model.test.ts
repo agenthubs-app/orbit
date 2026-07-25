@@ -7,6 +7,8 @@ import {
   eventDetailPath
 } from "../src/api/endpoints";
 import {
+  buildContactDetailMetadataRequest,
+  buildContactDetailNoteRequest,
   contactDetailHeroToView,
   contactDetailToSummary
 } from "../src/view-models/contacts";
@@ -59,19 +61,139 @@ test("eventDetailToSummary maps event detail payloads", () => {
   });
 
   assert.deepEqual(summary, {
+    actionLabel: "报名",
     coverPath: "/orbit-covers/events/investor-founder-salon.jpg",
+    aboutSections: [
+      {
+        body: "让投资人与创业者登记融资阶段、希望介绍对象和会谈主题。",
+        iconName: "information-circle-outline",
+        id: "overview",
+        title: "活动背景"
+      },
+      {
+        body: "根据报名信息提前整理融资阶段、介绍诉求和会谈主题。",
+        iconName: "git-network-outline",
+        id: "relationship",
+        title: "关系价值"
+      },
+      {
+        body: "整理参会者背景、想认识的人和可以主动提供的资源。",
+        iconName: "flag-outline",
+        id: "preparation",
+        title: "会前准备"
+      }
+    ],
+    address: "",
+    agenda: [
+      {
+        description: "Shibuya",
+        id: "start",
+        time: "7月4日 周六 19:00",
+        title: "活动开始"
+      }
+    ],
+    attendeeCountLabel: "参会者待确认",
+    attendeePreview: [],
     description: "让投资人与创业者登记融资阶段、希望介绍对象和会谈主题。",
     evidenceExcerpts: ["让投资人与创业者登记融资阶段、希望介绍对象和会谈主题。"],
+    feeLabel: "现场确认",
     id: "event-1",
     location: "Shibuya",
     nextAction: "先看报名信息，再决定要准备的介绍和会谈重点。",
+    organizerName: "日中投资人与创业者报名沙龙",
+    participantCountLabel: "报名人数待确认",
     preparation: "整理参会者背景、想认识的人和可以主动提供的资源。",
+    registrationActionLabel: "报名参加",
+    registrationDetail: "确认参加后可见完整参会者名单。",
     relationshipContext: "根据报名信息提前整理融资阶段、介绍诉求和会谈主题。",
     sourceLabel: "日中投资人与创业者报名沙龙",
     startsAt: "7月4日 周六 19:00",
     status: "已确认",
-    title: "日中投资人与创业者报名沙龙"
+    subtitle: "",
+    title: "日中投资人与创业者报名沙龙",
+    topics: [],
+    venueDetail: "Shibuya"
   });
+});
+
+test("eventDetailToSummary carries web event detail modules for mobile rendering", () => {
+  const summary = eventDetailToSummary({
+    event: {
+      about: [
+        {
+          body: "面向在关西寻找商务合作的中国创业者和本地服务商。",
+          icon: "users",
+          label: "适合谁"
+        }
+      ],
+      address: "大阪市北区梅田 1-1",
+      agenda: [
+        {
+          description: "核对报名信息并领取交流编号。",
+          label: "签到",
+          time: "18:30"
+        },
+        {
+          description: "围绕跨境落地、税务设立和渠道合作做小组交流。",
+          label: "主题交流",
+          time: "19:00"
+        }
+      ],
+      description: "关西创业者和跨境业务负责人做一轮高质量对接。",
+      feeLabel: "免费",
+      id: "event_signup_01",
+      organizer: "Orbit 关西商务社区",
+      sourceMetadata: {
+        label:
+          "関西越境ビジネス申込テスト会 / 关西跨境商务交流会 / Kansai Cross-Border Business Meetup"
+      },
+      startsAt: "2026-07-21T10:00:00+09:00",
+      stats: {
+        attendees: [
+          { initial: "王", name: "王小雨", role: "Orbit 创始人" },
+          { name: "Mina Chen", role: "跨境电商负责人" }
+        ],
+        count: 42,
+        youRsvped: false
+      },
+      status: "confirmed",
+      venue: "Osaka Innovation Hub"
+    }
+  });
+
+  assert.deepEqual(summary.aboutSections, [
+    {
+      body: "面向在关西寻找商务合作的中国创业者和本地服务商。",
+      iconName: "people-outline",
+      id: "适合谁",
+      title: "适合谁"
+    }
+  ]);
+  assert.deepEqual(summary.agenda, [
+    {
+      description: "核对报名信息并领取交流编号。",
+      id: "18:30-签到",
+      time: "18:30",
+      title: "签到"
+    },
+    {
+      description: "围绕跨境落地、税务设立和渠道合作做小组交流。",
+      id: "19:00-主题交流",
+      time: "19:00",
+      title: "主题交流"
+    }
+  ]);
+  assert.equal(summary.address, "大阪市北区梅田 1-1");
+  assert.equal(summary.attendeeCountLabel, "42 位参会者");
+  assert.deepEqual(summary.attendeePreview, [
+    { id: "王小雨-0", initial: "王", name: "王小雨", role: "Orbit 创始人" },
+    { id: "Mina Chen-1", initial: "M", name: "Mina Chen", role: "跨境电商负责人" }
+  ]);
+  assert.equal(summary.feeLabel, "免费");
+  assert.equal(summary.organizerName, "Orbit 关西商务社区");
+  assert.equal(summary.registrationActionLabel, "报名参加");
+  assert.equal(summary.registrationDetail, "确认参加后可见完整参会者名单。");
+  assert.equal(summary.venueDetail, "Osaka Innovation Hub · 大阪市北区梅田 1-1");
 });
 
 test("eventDetailHeroToView prepares an image-led mobile detail hero", () => {
@@ -127,6 +249,7 @@ test("eventDetailToSummary removes signup test wording from user-facing copy", (
 test("contactDetailToSummary maps contact detail payloads", () => {
   const summary = contactDetailToSummary({
     contact: {
+      avatarAssetUrl: "/orbit-demo-assets/avatars/contact-001.svg",
       displayName: "Maya Chen",
       id: "contact-1",
       lastInteractionAt: "2026-07-01T09:00:00.000Z",
@@ -167,7 +290,15 @@ test("contactDetailToSummary maps contact detail payloads", () => {
   });
 
   assert.deepEqual(summary, {
+    archiveAction: {
+      label: "归档联系人",
+      nextStatus: "archived",
+      pendingLabel: "归档中",
+      successMessage: "已归档 Maya Chen。"
+    },
+    detailTags: [],
     id: "contact-1",
+    imageUrl: "/orbit-demo-assets/avatars/contact-001.svg",
     lastInteractionAt: "2026-07-01T09:00:00.000Z",
     location: "Tokyo",
     name: "Maya Chen",
@@ -199,6 +330,7 @@ test("contactDetailHeroToView prepares an avatar-led mobile detail hero", () => 
   const hero = contactDetailHeroToView(
     contactDetailToSummary({
       contact: {
+        avatarAssetUrl: "/orbit-demo-assets/avatars/contact-001.svg",
         displayName: "Maya Chen",
         id: "contact_001",
         organization: "Northstar",
@@ -215,6 +347,7 @@ test("contactDetailHeroToView prepares an avatar-led mobile detail hero", () => 
 
   assert.deepEqual(hero, {
     avatar: {
+      imageUrl: "/orbit-demo-assets/avatars/contact-001.svg",
       initial: "M",
       tone: "violet"
     },
@@ -253,6 +386,74 @@ test("contactDetailToSummary exposes safe status actions", () => {
     successMessage: "已把 Hana Sato 放回待联系。"
   });
   assert.equal(archived.statusAction, null);
+  assert.deepEqual(active.archiveAction, {
+    label: "归档联系人",
+    nextStatus: "archived",
+    pendingLabel: "归档中",
+    successMessage: "已归档 Hana Sato。"
+  });
+  assert.equal(archived.archiveAction, null);
+});
+
+test("buildContactDetailNoteRequest prepares contact detail note updates", () => {
+  assert.deepEqual(
+    buildContactDetailNoteRequest("  下次把关西渠道名单发给 Kenji。 "),
+    {
+      request: {
+        body: {
+          note: {
+            authorLabel: "小雨",
+            body: "下次把关西渠道名单发给 Kenji。"
+          }
+        }
+      },
+      success: true,
+      successMessage: "已保存这条记录。"
+    }
+  );
+
+  assert.deepEqual(buildContactDetailNoteRequest("   "), {
+    error: "先写一条备注。",
+    success: false
+  });
+});
+
+test("buildContactDetailMetadataRequest prepares tag and last interaction updates", () => {
+  assert.deepEqual(
+    buildContactDetailMetadataRequest({
+      channel: " manual_note ",
+      occurredAt: " 2026-07-24T09:30:00.000Z ",
+      summary: "  和 Kenji 确认下周介绍关西渠道。 ",
+      tagsText: " topic:storage-pilots, priority:warm-follow-up, topic:storage-pilots "
+    }),
+    {
+      request: {
+        body: {
+          lastInteraction: {
+            channel: "manual_note",
+            occurredAt: "2026-07-24T09:30:00.000Z",
+            summary: "和 Kenji 确认下周介绍关西渠道。"
+          },
+          tags: ["topic:storage-pilots", "priority:warm-follow-up"]
+        }
+      },
+      success: true,
+      successMessage: "已更新标签和最近互动。"
+    }
+  );
+
+  assert.deepEqual(
+    buildContactDetailMetadataRequest({
+      channel: "",
+      occurredAt: "",
+      summary: "",
+      tagsText: ""
+    }),
+    {
+      error: "至少填写一个标签或最近互动。",
+      success: false
+    }
+  );
 });
 
 test("contactDetailToSummary localizes English public detail fields", () => {
@@ -370,4 +571,37 @@ test("contactDetailToSummary cleans live contact implementation copy", () => {
   assert.deepEqual(summary.noteSummaries, []);
   assert.equal(summary.sourceLabel, "QR 扫码：岡田 隼人");
   assert.equal(summary.status, "培养中");
+});
+
+test("contactDetailToSummary localizes live business-card placeholders", () => {
+  const summary = contactDetailToSummary({
+    contact: {
+      displayName: "江東 新",
+      id: "contact:business-card:ef5fc8ebe8c22b853887dcc9",
+      location: "Unknown location",
+      notes: [
+        {
+          body: "Met through a business card exchange with 株式会社アイ・エム・エス."
+        }
+      ],
+      organization: "株式会社アイ・エム・エス",
+      profileSnippet: "Met through a business card exchange with 株式会社アイ・エム・エス.",
+      publicProfile: {
+        bio: "Met through a business card exchange with 株式会社アイ・エム・エス."
+      },
+      relationshipContext:
+        "Met through a business card exchange with 株式会社アイ・エム・エス.",
+      role: "代表取締役社長",
+      status: "needs_follow_up"
+    }
+  });
+
+  assert.equal(summary.organization, "IMS 股份公司");
+  assert.equal(summary.role, "代表董事兼社长");
+  assert.equal(summary.location, "地区待补充");
+  assert.equal(summary.publicBio, "通过名片交换认识，来源公司为 IMS 股份公司。");
+  assert.equal(summary.relationship, "通过名片交换认识，来源公司为 IMS 股份公司。");
+  assert.deepEqual(summary.noteSummaries, [
+    "通过名片交换认识，来源公司为 IMS 股份公司。"
+  ]);
 });

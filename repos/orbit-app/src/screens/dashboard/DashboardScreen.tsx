@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -9,6 +10,9 @@ import {
 } from "react-native";
 import {
   dashboardAggregatePath,
+  dashboardOpportunitiesRecomputePath,
+  dashboardProvenanceAuditPath,
+  dashboardProvenanceAuditRunPath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -18,18 +22,36 @@ import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { colors, radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
+  dashboardAuditRunToView,
+  dashboardAuditToView,
+  dashboardOpportunitiesRecomputeToView,
   dashboardToView,
   type DashboardActivityView,
+  type DashboardAuditCollectionView,
+  type DashboardAuditFindingView,
+  type DashboardAuditRunView,
+  type DashboardAuditView,
   type DashboardGapView,
   type DashboardIndustryView,
   type DashboardMetricView,
+  type DashboardOpportunitiesRecomputeView,
   type DashboardPriorityView,
   type DashboardStrengthView,
   type DashboardValueTypeView
 } from "../../view-models/dashboard";
 
 export function DashboardScreen() {
+  const client = useOrbitApiClient();
+  const [recomputing, setRecomputing] = useState(false);
+  const [recomputeResult, setRecomputeResult] =
+    useState<DashboardOpportunitiesRecomputeView | null>(null);
+  const [recomputeError, setRecomputeError] = useState<string | null>(null);
+  const [auditing, setAuditing] = useState(false);
+  const [auditRunResult, setAuditRunResult] =
+    useState<DashboardAuditRunView | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const aggregateState = useApiResource<unknown>(
     dashboardAggregatePath(4),
     (data) => dashboardToView({ aggregate: data }).metrics.every((item) => item.value === "0")
@@ -50,13 +72,70 @@ export function DashboardScreen() {
     ORBIT_API_ENDPOINTS.dashboardDistributions,
     () => false
   );
+  const auditState = useApiResource<unknown>(
+    dashboardProvenanceAuditPath(),
+    () => false
+  );
 
   function refreshAll() {
+    setRecomputeError(null);
+    setAuditError(null);
     aggregateState.refresh();
     summaryState.refresh();
     opportunitiesState.refresh();
     gapsState.refresh();
     distributionsState.refresh();
+    auditState.refresh();
+  }
+
+  async function recomputeDashboardOpportunities() {
+    setRecomputing(true);
+    setRecomputeResult(null);
+    setRecomputeError(null);
+
+    try {
+      const result = await client.post<unknown>(
+        dashboardOpportunitiesRecomputePath()
+      );
+
+      if (result.success) {
+        setRecomputeResult(
+          dashboardOpportunitiesRecomputeToView(result.data)
+        );
+        aggregateState.refresh();
+        opportunitiesState.refresh();
+        gapsState.refresh();
+      } else {
+        setRecomputeError(result.error.message);
+      }
+    } catch {
+      setRecomputeError("机会提醒暂时不能重新计算。请稍后再试。");
+    } finally {
+      setRecomputing(false);
+    }
+  }
+
+  async function runDashboardAudit() {
+    setAuditing(true);
+    setAuditRunResult(null);
+    setAuditError(null);
+
+    try {
+      const result = await client.post<unknown>(
+        dashboardProvenanceAuditRunPath()
+      );
+
+      if (result.success) {
+        setAuditRunResult(dashboardAuditRunToView(result.data));
+        auditState.refresh();
+      } else {
+        setAuditError(result.error.message);
+      }
+    } catch {
+      setAuditError("来源审计暂时不能运行。请稍后再试。");
+    } finally {
+      setAuditing(false);
+    }
   }
 
   return (
@@ -70,7 +149,8 @@ export function DashboardScreen() {
             summaryState.refreshing ||
             opportunitiesState.refreshing ||
             gapsState.refreshing ||
-            distributionsState.refreshing
+            distributionsState.refreshing ||
+            auditState.refreshing
           }
           tintColor={colors.accent}
         />
@@ -84,6 +164,9 @@ export function DashboardScreen() {
       {aggregateState.kind === "failure" ? (
         <ErrorState message={aggregateState.error.message} />
       ) : null}
+      {auditState.kind === "failure" ? (
+        <ErrorState message={auditState.error.message} title="来源审计不可用" />
+      ) : null}
       {aggregateState.kind === "empty" ? (
         <EmptyState
           message="先补一条联系人或跟进记录，仪表盘会开始显示关系覆盖。"
@@ -93,6 +176,14 @@ export function DashboardScreen() {
       {aggregateState.kind === "success" ? (
         <DashboardContent
           aggregate={aggregateState.data}
+          audit={
+            auditState.kind === "success" || auditState.kind === "empty"
+              ? auditState.data
+              : null
+          }
+          auditError={auditError}
+          auditRunResult={auditRunResult}
+          auditing={auditing}
           distributions={
             distributionsState.kind === "success" ? distributionsState.data : null
           }
@@ -100,6 +191,11 @@ export function DashboardScreen() {
           opportunities={
             opportunitiesState.kind === "success" ? opportunitiesState.data : null
           }
+          onRunAudit={runDashboardAudit}
+          onRecompute={recomputeDashboardOpportunities}
+          recomputeError={recomputeError}
+          recomputeResult={recomputeResult}
+          recomputing={recomputing}
           summary={summaryState.kind === "success" ? summaryState.data : null}
         />
       ) : null}
@@ -109,15 +205,33 @@ export function DashboardScreen() {
 
 function DashboardContent({
   aggregate,
+  audit,
+  auditError,
+  auditRunResult,
+  auditing,
   distributions,
   gaps,
+  onRunAudit,
+  onRecompute,
   opportunities,
+  recomputeError,
+  recomputeResult,
+  recomputing,
   summary
 }: {
   aggregate: unknown;
+  audit: unknown;
+  auditError: string | null;
+  auditRunResult: DashboardAuditRunView | null;
+  auditing: boolean;
   distributions: unknown;
   gaps: unknown;
+  onRunAudit: () => void;
+  onRecompute: () => void;
   opportunities: unknown;
+  recomputeError: string | null;
+  recomputeResult: DashboardOpportunitiesRecomputeView | null;
+  recomputing: boolean;
   summary: unknown;
 }) {
   const router = useRouter();
@@ -128,6 +242,7 @@ function DashboardContent({
     opportunities,
     summary
   });
+  const auditView = audit ? dashboardAuditToView(audit) : null;
 
   return (
     <>
@@ -143,7 +258,47 @@ function DashboardContent({
           </View>
         </View>
         <MetricGrid metrics={view.metrics} />
+        <Pressable
+          accessibilityRole="button"
+          disabled={recomputing}
+          onPress={onRecompute}
+          style={({ pressed }) => [
+            styles.recomputeButton,
+            recomputing ? styles.disabled : null,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.onAccent} name="refresh-outline" size={17} />
+          <Text style={styles.recomputeButtonText}>
+            {recomputing ? "计算中" : "重新计算机会"}
+          </Text>
+        </Pressable>
       </DataCard>
+
+      {recomputeResult ? (
+        <DataCard
+          detail={recomputeResult.statusLabel}
+          title={recomputeResult.title}
+        >
+          <Text style={styles.bodyText}>{recomputeResult.detail}</Text>
+          <Text style={styles.recomputeStatus}>
+            {recomputeResult.nextAction}
+          </Text>
+        </DataCard>
+      ) : null}
+      {recomputeError ? (
+        <Text style={styles.errorText}>{recomputeError}</Text>
+      ) : null}
+
+      {auditView ? (
+        <DashboardAuditCard
+          audit={auditView}
+          auditError={auditError}
+          auditRunResult={auditRunResult}
+          auditing={auditing}
+          onRunAudit={onRunAudit}
+        />
+      ) : null}
 
       {view.priority ? (
         <PriorityCard
@@ -186,6 +341,120 @@ function MetricGrid({ metrics }: { metrics: DashboardMetricView[] }) {
           </Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+function DashboardAuditCard({
+  audit,
+  auditError,
+  auditRunResult,
+  auditing,
+  onRunAudit
+}: {
+  audit: DashboardAuditView;
+  auditError: string | null;
+  auditRunResult: DashboardAuditRunView | null;
+  auditing: boolean;
+  onRunAudit: () => void;
+}) {
+  const collections = audit.collections.slice(0, 4);
+  const findings = audit.findings.slice(0, 2);
+
+  return (
+    <DataCard
+      detail={`${audit.statusLabel} · ${audit.coverageLabel}`}
+      title={audit.title || "来源一致性审计"}
+    >
+      <Text style={styles.bodyText}>{audit.summary}</Text>
+      <View style={styles.callout}>
+        <Ionicons color={colors.accent} name="shield-checkmark-outline" size={18} />
+        <Text style={styles.calloutText}>{audit.nextAction}</Text>
+      </View>
+      {collections.length > 0 ? (
+        <View style={styles.listStack}>
+          {collections.map((collection) => (
+            <AuditCollectionRow collection={collection} key={collection.id} />
+          ))}
+        </View>
+      ) : null}
+      {findings.length > 0 ? (
+        <View style={styles.inlineSection}>
+          <Text style={styles.sectionLabel}>待复核</Text>
+          <View style={styles.listStack}>
+            {findings.map((finding) => (
+              <AuditFindingRow finding={finding} key={finding.id} />
+            ))}
+          </View>
+        </View>
+      ) : null}
+      <Text style={styles.metaText}>{audit.safetyText}</Text>
+      {auditRunResult ? (
+        <View style={styles.auditResult}>
+          <View style={styles.rowTop}>
+            <Text style={styles.itemTitle}>{auditRunResult.title}</Text>
+            <Text style={styles.okBadge}>{auditRunResult.statusLabel}</Text>
+          </View>
+          <Text style={styles.bodyText}>{auditRunResult.detail}</Text>
+          <Text style={styles.metaText}>{auditRunResult.nextAction}</Text>
+        </View>
+      ) : null}
+      {auditError ? <Text style={styles.errorText}>{auditError}</Text> : null}
+      <Pressable
+        accessibilityRole="button"
+        disabled={auditing}
+        onPress={onRunAudit}
+        style={({ pressed }) => [
+          styles.recomputeButton,
+          auditing ? styles.disabled : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.onAccent} name="refresh-outline" size={17} />
+        <Text style={styles.recomputeButtonText}>
+          {auditing ? "审计中" : "运行来源审计"}
+        </Text>
+      </Pressable>
+    </DataCard>
+  );
+}
+
+function AuditCollectionRow({
+  collection
+}: {
+  collection: DashboardAuditCollectionView;
+}) {
+  const statusStyle =
+    collection.statusLabel === "来源完整" ? styles.okBadge : styles.severityBadge;
+
+  return (
+    <View style={styles.listRow}>
+      <View style={styles.rowTop}>
+        <Text numberOfLines={1} style={styles.itemTitle}>
+          {collection.label}
+        </Text>
+        <Text style={statusStyle}>{collection.statusLabel}</Text>
+      </View>
+      <Text style={styles.metaText}>
+        {collection.countLabel} · {collection.evidenceLabel}
+      </Text>
+    </View>
+  );
+}
+
+function AuditFindingRow({ finding }: { finding: DashboardAuditFindingView }) {
+  return (
+    <View style={styles.listRow}>
+      <View style={styles.rowTop}>
+        <Text numberOfLines={1} style={styles.itemTitle}>
+          {finding.title}
+        </Text>
+        <Text style={styles.severityBadge}>{finding.severityLabel}</Text>
+      </View>
+      <Text style={styles.bodyText}>{finding.detail}</Text>
+      <Text style={styles.metaText}>
+        {finding.remediation} · {finding.evidenceLabel}
+      </Text>
     </View>
   );
 }
@@ -373,6 +642,14 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   },
+  auditResult: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.md
+  },
   callout: {
     alignItems: "center",
     backgroundColor: colors.accentSofter,
@@ -415,6 +692,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     justifyContent: "space-between",
     paddingTop: spacing.md
+  },
+  disabled: {
+    opacity: 0.58
+  },
+  errorText: {
+    color: colors.rose,
+    fontSize: typography.small,
+    lineHeight: 20
   },
   inlineSection: {
     gap: spacing.sm
@@ -465,6 +750,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 30
   },
+  okBadge: {
+    backgroundColor: colors.liveSoft,
+    borderRadius: radius.pill,
+    color: colors.live,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs
+  },
   priorityHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
@@ -482,6 +776,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     justifyContent: "space-between"
+  },
+  recomputeButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  recomputeButtonText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  recomputeStatus: {
+    color: colors.live,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 20
   },
   scoreBadge: {
     backgroundColor: colors.amberSoft,

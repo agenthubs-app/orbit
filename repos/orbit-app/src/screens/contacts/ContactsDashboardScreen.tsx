@@ -1,8 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from "react-native";
 import {
   dashboardAggregatePath,
+  dashboardOpportunitiesRecomputePath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -12,21 +21,67 @@ import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { colors, radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   contactsDashboardToView,
   type ContactsDashboardOverviewItem,
   type ContactsDashboardView
 } from "../../view-models/contacts-dashboard";
-import type {
-  DashboardActivityView,
-  DashboardGapView,
-  DashboardIndustryView,
-  DashboardPriorityView,
-  DashboardStrengthView,
-  DashboardValueTypeView
+import {
+  dashboardOpportunitiesRecomputeToView,
+  type DashboardOpportunitiesRecomputeView,
+  type DashboardActivityView,
+  type DashboardGapView,
+  type DashboardIndustryView,
+  type DashboardPriorityView,
+  type DashboardStrengthView,
+  type DashboardValueTypeView
 } from "../../view-models/dashboard";
+import {
+  buildProfileUpdateRequest,
+  profileSummaryToEditDraft,
+  profileToSummary,
+  type ProfileManualEditDraft
+} from "../../view-models/profile";
+
+type ContactsDashboardOverviewFilter = {
+  source?: string;
+  status?: string;
+  tag?: string;
+  value?: string;
+};
+
+function overviewFilterFor(
+  item: ContactsDashboardOverviewItem
+): ContactsDashboardOverviewFilter {
+  if (item.id === "pending-followups") {
+    return { status: "needs_follow_up" };
+  }
+
+  if (item.id === "dormant-contacts") {
+    return { status: "nurture" };
+  }
+
+  if (item.id === "high-value") {
+    return { value: "strategic_fit" };
+  }
+
+  return {};
+}
 
 export function ContactsDashboardScreen() {
+  const client = useOrbitApiClient();
+  const [recomputing, setRecomputing] = useState(false);
+  const [recomputeResult, setRecomputeResult] =
+    useState<DashboardOpportunitiesRecomputeView | null>(null);
+  const [recomputeError, setRecomputeError] = useState<string | null>(null);
+  const [relationshipGoalDraft, setRelationshipGoalDraft] =
+    useState<ProfileManualEditDraft | null>(null);
+  const [relationshipGoalError, setRelationshipGoalError] =
+    useState<string | null>(null);
+  const [relationshipGoalMessage, setRelationshipGoalMessage] =
+    useState<string | null>(null);
+  const [savingRelationshipGoal, setSavingRelationshipGoal] = useState(false);
   const aggregateState = useApiResource<unknown>(
     dashboardAggregatePath(4),
     (data) =>
@@ -50,13 +105,102 @@ export function ContactsDashboardScreen() {
     ORBIT_API_ENDPOINTS.dashboardDistributions,
     () => false
   );
+  const profileState = useApiResource<unknown>(
+    ORBIT_API_ENDPOINTS.profile,
+    () => false
+  );
+  const profile =
+    profileState.kind === "success" || profileState.kind === "empty"
+      ? profileToSummary(profileState.data)
+      : null;
+
+  useEffect(() => {
+    if (profile) {
+      setRelationshipGoalDraft(profileSummaryToEditDraft(profile));
+    }
+  }, [profile?.displayName, profile?.relationshipGoal]);
 
   function refreshAll() {
+    setRecomputeError(null);
+    setRelationshipGoalError(null);
     aggregateState.refresh();
     summaryState.refresh();
     opportunitiesState.refresh();
     gapsState.refresh();
     distributionsState.refresh();
+    profileState.refresh();
+  }
+
+  async function recomputeContactDashboardOpportunities() {
+    setRecomputing(true);
+    setRecomputeResult(null);
+    setRecomputeError(null);
+
+    try {
+      const result = await client.post<unknown>(
+        dashboardOpportunitiesRecomputePath()
+      );
+
+      if (result.success) {
+        setRecomputeResult(
+          dashboardOpportunitiesRecomputeToView(result.data)
+        );
+        aggregateState.refresh();
+        opportunitiesState.refresh();
+        gapsState.refresh();
+      } else {
+        setRecomputeError(result.error.message);
+      }
+    } catch {
+      setRecomputeError("机会提醒暂时不能重新计算。请稍后再试。");
+    } finally {
+      setRecomputing(false);
+    }
+  }
+
+  async function saveContactDashboardGoal() {
+    if (!relationshipGoalDraft) {
+      setRelationshipGoalError("个人资料还没加载完成。");
+      setRelationshipGoalMessage(null);
+      return;
+    }
+
+    const request = buildProfileUpdateRequest(relationshipGoalDraft);
+
+    if (!request) {
+      setRelationshipGoalError("先到个人资料页补姓名，再保存目标。");
+      setRelationshipGoalMessage(null);
+      return;
+    }
+
+    setSavingRelationshipGoal(true);
+    setRelationshipGoalError(null);
+    setRelationshipGoalMessage(null);
+
+    try {
+      const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, {
+        body: request
+      });
+
+      if (!result.success) {
+        setRelationshipGoalError(
+          result.error.message || "关系目标暂时保存不了。"
+        );
+        return;
+      }
+
+      setRelationshipGoalMessage("关系目标已保存。");
+      profileState.refresh();
+      aggregateState.refresh();
+      opportunitiesState.refresh();
+      gapsState.refresh();
+    } catch (error) {
+      setRelationshipGoalError(
+        error instanceof Error ? error.message : "关系目标暂时保存不了。"
+      );
+    } finally {
+      setSavingRelationshipGoal(false);
+    }
   }
 
   return (
@@ -70,7 +214,8 @@ export function ContactsDashboardScreen() {
             summaryState.refreshing ||
             opportunitiesState.refreshing ||
             gapsState.refreshing ||
-            distributionsState.refreshing
+            distributionsState.refreshing ||
+            profileState.refreshing
           }
           tintColor={colors.accent}
         />
@@ -100,6 +245,25 @@ export function ContactsDashboardScreen() {
           opportunities={
             opportunitiesState.kind === "success" ? opportunitiesState.data : null
           }
+          onRecompute={recomputeContactDashboardOpportunities}
+          recomputeError={recomputeError}
+          recomputeResult={recomputeResult}
+          recomputing={recomputing}
+          onRelationshipGoalChange={(value) =>
+            setRelationshipGoalDraft((current) =>
+              current
+                ? {
+                    ...current,
+                    relationshipGoal: value
+                  }
+                : current
+            )
+          }
+          onSaveRelationshipGoal={saveContactDashboardGoal}
+          relationshipGoalDraft={relationshipGoalDraft}
+          relationshipGoalError={relationshipGoalError}
+          relationshipGoalMessage={relationshipGoalMessage}
+          savingRelationshipGoal={savingRelationshipGoal}
           summary={summaryState.kind === "success" ? summaryState.data : null}
         />
       ) : null}
@@ -111,13 +275,33 @@ function ContactsDashboardContent({
   aggregate,
   distributions,
   gaps,
+  onRecompute,
   opportunities,
+  recomputeError,
+  recomputeResult,
+  recomputing,
+  onRelationshipGoalChange,
+  onSaveRelationshipGoal,
+  relationshipGoalDraft,
+  relationshipGoalError,
+  relationshipGoalMessage,
+  savingRelationshipGoal,
   summary
 }: {
   aggregate: unknown;
   distributions: unknown;
   gaps: unknown;
+  onRecompute: () => void;
+  onRelationshipGoalChange: (value: string) => void;
+  onSaveRelationshipGoal: () => void;
   opportunities: unknown;
+  recomputeError: string | null;
+  recomputeResult: DashboardOpportunitiesRecomputeView | null;
+  recomputing: boolean;
+  relationshipGoalDraft: ProfileManualEditDraft | null;
+  relationshipGoalError: string | null;
+  relationshipGoalMessage: string | null;
+  savingRelationshipGoal: boolean;
   summary: unknown;
 }) {
   const router = useRouter();
@@ -129,11 +313,26 @@ function ContactsDashboardContent({
     summary
   });
 
+  function openContactsDrilldown(filter: ContactsDashboardOverviewFilter) {
+    router.push({
+      pathname: "/contacts/list",
+      params: {
+        ...(filter.source ? { source: filter.source } : {}),
+        ...(filter.status ? { status: filter.status } : {}),
+        ...(filter.tag ? { tag: filter.tag } : {}),
+        ...(filter.value ? { value: filter.value } : {})
+      }
+    });
+  }
+
   return (
     <>
       <DataCard detail={view.subtitle} title="人脉星图">
         <OrbitMap view={view} />
-        <OverviewGrid items={view.overview} />
+        <OverviewGrid
+          items={view.overview}
+          onOpenFilter={openContactsDrilldown}
+        />
       </DataCard>
 
       <DataCard detail={view.summary} title={view.diagnosis.label}>
@@ -144,7 +343,48 @@ function ContactsDashboardContent({
           </View>
           <Text style={styles.bodyText}>{view.diagnosis.detail}</Text>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          disabled={recomputing}
+          onPress={onRecompute}
+          style={({ pressed }) => [
+            styles.recomputeButton,
+            recomputing ? styles.disabled : null,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.onAccent} name="refresh-outline" size={17} />
+          <Text style={styles.recomputeButtonText}>
+            {recomputing ? "计算中" : "重新计算机会"}
+          </Text>
+        </Pressable>
       </DataCard>
+
+      {recomputeResult ? (
+        <DataCard
+          detail={recomputeResult.statusLabel}
+          title={recomputeResult.title}
+        >
+          <Text style={styles.bodyText}>{recomputeResult.detail}</Text>
+          <Text style={styles.recomputeStatus}>
+            {recomputeResult.nextAction}
+          </Text>
+        </DataCard>
+      ) : null}
+      {recomputeError ? (
+        <Text style={styles.errorText}>{recomputeError}</Text>
+      ) : null}
+
+      {relationshipGoalDraft ? (
+        <ContactDashboardGoalCard
+          draft={relationshipGoalDraft}
+          error={relationshipGoalError}
+          message={relationshipGoalMessage}
+          onChange={onRelationshipGoalChange}
+          onSave={onSaveRelationshipGoal}
+          saving={savingRelationshipGoal}
+        />
+      ) : null}
 
       {view.priority ? (
         <PriorityCard
@@ -170,6 +410,52 @@ function ContactsDashboardContent({
         <ActivityCard activities={view.recentActivity} />
       ) : null}
     </>
+  );
+}
+
+function ContactDashboardGoalCard({
+  draft,
+  error,
+  message,
+  onChange,
+  onSave,
+  saving
+}: {
+  draft: ProfileManualEditDraft;
+  error: string | null;
+  message: string | null;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  return (
+    <DataCard detail="会影响推荐和机会排序" title="关系目标">
+      <TextInput
+        multiline
+        onChangeText={onChange}
+        placeholder="最近想认识什么人，或者想推进哪类合作"
+        placeholderTextColor={colors.text3}
+        style={styles.goalInput}
+        value={draft.relationshipGoal}
+      />
+      <Pressable
+        accessibilityRole="button"
+        disabled={saving}
+        onPress={onSave}
+        style={({ pressed }) => [
+          styles.saveGoalButton,
+          saving ? styles.disabled : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.onAccent} name="save-outline" size={17} />
+        <Text style={styles.saveGoalButtonText}>
+          {saving ? "保存中" : "保存目标"}
+        </Text>
+      </Pressable>
+      {message ? <Text style={styles.successText}>{message}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </DataCard>
   );
 }
 
@@ -212,20 +498,39 @@ function RingLegend({ rings }: { rings: DashboardStrengthView[] }) {
   );
 }
 
-function OverviewGrid({ items }: { items: ContactsDashboardOverviewItem[] }) {
+function OverviewGrid({
+  items,
+  onOpenFilter
+}: {
+  items: ContactsDashboardOverviewItem[];
+  onOpenFilter: (filter: ContactsDashboardOverviewFilter) => void;
+}) {
   return (
     <View style={styles.overviewGrid}>
-      {items.map((item) => (
-        <View key={item.id} style={styles.overviewCell}>
-          <Text style={styles.metricValue}>{item.value}</Text>
-          <Text numberOfLines={1} style={styles.metricLabel}>
-            {item.label}
-          </Text>
-          <Text numberOfLines={2} style={styles.metaText}>
-            {item.detail}
-          </Text>
-        </View>
-      ))}
+      {items.map((item) => {
+        const filter = overviewFilterFor(item);
+
+        return (
+          <Pressable
+            accessibilityRole="button"
+            key={item.id}
+            onPress={() => onOpenFilter(filter)}
+            style={({ pressed }) => [
+              styles.overviewCell,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Text style={styles.metricValue}>{item.value}</Text>
+            <Text numberOfLines={1} style={styles.metricLabel}>
+              {item.label}
+            </Text>
+            <Text numberOfLines={2} style={styles.metaText}>
+              {item.detail}
+            </Text>
+            <Text style={styles.overviewActionText}>查看</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -468,9 +773,29 @@ const styles = StyleSheet.create({
     left: 62,
     top: 74
   },
+  disabled: {
+    opacity: 0.58
+  },
+  errorText: {
+    color: colors.rose,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
   flexText: {
     flex: 1,
     gap: spacing.xs
+  },
+  goalInput: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    color: colors.text,
+    fontSize: typography.body,
+    minHeight: 92,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    textAlignVertical: "top"
   },
   itemTitle: {
     color: colors.ink,
@@ -550,6 +875,11 @@ const styles = StyleSheet.create({
     minWidth: 132,
     paddingTop: spacing.md
   },
+  overviewActionText: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "700"
+  },
   overviewGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -594,6 +924,44 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     justifyContent: "space-between"
   },
+  saveGoalButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  saveGoalButtonText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  recomputeButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  recomputeButtonText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  recomputeStatus: {
+    color: colors.live,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 20
+  },
   scoreBadge: {
     alignItems: "center",
     backgroundColor: colors.accentSofter,
@@ -632,5 +1000,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
+  },
+  successText: {
+    color: colors.live,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 20
   }
 });

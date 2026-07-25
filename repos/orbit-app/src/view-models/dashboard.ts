@@ -69,6 +69,48 @@ export interface DashboardView {
   valueTypes: DashboardValueTypeView[];
 }
 
+export interface DashboardOpportunitiesRecomputeView {
+  detail: string;
+  nextAction: string;
+  statusLabel: string;
+  title: string;
+}
+
+export interface DashboardAuditCollectionView {
+  countLabel: string;
+  evidenceLabel: string;
+  id: string;
+  label: string;
+  statusLabel: string;
+}
+
+export interface DashboardAuditFindingView {
+  detail: string;
+  evidenceLabel: string;
+  id: string;
+  remediation: string;
+  severityLabel: string;
+  title: string;
+}
+
+export interface DashboardAuditView {
+  collections: DashboardAuditCollectionView[];
+  coverageLabel: string;
+  findings: DashboardAuditFindingView[];
+  nextAction: string;
+  safetyText: string;
+  statusLabel: string;
+  summary: string;
+  title: string;
+}
+
+export interface DashboardAuditRunView {
+  detail: string;
+  nextAction: string;
+  statusLabel: string;
+  title: string;
+}
+
 export interface DashboardViewInput {
   aggregate?: unknown;
   distributions?: unknown;
@@ -142,6 +184,16 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   task_created: "新增任务"
 };
 
+const AUDIT_ENTITY_LABELS: Record<string, string> = {
+  agent_action: "Agent 动作",
+  chat_summary: "聊天摘要",
+  connection: "关系",
+  contact: "联系人",
+  evidence: "证据",
+  recommendation: "推荐",
+  task: "任务"
+};
+
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -172,6 +224,15 @@ function numberField(
 function listField(record: UnknownRecord, fieldName: string): unknown[] {
   const value = record[fieldName];
   return Array.isArray(value) ? value : [];
+}
+
+function booleanField(
+  record: UnknownRecord,
+  fieldName: string,
+  fallback = false
+): boolean {
+  const value = record[fieldName];
+  return typeof value === "boolean" ? value : fallback;
 }
 
 function recordInput(value: unknown): UnknownRecord {
@@ -470,6 +531,137 @@ function activityView(item: UnknownRecord): DashboardActivityView {
   };
 }
 
+function evidenceCountLabel(record: UnknownRecord): string {
+  return `证据 ${listField(record, "evidenceIds").length} 条`;
+}
+
+function auditEntityLabel(value: string): string {
+  return AUDIT_ENTITY_LABELS[value] ?? userFacingText(value, "来源记录");
+}
+
+function auditCollectionView(
+  item: UnknownRecord
+): DashboardAuditCollectionView {
+  const entityKind = stringField(item, "entityKind", "source");
+  const sourceConsistent = booleanField(item, "sourceConsistent");
+  const provenanceComplete = booleanField(item, "provenanceComplete");
+
+  return {
+    countLabel: `${numberField(item, "auditedCount")} 条`,
+    evidenceLabel: evidenceCountLabel(item),
+    id: entityKind,
+    label: auditEntityLabel(entityKind),
+    statusLabel: sourceConsistent && provenanceComplete ? "来源完整" : "需要复核"
+  };
+}
+
+function auditFindingTitle(item: UnknownRecord): string {
+  const entityKind = stringField(item, "entityKind");
+  const title = stringField(item, "title");
+
+  if (entityKind === "agent_action" || /agent action/iu.test(title)) {
+    return "Agent 动作缺少确认来源";
+  }
+
+  if (entityKind === "recommendation" || /recommendation/iu.test(title)) {
+    return "推荐缺少来源证据";
+  }
+
+  if (entityKind === "task" || /task/iu.test(title)) {
+    return "任务来源需要刷新";
+  }
+
+  return userFacingText(title, "来源问题待复核");
+}
+
+function auditFindingRemediation(item: UnknownRecord): string {
+  const remediation = stringField(item, "remediation");
+
+  if (/confirmation guard|live execution/iu.test(remediation)) {
+    return "先阻止对外动作，补齐确认来源记录。";
+  }
+
+  if (/attach|evidence/iu.test(remediation)) {
+    return "先补齐证据来源，再展示给用户。";
+  }
+
+  if (/refresh/iu.test(remediation)) {
+    return "先刷新这条记录的来源引用。";
+  }
+
+  return userFacingText(remediation, "先补齐来源证据，再继续下一步。");
+}
+
+function auditFindingView(item: UnknownRecord): DashboardAuditFindingView {
+  const severity = stringField(item, "severity").toLowerCase();
+
+  return {
+    detail: userFacingText(
+      stringField(item, "detail"),
+      "这条来源问题需要先复核，确认后再继续。"
+    ),
+    evidenceLabel: evidenceCountLabel(item),
+    id: stringField(item, "findingId", "audit-finding"),
+    remediation: auditFindingRemediation(item),
+    severityLabel: SEVERITY_LABELS[severity] ?? "中",
+    title: auditFindingTitle(item)
+  };
+}
+
+function auditSafetyText(provenance: UnknownRecord): string {
+  const complianceReportingExecuted = booleanField(
+    provenance,
+    "complianceReportingExecuted"
+  );
+  const productionAuditStorageWriteExecuted = booleanField(
+    provenance,
+    "productionAuditStorageWriteExecuted"
+  );
+
+  if (complianceReportingExecuted || productionAuditStorageWriteExecuted) {
+    return "这次审计可能触发了外部报告或生产存储，请先复核。";
+  }
+
+  return "没有生成合规报告，也没有写入生产审计存储。";
+}
+
+export function dashboardAuditToView(payload: unknown): DashboardAuditView {
+  const envelope = recordInput(payload);
+  const record = isRecord(envelope.data) ? envelope.data : envelope;
+  const collections = listField(record, "auditedCollections")
+    .filter(isRecord)
+    .map(auditCollectionView);
+  const findings = listField(record, "findings")
+    .filter(isRecord)
+    .map(auditFindingView);
+  const activeFindingCount =
+    numberField(record, "activeFindingCount", findings.length);
+  const auditedCount = collections.reduce((total, collection) => {
+    const count = Number.parseInt(collection.countLabel, 10);
+    return total + (Number.isFinite(count) ? count : 0);
+  }, 0);
+  const provenance = nestedRecord(record, "provenance");
+  const hasFindings = activeFindingCount > 0 || findings.length > 0;
+
+  return {
+    collections,
+    coverageLabel:
+      auditedCount > 0 ? `${auditedCount} 条记录已检查` : "等待来源审计",
+    findings,
+    nextAction: hasFindings
+      ? "先处理高风险来源问题，再允许对外动作继续。"
+      : "保持来源链完整，再继续机会提醒和 Agent 动作。",
+    safetyText: auditSafetyText(provenance),
+    statusLabel:
+      activeFindingCount > 0 ? `${activeFindingCount} 个问题` : "来源正常",
+    summary:
+      collections.length > 0
+        ? "已检查联系人、关系、证据和 AI 动作的来源链。"
+        : "还没有可展示的来源审计记录。",
+    title: "来源一致性审计"
+  };
+}
+
 function totalMetricValue(metrics: DashboardMetricView[]): number {
   return metrics.reduce((total, metric) => {
     const value = Number.parseInt(metric.value, 10);
@@ -540,5 +732,98 @@ export function dashboardToView(input: DashboardViewInput): DashboardView {
       .filter(isRecord)
       .slice(0, 4)
       .map(valueTypeView)
+  };
+}
+
+export function dashboardOpportunitiesRecomputeToView(
+  payload: unknown
+): DashboardOpportunitiesRecomputeView {
+  const envelope = recordInput(payload);
+  const record = isRecord(envelope.data) ? envelope.data : envelope;
+  const state = stringField(record, "state", "success");
+  const evaluatedContacts = Math.max(
+    0,
+    numberField(record, "evaluatedContacts")
+  );
+  const generatedOpportunityCount = Math.max(
+    0,
+    numberField(record, "generatedOpportunityCount")
+  );
+
+  if (state === "pending") {
+    return {
+      detail: "机会提醒还在等待来源复核。",
+      nextAction: "稍后刷新仪表盘，再决定是否重新计算。",
+      statusLabel: "等待复核",
+      title: "暂未重新计算"
+    };
+  }
+
+  if (state === "empty") {
+    return {
+      detail: "当前没有可重算的联系人或目标。",
+      nextAction: "先补充联系人、跟进记录或当前目标。",
+      statusLabel: "没有可更新项",
+      title: "机会提醒没有变化"
+    };
+  }
+
+  return {
+    detail: `检查了 ${evaluatedContacts} 位联系人，更新 ${generatedOpportunityCount} 条机会。`,
+    nextAction: "已重新排序机会提醒，没有发送通知或写入任务。",
+    statusLabel: "已重新计算",
+    title: "机会提醒已更新"
+  };
+}
+
+export function dashboardAuditRunToView(
+  payload: unknown
+): DashboardAuditRunView {
+  const envelope = recordInput(payload);
+  const record = isRecord(envelope.data) ? envelope.data : envelope;
+  const state = stringField(record, "state", "success");
+  const evaluatedRecordCount = Math.max(
+    0,
+    numberField(record, "evaluatedRecordCount")
+  );
+  const activeFindingCount = Math.max(
+    0,
+    numberField(record, "activeFindingCount")
+  );
+  const complianceReportPersisted = booleanField(
+    record,
+    "complianceReportPersisted"
+  );
+  const productionAuditStorageWritten = booleanField(
+    record,
+    "productionAuditStorageWritten"
+  );
+
+  if (state === "pending") {
+    return {
+      detail: "来源审计还在等待本地复核完成。",
+      nextAction: "先保持结果可见，不触发外部报告或生产审计写入。",
+      statusLabel: "等待审计",
+      title: "来源审计待完成"
+    };
+  }
+
+  if (state === "empty") {
+    return {
+      detail: "还没有来源记录可供审计。",
+      nextAction: "先补联系人、关系或活动来源，再运行审计。",
+      statusLabel: "暂无记录",
+      title: "来源审计无记录"
+    };
+  }
+
+  return {
+    detail: `检查了 ${evaluatedRecordCount} 条记录，发现 ${activeFindingCount} 个来源问题。`,
+    nextAction:
+      complianceReportPersisted || productionAuditStorageWritten
+        ? "这次审计可能触发了外部报告或生产存储，请先复核。"
+        : "审计结果只用于复核，不会生成合规报告或写入生产审计库。",
+    statusLabel: "已运行",
+    title: "来源审计已更新"
   };
 }
