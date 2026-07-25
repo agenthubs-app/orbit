@@ -31,6 +31,7 @@ export interface AppAllActionsRouteViewModel {
   filters: readonly AllActionsFilterViewModel[];
   entries: readonly AgentLedgerEntry[];
   activeFilter: AllActionsFilterKey;
+  selectedEntryId: string | null;
   evidenceIds: readonly string[];
   errorCode: string | null;
   failureMessage: string | null;
@@ -86,6 +87,7 @@ export async function loadAppAllActionsRouteViewModel(
       evidenceIds: result.error.evidenceIds,
       failureMessage: agentLedgerFailureToAppError(result).message,
       filters: [],
+      selectedEntryId: null,
       state: "failure",
     };
   }
@@ -119,6 +121,7 @@ export async function loadAppAllActionsRouteViewModel(
       },
       ...statusFilters,
     ],
+    selectedEntryId: readParam(searchParams, "entry"),
     state: allEntries.length === 0 ? "empty" : "success",
   };
 }
