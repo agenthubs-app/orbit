@@ -26,6 +26,7 @@ export interface PostEventFollowupInput {
   nextAction?: string;
   messageDraft?: string;
   noteSource?: "typed" | "voice_transcript";
+  noteAlreadyPersisted?: boolean;
 }
 
 function sourceFor(input: PostEventFollowupInput): AgentActionSourceReference {
@@ -144,71 +145,75 @@ export function createPostEventFollowupWorkflow(
         runId,
         encounterId: input.encounterId,
       });
-      const noteAction = await runtime.proposeAction({
-        actionId: noteActionId,
-        runId,
-        workflowKey: "post_event_followup_v1",
-        workflowVersion: 1,
-        conversationId: input.conversationId,
-        title: `保存会面笔记 — ${input.contactName ?? "活动联系人"}`,
-        contactName: input.contactName,
-        organization: input.organization,
-        whyNow: "你刚刚确认了这段会后记录。",
-        riskLevel: "write",
-        payloadVersion: 1,
-        preview: input.noteText.trim(),
-        compensation: {
-          supported: true,
-          executorKey: "events.saveMeetingNote",
-          preview: "可移除这条会面笔记。",
-        },
-        operations: [
-          {
-            operationId: `${noteActionId}:save`,
-            operationType: "save_meeting_note",
-            executorKey: "events.saveMeetingNote",
-            idempotencyKey: `${noteActionId}:v1`,
-            payloadVersion: 1,
-            payload: {
-              noteId: `note:${noteActionId}`,
-              eventId: input.eventId,
-              contactId: input.contactId,
-              noteText: input.noteText.trim(),
-              noteSource: input.noteSource ?? "typed",
-              evidenceIds,
-            },
-            preview: "保存已确认的会面笔记",
+      const noteAction = input.noteAlreadyPersisted
+        ? null
+        : await runtime.proposeAction({
+            actionId: noteActionId,
+            runId,
+            workflowKey: "post_event_followup_v1",
+            workflowVersion: 1,
+            conversationId: input.conversationId,
+            title: `保存会面笔记 — ${input.contactName ?? "活动联系人"}`,
+            contactName: input.contactName,
+            organization: input.organization,
+            whyNow: "你刚刚确认了这段会后记录。",
             riskLevel: "write",
+            payloadVersion: 1,
+            preview: input.noteText.trim(),
             compensation: {
               supported: true,
               executorKey: "events.saveMeetingNote",
-              preview: "移除会面笔记",
+              preview: "可移除这条会面笔记。",
             },
-          },
-        ],
-        evidenceChips: [
-          {
-            kind:
-              input.noteSource === "voice_transcript"
-                ? "confirmed_voice_transcript"
-                : "contact_note",
-            label:
-              input.noteSource === "voice_transcript"
-                ? "已确认语音转写"
-                : "已确认文字笔记",
-            evidenceId: evidenceIds[0],
-          },
-        ],
-        evidenceIds,
-        sourceRefs,
-      });
-      await runtime.approveAction({
-        actionId: noteAction.actionId,
-        actorLabel: "Orbit user confirmed encounter note",
-      });
+            operations: [
+              {
+                operationId: `${noteActionId}:save`,
+                operationType: "save_meeting_note",
+                executorKey: "events.saveMeetingNote",
+                idempotencyKey: `${noteActionId}:v1`,
+                payloadVersion: 1,
+                payload: {
+                  noteId: `note:${noteActionId}`,
+                  eventId: input.eventId,
+                  contactId: input.contactId,
+                  noteText: input.noteText.trim(),
+                  noteSource: input.noteSource ?? "typed",
+                  evidenceIds,
+                },
+                preview: "保存已确认的会面笔记",
+                riskLevel: "write",
+                compensation: {
+                  supported: true,
+                  executorKey: "events.saveMeetingNote",
+                  preview: "移除会面笔记",
+                },
+              },
+            ],
+            evidenceChips: [
+              {
+                kind:
+                  input.noteSource === "voice_transcript"
+                    ? "confirmed_voice_transcript"
+                    : "contact_note",
+                label:
+                  input.noteSource === "voice_transcript"
+                    ? "已确认语音转写"
+                    : "已确认文字笔记",
+                evidenceId: evidenceIds[0],
+              },
+            ],
+            evidenceIds,
+            sourceRefs,
+          });
+      if (noteAction) {
+        await runtime.approveAction({
+          actionId: noteAction.actionId,
+          actorLabel: "Orbit user confirmed encounter note",
+        });
+      }
       await runtime.recordAnalytics("encounter_note_confirmed", {
         runId,
-        actionId: noteAction.actionId,
+        actionId: noteAction?.actionId,
         workflowKey: "post_event_followup_v1",
         metadata: {
           source: input.noteSource ?? "typed",
@@ -404,7 +409,10 @@ export function createPostEventFollowupWorkflow(
       return {
         run,
         actions:
-          detail?.actions ?? [noteAction, draftAction, task, reminder],
+          detail?.actions ??
+          [noteAction, draftAction, task, reminder].filter(
+            (action): action is NonNullable<typeof action> => action !== null,
+          ),
         artifact,
       };
     },

@@ -10,8 +10,11 @@ import {
   eventEncounterNoteFailureContext,
   eventEncounterNoteFailureToAppError,
   type EventEncounterNoteInput,
+  type EventEncounterNotePayload,
 } from "../../../../../features/events/encounter-note/contract";
 import { createEventEncounterNoteService } from "../../../../../features/events/service-factory";
+import { createOrbitAgentRuntimeService } from "../../../../../features/agent/runtime/service-factory";
+import { createPostEventFollowupWorkflow } from "../../../../../features/orbit-ai/workflows/post-event-followup-v1";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +105,46 @@ async function readEncounterNoteInput(
   };
 }
 
+async function triggerPostEventFollowup(
+  payload: EventEncounterNotePayload,
+): Promise<void> {
+  if (
+    payload.state !== "success" ||
+    !payload.participant ||
+    !payload.encounter ||
+    !payload.note
+  ) {
+    return;
+  }
+
+  const evidenceIds = Array.from(
+    new Set([
+      ...payload.participant.evidenceIds,
+      ...payload.encounter.evidenceIds,
+      ...payload.note.evidenceIds,
+      ...(payload.evidenceDraft?.evidenceId
+        ? [payload.evidenceDraft.evidenceId]
+        : []),
+    ]),
+  );
+  await createPostEventFollowupWorkflow(
+    createOrbitAgentRuntimeService(),
+  ).run({
+    eventId: payload.event.id,
+    eventTitle: payload.event.name,
+    contactId: payload.participant.contactId,
+    contactName: payload.participant.displayName,
+    organization: payload.participant.organization,
+    encounterId: payload.encounter.encounterId,
+    noteText: payload.note.text,
+    noteSource: "typed",
+    noteAlreadyPersisted: true,
+    relationshipContext: payload.participant.eventContext,
+    evidenceIds,
+    trigger: "domain_signal",
+  });
+}
+
 export async function POST(
   request: Request,
   context: EventEncounterNoteRouteContext,
@@ -126,6 +169,14 @@ export async function POST(
       },
     );
   }
+
+  // The domain write is already complete at this point. Publishing the
+  // internal Agent trigger must not roll it back if Agent preparation is
+  // temporarily unavailable; the note remains the source of truth and a
+  // later retry can reuse the workflow's deterministic idempotency key.
+  await triggerPostEventFollowup(result.data).catch((error) => {
+    console.error("post-event Agent trigger failed after encounter note write", error);
+  });
 
   return NextResponse.json(success(result.data), {
     headers: runtimeBoundaryHeaders(mode),

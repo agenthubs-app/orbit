@@ -15,6 +15,7 @@ import {
 } from "../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
 import { createOrbitAgentRuntimeService } from "../../../../features/agent/runtime/service-factory";
+import { latestConversationRuntimeLink } from "../../../../features/orbit-ai/conversation-runtime-links";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -189,21 +190,17 @@ async function withRuntimeLinks(
   if (result.success === false) return result;
   try {
     const runtime = createOrbitAgentRuntimeService();
-    const actions = (await runtime.listActions({})).filter(
-      (action) =>
-        Boolean(action.conversationId) &&
-        action.conversationId === result.data.activeConversationId,
+    const link = latestConversationRuntimeLink(
+      await runtime.listActions({}),
+      result.data.activeConversationId,
     );
-    if (actions.length === 0) return result;
-    const latest = [...actions].sort((left, right) =>
-      right.updatedAt.localeCompare(left.updatedAt),
-    )[0];
+    if (!link) return result;
     return {
       success: true,
       data: {
         ...result.data,
-        runId: latest?.runId,
-        actionIds: actions.map((action) => action.actionId),
+        runId: link.runId,
+        actionIds: link.actionIds,
       },
     };
   } catch {

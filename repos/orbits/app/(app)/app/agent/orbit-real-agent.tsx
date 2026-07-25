@@ -19,6 +19,7 @@ import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, IconButton, gradientFromString } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
+import { AgentActionStatusCard } from "./agent-action-status-card";
 
 interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
@@ -29,11 +30,13 @@ type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
 type AgentMessage =
   | { role: "user"; text: string }
   | {
+      actionIds?: readonly string[];
       items: OrbitAgentScenarioView["items"];
       kind: OrbitAgentScenarioView["kind"];
       note?: string;
       panelTitle: string;
       role: "assistant";
+      runId?: string;
       text: string;
     };
 
@@ -278,7 +281,11 @@ function isStoredAgentMessage(value: unknown): value is AgentMessage {
     value.role === "assistant" &&
     Array.isArray(value.items) &&
     (value.kind === "people" || value.kind === "events" || value.kind === "todos") &&
-    typeof value.panelTitle === "string"
+    typeof value.panelTitle === "string" &&
+    (typeof value.runId === "undefined" || typeof value.runId === "string") &&
+    (typeof value.actionIds === "undefined" ||
+      (Array.isArray(value.actionIds) &&
+        value.actionIds.every((actionId) => typeof actionId === "string")))
   );
 }
 
@@ -1359,7 +1366,12 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         method: "POST",
       });
       const payload = (await response.json().catch(() => null)) as {
-        data?: { artifacts?: unknown; assistantMessage?: string };
+        data?: {
+          actionIds?: unknown;
+          artifacts?: unknown;
+          assistantMessage?: string;
+          runId?: unknown;
+        };
         error?: { message?: string };
         success?: boolean;
       } | null;
@@ -1422,14 +1434,27 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         payload.data.assistantMessage?.trim() ||
         activeArtifact?.result?.generatedView?.summary ||
         failureText;
+      const runId =
+        typeof payload.data.runId === "string" && payload.data.runId.trim()
+          ? payload.data.runId.trim()
+          : undefined;
+      const actionIds = Array.isArray(payload.data.actionIds)
+        ? payload.data.actionIds.flatMap((actionId) =>
+            typeof actionId === "string" && actionId.trim()
+              ? [actionId.trim()]
+              : [],
+          )
+        : [];
 
       setMessages((current) => [
         ...current,
         {
+          actionIds,
           items,
           kind,
           panelTitle,
           role: "assistant",
+          runId,
           text: assistantText,
         },
       ]);
@@ -1733,6 +1758,14 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               <div className="orbit-agent-assistant-content" style={{ alignItems: "flex-end", display: "flex", gap: 8 }}>
                 <div className="orbit-agent-assistant-message" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", flex: 1, fontSize: 15, lineHeight: 1.6, minWidth: 0, padding: "12px 15px" }}>
                   <AgentMarkdown text={message.text} />
+                  {message.runId && message.actionIds?.length ? (
+                    <AgentActionStatusCard
+                      actionIds={message.actionIds}
+                      language={language === "zh" ? "zh" : "en"}
+                      navigate={navigate}
+                      runId={message.runId}
+                    />
+                  ) : null}
                 </div>
                 <AgentMessageCopyButton text={message.text} />
               </div>
