@@ -907,11 +907,11 @@ export function BusinessCardCaptureWorkspace() {
 const CAPTURE_STYLE = `
 .bcc-shell { background: color-mix(in srgb, var(--surface) 96%, var(--accent)); border: 1px solid var(--border); border-radius: 22px; box-shadow: 0 24px 70px rgba(6,5,13,.16); overflow: hidden; padding: clamp(18px, 3vw, 30px); position: relative; }
 .bcc-shell::before { background: linear-gradient(90deg, var(--accent), var(--sky), var(--live)); content: ""; height: 2px; inset: 0 0 auto; position: absolute; }
-.bcc-shell h2 { color: var(--ink); font-family: var(--ff-tight); font-size: clamp(22px, 3vw, 34px); letter-spacing: -.035em; line-height: 1.08; margin: 8px 0 10px; }
+.bcc-shell h2 { color: var(--ink); font-family: var(--ff-display); font-size: clamp(22px, 3vw, 34px); letter-spacing: -.035em; line-height: 1.08; margin: 8px 0 10px; }
 .bcc-kicker { color: var(--accent); font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .15em; }
 .bcc-lede { color: var(--text-2); font-size: 14px; line-height: 1.7; margin: 0 0 22px; max-width: 680px; }
 .bcc-dropzone { align-items: center; background: color-mix(in srgb, var(--surface-2) 82%, transparent); border: 1px dashed var(--border-2); border-radius: 18px; display: flex; flex-direction: column; gap: 9px; justify-content: center; min-height: 300px; padding: 28px; text-align: center; }
-.bcc-dropzone strong { color: var(--ink); font-family: var(--ff-tight); font-size: 18px; }
+.bcc-dropzone strong { color: var(--ink); font-family: var(--ff-display); font-size: 18px; }
 .bcc-dropzone > span:not(.bcc-scan-mark) { color: var(--text-3); font-family: var(--mono); font-size: 11px; }
 .bcc-scan-mark { background: var(--accent-soft); border-radius: 16px; color: var(--accent); display: grid; height: 62px; place-items: center; width: 62px; }
 .bcc-actions, .bcc-footer-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 12px; }

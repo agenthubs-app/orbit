@@ -108,7 +108,7 @@ function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
             <StatusBadge language={language} status={event.status} />
             <div className="orbit-card-date">
               <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
-              <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
+              <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
             </div>
           </div>
         </Cover>
@@ -164,7 +164,7 @@ function MapCanvas({ items, selected, onSelect }: { items: MappedEvent[]; select
               <svg aria-hidden height={on ? 56 : 46} style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.22))", height: on ? 56 : 46, maxWidth: "none", width: on ? 44 : 36 }} viewBox="0 0 36 46" width={on ? 44 : 36}>
                 <path d="M18 1C9 1 2 8 2 17c0 11 16 27 16 27s16-16 16-27c0-9-7-16-16-16Z" fill={on ? "var(--accent)" : "#fff"} stroke={on ? "var(--accent)" : "var(--border-2)"} strokeWidth="1" />
               </svg>
-              <div style={{ alignItems: "center", background: on ? "#fff" : undefined, borderRadius: "var(--r-pill)", color: on ? "var(--accent)" : "#fff", display: "flex", fontFamily: "var(--ff-tight)", fontSize: on ? 13 : 11, fontWeight: 600, height: on ? 26 : 22, justifyContent: "center", left: "50%", position: "absolute", top: on ? 7 : 6, transform: "translateX(-50%)", width: on ? 26 : 22 }}>
+              <div style={{ alignItems: "center", background: on ? "#fff" : undefined, borderRadius: "var(--r-pill)", color: on ? "var(--accent)" : "#fff", display: "flex", fontFamily: "var(--ff-display)", fontSize: on ? 13 : 11, fontWeight: 600, height: on ? 26 : 22, justifyContent: "center", left: "50%", position: "absolute", top: on ? 7 : 6, transform: "translateX(-50%)", width: on ? 26 : 22 }}>
                 {on ? item.name.slice(0, 1) : <span className={`avatar ${item.g}`} style={{ fontSize: 11, height: "100%", width: "100%" }}>{item.name.slice(0, 1)}</span>}
               </div>
             </div>
@@ -208,7 +208,7 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
         <div style={{ left: 11, position: "absolute", top: 11 }}><StatusBadge language={language} status={item.status} /></div>
         <div style={{ background: "var(--glass-chip)", borderRadius: 9, minWidth: 42, padding: "4px 8px", position: "absolute", right: 11, textAlign: "center", top: 11 }}>
           <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{item.month}</div>
-          {item.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.day}</div> : null}
+          {item.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.day}</div> : null}
         </div>
       </Cover>
       <div style={{ padding: "14px 14px 13px" }}>

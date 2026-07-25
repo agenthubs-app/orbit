@@ -367,7 +367,7 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
               <div className="card-flat" style={{ padding: 16, display: "flex", gap: 14, alignItems: "center" }}>
                 <div style={{ width: 50, borderRadius: "var(--r-sm)", overflow: "hidden", border: "1px solid var(--border)", textAlign: "center", flexShrink: 0 }}>
                   <div style={{ background: event.brandColor || "var(--accent)", color: "var(--on-dark)", fontSize: 11, fontWeight: 600, padding: "2px 0" }}>{time.month}</div>
-                  <div style={{ fontFamily: "var(--ff-tight)", fontSize: 22, fontWeight: 600, padding: "4px 0", color: "var(--ink)" }}>{time.day}</div>
+                  <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600, padding: "4px 0", color: "var(--ink)" }}>{time.day}</div>
                 </div>
                 <div style={{ minWidth: 0 }}><div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{time.date}</div><div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 2 }}>{time.time}</div></div>
               </div>

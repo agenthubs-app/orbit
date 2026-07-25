@@ -652,7 +652,7 @@ function SocialGraphLite({
             <g key={node.id} onClick={() => onSelect(node)} style={{ cursor: "pointer" }} transform={`translate(${node.x} ${node.y})`}>
               <circle fill={color} fillOpacity={0.1} r={node.r + 5} />
               <circle fill="#fff" r={node.r} stroke={color} strokeWidth="1.6" />
-              <text dominantBaseline="central" fill="#1D1D22" fontFamily="var(--ff-tight)" fontSize={Math.max(11, node.r * 0.7)} fontWeight="600" textAnchor="middle">
+              <text dominantBaseline="central" fill="#1D1D22" fontFamily="var(--ff-display)" fontSize={Math.max(11, node.r * 0.7)} fontWeight="600" textAnchor="middle">
                 {node.initial}
               </text>
               <text fill="rgba(29,29,34,0.6)" fontFamily="var(--ff)" fontSize="10" fontWeight="500" textAnchor="middle" y={node.r + 13}>
@@ -664,7 +664,7 @@ function SocialGraphLite({
         <circle fill="var(--accent)" fillOpacity="0.05" r="56" />
         <circle fill="var(--accent)" fillOpacity="0.1" r="44" />
         <circle fill="rgba(99,89,233,0.14)" r="34" stroke="var(--accent)" strokeWidth="2.4" />
-        <text dominantBaseline="central" fill="var(--accent)" fontFamily="var(--ff-tight)" fontSize="24" fontWeight="700" textAnchor="middle">
+        <text dominantBaseline="central" fill="var(--accent)" fontFamily="var(--ff-display)" fontSize="24" fontWeight="700" textAnchor="middle">
           {me.initial}
         </text>
         <text fill="var(--accent)" fontFamily="var(--ff-mono)" fontSize="9" fontWeight="600" letterSpacing="0.28em" textAnchor="middle" y="-46">

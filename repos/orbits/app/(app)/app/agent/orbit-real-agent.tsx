@@ -932,9 +932,9 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
       <span className="avatar g-indigo orbit-agent-mark" style={{ alignItems: "center", borderRadius: "var(--r-lg)", display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
         <Icon name="sparkle" size={26} color="var(--on-dark)" />
       </span>
-      <h2 className="h-title" style={{ margin: "16px 0 6px" }}>
+      <h1 className="h-title" style={{ margin: "16px 0 6px" }}>
         {t({ en: "I am iOrbit", zh: "我是 iOrbit" })}
-      </h2>
+      </h1>
       <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.65, margin: "0 0 22px", maxWidth: 380 }}>
         {t({
           en: "Tell me what you want to do. I will find the right people in your network, the right events to join, and how to start the conversation.",
@@ -977,7 +977,7 @@ function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultVi
           </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
-          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.match}%</div>
+          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.match}%</div>
           <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Match", zh: "匹配度" })}</div>
         </div>
       </div>
@@ -1028,7 +1028,7 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
               <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>{dateLabel}</div>
             </div>
             <div style={{ flexShrink: 0, textAlign: "right" }}>
-              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.score}</div>
+              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.score}</div>
               <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Score", zh: "匹配分" })}</div>
             </div>
           </div>
@@ -1076,7 +1076,7 @@ function AgentTodoCard({ item, navigate, t }: { item: OrbitAgentTodoResultView; 
           </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
-          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-tight)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.due}</div>
+          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.due}</div>
           <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Due", zh: "到期" })}</div>
         </div>
       </div>
@@ -1125,11 +1125,20 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
   );
 }
 
+// custom-shadow: the composer's violet focus glow is a distinct brand accent
+// treatment, not a generic elevation shadow — the flat --sh-* tokens (which
+// go to `none` in the light theme) would remove this always-on affordance.
+const AGENT_COMPOSER_GLOW =
+  "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)";
+// custom-shadow: saturated accent-magenta halo signals "ready to send" —
+// a state cue, not decorative elevation, so it stays independent of theme.
+const AGENT_SEND_READY_GLOW = "0 8px 18px rgba(99,76,226,0.28)";
+
 function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (value: string) => void; onSend: () => void; value: string }) {
   const { t } = useOrbitLanguage();
 
   return (
-    <div className="orbit-agent-composer" style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-lg)", boxShadow: "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)", padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
+    <div className="orbit-agent-composer" style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-lg)", boxShadow: AGENT_COMPOSER_GLOW, padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
       <textarea
         className="orbit-agent-composer-input"
         aria-label={t({ en: "Ask Orbit", zh: "问问 Orbit" })}
@@ -1159,7 +1168,7 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
           onClick={onSend}
           disabled={!value.trim()}
           aria-label={t({ en: "Send", zh: "发送" })}
-          style={{ alignItems: "center", background: value.trim() ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: "var(--r-sm)", boxShadow: value.trim() ? "0 8px 18px rgba(99,76,226,0.28)" : "none", color: value.trim() ? "var(--on-dark)" : "var(--text-4)", cursor: value.trim() ? "pointer" : "default", display: "flex", height: 40, justifyContent: "center", width: 40 }}
+          style={{ alignItems: "center", background: value.trim() ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: "var(--r-sm)", boxShadow: value.trim() ? AGENT_SEND_READY_GLOW : "none", color: value.trim() ? "var(--on-dark)" : "var(--text-4)", cursor: value.trim() ? "pointer" : "default", display: "flex", height: 40, justifyContent: "center", width: 40 }}
         >
           <Icon name="arrow" size={19} style={{ transform: "rotate(-90deg)" }} />
         </button>

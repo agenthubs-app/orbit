@@ -22,7 +22,7 @@ const regStyles: Record<string, CSSProperties> = {
   back: { alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-pill)", color: "var(--ink)", cursor: "pointer", display: "flex", height: 38, justifyContent: "center", width: 38 },
   banner: { background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, padding: "12px 14px" },
   eyebrow: { color: "var(--accent)", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" },
-  heroTitle: { color: "var(--ink)", fontFamily: "var(--ff-tight)", fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.12, marginTop: 8 },
+  heroTitle: { color: "var(--ink)", fontFamily: "var(--ff-display)", fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.12, marginTop: 8 },
   methodGrid: { display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" },
   outer: { alignItems: "stretch", background: "var(--bg-sunken)", display: "flex", justifyContent: "center", minHeight: "100dvh", padding: 0 },
   primary: { background: "var(--accent)", border: "none", borderRadius: "var(--r-md)", color: "var(--on-dark)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 16, fontWeight: 600, height: 52, padding: "1px 6px", width: "100%" },
@@ -210,7 +210,7 @@ function PassTicket({
             <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.9 }}>{event.name}</span>
             <span style={{ fontSize: 11, opacity: 0.8 }}>{event.theme}</span>
           </div>
-          <div style={{ color: "var(--on-dark)", fontFamily: "var(--ff-tight)", fontSize: 20, fontWeight: 600 }}>{profile.name || t({ en: "Guest", zh: "访客" })}</div>
+          <div style={{ color: "var(--on-dark)", fontFamily: "var(--ff-display)", fontSize: 20, fontWeight: 600 }}>{profile.name || t({ en: "Guest", zh: "访客" })}</div>
         </div>
       </Cover>
       <div style={{ alignItems: "center", display: "flex", gap: 14, padding: 16 }}>

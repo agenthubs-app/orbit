@@ -285,7 +285,7 @@ const LOCAL_STYLE = `
 
 [data-orbit-real-page] .nc-scanned-card { aspect-ratio: 3.3 / 2; padding: 12px 13px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; border: 1px solid var(--border-2); border-radius: var(--r-md); background: var(--surface); }
 [data-orbit-real-page] .nc-scanned-card::after { content: ""; position: absolute; right: -20px; top: -20px; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle, var(--accent-softer), transparent 70%); }
-[data-orbit-real-page] .nc-scanned-card .sc-name { font-family: var(--ff-tight); font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.1; }
+[data-orbit-real-page] .nc-scanned-card .sc-name { font-family: var(--ff-display); font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.1; }
 [data-orbit-real-page] .nc-scanned-card .sc-role { font-size: 9.5px; color: var(--text-2); margin-top: 2px; }
 [data-orbit-real-page] .nc-scanned-card .sc-lines { display: flex; flex-direction: column; gap: 4px; }
 [data-orbit-real-page] .nc-scanned-card .sc-lines i { display: block; height: 4px; border-radius: 2px; background: var(--border-2); }
@@ -312,7 +312,7 @@ const LOCAL_STYLE = `
 
 [data-orbit-real-page] .nc-provenance { font-size: 11.5px; color: var(--text-3); margin-top: 6px; }
 [data-orbit-real-page] .nc-confirm-bar { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }
-[data-orbit-real-page] .nc-confirm-q { font-family: var(--ff-tight); font-size: 16px; color: var(--ink); margin: 10px 0 12px; }
+[data-orbit-real-page] .nc-confirm-q { font-family: var(--ff-display); font-size: 16px; color: var(--ink); margin: 10px 0 12px; }
 
 [data-orbit-real-page] .nc-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-md); background: var(--accent-softer); color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
 [data-orbit-real-page] .nc-note-live { background: var(--live-soft); }

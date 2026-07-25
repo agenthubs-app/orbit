@@ -33,6 +33,7 @@ const iconPaths: Record<string, ReactNode> = {
   pin: <><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></>,
   phone: <><path d="M5 4h3.5l1.5 4.5-2 1.5a12 12 0 0 0 5 5l1.5-2 4.5 1.5V18a2 2 0 0 1-2 2A15 15 0 0 1 5 6a2 2 0 0 1 0-2Z"/></>,
   more: <><circle cx="6" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18" cy="12" r="1.2" fill="currentColor"/></>,
+  moon: <><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></>,
   plus: <><path d="M12 5v14M5 12h14"/></>,
   logout: <><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h9"/></>,
   network: <><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M10.5 7 6.5 15.8M13.5 7l4 8.8M7.5 18h9"/></>,
@@ -45,6 +46,7 @@ const iconPaths: Record<string, ReactNode> = {
   share: <><path d="M12 15V4M8.5 7.5 12 4l3.5 3.5"/><path d="M6 12.5V18a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-5.5"/></>,
   sparkle: <><path d="M12 3l1.6 5.1L19 10l-5.4 1.9L12 17l-1.6-5.1L5 10l5.4-1.9L12 3Z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></>,
   star: <><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.6 1-5.8-4.3-4.1 5.9-.9L12 3.5Z"/></>,
+  sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></>,
   target: <><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></>,
   ticket: <><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4Z"/><path d="M14 6v12" strokeDasharray="2 2"/></>,
   user: <><circle cx="12" cy="8" r="4"/><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"/></>,
@@ -179,7 +181,7 @@ export function Logo({
         <span
           style={{
             color: textColor,
-            fontFamily: "var(--ff-tight)",
+            fontFamily: "var(--ff-display)",
             fontSize: size * 0.74,
             fontWeight: 600,
             letterSpacing: "-0.03em",
@@ -300,7 +302,7 @@ export function Cover({
           <span
             style={{
               color: "rgba(255,255,255,0.92)",
-              fontFamily: "var(--ff-tight)",
+              fontFamily: "var(--ff-display)",
               fontSize: monogram.size,
               fontWeight: 600,
               letterSpacing: "-0.03em",

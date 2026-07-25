@@ -53,7 +53,7 @@ function EventCard({ event, language, t }: { event: OrbitLandingEventView; langu
           <div style={{ left: 12, position: "absolute", top: 12 }}><StatusBadge language={language} status={status} /></div>
           <div className="orbit-card-date">
             <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{date.month}</div>
-            {date.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{date.day}</div> : null}
+            {date.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{date.day}</div> : null}
           </div>
         </Cover>
         <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 10, padding: "15px 16px 16px" }}>
@@ -104,7 +104,7 @@ export function OrbitRealOrganizerPublic({ language = "zh", viewModel }: { langu
           </div>
           <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
             {stats.map((stat) => (
-              <div key={stat.label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 26, fontWeight: 600 }}>{stat.value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{stat.label}</div></div>
+              <div key={stat.label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 600 }}>{stat.value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{stat.label}</div></div>
             ))}
           </div>
           <h2 className="h-section" style={{ margin: "34px 0 16px" }}>{t({ en: "Their events", zh: "TA 的活动" })}</h2>

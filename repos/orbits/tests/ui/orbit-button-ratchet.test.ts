@@ -145,9 +145,9 @@ const EXEMPTIONS: { file: string; line: number; reason: string }[] = [
   { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 970, reason: "className=\"card card-hover\" — established sitewide clickable-card pattern" },
   { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1021, reason: "className=\"card card-hover\" — established sitewide clickable-card pattern" },
   { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1069, reason: "className=\"card card-hover\" — established sitewide clickable-card pattern" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1156, reason: "composer send button — pre-existing bespoke .orbit-agent-send component (gradient background, own focus-visible CSS); no .btn variant supports a gradient fill" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1765, reason: "className=\"orbit-top-icon-btn\" — a distinct CSS-classed primitive (single current usage) excluded because it is not inline-styled" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1787, reason: "history-sidebar resize handle (role=\"separator\", cursor: col-resize) — a drag handle, not button semantics" },
+  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1165, reason: "composer send button — pre-existing bespoke .orbit-agent-send component (gradient background, own focus-visible CSS); no .btn variant supports a gradient fill" },
+  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1774, reason: "className=\"orbit-top-icon-btn\" — a distinct CSS-classed primitive (single current usage) excluded because it is not inline-styled" },
+  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1796, reason: "history-sidebar resize handle (role=\"separator\", cursor: col-resize) — a drag handle, not button semantics" },
   // -- events/orbit-real-explore-client.tsx --
   { file: "app/(app)/app/events/orbit-real-explore-client.tsx", line: 162, reason: "map-pin marker — bespoke absolutely-positioned SVG teardrop marker; .btn's box model would break the marker geometry" },
   { file: "app/(app)/app/events/orbit-real-explore-client.tsx", line: 277, reason: "filter chip (status filter, desktop)" },

@@ -16,6 +16,8 @@
 
 import { useEffect, useState } from "react";
 
+import { Icon } from "./orbit-reference-primitives";
+
 // Runs before paint in the document <head>. Kept dependency-free and defensive.
 export const ORBIT_THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('orbit-theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
 
@@ -280,9 +282,7 @@ export function OrbitThemeToggle() {
       aria-label={isLight ? "切换到深色模式" : "切换到明亮模式"}
       title={isLight ? "深色模式" : "明亮模式"}
     >
-      <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>
-        {isLight ? "☾" : "☀"}
-      </span>
+      <Icon name={isLight ? "moon" : "sun"} size={18} />
     </button>
   );
 }

@@ -40,7 +40,7 @@ const dashboardStyles = `
 }
 
 .orbit-dashboard-title {
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 34px;
   font-weight: 760;
   letter-spacing: 0;
@@ -74,7 +74,7 @@ const dashboardStyles = `
 }
 
 .orbit-dashboard-score-value {
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 44px;
   font-weight: 780;
   letter-spacing: 0;
@@ -128,7 +128,7 @@ const dashboardStyles = `
 }
 
 .orbit-dashboard-card strong {
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 30px;
   font-weight: 760;
   letter-spacing: 0;
@@ -156,7 +156,7 @@ const dashboardStyles = `
 }
 
 .orbit-dashboard-panel h2 {
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 22px;
   font-weight: 740;
   letter-spacing: 0;

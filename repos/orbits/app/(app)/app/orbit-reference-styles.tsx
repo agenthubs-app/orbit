@@ -1001,7 +1001,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page="explore"] .orbit-event-module-copy h2 {
   color: var(--ink);
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 23px;
   font-weight: 600;
   line-height: 1.18;
@@ -1124,7 +1124,7 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page="home-events"] .orbit-account-event-module-copy strong {
   color: var(--ink);
   display: block;
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 23px;
   font-weight: 600;
   line-height: 1.18;
@@ -1258,7 +1258,7 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page="home-events"] .orbit-account-event-poster-copy strong {
   color: #fff;
   display: block;
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: clamp(27px, 3.5vw, 42px);
   font-weight: 600;
   line-height: 1.08;
@@ -1431,7 +1431,7 @@ const reactReferenceIsolationStyles = `
 [data-orbit-real-page="explore"] .orbit-event-poster-date strong {
   color: #fff;
   display: block;
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: 22px;
   font-weight: 600;
   line-height: 1;
@@ -1455,7 +1455,7 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page="explore"] .orbit-event-poster-copy h2 {
   color: #fff;
-  font-family: var(--ff-tight);
+  font-family: var(--ff-display);
   font-size: clamp(27px, 3.5vw, 42px);
   font-weight: 600;
   line-height: 1.08;
@@ -1839,7 +1839,14 @@ const reactReferenceIsolationStyles = `
   --r-xl: 24px;
   --r-pill: 999px;
   --ff: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --ff-tight: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  /* --ff-serif: serif for in-content body headings. --ff-display: serif for
+     hero/display headlines and large numerals (the landing block below
+     overrides only this one, to Newsreader). --ff-tight is the pre-split
+     name, kept as a deprecated alias so any consumer we missed keeps
+     resolving instead of silently falling back to the system font. */
+  --ff-serif: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --ff-display: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --ff-tight: var(--ff-serif);
   --ff-mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace;
   --scrim: rgba(4, 3, 10, 0.62);
   /* Dark-glass surfaces for bars/chips that previously used white glass. */
@@ -1860,7 +1867,7 @@ const reactReferenceIsolationStyles = `
 /* EN display serif follows the homepage: Newsreader replaces Noto Serif SC
    when the document language is English. */
 html[lang="en"] [data-orbit-real-page] {
-  --ff-tight: 'Newsreader', Georgia, serif;
+  --ff-display: 'Newsreader', Georgia, serif;
 }
 
 /* Cosmic page canvas behind every product screen — the homepage scene
@@ -2109,7 +2116,7 @@ body:has([data-orbit-real-page]) {
   [data-orbit-real-page] .orbit-nav-menu .orbit-nav-page-title {
     color: var(--ink);
     display: inline;
-    font-family: var(--ff-tight);
+    font-family: var(--ff-display);
     font-size: 17px;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -2255,7 +2262,7 @@ html[data-theme="light"] [data-orbit-real-page="agent"] {
   --border-2: #D9DEE1;
   --border-strong: #C7CDD1;
   --hairline: var(--agent-hairline);
-  --ff-tight: var(--ff);
+  --ff-display: var(--ff);
   --sh-xs: none;
   --sh-sm: none;
   --sh-md: none;

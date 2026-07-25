@@ -116,7 +116,7 @@ export function MobileBar({
           <Icon name="chevL" size={20} />
         </button>
       ) : null}
-      {title ? <span style={{ color: dark ? "#fff" : "var(--ink)", fontFamily: "var(--ff-tight)", fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em" }}>{title}</span> : null}
+      {title ? <span style={{ color: dark ? "#fff" : "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em" }}>{title}</span> : null}
       <div style={{ flex: 1 }} />
       {right}
     </div>
