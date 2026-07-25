@@ -14,6 +14,7 @@ export type MatchmakingRequestStatus =
 
 export interface MatchmakingParticipant {
   participantId: string;
+  actorId: string;
   displayName: string;
   organization?: string;
   role?: string;
@@ -41,7 +42,10 @@ export interface MatchmakingIntroductionRequest {
   requestId: string;
   eventId: string;
   requesterParticipantId: string;
+  requesterActorId: string;
   targetParticipantId: string;
+  targetActorId: string;
+  organizerActorId: string;
   status: MatchmakingRequestStatus;
   requesterConsentedAt: string;
   targetConsentedAt?: string;
@@ -63,32 +67,40 @@ export interface EventMatchmakingService {
   createIntroductionRequest: (input: {
     requestId: string;
     eventId: string;
+    actorId: string;
     requesterParticipantId: string;
+    requesterActorId: string;
     targetParticipantId: string;
+    targetActorId: string;
+    organizerActorId: string;
     proposedSlots?: readonly string[];
     now: string;
   }) => Promise<MatchmakingIntroductionRequest>;
   respondToIntroduction: (input: {
     requestId: string;
+    actorId: string;
     accept: boolean;
     now: string;
   }) => Promise<MatchmakingIntroductionRequest>;
   proposeSlots: (input: {
     requestId: string;
+    actorId: string;
     slots: readonly string[];
     now: string;
   }) => Promise<MatchmakingIntroductionRequest>;
   selectSlot: (input: {
     requestId: string;
+    actorId: string;
     slot: string;
     now: string;
   }) => Promise<MatchmakingIntroductionRequest>;
   recordOutcome: (input: {
     requestId: string;
+    actorId: string;
     outcome: "met" | "followup_recorded";
     now: string;
   }) => Promise<MatchmakingIntroductionRequest>;
-  organizerMetrics: (eventId: string) => Promise<{
+  organizerMetrics: (input: { eventId: string; actorId: string }) => Promise<{
     eventId: string;
     suppressed: boolean;
     minimumCohort: 5;
@@ -107,9 +119,19 @@ export interface EventMatchmakingService {
     relationshipHistoryIncluded: false;
     privateFollowupIncluded: false;
   }>;
-  getRequest: (
-    requestId: string,
-  ) => Promise<MatchmakingIntroductionRequest | null>;
+  getRequest: (input: {
+    requestId: string;
+    actorId: string;
+  }) => Promise<MatchmakingIntroductionRequest | null>;
+}
+
+export class MatchmakingAccessError extends Error {
+  readonly code = "MATCHMAKING_FORBIDDEN";
+
+  constructor(message = "This matchmaking request is not accessible.") {
+    super(message);
+    this.name = "MatchmakingAccessError";
+  }
 }
 
 function overlap(left: readonly string[], right: readonly string[]): string[] {
@@ -144,12 +166,37 @@ export function createEventMatchmakingService(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }): EventMatchmakingService {
+  async function getRequestRecord(
+    requestId: string,
+  ): Promise<MatchmakingIntroductionRequest | null> {
+    const record = await input.store.getRecord({
+      workspaceId: input.workspaceId,
+      collectionName: "matchmakingIntroductionRequests",
+      recordId: requestId,
+    });
+    if (!record) return null;
+    const payload = record.payload;
+    return typeof payload.requestId === "string"
+      ? (payload as unknown as MatchmakingIntroductionRequest)
+      : null;
+  }
+
   async function requireRequest(
     requestId: string,
   ): Promise<MatchmakingIntroductionRequest> {
-    const request = await service.getRequest(requestId);
+    const request = await getRequestRecord(requestId);
     if (!request) throw new Error(`Introduction request ${requestId} not found.`);
     return request;
+  }
+
+  function requireActor(
+    request: MatchmakingIntroductionRequest,
+    actorId: string,
+    allowedActorIds: readonly string[],
+  ): void {
+    if (!actorId.trim() || !allowedActorIds.includes(actorId)) {
+      throw new MatchmakingAccessError();
+    }
   }
 
   async function save(
@@ -222,13 +269,30 @@ export function createEventMatchmakingService(input: {
         .slice(0, Math.min(3, Math.max(1, limit)));
     },
     async createIntroductionRequest(request) {
-      const existing = await service.getRequest(request.requestId);
-      if (existing) return existing;
+      if (
+        !request.actorId.trim() ||
+        request.actorId !== request.requesterActorId ||
+        !request.targetActorId.trim() ||
+        !request.organizerActorId.trim() ||
+        request.requesterActorId === request.targetActorId
+      ) {
+        throw new MatchmakingAccessError(
+          "Only the requester can create an introduction request.",
+        );
+      }
+      const existing = await getRequestRecord(request.requestId);
+      if (existing) {
+        requireActor(existing, request.actorId, [existing.requesterActorId]);
+        return existing;
+      }
       return save({
         requestId: request.requestId,
         eventId: request.eventId,
         requesterParticipantId: request.requesterParticipantId,
+        requesterActorId: request.requesterActorId,
         targetParticipantId: request.targetParticipantId,
+        targetActorId: request.targetActorId,
+        organizerActorId: request.organizerActorId,
         status: "awaiting_target_consent",
         requesterConsentedAt: request.now,
         proposedSlots: request.proposedSlots?.slice(0, 5) ?? [],
@@ -239,6 +303,7 @@ export function createEventMatchmakingService(input: {
     },
     async respondToIntroduction(response) {
       const request = await requireRequest(response.requestId);
+      requireActor(request, response.actorId, [request.targetActorId]);
       if (request.status !== "awaiting_target_consent") {
         return request;
       }
@@ -257,6 +322,7 @@ export function createEventMatchmakingService(input: {
     },
     async proposeSlots(proposal) {
       const request = await requireRequest(proposal.requestId);
+      requireActor(request, proposal.actorId, [request.requesterActorId]);
       if (!request.targetConsentedAt) {
         throw new Error("Both participants must consent before scheduling.");
       }
@@ -269,6 +335,7 @@ export function createEventMatchmakingService(input: {
     },
     async selectSlot(selection) {
       const request = await requireRequest(selection.requestId);
+      requireActor(request, selection.actorId, [request.targetActorId]);
       if (
         !request.targetConsentedAt ||
         !request.proposedSlots.includes(selection.slot)
@@ -287,6 +354,10 @@ export function createEventMatchmakingService(input: {
     },
     async recordOutcome(outcome) {
       const request = await requireRequest(outcome.requestId);
+      requireActor(request, outcome.actorId, [
+        request.requesterActorId,
+        request.targetActorId,
+      ]);
       if (outcome.outcome === "met") {
         if (request.status === "met" || request.status === "followup_recorded") {
           return request;
@@ -309,7 +380,7 @@ export function createEventMatchmakingService(input: {
         updatedAt: outcome.now,
       });
     },
-    async organizerMetrics(eventId) {
+    async organizerMetrics({ eventId, actorId }) {
       const records = await input.store.listRecords({
         workspaceId: input.workspaceId,
         collectionName: "matchmakingIntroductionRequests",
@@ -321,7 +392,21 @@ export function createEventMatchmakingService(input: {
           ? [payload as unknown as MatchmakingIntroductionRequest]
           : [];
       });
-      const suppressed = requests.length < 5;
+      if (
+        requests.some(
+          (request) =>
+            !request.organizerActorId ||
+            request.organizerActorId !== actorId,
+        )
+      ) {
+        throw new MatchmakingAccessError(
+          "Only the event organizer can view matchmaking metrics.",
+        );
+      }
+      const independentParticipants = new Set(
+        requests.map((request) => request.requesterActorId),
+      );
+      const suppressed = independentParticipants.size < 5;
       const counts = suppressed
         ? {
             requests: 0,
@@ -367,17 +452,15 @@ export function createEventMatchmakingService(input: {
         privateFollowupIncluded: false,
       };
     },
-    async getRequest(requestId) {
-      const record = await input.store.getRecord({
-        workspaceId: input.workspaceId,
-        collectionName: "matchmakingIntroductionRequests",
-        recordId: requestId,
-      });
-      if (!record) return null;
-      const payload = record.payload;
-      return typeof payload.requestId === "string"
-        ? (payload as unknown as MatchmakingIntroductionRequest)
-        : null;
+    async getRequest({ requestId, actorId }) {
+      const request = await getRequestRecord(requestId);
+      if (!request) return null;
+      requireActor(request, actorId, [
+        request.requesterActorId,
+        request.targetActorId,
+        request.organizerActorId,
+      ]);
+      return request;
     },
   };
 

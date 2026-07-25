@@ -386,14 +386,18 @@ export function createAgentDomainExecutors(
           await dependencies.matchmaking.createIntroductionRequest({
             requestId,
             eventId: requiredString(payload, "eventId"),
+            actorId: requiredString(payload, "actorId"),
             requesterParticipantId: requiredString(
               payload,
               "requesterParticipantId",
             ),
+            requesterActorId: requiredString(payload, "requesterActorId"),
             targetParticipantId: requiredString(
               payload,
               "targetParticipantId",
             ),
+            targetActorId: requiredString(payload, "targetActorId"),
+            organizerActorId: requiredString(payload, "organizerActorId"),
             proposedSlots: stringArray(payload, "proposedSlots"),
             now: context.now,
           });

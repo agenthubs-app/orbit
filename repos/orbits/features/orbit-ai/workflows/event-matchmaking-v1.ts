@@ -6,6 +6,7 @@ import { workflowId } from "./id";
 export interface EventMatchmakingInput {
   eventId: string;
   eventTitle: string;
+  organizerActorId: string;
   requester: MatchmakingParticipant;
   candidates: readonly MatchmakingParticipant[];
   conversationId?: string;
@@ -69,6 +70,12 @@ export function createEventMatchmakingWorkflow(
       });
       const actions = await Promise.all(
         matches.map(async (match) => {
+          const target = input.candidates.find(
+            (candidate) => candidate.participantId === match.participantId,
+          );
+          if (!target) {
+            throw new Error("Ranked matchmaking participant was not found.");
+          }
           const actionId = workflowId("action:introduction-request", {
             runId,
             targetParticipantId: match.participantId,
@@ -101,8 +108,12 @@ export function createEventMatchmakingWorkflow(
                 payload: {
                   requestId: `intro-request:${actionId}`,
                   eventId: input.eventId,
+                  actorId: input.requester.actorId,
                   requesterParticipantId: input.requester.participantId,
+                  requesterActorId: input.requester.actorId,
                   targetParticipantId: match.participantId,
+                  targetActorId: target.actorId,
+                  organizerActorId: input.organizerActorId,
                   proposedSlots:
                     input.requester.availableSlots?.slice(0, 5) ?? [],
                   evidenceIds: match.evidenceIds,
