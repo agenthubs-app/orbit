@@ -27,12 +27,16 @@ export interface OrbitIntegrationService {
   }) => string;
   registerOAuthState: (input: {
     provider: OrbitIntegrationProvider;
+    actorId: string;
+    sessionBinding: string;
     state: string;
     expiresAt: string;
     now: string;
   }) => Promise<void>;
   consumeOAuthState: (input: {
     provider: OrbitIntegrationProvider;
+    actorId: string;
+    sessionBinding: string;
     state: string;
     now: string;
   }) => Promise<boolean>;

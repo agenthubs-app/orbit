@@ -3,6 +3,8 @@ import type { OrbitIntegrationProvider } from "./contract";
 
 interface OAuthStatePayload {
   provider: OrbitIntegrationProvider;
+  actorId: string;
+  sessionBinding: string;
   expiresAt: number;
   nonce: string;
 }
@@ -13,6 +15,8 @@ function signature(payload: string, secret: string): string {
 
 export function createIntegrationOAuthState(input: {
   provider: OrbitIntegrationProvider;
+  actorId: string;
+  sessionBinding: string;
   secret: string;
   now?: number;
   nonce?: string;
@@ -20,6 +24,8 @@ export function createIntegrationOAuthState(input: {
   const payload = Buffer.from(
     JSON.stringify({
       provider: input.provider,
+      actorId: input.actorId,
+      sessionBinding: input.sessionBinding,
       expiresAt: (input.now ?? Date.now()) + 10 * 60_000,
       nonce: input.nonce ?? crypto.randomUUID(),
     } satisfies OAuthStatePayload),
@@ -30,6 +36,8 @@ export function createIntegrationOAuthState(input: {
 export function verifyIntegrationOAuthState(input: {
   state: string;
   provider: OrbitIntegrationProvider;
+  actorId: string;
+  sessionBinding: string;
   secret: string;
   now?: number;
 }): boolean {
@@ -50,6 +58,8 @@ export function verifyIntegrationOAuthState(input: {
     ) as OAuthStatePayload;
     return (
       value.provider === input.provider &&
+      value.actorId === input.actorId &&
+      value.sessionBinding === input.sessionBinding &&
       value.expiresAt >= (input.now ?? Date.now()) &&
       typeof value.nonce === "string" &&
       value.nonce.length > 0

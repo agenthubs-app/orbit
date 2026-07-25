@@ -9,17 +9,49 @@ import {
 import { createIntegrationOAuthStateStore } from "../../features/integrations/oauth-state-store";
 import { createOrbitIntegrationService } from "../../features/integrations/service";
 import { validateIntegrationScopes } from "../../features/integrations/service-factory";
+import { integrationSessionBinding } from "../../features/integrations/session-binding";
 import { createEncryptedIntegrationTokenVault } from "../../features/integrations/token-vault";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+
+test("OAuth session binding uses only the authenticated session cookie and supports chunking", () => {
+  const direct = integrationSessionBinding(
+    new Request("https://orbit.example", {
+      headers: {
+        cookie:
+          "unrelated=value; authjs.session-token=session-token; orbit-integration-state-gmail=state",
+      },
+    }),
+  );
+  const chunked = integrationSessionBinding(
+    new Request("https://orbit.example", {
+      headers: {
+        cookie:
+          "authjs.session-token.1=token; authjs.session-token.0=session-",
+      },
+    }),
+  );
+  assert.equal(direct, chunked);
+  assert.equal(
+    integrationSessionBinding(
+      new Request("https://orbit.example", {
+        headers: { cookie: "orbit-integration-state-gmail=state" },
+      }),
+    ),
+    null,
+  );
+});
 
 test("integration tokens are encrypted at rest and OAuth state is signed, expiring, and one-time", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "integration-security";
+  const userId = "user:integration-security";
+  const sessionBinding = "session:integration-security";
   const key = randomBytes(32).toString("base64");
   const vault = createEncryptedIntegrationTokenVault({
     encryptionKeyBase64: key,
     store,
     workspaceId,
+    userId,
   });
   await vault.save(
     "gmail",
@@ -31,12 +63,12 @@ test("integration tokens are encrypted at rest and OAuth state is signed, expiri
     },
     "2026-07-25T00:00:00.000Z",
   );
-  const raw = await store.getRecord({
+  const raw = (await store.listRecords({
     workspaceId,
     collectionName: "integrationTokens",
-    recordId: "integration-token:gmail",
-  });
+  }))[0];
   assert.ok(raw);
+  assert.equal(raw?.userId, userId);
   assert.equal(JSON.stringify(raw?.payload).includes("secret-access-token"), false);
   assert.equal(raw?.payload.algorithm, "aes-256-gcm");
   assert.equal((await vault.get("gmail"))?.accessToken, "secret-access-token");
@@ -44,6 +76,8 @@ test("integration tokens are encrypted at rest and OAuth state is signed, expiri
   const secret = "oauth-state-secret";
   const state = createIntegrationOAuthState({
     provider: "gmail",
+    actorId: userId,
+    sessionBinding,
     secret,
     now: 1_000,
     nonce: "nonce-1",
@@ -52,6 +86,8 @@ test("integration tokens are encrypted at rest and OAuth state is signed, expiri
     verifyIntegrationOAuthState({
       state,
       provider: "gmail",
+      actorId: userId,
+      sessionBinding,
       secret,
       now: 2_000,
     }),
@@ -61,6 +97,8 @@ test("integration tokens are encrypted at rest and OAuth state is signed, expiri
     verifyIntegrationOAuthState({
       state: `${state}tampered`,
       provider: "gmail",
+      actorId: userId,
+      sessionBinding,
       secret,
       now: 2_000,
     }),
@@ -70,6 +108,8 @@ test("integration tokens are encrypted at rest and OAuth state is signed, expiri
     verifyIntegrationOAuthState({
       state,
       provider: "gmail",
+      actorId: userId,
+      sessionBinding,
       secret,
       now: 10 * 60_000 + 1_001,
     }),
@@ -79,29 +119,136 @@ test("integration tokens are encrypted at rest and OAuth state is signed, expiri
   const states = createIntegrationOAuthStateStore({
     store,
     workspaceId,
+    userId,
   });
   await states.register({
     provider: "gmail",
+    actorId: userId,
+    sessionBinding,
     state,
     now: "2026-07-25T00:00:00.000Z",
     expiresAt: "2026-07-25T00:10:00.000Z",
   });
+  const attackerStates = createIntegrationOAuthStateStore({
+    store,
+    workspaceId,
+    userId: "user:attacker",
+  });
   assert.equal(
-    await states.consume({
+    await attackerStates.consume({
       provider: "gmail",
+      actorId: "user:attacker",
+      sessionBinding,
       state,
-      now: "2026-07-25T00:01:00.000Z",
-    }),
-    true,
-  );
-  assert.equal(
-    await states.consume({
-      provider: "gmail",
-      state,
-      now: "2026-07-25T00:02:00.000Z",
+      now: "2026-07-25T00:00:30.000Z",
     }),
     false,
   );
+  assert.equal(
+    await states.consume({
+      provider: "gmail",
+      actorId: userId,
+      sessionBinding: "session:other",
+      state,
+      now: "2026-07-25T00:00:30.000Z",
+    }),
+    false,
+  );
+  const concurrentClaims = await Promise.all([
+    states.consume({
+      provider: "gmail",
+      actorId: userId,
+      sessionBinding,
+      state,
+      now: "2026-07-25T00:01:00.000Z",
+    }),
+    states.consume({
+      provider: "gmail",
+      actorId: userId,
+      sessionBinding,
+      state,
+      now: "2026-07-25T00:01:00.001Z",
+    }),
+  ]);
+  assert.deepEqual(
+    concurrentClaims.slice().sort(),
+    [false, true],
+  );
+  assert.equal(
+    verifyIntegrationOAuthState({
+      state,
+      provider: "gmail",
+      actorId: "user:attacker",
+      sessionBinding,
+      secret,
+      now: 2_000,
+    }),
+    false,
+  );
+  assert.equal(
+    verifyIntegrationOAuthState({
+      state,
+      provider: "gmail",
+      actorId: userId,
+      sessionBinding: "session:other",
+      secret,
+      now: 2_000,
+    }),
+    false,
+  );
+});
+
+test("integration token records are isolated by workspace, user, and provider", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const encryptionKeyBase64 = randomBytes(32).toString("base64");
+  const alice = createEncryptedIntegrationTokenVault({
+    encryptionKeyBase64,
+    store,
+    workspaceId: "workspace:a",
+    userId: "user:alice",
+  });
+  const bob = createEncryptedIntegrationTokenVault({
+    encryptionKeyBase64,
+    store,
+    workspaceId: "workspace:a",
+    userId: "user:bob",
+  });
+  const aliceOtherWorkspace = createEncryptedIntegrationTokenVault({
+    encryptionKeyBase64,
+    store,
+    workspaceId: "workspace:b",
+    userId: "user:alice",
+  });
+
+  await alice.save(
+    "gmail",
+    { accessToken: "alice", scopes: ["gmail.metadata"], tokenType: "Bearer" },
+    "2026-07-25T00:00:00.000Z",
+  );
+  await bob.save(
+    "gmail",
+    { accessToken: "bob", scopes: ["gmail.metadata"], tokenType: "Bearer" },
+    "2026-07-25T00:00:00.000Z",
+  );
+  await aliceOtherWorkspace.save(
+    "gmail",
+    {
+      accessToken: "alice-other-workspace",
+      scopes: ["gmail.metadata"],
+      tokenType: "Bearer",
+    },
+    "2026-07-25T00:00:00.000Z",
+  );
+
+  assert.equal((await alice.get("gmail"))?.accessToken, "alice");
+  assert.equal((await bob.get("gmail"))?.accessToken, "bob");
+  assert.equal(
+    (await aliceOtherWorkspace.get("gmail"))?.accessToken,
+    "alice-other-workspace",
+  );
+  await bob.revoke("gmail", "2026-07-25T00:01:00.000Z");
+  assert.equal(await bob.get("gmail"), null);
+  assert.equal((await alice.get("gmail"))?.accessToken, "alice");
 });
 
 test("integration scope policy rejects mail send/body access while accepting metadata and calendars", () => {
@@ -140,10 +287,12 @@ test("integration scope policy rejects mail send/body access while accepting met
 test("expired provider tokens refresh and email signals never expose message bodies or send capability", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "integration-refresh";
+  const userId = "user:integration-refresh";
   const vault = createEncryptedIntegrationTokenVault({
     encryptionKeyBase64: randomBytes(32).toString("base64"),
     store,
     workspaceId,
+    userId,
   });
   await vault.save(
     "gmail",
@@ -156,7 +305,11 @@ test("expired provider tokens refresh and email signals never expose message bod
     },
     "2026-07-25T00:00:00.000Z",
   );
-  const oauthStates = createIntegrationOAuthStateStore({ store, workspaceId });
+  const oauthStates = createIntegrationOAuthStateStore({
+    store,
+    workspaceId,
+    userId,
+  });
   const service = createOrbitIntegrationService({
     oauthStates,
     vault,
@@ -216,10 +369,12 @@ test("expired provider tokens refresh and email signals never expose message bod
 test("calendar replay uses a deterministic provider id derived from the Action idempotency key", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "integration-calendar-idempotency";
+  const userId = "user:integration-calendar";
   const vault = createEncryptedIntegrationTokenVault({
     encryptionKeyBase64: randomBytes(32).toString("base64"),
     store,
     workspaceId,
+    userId,
   });
   await vault.save(
     "google_calendar",
@@ -232,7 +387,11 @@ test("calendar replay uses a deterministic provider id derived from the Action i
     "2026-07-25T00:00:00.000Z",
   );
   const service = createOrbitIntegrationService({
-    oauthStates: createIntegrationOAuthStateStore({ store, workspaceId }),
+    oauthStates: createIntegrationOAuthStateStore({
+      store,
+      workspaceId,
+      userId,
+    }),
     vault,
     configs: {
       google_calendar: {

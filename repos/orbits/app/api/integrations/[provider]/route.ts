@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { auth } from "../../../../auth";
 import {
   ORBIT_INTEGRATION_PROVIDERS,
   type OrbitIntegrationProvider,
@@ -20,8 +21,17 @@ export async function DELETE(
   _request: Request,
   context: Context,
 ): Promise<Response> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Sign in is required." } },
+      { status: 401 },
+    );
+  }
   const selected = asProvider((await context.params).provider);
-  const service = createConfiguredOrbitIntegrationService();
+  const service = createConfiguredOrbitIntegrationService({
+    actorId: session.user.id,
+  });
   if (!selected || !service) {
     return NextResponse.json(
       {

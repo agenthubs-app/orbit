@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { auth } from "../../../../../auth";
 import { ORBIT_INTEGRATION_PROVIDERS, type OrbitIntegrationProvider } from "../../../../../features/integrations/contract";
 import { verifyIntegrationOAuthState } from "../../../../../features/integrations/oauth-state";
 import { createConfiguredOrbitIntegrationService } from "../../../../../features/integrations/service-factory";
+import { integrationSessionBinding } from "../../../../../features/integrations/session-binding";
 
 interface Context {
   params: Promise<{ provider: string }>;
@@ -17,6 +19,14 @@ export async function GET(
   request: Request,
   context: Context,
 ): Promise<Response> {
+  const session = await auth();
+  const sessionBinding = integrationSessionBinding(request);
+  if (!session?.user?.id || !sessionBinding) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Sign in is required." } },
+      { status: 401 },
+    );
+  }
   const params = await context.params;
   const selected = provider(params.provider);
   const search = new URL(request.url).searchParams;
@@ -33,7 +43,9 @@ export async function GET(
     .slice(1)
     .join("=");
   const secret = process.env.ORBIT_INTEGRATION_STATE_SECRET?.trim();
-  const service = createConfiguredOrbitIntegrationService();
+  const service = createConfiguredOrbitIntegrationService({
+    actorId: session.user.id,
+  });
   if (
     !selected ||
     !code ||
@@ -45,6 +57,8 @@ export async function GET(
     !verifyIntegrationOAuthState({
       state,
       provider: selected,
+      actorId: session.user.id,
+      sessionBinding,
       secret,
     })
   ) {
@@ -62,6 +76,8 @@ export async function GET(
   if (
     !(await service.consumeOAuthState({
       provider: selected,
+      actorId: session.user.id,
+      sessionBinding,
       state,
       now,
     }))

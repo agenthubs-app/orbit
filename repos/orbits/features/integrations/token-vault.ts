@@ -1,5 +1,6 @@
 import {
   createCipheriv,
+  createHash,
   createDecipheriv,
   randomBytes,
 } from "node:crypto";
@@ -14,6 +15,17 @@ interface EncryptedTokenPayload extends Record<string, unknown> {
   ciphertext: string;
   iv: string;
   tag: string;
+}
+
+function tokenRecordId(input: {
+  workspaceId: string;
+  userId: string;
+  provider: OrbitIntegrationProvider;
+}): string {
+  const subject = createHash("sha256")
+    .update(`${input.workspaceId}\u0000${input.userId}\u0000${input.provider}`)
+    .digest("base64url");
+  return `integration-token:${subject}`;
 }
 
 function encryptionKey(value: string): Buffer {
@@ -42,8 +54,15 @@ export function createEncryptedIntegrationTokenVault(input: {
   encryptionKeyBase64: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
+  userId: string;
 }): IntegrationTokenVault {
   const key = encryptionKey(input.encryptionKeyBase64);
+  const recordId = (provider: OrbitIntegrationProvider) =>
+    tokenRecordId({
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      provider,
+    });
 
   return {
     async save(provider, token, now) {
@@ -62,16 +81,17 @@ export function createEncryptedIntegrationTokenVault(input: {
       await input.store.upsertRecord({
         workspaceId: input.workspaceId,
         collectionName: "integrationTokens",
-        recordId: `integration-token:${provider}`,
+        recordId: recordId(provider),
+        userId: input.userId,
         sourceType: "system",
         sourceId: `integration:${provider}`,
         sourceLabel: "Encrypted Orbit integration token",
         evidenceIds: [],
         targetType: "account",
-        targetId: input.workspaceId,
+        targetId: input.userId,
         occurredAt: now,
         lifecycleState: "active",
-        searchText: provider,
+        searchText: `${input.userId} ${provider}`,
         payload,
         createdAt: now,
         updatedAt: now,
@@ -81,9 +101,15 @@ export function createEncryptedIntegrationTokenVault(input: {
       const record = await input.store.getRecord({
         workspaceId: input.workspaceId,
         collectionName: "integrationTokens",
-        recordId: `integration-token:${provider}`,
+        recordId: recordId(provider),
       });
-      if (!record || record.payload.algorithm !== "aes-256-gcm") return null;
+      if (
+        !record ||
+        record.userId !== input.userId ||
+        record.payload.algorithm !== "aes-256-gcm"
+      ) {
+        return null;
+      }
       const iv = Buffer.from(String(record.payload.iv), "base64");
       const decipher = createDecipheriv("aes-256-gcm", key, iv);
       decipher.setAuthTag(Buffer.from(String(record.payload.tag), "base64"));
@@ -99,7 +125,7 @@ export function createEncryptedIntegrationTokenVault(input: {
       await input.store.deleteRecord({
         workspaceId: input.workspaceId,
         collectionName: "integrationTokens",
-        recordId: `integration-token:${provider}`,
+        recordId: recordId(provider),
         deletedAt: now,
       });
     },
