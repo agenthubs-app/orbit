@@ -1,72 +1,16 @@
 /**
- * 跟进日程页 route adapter。
+ * 跟进日程页 route adapter — T3（today-schedule 合并）后收窄成纯重定向。
  *
- * route 只负责挂载样式/runtime，并把 live-capable route payload 转成真实日程 UI。
+ * 这个页面的内容已经并入 /app/today 左栏时间脊柱（T1，
+ * `today/orbit-today-time-spine.tsx`）；这里只保留一个深链重定向，把旧书签
+ * /外链带到合并页的当日视图。原组件
+ * （`loadAppFollowupsRouteViewModel` / `followupsRouteToOrbitScheduleViewModel`
+ * / `OrbitRealSchedule`）仍留在原处不删除——前两者仍被
+ * `today/compose-app-today-from-agent-ledger/today-merged-view-model.ts`
+ * 复用；`OrbitRealSchedule` 目前没有其它调用方了。
  */
-import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
-import { OrbitReferenceStyles } from "../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
-import { StateView } from "../../../../shared/ui/state-view";
-import {
-  loadAppFollowupsRouteViewModel,
-  type AppFollowupsRouteStateViewModel,
-  type AppFollowupsSearchParams,
-} from "./compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model";
-import { followupsRouteToOrbitScheduleViewModel } from "./compose-app-followups-from-previously-approved-mock-first-capabilities/followups-view-model-adapter";
-import { OrbitRealSchedule } from "./orbit-real-schedule";
+import { redirect } from "next/navigation";
 
-function FollowupsRouteStateBoundary({
-  routeState,
-}: {
-  routeState: AppFollowupsRouteStateViewModel;
-}) {
-  return (
-    <div data-orbit-route="app-followups-route-state">
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={Array.from(routeState.evidenceIds)}
-        eyebrow="Follow-ups"
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={routeState.recoveryActions.map((action, index) => ({
-          id: `followups-recovery-${index}`,
-          label: action.label,
-          recoveryCopy: routeState.copy.nextStep,
-          href: action.href,
-        }))}
-        title={routeState.copy.title}
-      />
-    </div>
-  );
-}
-
-export default async function AppFollowupsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<AppFollowupsSearchParams>;
-} = {}) {
-  const routeModel = await loadAppFollowupsRouteViewModel(await searchParams);
-  const language =
-    routeModel.state === "success" ? await getOrbitServerLanguage() : null;
-
-  return (
-    <>
-      <OrbitReferenceStyles />
-      <OrbitVisualFreezeRuntime />
-      {routeModel.state === "success" ? (
-        <div data-orbit-route="app-followups-route">
-          <OrbitRealSchedule
-            viewModel={localizeOrbitTree(
-              followupsRouteToOrbitScheduleViewModel(routeModel),
-              language ?? "zh",
-            )}
-          />
-        </div>
-      ) : (
-        <FollowupsRouteStateBoundary routeState={routeModel.routeState} />
-      )}
-    </>
-  );
+export default function AppFollowupsPage() {
+  redirect("/app/today?view=day");
 }

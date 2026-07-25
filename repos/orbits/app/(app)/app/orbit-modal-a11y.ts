@@ -40,6 +40,11 @@ export function useOrbitModalA11y(onClose: () => void) {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
+        // An open modal owns Escape exclusively: without this, a page-level
+        // hotkey listener (e.g. today's escape-to-collapse, which listens on
+        // `window`) would also see the same keypress and act on it, since
+        // document-phase bubble handlers run before window-phase ones.
+        event.stopPropagation();
         onCloseRef.current();
         return;
       }

@@ -47,7 +47,10 @@ function ScheduleEventPreviewSuccess({
       data-orbit-route="app-schedule-event-preview"
     >
       <div style={{ background: "var(--bg)", minHeight: "100dvh" }}>
-        <AccountTopNav active="schedule" />
+        {/* nav folded into 日程/Schedule (T3, today-schedule merge) — this
+            detail page still lives at /app/schedule/events/[id], but the nav
+            entry it belongs under is now "today". */}
+        <AccountTopNav active="today" />
         <div
           className="scroll"
           data-appscroll
@@ -208,7 +211,10 @@ function ScheduleEventPreviewFailure({
       data-orbit-route="app-schedule-event-preview-state"
     >
       <div style={{ background: "var(--bg)", minHeight: "100dvh" }}>
-        <AccountTopNav active="schedule" />
+        {/* nav folded into 日程/Schedule (T3, today-schedule merge) — this
+            detail page still lives at /app/schedule/events/[id], but the nav
+            entry it belongs under is now "today". */}
+        <AccountTopNav active="today" />
         <section
           className="card"
           style={{
