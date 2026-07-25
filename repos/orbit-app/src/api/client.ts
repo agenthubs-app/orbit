@@ -3,6 +3,7 @@ import {
   DEFAULT_ORBIT_API_BASE_URL,
   normalizeOrbitApiBaseUrl
 } from "./base-url";
+import { notifySessionExpired } from "./session-expiry";
 
 export type FetchLike = (
   input: RequestInfo | URL,
@@ -179,6 +180,12 @@ async function request<TData>(
       "ORBIT_APP_NETWORK_ERROR",
       NETWORK_ERROR_MESSAGE
     );
+  }
+
+  // 401 说明这次请求带的会话已经失效。这里只广播事实，
+  // 登出与跳转由 AuthSessionProvider 决定（它才知道当前是否处于登录态）。
+  if (response.status === 401) {
+    notifySessionExpired();
   }
 
   const meta = metaFromResponse(response);

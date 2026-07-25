@@ -1,4 +1,5 @@
 import * as Crypto from "expo-crypto";
+import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import {
   createContext,
@@ -14,6 +15,7 @@ import {
   signOutOrbitSession
 } from "./auth-session";
 import { useOrbitApiBaseUrl } from "./ApiBaseUrlProvider";
+import { onSessionExpired } from "./session-expiry";
 import {
   createGoogleOAuthAttempt,
   exchangeGoogleOAuthCode,
@@ -281,6 +283,26 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setUser(null);
     return { success: true };
   }, [baseUrl, cookieHeader]);
+
+  // 任何一次请求收到 401，都说明这台设备上保存的会话已经失效。
+  //
+  // 只在自认为已登录时才处理：未登录时的 401 只是「这个接口需要登录」，
+  // 由各屏自己的失败态说明，不该把用户从当前页面拽走。
+  //
+  // 订阅只在 user !== null 期间存在，所以处理完把 user 置空之后这里会自动解绑，
+  // 登录页自身的请求再 401 也不会把用户困在跳转循环里。
+  useEffect(() => {
+    if (user === null) {
+      return;
+    }
+
+    return onSessionExpired(() => {
+      void nativeAuthSessionStorage.clear(baseUrl).catch(() => undefined);
+      setCookieHeader("");
+      setUser(null);
+      router.replace("/account/login" as Href);
+    });
+  }, [baseUrl, user]);
 
   const value = useMemo(
     () => ({
