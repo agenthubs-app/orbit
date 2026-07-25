@@ -488,8 +488,11 @@ test("/app/schedule compatibility route renders the same live schedule UI", asyn
   );
 
   const pageSource = source(scheduleRoutePath);
+  const realPageSource = source(
+    "app/(app)/app/schedule/orbit-real-schedule-page.tsx",
+  );
   assert.match(pageSource, /loadAppScheduleRouteViewModel/);
-  assert.match(pageSource, /AppScheduleSuccessView/);
+  assert.match(realPageSource, /AppScheduleSuccessView/);
   assert.doesNotMatch(pageSource, /AppFollowupsCommandCenter/);
 
   await withUnconfiguredLiveFollowups(async () => {

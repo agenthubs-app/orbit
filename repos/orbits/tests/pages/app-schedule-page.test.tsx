@@ -32,11 +32,14 @@ async function withOrbitModuleMode<TResult>(
 
 test("/app/schedule renders data-backed clickable arrangements", async () => {
   const pageSource = source("app/(app)/app/schedule/page.tsx");
+  const realPageSource = source(
+    "app/(app)/app/schedule/orbit-real-schedule-page.tsx",
+  );
 
   assert.match(pageSource, /loadAppScheduleRouteViewModel/);
-  assert.match(pageSource, /data-orbit-schedule-arrangement/);
-  assert.match(pageSource, /href=\{arrangement\.href\}/);
   assert.doesNotMatch(pageSource, /AppFollowupsPage/);
+  assert.match(realPageSource, /data-orbit-schedule-arrangement/);
+  assert.match(realPageSource, /href=\{arrangement\.href\}/);
 
   const Page = (await import("../../app/(app)/app/schedule/page")).default;
   const html = renderToStaticMarkup(await Page());
@@ -85,13 +88,15 @@ test("/app/schedule renders arrangements instead of recovery when live mode lack
 });
 
 test("/app/schedule constrains the arrangement rail on mobile", () => {
-  const pageSource = source("app/(app)/app/schedule/page.tsx");
+  const realPageSource = source(
+    "app/(app)/app/schedule/orbit-real-schedule-page.tsx",
+  );
 
-  assert.match(pageSource, /data-orbit-schedule-mobile-constraints/);
-  assert.match(pageSource, /@media \(max-width: 760px\)/);
-  assert.match(pageSource, /\.orbit-schedule-grid/);
-  assert.match(pageSource, /grid-template-columns: minmax\(0, 1fr\)/);
-  assert.match(pageSource, /overflow-wrap: anywhere/);
+  assert.match(realPageSource, /data-orbit-schedule-mobile-constraints/);
+  assert.match(realPageSource, /@media \(max-width: 760px\)/);
+  assert.match(realPageSource, /\.orbit-schedule-grid/);
+  assert.match(realPageSource, /grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(realPageSource, /overflow-wrap: anywhere/);
 });
 
 test("/app/schedule route states render Chinese recovery controls", async () => {
