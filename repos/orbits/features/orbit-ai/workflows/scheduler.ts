@@ -3,6 +3,7 @@ import { shouldSendPreEventNudge } from "../../notifications/push-adapter";
 import type { PreEventBriefInput } from "./pre-event-brief-v1";
 import { createPreEventBriefWorkflow } from "./pre-event-brief-v1";
 import type { AgentRuntimeService } from "../../agent/runtime/service";
+import type { PreEventBriefCandidateCollector } from "./pre-event-brief-candidate-source";
 
 export interface ScheduledBriefCandidate extends PreEventBriefInput {
   viewedAt?: string;
@@ -12,6 +13,7 @@ export interface ScheduledBriefCandidate extends PreEventBriefInput {
 }
 
 export function createAgentWorkflowScheduler(input: {
+  collector: PreEventBriefCandidateCollector;
   runtime: AgentRuntimeService;
   push: OrbitPushAdapter | null;
   now?: () => string;
@@ -22,8 +24,9 @@ export function createAgentWorkflowScheduler(input: {
   };
 }) {
   return {
-    async tick(candidates: readonly ScheduledBriefCandidate[]) {
+    async tick() {
       const now = input.now?.() ?? new Date().toISOString();
+      const candidates = await input.collector.collect({ now });
       const workflow = createPreEventBriefWorkflow(input.runtime);
       const generated = [];
       const pushed = [];
@@ -47,8 +50,7 @@ export function createAgentWorkflowScheduler(input: {
         generated.push(result);
         const briefAction = result.actions.find((action) =>
           action.operations.some(
-            (operation) =>
-              operation.operationType === "generate_meeting_brief",
+            (operation) => operation.operationType === "generate_meeting_brief",
           ),
         );
 
@@ -77,7 +79,10 @@ export function createAgentWorkflowScheduler(input: {
               kind: "pre_event_brief",
             },
           });
-          pushed.push({ eventId: candidate.eventId, receiptId: receipt.receiptId });
+          pushed.push({
+            eventId: candidate.eventId,
+            receiptId: receipt.receiptId,
+          });
         }
       }
 

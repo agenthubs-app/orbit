@@ -4,7 +4,10 @@ import { createEventMatchmakingService } from "../../events/matchmaking/service"
 import { createStorageFollowupActionWriter } from "../../followups/action-writer";
 import { createStorageReminderActionWriter } from "../../notifications/action-writer";
 import { createConfiguredOrbitIntegrationService } from "../../integrations/service-factory";
-import { resolveModuleMode, type ModuleMode } from "../../../shared/services/module-mode";
+import {
+  resolveModuleMode,
+  type ModuleMode,
+} from "../../../shared/services/module-mode";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import { createMemoryLiveRecordStore } from "../../../shared/storage/live-record-store";
 import { createStorageAgentRuntimeRepository } from "../storage/agent-runtime-live-record-provider";
@@ -13,23 +16,36 @@ import { createAgentExecutorRegistry } from "./executor-registry";
 import { createAgentRuntimeService, type AgentRuntimeService } from "./service";
 
 interface OrbitAgentRuntimeGlobal {
-  __orbitAgentRuntimeServices?: Map<ModuleMode, AgentRuntimeService>;
+  __orbitAgentRuntimeServices?: Map<string, AgentRuntimeService>;
 }
 
 const runtimeGlobal = globalThis as typeof globalThis & OrbitAgentRuntimeGlobal;
 const cachedServices =
   runtimeGlobal.__orbitAgentRuntimeServices ??
   (runtimeGlobal.__orbitAgentRuntimeServices = new Map<
-    ModuleMode,
+    string,
     AgentRuntimeService
   >());
 
+export interface OrbitAgentRuntimeActorContext {
+  /**
+   * The authenticated server-side actor. This value must never be copied from
+   * an untrusted request body.
+   */
+  actorId: string;
+}
+
 export function createOrbitAgentRuntimeService(
   requestedMode?: ModuleMode | string,
+  actorContext?: OrbitAgentRuntimeActorContext,
 ): AgentRuntimeService {
   const mode = resolveModuleMode(requestedMode);
-  const cached = cachedServices.get(mode);
-  if (cached) return cached;
+  const actorId = actorContext?.actorId.trim() ?? "";
+  if (mode === "live" && !actorId) {
+    throw new Error(
+      "Live Orbit Agent runtime requires an authenticated actor context.",
+    );
+  }
 
   const configured =
     mode === "live" ? createConfiguredPostgresLiveRecordStore() : null;
@@ -41,15 +57,23 @@ export function createOrbitAgentRuntimeService(
   const store =
     configured?.store ?? createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = configured?.workspaceId ?? "mock-agent-runtime";
+  const agentWorkspaceId = actorId
+    ? `${workspaceId}:agent-actor:${actorId}`
+    : workspaceId;
+  const cacheKey = `${mode}\u0000${agentWorkspaceId}`;
+  const cached = cachedServices.get(cacheKey);
+  if (cached) return cached;
   const repository = createStorageAgentRuntimeRepository({
     sqlClient: configured?.client,
     store: store as Parameters<
       typeof createStorageAgentRuntimeRepository
     >[0]["store"],
-    workspaceId,
+    workspaceId: agentWorkspaceId,
   });
   const integrations =
-    mode === "live" ? createConfiguredOrbitIntegrationService() : null;
+    mode === "live"
+      ? createConfiguredOrbitIntegrationService({ actorId })
+      : null;
   const executors = createAgentExecutorRegistry(
     createAgentDomainExecutors({
       contacts: createStorageContactArchiveActionWriter({
@@ -81,7 +105,7 @@ export function createOrbitAgentRuntimeService(
     }),
   );
   const service = createAgentRuntimeService({ executors, repository });
-  cachedServices.set(mode, service);
+  cachedServices.set(cacheKey, service);
   return service;
 }
 

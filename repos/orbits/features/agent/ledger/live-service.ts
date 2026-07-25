@@ -29,11 +29,17 @@ function unconfiguredFailure(): AgentLedgerFailure {
 }
 
 export function createLiveAgentLedgerService(input?: {
+  actorId?: string;
   runtime?: AgentRuntimeService;
 }): AgentLedgerService {
   try {
     return createRuntimeBackedAgentLedgerService({
-      runtime: input?.runtime ?? createOrbitAgentRuntimeService("live"),
+      runtime:
+        input?.runtime ??
+        createOrbitAgentRuntimeService(
+          "live",
+          input?.actorId ? { actorId: input.actorId } : undefined,
+        ),
     });
   } catch {
     return {

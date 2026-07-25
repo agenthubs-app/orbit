@@ -6,11 +6,16 @@ const pollIntervalMs = Math.max(
     2_000,
 );
 const workerId =
-  process.env.ORBIT_AGENT_WORKER_ID?.trim() ??
-  `agent-worker:${process.pid}`;
+  process.env.ORBIT_AGENT_WORKER_ID?.trim() ?? `agent-worker:${process.pid}`;
 
 async function main(): Promise<void> {
-  const runtime = createOrbitAgentRuntimeService("live");
+  const actorId = process.env.ORBIT_AGENT_WORKER_ACTOR_ID?.trim();
+  if (!actorId) {
+    throw new Error(
+      "ORBIT_AGENT_WORKER_ACTOR_ID is required for an actor-scoped worker.",
+    );
+  }
+  const runtime = createOrbitAgentRuntimeService("live", { actorId });
 
   while (true) {
     const result = await runtime.processOutbox({ limit: 20, workerId });
@@ -23,7 +28,7 @@ async function main(): Promise<void> {
 
 main().catch((error) => {
   process.stderr.write(
-    `${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
   );
   process.exitCode = 1;
 });

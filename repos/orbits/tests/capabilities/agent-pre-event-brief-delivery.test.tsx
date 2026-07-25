@@ -4,8 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { OrbitTodayPreEventBrief } from "../../app/(app)/app/today/orbit-today-pre-event-brief";
 import { todaySectionForEntry } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
-import { POST as recordActionView } from "../../app/api/agent/actions/[id]/view/route";
-import { POST as runScheduler } from "../../app/api/internal/agent/scheduler/route";
+import { createAgentSchedulerRouteHandler } from "../../app/api/internal/agent/scheduler/route-handler";
 import { agentActionToLedgerEntry } from "../../features/agent/ledger/runtime-adapter";
 import { createStorageContactArchiveActionWriter } from "../../features/contacts/action-writer";
 import { createAgentDomainExecutors } from "../../features/agent/runtime/domain-executors";
@@ -22,7 +21,10 @@ import { createStorageFollowupActionWriter } from "../../features/followups/acti
 import { shouldSendPreEventNudge } from "../../features/notifications/push-adapter";
 import { createStorageReminderActionWriter } from "../../features/notifications/action-writer";
 import { readPreEventBriefFromAction } from "../../features/agent/ledger/pre-event-brief";
-import { createAgentWorkflowScheduler } from "../../features/orbit-ai/workflows/scheduler";
+import {
+  createAgentWorkflowScheduler,
+  type ScheduledBriefCandidate,
+} from "../../features/orbit-ai/workflows/scheduler";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 function createHarness() {
@@ -69,7 +71,10 @@ function candidate() {
         whyWorthMeeting: "Owns the storage pilot decision.",
         lastInteraction: "2026-07-10",
         evidenceIds: ["e:aiko:note", "e:aiko:event"],
-        evidenceSummaries: ["7 月 10 日讨论过储能试点", "参加过 Osaka Demo Day"],
+        evidenceSummaries: [
+          "7 月 10 日讨论过储能试点",
+          "参加过 Osaka Demo Day",
+        ],
         suggestedTopics: ["Pilot scope", "Decision timeline"],
         openCommitments: ["Send deployment case study"],
       },
@@ -105,10 +110,19 @@ function candidate() {
   } as const;
 }
 
+function fixedCollector(candidates: readonly ScheduledBriefCandidate[]) {
+  return {
+    async collect() {
+      return candidates;
+    },
+  };
+}
+
 test("scheduled brief is complete, stays prepared until viewed, and viewed state gates push", async () => {
   const harness = createHarness();
   const sent: string[] = [];
   const scheduler = createAgentWorkflowScheduler({
+    collector: fixedCollector([candidate()]),
     runtime: harness.runtime,
     push: {
       async send(message) {
@@ -124,7 +138,7 @@ test("scheduled brief is complete, stays prepared until viewed, and viewed state
     },
   });
 
-  const first = await scheduler.tick([candidate()]);
+  const first = await scheduler.tick();
   assert.equal(first.generated.length, 1);
   assert.equal(first.pushed.length, 1);
   const briefAction = first.generated[0].actions.find((action) =>
@@ -156,13 +170,11 @@ test("scheduled brief is complete, stays prepared until viewed, and viewed state
   );
   assert.equal(todaySectionForEntry(afterView), "recent");
 
-  const second = await scheduler.tick([candidate()]);
+  const second = await scheduler.tick();
   assert.equal(second.pushed.length, 0);
   assert.deepEqual(sent, ["event-brief-delivery"]);
 
-  const html = renderToStaticMarkup(
-    <OrbitTodayPreEventBrief brief={brief} />,
-  );
+  const html = renderToStaticMarkup(<OrbitTodayPreEventBrief brief={brief} />);
   assert.match(html, /本场目标/);
   assert.match(html, /准备缺口/);
   assert.match(html, /Aiko Mori/);
@@ -175,11 +187,12 @@ test("scheduled brief is complete, stays prepared until viewed, and viewed state
 test("event goal remains editable until confirmation and executes the edited value", async () => {
   const harness = createHarness();
   const scheduler = createAgentWorkflowScheduler({
+    collector: fixedCollector([candidate()]),
     runtime: harness.runtime,
     push: null,
     now: () => "2026-07-25T01:00:00.000Z",
   });
-  const result = await scheduler.tick([{ ...candidate(), pushToken: undefined }]);
+  const result = await scheduler.tick();
   const goalAction = result.generated[0].actions.find((action) =>
     action.operations.some(
       (operation) => operation.operationType === "save_event_goal",
@@ -249,8 +262,9 @@ test("quiet hours use minute precision in the user's IANA time zone", () => {
   );
 });
 
-test("scheduler route generates a Today brief and its view route persists viewedAt", async () => {
+test("scheduler route collects server-owned candidates for its authenticated actor", async () => {
   resetOrbitAgentRuntimeServicesForTests();
+  const actorId = "actor:brief-route";
   const routeCandidate = {
     ...candidate(),
     eventId: "event-brief-route",
@@ -258,11 +272,29 @@ test("scheduler route generates a Today brief and its view route persists viewed
     endsAt: new Date(Date.now() + 150 * 60_000).toISOString(),
     pushToken: undefined,
   };
+  const runtime = createOrbitAgentRuntimeService("mock", { actorId });
+  const runScheduler = createAgentSchedulerRouteHandler({
+    authorize: () => true,
+    collectorForActor(resolvedActorId) {
+      assert.equal(resolvedActorId, actorId);
+      return fixedCollector([routeCandidate]);
+    },
+    preferences: async () => ({
+      preEventBriefPushEnabled: true,
+      quietHours: { start: "22:00", end: "08:00" },
+      timeZone: "Asia/Tokyo",
+    }),
+    push: () => null,
+    resolveActorId: () => actorId,
+    resolveMode: () => "mock",
+    runtimeForActor(resolvedActorId) {
+      assert.equal(resolvedActorId, actorId);
+      return runtime;
+    },
+  });
   const response = await runScheduler(
     new Request("http://localhost/api/internal/agent/scheduler", {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ candidates: [routeCandidate] }),
     }),
   );
   assert.equal(response.status, 200);
@@ -282,16 +314,10 @@ test("scheduler route generates a Today brief and its view route persists viewed
     ),
   );
   assert.ok(briefAction);
-  const viewed = await recordActionView(
-    new Request(
-      `http://localhost/api/agent/actions/${encodeURIComponent(briefAction.actionId)}/view`,
-      { method: "POST" },
-    ),
-    { params: Promise.resolve({ id: briefAction.actionId }) },
+  await runtime.markActionViewed(briefAction.actionId);
+  const persisted = (await runtime.listActions({})).find(
+    (action) => action.actionId === briefAction.actionId,
   );
-  assert.equal(viewed.status, 200);
-  const persisted = (await createOrbitAgentRuntimeService().listActions({}))
-    .find((action) => action.actionId === briefAction.actionId);
   assert.ok(persisted?.viewedAt);
   resetOrbitAgentRuntimeServicesForTests();
 });

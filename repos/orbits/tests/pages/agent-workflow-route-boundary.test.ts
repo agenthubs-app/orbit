@@ -15,10 +15,7 @@ test("Agent workflows are entered through domain or internal boundaries", () => 
   }
 
   const domainRoute = readFileSync(
-    join(
-      repositoryRoot,
-      "app/api/events/[id]/post-event/followup/route.ts",
-    ),
+    join(repositoryRoot, "app/api/events/[id]/post-event/followup/route.ts"),
     "utf8",
   );
   assert.match(domainRoute, /const \{ id: eventId \} = await context\.params/);
@@ -28,5 +25,16 @@ test("Agent workflows are entered through domain or internal boundaries", () => 
     join(repositoryRoot, "app/api/internal/agent/scheduler/route.ts"),
     "utf8",
   );
-  assert.match(schedulerRoute, /ORBIT_AGENT_WORKER_SECRET/);
+  const schedulerHandler = readFileSync(
+    join(repositoryRoot, "app/api/internal/agent/scheduler/route-handler.ts"),
+    "utf8",
+  );
+  assert.match(schedulerRoute, /createAgentSchedulerRouteHandler/);
+  assert.match(schedulerHandler, /ORBIT_AGENT_WORKER_SECRET/);
+  assert.match(schedulerHandler, /CLIENT_SCHEDULER_INPUT_FORBIDDEN/);
+  assert.match(
+    schedulerHandler,
+    /createConfiguredPreEventBriefCandidateCollector/,
+  );
+  assert.doesNotMatch(schedulerRoute, /body\.candidates/);
 });
