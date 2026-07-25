@@ -36,12 +36,16 @@ function crmNavItems(t: Translate): { href: string; icon: string; key: CrmMode; 
   ];
 }
 
-function mobileCrmTabItems(t: Translate): { href: string; key: CrmMode; label: string }[] {
+function mobileCrmTabItems(t: Translate): { href: string; key: CrmMode | "allActions"; label: string }[] {
+  // 与桌面 CrmSidebar 保持目的地对齐：表盘与 All actions 此前只有桌面入口，
+  // 移动端到不了（采集入口不在此列——标题行的扫描按钮已直达 /app/contacts/new）。
   return [
     { key: "list", href: "/home/cards", label: t({ en: "All", zh: "全部" }) },
     { key: "pipeline", href: "/home/cards/pipeline", label: t({ en: "Pipeline", zh: "管线" }) },
     { key: "graph", href: "/home/cards/graph", label: t({ en: "Graph", zh: "图谱" }) },
     { key: "intros", href: "/home/cards/intros", label: t({ en: "Intros", zh: "引荐" }) },
+    { key: "dashboard", href: "/home/cards/dashboard", label: t({ en: "Dashboard", zh: "表盘" }) },
+    { key: "allActions", href: "/app/contacts/all-actions", label: "All actions" },
   ];
 }
 
