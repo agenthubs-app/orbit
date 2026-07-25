@@ -95,7 +95,8 @@ test("bootstrapToSummary hides implementation labels from startup copy", () => {
     "先看今天最值得处理的一件事。"
   );
   assert.equal(summary.profileName, "小雨");
-  assert.equal(summary.workspaceName, "Orbit 人脉工作台");
+  assert.equal(summary.workspaceName, "Orbit");
+  assert.doesNotMatch(summary.workspaceName, /人脉工作台/u);
 });
 
 test("bootstrapToSummary normalizes the old Orbit main profile name", () => {

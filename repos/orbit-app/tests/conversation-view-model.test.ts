@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as conversationViewModel from "../src/view-models/conversations";
 import {
+  aiRunDetailToView,
+  buildAiRunDetailRequest,
+  conversationAiRunReferencesFor,
   conversationPayloadToChatView,
   conversationPayloadToThreadView,
   conversationInlinePanelsForThread,
@@ -10,8 +14,28 @@ import {
   shouldSubmitInitialPrompt,
   orbitAiHomeChatWindow,
   pendingConversationThreadView,
+  prioritizeConversationContacts,
   proactiveTurnPayloadToChatView
 } from "../src/view-models/conversations";
+
+const prioritizeConversationEvents = (
+  conversationViewModel as {
+    prioritizeConversationEvents?: <T extends {
+      actionLabel: string;
+      id: string;
+      location: string;
+      participantCountLabel: string;
+      startsAt: string;
+      status: string;
+      subtitle: string;
+      title: string;
+      topics: string[];
+    }>(
+      thread: ReturnType<typeof pendingConversationThreadView>,
+      events: readonly T[]
+    ) => T[];
+  }
+).prioritizeConversationEvents;
 
 test("conversationPayloadToChatView maps assistant reply messages and proposed tool intents", () => {
   const view = conversationPayloadToChatView({
@@ -37,6 +61,9 @@ test("conversationPayloadToChatView maps assistant reply messages and proposed t
         label: "Find relevant people",
         reason: "The event has attendees in your target market.",
         requiresUserConfirmation: true
+      },
+      {
+        intentId: "intent-2"
       }
     ]
   });
@@ -64,9 +91,16 @@ test("conversationPayloadToChatView maps assistant reply messages and proposed t
         label: "Find relevant people",
         reason: "The event has attendees in your target market.",
         requiresUserConfirmation: true
+      },
+      {
+        id: "intent-2",
+        label: "建议动作",
+        reason: "",
+        requiresUserConfirmation: true
       }
     ]
   });
+  assert.doesNotMatch(JSON.stringify(view), /Suggested action/u);
 });
 
 test("conversationPayloadToChatView uses safe defaults for empty payloads", () => {
@@ -96,9 +130,12 @@ test("orbitAiHomeChatWindow exposes a first-screen chat transcript", () => {
   assert.equal(view.messages.length, 1);
   assert.equal(
     view.messages[0]?.content,
-    "把问题发过来。我会按人脉、活动和跟进记录来答。"
+    "有什么需要我做的吗？找活动、准备会面、整理人脉，我可以先帮您梳理下一步。"
   );
-  assert.doesNotMatch(view.messages[0]?.content ?? "", /直接问|已准备好|下一步/u);
+  assert.doesNotMatch(
+    view.messages[0]?.content ?? "",
+    /直接问|已准备好|把问题发过来/u
+  );
   assert.equal(view.isEmpty, false);
 });
 
@@ -160,6 +197,51 @@ test("markdownBlocksFor converts common assistant markdown into native blocks", 
   );
 });
 
+test("markdownBlocksFor preserves AI numbered tasks and quoted evidence", () => {
+  assert.deepEqual(
+    markdownBlocksFor(
+      "下一步：\n1. **报名** 活动\n2) 准备 `名片`\n- [ ] 联系主办方\n- [x] 更新档案\n> 来自网页历史"
+    ),
+    [
+      {
+        kind: "paragraph",
+        segments: [{ kind: "text", text: "下一步：" }]
+      },
+      {
+        kind: "listItem",
+        marker: "1.",
+        segments: [
+          { kind: "strong", text: "报名" },
+          { kind: "text", text: " 活动" }
+        ]
+      },
+      {
+        kind: "listItem",
+        marker: "2.",
+        segments: [
+          { kind: "text", text: "准备 " },
+          { kind: "code", text: "名片" }
+        ]
+      },
+      {
+        kind: "listItem",
+        marker: "☐",
+        segments: [{ kind: "text", text: "联系主办方" }]
+      },
+      {
+        kind: "listItem",
+        marker: "✓",
+        segments: [{ kind: "text", text: "更新档案" }]
+      },
+      {
+        kind: "paragraph",
+        quote: true,
+        segments: [{ kind: "text", text: "来自网页历史" }]
+      }
+    ]
+  );
+});
+
 test("conversationInlinePanelsForThread opens an events panel for event questions", () => {
   const thread = pendingConversationThreadView("我想参加一些商务活动，有什么推荐？");
 
@@ -179,13 +261,132 @@ test("conversationInlinePanelsForThread opens a people panel for relationship qu
 
   assert.deepEqual(conversationInlinePanelsForThread(thread), [
     {
-      actionHref: "/contacts",
-      actionLabel: "查看全部人脉",
+      actionHref: "/contacts/list",
+      actionLabel: "查看联系人列表",
       detail: "根据你的问题，先把值得查看和适合推进的人放在对话里。",
       kind: "people",
       title: "相关人脉"
     }
   ]);
+});
+
+test("conversationInlinePanelsForThread can surface multiple native panels for mixed intent questions", () => {
+  const thread = pendingConversationThreadView(
+    "我想参加关西商务活动，也想看看有哪些人脉适合一起约见。"
+  );
+
+  assert.deepEqual(
+    conversationInlinePanelsForThread(thread).map((panel) => panel.kind),
+    ["people", "events"]
+  );
+});
+
+test("prioritizeConversationEvents puts events matching Chinese region intent first", () => {
+  assert.equal(typeof prioritizeConversationEvents, "function");
+
+  const thread = pendingConversationThreadView("我想参加关西商务活动，有没有大阪或关西的交流会？");
+  const events = [
+    {
+      actionLabel: "查看",
+      coverPath: "/covers/tokyo.jpg",
+      id: "event-tokyo",
+      location: "Tokyo",
+      participantCountLabel: "80 人",
+      startsAt: "7月3日 周五 19:00",
+      status: "即将开始",
+      subtitle: "SaaS founder dinner",
+      title: "东京 SaaS 创始人晚餐",
+      topics: ["SaaS"]
+    },
+    {
+      actionLabel: "报名参加",
+      coverPath: "/covers/kansai.jpg",
+      id: "event-kansai",
+      location: "Osaka",
+      participantCountLabel: "120 人",
+      startsAt: "7月8日 周三 18:30",
+      status: "开放报名",
+      subtitle: "",
+      title: "关西跨境商务交流会",
+      topics: []
+    },
+    {
+      actionLabel: "报名参加",
+      coverPath: "/covers/kyoto.jpg",
+      id: "event-kyoto",
+      location: "京都",
+      participantCountLabel: "45 人",
+      startsAt: "7月9日 周四 14:00",
+      status: "开放报名",
+      subtitle: "研发组织闭门会",
+      title: "京都研发组织闭门会",
+      topics: ["研发"]
+    }
+  ];
+
+  assert.deepEqual(
+    prioritizeConversationEvents?.(thread, events).map((event) => event.id),
+    ["event-kansai", "event-tokyo", "event-kyoto"]
+  );
+});
+
+test("prioritizeConversationContacts puts mentioned contacts first", () => {
+  const thread = conversationPayloadToThreadView({
+    activeConversationId: "conversation-1",
+    messages: [
+      {
+        content: "今天我应该先见谁？",
+        messageId: "message-1",
+        role: "user"
+      },
+      {
+        content:
+          "今天优先见王一凡。他能提供关西合作渠道，也适合介绍给西村大地。",
+        messageId: "message-2",
+        role: "assistant"
+      }
+    ]
+  });
+  const contacts = [
+    {
+      id: "contact-1",
+      name: "江东 新",
+      nextAction: "继续跟进。",
+      organization: "红桥科技",
+      relationship: "活动认识",
+      role: "市场负责人",
+      status: "在推进",
+      valueLabels: [],
+      valueScore: null
+    },
+    {
+      id: "contact-2",
+      name: "王一凡",
+      nextAction: "介绍给关西渠道。",
+      organization: "梅田餐饮投资",
+      relationship: "投资合作",
+      role: "合伙人",
+      status: "待联系",
+      valueLabels: ["引荐路径"],
+      valueScore: 84
+    },
+    {
+      id: "contact-3",
+      name: "西村大地",
+      nextAction: "准备税务顾问介绍。",
+      organization: "青叶伙伴",
+      relationship: "服务顾问",
+      role: "税务顾问",
+      status: "培养中",
+      valueLabels: ["商业机会"],
+      valueScore: 77
+    }
+  ];
+
+  assert.deepEqual(
+    prioritizeConversationContacts(thread, contacts).map((contact) => contact.id),
+    ["contact-2", "contact-3", "contact-1"]
+  );
 });
 
 test("conversationInlinePanelsForThread opens a followups panel for follow-up questions", () => {
@@ -228,6 +429,92 @@ test("conversationInlinePanelsForThread opens a profile panel for public profile
       title: "个人档案"
     }
   ]);
+});
+
+test("conversationAiRunReferencesFor extracts unique AI run ids for audit lookup", () => {
+  const references = conversationAiRunReferencesFor({
+    aiRuns: [{ runId: "demo-ai-run-1" }],
+    messages: [
+      {
+        content: "已生成回复。runId: demo-ai-run-1",
+        role: "assistant"
+      }
+    ],
+    provenance: {
+      runId: "demo-ai-run-2"
+    }
+  });
+
+  assert.deepEqual(references, [
+    {
+      actionLabel: "查看依据",
+      detail: "查看 demo-ai-run-1 的来源、证据和安全边界。",
+      id: "demo-ai-run-1",
+      title: "AI 运行依据"
+    },
+    {
+      actionLabel: "查看依据",
+      detail: "查看 demo-ai-run-2 的来源、证据和安全边界。",
+      id: "demo-ai-run-2",
+      title: "AI 运行依据"
+    }
+  ]);
+});
+
+test("AI run detail helpers prepare lookup requests and Chinese audit cards", () => {
+  assert.deepEqual(buildAiRunDetailRequest(" demo-ai-run-1 "), {
+    request: {
+      path: "/api/ai/runs/demo-ai-run-1"
+    },
+    success: true
+  });
+  assert.deepEqual(buildAiRunDetailRequest("   "), {
+    error: "这次 AI 运行缺少编号，暂时不能查看依据。",
+    success: false
+  });
+
+  const view = aiRunDetailToView({
+    nextAction:
+      "Review source evidence, prompt template id, input hash, output, and fallback behavior before wiring a live provider.",
+    provenance: {
+      evidenceIds: ["evidence:1", "evidence:2"],
+      sourceLabel: "Maya pilot timing relationship evidence"
+    },
+    run: {
+      calendarProviderRequested: false,
+      deviceRequested: false,
+      emailProviderRequested: false,
+      evidenceIds: ["evidence:1", "evidence:2"],
+      externalNetworkRequested: false,
+      liveDatabaseWriteExecuted: false,
+      modelCallExecuted: false,
+      notificationProviderRequested: false,
+      output: {
+        kind: "message_draft",
+        text: "Hi Maya Chen, following up from breakfast."
+      },
+      promptTemplateId: "orbit.message-draft.followup.v1",
+      runId: "demo-ai-run-1",
+      state: "success"
+    },
+    state: "success",
+    summary:
+      "Local rules prepared one AI-shaped message draft with prompt template id, input hash, output, fallback behavior, and run provenance."
+  });
+
+  assert.deepEqual(view, {
+    metrics: [
+      "运行 demo-ai-run-1",
+      "模板 orbit.message-draft.followup.v1",
+      "证据 2 条"
+    ],
+    nextAction: "先核对证据和输出，再决定是否继续。",
+    outputPreview: "Hi Maya Chen, following up from breakfast.",
+    safetyText: "不会自动发送消息、写日历、改联系人或触发通知。",
+    summary: "这次回复有可复核的运行记录。",
+    title: "AI 运行依据"
+  });
+  assert.doesNotMatch(JSON.stringify(view), /\bmock|fixture|provider|database\b/iu);
 });
 
 test("conversationQuickRoutes keeps bottom AI shortcuts stable", () => {
@@ -309,7 +596,7 @@ test("conversationPayloadToThreadView maps live default copy into Chinese", () =
   );
   assert.equal(
     view.messages[0]?.content,
-    "把问题发过来。我会按人脉、活动和跟进记录来答。"
+    "有什么需要我做的吗？找活动、准备会面、整理人脉，我可以先帮您梳理下一步。"
   );
 });
 
@@ -356,11 +643,38 @@ test("proactiveTurnPayloadToChatView maps in-chat proactive turns", () => {
       {
         id: "review-followup",
         label: "Review follow-up",
-        reason: "Suggested by Orbit AI.",
+        reason: "Orbit AI 建议先处理这一步。",
         requiresUserConfirmation: true
       }
     ]
   });
+});
+
+test("proactiveTurnPayloadToChatView avoids English fallback action reasons", () => {
+  const view = proactiveTurnPayloadToChatView({
+    message: {
+      content: "今天有一条跟进需要处理。",
+      conversationId: "conversation-proactive",
+      messageId: "message-proactive",
+      role: "assistant"
+    },
+    suggestedActions: [
+      {
+        actionId: "review-followup",
+        label: "复核跟进"
+      },
+      {
+        actionId: "open-schedule"
+      }
+    ]
+  });
+
+  assert.equal(view.proposedToolIntents[1]?.label, "建议动作");
+  assert.equal(
+    view.proposedToolIntents[0]?.reason,
+    "Orbit AI 建议先处理这一步。"
+  );
+  assert.doesNotMatch(JSON.stringify(view), /Suggested by Orbit AI|Suggested action/u);
 });
 
 test("conversationsToSummaries hides implementation labels in titles", () => {

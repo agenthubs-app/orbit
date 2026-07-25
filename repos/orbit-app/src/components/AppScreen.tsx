@@ -1,5 +1,8 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter, usePathname, type Href } from "expo-router";
 import type { PropsWithChildren, ReactElement } from "react";
 import {
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -7,11 +10,12 @@ import {
   type RefreshControlProps
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, spacing, typography } from "../design/tokens";
+import { colors, radius, spacing, typography } from "../design/tokens";
 
 interface AppScreenProps extends PropsWithChildren {
   eyebrow?: string;
   refreshControl?: ReactElement<RefreshControlProps>;
+  showBack?: boolean;
   title: string;
 }
 
@@ -19,8 +23,16 @@ export function AppScreen({
   children,
   eyebrow,
   refreshControl,
+  showBack,
   title
 }: AppScreenProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const canGoBack = router.canGoBack();
+  // Orbit AI is the only home, so a screen opened without history still needs a
+  // way back to it now that the bottom tab bar is gone.
+  const navVisible = showBack ?? (canGoBack || pathname !== "/ai");
+
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView
@@ -29,6 +41,25 @@ export function AppScreen({
         refreshControl={refreshControl}
       >
         <View style={styles.header}>
+          {navVisible ? (
+            <Pressable
+              accessibilityLabel={canGoBack ? "返回" : "回到 Orbit AI"}
+              accessibilityRole="button"
+              onPress={() =>
+                canGoBack ? router.back() : router.replace("/ai" as Href)
+              }
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed ? styles.backButtonPressed : null
+              ]}
+            >
+              <Ionicons
+                color={colors.ink}
+                name={canGoBack ? "chevron-back" : "sparkles-outline"}
+                size={20}
+              />
+            </Pressable>
+          ) : null}
           {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
           <Text adjustsFontSizeToFit numberOfLines={2} style={styles.title}>
             {title}
@@ -41,6 +72,22 @@ export function AppScreen({
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+    marginLeft: -spacing.xs,
+    width: 36
+  },
+  backButtonPressed: {
+    opacity: 0.72
+  },
   body: {
     gap: 14
   },
