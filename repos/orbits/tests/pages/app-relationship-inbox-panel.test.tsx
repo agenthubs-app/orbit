@@ -61,18 +61,30 @@ test("openRelationshipInboxCompose dispatches a compose event with the seed", as
   const previousWindow = (globalThis as { window?: unknown }).window;
   (globalThis as { window?: unknown }).window = target;
 
-  const events: { recipient?: string; organization?: string }[] = [];
+  const events: {
+    body?: string;
+    recipient?: string;
+    organization?: string;
+    subject?: string;
+  }[] = [];
   const handler = (event: Event) => {
     events.push((event as CustomEvent).detail);
   };
   target.addEventListener(mod.RELATIONSHIP_INBOX_COMPOSE_EVENT, handler);
-  mod.openRelationshipInboxCompose({ recipient: "曾伟", organization: "味道餐饮" });
+  mod.openRelationshipInboxCompose({
+    body: "曾伟，感谢昨天的交流。",
+    recipient: "曾伟",
+    organization: "味道餐饮",
+    subject: "昨天活动的后续",
+  });
   target.removeEventListener(mod.RELATIONSHIP_INBOX_COMPOSE_EVENT, handler);
   (globalThis as { window?: unknown }).window = previousWindow;
 
   assert.equal(events.length, 1);
   assert.equal(events[0].recipient, "曾伟");
   assert.equal(events[0].organization, "味道餐饮");
+  assert.equal(events[0].subject, "昨天活动的后续");
+  assert.equal(events[0].body, "曾伟，感谢昨天的交流。");
 });
 
 test("contact detail card connection routes 起草邮件 into the inbox compose flow", async () => {

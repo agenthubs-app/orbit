@@ -11,6 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { formatOrbitDateTime } from "../orbit-datetime";
 import { useOrbitLanguage } from "../orbit-language-context";
 import type { OrbitLanguage } from "../orbit-language-core";
 import { Avatar, Icon } from "../orbit-reference-primitives";
@@ -61,8 +62,10 @@ function clampRelationshipInboxWidth(
 }
 
 interface NewThreadSeed {
+  body?: string;
   recipient?: string;
   organization?: string;
+  subject?: string;
 }
 
 // 让其它页面（如联系人详情页"起草邮件"）打开收件箱并直接进入发起新对话流程。
@@ -414,6 +417,8 @@ function ThreadRow({
   thread: InboxThreadListItem;
   onOpen: () => void;
 }) {
+  const { language } = useOrbitLanguage();
+
   return (
     <button
       aria-current={active ? "true" : undefined}
@@ -425,7 +430,7 @@ function ThreadRow({
       <span className="ri-row-main">
         <span className="ri-row-top">
           <span className="ri-row-name">{thread.participantName}</span>
-          <span className="ri-row-time mono">{thread.lastCorrespondenceAt}</span>
+          <span className="ri-row-time mono">{formatOrbitDateTime(thread.lastCorrespondenceAt, language)}</span>
         </span>
         <span className="ri-row-subject">{thread.subject}</span>
         <span className="ri-row-preview">{thread.preview}</span>
@@ -530,6 +535,8 @@ function ThreadDetailView({
   onBack: () => void;
   t: (copy: { en: string; zh: string }) => string;
 }) {
+  const { language } = useOrbitLanguage();
+
   return (
     <div className="ri-detail">
       <div className="ri-detail-head">
@@ -555,7 +562,7 @@ function ThreadDetailView({
           <div className={`ri-msg${message.fromMe ? " is-me" : ""}`} key={message.messageId}>
             <div className="ri-msg-meta">
               <span className="ri-msg-sender">{message.fromMe ? currentUserName : message.senderName}</span>
-              <span className="ri-msg-time mono">{message.occurredAt}</span>
+              <span className="ri-msg-time mono">{formatOrbitDateTime(message.occurredAt, language)}</span>
             </div>
             <div className="ri-msg-body">{message.body}</div>
           </div>
@@ -634,14 +641,18 @@ function ThreadContextRail({
 // 生成走 message-draft-generator，创建走 async createConversationFromDraft，
 // 全程草稿优先、不发送、无外部副作用。
 function NewThreadForm({
+  initialBody,
   initialRecipient,
   initialOrganization,
+  initialSubject,
   onCreated,
   onCancel,
   t,
 }: {
+  initialBody?: string;
   initialRecipient?: string;
   initialOrganization?: string;
+  initialSubject?: string;
   onCreated: (created: ReturnType<typeof toCreatedThread>) => void;
   onCancel: () => void;
   t: (copy: { en: string; zh: string }) => string;
@@ -649,8 +660,8 @@ function NewThreadForm({
   const { language } = useOrbitLanguage();
   const [recipient, setRecipient] = useState(initialRecipient ?? "");
   const [organization, setOrganization] = useState(initialOrganization ?? "");
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const [subject, setSubject] = useState(initialSubject ?? "");
+  const [body, setBody] = useState(initialBody ?? "");
   const [busy, setBusy] = useState<"idle" | "generating" | "creating">("idle");
   const [error, setError] = useState(false);
 
@@ -741,7 +752,7 @@ function ThreadsTab({
   newThreadSeed,
   onNewThreadConsumed,
 }: {
-  newThreadSeed?: { recipient?: string; organization?: string } | null;
+  newThreadSeed?: NewThreadSeed | null;
   onNewThreadConsumed?: () => void;
 }) {
   const { t, language } = useOrbitLanguage();
@@ -883,8 +894,10 @@ function ThreadsTab({
       <section className="ri-thread-main">
         {composing ? (
           <NewThreadForm
+            initialBody={newThreadSeed?.body}
             initialOrganization={newThreadSeed?.organization}
             initialRecipient={newThreadSeed?.recipient}
+            initialSubject={newThreadSeed?.subject}
             onCancel={() => {
               setComposing(false);
               onNewThreadConsumed?.();
@@ -1389,7 +1402,12 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
   useEffect(() => {
     function onCompose(event: Event) {
       const detail = (event as CustomEvent<NewThreadSeed>).detail ?? {};
-      setSeed({ recipient: detail.recipient, organization: detail.organization });
+      setSeed({
+        body: detail.body,
+        recipient: detail.recipient,
+        organization: detail.organization,
+        subject: detail.subject,
+      });
       setOpen(true);
     }
     window.addEventListener(RELATIONSHIP_INBOX_COMPOSE_EVENT, onCompose);

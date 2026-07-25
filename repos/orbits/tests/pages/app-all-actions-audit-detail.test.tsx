@@ -44,7 +44,7 @@ test("an expanded message draft can be copied or opened in communication without
   const html = renderToStaticMarkup(<OrbitRealAllActions viewModel={model} />);
 
   assert.match(html, /复制草稿/);
-  assert.match(html, /href="\/app\/chat"/);
+  assert.match(html, /打开沟通编辑器/);
   assert.match(html, /只复制或继续编辑，不会自动发送/);
   assert.doesNotMatch(html, />发送</);
 });

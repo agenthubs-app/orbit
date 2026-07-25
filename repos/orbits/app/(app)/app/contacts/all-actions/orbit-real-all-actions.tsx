@@ -8,6 +8,7 @@ import type { AppAllActionsRouteViewModel } from "./compose-app-all-actions-from
 import { OrbitAllActionsControls } from "./orbit-all-actions-controls";
 import { OrbitAllActionsSettings } from "./orbit-all-actions-settings";
 import { OrbitCopyDraftButton } from "./orbit-copy-draft-button";
+import { OrbitEditDraftButton } from "./orbit-edit-draft-button";
 
 /**
  * UI-audit fix C3. `entry.riskLevel` is an internal enum ("write", "read", …)
@@ -185,9 +186,12 @@ function EntryRow({
                         }}
                       >
                         <OrbitCopyDraftButton text={draftText} />
-                        <a className="btn btn-quiet" href="/app/chat">
-                          打开沟通页面
-                        </a>
+                        <OrbitEditDraftButton
+                          body={draftText}
+                          organization={entry.organization}
+                          recipient={entry.contactName}
+                          subject={entry.title}
+                        />
                         <small>只复制或继续编辑，不会自动发送。</small>
                       </span>
                     ) : null}
