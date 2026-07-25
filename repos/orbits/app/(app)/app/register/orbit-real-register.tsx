@@ -8,7 +8,7 @@ import {
 } from "./register-view-model-contract";
 import { eventCoverPhoto } from "../orbit-landing-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
-import { Cover, gradientFromString, Icon } from "../orbit-reference-primitives";
+import { Cover, FormField, gradientFromString, Icon } from "../orbit-reference-primitives";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -286,13 +286,21 @@ export function OrbitRealRegister({ viewModel }: { viewModel: OrbitRegisterViewM
           <div style={regStyles.screen}>
             <RegTopBar active={0} onBack={() => navigate("/")} step="1 / 3" t={t} />
             <div><div style={regStyles.eyebrow}>{t({ en: "You are", zh: "你是" })}</div><h1 className="h-display" style={regStyles.heroTitle}>{t({ en: "Let's get to know", zh: "先认识一下" })}<span style={regStyles.accent}> {t({ en: "you.", zh: "你。" })}</span></h1></div>
-            <RegField icon="mail" label={t({ en: "Email", zh: "邮箱" })} onChange={(event) => setEmail(event.target.value)} placeholder={t({ en: "Enter your email address", zh: "输入邮箱地址" })} required type="email" value={email} />
+            <FormField
+              helper={!email.trim() ? t({ en: "Please enter your email address before choosing how to fill in your details.", zh: "请先填写邮箱地址，再选择填写方式。" }) : undefined}
+              id="register-email"
+              label={<>{t({ en: "Email", zh: "邮箱" })}<span style={{ color: "var(--rose-text)", marginLeft: 3 }}>*</span></>}
+            >
+              <div style={{ position: "relative" }}>
+                <span style={{ color: "var(--text-3)", left: 13, position: "absolute", top: 14 }}><Icon name="mail" size={17} /></span>
+                <input className="field" id="register-email" onChange={(event) => setEmail(event.target.value)} placeholder={t({ en: "Enter your email address", zh: "输入邮箱地址" })} required style={{ paddingLeft: 40 }} type="email" value={email} />
+              </div>
+            </FormField>
             <div style={regStyles.banner}>{t({ en: "Leave your email first. Once you finish registering, your pass code and direct link will be sent here.", zh: "先留下邮箱。报名完成后，通行码和直达链接都会发到这里。" })}</div>
             <div style={regStyles.methodGrid}>
               <RegMethodCard active={flowType === "manual"} icon="edit" onClick={() => startFlow("manual")} subtitle={t({ en: "~2 min", zh: "~2 分钟" })} title={t({ en: "Fill it in myself", zh: "自己填" })} />
               <RegMethodCard active={flowType === "ai"} icon="sparkle" onClick={() => startFlow("ai")} subtitle={t({ en: "~30 sec", zh: "~30 秒" })} title={t({ en: "AI autofill", zh: "AI 填充" })} />
             </div>
-            {!email.trim() ? <div style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "Please enter your email address before choosing how to fill in your details.", zh: "请先填写邮箱地址，再选择填写方式。" })}</div> : null}
           </div>
         ) : null}
 

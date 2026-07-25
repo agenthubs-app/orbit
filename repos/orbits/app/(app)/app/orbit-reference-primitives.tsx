@@ -321,23 +321,42 @@ export function Cover({
  * optional helper text, and an error line announced to screen readers. Pass
  * the same `id` to the input inside `children`, plus `aria-invalid` and
  * `className="field is-invalid"` when `error` is set.
+ *
+ * `className`/`style` are an escape hatch for call sites that need to fit
+ * FormField into an existing visual layout (e.g. a wrapper class a parent
+ * stylesheet targets) — they only touch the outer grid wrapper and never
+ * change the label/helper/error a11y structure above.
  */
 export function FormField({
   children,
+  className,
   error,
   helper,
   id,
   label,
+  labelExtra,
+  style,
 }: {
   children: ReactNode;
+  className?: string;
   error?: string;
   helper?: string;
   id: string;
-  label: string;
+  label: ReactNode;
+  /** Optional trailing slot beside the label, e.g. a "forgot password?" link. */
+  labelExtra?: ReactNode;
+  style?: CSSProperties;
 }) {
   return (
-    <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-      <label className="field-label" htmlFor={id}>{label}</label>
+    <div className={className} style={{ display: "grid", gap: 6, minWidth: 0, ...style }}>
+      {labelExtra ? (
+        <span style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between" }}>
+          <label className="field-label" htmlFor={id} style={{ marginBottom: 0 }}>{label}</label>
+          {labelExtra}
+        </span>
+      ) : (
+        <label className="field-label" htmlFor={id}>{label}</label>
+      )}
       {children}
       {helper && !error ? <span style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.4 }}>{helper}</span> : null}
       <span aria-live="polite" role={error ? "alert" : undefined}>

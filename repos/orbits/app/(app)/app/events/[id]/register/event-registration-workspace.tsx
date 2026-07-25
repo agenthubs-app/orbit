@@ -10,6 +10,10 @@
 // 与服务端的分工:题目顺序/字段/敏感词校验全在 adaptive-interview-service;
 // 本组件只负责流程状态机与展示。第一题用服务端预生成的 questionSet(零等待),
 // 之后每题调 /registration/interview;答案通过既有 /registration 端点持久化。
+//
+// 表单统一豁免(审计 P1-6 / T7):本文件字段多、结构复杂(逐题动态渲染,
+// 非常规 label+input 布局),不强迁 orbit-reference-primitives 的 FormField
+// 原语;仅将错误态标记对齐到标准组合(aria-invalid + role="alert")。
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -731,6 +735,7 @@ export function EventRegistrationWorkspace({
                       style={{ display: "flex", gap: 10, marginTop: 14 }}
                     >
                       <input
+                        aria-invalid={error ? true : undefined}
                         autoFocus
                         className="field"
                         onChange={(changeEvent) => setFreeText(changeEvent.target.value)}
