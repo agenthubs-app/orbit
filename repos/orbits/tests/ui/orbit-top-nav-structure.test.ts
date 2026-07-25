@@ -87,6 +87,25 @@ test("session account control and inbox extras stay in the actions segment", () 
   assert.ok(actions.includes("{rightExtra}"));
 });
 
+// Mobile audit P1: the floating .orbit-theme-toggle (orbit-theme.tsx)
+// overlaps sticky bottom CTA bars on mobile pages. Fix hides it <=640px and
+// moves the same toggle into the hamburger menu instead.
+test("the floating theme toggle is hidden on mobile and replaced by a hamburger menu item", () => {
+  const themeSource = readFileSync(
+    join(projectRoot, "app/(app)/app/orbit-theme.tsx"),
+    "utf8",
+  );
+
+  assert.ok(themeSource.includes("@media (max-width: 640px)"), "mobile breakpoint present");
+  assert.match(
+    themeSource,
+    /\.orbit-theme-toggle\s*\{\s*display:\s*none;\s*\}/,
+    "toggle hidden on mobile",
+  );
+  assert.ok(shell.includes("OrbitNavThemeMenuItem"), "hamburger menu carries a theme toggle item");
+  assert.ok(shell.includes("toggleOrbitTheme"), "menu item reuses the shared theme toggle helper");
+});
+
 test("the ledger pages carry the real-page scope the nav CSS requires", () => {
   for (const file of [
     "app/(app)/app/today/page.tsx",

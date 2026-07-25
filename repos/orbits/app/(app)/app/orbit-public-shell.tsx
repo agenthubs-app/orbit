@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { useOrbitLanguage } from "./orbit-language-context";
 import { Avatar, Icon, Logo, gradientFromString } from "./orbit-reference-primitives";
 import { productHref } from "./orbit-product-href";
+import { getOrbitTheme, toggleOrbitTheme, type OrbitTheme } from "./orbit-theme";
 import { ORBIT_Z } from "./orbit-z";
 
 // "schedule" no longer has a nav entry of its own (T3, today-schedule merge —
@@ -171,6 +172,56 @@ function OrbitNavAccountControl({ meHref }: { meHref: string }) {
   );
 }
 
+// Mobile audit P1: `.orbit-theme-toggle` (orbit-theme.tsx) is hidden at
+// <=640px because its fixed right:18/bottom:18 corner overlaps sticky bottom
+// CTA bars on mobile pages. This menu item is the mobile replacement — it
+// lives in the hamburger panel and drives the exact same
+// document.documentElement[data-theme] + localStorage toggle via the shared
+// toggleOrbitTheme() helper, so both triggers always agree.
+//
+// Hydration safety: theme starts `null` (not read from `document` — that
+// would differ between the server's guess and the client's real DOM
+// attribute) so the first client render matches SSR exactly; the real theme
+// is read once after mount, matching the mounted-state pattern used
+// elsewhere in this file (OrbitNavAccountControl's sessionUser).
+//
+// Ratchet note: the sitewide non-.btn button-element count is at its
+// ceiling (tests/ui/orbit-button-ratchet.test.ts), so this reuses the
+// existing `<a className="orbit-nav-menu-item">` pattern (role="button", no
+// real navigation) instead of a hand-rolled button element.
+function OrbitNavThemeMenuItem() {
+  const { t } = useOrbitLanguage();
+  const [theme, setTheme] = useState<OrbitTheme | null>(null);
+
+  useEffect(() => {
+    setTheme(getOrbitTheme());
+  }, []);
+
+  const isLight = theme === "light";
+  const label =
+    theme === null
+      ? t({ en: "Toggle theme", zh: "切换主题" })
+      : isLight
+        ? t({ en: "Dark mode", zh: "深色模式" })
+        : t({ en: "Light mode", zh: "浅色模式" });
+
+  return (
+    <a
+      aria-pressed={theme === null ? undefined : isLight}
+      className="orbit-nav-menu-item"
+      href="#"
+      onClick={(event) => {
+        event.preventDefault();
+        setTheme(toggleOrbitTheme());
+      }}
+      role="button"
+    >
+      <Icon name={isLight ? "moon" : "sun"} size={20} />
+      <span>{label}</span>
+    </a>
+  );
+}
+
 /**
  * Single source of truth for the top navigation across public AND account
  * surfaces. Both PublicTopNav and AccountTopNav render this, so spacing,
@@ -308,6 +359,7 @@ export function OrbitTopNav({
                 <Icon name="chevR" size={16} style={{ marginLeft: "auto", opacity: 0.5 }} />
               </a>
             ))}
+            <OrbitNavThemeMenuItem />
           </nav>
         </div>
       ) : null}
