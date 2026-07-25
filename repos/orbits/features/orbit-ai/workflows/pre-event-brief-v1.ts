@@ -45,11 +45,20 @@ function briefBody(artifact: PreEventBriefArtifact): string {
   const people = artifact.people
     .map(
       (person) =>
-        `${person.displayName}：${person.whyWorthMeeting}；话题：${person.suggestedTopics.join("、") || "待补充"}`,
+        [
+          `${person.displayName}${person.organization ? `（${person.organization}）` : ""}`,
+          `值得见：${person.whyWorthMeeting}`,
+          `上次互动：${person.lastInteraction ?? "暂无记录"}`,
+          `证据：${person.evidenceSummaries?.join("、") || `${person.evidenceIds.length} 条关系记录`}`,
+          `建议话题：${person.suggestedTopics.join("、") || "待补充"}`,
+          `未完成承诺：${person.openCommitments.join("、") || "无"}`,
+        ].join("；"),
     )
     .join("\n");
   return [
     artifact.goal ? `目标：${artifact.goal}` : "目标：待确认",
+    `时间：${artifact.startsAt}${artifact.endsAt ? ` — ${artifact.endsAt}` : ""}`,
+    `地点：${artifact.location ?? "待确认"}`,
     people,
     artifact.preparationGaps.length
       ? `准备缺口：${artifact.preparationGaps.join("、")}`
@@ -76,7 +85,15 @@ export function createPreEventBriefWorkflow(
       }
       const people = [...input.attendees]
         .sort((left, right) => attendeeScore(right) - attendeeScore(left))
-        .slice(0, 3);
+        .slice(0, 3)
+        .map((person) => ({
+          ...person,
+          evidenceSummaries:
+            person.evidenceSummaries?.filter(Boolean) ??
+            (person.evidenceIds.length > 0
+              ? [`${person.evidenceIds.length} 条关系证据`]
+              : []),
+        }));
       const evidenceIds = [
         ...new Set([
           ...(input.evidenceIds ?? []),
@@ -98,6 +115,7 @@ export function createPreEventBriefWorkflow(
         eventId: input.eventId,
         title: input.title,
         startsAt: input.startsAt,
+        endsAt: input.endsAt,
         location: input.location,
         goal: input.goal,
         people,
@@ -145,6 +163,7 @@ export function createPreEventBriefWorkflow(
               eventId: input.eventId,
               title: input.title,
               body: briefBody(artifact),
+              artifact,
               evidenceIds,
             },
             preview: `准备 ${input.title} 会前简报`,
@@ -211,10 +230,10 @@ export function createPreEventBriefWorkflow(
                 payload: {
                   goalId: `event-goal:${input.eventId}`,
                   eventId: input.eventId,
-                  goal: "待用户编辑确认",
+                  goal: "",
                   evidenceIds,
                 },
-                preview: "保存活动目标",
+                preview: "填写活动目标并保存",
                 riskLevel: "write",
                 compensation: {
                   supported: true,

@@ -42,6 +42,7 @@ export interface PreEventBriefPerson {
   whyWorthMeeting: string;
   lastInteraction?: string;
   evidenceIds: readonly string[];
+  evidenceSummaries?: readonly string[];
   suggestedTopics: readonly string[];
   openCommitments: readonly string[];
 }
@@ -50,6 +51,7 @@ export interface PreEventBriefArtifact {
   eventId: string;
   title: string;
   startsAt: string;
+  endsAt?: string;
   location?: string;
   goal?: string;
   people: readonly PreEventBriefPerson[];

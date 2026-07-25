@@ -17,6 +17,8 @@ test("the settings block renders the three designed controls", () => {
   assert.ok(html.includes("自动准备会面笔记"));
   assert.ok(html.includes("活动后推送跟进提醒"));
   assert.ok(html.includes("安静时段"));
+  assert.ok(html.includes("通知时区"));
+  assert.ok(html.includes("Asia/Tokyo"));
   assert.ok(html.includes("22:00"));
   assert.ok(html.includes("08:00"));
 });

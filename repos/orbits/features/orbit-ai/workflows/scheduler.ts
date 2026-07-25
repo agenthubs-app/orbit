@@ -18,6 +18,7 @@ export function createAgentWorkflowScheduler(input: {
   preferences?: {
     preEventBriefPushEnabled: boolean;
     quietHours: { start: string; end: string };
+    timeZone: string;
   };
 }) {
   return {
@@ -39,11 +40,16 @@ export function createAgentWorkflowScheduler(input: {
           continue;
         }
 
-        generated.push(
-          await workflow.run({
-            ...candidate,
-            trigger: "scheduler",
-          }),
+        const result = await workflow.run({
+          ...candidate,
+          trigger: "scheduler",
+        });
+        generated.push(result);
+        const briefAction = result.actions.find((action) =>
+          action.operations.some(
+            (operation) =>
+              operation.operationType === "generate_meeting_brief",
+          ),
         );
 
         if (
@@ -52,21 +58,13 @@ export function createAgentWorkflowScheduler(input: {
           shouldSendPreEventNudge({
             now,
             startsAt: candidate.startsAt,
-            viewedAt: candidate.viewedAt,
+            viewedAt: candidate.viewedAt ?? briefAction?.viewedAt,
             costlyMiss: candidate.costlyMiss,
             pushEnabled:
               candidate.pushEnabled &&
               (input.preferences?.preEventBriefPushEnabled ?? true),
-            quietHours: input.preferences
-              ? {
-                  startHour: Number(
-                    input.preferences.quietHours.start.split(":")[0],
-                  ),
-                  endHour: Number(
-                    input.preferences.quietHours.end.split(":")[0],
-                  ),
-                }
-              : undefined,
+            quietHours: input.preferences?.quietHours,
+            timeZone: input.preferences?.timeZone,
           })
         ) {
           const receipt = await input.push.send({

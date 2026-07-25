@@ -13,6 +13,7 @@ import {
   type AgentLedgerEntryStatus,
 } from "../../../../../features/agent/ledger/contract";
 import { createAgentLedgerService } from "../../../../../features/agent/service-factory";
+import { isUnviewedPreEventBriefEntry } from "../../../../../features/agent/ledger/pre-event-brief";
 
 export type AppTodaySearchParams = Record<
   string,
@@ -61,6 +62,13 @@ export const TODAY_SECTION_BY_STATUS: Record<
   undone: "recent",
 };
 
+export function todaySectionForEntry(
+  entry: AgentLedgerEntry,
+): TodaySectionKey | null {
+  if (isUnviewedPreEventBriefEntry(entry)) return "prepared";
+  return TODAY_SECTION_BY_STATUS[entry.status];
+}
+
 const SECTION_ORDER: readonly TodaySectionKey[] = ["decide", "prepared", "recent"];
 
 function readParam(
@@ -97,7 +105,7 @@ export async function loadAppTodayRouteViewModel(
 
   const entries = result.data.entries;
   const sections = SECTION_ORDER.map((key) => ({
-    entries: entries.filter((entry) => TODAY_SECTION_BY_STATUS[entry.status] === key),
+    entries: entries.filter((entry) => todaySectionForEntry(entry) === key),
     key,
     title: SECTION_TITLES[key],
   })).filter((section) => section.entries.length > 0);

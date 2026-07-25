@@ -53,7 +53,10 @@ export function shouldSendPreEventNudge(input: {
   viewedAt?: string;
   costlyMiss: boolean;
   pushEnabled: boolean;
-  quietHours?: { startHour: number; endHour: number };
+  quietHours?:
+    | { start: string; end: string }
+    | { startHour: number; endHour: number };
+  timeZone?: string;
 }): boolean {
   if (!input.pushEnabled || !input.costlyMiss || input.viewedAt) return false;
   const nowMs = Date.parse(input.now);
@@ -67,11 +70,49 @@ export function shouldSendPreEventNudge(input: {
   ) {
     return false;
   }
-  const quiet = input.quietHours ?? { startHour: 22, endHour: 8 };
-  const hour = new Date(input.now).getHours();
+  const configuredQuiet = input.quietHours ?? {
+    start: "22:00",
+    end: "08:00",
+  };
+  const quiet =
+    "start" in configuredQuiet
+      ? configuredQuiet
+      : {
+          start: `${String(configuredQuiet.startHour).padStart(2, "0")}:00`,
+          end: `${String(configuredQuiet.endHour).padStart(2, "0")}:00`,
+        };
+  const timeZone = input.timeZone ?? "UTC";
+  const parseMinutes = (value: string): number | null => {
+    const match = value.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  };
+  const startMinute = parseMinutes(quiet.start);
+  const endMinute = parseMinutes(quiet.end);
+  if (startMinute === null || endMinute === null) return false;
+  let zonedParts: Intl.DateTimeFormatPart[];
+  try {
+    zonedParts = new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      hourCycle: "h23",
+      minute: "2-digit",
+      timeZone,
+    }).formatToParts(new Date(nowMs));
+  } catch {
+    return false;
+  }
+  const hour = Number(
+    zonedParts.find((part) => part.type === "hour")?.value,
+  );
+  const minute = Number(
+    zonedParts.find((part) => part.type === "minute")?.value,
+  );
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return false;
+  const localMinute = hour * 60 + minute;
   const inQuietHours =
-    quiet.startHour > quiet.endHour
-      ? hour >= quiet.startHour || hour < quiet.endHour
-      : hour >= quiet.startHour && hour < quiet.endHour;
+    startMinute === endMinute
+      ? false
+      : startMinute > endMinute
+        ? localMinute >= startMinute || localMinute < endMinute
+        : localMinute >= startMinute && localMinute < endMinute;
   return !inQuietHours;
 }

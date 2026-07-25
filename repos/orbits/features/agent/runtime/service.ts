@@ -71,6 +71,7 @@ export interface AgentRuntimeService {
     draftText: string;
   }) => Promise<AgentActionRecord>;
   undoAction: (actionId: string) => Promise<AgentActionRecord>;
+  markActionViewed: (actionId: string) => Promise<AgentActionRecord>;
   recordAnalytics: (
     name: AgentAnalyticsEventName,
     input: {
@@ -606,12 +607,17 @@ export function createAgentRuntimeService({
       const operationIndex = action.operations.findIndex(
         (operation) =>
           operation.operationId === input.operationId &&
-          operation.operationType === "save_message_draft",
+          (operation.operationType === "save_message_draft" ||
+            operation.operationType === "save_event_goal"),
       );
       if (operationIndex < 0) {
         throw new Error(
-          `Operation ${input.operationId} is not an editable message draft.`,
+          `Operation ${input.operationId} is not an editable draft.`,
         );
+      }
+      const draftText = input.draftText.trim();
+      if (!draftText) {
+        throw new Error("Editable draft text cannot be empty.");
       }
       const operations = action.operations.map((operation, index) =>
         index === operationIndex
@@ -619,9 +625,11 @@ export function createAgentRuntimeService({
               ...operation,
               payload: {
                 ...operation.payload,
-                draftText: input.draftText,
+                ...(operation.operationType === "save_event_goal"
+                  ? { goal: draftText }
+                  : { draftText }),
               },
-              preview: input.draftText,
+              preview: draftText,
             }
           : operation,
       );
@@ -629,7 +637,7 @@ export function createAgentRuntimeService({
       const updated: AgentActionRecord = {
         ...action,
         operations,
-        preview: input.draftText,
+        preview: draftText,
         updatedAt: timestamp,
         immutablePayloadHash: stablePayloadHash(
           immutablePayloadFor({
@@ -680,6 +688,18 @@ export function createAgentRuntimeService({
         workflowKey: action.workflowKey,
       });
       await refreshRunStatus(action.runId);
+      return updated;
+    },
+    async markActionViewed(actionId) {
+      const action = await requireAction(actionId);
+      if (action.viewedAt) return action;
+      const timestamp = now();
+      const updated = {
+        ...action,
+        viewedAt: timestamp,
+        updatedAt: timestamp,
+      };
+      await repository.saveAction(updated);
       return updated;
     },
     recordAnalytics: analytics,

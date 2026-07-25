@@ -125,7 +125,9 @@ export function agentActionToLedgerEntry(
       draftPreview:
         operation.operationType === "save_message_draft"
           ? String(operation.payload.draftText ?? operation.preview)
-          : undefined,
+          : operation.operationType === "save_event_goal"
+            ? String(operation.payload.goal ?? operation.preview)
+            : undefined,
       autoSendCapable: false,
     })),
     undoable: action.compensation.supported,
@@ -139,6 +141,7 @@ export function agentActionToLedgerEntry(
     canceledAt: action.canceledAt,
     deferredAt: action.deferredAt,
     undoneAt: action.undoneAt,
+    viewedAt: action.viewedAt,
     approvedBy: action.approvedBy,
     sourceRefs: action.sourceRefs,
     evidenceIds: action.evidenceIds,

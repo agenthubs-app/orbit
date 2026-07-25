@@ -37,6 +37,54 @@ export function OrbitTodayDecisionForm({
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editableValues, setEditableValues] = useState<
+    Readonly<Record<string, string>>
+  >(() =>
+    Object.fromEntries(
+      operations.flatMap((operation) =>
+        operation.operationType === "save_event_goal"
+          ? [
+              [
+                operation.operationId,
+                typeof operation.payload?.goal === "string"
+                  ? operation.payload.goal
+                  : "",
+              ],
+            ]
+          : [],
+      ),
+    ),
+  );
+
+  async function saveEditableOperations(): Promise<void> {
+    for (const operation of operations) {
+      if (
+        operation.operationType !== "save_event_goal" ||
+        !selected.includes(operation.operationId)
+      ) {
+        continue;
+      }
+      const value = editableValues[operation.operationId]?.trim() ?? "";
+      if (!value) {
+        throw new Error("请先填写本场活动目标。");
+      }
+      const response = await fetch(
+        `/api/agent/ledger/${encodeURIComponent(entryId)}/draft`,
+        {
+          body: JSON.stringify({
+            draftText: value,
+            operationId: operation.operationId,
+          }),
+          headers: { "content-type": "application/json" },
+          method: "PATCH",
+        },
+      );
+      const body = (await response.json()) as unknown;
+      if (!isLedgerSuccess(body)) {
+        throw new Error(readLedgerError(body));
+      }
+    }
+  }
 
   // 网络异常或非 JSON 响应都必须复位 pending，否则按钮会永久禁用。
   async function applyTransition(
@@ -46,6 +94,9 @@ export function OrbitTodayDecisionForm({
     setError(null);
 
     try {
+      if (transition === "confirm") {
+        await saveEditableOperations();
+      }
       const response = await fetch(
         `/api/agent/ledger/${encodeURIComponent(entryId)}/transition`,
         {
@@ -66,8 +117,12 @@ export function OrbitTodayDecisionForm({
       }
 
       window.location.reload();
-    } catch {
-      setError("网络错误，操作未执行。请重试。");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "网络错误，操作未执行。请重试。",
+      );
       setPending(false);
     }
   }
@@ -76,33 +131,65 @@ export function OrbitTodayDecisionForm({
     <div data-orbit-today-decision-form style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {operations.map((operation) => (
-          <label
-            key={operation.operationId}
-            style={{ alignItems: "flex-start", cursor: "pointer", display: "flex", gap: 8 }}
-          >
-            {/* globals.css 把裸 input 当文本框重置（width:100%、边框、min-height），
-                这里显式覆盖回正常的复选框尺寸。 */}
-            <input
-              checked={selected.includes(operation.operationId)}
-              onChange={(event) =>
-                setSelected((current) =>
-                  event.target.checked
-                    ? [...current, operation.operationId]
-                    : current.filter((id) => id !== operation.operationId),
-                )
-              }
-              style={{ flexShrink: 0, height: 16, marginTop: 2, width: 16 }}
-              type="checkbox"
-            />
-            <span>
-              <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 500 }}>
-                {operation.title}
+          <div key={operation.operationId}>
+            <label
+              style={{ alignItems: "flex-start", cursor: "pointer", display: "flex", gap: 8 }}
+            >
+              {/* globals.css 把裸 input 当文本框重置（width:100%、边框、min-height），
+                  这里显式覆盖回正常的复选框尺寸。 */}
+              <input
+                checked={selected.includes(operation.operationId)}
+                onChange={(event) =>
+                  setSelected((current) =>
+                    event.target.checked
+                      ? [...current, operation.operationId]
+                      : current.filter((id) => id !== operation.operationId),
+                  )
+                }
+                style={{ flexShrink: 0, height: 16, marginTop: 2, width: 16 }}
+                type="checkbox"
+              />
+              <span>
+                <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 500 }}>
+                  {operation.title}
+                </span>
+                <span style={{ color: "var(--text-3)", display: "block", fontSize: 13 }}>
+                  {operation.effectSummary}
+                </span>
               </span>
-              <span style={{ color: "var(--text-3)", display: "block", fontSize: 13 }}>
-                {operation.effectSummary}
-              </span>
-            </span>
-          </label>
+            </label>
+            {operation.operationType === "save_event_goal" &&
+            selected.includes(operation.operationId) ? (
+              <label
+                style={{
+                  color: "var(--text-2)",
+                  display: "block",
+                  fontSize: 13,
+                  margin: "10px 0 2px 24px",
+                }}
+              >
+                本场活动目标
+                <textarea
+                  aria-label="本场活动目标"
+                  className="field"
+                  maxLength={240}
+                  onChange={(event) =>
+                    setEditableValues((current) => ({
+                      ...current,
+                      [operation.operationId]: event.target.value,
+                    }))
+                  }
+                  placeholder="例如：确认储能试点的决策人和下一步时间"
+                  rows={3}
+                  style={{ display: "block", marginTop: 6, resize: "vertical", width: "100%" }}
+                  value={editableValues[operation.operationId] ?? ""}
+                />
+                <span style={{ color: "var(--text-4)", display: "block", marginTop: 4 }}>
+                  确认时会先保存你编辑后的目标，再执行写入。
+                </span>
+              </label>
+            ) : null}
+          </div>
         ))}
       </div>
 

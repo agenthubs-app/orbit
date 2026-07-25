@@ -10,6 +10,7 @@ export interface AgentPreferences {
     start: string;
     end: string;
   };
+  timeZone: string;
   updatedAt: string;
 }
 
@@ -23,6 +24,7 @@ export interface AgentPreferencesService {
         | "postEventReminderPushEnabled"
         | "preEventBriefPushEnabled"
         | "quietHours"
+        | "timeZone"
       >
     >,
   ) => Promise<AgentPreferences>;
@@ -33,6 +35,7 @@ const DEFAULT_PREFERENCES: AgentPreferences = {
   postEventReminderPushEnabled: true,
   preEventBriefPushEnabled: true,
   quietHours: { start: "22:00", end: "08:00" },
+  timeZone: "Asia/Tokyo",
   updatedAt: "2026-07-25T00:00:00.000Z",
 };
 
@@ -42,6 +45,15 @@ interface PreferencesPayload extends Record<string, unknown> {
 
 function validTime(value: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function validTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function createStorageAgentPreferencesService(input: {
@@ -57,7 +69,18 @@ export function createStorageAgentPreferencesService(input: {
       collectionName: "agentPreferences",
       recordId: "current",
     });
-    return record?.payload.preferences ?? DEFAULT_PREFERENCES;
+    return record
+      ? {
+          ...DEFAULT_PREFERENCES,
+          ...record.payload.preferences,
+          quietHours:
+            record.payload.preferences.quietHours ??
+            DEFAULT_PREFERENCES.quietHours,
+          timeZone:
+            record.payload.preferences.timeZone ??
+            DEFAULT_PREFERENCES.timeZone,
+        }
+      : DEFAULT_PREFERENCES;
   }
 
   return {
@@ -69,6 +92,9 @@ export function createStorageAgentPreferencesService(input: {
           !validTime(patch.quietHours.end))
       ) {
         throw new Error("Quiet hours must use HH:mm.");
+      }
+      if (patch.timeZone !== undefined && !validTimeZone(patch.timeZone)) {
+        throw new Error("Time zone must be a valid IANA time zone.");
       }
       const existing = await current();
       const updatedAt = now();
@@ -83,6 +109,7 @@ export function createStorageAgentPreferencesService(input: {
           patch.preEventBriefPushEnabled ??
           existing.preEventBriefPushEnabled,
         quietHours: patch.quietHours ?? existing.quietHours,
+        timeZone: patch.timeZone ?? existing.timeZone,
         updatedAt,
       };
       await input.store.upsertRecord({

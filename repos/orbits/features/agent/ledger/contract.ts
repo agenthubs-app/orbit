@@ -163,6 +163,7 @@ export interface AgentLedgerEntry {
   canceledAt?: string;
   deferredAt?: string;
   undoneAt?: string;
+  viewedAt?: string;
   approvedBy?: string;
   sourceRefs: readonly AgentActionSourceReference[];
   evidenceIds: readonly string[];
@@ -252,9 +253,9 @@ export const AGENT_LEDGER_ERROR_DEFINITIONS = {
     code: "AGENT_LEDGER_DRAFT_NOT_EDITABLE",
     appCode: "CONFLICT",
     message:
-      "Only save_message_draft operations on awaiting or deferred entries can be edited.",
+      "Only message drafts and event goals on awaiting or deferred entries can be edited.",
     recovery:
-      "Hide the draft editor once an entry has started executing; drafts stay drafts and are never auto-sent.",
+      "Hide editable fields once an entry has started executing; message drafts stay drafts and are never auto-sent.",
   },
   AGENT_LEDGER_MOCK_FAILED: {
     code: "AGENT_LEDGER_MOCK_FAILED",

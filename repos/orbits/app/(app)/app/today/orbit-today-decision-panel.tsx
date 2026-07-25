@@ -14,7 +14,9 @@
  */
 import { Icon } from "../orbit-reference-primitives";
 import type { AgentLedgerEntry } from "../../../../features/agent/ledger/contract";
+import { readPreEventBriefFromLedgerEntry } from "../../../../features/agent/ledger/pre-event-brief";
 import { OrbitTodayDecisionForm } from "./orbit-today-decision-form";
+import { OrbitTodayPreEventBrief } from "./orbit-today-pre-event-brief";
 
 const EVIDENCE_ICONS: Record<string, string> = {
   calendar_signal: "calendar",
@@ -30,9 +32,13 @@ export function OrbitTodayDecisionPanelBody({
 }) {
   const editable =
     entry.status === "awaiting_confirmation" || entry.status === "deferred";
+  const preEventBrief = readPreEventBriefFromLedgerEntry(entry);
 
   return (
     <div data-orbit-today-panel={entry.entryId} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {preEventBrief ? (
+        <OrbitTodayPreEventBrief brief={preEventBrief} />
+      ) : null}
       <section>
         <h3 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 6px" }}>
           为什么现在出现?

@@ -49,6 +49,8 @@ export async function PUT(request: Request): Promise<Response> {
           ? body.preEventBriefPushEnabled
           : undefined,
       quietHours,
+      timeZone:
+        typeof body.timeZone === "string" ? body.timeZone.trim() : undefined,
     });
     return NextResponse.json({ data: preferences });
   } catch (error) {

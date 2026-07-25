@@ -7,6 +7,7 @@ interface Preferences {
   postEventReminderPushEnabled: boolean;
   preEventBriefPushEnabled: boolean;
   quietHours: { start: string; end: string };
+  timeZone: string;
 }
 
 interface IntegrationStatus {
@@ -20,6 +21,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   postEventReminderPushEnabled: true,
   preEventBriefPushEnabled: true,
   quietHours: { start: "22:00", end: "08:00" },
+  timeZone: "Asia/Tokyo",
 };
 
 /**
@@ -183,15 +185,16 @@ export function OrbitAllActionsSettings() {
         <input
           aria-label="安静时段开始"
           className="field"
-          onChange={(event) =>
+          onInput={(event) => {
+            const start = event.currentTarget.value;
             setPreferences((current) => ({
               ...current,
               quietHours: {
                 ...current.quietHours,
-                start: event.target.value,
+                start,
               },
-            }))
-          }
+            }));
+          }}
           style={{ minHeight: 36, width: 105 }}
           type="time"
           value={preferences.quietHours.start}
@@ -200,20 +203,48 @@ export function OrbitAllActionsSettings() {
         <input
           aria-label="安静时段结束"
           className="field"
-          onChange={(event) =>
+          onInput={(event) => {
+            const end = event.currentTarget.value;
             setPreferences((current) => ({
               ...current,
               quietHours: {
                 ...current.quietHours,
-                end: event.target.value,
+                end,
               },
-            }))
-          }
+            }));
+          }}
           style={{ minHeight: 36, width: 105 }}
           type="time"
           value={preferences.quietHours.end}
         />
       </div>
+      <label
+        style={{
+          alignItems: "center",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          gap: 12,
+          padding: "14px 0",
+        }}
+      >
+        <span style={{ color: "var(--text)", flex: 1, fontSize: 14 }}>
+          通知时区
+        </span>
+        <input
+          aria-label="通知时区"
+          className="field"
+          onChange={(event) => {
+            const timeZone = event.currentTarget.value;
+            setPreferences((current) => ({
+              ...current,
+              timeZone,
+            }));
+          }}
+          placeholder="Asia/Tokyo"
+          style={{ minHeight: 36, width: 180 }}
+          value={preferences.timeZone}
+        />
+      </label>
       <div style={{ alignItems: "center", display: "flex", gap: 8, justifyContent: "flex-end" }}>
         {message ? (
           <span aria-live="polite" style={{ color: "var(--text-3)", fontSize: 13 }}>

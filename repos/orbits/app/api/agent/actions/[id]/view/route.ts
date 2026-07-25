@@ -30,6 +30,7 @@ export async function POST(
       (operation) => operation.operationType === "generate_meeting_brief",
     )
   ) {
+    await runtime.markActionViewed(action.actionId);
     await runtime.recordAnalytics("brief_viewed", {
       runId: action.runId,
       actionId: action.actionId,

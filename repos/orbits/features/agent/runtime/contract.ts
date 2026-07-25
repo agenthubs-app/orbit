@@ -179,6 +179,7 @@ export interface AgentActionRecord {
   canceledAt?: string;
   deferredAt?: string;
   undoneAt?: string;
+  viewedAt?: string;
   approvedBy?: string;
   immutablePayloadHash: string;
 }

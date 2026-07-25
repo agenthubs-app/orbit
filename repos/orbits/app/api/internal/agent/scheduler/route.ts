@@ -36,7 +36,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const preferences = await createAgentPreferencesService().get();
     const scheduler = createAgentWorkflowScheduler({
-      runtime: createOrbitAgentRuntimeService("live"),
+      runtime: createOrbitAgentRuntimeService(),
       push: createConfiguredExpoPushAdapter(),
       preferences,
     });
