@@ -7,6 +7,7 @@ type AgentActionStatusLanguage = "en" | "zh";
 export interface AgentChatLinkedAction {
   actionId: string;
   operationIds: readonly string[];
+  riskLevel: string;
   status: string;
   title: string;
 }
@@ -67,6 +68,7 @@ export function parseAgentChatRunActions(
       {
         actionId,
         operationIds,
+        riskLevel: readString(candidate.riskLevel) ?? "unknown",
         status: readString(candidate.status) ?? "unknown",
         title: readString(candidate.title) ?? actionId,
       },
@@ -96,6 +98,7 @@ function parseTransitionedAction(value: unknown): AgentChatLinkedAction | null {
     operationIds: operations.flatMap((operation) =>
       isRecord(operation) ? readStringArray([operation.operationId]) : [],
     ),
+    riskLevel: readString(value.data.entry.riskLevel) ?? "unknown",
     status: readString(value.data.entry.status) ?? "unknown",
     title: readString(value.data.entry.title) ?? actionId,
   };
@@ -120,6 +123,19 @@ export function agentChatActionStatusLabel(
   };
 
   return (labels[status] ?? labels.unknown)[language];
+}
+
+export function agentChatActionCanConfirm(
+  action: AgentChatLinkedAction,
+): boolean {
+  const editable =
+    action.status === "awaiting_confirmation" || action.status === "deferred";
+
+  return (
+    editable &&
+    action.operationIds.length > 0 &&
+    action.riskLevel !== "external"
+  );
 }
 
 function transitionError(value: unknown, language: AgentActionStatusLanguage) {
@@ -241,6 +257,7 @@ export function AgentActionStatusCard({
       : stableActionIds.map((actionId) => ({
           actionId,
           operationIds: [],
+          riskLevel: "unknown",
           status: "unknown",
           title: actionId,
         }));
@@ -272,6 +289,7 @@ export function AgentActionStatusCard({
         const editable =
           action.status === "awaiting_confirmation" ||
           action.status === "deferred";
+        const confirmableInChat = agentChatActionCanConfirm(action);
         const pending = pendingActionId === action.actionId;
 
         return (
@@ -319,7 +337,7 @@ export function AgentActionStatusCard({
               >
                 {language === "zh" ? "全部操作" : "All actions"}
               </button>
-              {editable && action.operationIds.length > 0 ? (
+              {confirmableInChat ? (
                 <button
                   className="btn btn-primary"
                   disabled={pending}
@@ -328,6 +346,13 @@ export function AgentActionStatusCard({
                 >
                   {language === "zh" ? "确认执行" : "Confirm"}
                 </button>
+              ) : null}
+              {editable && action.riskLevel === "external" ? (
+                <span style={{ color: "var(--text-3)", fontSize: 11 }}>
+                  {language === "zh"
+                    ? "外部操作请在 Today 查看详情后确认"
+                    : "Review external action details in Today before confirming"}
+                </span>
               ) : null}
               {editable ? (
                 <>

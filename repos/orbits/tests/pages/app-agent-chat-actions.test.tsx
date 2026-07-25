@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   AgentActionStatusCard,
+  agentChatActionCanConfirm,
   agentChatActionStatusLabel,
   parseAgentChatRunActions,
 } from "../../app/(app)/app/agent/agent-action-status-card";
@@ -59,12 +60,14 @@ test("chat narrows run actions to the action ids linked by the conversation API"
               { operationId: "operation:note" },
               { operationId: "operation:draft" },
             ],
+            riskLevel: "write",
             status: "awaiting_confirmation",
             title: "Review the follow-up",
           },
           {
             actionId: "action:other-conversation",
             operations: [{ operationId: "operation:other" }],
+            riskLevel: "external",
             status: "completed",
             title: "Do not expose this action",
           },
@@ -78,6 +81,7 @@ test("chat narrows run actions to the action ids linked by the conversation API"
     {
       actionId: "action:linked",
       operationIds: ["operation:note", "operation:draft"],
+      riskLevel: "write",
       status: "awaiting_confirmation",
       title: "Review the follow-up",
     },
@@ -88,6 +92,29 @@ test("chat action state labels are product-readable in Chinese and English", () 
   assert.equal(agentChatActionStatusLabel("awaiting_confirmation", "zh"), "等待确认");
   assert.equal(agentChatActionStatusLabel("completed", "en"), "Completed");
   assert.equal(agentChatActionStatusLabel("new-server-state", "zh"), "正在同步");
+});
+
+test("chat never offers one-click confirmation for external actions", () => {
+  assert.equal(
+    agentChatActionCanConfirm({
+      actionId: "action:external-calendar",
+      operationIds: ["operation:calendar-write"],
+      riskLevel: "external",
+      status: "awaiting_confirmation",
+      title: "Write to external calendar",
+    }),
+    false,
+  );
+  assert.equal(
+    agentChatActionCanConfirm({
+      actionId: "action:internal-task",
+      operationIds: ["operation:create-task"],
+      riskLevel: "write",
+      status: "awaiting_confirmation",
+      title: "Create task",
+    }),
+    true,
+  );
 });
 
 test("chat action card exposes the shared action id and canonical Today and ledger paths", () => {
