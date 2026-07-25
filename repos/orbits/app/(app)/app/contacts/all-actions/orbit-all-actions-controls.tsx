@@ -74,7 +74,7 @@ export function OrbitAllActionsControls({
       ) : null}
       {canRetry ? (
         <button
-          className="btn"
+          className="btn btn-quiet"
           disabled={pending}
           onClick={() => void applyTransition("retry")}
           type="button"
@@ -84,7 +84,7 @@ export function OrbitAllActionsControls({
       ) : null}
       {canUndo ? (
         <button
-          className="btn"
+          className="btn btn-quiet"
           disabled={pending}
           onClick={() => void applyTransition("undo")}
           type="button"

@@ -122,7 +122,7 @@ export function OrbitTodayDecisionForm({
           确认执行
         </button>
         <button
-          className="btn"
+          className="btn btn-quiet"
           disabled={pending}
           onClick={() => void applyTransition("defer")}
           type="button"
