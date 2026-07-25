@@ -27,6 +27,7 @@ export interface PartyCheckInView {
 export interface PartyPriorityPersonView {
   groupLabel: string;
   id: string;
+  imageUrl?: string;
   matchLabel: string;
   name: string;
   nextAction: string;
@@ -175,6 +176,7 @@ function priorityPeople(
       return {
         groupLabel: `第 ${index + 1} 组`,
         id: attendee.id,
+        ...(attendee.imageUrl ? { imageUrl: attendee.imageUrl } : {}),
         matchLabel: matched ? "现场匹配" : attendee.knownLabel,
         name: attendee.name,
         nextAction: attendee.suggestedNextAction,

@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   eventRegistrationCancelPath,
+  eventRegistrationInterviewPath,
+  eventRegistrationPersonaPath,
   eventRegistrationPath
 } from "../src/api/endpoints";
 import {
+  buildEventRegistrationAdaptiveBody,
   buildEventRegistrationAnswers,
+  eventRegistrationAdaptiveStepToView,
+  eventRegistrationPersonaToView,
   eventRegistrationToView
 } from "../src/view-models/event-registration";
 
@@ -17,6 +22,14 @@ test("event registration endpoint helpers URL-encode ids", () => {
   assert.equal(
     eventRegistrationCancelPath("event/with space"),
     "/api/events/event%2Fwith%20space/registration/cancel"
+  );
+  assert.equal(
+    eventRegistrationInterviewPath("event/with space"),
+    "/api/events/event%2Fwith%20space/registration/interview"
+  );
+  assert.equal(
+    eventRegistrationPersonaPath("event/with space"),
+    "/api/events/event%2Fwith%20space/registration/persona"
   );
 });
 
@@ -187,4 +200,123 @@ test("buildEventRegistrationAnswers trims answers and keeps known fields", () =>
       targetAttendees: "日本市场客户"
     }
   );
+});
+
+test("buildEventRegistrationAdaptiveBody keeps answered registration fields as transcript", () => {
+  assert.deepEqual(
+    buildEventRegistrationAdaptiveBody(
+      [
+        {
+          answer: "",
+          field: "targetAttendees",
+          id: "target_attendees",
+          options: [],
+          prompt: "想认识谁？"
+        },
+        {
+          answer: "",
+          field: "valueOffered",
+          id: "value_offered",
+          options: [],
+          prompt: "能提供什么？"
+        }
+      ],
+      {
+        ignored: "should not ship",
+        targetAttendees: "  日本企业客户  ",
+        valueOffered: ""
+      },
+      [
+        {
+          answer: "我能介绍企业 AI 落地案例",
+          field: "valueOffered",
+          prompt: "你能给别人带来什么？"
+        }
+      ]
+    ),
+    {
+      language: "zh",
+      transcript: [
+        {
+          answer: "日本企业客户",
+          field: "targetAttendees",
+          prompt: "想认识谁？"
+        },
+        {
+          answer: "我能介绍企业 AI 落地案例",
+          field: "valueOffered",
+          prompt: "你能给别人带来什么？"
+        }
+      ]
+    }
+  );
+});
+
+test("eventRegistrationAdaptiveStepToView maps the web interview step", () => {
+  assert.deepEqual(
+    eventRegistrationAdaptiveStepToView({
+      done: false,
+      question: {
+        acknowledgment: "明白，你更关心日本企业买方。",
+        field: "desiredOutcome",
+        options: ["约到会后电话", "找到试点客户"],
+        prompt: "这场活动结束时，你希望拿到什么具体结果？",
+        provenance: {
+          fallbackReason: null,
+          generationMethod: "orbit-agent-model-adaptive",
+          model: "gemini",
+          provider: "google"
+        }
+      }
+    }),
+    {
+      done: false,
+      question: {
+        acknowledgment: "明白，你更关心日本企业买方。",
+        field: "desiredOutcome",
+        options: ["约到会后电话", "找到试点客户"],
+        prompt: "这场活动结束时，你希望拿到什么具体结果？"
+      },
+      statusText: "继续补充画像"
+    }
+  );
+});
+
+test("eventRegistrationPersonaToView maps a generated attendee persona", () => {
+  const view = eventRegistrationPersonaToView({
+    persona: {
+      energyStyle: "小圈子深聊型",
+      industryTags: ["AI", "企业服务"],
+      offering: "可以分享企业 AI 落地和日本市场连接。",
+      openers: [
+        "你现在最想把 AI 用在哪个业务环节？",
+        "这次活动后，你希望继续聊哪类合作？"
+      ],
+      provenance: {
+        fallbackReason: null,
+        generationMethod: "orbit-agent-model-adaptive",
+        model: "gemini",
+        provider: "google"
+      },
+      seeking: "想认识正在做 AI 试点的日本企业和本地合作伙伴。",
+      tagline: "帮企业把 AI 接进真实业务的人",
+      tags: ["企业 AI", "日本市场", "B2B 合作"]
+    }
+  });
+
+  assert.deepEqual(view, {
+    energyStyle: "小圈子深聊型",
+    industryTags: ["AI", "企业服务"],
+    nextAction: "检查这段介绍。确认报名后，它只服务这场活动的匹配。",
+    offering: "可以分享企业 AI 落地和日本市场连接。",
+    openers: [
+      "你现在最想把 AI 用在哪个业务环节？",
+      "这次活动后，你希望继续聊哪类合作？"
+    ],
+    safetyText: "不会写入个人主页，也不会自动发消息。",
+    seeking: "想认识正在做 AI 试点的日本企业和本地合作伙伴。",
+    tagline: "帮企业把 AI 接进真实业务的人",
+    tags: ["企业 AI", "日本市场", "B2B 合作"],
+    title: "活动画像"
+  });
 });

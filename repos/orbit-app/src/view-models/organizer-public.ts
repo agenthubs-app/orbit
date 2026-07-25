@@ -1,10 +1,12 @@
 export type OrganizerPublicEventState = "active" | "ended" | "upcoming";
 
 export interface OrganizerPublicEventView {
+  coverPath: string;
   detailLine: string;
   href: `/events/${string}`;
   id: string;
   location: string;
+  participantCountLabel: string;
   startsAt: string;
   state: OrganizerPublicEventState;
   title: string;
@@ -26,6 +28,7 @@ export interface OrganizerPublicView {
     active: string;
     ended: string;
     events: string;
+    participants: string;
     upcoming: string;
   };
   summary: string;
@@ -45,6 +48,14 @@ function stringField(record: UnknownRecord, fieldName: string, fallback = "") {
 function nestedRecord(record: UnknownRecord, fieldName: string): UnknownRecord {
   const value = record[fieldName];
   return isRecord(value) ? value : {};
+}
+
+function numberField(
+  record: UnknownRecord,
+  fieldName: string
+): number | null {
+  const value = record[fieldName];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function listFromPayload(data: unknown): UnknownRecord[] {
@@ -212,6 +223,72 @@ function eventLocation(event: UnknownRecord): string {
   );
 }
 
+const eventCoverById: Record<string, string> = {
+  event_01: "/orbit-covers/restaurant.jpg",
+  event_02: "/orbit-covers/events/ai-workflow-poc-roundtable.jpg",
+  event_03: "/orbit-covers/events/cross-border-ecommerce-meetup.jpg",
+  event_04: "/orbit-covers/events/investor-founder-salon.jpg",
+  event_05: "/orbit-covers/events/chinese-business-community-salon.jpg",
+  event_06: "/orbit-covers/chip.jpg",
+  event_07: "/orbit-covers/finance.jpg",
+  event_08: "/orbit-covers/ai.jpg",
+  event_09: "/orbit-covers/fashion.jpg",
+  event_10: "/orbit-covers/fashion.jpg",
+  event_signup_01: "/orbit-covers/events/kansai-business-connect.jpg",
+  event_signup_02: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
+  event_signup_03: "/orbit-covers/events/investor-founder-salon.jpg"
+};
+
+function eventCoverPath(event: UnknownRecord, title: string): string {
+  const explicitCover =
+    stringField(event, "coverPath") ||
+    stringField(event, "coverUrl") ||
+    stringField(event, "imageUrl") ||
+    stringField(event, "logoUrl") ||
+    stringField(event, "detailLogoUrl");
+
+  if (explicitCover) {
+    return explicitCover;
+  }
+
+  const id = stringField(event, "id");
+
+  if (eventCoverById[id]) {
+    return eventCoverById[id];
+  }
+
+  const normalized = title.toLowerCase();
+
+  if (normalized.includes("关西") || normalized.includes("kansai")) {
+    return "/orbit-covers/events/kansai-business-connect.jpg";
+  }
+
+  if (normalized.includes("ai")) {
+    return "/orbit-covers/events/tokyo-ai-partner-meetup.jpg";
+  }
+
+  if (normalized.includes("投资") || normalized.includes("创始")) {
+    return "/orbit-covers/events/investor-founder-salon.jpg";
+  }
+
+  if (normalized.includes("电商") || normalized.includes("跨境")) {
+    return "/orbit-covers/events/cross-border-ecommerce-meetup.jpg";
+  }
+
+  return "/orbit-covers/meeting.jpg";
+}
+
+function participantCount(event: UnknownRecord): number {
+  const statsRecord = nestedRecord(event, "stats");
+  const attendees = statsRecord.attendees;
+
+  return (
+    numberField(event, "participantCount") ??
+    numberField(statsRecord, "count") ??
+    (Array.isArray(attendees) ? attendees.length : 0)
+  );
+}
+
 function eventToView(
   event: UnknownRecord,
   now: number
@@ -219,23 +296,35 @@ function eventToView(
   const id = stringField(event, "id", "event");
   const startsAt = formatDateTime(stringField(event, "startsAt"));
   const location = eventLocation(event);
+  const title = eventTitle(event);
+  const participants = participantCount(event);
 
   return {
+    coverPath: eventCoverPath(event, title),
     detailLine: [startsAt, location].filter(Boolean).join(" · "),
     href: `/events/${encodeURIComponent(id)}`,
     id,
     location,
+    participantCountLabel:
+      participants > 0 ? `${participants} 人已报名` : "报名人数待确认",
     startsAt,
     state: eventState(event, now),
-    title: eventTitle(event)
+    title
   };
 }
 
 function stats(events: OrganizerPublicEventView[]): OrganizerPublicView["stats"] {
+  const participants = events
+    .map((event) => Number.parseInt(event.participantCountLabel, 10))
+    .filter((value) => Number.isFinite(value))
+    .reduce((total, value) => total + value, 0);
+
   return {
     active: String(events.filter((event) => event.state === "active").length),
     ended: String(events.filter((event) => event.state === "ended").length),
     events: String(events.length),
+    participants:
+      participants > 0 || events.length === 0 ? String(participants) : "待确认",
     upcoming: String(events.filter((event) => event.state === "upcoming").length)
   };
 }
@@ -271,6 +360,7 @@ export function organizerPublicToView({
         active: "0",
         ended: "0",
         events: "0",
+        participants: "0",
         upcoming: "0"
       },
       summary: "这里只展示已公开的活动，不会读取报名名单或后台数据。"

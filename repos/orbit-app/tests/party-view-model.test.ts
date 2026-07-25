@@ -10,6 +10,7 @@ test("partyModeToView builds a Chinese on-site party view from event context", (
         {
           attendeeId: "participant_002",
           attendeeTags: [{ label: "跨境渠道" }],
+          avatarAssetUrl: "/orbit-demo-assets/avatars/participant-002.svg",
           checkInStatus: "registered",
           displayName: "王琳",
           eligibleRecommendation: {
@@ -79,6 +80,10 @@ test("partyModeToView builds a Chinese on-site party view from event context", (
   assert.equal(view.metrics[2]?.label, "现场匹配");
   assert.equal(view.metrics[2]?.value, "1");
   assert.equal(view.priorityPeople[0]?.name, "王琳");
+  assert.equal(
+    view.priorityPeople[0]?.imageUrl,
+    "/orbit-demo-assets/avatars/participant-002.svg"
+  );
   assert.equal(view.priorityPeople[0]?.matchLabel, "现场匹配");
   assert.equal(
     view.priorityPeople[0]?.reason,

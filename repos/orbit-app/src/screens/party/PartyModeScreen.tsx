@@ -1,6 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { RefreshControl, StyleSheet, Text, View, Pressable } from "react-native";
+import { useState } from "react";
+import {
+  Image,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View
+} from "react-native";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
   eventAttendeesPath,
   eventDetailPath,
@@ -41,6 +50,15 @@ function isUsable<TData>(
 
 function partyHref(path: "/party" | "/party/checkin" | "/party/graph", eventId: string): Href {
   return `${path}?eventId=${encodeURIComponent(eventId)}` as Href;
+}
+
+function assetUrl(baseUrl: string, path: string): string {
+  if (/^https?:\/\//iu.test(path)) {
+    return path;
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
 }
 
 function screenCopy(variant: PartyModeVariant): { eyebrow: string; title: string } {
@@ -153,6 +171,7 @@ export function PartyModeScreen({
 
 function PartyOverview({ party }: { party: PartyModeView }) {
   const router = useRouter();
+  const { baseUrl } = useOrbitApiBaseUrl();
 
   return (
     <>
@@ -193,7 +212,7 @@ function PartyOverview({ party }: { party: PartyModeView }) {
         <EmptyState message="这场活动暂时没有可见名单。" title="还没有参会者" />
       ) : (
         party.priorityPeople.map((person) => (
-          <PriorityPersonCard key={person.id} person={person} />
+          <PriorityPersonCard baseUrl={baseUrl} key={person.id} person={person} />
         ))
       )}
       {party.matches.length > 0 ? (
@@ -215,6 +234,43 @@ function PartyOverview({ party }: { party: PartyModeView }) {
 
 function PartyCheckIn({ party }: { party: PartyModeView }) {
   const router = useRouter();
+  const [checkedIn, setCheckedIn] = useState(false);
+
+  if (checkedIn) {
+    return (
+      <>
+        <DataCard detail="已签到" title="签到完毕">
+          <View style={styles.checkInCompleteCard}>
+            <View style={styles.checkInCompleteIcon}>
+              <Ionicons color={colors.live} name="checkmark-outline" size={30} />
+            </View>
+            <View style={styles.checkInCompleteText}>
+              <Text style={styles.checkInCompleteTitle}>{party.eventTitle}</Text>
+              <Text style={styles.checkInCompleteDetail}>
+                现场通行码 {party.checkIn.accessCode} 已确认，可以继续看名单和关系图。
+              </Text>
+            </View>
+          </View>
+          <View style={styles.actionGrid}>
+            <ActionButton
+              icon="git-network-outline"
+              label="看关系图"
+              onPress={() => router.push(partyHref("/party/graph", party.eventId))}
+              primary
+            />
+            <ActionButton
+              icon="arrow-back-outline"
+              label="回现场"
+              onPress={() => router.push(partyHref("/party", party.eventId))}
+            />
+          </View>
+        </DataCard>
+        <DataCard detail={party.eventDetail} title="现场流程">
+          <AgendaList agenda={party.agenda} />
+        </DataCard>
+      </>
+    );
+  }
 
   return (
     <>
@@ -229,12 +285,17 @@ function PartyCheckIn({ party }: { party: PartyModeView }) {
         <Text style={styles.bodyText}>{party.checkIn.instruction}</Text>
         <View style={styles.actionGrid}>
           <ActionButton
+            icon="checkmark-circle-outline"
+            label="一键签到"
+            onPress={() => setCheckedIn(true)}
+            primary
+          />
+          <ActionButton
             icon="people-outline"
             label="看名单"
             onPress={() =>
               router.push(`/events/${encodeURIComponent(party.eventId)}/attendees` as Href)
             }
-            primary
           />
           <ActionButton
             icon="arrow-back-outline"
@@ -282,6 +343,7 @@ function PartyGraph({ party }: { party: PartyModeView }) {
           />
         </View>
       </DataCard>
+      <PartyConnectionMap party={party} />
       {party.graphGroups.length === 0 ? (
         <EmptyState message="参会者标签还没准备好。" title="暂无关系分组" />
       ) : (
@@ -290,6 +352,62 @@ function PartyGraph({ party }: { party: PartyModeView }) {
         ))
       )}
     </>
+  );
+}
+
+function PartyConnectionMap({ party }: { party: PartyModeView }) {
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const people = party.priorityPeople.slice(0, 5);
+
+  if (people.length === 0) {
+    return null;
+  }
+
+  return (
+    <DataCard
+      detail={`${people.length} 个优先节点 · ${party.matches.length} 条现场匹配`}
+      title="现场连接地图"
+    >
+      <View style={styles.connectionMapStage}>
+        <View style={styles.connectionMapCenter}>
+          <Ionicons color={colors.onAccent} name="person-outline" size={18} />
+          <Text style={styles.connectionMapCenterText}>我</Text>
+          <Text style={styles.connectionMapCenterMeta}>{party.checkIn.accessCode}</Text>
+        </View>
+        <View style={styles.connectionMapNodes}>
+          {party.priorityPeople.slice(0, 5).map((person, index) => (
+            <View
+              key={person.id}
+              style={[
+                styles.connectionNode,
+                index === 0 ? styles.connectionNodePrimary : null
+              ]}
+            >
+              <View style={styles.connectionNodeMarker}>
+                <PartyPersonAvatar
+                  baseUrl={baseUrl}
+                  imageUrl={person.imageUrl}
+                  name={person.name}
+                  style={styles.connectionNodeAvatar}
+                  textStyle={styles.connectionNodeAvatarText}
+                />
+              </View>
+              <View style={styles.connectionNodeText}>
+                <Text numberOfLines={1} style={styles.connectionNodeName}>
+                  {person.name}
+                </Text>
+                <Text numberOfLines={1} style={styles.connectionNodeMeta}>
+                  {person.matchLabel} · {person.groupLabel}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+      <Text style={styles.nextText}>
+        先从 1 号节点开始聊，确认对方需求、可交换资源和下一步。
+      </Text>
+    </DataCard>
   );
 }
 
@@ -306,19 +424,36 @@ function TicketCard({ party }: { party: PartyModeView }) {
   );
 }
 
-function PriorityPersonCard({ person }: { person: PartyPriorityPersonView }) {
+function PriorityPersonCard({
+  baseUrl,
+  person
+}: {
+  baseUrl: string;
+  person: PartyPriorityPersonView;
+}) {
   return (
     <DataCard detail={person.organizationRole} title={person.name}>
-      <View style={styles.pillRow}>
-        <Text style={styles.matchPill}>{person.matchLabel}</Text>
-        <Text style={styles.statusPill}>{person.statusLabel}</Text>
-        <Text style={styles.neutralPill}>{person.groupLabel}</Text>
-        <Text style={styles.neutralPill}>{person.seatLabel}</Text>
-        {person.tags.map((tag) => (
-          <Text key={tag} style={styles.tagPill}>
-            {tag}
-          </Text>
-        ))}
+      <View style={styles.priorityPersonHeader}>
+        <PartyPersonAvatar
+          baseUrl={baseUrl}
+          imageUrl={person.imageUrl}
+          name={person.name}
+          style={styles.partyPersonAvatar}
+          textStyle={styles.partyPersonAvatarText}
+        />
+        <View style={styles.priorityPersonMeta}>
+          <View style={styles.pillRow}>
+            <Text style={styles.matchPill}>{person.matchLabel}</Text>
+            <Text style={styles.statusPill}>{person.statusLabel}</Text>
+            <Text style={styles.neutralPill}>{person.groupLabel}</Text>
+            <Text style={styles.neutralPill}>{person.seatLabel}</Text>
+            {person.tags.map((tag) => (
+              <Text key={tag} style={styles.tagPill}>
+                {tag}
+              </Text>
+            ))}
+          </View>
+        </View>
       </View>
       <Text style={styles.bodyText}>{person.reason}</Text>
       {person.relationshipContext ? (
@@ -330,14 +465,20 @@ function PriorityPersonCard({ person }: { person: PartyPriorityPersonView }) {
 }
 
 function GraphGroupCard({ group }: { group: PartyGraphGroupView }) {
+  const { baseUrl } = useOrbitApiBaseUrl();
+
   return (
     <DataCard detail={group.detail} title={group.title}>
       <View style={styles.stack}>
         {group.people.map((person) => (
           <View key={person.id} style={styles.graphPersonRow}>
-            <View style={styles.graphInitial}>
-              <Text style={styles.graphInitialText}>{person.name.slice(0, 1)}</Text>
-            </View>
+            <PartyPersonAvatar
+              baseUrl={baseUrl}
+              imageUrl={person.imageUrl}
+              name={person.name}
+              style={styles.graphPersonAvatar}
+              textStyle={styles.graphPersonAvatarText}
+            />
             <View style={styles.graphPersonText}>
               <Text style={styles.graphPersonName}>{person.name}</Text>
               <Text style={styles.mutedText}>{person.reason}</Text>
@@ -346,6 +487,34 @@ function GraphGroupCard({ group }: { group: PartyGraphGroupView }) {
         ))}
       </View>
     </DataCard>
+  );
+}
+
+function PartyPersonAvatar({
+  baseUrl,
+  imageUrl,
+  name,
+  style,
+  textStyle
+}: {
+  baseUrl: string;
+  imageUrl: string | undefined;
+  name: string;
+  style: object;
+  textStyle: object;
+}) {
+  return (
+    <View style={style}>
+      {imageUrl ? (
+        <Image
+          resizeMode="cover"
+          source={{ uri: assetUrl(baseUrl, imageUrl) }}
+          style={styles.partyPersonAvatarImage}
+        />
+      ) : (
+        <Text style={textStyle}>{name.slice(0, 1) || "?"}</Text>
+      )}
+    </View>
   );
 }
 
@@ -446,6 +615,140 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   },
+  checkInCompleteCard: {
+    alignItems: "center",
+    backgroundColor: colors.liveSoft,
+    borderColor: colors.live,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.md
+  },
+  checkInCompleteDetail: {
+    color: colors.text2,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
+  checkInCompleteIcon: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    height: 54,
+    justifyContent: "center",
+    width: 54
+  },
+  checkInCompleteText: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  checkInCompleteTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 22
+  },
+  connectionMapCenter: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    backgroundColor: colors.accent,
+    borderRadius: radius.lg,
+    gap: spacing.xs,
+    justifyContent: "center",
+    minHeight: 98,
+    padding: spacing.md,
+    width: 92
+  },
+  connectionMapCenterMeta: {
+    color: colors.accentSoft,
+    fontFamily: "Courier",
+    fontSize: typography.caption,
+    fontWeight: "800",
+    letterSpacing: 0,
+    lineHeight: 18
+  },
+  connectionMapCenterText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 20
+  },
+  connectionMapNodes: {
+    flex: 1,
+    gap: spacing.sm
+  },
+  connectionMapStage: {
+    alignItems: "stretch",
+    backgroundColor: colors.bgSunken,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 170,
+    padding: spacing.md
+  },
+  connectionNode: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 42,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs
+  },
+  connectionNodeMarker: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderRadius: radius.pill,
+    height: 26,
+    justifyContent: "center",
+    width: 26
+  },
+  connectionNodeMarkerText: {
+    color: colors.text2,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 16
+  },
+  connectionNodeAvatar: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderRadius: radius.pill,
+    height: 26,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 26
+  },
+  connectionNodeAvatarText: {
+    color: colors.text2,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 16
+  },
+  connectionNodeMeta: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 18
+  },
+  connectionNodeName: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 20
+  },
+  connectionNodePrimary: {
+    backgroundColor: colors.liveSoft,
+    borderColor: colors.live
+  },
+  connectionNodeText: {
+    flex: 1,
+    minWidth: 0
+  },
   graphInitial: {
     alignItems: "center",
     backgroundColor: colors.accentSofter,
@@ -464,6 +767,20 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "700",
     lineHeight: 20
+  },
+  graphPersonAvatar: {
+    alignItems: "center",
+    backgroundColor: colors.accentSofter,
+    borderRadius: radius.pill,
+    height: 34,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 34
+  },
+  graphPersonAvatarText: {
+    color: colors.accent,
+    fontSize: typography.small,
+    fontWeight: "800"
   },
   graphPersonRow: {
     alignItems: "flex-start",
@@ -529,9 +846,38 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.xs
   },
+  partyPersonAvatar: {
+    alignItems: "center",
+    backgroundColor: colors.accentSofter,
+    borderRadius: radius.pill,
+    height: 44,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 44
+  },
+  partyPersonAvatarImage: {
+    borderRadius: radius.pill,
+    height: "100%",
+    width: "100%"
+  },
+  partyPersonAvatarText: {
+    color: colors.accent,
+    fontSize: 18,
+    fontWeight: "800",
+    lineHeight: 22
+  },
   pressed: {
     opacity: 0.78,
     transform: [{ translateY: 0.5 }]
+  },
+  priorityPersonHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  priorityPersonMeta: {
+    flex: 1,
+    minWidth: 0
   },
   primaryButton: {
     backgroundColor: colors.accent
