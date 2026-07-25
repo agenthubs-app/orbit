@@ -1,4 +1,5 @@
 import { eventsToSummaries } from "./events";
+import type { FollowupTaskContract } from "../api/contract/followups";
 
 export interface ScheduleItem {
   contactName: string;
@@ -68,6 +69,15 @@ function stringField(
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
+// 字段名受跨端契约约束：服务端改名，这里立刻编译报错。
+function taskField(
+  record: Record<string, unknown>,
+  fieldName: keyof FollowupTaskContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
+}
+
 function numberField(
   record: Record<string, unknown>,
   fieldName: string
@@ -99,7 +109,7 @@ function nestedStringField(
 }
 
 function dueLabel(task: Record<string, unknown>): string {
-  const dueAt = stringField(task, "dueAt");
+  const dueAt = taskField(task, "dueAt");
   if (dueAt) {
     return dueAt;
   }
@@ -199,7 +209,7 @@ function shouldNormalizeTaskToToday(
   now: Date
 ): boolean {
   const dueInDays = numberField(task, "dueInDays");
-  const priority = stringField(task, "priority").trim().toLowerCase();
+  const priority = taskField(task, "priority").trim().toLowerCase();
 
   if (dueInDays !== 0 && priority !== "today") {
     return false;
@@ -210,7 +220,7 @@ function shouldNormalizeTaskToToday(
 }
 
 function priorityLabel(task: Record<string, unknown>): string {
-  const priority = stringField(task, "priority", "follow-up")
+  const priority = taskField(task, "priority", "follow-up")
     .replace(/[_-]+/gu, " ")
     .trim()
     .toLowerCase();
@@ -228,7 +238,7 @@ function priorityLabel(task: Record<string, unknown>): string {
 }
 
 function contactNameFor(task: Record<string, unknown>): string {
-  return stringField(task, "contactName", "联系人");
+  return taskField(task, "contactName", "联系人");
 }
 
 function taskTitle(task: Record<string, unknown>): string {
@@ -236,7 +246,7 @@ function taskTitle(task: Record<string, unknown>): string {
 }
 
 function recommendedAction(task: Record<string, unknown>): string {
-  const value = stringField(task, "recommendedAction");
+  const value = taskField(task, "recommendedAction");
 
   if (!value || /\bcontact[_:-]?\d+|review follow-up\b/i.test(value)) {
     return `跟进 ${contactNameFor(task)} 的关系进展。`;
@@ -246,7 +256,7 @@ function recommendedAction(task: Record<string, unknown>): string {
 }
 
 function taskToScheduleItem(task: Record<string, unknown>): ScheduleItem {
-  const rawDueAt = stringField(task, "dueAt");
+  const rawDueAt = taskField(task, "dueAt");
   const formatted = rawDueAt ? dateParts(rawDueAt) : null;
   const fallbackDue = dueLabel(task);
   const dueAt = formatted
@@ -257,9 +267,9 @@ function taskToScheduleItem(task: Record<string, unknown>): ScheduleItem {
     contactName: contactNameFor(task),
     dayLabel: formatted?.dayLabel ?? fallbackDue,
     dueAt,
-    id: stringField(task, "taskId", stringField(task, "id", "task")),
+    id: taskField(task, "taskId", stringField(task, "id", "task")),
     monthLabel: formatted?.monthLabel ?? "",
-    organization: stringField(task, "organization"),
+    organization: taskField(task, "organization"),
     priority: priorityLabel(task),
     recommendedAction: recommendedAction(task),
     timeLabel: formatted?.timeLabel ?? "",
@@ -342,7 +352,7 @@ function followupTimelineItems(
     .filter(isRecord)
     .map((task) => {
       const item = taskToScheduleItem(task);
-      const rawDueAt = stringField(task, "dueAt");
+      const rawDueAt = taskField(task, "dueAt");
       const normalizedDueAt = shouldNormalizeTaskToToday(task, rawDueAt, now)
         ? todayTimestampWithTime(now, item.timeLabel)
         : rawDueAt;

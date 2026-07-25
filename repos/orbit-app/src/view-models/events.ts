@@ -1,3 +1,4 @@
+import type { EventRecordContract } from "../api/contract/events";
 export interface EventSummary {
   actionLabel: string;
   coverPath: string;
@@ -267,6 +268,16 @@ function stringField(
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
+// 字段名受跨端契约约束：服务端改名，这里立刻编译报错。
+// 契约之外的兼容字段（name、location、coverUrl 等老 payload 形状）继续走 stringField。
+function eventField(
+  record: Record<string, unknown>,
+  fieldName: keyof EventRecordContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
+}
+
 function optionalNumberField(
   record: Record<string, unknown>,
   fieldName: string
@@ -373,7 +384,7 @@ function chineseDisplayText(value: string, fallback: string): string {
 
 function eventTitle(event: Record<string, unknown>): string {
   const sourceLabel = nestedStringField(event, "sourceMetadata", "label");
-  const rawTitle = sourceLabel || stringField(event, "title") || stringField(event, "name");
+  const rawTitle = sourceLabel || eventField(event, "title") || stringField(event, "name");
   return cleanEventDisplayText(preferredChineseSegment(rawTitle)) || "活动";
 }
 
@@ -405,7 +416,7 @@ function eventCoverPath(event: Record<string, unknown>, title: string): string {
     return explicitCover;
   }
 
-  const id = stringField(event, "id");
+  const id = eventField(event, "id");
 
   if (eventCoverById[id]) {
     return eventCoverById[id];
@@ -729,18 +740,18 @@ export function eventsToSummaries(data: unknown): EventSummary[] {
     .filter(isRecord)
     .map((event) => {
       const title = eventTitle(event);
-      const rawStatus = stringField(event, "status", "scheduled");
+      const rawStatus = eventField(event, "status", "scheduled");
 
       return {
         actionLabel: eventActionLabel(rawStatus),
         coverPath: eventCoverPath(event, title),
-        id: stringField(event, "id", "event"),
+        id: eventField(event, "id", "event"),
         location:
-          stringField(event, "venue") ||
+          eventField(event, "venue") ||
           stringField(event, "location") ||
           stringField(event, "locationLabel"),
         participantCountLabel: eventParticipantCountLabel(event),
-        startsAt: formatDateTime(stringField(event, "startsAt", "Time pending")),
+        startsAt: formatDateTime(eventField(event, "startsAt", "Time pending")),
         status: statusLabel(rawStatus),
         subtitle: eventSubtitle(event),
         topics: eventTopics(event),
@@ -804,23 +815,23 @@ export function eventDetailToSummary(data: unknown): EventDetailSummary {
   }
 
   const title = eventTitle(event);
-  const rawStatus = stringField(event, "status", "scheduled");
+  const rawStatus = eventField(event, "status", "scheduled");
   const location =
-    stringField(event, "venue") ||
+    eventField(event, "venue") ||
     stringField(event, "location") ||
     stringField(event, "locationLabel");
-  const startsAt = formatDateTime(stringField(event, "startsAt", "Time pending"));
-  const description = userFacingText(stringField(event, "description"), "");
+  const startsAt = formatDateTime(eventField(event, "startsAt", "Time pending"));
+  const description = userFacingText(eventField(event, "description"), "");
   const nextAction = userFacingText(
-    stringField(event, "nextAction"),
+    eventField(event, "nextAction"),
     "先看报名信息，再决定要准备的介绍和会谈重点。"
   );
   const preparation = userFacingText(
-    stringField(event, "recommendedPreparation"),
+    eventField(event, "recommendedPreparation"),
     "整理参会者背景、想认识的人和可以主动提供的资源。"
   );
   const relationshipContext = userFacingText(
-    stringField(event, "relationshipContext"),
+    eventField(event, "relationshipContext"),
     "关系线索待补充。"
   );
   const stats = recordField(event, "stats");
@@ -844,7 +855,7 @@ export function eventDetailToSummary(data: unknown): EventDetailSummary {
     description,
     evidenceExcerpts: evidenceExcerpts(event),
     feeLabel: userFacingText(stringField(event, "feeLabel"), "现场确认"),
-    id: stringField(event, "id", "event"),
+    id: eventField(event, "id", "event"),
     location,
     nextAction,
     organizerName:

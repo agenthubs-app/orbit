@@ -1,6 +1,16 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 import type { ContactHandlesDTO } from "../../shared/domain/contracts";
 import type { SeniorityLevel } from "../../shared/domain/source-types";
+import type { ContractMatches } from "../../shared/contract-check";
+import type {
+  ManualProfileContract,
+  ProfileCompletenessContract,
+  ProfileCompletenessFieldCode,
+  ProfileCompletenessStatusCode,
+  ProfileEditorStateContract,
+  ProfileViewStateCode,
+  SeniorityLevelCode,
+} from "../../shared/contract/profile";
 
 // Profile contract 描述用户手动资料编辑和完整度评分。
 // 它是 onboarding/profile 页的主读写模型，不包含外部文档解析或自动信号应用。
@@ -15,12 +25,15 @@ export type ProfileErrorCode = (typeof PROFILE_ERROR_CODES)[number];
 
 export type ProfileScenario = "complete" | "empty" | "pending";
 
-export type ProfileViewState = "success" | "empty" | "pending";
-
-export type ProfileCompletenessStatus =
-  | "not-started"
-  | "action-needed"
-  | "ready";
+// 客户端可见的资料形状声明在 shared/contract/profile.ts，这里只做改名转发。
+export type {
+  ManualProfileContract as ManualProfile,
+  ProfileCompletenessContract as ProfileCompleteness,
+  ProfileCompletenessFieldCode as ProfileCompletenessField,
+  ProfileCompletenessStatusCode as ProfileCompletenessStatus,
+  ProfileEditorStateContract as ProfileEditorState,
+  ProfileViewStateCode as ProfileViewState,
+} from "../../shared/contract/profile";
 
 // profile 错误定义区分缺资料、校验失败和等待人工复核。
 export interface ProfileErrorDefinition {
@@ -71,27 +84,6 @@ export interface ProfileProvenance {
 }
 
 // ManualProfile 是用户可直接编辑的核心资料。
-export interface ManualProfile {
-  id: string;
-  displayName: string;
-  headline: string;
-  organization: string;
-  role: string;
-  homeMarket: string;
-  relationshipGoal: string;
-  targetRelationshipTypes: readonly string[];
-  preferredFollowUpWindow: string;
-  preferredIntroChannels: readonly string[];
-  // 名片档案扩展（全部可选，容忍稀疏数据）。
-  handles?: ContactHandlesDTO;
-  industry?: string;
-  seniorityLevel?: SeniorityLevel;
-  bio?: string;
-  offering?: readonly string[];
-  seeking?: readonly string[];
-  topics?: readonly string[];
-  updatedAt: string;
-}
 
 // UpdateInput 只包含可编辑字段；缺失字段表示保持不变。
 export interface ManualProfileUpdateInput {
@@ -113,38 +105,14 @@ export interface ManualProfileUpdateInput {
   topics?: readonly string[];
 }
 
-// CompletenessField 是完整度评分会检查的字段集合。
-export type ProfileCompletenessField =
-  | "displayName"
-  | "headline"
-  | "relationshipGoal"
-  | "homeMarket"
-  | "targetRelationshipTypes"
-  | "preferredIntroChannels";
-
-// completeness 用于驱动 UI 的“还缺什么”提示。
-export interface ProfileCompleteness {
-  score: number;
-  status: ProfileCompletenessStatus;
-  completedFields: readonly ProfileCompletenessField[];
-  missingFields: readonly ProfileCompletenessField[];
-  nextBestField: ProfileCompletenessField | null;
-}
-
-// editor state 描述当前表单能否保存以及哪些字段有改动。
-export interface ProfileEditorState {
-  canSave: boolean;
-  lastSavedAt: string | null;
-  dirtyFields: readonly ProfileCompletenessField[];
-  validationMessages: readonly string[];
-}
-
 // ProfilePayload 是资料页成功响应的完整读模型。
+// state/profile/completeness/editor 的形状在 shared/contract/profile.ts，
+// provenance 是服务端溯源元数据，客户端不渲染，所以留在这里。
 export interface ProfilePayload {
-  state: ProfileViewState;
-  profile: ManualProfile | null;
-  completeness: ProfileCompleteness;
-  editor: ProfileEditorState;
+  state: ProfileViewStateCode;
+  profile: ManualProfileContract | null;
+  completeness: ProfileCompletenessContract;
+  editor: ProfileEditorStateContract;
   provenance: ProfileProvenance;
   nextAction: string;
 }
@@ -164,3 +132,10 @@ export interface ProfileFailure {
 }
 
 export type ProfileResult = ProfileSuccess | ProfileFailure;
+
+// 跨客户端契约一致性断言：职级枚举的常量数组在 shared/domain/source-types.ts，
+// 字符串联合另有一份在 shared/contract/profile.ts。
+export type SeniorityLevelMatchesContract = ContractMatches<
+  SeniorityLevel,
+  SeniorityLevelCode
+>;

@@ -1,4 +1,5 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
+import type { ManualProfileContract } from "../api/contract/profile";
 
 export interface ProfileSummary {
   bio: string;
@@ -180,6 +181,16 @@ function stringField(
 ): string {
   const value = record[fieldName];
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+// 字段名受跨端契约约束：服务端改名，这里立刻编译报错。
+// 契约之外的兼容字段（比如老 payload 的 timezone）继续走 stringField。
+function profileField(
+  record: Record<string, unknown>,
+  fieldName: keyof ManualProfileContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
 }
 
 function stringListField(
@@ -450,11 +461,11 @@ function profileSignalNextAction(value: string, count: number): string {
 
 function isKnownDemoProfile(profile: Record<string, unknown>): boolean {
   return (
-    stringField(profile, "id") === "profile_orbit_generated_operator" ||
-    stringField(profile, "displayName") === "小雨" ||
-    stringField(profile, "displayName") === "赵翔" ||
-    stringField(profile, "displayName") === "Xinyi Zhao" ||
-    stringField(profile, "organization") === "OPPO Japan Research"
+    profileField(profile, "id") === "profile_orbit_generated_operator" ||
+    profileField(profile, "displayName") === "小雨" ||
+    profileField(profile, "displayName") === "赵翔" ||
+    profileField(profile, "displayName") === "Xinyi Zhao" ||
+    profileField(profile, "organization") === "OPPO Japan Research"
   );
 }
 
@@ -468,22 +479,22 @@ export function profileToSummary(data: unknown): ProfileSummary {
   }
 
   return {
-    bio: stringField(profile, "bio", orbitFounderProfile.bio),
-    displayName: stringField(profile, "displayName", orbitFounderProfile.displayName),
-    headline: stringField(profile, "headline", orbitFounderProfile.headline),
-    industry: stringField(profile, "industry", orbitFounderProfile.industry),
+    bio: profileField(profile, "bio", orbitFounderProfile.bio),
+    displayName: profileField(profile, "displayName", orbitFounderProfile.displayName),
+    headline: profileField(profile, "headline", orbitFounderProfile.headline),
+    industry: profileField(profile, "industry", orbitFounderProfile.industry),
     offering: stringListField(profile, "offering"),
-    organization: stringField(profile, "organization", orbitFounderProfile.organization),
+    organization: profileField(profile, "organization", orbitFounderProfile.organization),
     relationshipGoal: stringField(
       profile,
       "relationshipGoal",
       orbitFounderProfile.relationshipGoal
     ),
-    role: stringField(profile, "role", orbitFounderProfile.role),
+    role: profileField(profile, "role", orbitFounderProfile.role),
     seeking: stringListField(profile, "seeking"),
     timezone:
       stringField(profile, "timezone") ||
-      stringField(profile, "homeMarket", orbitFounderProfile.timezone),
+      profileField(profile, "homeMarket", orbitFounderProfile.timezone),
     topics: stringListField(profile, "topics")
   };
 }

@@ -49,8 +49,17 @@ shared/contract-check.ts  ContractMatches：编译期一致性断言（不属于
 | 响应壳与错误码 | `envelope.ts` | 已接 `shared/errors/app-error.ts` 断言 |
 | 来源与关系价值枚举 | `source.ts` | 已接 `shared/domain/source-types.ts` 断言 |
 | 联系人列表 | `contacts.ts` | 已接 `features/contacts/contract.ts` 转发 |
+| Orbit AI 会话 | `orbit-ai.ts` | 会话列表、消息、建议动作；artifacts 与 diagnostics 未跨端 |
+| 个人资料 | `profile.ts` | 资料、完整度、编辑器状态；provenance 未跨端 |
+| 跟进任务 | `followups.ts` | 任务、触发原因、复核提示 |
+| 活动 | `events.ts` | 活动记录、来源元数据、证据 |
 
-其余 19 个领域仍在各自的 `features/*/contract.ts` 里，尚未跨端共享。
+移动端对应的取值器分别是 `contactField`、`conversationField` / `messageField` /
+`intentField`、`profileField`、`taskField`、`eventField`，它们把字段名约束到
+`keyof <契约类型>`，服务端改名时移动端 `npm run typecheck` 立刻报错。
+
+其余 15 个领域仍在各自的 `features/*/contract.ts` 里，尚未跨端共享。
+优先级按移动端实际取数量排：dashboard、connections、chat、notifications、search。
 
 ## 为什么不直接让 App import 这个目录
 

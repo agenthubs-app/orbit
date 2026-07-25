@@ -3,6 +3,12 @@ import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 import type { OrbitAgentArtifactPayload } from "./artifact-contract";
+import type {
+  OrbitAiConversationSummaryContract,
+  OrbitAiMessageContract,
+  OrbitAiMessageRoleCode,
+  OrbitAiProposedToolIntentContract,
+} from "../../shared/contract/orbit-ai";
 
 // Conversation contract 是 Chat Agent 的对外数据协议。
 // API route、UI 组件、mock service 和 live service 都必须通过这里的类型交互。
@@ -33,14 +39,21 @@ export type OrbitAgentConversationScenario =
 
 export type OrbitAgentConversationState = "success" | "empty" | "pending";
 
-export type OrbitAgentMessageRole = "user" | "assistant" | "system";
+// 客户端可见的会话形状声明在 shared/contract/orbit-ai.ts，这里只做改名转发。
+// 改形状去契约文件改，网页版和 iOS App 会一起编译报错。
+export type {
+  OrbitAiConversationSummaryContract as OrbitAgentConversationSummary,
+  OrbitAiMessageContract as OrbitAgentConversationMessage,
+  OrbitAiMessageRoleCode as OrbitAgentMessageRole,
+  OrbitAiProposedToolIntentContract as OrbitAgentProposedToolIntent,
+} from "../../shared/contract/orbit-ai";
 
 export interface OrbitAgentConversationInput {
   scenario?: OrbitAgentConversationScenario | string | null;
 }
 
 export interface OrbitAgentConversationHistoryTurn {
-  role: Exclude<OrbitAgentMessageRole, "system">;
+  role: Exclude<OrbitAiMessageRoleCode, "system">;
   content: string;
 }
 
@@ -56,22 +69,7 @@ export interface OrbitAgentSendMessageInput extends OrbitAgentConversationInput 
   locale?: "zh" | "en" | string | null;
 }
 
-export interface OrbitAgentConversationMessage {
-  messageId: string;
-  conversationId: string;
-  role: OrbitAgentMessageRole;
-  content: string;
-  createdAt: string;
-  evidenceIds: readonly string[];
-}
 
-export interface OrbitAgentProposedToolIntent {
-  intentId: string;
-  toolFamily: "relationship_chat" | "events" | "contacts" | "followups";
-  label: string;
-  reason: string;
-  requiresUserConfirmation: boolean;
-}
 
 export type OrbitAgentRoutingToolFamily =
   | "calendar"
@@ -137,13 +135,6 @@ export interface OrbitAgentConversationProvenance {
   safety: OrbitAgentSafetyLedger;
 }
 
-export interface OrbitAgentConversationSummary {
-  conversationId: string;
-  title: string;
-  lastMessagePreview: string;
-  updatedAt: string;
-  evidenceIds: readonly string[];
-}
 
 export interface OrbitAgentConversationTimingSpan {
   phase: string;
@@ -163,12 +154,12 @@ export interface OrbitAgentConversationDiagnostics {
 // proposedToolIntents 告诉用户哪些动作只是计划，nextAction 给出下一步提示。
 export interface OrbitAgentConversationPayload {
   state: OrbitAgentConversationState;
-  conversations: readonly OrbitAgentConversationSummary[];
-  messages: readonly OrbitAgentConversationMessage[];
+  conversations: readonly OrbitAiConversationSummaryContract[];
+  messages: readonly OrbitAiMessageContract[];
   activeConversationId: string | null;
   assistantMessage: string;
   artifacts: readonly OrbitAgentArtifactPayload[];
-  proposedToolIntents: readonly OrbitAgentProposedToolIntent[];
+  proposedToolIntents: readonly OrbitAiProposedToolIntentContract[];
   provenance: OrbitAgentConversationProvenance;
   routingDecision?: OrbitAgentRoutingDecision;
   nextAction: string;

@@ -1,4 +1,9 @@
 import { aiRunPath } from "../api/endpoints";
+import type {
+  OrbitAiConversationSummaryContract,
+  OrbitAiMessageContract,
+  OrbitAiProposedToolIntentContract
+} from "../api/contract/orbit-ai";
 
 export interface ConversationSummary {
   id: string;
@@ -145,6 +150,32 @@ function stringField(
 ): string {
   const value = record[fieldName];
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+// 下面两个取值器的字段名受跨端契约约束：服务端改名，这里立刻编译报错，
+// 而不是等到运行时静默拿到空字符串。契约之外的兼容字段继续走 stringField。
+function conversationField(
+  record: Record<string, unknown>,
+  fieldName: keyof OrbitAiConversationSummaryContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
+}
+
+function messageField(
+  record: Record<string, unknown>,
+  fieldName: keyof OrbitAiMessageContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
+}
+
+function intentField(
+  record: Record<string, unknown>,
+  fieldName: keyof OrbitAiProposedToolIntentContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
 }
 
 function nestedRecord(
@@ -364,16 +395,16 @@ export function conversationsToSummaries(data: unknown): ConversationSummary[] {
   return listFromPayload(data, "conversations")
     .filter(isRecord)
     .map((conversation) => ({
-      id: stringField(
+      id: conversationField(
         conversation,
         "conversationId",
         stringField(conversation, "id", "conversation")
       ),
       preview:
-        conversationPreview(stringField(conversation, "lastMessagePreview")) ||
+        conversationPreview(conversationField(conversation, "lastMessagePreview")) ||
         conversationPreview(stringField(conversation, "preview")),
       title: conversationTitle(
-        stringField(conversation, "title", "Orbit AI 对话")
+        conversationField(conversation, "title", "Orbit AI 对话")
       )
     }));
 }
@@ -411,11 +442,11 @@ export function conversationPayloadToChatView(
       stringField(payload, "assistantMessage")
     ),
     messages: messages.filter(isRecord).map((message) => {
-      const role = stringField(message, "role", "assistant");
+      const role = messageField(message, "role", "assistant");
 
       return {
-        content: chatMessageContent(role, stringField(message, "content")),
-        createdAt: stringField(message, "createdAt"),
+        content: chatMessageContent(role, messageField(message, "content")),
+        createdAt: messageField(message, "createdAt"),
         id: stringField(
           message,
           "messageId",
@@ -426,7 +457,7 @@ export function conversationPayloadToChatView(
     }),
     proposedToolIntents: proposedToolIntents.filter(isRecord).map((intent) => ({
       id: stringField(intent, "intentId", stringField(intent, "id", "intent")),
-      label: stringField(intent, "label", "建议动作"),
+      label: intentField(intent, "label", "建议动作"),
       reason: stringField(intent, "reason"),
       requiresUserConfirmation: actionRequiresConfirmation(intent)
     }))
@@ -887,7 +918,7 @@ export function proactiveTurnPayloadToChatView(
       ? [
           {
             content,
-            createdAt: stringField(message, "createdAt"),
+            createdAt: messageField(message, "createdAt"),
             id: stringField(
               message,
               "messageId",

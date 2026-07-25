@@ -1,7 +1,14 @@
 import type { ApiErrorContext } from "../../../shared/api/envelope";
 import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../../shared/api/envelope";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
-import type { SourceReferenceDTO } from "../../../shared/domain/source-types";
+import type { ContractMatches } from "../../../shared/contract-check";
+import type {
+  EventCaptureMethodCode,
+  EventEvidenceContract,
+  EventOriginContract,
+  EventRecordContract,
+  EventStatusCode,
+} from "../../../shared/contract/events";
 import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
 
 // Events contract 描述活动 CRUD/import 的 mock-first 数据模型。
@@ -24,6 +31,23 @@ export const EVENT_SOURCE_CAPTURE_METHODS = [
 
 export type EventCaptureMethod =
   (typeof EVENT_SOURCE_CAPTURE_METHODS)[number];
+
+// 客户端可见的活动形状声明在 shared/contract/events.ts，这里只做改名转发。
+export type {
+  EventEvidenceContract as EventEvidence,
+  EventOriginContract as EventOriginMetadata,
+  EventRecordContract as EventRecord,
+} from "../../../shared/contract/events";
+
+// 枚举常量留在这里给 service 用，字符串联合在契约里，下面的断言保证两边一致。
+export type EventStatusMatchesContract = ContractMatches<
+  EventStatus,
+  EventStatusCode
+>;
+export type EventCaptureMethodMatchesContract = ContractMatches<
+  EventCaptureMethod,
+  EventCaptureMethodCode
+>;
 
 export const EVENT_CRUD_AND_IMPORT_ERROR_CODES = [
   "EVENTS_EVENT_ID_REQUIRED",
@@ -147,50 +171,10 @@ export const EVENT_CRUD_AND_IMPORT_ERROR_DEFINITIONS = {
 >;
 
 // EventOriginMetadata 是活动来源元数据；false 字段用于证明未触碰外部系统。
-export interface EventOriginMetadata extends SourceReferenceDTO {
-  label: string;
-  captureMethod: EventCaptureMethod;
-  provider: string;
-  providerRecordId: string;
-  importedAt: string;
-  calendarSyncRequested: false;
-  organizerFeedRequested: false;
-  liveDatabaseWriteExecuted: boolean;
-  externalNetworkRequested: false;
-}
 
 // EventEvidence 保存活动被纳入 Orbit 的证据片段。
-export interface EventEvidence {
-  evidenceId: string;
-  source: EventOriginMetadata;
-  excerpt: string;
-  capturedAt: string;
-  createdBy: string;
-}
 
 // EventRecord 是活动页和推荐页共享的核心活动 DTO。
-export interface EventRecord {
-  id: string;
-  title: string;
-  description: string;
-  venue: string;
-  startsAt: string;
-  endsAt: string;
-  status: EventStatus;
-  sourceMetadata: EventOriginMetadata;
-  evidence: readonly EventEvidence[];
-  relationshipContext: string;
-  recommendedPreparation: string;
-  nextAction: string;
-  calendarSyncRequested: false;
-  calendarProviderRequested: false;
-  organizerFeedRequested: false;
-  liveDatabaseWriteExecuted: boolean;
-  externalNetworkRequested: false;
-  aiProviderRequested: false;
-  emailProviderRequested: false;
-  notificationDelivered: false;
-}
 
 // ImportedEventRecord 描述外部来源记录如何映射到 Orbit 活动字段。
 export interface ImportedEventRecord {
@@ -199,7 +183,7 @@ export interface ImportedEventRecord {
   externalRecordId: string;
   title: string;
   status: EventStatus;
-  sourceMetadata: EventOriginMetadata;
+  sourceMetadata: EventOriginContract;
   fieldMapping: readonly string[];
   skippedFields: readonly string[];
   calendarSyncRequested: false;
@@ -233,7 +217,7 @@ export interface EventCrudImportProvenance {
 // 三类 payload 分别服务列表、手动创建和详情；都带 summary/nextAction 供 UI 呈现。
 export interface EventListPayload {
   state: EventCrudImportState;
-  events: readonly EventRecord[];
+  events: readonly EventRecordContract[];
   importedRecords: readonly ImportedEventRecord[];
   summary: string;
   provenance: EventCrudImportProvenance;
@@ -242,7 +226,7 @@ export interface EventListPayload {
 
 export interface ManualEventCreationPayload {
   state: "success";
-  event: EventRecord;
+  event: EventRecordContract;
   importedRecords: readonly ImportedEventRecord[];
   summary: string;
   provenance: EventCrudImportProvenance;
@@ -251,7 +235,7 @@ export interface ManualEventCreationPayload {
 
 export interface EventDetailPayload {
   state: "success";
-  event: EventRecord;
+  event: EventRecordContract;
   importedRecords: readonly ImportedEventRecord[];
   summary: string;
   provenance: EventCrudImportProvenance;

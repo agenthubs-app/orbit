@@ -1,3 +1,4 @@
+import type { FollowupTaskContract } from "../api/contract/followups";
 export interface FollowupMetricView {
   label: string;
   value: string;
@@ -138,6 +139,16 @@ function stringField(
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+// 字段名受跨端契约约束：服务端改名，这里立刻编译报错。
+// 只用于跟进任务记录；消息草稿等其他形状继续走 stringField。
+function taskField(
+  record: Record<string, unknown>,
+  fieldName: keyof FollowupTaskContract,
+  fallback = ""
+): string {
+  return stringField(record, fieldName, fallback);
+}
+
 function numberField(
   record: UnknownRecord,
   fieldName: string,
@@ -248,7 +259,7 @@ function formatDateTime(value: string): string {
 }
 
 function dueLabel(record: UnknownRecord): string {
-  const dueAt = stringField(record, "dueAt");
+  const dueAt = taskField(record, "dueAt");
   if (dueAt) {
     return formatDateTime(dueAt);
   }
@@ -290,7 +301,7 @@ function triggerLabel(value: string): string {
 }
 
 function contactName(record: UnknownRecord): string {
-  return stringField(record, "contactName", "联系人");
+  return taskField(record, "contactName", "联系人");
 }
 
 function followupTitle(record: UnknownRecord): string {
@@ -298,7 +309,7 @@ function followupTitle(record: UnknownRecord): string {
 }
 
 function recommendedAction(record: UnknownRecord): string {
-  const action = stringField(record, "recommendedAction");
+  const action = taskField(record, "recommendedAction");
 
   if (!action || /\bcontact[_:-]?\d+|review follow-up\b/i.test(action)) {
     return `跟进 ${contactName(record)} 的关系进展。`;
@@ -309,7 +320,7 @@ function recommendedAction(record: UnknownRecord): string {
 
 function rationale(record: UnknownRecord): string {
   return userFacingText(
-    stringField(record, "rationale"),
+    taskField(record, "rationale"),
     "这条跟进来自已记录的关系上下文，先复核再行动。"
   );
 }
@@ -331,14 +342,14 @@ function taskView(record: UnknownRecord): FollowupTaskView {
     contactName: contactName(record),
     dueLabel: dueLabel(record),
     evidenceLabel: evidenceLabel(record),
-    id: stringField(record, "taskId", stringField(record, "id", "task")),
-    organization: stringField(record, "organization"),
-    priorityLabel: priorityLabel(stringField(record, "priority")),
+    id: taskField(record, "taskId", stringField(record, "id", "task")),
+    organization: taskField(record, "organization"),
+    priorityLabel: priorityLabel(taskField(record, "priority")),
     rationale: rationale(record),
     recommendedAction: recommendedAction(record),
     sourceLabel: sourceLabel(record),
     title: followupTitle(record),
-    triggerLabel: triggerLabel(stringField(record, "triggerKind"))
+    triggerLabel: triggerLabel(taskField(record, "triggerKind"))
   };
 }
 
@@ -384,7 +395,7 @@ function messageDraftView(record: UnknownRecord): MessageDraftView {
     id: stringField(record, "draftId", stringField(record, "id", "draft")),
     recipientLine: [
       stringField(record, "recipientName", "联系人"),
-      stringField(record, "organization")
+      taskField(record, "organization")
     ]
       .filter(Boolean)
       .join(" · "),
@@ -420,12 +431,12 @@ function chatFollowupDraftView(record: UnknownRecord): ChatFollowupDraftView {
     ),
     id: stringField(record, "assistId", stringField(record, "id", "assist")),
     reason: userFacingText(
-      stringField(record, "rationale"),
+      taskField(record, "rationale"),
       "先按自己的语气改一遍，再决定是否保存为正式草稿。"
     ),
     recipientLine: [
       stringField(record, "participantName", "联系人"),
-      stringField(record, "organization")
+      taskField(record, "organization")
     ]
       .filter(Boolean)
       .join(" · "),
@@ -468,8 +479,8 @@ function reminderView(
   return {
     dueLabel: dueLabel(record),
     id: stringField(record, "reminderId", "reminder"),
-    organization: stringField(record, "organization"),
-    priorityLabel: priorityLabel(stringField(record, "priority")),
+    organization: taskField(record, "organization"),
+    priorityLabel: priorityLabel(taskField(record, "priority")),
     queueLabel: reminderQueueLabel(record, queueEntries),
     title: reminderTitle(record),
     windowLabel: userFacingText(

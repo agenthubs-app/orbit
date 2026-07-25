@@ -18,6 +18,42 @@ export type {
 } from "./source";
 
 export type {
+  EventCaptureMethodCode,
+  EventEvidenceContract,
+  EventOriginContract,
+  EventRecordContract,
+  EventStatusCode
+} from "./events";
+
+export type {
+  FollowupAuditContract,
+  FollowupPriorityCode,
+  FollowupSourceReferenceContract,
+  FollowupTaskContract,
+  FollowupTriggerContract,
+  FollowupTriggerKindCode
+} from "./followups";
+
+export type {
+  ContactHandlesContract,
+  ManualProfileContract,
+  ProfileCompletenessContract,
+  ProfileCompletenessFieldCode,
+  ProfileCompletenessStatusCode,
+  ProfileEditorStateContract,
+  ProfileViewStateCode,
+  SeniorityLevelCode
+} from "./profile";
+
+export type {
+  OrbitAiConversationSummaryContract,
+  OrbitAiMessageContract,
+  OrbitAiMessageRoleCode,
+  OrbitAiProposedToolIntentContract,
+  OrbitAiToolFamilyCode
+} from "./orbit-ai";
+
+export type {
   ContactEvidenceContract,
   ContactFilterOptionContract,
   ContactListItemContract,
