@@ -23,10 +23,12 @@ export function readLedgerError(body: unknown): string {
  * 重试是幂等的——成功项不会重复执行（由 ledger service 保证）。
  */
 export function OrbitAllActionsControls({
+  canCancel,
   canRetry,
   canUndo,
   entryId,
 }: {
+  canCancel: boolean;
   canRetry: boolean;
   canUndo: boolean;
   entryId: string;
@@ -35,7 +37,9 @@ export function OrbitAllActionsControls({
   const [error, setError] = useState<string | null>(null);
 
   // 网络异常或非 JSON 响应都必须复位 pending，否则按钮会永久禁用。
-  async function applyTransition(transition: "undo" | "retry"): Promise<void> {
+  async function applyTransition(
+    transition: "undo" | "retry" | "cancel",
+  ): Promise<void> {
     setPending(true);
     setError(null);
 
@@ -63,7 +67,7 @@ export function OrbitAllActionsControls({
     }
   }
 
-  if (!canUndo && !canRetry) return null;
+  if (!canUndo && !canRetry && !canCancel) return null;
 
   return (
     <span style={{ alignItems: "center", display: "inline-flex", gap: 8 }}>
@@ -90,6 +94,16 @@ export function OrbitAllActionsControls({
           type="button"
         >
           撤销
+        </button>
+      ) : null}
+      {canCancel ? (
+        <button
+          className="btn btn-quiet"
+          disabled={pending}
+          onClick={() => void applyTransition("cancel")}
+          type="button"
+        >
+          取消执行
         </button>
       ) : null}
     </span>

@@ -20,8 +20,11 @@ export async function GET(request: Request): Promise<Response> {
   const searchParams = new URL(request.url).searchParams;
   const service = createAgentLedgerService();
   const result = await service.listEntries({
+    createdAfter: searchParams.get("createdAfter"),
+    createdBefore: searchParams.get("createdBefore"),
     scenario: searchParams.get("scenario"),
     status: searchParams.get("status"),
+    workflowKey: searchParams.get("workflow"),
   });
 
   if (result.success === false) {

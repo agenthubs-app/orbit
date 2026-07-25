@@ -46,6 +46,10 @@ export type AgentActionPriority = "high" | "medium" | "low";
 export interface AgentActionQueueListInput {
   scenario?: AgentActionQueueScenario | string | null;
   actionType?: AgentActionType | string | null;
+  status?: string | null;
+  workflowKey?: string | null;
+  createdAfter?: string | null;
+  createdBefore?: string | null;
 }
 
 export interface AgentActionDecisionInput {

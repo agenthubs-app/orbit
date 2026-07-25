@@ -38,12 +38,15 @@ export interface AppAllActionsRouteViewModel {
 
 const FILTER_LABELS: Record<AllActionsFilterKey, string> = {
   all: "全部",
+  approved: "已确认",
   awaiting_confirmation: "等待确认",
+  canceled: "已取消",
   completed: "已完成",
   deferred: "稍后处理",
   executing: "正在执行",
   failed: "失败",
   partially_failed: "部分失败",
+  rejected: "已忽略",
   undone: "已撤销",
 };
 

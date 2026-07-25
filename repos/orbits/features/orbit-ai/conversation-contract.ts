@@ -164,6 +164,8 @@ export interface OrbitAgentConversationPayload {
   routingDecision?: OrbitAgentRoutingDecision;
   nextAction: string;
   diagnostics?: OrbitAgentConversationDiagnostics;
+  runId?: string;
+  actionIds?: readonly string[];
 }
 
 export interface OrbitAgentConversationSuccess {

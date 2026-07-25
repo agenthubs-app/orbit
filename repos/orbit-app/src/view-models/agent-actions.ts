@@ -16,19 +16,9 @@ export interface AgentActionCardView {
 
 export interface AgentSettingsView {
   confirmationLabel: string;
-  currentLevelLabel: string;
-  levelOptions: AgentSettingsLevelOptionView[];
+  policyLabel: string;
   rules: string[];
   summary: string;
-}
-
-export type AgentAutonomyLevel = "high" | "low" | "medium";
-
-export interface AgentSettingsLevelOptionView {
-  detail: string;
-  label: string;
-  level: AgentAutonomyLevel;
-  selected: boolean;
 }
 
 export interface AgentActionsView {
@@ -61,12 +51,6 @@ const PRIORITY_LABELS: Record<string, string> = {
   high: "高优先级",
   low: "低优先级",
   medium: "中优先级"
-};
-
-const LEVEL_LABELS: Record<string, string> = {
-  high: "高自主",
-  low: "低自主",
-  medium: "中等自主"
 };
 
 const DUE_LABELS: Record<string, string> = {
@@ -137,24 +121,6 @@ function priorityLabel(priority: string): string {
   return PRIORITY_LABELS[priority] ?? "待判断优先级";
 }
 
-function levelLabel(level: string): string {
-  return LEVEL_LABELS[level] ?? "需要确认";
-}
-
-function isAutonomyLevel(value: string): value is AgentAutonomyLevel {
-  return value === "low" || value === "medium" || value === "high";
-}
-
-function levelDetail(level: AgentAutonomyLevel): string {
-  const details: Record<AgentAutonomyLevel, string> = {
-    high: "可以准备行动预案；发送、排程和改资料仍会停下来。",
-    low: "只整理提醒和依据；是否继续由你判断。",
-    medium: "可以排序下一步、起草内容；对外动作仍要你确认。"
-  };
-
-  return details[level];
-}
-
 function dueLabel(value: string): string {
   const normalized = value.trim().toLowerCase();
   return DUE_LABELS[normalized] ?? userFacingText(value, "待定时间");
@@ -202,44 +168,27 @@ function actionCard(record: UnknownRecord, index: number): AgentActionCardView {
   };
 }
 
-function settingsView(settingsPayload: unknown): AgentSettingsView {
-  const settings = recordInput(settingsPayload);
-  const currentLevel = stringField(settings, "currentLevel", "medium");
-  const levelRecords = listField(settings, "levels").filter(isRecord);
-  const availableLevels = levelRecords
-    .map((levelRecord) => stringField(levelRecord, "level"))
-    .filter(isAutonomyLevel);
-  const levels = availableLevels.length > 0
-    ? availableLevels
-    : (["low", "medium", "high"] satisfies AgentAutonomyLevel[]);
-
+function settingsView(): AgentSettingsView {
   return {
-    confirmationLabel: "对外动作前必须确认",
-    currentLevelLabel: levelLabel(currentLevel),
-    levelOptions: levels.map((level) => ({
-      detail: levelDetail(level),
-      label: levelLabel(level),
-      level,
-      selected: level === currentLevel
-    })),
+    confirmationLabel: "系统内写入逐次确认；对外发送禁止",
+    policyLabel: "固定安全策略",
     rules: [
-      "可以整理建议和草稿。",
-      "发送消息、写日历、改资料前都要停下来等你确认。",
-      "界面只展示可复核内容，不替你执行。"
+      "读取关系上下文和准备草稿可以自动完成。",
+      "创建任务、提醒、日程或修改资料前，每次都需要你确认。",
+      "消息和邮件只保存草稿，Orbit 永不自动发送。"
     ],
-    summary: `当前为${levelLabel(currentLevel)}，AI 可以帮你整理下一步，但不会替你对外执行。`
+    summary: "这条边界不随“自主等级”变化，所有入口遵循同一套规则。"
   };
 }
 
 export function agentActionsToView({
-  actionsPayload,
-  settingsPayload
+  actionsPayload
 }: AgentActionsViewInput): AgentActionsView {
   const actionsRecord = recordInput(actionsPayload);
   const actions = listField(actionsRecord, "actions")
     .filter(isRecord)
     .map(actionCard);
-  const settings = settingsView(settingsPayload);
+  const settings = settingsView();
   const highPriorityCount = actions.filter(
     (action) => action.priorityLabel === "高优先级"
   ).length;
@@ -249,7 +198,7 @@ export function agentActionsToView({
       actions,
       emptyMessage: "Orbit AI 暂时没有新的建议动作需要你处理。",
       emptyTitle: "没有待复核动作",
-      metrics: ["0 条待确认", settings.currentLevelLabel],
+      metrics: ["0 条待确认", settings.policyLabel],
       nextAction: "先处理关系仪表盘和收件箱里已经有依据的下一步。",
       settings,
       summary: "暂时没有需要你复核的动作。",
@@ -264,11 +213,11 @@ export function agentActionsToView({
     metrics: [
       `${actions.length} 条待确认`,
       `高优先级 ${highPriorityCount}`,
-      settings.currentLevelLabel
+      settings.policyLabel
     ],
     nextAction: "先看高优先级建议；确认联系人、语气和依据后再继续。",
     settings,
-    summary: `${actions.length} 条建议需要你复核。当前为${settings.currentLevelLabel}，所有对外动作都需要你确认。`,
+    summary: `${actions.length} 条建议需要你复核。所有写入逐次确认，对外消息不会自动发送。`,
     title: "Agent 动作中心"
   };
 }

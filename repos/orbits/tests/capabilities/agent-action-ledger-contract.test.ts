@@ -1,7 +1,7 @@
 /**
  * Agent action ledger contract 测试。
  *
- * 验证账本状态机枚举、错误定义完备性、证据种类白名单（不含语音记录）
+ * 验证账本状态机枚举、错误定义完备性、证据种类白名单（只允许确认后的语音转写）
  * 和 failure→AppError 转换。
  */
 import assert from "node:assert/strict";
@@ -19,15 +19,18 @@ import {
   type AgentLedgerFailure,
 } from "../../features/agent/ledger/contract";
 
-test("ledger entry statuses cover the six-state lifecycle plus deferred", () => {
+test("ledger entry statuses cover proposal, approval, execution, rejection, and recovery", () => {
   assert.deepEqual(
     [...AGENT_LEDGER_ENTRY_STATUSES],
     [
       "awaiting_confirmation",
+      "approved",
       "executing",
       "completed",
       "partially_failed",
       "failed",
+      "rejected",
+      "canceled",
       "undone",
       "deferred",
     ],
@@ -46,25 +49,41 @@ test("operation types cover the design-derived write operations", () => {
     [...AGENT_LEDGER_OPERATION_TYPES],
     [
       "save_meeting_note",
+      "create_followup_task",
       "create_followup_reminder",
       "save_message_draft",
       "archive_contacts",
       "generate_meeting_brief",
+      "save_event_goal",
+      "create_preparation_task",
+      "add_to_orbit_schedule",
+      "create_intro_request",
+      "accept_intro_request",
+      "propose_meeting_slots",
       "sync_event_to_calendar",
     ],
   );
 });
 
-test("evidence kinds exclude voice recordings per 2026-07-24 decision", () => {
+test("evidence kinds allow confirmed transcripts but never raw voice or audio", () => {
   assert.deepEqual(
     [...AGENT_LEDGER_EVIDENCE_KINDS],
-    ["event_material", "chat_summary", "calendar_signal", "contact_note"],
+    [
+      "event_material",
+      "chat_summary",
+      "calendar_signal",
+      "contact_note",
+      "confirmed_voice_transcript",
+    ],
   );
-  assert.ok(!AGENT_LEDGER_EVIDENCE_KINDS.some((kind) => /voice|audio/.test(kind)));
+  assert.ok(!AGENT_LEDGER_EVIDENCE_KINDS.some((kind) => /raw|audio/.test(kind)));
 });
 
-test("transitions are exactly confirm, defer, undo, retry", () => {
-  assert.deepEqual([...AGENT_LEDGER_TRANSITIONS], ["confirm", "defer", "undo", "retry"]);
+test("transitions cover confirmation, refusal, cancellation, and recovery", () => {
+  assert.deepEqual(
+    [...AGENT_LEDGER_TRANSITIONS],
+    ["confirm", "defer", "reject", "cancel", "undo", "retry"],
+  );
 });
 
 test("every error code has a definition with app code, message, and recovery", () => {

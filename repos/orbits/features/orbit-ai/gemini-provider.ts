@@ -1,5 +1,10 @@
 // 这个文件历史上叫 gemini-provider，但现在是 Orbit Agent 的模型 provider adapter。
 // 它把 Gemini / DeepSeek / OpenAI 的不同 HTTP 协议统一成 planner 和 synthesis 两个方法。
+import {
+  ORBIT_AGENT_TOOL_CATALOG,
+  ORBIT_AGENT_TOOL_NAMES,
+  type OrbitAgentToolName,
+} from "./agent-tools/registry";
 export const DEFAULT_GEMINI_ORBIT_AGENT_MODEL = "gemini-3.5-flash" as const;
 export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-v4-flash" as const;
 export const DEFAULT_OPENAI_ORBIT_AGENT_MODEL = "gpt-4.1" as const;
@@ -31,12 +36,7 @@ export const GEMINI_ORBIT_AGENT_INTENTS = [
 
 // 这是模型允许声明的全部工具名。
 // 每个工具都必须 requiresUserConfirmation=true，实际外部动作仍不会在这里执行。
-export const GEMINI_ORBIT_AGENT_TOOL_NAMES = [
-  "events.recommend",
-  "contacts.recommend",
-  "followups.reviewQueue",
-  "chat.context",
-] as const;
+export const GEMINI_ORBIT_AGENT_TOOL_NAMES = ORBIT_AGENT_TOOL_NAMES;
 
 // 领域分类由模型完成（understanding in model），但只能从这个固定枚举里选；
 // schema 校验会过滤掉枚举外的值。领域确定后的扩展词、加权、过滤等
@@ -108,8 +108,7 @@ export function sanitizeRecommendationDomains(value: unknown): string[] {
 export type GeminiOrbitAgentIntent =
   (typeof GEMINI_ORBIT_AGENT_INTENTS)[number];
 
-export type GeminiOrbitAgentToolName =
-  (typeof GEMINI_ORBIT_AGENT_TOOL_NAMES)[number];
+export type GeminiOrbitAgentToolName = OrbitAgentToolName;
 
 export interface GeminiOrbitAgentToolRequest {
   arguments: Record<string, unknown>;
@@ -576,11 +575,18 @@ export function parseGeminiOrbitAgentPlannerOutput(
 // planner prompt 是模型侧的硬约束说明。
 // 真正的安全边界仍在 validateGeminiOrbitAgentPlannerOutput 和 live service 里二次执行。
 function systemInstruction(): string {
+  const toolDescriptions = ORBIT_AGENT_TOOL_CATALOG.map(
+    (tool) =>
+      `- ${tool.toolName}: ${tool.descriptionZh} Risk=${tool.riskLevel}; schema=${JSON.stringify(tool.inputSchema.jsonSchema)}`,
+  );
+
   return [
     "You are Orbit Agent, a relationship-work orchestration planner.",
     "Return only a JSON object with assistantMessage, intent, and toolRequests.",
     "Allowed intents: general_chat, event_recommendations, contact_recommendations, followup_queue, relationship_chat_context.",
-    "Allowed tool names: events.recommend, contacts.recommend, followups.reviewQueue, chat.context.",
+    `Allowed tool names: ${ORBIT_AGENT_TOOL_NAMES.join(", ")}.`,
+    "Tool registry:",
+    ...toolDescriptions,
     "Each non-general intent must use exactly one matching tool; general_chat must use an empty toolRequests array.",
     "Task routing guidance:",
     "- relationship lookup / why do I know someone / relationship status -> relationship_chat_context with chat.context.",
@@ -636,7 +642,7 @@ function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
             searchTerms: "string",
           },
           requiresUserConfirmation: true,
-          toolName: GEMINI_ORBIT_AGENT_TOOL_NAMES,
+          toolName: ORBIT_AGENT_TOOL_NAMES,
         },
       ],
     },

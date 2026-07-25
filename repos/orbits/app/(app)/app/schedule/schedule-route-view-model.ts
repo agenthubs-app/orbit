@@ -10,6 +10,10 @@ import type {
 } from "../../../../features/events/event-crud-and-import/contract";
 import type { EventCrudAndImportService } from "../../../../features/events/event-crud-and-import/service";
 import { createEventCrudAndImportService } from "../../../../features/events/service-factory";
+import {
+  listConfiguredOrbitScheduleItems,
+  type OrbitScheduleItem,
+} from "../../../../features/events/orbit-schedule-reader";
 import type {
   FollowupTask,
   FollowupTaskGenerationResult,
@@ -402,6 +406,46 @@ function buildEventArrangement(input: {
   };
 }
 
+function scheduleDateParts(value: string): Record<string, string> {
+  return Object.fromEntries(
+    new Intl.DateTimeFormat("zh-CN", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(value))
+      .map((part) => [part.type, part.value]),
+  );
+}
+
+function buildAgentScheduleArrangement(
+  item: OrbitScheduleItem,
+): AppScheduleArrangementViewModel {
+  const start = scheduleDateParts(item.startsAt);
+  const end = scheduleDateParts(
+    item.endsAt ??
+      new Date(Date.parse(item.startsAt) + 60 * 60_000).toISOString(),
+  );
+  return {
+    actionLabel: "查看活动",
+    evidenceIds: item.evidenceIds,
+    href: `/app/events/${encodeURIComponent(item.eventId)}`,
+    id: `agent-schedule-${item.id}`,
+    primaryName: item.title,
+    reason: "你已确认把这场活动加入 Orbit Schedule。",
+    secondaryName: `地点：${item.location ?? "待定"}`,
+    sourceContext: `来源：Orbit Agent，证据 ${item.evidenceIds.length} 条`,
+    statusLabel: "已确认",
+    target: { id: item.eventId, kind: "event" },
+    targetState: "ready",
+    timing: `活动时间：${start.year}年${start.month}月${start.day}日 ${start.hour}:${start.minute}-${end.hour}:${end.minute}`,
+  };
+}
+
 export function createAppScheduleRouteServices(
   mode?: ModuleMode | string,
 ): AppScheduleRouteServices {
@@ -466,6 +510,9 @@ export async function loadAppScheduleRouteViewModel(
     };
   }
 
+  const agentScheduleItems = servicesWereProvided
+    ? []
+    : await listConfiguredOrbitScheduleItems();
   const arrangements = [
     buildContactArrangement({
       contact: contactResult.data.contact,
@@ -475,11 +522,17 @@ export async function loadAppScheduleRouteViewModel(
     buildEventArrangement({
       event: eventResult.data.event,
     }),
+    ...agentScheduleItems.map(buildAgentScheduleArrangement),
   ];
 
   return {
     arrangements,
-    evidenceIds: uniqueEvidenceIds(results),
+    evidenceIds: [
+      ...new Set([
+        ...uniqueEvidenceIds(results),
+        ...agentScheduleItems.flatMap((item) => item.evidenceIds),
+      ]),
+    ],
     state: "success",
     summary: `已从联系人、活动和跟进来源整理 ${arrangements.length} 条可复核安排。`,
   };

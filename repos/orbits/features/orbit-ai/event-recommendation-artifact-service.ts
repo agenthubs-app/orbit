@@ -203,11 +203,15 @@ export function bilingualSegment(text: string, locale: ArtifactLocale): string {
 function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocale) {
   // live 库的 description/relationshipContext 是导入原始串，不适合直接展示；
   // 卡片文案从匹配词和时间状态确定性生成，保持当前语言。
+  // 旧缓存和测试替身可能来自 matchedTokens/localizedDescriptions 加入前的
+  // candidate 版本。展示边界必须兼容这类已持久化 payload，不能因为可选的
+  // 增强字段缺失而让整个 artifact 失败。
+  const matchedTokens = candidate.matchedTokens ?? [];
   const matchedReason =
-    candidate.matchedTokens.length > 0
+    matchedTokens.length > 0
       ? localize(locale, {
-          en: `Matched your request on: ${candidate.matchedTokens.join(", ")}.`,
-          zh: `与你的请求在「${candidate.matchedTokens.join("、")}」上匹配。`,
+          en: `Matched your request on: ${matchedTokens.join(", ")}.`,
+          zh: `与你的请求在「${matchedTokens.join("、")}」上匹配。`,
         })
       : localize(locale, {
           en: "Available from live Events data for review.",
@@ -223,10 +227,15 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
         zh: "已结束——可作为同类活动与参会人脉的线索复核。",
       });
   // 有分语言简介时先给简介，再接未开始/已结束提示。
+  const localizedDescriptions = candidate.localizedDescriptions ?? {
+    en: null,
+    ja: null,
+    zh: null,
+  };
   const localizedDescription =
     locale === "zh"
-      ? candidate.localizedDescriptions.zh
-      : candidate.localizedDescriptions.en;
+      ? localizedDescriptions.zh
+      : localizedDescriptions.en;
   const body = localizedDescription
     ? `${localizedDescription} ${timingNote}`
     : timingNote;

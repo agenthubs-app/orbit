@@ -20,14 +20,18 @@ import type {
 } from "./compose-app-today-from-agent-ledger/today-route-view-model";
 import { OrbitTodayDecisionPanelBody } from "./orbit-today-decision-panel";
 import { OrbitTodayEscapeToCollapse } from "./orbit-today-escape-to-collapse";
+import { OrbitTodayItemOpened } from "./orbit-today-item-opened";
 
 const STATUS_LABELS: Record<AgentLedgerEntry["status"], string> = {
+  approved: "已确认",
   awaiting_confirmation: "等待确认",
+  canceled: "已取消",
   completed: "已完成",
   deferred: "稍后处理",
   executing: "正在执行",
   failed: "失败",
   partially_failed: "部分失败",
+  rejected: "已忽略",
   undone: "已撤销",
 };
 
@@ -104,6 +108,7 @@ function DecisionEntryCard({
       {expanded ? (
         <div className="orbit-today-card-body-wrap">
           <div className="orbit-today-card-body">
+            <OrbitTodayItemOpened actionId={entry.entryId} />
             <OrbitTodayDecisionPanelBody entry={entry} />
           </div>
         </div>

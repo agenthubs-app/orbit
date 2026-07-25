@@ -8,6 +8,7 @@ import { productHref, PublicTopNav } from "../../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../../orbit-z";
+import { OrbitPostEventFollowupCapture } from "./orbit-post-event-followup-capture";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -225,6 +226,16 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
         <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped)}</div>
         {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
       </section>
+
+      {event.status === "ended" ? (
+        <OrbitPostEventFollowupCapture
+          attendeeNames={event.stats.attendees.map(
+            (attendee) => attendee.name,
+          )}
+          eventId={event.id}
+          eventTitle={event.name}
+        />
+      ) : null}
 
       {event.about && event.about.length ? (
         <section>

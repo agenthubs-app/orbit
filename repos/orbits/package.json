@@ -9,6 +9,7 @@
     "db:verify:live-events": "tsx scripts/verify-live-events.ts",
     "db:verify:live-generated-fixtures": "tsx scripts/verify-live-generated-fixtures.ts",
     "db:smoke:live-runtime": "tsx scripts/smoke-live-runtime.ts",
+    "agent:worker": "tsx scripts/run-agent-worker.ts",
     "eval:business-card-ocr": "tsx scripts/evaluate-business-card-ocr.ts",
     "dev": "next dev --webpack",
     "build": "next build --webpack",

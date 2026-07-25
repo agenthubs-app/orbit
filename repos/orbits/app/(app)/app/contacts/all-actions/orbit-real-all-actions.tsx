@@ -9,17 +9,24 @@ import { OrbitAllActionsControls } from "./orbit-all-actions-controls";
 import { OrbitAllActionsSettings } from "./orbit-all-actions-settings";
 
 const STATUS_LABELS: Record<AgentLedgerEntry["status"], string> = {
+  approved: "已确认",
   awaiting_confirmation: "等待确认",
+  canceled: "已取消",
   completed: "已完成",
   deferred: "稍后处理",
   executing: "正在执行",
   failed: "失败",
   partially_failed: "部分失败",
+  rejected: "已忽略",
   undone: "已撤销",
 };
 
 function EntryRow({ entry }: { entry: AgentLedgerEntry }) {
   const sourceLabels = entry.sourceRefs.map((ref) => ref.label).join("、");
+  const updatedLabel = new Intl.DateTimeFormat("zh-CN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(entry.updatedAt));
 
   return (
     <li
@@ -40,9 +47,15 @@ function EntryRow({ entry }: { entry: AgentLedgerEntry }) {
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 3 }}>
           来源：{sourceLabels}
         </div>
+        <div style={{ color: "var(--text-4)", fontSize: 12, marginTop: 3 }}>
+          {entry.workflowKey ? `工作流：${entry.workflowKey} · ` : ""}
+          {entry.runId ? `Run：${entry.runId} · ` : ""}
+          风险：{entry.riskLevel ?? "write"} · 更新：{updatedLabel}
+        </div>
       </div>
       <div className="orbit-all-actions-entry-controls">
         <OrbitAllActionsControls
+          canCancel={entry.status === "approved"}
           canRetry={entry.status === "partially_failed" || entry.status === "failed"}
           canUndo={
             entry.undoable &&

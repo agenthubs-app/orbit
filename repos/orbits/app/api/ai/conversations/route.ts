@@ -14,6 +14,7 @@ import {
   type OrbitAgentSendMessageInput,
 } from "../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
+import { createOrbitAgentRuntimeService } from "../../../../features/agent/runtime/service-factory";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -182,13 +183,43 @@ function responseForResult(
   return response;
 }
 
+async function withRuntimeLinks(
+  result: OrbitAgentConversationResult,
+): Promise<OrbitAgentConversationResult> {
+  if (result.success === false) return result;
+  try {
+    const runtime = createOrbitAgentRuntimeService();
+    const actions = (await runtime.listActions({})).filter(
+      (action) =>
+        Boolean(action.conversationId) &&
+        action.conversationId === result.data.activeConversationId,
+    );
+    if (actions.length === 0) return result;
+    const latest = [...actions].sort((left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt),
+    )[0];
+    return {
+      success: true,
+      data: {
+        ...result.data,
+        runId: latest?.runId,
+        actionIds: actions.map((action) => action.actionId),
+      },
+    };
+  } catch {
+    return result;
+  }
+}
+
 export async function GET(request: Request): Promise<Response> {
   // GET 只读取会话列表/状态，不触发模型 provider。
   const timing = createRouteTiming();
   const mode = resolveFeatureMode();
   const serviceStartedAt = timing.now();
   const service = createOrbitAgentConversationService();
-  const result = await service.listConversations(readListInput(request));
+  const result = await withRuntimeLinks(
+    await service.listConversations(readListInput(request)),
+  );
   timing.finish("orbit-service", serviceStartedAt);
 
   return responseForResult(result, mode, timing);
@@ -203,7 +234,7 @@ export async function POST(request: Request): Promise<Response> {
   timing.finish("orbit-read-body", readBodyStartedAt);
   const serviceStartedAt = timing.now();
   const service = createOrbitAgentConversationService();
-  const result = await service.sendMessage(input);
+  const result = await withRuntimeLinks(await service.sendMessage(input));
   timing.finish("orbit-service", serviceStartedAt);
 
   return responseForResult(result, mode, timing);

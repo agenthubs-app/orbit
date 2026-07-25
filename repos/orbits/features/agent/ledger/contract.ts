@@ -10,10 +10,13 @@ import type { AgentActionSourceReference } from "../contract";
 
 export const AGENT_LEDGER_ENTRY_STATUSES = [
   "awaiting_confirmation",
+  "approved",
   "executing",
   "completed",
   "partially_failed",
   "failed",
+  "rejected",
+  "canceled",
   "undone",
   "deferred",
 ] as const;
@@ -28,24 +31,34 @@ export const AGENT_LEDGER_OPERATION_STATUSES = [
 
 export const AGENT_LEDGER_OPERATION_TYPES = [
   "save_meeting_note",
+  "create_followup_task",
   "create_followup_reminder",
   "save_message_draft",
   "archive_contacts",
   "generate_meeting_brief",
+  "save_event_goal",
+  "create_preparation_task",
+  "add_to_orbit_schedule",
+  "create_intro_request",
+  "accept_intro_request",
+  "propose_meeting_slots",
   "sync_event_to_calendar",
 ] as const;
 
-// 证据种类白名单。语音记录按 2026-07-24 决定暂不纳入。
+// 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。
 export const AGENT_LEDGER_EVIDENCE_KINDS = [
   "event_material",
   "chat_summary",
   "calendar_signal",
   "contact_note",
+  "confirmed_voice_transcript",
 ] as const;
 
 export const AGENT_LEDGER_TRANSITIONS = [
   "confirm",
   "defer",
+  "reject",
+  "cancel",
   "undo",
   "retry",
 ] as const;
@@ -83,8 +96,8 @@ export interface AgentLedgerProvenance {
     | "rule-based-ledger-transition"
     | "live-store-query";
   autonomousExecutionStarted: false;
-  externalSideEffectExecuted: false;
-  externalNetworkRequested: false;
+  externalSideEffectExecuted: boolean;
+  externalNetworkRequested: boolean;
   messageAutoSendExecuted: false;
   liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: boolean;
@@ -106,6 +119,16 @@ export interface AgentLedgerOperation {
   selectedByDefault: boolean;
   status: AgentLedgerOperationStatus;
   idempotencyKey: string;
+  executorKey?: string;
+  payloadVersion?: number;
+  payload?: Readonly<Record<string, unknown>>;
+  preview?: string;
+  riskLevel?: "read" | "draft" | "write" | "external";
+  compensation?: {
+    supported: boolean;
+    executorKey?: string;
+    preview?: string;
+  };
   draftPreview?: string;
   // mock 执行结果开关，仅 fixtures/mock-service 使用；live 实现忽略。
   mockOutcome?: "succeed" | "fail";
@@ -114,26 +137,46 @@ export interface AgentLedgerOperation {
 
 export interface AgentLedgerEntry {
   entryId: string;
+  runId?: string;
+  workflowKey?: string;
+  workflowVersion?: number;
+  conversationId?: string;
+  payloadVersion?: number;
+  immutablePayloadHash?: string;
   title: string;
   contactName?: string;
   organization?: string;
   status: AgentLedgerEntryStatus;
+  riskLevel?: "read" | "draft" | "write" | "external";
+  preview?: string;
   whyNow: string;
   evidenceChips: readonly AgentLedgerEvidenceChip[];
   operations: readonly AgentLedgerOperation[];
   undoable: boolean;
   createdAt: string;
   updatedAt: string;
+  approvedAt?: string;
+  executingAt?: string;
+  completedAt?: string;
+  failedAt?: string;
+  rejectedAt?: string;
+  canceledAt?: string;
+  deferredAt?: string;
+  undoneAt?: string;
+  approvedBy?: string;
   sourceRefs: readonly AgentActionSourceReference[];
   evidenceIds: readonly string[];
   provenance: AgentLedgerProvenance;
   autonomousExecutionStarted: false;
-  externalSideEffectExecuted: false;
+  externalSideEffectExecuted: boolean;
   messageAutoSendExecuted: false;
 }
 
 export interface AgentLedgerListInput {
   status?: AgentLedgerEntryStatus | string | null;
+  workflowKey?: string | null;
+  createdAfter?: string | null;
+  createdBefore?: string | null;
   scenario?: "success" | "empty" | "failure" | string | null;
 }
 

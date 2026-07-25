@@ -472,7 +472,7 @@ function runtimeSnapshot(input: {
       artifactKind: tool.artifactKind,
       descriptionZh: tool.descriptionZh,
       inputSpecZh: tool.inputSpecZh,
-      outputSchema: tool.outputSchema,
+      outputSchema: JSON.stringify(tool.outputSchema.jsonSchema),
       outputSpecZh: tool.outputSpecZh,
       renderHint: tool.renderHint,
       requiresConfirmation: tool.requiresConfirmation,

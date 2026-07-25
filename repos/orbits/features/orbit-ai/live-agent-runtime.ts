@@ -37,6 +37,7 @@ import {
 import { createOrbitAgentLiveArtifactTaskService } from "./live-artifact-task-service";
 import { classifyOutOfServiceScope } from "./service-scope-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
+import { executeOrbitAgentTool } from "./agent-tools/registry";
 
 export const liveCollectedAt = "2026-06-27T00:00:00.000Z";
 export const liveConversationId = "live-orbit-agent-conversation";
@@ -837,30 +838,60 @@ export async function artifactForRequest(input: {
   request: GeminiOrbitAgentToolRequest;
 }): Promise<OrbitAgentArtifactPayload | null> {
   const locale = normalizeLocale(input.locale);
-  const request: OrbitAgentArtifactTaskRequest = {
-    conversationId: liveConversationId,
-    contextMessages: [
-      ...(input.history ?? []).map((turn) => ({
-        content: turn.content,
-        role: turn.role,
-      })),
-      {
-        content: input.message,
-        role: "user" as const,
-      },
-    ],
-    kind: artifactKindForTool(input.request.toolName),
-    locale,
-    presentation: {
-      preferredSurface: "side_panel",
-      widthHint: "half",
-    },
-    query: input.message,
-    toolArguments: input.request.arguments,
-  };
-  const result = await input.artifactTaskService.createArtifactTask(request);
+  const rawArguments =
+    typeof input.request.arguments === "object" &&
+    input.request.arguments !== null &&
+    !Array.isArray(input.request.arguments)
+      ? input.request.arguments
+      : {};
 
-  return result.success ? result.data : null;
+  try {
+    const executed = await executeOrbitAgentTool({
+      toolName: input.request.toolName,
+      arguments: { query: input.message, ...rawArguments },
+      context: {
+        mode: "live",
+        async executeArtifactTool(toolName, validatedInput) {
+          const request: OrbitAgentArtifactTaskRequest = {
+            conversationId: liveConversationId,
+            contextMessages: [
+              ...(input.history ?? []).map((turn) => ({
+                content: turn.content,
+                role: turn.role,
+              })),
+              {
+                content: input.message,
+                role: "user" as const,
+              },
+            ],
+            kind: artifactKindForTool(toolName),
+            locale,
+            presentation: {
+              preferredSurface: "side_panel",
+              widthHint: "half",
+            },
+            query: validatedInput.query,
+            toolArguments: {
+              query: validatedInput.query,
+              locale: validatedInput.locale,
+              searchTerms: validatedInput.searchTerms,
+              domains: validatedInput.domains,
+            },
+          };
+          const result =
+            await input.artifactTaskService.createArtifactTask(request);
+          if (result.success === false) {
+            throw new Error(result.error.message);
+          }
+          return result.data;
+        },
+      },
+    });
+
+    return executed.output;
+  } catch {
+    return null;
+  }
 }
 
 export function artifactSummaryForSynthesis(

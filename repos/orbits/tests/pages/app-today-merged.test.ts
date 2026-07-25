@@ -370,13 +370,13 @@ test("?entry= expands exactly that card, with exactly one 确认执行 in it and
   // exactly once (the content the standalone panel used to own exclusively).
   // Note: "消息只保存为草稿，不会自动发送。" alone also appears a second time
   // as one operation's own effectSummary copy (ledger fixture data, not the
-  // panel) — matching the full guardrail sentence (with the "所有写操作..."
+  // panel) — matching the full guardrail sentence (with the compensation
   // continuation, unique to the panel paragraph) avoids that false positive.
   assert.equal((html.match(/为什么现在出现/g) ?? []).length, 1);
   assert.equal((html.match(/建议基于什么信息/g) ?? []).length, 1);
   assert.equal((html.match(/确认后将会/g) ?? []).length, 1);
   assert.equal(
-    (html.match(/只保存为草稿，不会自动发送。所有写操作可随时在 All actions 中撤销。/g) ?? [])
+    (html.match(/只保存为草稿，不会自动发送。支持补偿的写操作可在 All actions 中撤销。/g) ?? [])
       .length,
     1,
   );

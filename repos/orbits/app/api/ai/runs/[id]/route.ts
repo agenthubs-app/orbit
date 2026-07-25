@@ -12,6 +12,7 @@ import {
   aiProviderFailureToAppError,
   type AiProviderRunResult,
 } from "../../../../../shared/ai/provider";
+import { createOrbitAgentRuntimeService } from "../../../../../features/agent/runtime/service-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,20 @@ export async function GET(
   const mode = resolveFeatureMode();
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
+  try {
+    const agentRun = await createOrbitAgentRuntimeService().getRun(id);
+    if (agentRun) {
+      return NextResponse.json(
+        success({ ...agentRun, runKind: "agent" as const }),
+        {
+          headers: runtimeBoundaryHeaders(mode),
+          status: 200,
+        },
+      );
+    }
+  } catch {
+    // Agent runtime is optional for legacy provider-run lookups.
+  }
   const service = createAiProviderService();
   const result = service.getRun({
     runId: id,

@@ -8,6 +8,9 @@ import {
 } from "./contract";
 import { mockAgentLedgerProvenance } from "./fixtures";
 import type { AgentLedgerService } from "./service";
+import { createRuntimeBackedAgentLedgerService } from "./runtime-adapter";
+import { createOrbitAgentRuntimeService } from "../runtime/service-factory";
+import type { AgentRuntimeService } from "../runtime/service";
 
 function unconfiguredFailure(): AgentLedgerFailure {
   return {
@@ -25,10 +28,18 @@ function unconfiguredFailure(): AgentLedgerFailure {
   };
 }
 
-export function createLiveAgentLedgerService(): AgentLedgerService {
-  return {
-    listEntries: () => unconfiguredFailure(),
-    applyTransition: () => unconfiguredFailure(),
-    updateDraft: () => unconfiguredFailure(),
-  };
+export function createLiveAgentLedgerService(input?: {
+  runtime?: AgentRuntimeService;
+}): AgentLedgerService {
+  try {
+    return createRuntimeBackedAgentLedgerService({
+      runtime: input?.runtime ?? createOrbitAgentRuntimeService("live"),
+    });
+  } catch {
+    return {
+      listEntries: () => unconfiguredFailure(),
+      applyTransition: () => unconfiguredFailure(),
+      updateDraft: () => unconfiguredFailure(),
+    };
+  }
 }

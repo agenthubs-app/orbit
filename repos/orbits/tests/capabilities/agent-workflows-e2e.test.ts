@@ -1,0 +1,464 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { createStorageContactArchiveActionWriter } from "../../features/contacts/action-writer";
+import { createAgentPreferencesService, createStorageAgentPreferencesService } from "../../features/agent/preferences";
+import { createRuntimeBackedAgentLedgerService } from "../../features/agent/ledger/runtime-adapter";
+import { createAgentDomainExecutors } from "../../features/agent/runtime/domain-executors";
+import { createAgentExecutorRegistry } from "../../features/agent/runtime/executor-registry";
+import { createAgentRuntimeService } from "../../features/agent/runtime/service";
+import { projectLedgerEntriesToTodayWorkItems } from "../../features/agent/runtime/today-projection";
+import { createStorageAgentRuntimeRepository } from "../../features/agent/storage/agent-runtime-live-record-provider";
+import { createStorageEventActionWriter } from "../../features/events/action-writer";
+import {
+  createEventMatchmakingService,
+  type MatchmakingParticipant,
+} from "../../features/events/matchmaking/service";
+import { createVoiceMemoTranscriptionService } from "../../features/events/voice-memo/service";
+import { createStorageFollowupActionWriter } from "../../features/followups/action-writer";
+import { createStorageReminderActionWriter } from "../../features/notifications/action-writer";
+import { shouldSendPreEventNudge } from "../../features/notifications/push-adapter";
+import { createEventMatchmakingWorkflow } from "../../features/orbit-ai/workflows/event-matchmaking-v1";
+import { createPostEventFollowupWorkflow } from "../../features/orbit-ai/workflows/post-event-followup-v1";
+import { createPreEventBriefWorkflow } from "../../features/orbit-ai/workflows/pre-event-brief-v1";
+import { createOrbitKnownWorkflowRouter } from "../../features/orbit-ai/workflows/router";
+import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+
+function createWorkflowHarness() {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "agent-workflow-e2e";
+  const matchmaking = createEventMatchmakingService({ store, workspaceId });
+  const runtime = createAgentRuntimeService({
+    repository: createStorageAgentRuntimeRepository({
+      store,
+      workspaceId,
+    }),
+    executors: createAgentExecutorRegistry(
+      createAgentDomainExecutors({
+        contacts: createStorageContactArchiveActionWriter({
+          store,
+          workspaceId,
+        }),
+        events: createStorageEventActionWriter({ store, workspaceId }),
+        followups: createStorageFollowupActionWriter({ store, workspaceId }),
+        notifications: createStorageReminderActionWriter({
+          store,
+          workspaceId,
+        }),
+        matchmaking,
+      }),
+    ),
+    now: () => "2026-07-25T01:00:00.000Z",
+    id: (() => {
+      let value = 0;
+      return () => `e2e-${++value}`;
+    })(),
+  });
+  return { matchmaking, runtime, store, workspaceId };
+}
+
+async function records(
+  harness: ReturnType<typeof createWorkflowHarness>,
+  collectionName: string,
+) {
+  return harness.store.listRecords({
+    workspaceId: harness.workspaceId,
+    collectionName,
+  });
+}
+
+test("known workflow router resolves deterministic relationship workflows before planner fallback", () => {
+  const router = createOrbitKnownWorkflowRouter();
+  assert.equal(router.find("event_ended")?.key, "post_event_followup_v1");
+  assert.equal(router.find("event_in_24_hours")?.key, "pre_event_brief_v1");
+  assert.equal(
+    router.find("event_matchmaking_requested")?.key,
+    "event_matchmaking_v1",
+  );
+  assert.equal(router.find("general_business_question"), null);
+});
+
+test("post-event workflow persists only a confirmed transcript, draft, task, and reminder", async () => {
+  const harness = createWorkflowHarness();
+  const workflow = createPostEventFollowupWorkflow(harness.runtime);
+  const result = await workflow.run({
+    eventId: "event-1",
+    eventTitle: "Tokyo Founder Dinner",
+    contactId: "contact-1",
+    contactName: "Maya",
+    conversationId: "conversation-1",
+    noteText: "Maya wants a Japan launch partner next week.",
+    noteSource: "voice_transcript",
+    followupDueAt: "2026-07-28T01:00:00.000Z",
+    reminderDueAt: "2026-07-29T01:00:00.000Z",
+  });
+
+  assert.equal(result.artifact.rawAudioPersisted, false);
+  assert.equal(result.actions.length, 4);
+  const note = result.actions.find((action) =>
+    action.operations.some((operation) => operation.operationType === "save_meeting_note"),
+  );
+  const draft = result.actions.find((action) =>
+    action.operations.some((operation) => operation.operationType === "save_message_draft"),
+  );
+  const task = result.actions.find((action) =>
+    action.operations.some((operation) => operation.operationType === "create_followup_task"),
+  );
+  const reminder = result.actions.find((action) =>
+    action.operations.some((operation) => operation.operationType === "create_followup_reminder"),
+  );
+  assert.equal(note?.status, "approved");
+  assert.equal(draft?.status, "completed");
+  assert.equal(task?.status, "awaiting_confirmation");
+  assert.equal(reminder?.status, "awaiting_confirmation");
+
+  await harness.runtime.approveAction({
+    actionId: task!.actionId,
+    actorLabel: "Orbit user",
+  });
+  await harness.runtime.approveAction({
+    actionId: reminder!.actionId,
+    actorLabel: "Orbit user",
+  });
+  await harness.runtime.processOutbox();
+
+  const encounterNotes = await records(harness, "encounterNotes");
+  const drafts = await records(harness, "messageDrafts");
+  const tasks = await records(harness, "tasks");
+  const reminders = await records(harness, "notifications");
+  assert.equal(encounterNotes.length, 1);
+  assert.equal(encounterNotes[0].payload.kind, "confirmed_voice_transcript");
+  assert.equal("audioBase64" in encounterNotes[0].payload, false);
+  assert.equal(drafts.length, 1);
+  assert.equal(tasks.length, 1);
+  assert.equal(reminders.length, 1);
+
+  const ledger = await createRuntimeBackedAgentLedgerService({
+    runtime: harness.runtime,
+  }).listEntries({});
+  assert.equal(ledger.success, true);
+  const entries = ledger.success ? ledger.data.entries : [];
+  const todayItems = projectLedgerEntriesToTodayWorkItems(entries);
+  assert.deepEqual(
+    new Set(todayItems.map((item) => item.actionId)),
+    new Set(result.actions.map((action) => action.actionId)),
+  );
+  assert.ok(
+    entries.every((entry) => entry.conversationId === "conversation-1"),
+  );
+
+  await workflow.run({
+    eventId: "event-1",
+    eventTitle: "Tokyo Founder Dinner",
+    contactId: "contact-1",
+    contactName: "Maya",
+    noteText: "Maya wants a Japan launch partner next week.",
+    noteSource: "voice_transcript",
+  });
+  assert.equal((await records(harness, "encounterNotes")).length, 1);
+  assert.equal((await records(harness, "messageDrafts")).length, 1);
+});
+
+test("post-event workflow waits for contact confirmation or merge review without proposing writes", async () => {
+  const harness = createWorkflowHarness();
+  const workflow = createPostEventFollowupWorkflow(harness.runtime);
+  const unresolved = await workflow.run({
+    eventId: "event-unresolved",
+    eventTitle: "Demo Day",
+    noteText: "Discussed a follow-up.",
+  });
+  assert.equal(unresolved.run.status, "waiting_for_input");
+  assert.equal(unresolved.artifact.contactResolution, "candidate_confirmation_required");
+  assert.deepEqual(unresolved.actions, []);
+
+  const duplicate = await workflow.run({
+    eventId: "event-duplicate",
+    eventTitle: "Demo Day",
+    contactId: "contact-1",
+    duplicateContactIds: ["contact-2"],
+    noteText: "Discussed a follow-up.",
+  });
+  assert.equal(duplicate.artifact.contactResolution, "merge_review_required");
+  assert.deepEqual(duplicate.actions, []);
+});
+
+test("pre-event workflow ranks three explainable people and keeps internal/external writes separate", async () => {
+  const harness = createWorkflowHarness();
+  const workflow = createPreEventBriefWorkflow(harness.runtime);
+  const attendees = [
+    {
+      contactId: "low",
+      displayName: "Low",
+      whyWorthMeeting: "One weak signal",
+      evidenceIds: ["e-low"],
+      suggestedTopics: [],
+      openCommitments: [],
+    },
+    {
+      contactId: "highest",
+      displayName: "Highest",
+      whyWorthMeeting: "Open commitments",
+      evidenceIds: ["e-1", "e-2"],
+      suggestedTopics: ["Japan", "SaaS"],
+      openCommitments: ["Send deck", "Book call"],
+      lastInteraction: "2026-07-01",
+    },
+    {
+      contactId: "middle",
+      displayName: "Middle",
+      whyWorthMeeting: "Shared topic",
+      evidenceIds: ["e-3"],
+      suggestedTopics: ["AI"],
+      openCommitments: ["Intro"],
+    },
+    {
+      contactId: "third",
+      displayName: "Third",
+      whyWorthMeeting: "Recent contact",
+      evidenceIds: ["e-4"],
+      suggestedTopics: ["Fundraising"],
+      openCommitments: [],
+      lastInteraction: "2026-07-20",
+    },
+  ];
+  const result = await workflow.run({
+    eventId: "event-brief",
+    title: "Founder Summit",
+    startsAt: "2026-07-25T03:00:00.000Z",
+    location: "Tokyo",
+    attendees,
+    preparationGaps: ["准备一句产品定位"],
+    calendarProvider: "google_calendar",
+  });
+
+  assert.deepEqual(
+    result.artifact.people.map((person) => person.contactId),
+    ["highest", "middle", "third"],
+  );
+  assert.equal(result.artifact.people.length, 3);
+  const brief = result.actions.find((action) => action.riskLevel === "draft");
+  const schedule = result.actions.find((action) =>
+    action.operations.some((operation) => operation.operationType === "add_to_orbit_schedule"),
+  );
+  const external = result.actions.find((action) => action.riskLevel === "external");
+  assert.equal(brief?.status, "completed");
+  assert.equal(schedule?.status, "awaiting_confirmation");
+  assert.equal(external?.status, "awaiting_confirmation");
+  assert.equal((await records(harness, "orbitScheduleItems")).length, 0);
+
+  await harness.runtime.approveAction({
+    actionId: schedule!.actionId,
+    actorLabel: "Orbit user",
+  });
+  await harness.runtime.processOutbox({ actionId: schedule!.actionId });
+  assert.equal((await records(harness, "orbitScheduleItems")).length, 1);
+  assert.equal(external?.status, "awaiting_confirmation");
+});
+
+test("pre-event push is limited to an unviewed costly miss within two hours and outside quiet hours", () => {
+  const base = {
+    now: "2026-07-25T10:00:00.000Z",
+    startsAt: "2026-07-25T11:30:00.000Z",
+    costlyMiss: true,
+    pushEnabled: true,
+    quietHours: { startHour: 22, endHour: 8 },
+  };
+  assert.equal(shouldSendPreEventNudge(base), true);
+  assert.equal(shouldSendPreEventNudge({ ...base, viewedAt: base.now }), false);
+  assert.equal(shouldSendPreEventNudge({ ...base, costlyMiss: false }), false);
+  assert.equal(
+    shouldSendPreEventNudge({
+      ...base,
+      startsAt: "2026-07-25T13:00:01.000Z",
+    }),
+    false,
+  );
+  assert.equal(
+    shouldSendPreEventNudge({
+      ...base,
+      quietHours: { startHour: 0, endHour: 23 },
+    }),
+    false,
+  );
+});
+
+function participant(
+  participantId: string,
+  overrides: Partial<MatchmakingParticipant> = {},
+): MatchmakingParticipant {
+  return {
+    participantId,
+    displayName: participantId,
+    domains: ["AI"],
+    goals: ["partnership"],
+    offers: ["distribution"],
+    needs: ["fundraising"],
+    availableSlots: ["2026-07-26T01:00:00.000Z"],
+    evidenceIds: [`evidence:${participantId}`],
+    ...overrides,
+  };
+}
+
+test("matchmaking requires mutual consent, supports manual slots, outcomes, and private aggregate metrics", async () => {
+  const harness = createWorkflowHarness();
+  const workflow = createEventMatchmakingWorkflow(
+    harness.runtime,
+    harness.matchmaking,
+  );
+  const result = await workflow.run({
+    eventId: "event-match",
+    eventTitle: "AI Summit",
+    requester: participant("requester"),
+    candidates: [
+      participant("a", { offers: ["fundraising"] }),
+      participant("b"),
+      participant("c"),
+      participant("d"),
+    ],
+  });
+  assert.equal(result.artifact.matches.length, 3);
+  assert.ok(result.artifact.matches.every((match) => match.reasons.length > 0));
+  assert.ok(
+    result.artifact.matches.every(
+      (match) => match.contactDetailsDisclosed === false,
+    ),
+  );
+
+  const action = result.actions[0];
+  await harness.runtime.approveAction({
+    actionId: action.actionId,
+    actorLabel: "Requester",
+  });
+  await harness.runtime.processOutbox({ actionId: action.actionId });
+  const requestId = String(action.operations[0].payload.requestId);
+  const request = await harness.matchmaking.getRequest(requestId);
+  assert.equal(request?.status, "awaiting_target_consent");
+  assert.equal(request?.contactDetailsDisclosed, false);
+  await assert.rejects(
+    () =>
+      harness.matchmaking.selectSlot({
+        requestId,
+        slot: "2026-07-26T01:00:00.000Z",
+        now: "2026-07-25T02:00:00.000Z",
+      }),
+    /mutually consented/,
+  );
+
+  const accepted = await harness.matchmaking.respondToIntroduction({
+    requestId,
+    accept: true,
+    now: "2026-07-25T02:00:00.000Z",
+  });
+  assert.equal(accepted.contactDetailsDisclosed, true);
+  await harness.matchmaking.proposeSlots({
+    requestId,
+    slots: ["2026-07-26T02:00:00.000Z"],
+    now: "2026-07-25T02:01:00.000Z",
+  });
+  await harness.matchmaking.selectSlot({
+    requestId,
+    slot: "2026-07-26T02:00:00.000Z",
+    now: "2026-07-25T02:02:00.000Z",
+  });
+  await harness.matchmaking.recordOutcome({
+    requestId,
+    outcome: "met",
+    now: "2026-07-26T03:00:00.000Z",
+  });
+  const completed = await harness.matchmaking.recordOutcome({
+    requestId,
+    outcome: "followup_recorded",
+    now: "2026-07-27T03:00:00.000Z",
+  });
+  assert.equal(completed.status, "followup_recorded");
+
+  const suppressed = await harness.matchmaking.organizerMetrics("event-match");
+  assert.equal(suppressed.suppressed, true);
+  assert.equal(suppressed.counts.requests, 0);
+  assert.equal(suppressed.privateMemoIncluded, false);
+  assert.equal(suppressed.relationshipHistoryIncluded, false);
+  assert.equal(suppressed.privateFollowupIncluded, false);
+
+  for (let index = 2; index <= 5; index += 1) {
+    await harness.matchmaking.createIntroductionRequest({
+      requestId: `request-${index}`,
+      eventId: "event-match",
+      requesterParticipantId: "requester",
+      targetParticipantId: `target-${index}`,
+      now: `2026-07-25T0${index}:00:00.000Z`,
+    });
+  }
+  const aggregate = await harness.matchmaking.organizerMetrics("event-match");
+  assert.equal(aggregate.suppressed, false);
+  assert.equal(aggregate.counts.requests, 5);
+  assert.equal(JSON.stringify(aggregate).includes("memo"), false);
+});
+
+test("voice memo validates privacy bounds and always falls back to typed note on ASR failure", async () => {
+  let seenAudio = "";
+  const service = createVoiceMemoTranscriptionService({
+    provider: {
+      async transcribe(input) {
+        seenAudio = input.audioBase64;
+        return "  editable transcript  ";
+      },
+    },
+  });
+  const result = await service.transcribe({
+    audioBase64: Buffer.from("temporary audio").toString("base64"),
+    mimeType: "audio/webm",
+    durationMs: 14_999,
+  });
+  assert.equal(seenAudio.length > 0, true);
+  assert.equal(result.transcript, "editable transcript");
+  assert.equal(result.rawAudioPersisted, false);
+  assert.equal(result.evidenceCreated, false);
+  assert.equal(result.requiresTextConfirmation, true);
+  assert.equal(result.fallback, "typed_note");
+
+  await assert.rejects(
+    () =>
+      service.transcribe({
+        audioBase64: "YQ==",
+        mimeType: "audio/webm",
+        durationMs: 15_001,
+      }),
+    /between 1 and 15 seconds/,
+  );
+  await assert.rejects(
+    () =>
+      createVoiceMemoTranscriptionService({ provider: null }).transcribe({
+        audioBase64: "YQ==",
+        mimeType: "audio/webm",
+        durationMs: 1_000,
+      }),
+    /typed note/,
+  );
+});
+
+test("agent preferences persist and reject malformed quiet hours", async () => {
+  const store = createMemoryLiveRecordStore<{
+    preferences: Awaited<ReturnType<ReturnType<typeof createAgentPreferencesService>["get"]>>;
+  }>();
+  const service = createStorageAgentPreferencesService({
+    store,
+    workspaceId: "preferences-e2e",
+    now: () => "2026-07-25T04:00:00.000Z",
+  });
+  const updated = await service.update({
+    preEventBriefPushEnabled: false,
+    quietHours: { start: "21:30", end: "07:30" },
+  });
+  assert.equal(updated.preEventBriefPushEnabled, false);
+  assert.deepEqual((await service.get()).quietHours, {
+    start: "21:30",
+    end: "07:30",
+  });
+  await assert.rejects(
+    () =>
+      service.update({
+        quietHours: { start: "25:00", end: "07:30" },
+      }),
+    /HH:mm/,
+  );
+});

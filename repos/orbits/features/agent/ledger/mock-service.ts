@@ -4,6 +4,8 @@
  * 状态转换规则：
  *   awaiting_confirmation | deferred --confirm--> completed | partially_failed | failed
  *   awaiting_confirmation --defer--> deferred
+ *   awaiting_confirmation | deferred --reject--> rejected
+ *   awaiting_confirmation | deferred | approved --cancel--> canceled
  *   (completed | partially_failed) 且 undoable --undo--> undone
  *   partially_failed | failed --retry--> 只重跑 failed 子操作
  * 幂等：executionCounts 按 idempotencyKey 统计，重试不重跑 succeeded 的子操作。
@@ -126,10 +128,21 @@ export function createMockAgentLedgerService(): AgentLedgerService & {
       if (input?.scenario === "failure") {
         return ledgerFailure("AGENT_LEDGER_MOCK_FAILED");
       }
-      const filtered =
-        input?.status != null && input.status !== ""
-          ? entries.filter((entry) => entry.status === input.status)
-          : entries;
+      const filtered = entries.filter(
+        (entry) =>
+          (input?.status == null ||
+            input.status === "" ||
+            entry.status === input.status) &&
+          (input?.workflowKey == null ||
+            input.workflowKey === "" ||
+            entry.workflowKey === input.workflowKey) &&
+          (input?.createdAfter == null ||
+            input.createdAfter === "" ||
+            entry.createdAt >= input.createdAfter) &&
+          (input?.createdBefore == null ||
+            input.createdBefore === "" ||
+            entry.createdAt <= input.createdBefore),
+      );
       const state = input?.scenario === "empty" || filtered.length === 0 ? "empty" : "success";
       const visibleEntries = input?.scenario === "empty" ? [] : filtered;
 
@@ -191,7 +204,31 @@ export function createMockAgentLedgerService(): AgentLedgerService & {
             return ledgerFailure("AGENT_LEDGER_TRANSITION_INVALID");
           }
           entry.status = "deferred";
+          entry.deferredAt = new Date().toISOString();
           return mutationSuccess(entry, "defer", actorLabel);
+        }
+        case "reject": {
+          if (
+            entry.status !== "awaiting_confirmation" &&
+            entry.status !== "deferred"
+          ) {
+            return ledgerFailure("AGENT_LEDGER_TRANSITION_INVALID");
+          }
+          entry.status = "rejected";
+          entry.rejectedAt = new Date().toISOString();
+          return mutationSuccess(entry, "reject", actorLabel);
+        }
+        case "cancel": {
+          if (
+            entry.status !== "awaiting_confirmation" &&
+            entry.status !== "deferred" &&
+            entry.status !== "approved"
+          ) {
+            return ledgerFailure("AGENT_LEDGER_TRANSITION_INVALID");
+          }
+          entry.status = "canceled";
+          entry.canceledAt = new Date().toISOString();
+          return mutationSuccess(entry, "cancel", actorLabel);
         }
         case "undo": {
           const undoableNow =

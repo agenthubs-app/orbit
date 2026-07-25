@@ -3,18 +3,17 @@
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createHybridAgentActionQueueService } from "./agent-action-queue-mock/hybrid-service";
 import { createLiveExternalActionSandboxService } from "./live-external-action-sandbox";
-import { createLiveAgentActionQueueService } from "./live-service";
 import { createLiveAgentAutonomySettingsService } from "./live-settings-service";
 import { createMockExternalActionSandboxService } from "./mock-external-action-sandbox";
 import { createMockAgentActionQueueService } from "./mock-service";
 import { createMockAgentAutonomySettingsService } from "./mock-settings-service";
-import { createConfiguredStorageAgentActionQueueProvider } from "./storage/agent-action-live-record-provider";
 import type { ExternalActionSandboxService } from "./external-action-contract";
 import type { AgentActionQueueService } from "./service";
 import type { AgentAutonomySettingsService } from "./settings-contract";
 import { createLiveAgentLedgerService } from "./ledger/live-service";
 import { createMockAgentLedgerService } from "./ledger/mock-service";
 import type { AgentLedgerService } from "./ledger/service";
+import { createLedgerAgentActionQueueAdapter } from "./ledger/queue-adapter";
 
 export type {
   AgentAutonomySettingsInput,
@@ -27,8 +26,8 @@ export const agentActionQueueServiceFactory =
     implementations: {
       hybrid: () => createHybridAgentActionQueueService(),
       live: () =>
-        createLiveAgentActionQueueService({
-          provider: createConfiguredStorageAgentActionQueueProvider(),
+        createLedgerAgentActionQueueAdapter({
+          ledger: createLiveAgentLedgerService(),
         }),
       mock: () => createMockAgentActionQueueService(),
     },

@@ -23,10 +23,8 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   agentActionsToView,
-  type AgentAutonomyLevel,
   type AgentActionCardView,
-  type AgentActionsView,
-  type AgentSettingsLevelOptionView
+  type AgentActionsView
 } from "../../view-models/agent-actions";
 import {
   buildExternalActionConfirmationDecisionRequest,
@@ -59,10 +57,6 @@ export function AgentActionsScreen() {
     ORBIT_API_ENDPOINTS.agentActions,
     (data) => agentActionsToView({ actionsPayload: data }).actions.length === 0
   );
-  const settingsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.agentSettings,
-    () => false
-  );
   const sandboxState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.externalActionSandboxAudit,
     (data) => {
@@ -72,7 +66,6 @@ export function AgentActionsScreen() {
   );
   const [pendingDecision, setPendingDecision] =
     useState<PendingAgentActionDecision | null>(null);
-  const [pendingLevel, setPendingLevel] = useState<AgentAutonomyLevel | null>(null);
   const [pendingExternalActionId, setPendingExternalActionId] =
     useState<string | null>(null);
   const [pendingConfirmationDecision, setPendingConfirmationDecision] =
@@ -89,7 +82,6 @@ export function AgentActionsScreen() {
     setActionError(null);
     setExternalConfirmationResult(null);
     actionsState.refresh();
-    settingsState.refresh();
     sandboxState.refresh();
   }
 
@@ -126,36 +118,6 @@ export function AgentActionsScreen() {
       );
     } finally {
       setPendingDecision(null);
-    }
-  }
-
-  async function updateSettingsLevel(option: AgentSettingsLevelOptionView) {
-    if (option.selected) {
-      return;
-    }
-
-    setPendingLevel(option.level);
-    setFeedback(null);
-    setActionError(null);
-
-    try {
-      const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.agentSettings, {
-        body: {
-          actorLabel: "移动端用户",
-          requestedLevel: option.level
-        }
-      });
-
-      if (result.success) {
-        setFeedback(`已更新为${option.label}。对外动作仍然需要你确认。`);
-        settingsState.refresh();
-      } else {
-        setActionError("这项边界暂时保存不了。请刷新后再试一次。");
-      }
-    } catch {
-      setActionError("这项边界暂时保存不了。请刷新后再试一次。");
-    } finally {
-      setPendingLevel(null);
     }
   }
 
@@ -227,10 +189,6 @@ export function AgentActionsScreen() {
     }
   }
 
-  const settingsPayload =
-    settingsState.kind === "success" || settingsState.kind === "empty"
-      ? settingsState.data
-      : null;
   const sandboxView =
     sandboxState.kind === "success" || sandboxState.kind === "empty"
       ? externalActionSandboxToView(sandboxState.data)
@@ -244,7 +202,6 @@ export function AgentActionsScreen() {
           onRefresh={refreshAll}
           refreshing={
             actionsState.refreshing ||
-            settingsState.refreshing ||
             sandboxState.refreshing
           }
           tintColor={colors.accent}
@@ -271,15 +228,12 @@ export function AgentActionsScreen() {
           onDecision={decideAction}
           onExternalConfirmationDecision={decideExternalConfirmation}
           onExternalSendConfirm={confirmExternalSend}
-          onSettingsLevelChange={updateSettingsLevel}
           pendingConfirmationDecision={pendingConfirmationDecision}
           pendingDecision={pendingDecision}
           pendingExternalActionId={pendingExternalActionId}
-          pendingLevel={pendingLevel}
           sandboxView={sandboxView}
           view={agentActionsToView({
-            actionsPayload: actionsState.data,
-            settingsPayload
+            actionsPayload: actionsState.data
           })}
         />
       ) : null}
@@ -295,11 +249,9 @@ function AgentActionsContent({
   onDecision,
   onExternalConfirmationDecision,
   onExternalSendConfirm,
-  onSettingsLevelChange,
   pendingConfirmationDecision,
   pendingDecision,
   pendingExternalActionId,
-  pendingLevel,
   sandboxView,
   view
 }: {
@@ -313,11 +265,9 @@ function AgentActionsContent({
     decision: ExternalActionConfirmationDecision
   ) => void;
   onExternalSendConfirm: (action: ExternalActionSandboxActionView) => void;
-  onSettingsLevelChange: (option: AgentSettingsLevelOptionView) => void;
   pendingConfirmationDecision: PendingExternalConfirmationDecision | null;
   pendingDecision: PendingAgentActionDecision | null;
   pendingExternalActionId: string | null;
-  pendingLevel: AgentAutonomyLevel | null;
   sandboxView: ExternalActionSandboxView | null;
   view: AgentActionsView;
 }) {
@@ -341,43 +291,9 @@ function AgentActionsContent({
 
       <DataCard
         detail={view.settings.confirmationLabel}
-        title={`边界：${view.settings.currentLevelLabel}`}
+        title={`边界：${view.settings.policyLabel}`}
       >
         <Text style={styles.bodyText}>{view.settings.summary}</Text>
-        <View style={styles.levelGrid}>
-          {view.settings.levelOptions.map((option) => (
-            <Pressable
-              accessibilityRole="button"
-              disabled={Boolean(pendingLevel) || option.selected}
-              key={option.level}
-              onPress={() => onSettingsLevelChange(option)}
-              style={({ pressed }) => [
-                styles.levelOption,
-                option.selected ? styles.levelOptionSelected : null,
-                pendingLevel === option.level ? styles.disabled : null,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <View style={styles.levelOptionHeader}>
-                <Ionicons
-                  color={option.selected ? colors.accent : colors.text3}
-                  name={option.selected ? "checkmark-circle" : "ellipse-outline"}
-                  size={17}
-                />
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.levelOptionTitle,
-                    option.selected ? styles.levelOptionTitleSelected : null
-                  ]}
-                >
-                  {pendingLevel === option.level ? "更新中" : option.label}
-                </Text>
-              </View>
-              <Text style={styles.levelOptionDetail}>{option.detail}</Text>
-            </Pressable>
-          ))}
-        </View>
         <View style={styles.ruleList}>
           {view.settings.rules.map((rule) => (
             <View key={rule} style={styles.ruleItem}>
@@ -753,42 +669,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.small,
     lineHeight: 19
-  },
-  levelGrid: {
-    gap: spacing.sm
-  },
-  levelOption: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  levelOptionDetail: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    lineHeight: 17
-  },
-  levelOptionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs
-  },
-  levelOptionSelected: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accent
-  },
-  levelOptionTitle: {
-    color: colors.text,
-    flex: 1,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 20
-  },
-  levelOptionTitleSelected: {
-    color: colors.accent
   },
   historySection: {
     gap: spacing.sm,

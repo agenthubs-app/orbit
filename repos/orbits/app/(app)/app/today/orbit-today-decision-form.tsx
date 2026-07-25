@@ -40,7 +40,7 @@ export function OrbitTodayDecisionForm({
 
   // 网络异常或非 JSON 响应都必须复位 pending，否则按钮会永久禁用。
   async function applyTransition(
-    transition: "confirm" | "defer",
+    transition: "confirm" | "defer" | "reject",
   ): Promise<void> {
     setPending(true);
     setError(null);
@@ -128,6 +128,14 @@ export function OrbitTodayDecisionForm({
           type="button"
         >
           稍后处理
+        </button>
+        <button
+          className="btn btn-quiet"
+          disabled={pending}
+          onClick={() => void applyTransition("reject")}
+          type="button"
+        >
+          忽略
         </button>
       </div>
     </div>

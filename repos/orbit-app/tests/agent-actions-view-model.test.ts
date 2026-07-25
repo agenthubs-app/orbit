@@ -60,16 +60,16 @@ test("agentActionsToView maps action queue and safety settings into Chinese card
   });
 
   assert.equal(view.title, "Agent 动作中心");
-  assert.equal(view.summary, "1 条建议需要你复核。当前为中等自主，所有对外动作都需要你确认。");
+  assert.equal(view.summary, "1 条建议需要你复核。所有写入逐次确认，对外消息不会自动发送。");
   assert.equal(view.nextAction, "先看高优先级建议；确认联系人、语气和依据后再继续。");
   assert.equal(view.metrics[0], "1 条待确认");
   assert.equal(view.metrics[1], "高优先级 1");
-  assert.equal(view.settings.currentLevelLabel, "中等自主");
-  assert.equal(view.settings.confirmationLabel, "对外动作前必须确认");
+  assert.equal(view.settings.policyLabel, "固定安全策略");
+  assert.equal(view.settings.confirmationLabel, "系统内写入逐次确认；对外发送禁止");
   assert.deepEqual(view.settings.rules, [
-    "可以整理建议和草稿。",
-    "发送消息、写日历、改资料前都要停下来等你确认。",
-    "界面只展示可复核内容，不替你执行。"
+    "读取关系上下文和准备草稿可以自动完成。",
+    "创建任务、提醒、日程或修改资料前，每次都需要你确认。",
+    "消息和邮件只保存草稿，Orbit 永不自动发送。"
   ]);
   assert.equal(view.actions[0]?.title, "复核 Maya Chen 的活动后跟进");
   assert.equal(view.actions[0]?.actionTypeLabel, "活动后跟进");
@@ -105,7 +105,7 @@ test("agentActionsToView keeps the Agent center useful when the queue is empty",
   assert.equal(view.emptyTitle, "没有待复核动作");
 });
 
-test("agentActionsToView exposes safe autonomy level choices", () => {
+test("agentActionsToView exposes one fixed safety policy", () => {
   const view = agentActionsToView({
     actionsPayload: { actions: [], state: "empty" },
     settingsPayload: {
@@ -133,27 +133,9 @@ test("agentActionsToView exposes safe autonomy level choices", () => {
     }
   });
 
-  assert.deepEqual(view.settings.levelOptions, [
-    {
-      detail: "只整理提醒和依据；是否继续由你判断。",
-      label: "低自主",
-      level: "low",
-      selected: false
-    },
-    {
-      detail: "可以排序下一步、起草内容；对外动作仍要你确认。",
-      label: "中等自主",
-      level: "medium",
-      selected: true
-    },
-    {
-      detail: "可以准备行动预案；发送、排程和改资料仍会停下来。",
-      label: "高自主",
-      level: "high",
-      selected: false
-    }
-  ]);
-  assert.doesNotMatch(flattenedText(view.settings.levelOptions), /autonomy|drafts|sourced/iu);
+  assert.equal(view.settings.policyLabel, "固定安全策略");
+  assert.equal(view.settings.summary, "这条边界不随“自主等级”变化，所有入口遵循同一套规则。");
+  assert.doesNotMatch(flattenedText(view.settings), /autonomy|drafts|sourced/iu);
 });
 
 test("agentActionsToView localizes confirmation-based due labels", () => {

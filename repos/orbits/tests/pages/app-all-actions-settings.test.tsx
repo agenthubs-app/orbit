@@ -1,7 +1,7 @@
 /**
  * All actions 权限与通知设置区测试。
  *
- * 三项设置来自设计稿；当前只有界面与本地交互，尚未持久化到 agent settings。
+ * 设置读取并持久化到 Agent preferences；外部连接使用独立 OAuth 授权。
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -21,18 +21,19 @@ test("the settings block renders the three designed controls", () => {
   assert.ok(html.includes("08:00"));
 });
 
-test("the settings block is honest about not persisting yet", () => {
+test("the settings block exposes a persistent save action", () => {
   const html = renderToStaticMarkup(<OrbitAllActionsSettings />);
 
-  assert.ok(html.includes("尚未保存"));
+  assert.ok(html.includes("保存设置"));
+  assert.ok(!html.includes("尚未保存"));
 });
 
-test("both toggles render as checkboxes defaulted on", () => {
+test("all three toggles render as checkboxes defaulted on", () => {
   const html = renderToStaticMarkup(<OrbitAllActionsSettings />);
   const checkboxes = html.match(/type="checkbox"/g) ?? [];
 
-  assert.equal(checkboxes.length, 2);
-  assert.equal((html.match(/checked=""/g) ?? []).length, 2);
+  assert.equal(checkboxes.length, 3);
+  assert.equal((html.match(/checked=""/g) ?? []).length, 3);
 });
 
 test("an empty ledger renders the dedicated empty state", async () => {

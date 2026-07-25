@@ -22,6 +22,10 @@ function readInput(request: Request): AgentActionQueueListInput {
 
   return {
     actionType: searchParams.get("actionType"),
+    status: searchParams.get("status"),
+    workflowKey: searchParams.get("workflow"),
+    createdAfter: searchParams.get("createdAfter"),
+    createdBefore: searchParams.get("createdBefore"),
     scenario: searchParams.get("scenario"),
   };
 }

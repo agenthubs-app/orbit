@@ -49,12 +49,15 @@ export const TODAY_SECTION_BY_STATUS: Record<
   AgentLedgerEntryStatus,
   TodaySectionKey | null
 > = {
+  approved: "prepared",
   awaiting_confirmation: "decide",
+  canceled: "recent",
   completed: "recent",
   deferred: null,
   executing: "prepared",
   failed: "recent",
   partially_failed: "recent",
+  rejected: "recent",
   undone: "recent",
 };
 
