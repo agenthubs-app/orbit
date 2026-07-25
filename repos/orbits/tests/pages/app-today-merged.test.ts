@@ -141,12 +141,27 @@ test("/app/today renders the merged workspace shell", async () => {
   assert.match(html, /安排约见/);
   assert.match(html, /添加来源/);
 
-  // 护栏文案关键句同时出现
+  // 可复核安排卡的护栏文案（不依赖决策卡是否展开——见 arrangement targetNote）
   assert.match(html, /不会写入日历/);
-  assert.match(html, /只保存为草稿/);
 
   // mobile single-column breakpoint stays intact (existing structural gate)
   assert.match(html, /data-orbit-real-page="today"/);
+});
+
+// T2 (today-schedule 合并 P2): "只保存为草稿" used to live in a right-column
+// panel that rendered unconditionally (defaulting to the first decide
+// entry). Now it's part of the decision card's expanded body — progressive
+// disclosure means it only appears once a card is actually open, so this
+// check needs an ?entry= render instead of the bare-page one above.
+test("/app/today shows the draft-only guardrail once a decision card is expanded", async () => {
+  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+    searchParams?: Promise<Record<string, string>>;
+  }) => Promise<React.ReactElement>;
+  const html = renderToStaticMarkup(
+    await Page({ searchParams: Promise.resolve({ entry: "ledger-followup-alex-chen" }) }),
+  );
+
+  assert.match(html, /只保存为草稿/);
 });
 
 test("/app/today keeps working when a ?date= without any meetings is requested", async () => {
@@ -225,4 +240,87 @@ test("meeting cards in the time spine expose 查看名片/起草邮件/展开详
   assert.match(html, /查看名片/);
   assert.match(html, /起草邮件/);
   assert.match(html, /展开详情/);
+});
+
+// ---- T2: decision cards become inline accordions (design doc §2, §5) ----
+
+test("without ?entry= no decision card is expanded", async () => {
+  const Page = (await import("../../app/(app)/app/today/page")).default;
+  const html = renderToStaticMarkup(await Page());
+
+  assert.doesNotMatch(html, /data-orbit-today-entry-expanded="true"/);
+  // The panel's write affordances (confirm/defer) only ever render inside an
+  // expanded card — with nothing expanded, neither should appear at all.
+  assert.doesNotMatch(html, /确认执行/);
+  assert.doesNotMatch(html, /稍后处理/);
+});
+
+test("?entry= expands exactly that card, with exactly one 确认执行 in it and none elsewhere", async () => {
+  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+    searchParams?: Promise<Record<string, string>>;
+  }) => Promise<React.ReactElement>;
+  const html = renderToStaticMarkup(
+    await Page({ searchParams: Promise.resolve({ entry: "ledger-followup-alex-chen" }) }),
+  );
+
+  // Exactly one card is expanded, and it's the requested one.
+  const expandedMatches = html.match(/data-orbit-today-entry-expanded="true"/g) ?? [];
+  assert.equal(expandedMatches.length, 1);
+  assert.match(
+    html,
+    /data-orbit-today-entry="ledger-followup-alex-chen"[^>]*data-orbit-today-entry-expanded="true"/,
+  );
+
+  // Full detail parity inside the expanded card: the three questions, the
+  // evidence chip, the draft-only guardrail, and the confirm form — all
+  // exactly once (the content the standalone panel used to own exclusively).
+  // Note: "消息只保存为草稿，不会自动发送。" alone also appears a second time
+  // as one operation's own effectSummary copy (ledger fixture data, not the
+  // panel) — matching the full guardrail sentence (with the "所有写操作..."
+  // continuation, unique to the panel paragraph) avoids that false positive.
+  assert.equal((html.match(/为什么现在出现/g) ?? []).length, 1);
+  assert.equal((html.match(/建议基于什么信息/g) ?? []).length, 1);
+  assert.equal((html.match(/确认后将会/g) ?? []).length, 1);
+  assert.equal(
+    (html.match(/只保存为草稿，不会自动发送。所有写操作可随时在 All actions 中撤销。/g) ?? [])
+      .length,
+    1,
+  );
+  assert.equal((html.match(/确认执行/g) ?? []).length, 1);
+  assert.equal((html.match(/稍后处理/g) ?? []).length, 1);
+});
+
+test("entry links preserve ?date=/?view= (T1 review: EntryRow used to strip them)", async () => {
+  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+    searchParams?: Promise<Record<string, string>>;
+  }) => Promise<React.ReactElement>;
+  const html = renderToStaticMarkup(
+    await Page({
+      searchParams: Promise.resolve({ date: "2026-07-20", view: "month" }),
+    }),
+  );
+
+  // Every collapsed decision card's link carries the current date/view
+  // alongside its own ?entry=, instead of resetting them.
+  assert.match(
+    html,
+    /href="\/app\/today\?date=2026-07-20&amp;view=month&amp;entry=ledger-followup-alex-chen"/,
+  );
+});
+
+test("the expanded card's header link collapses back to a plain ?date=/?view= URL", async () => {
+  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+    searchParams?: Promise<Record<string, string>>;
+  }) => Promise<React.ReactElement>;
+  const html = renderToStaticMarkup(
+    await Page({
+      searchParams: Promise.resolve({
+        date: "2026-07-20",
+        entry: "ledger-followup-alex-chen",
+        view: "month",
+      }),
+    }),
+  );
+
+  assert.match(html, /href="\/app\/today\?date=2026-07-20&amp;view=month"/);
 });

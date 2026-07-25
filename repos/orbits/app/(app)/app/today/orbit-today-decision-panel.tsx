@@ -1,8 +1,16 @@
 /**
- * Today 决策详情面板（server component）。
+ * Today 决策详情内容（server component）。
  *
  * 回答设计稿的三个问题：为什么现在出现 / 建议基于什么信息 / 确认后将会发生什么。
  * 只有 awaiting_confirmation 与 deferred 的条目才渲染写入口。
+ *
+ * T2（today-schedule 合并 P2）之前，这里是右栏常驻的详情面板：一个独立的
+ * `<aside className="card">`，entry 为 null 时渲染"选择左侧任一条目"的空态。
+ * 现在决策卡改成原位展开的 accordion（见 orbit-real-today.tsx 的
+ * `DecisionEntryCard`），不再有常驻面板、也不再有"未选中"的空态——这个组件
+ * 只保留*内容本身*（三个问题 + 证据 chip + 护栏文案 + 表单），供展开体内嵌
+ * 渲染；外层卡片的边框/圆角/内边距和标题都由 accordion 容器负责，避免和
+ * 折叠态已经显示的标题重复。
  */
 import { Icon } from "../orbit-reference-primitives";
 import type { AgentLedgerEntry } from "../../../../features/agent/ledger/contract";
@@ -15,31 +23,16 @@ const EVIDENCE_ICONS: Record<string, string> = {
   event_material: "doc",
 };
 
-export function OrbitTodayDecisionPanel({
+export function OrbitTodayDecisionPanelBody({
   entry,
 }: {
-  entry: AgentLedgerEntry | null;
+  entry: AgentLedgerEntry;
 }) {
-  if (!entry) {
-    return (
-      <aside className="card" data-orbit-today-panel="empty" style={{ padding: 22 }}>
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-          选择左侧任一条目查看决策详情。
-        </p>
-      </aside>
-    );
-  }
-
   const editable =
     entry.status === "awaiting_confirmation" || entry.status === "deferred";
 
   return (
-    <aside className="card" data-orbit-today-panel={entry.entryId} style={{ display: "flex", flexDirection: "column", gap: 16, padding: 22 }}>
-      <div>
-        <div className="eyebrow">决策详情</div>
-        <h2 style={{ fontSize: 18, margin: "8px 0 0" }}>{entry.title}</h2>
-      </div>
-
+    <div data-orbit-today-panel={entry.entryId} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <section>
         <h3 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 6px" }}>
           为什么现在出现?
@@ -91,6 +84,6 @@ export function OrbitTodayDecisionPanel({
       {editable ? (
         <OrbitTodayDecisionForm entryId={entry.entryId} operations={entry.operations} />
       ) : null}
-    </aside>
+    </div>
   );
 }
