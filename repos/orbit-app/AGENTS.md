@@ -14,4 +14,10 @@ This directory is the iOS-first Orbit mobile app.
 - Do not read or write Postgres, Supabase, `orbit_records`, or browser localStorage from the mobile app.
 - Keep user-facing copy free of implementation labels such as mock, hybrid, provider, or command-center.
 - Do not commit `.expo/`, `node_modules/`, simulator output, screenshots, native build artifacts, or generated logs.
+- Prefer rendering tests over source-text assertions. `tests/helpers/render.tsx`
+  renders a component through `react-native-web` and returns HTML, so the
+  assertion covers what the tree actually produces instead of what the file
+  happens to contain. Source-text assertions stay valid for wiring that cannot be
+  rendered yet (native modules, provider plumbing); say so in the test when that
+  is the reason.
 - If a mobile screen needs missing backend behavior, document the API gap instead of duplicating business logic locally.

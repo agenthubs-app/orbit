@@ -30,7 +30,13 @@ at a different Orbit server.
 - `npm run ios`: start Expo and open iOS simulator.
 - `npm run start`: start Expo without choosing a target.
 - `npm run typecheck`: run TypeScript.
-- `npm test`: run Node tests through `tsx`.
+- `npm test`: run Node tests through `tsx`, including rendering tests.
+
+Rendering tests live beside the others and use `tests/helpers/render.tsx`. There
+is no Jest here: `tests/helpers/register-render-hooks.mjs` points `react-native`
+at `react-native-web` inside the test process only, so components render to HTML
+under `node --test`. The native build is unaffected. Static rendering covers
+structure and copy; interaction is not simulated yet.
 
 ## Boundaries
 
