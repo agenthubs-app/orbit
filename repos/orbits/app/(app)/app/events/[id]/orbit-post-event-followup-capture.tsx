@@ -56,6 +56,21 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+function duplicateContactIds(
+  contacts: readonly ContactChoice[],
+  selectedContact: ContactChoice | null,
+): readonly string[] {
+  if (!selectedContact) return [];
+  const normalizedName = selectedContact.displayName.trim().toLocaleLowerCase();
+  return contacts
+    .filter(
+      (contact) =>
+        contact.id !== selectedContact.id &&
+        contact.displayName.trim().toLocaleLowerCase() === normalizedName,
+    )
+    .map((contact) => contact.id);
+}
+
 export function OrbitPostEventFollowupCapture({
   attendeeNames,
   eventId,
@@ -254,6 +269,7 @@ export function OrbitPostEventFollowupCapture({
     }
     setSubmitting(true);
     setError(null);
+    const duplicates = duplicateContactIds(contacts, selectedContact);
     try {
       const response = await fetch(
         `/api/events/${encodeURIComponent(eventId)}/post-event/followup`,
@@ -265,6 +281,7 @@ export function OrbitPostEventFollowupCapture({
             eventTitle,
             contactId: selectedContact.id,
             contactName: selectedContact.displayName,
+            duplicateContactIds: duplicates,
             organization: selectedContact.organization,
             encounterId: `encounter:${eventId}:${selectedContact.id}`,
             noteText: noteText.trim(),
@@ -280,6 +297,16 @@ export function OrbitPostEventFollowupCapture({
         !Array.isArray(body.data.actions)
       ) {
         throw new Error("workflow failed");
+      }
+      if (
+        isRecord(body.data.artifact) &&
+        body.data.artifact.contactResolution === "merge_review_required"
+      ) {
+        setError(
+          "检测到同名重复联系人，已进入合并复核；复核完成前不会创建任务、提醒或消息草稿。",
+        );
+        setSubmitting(false);
+        return;
       }
       const nextAction = body.data.actions.find(
         (action) =>
@@ -416,6 +443,25 @@ export function OrbitPostEventFollowupCapture({
                 </button>
               ))}
             </div>
+          ) : null}
+          {duplicateContactIds(contacts, selectedContact).length > 0 ? (
+            <p
+              role="status"
+              style={{
+                background: "var(--accent-soft)",
+                borderRadius: "var(--r-sm)",
+                color: "var(--text-2)",
+                fontSize: 13,
+                lineHeight: 1.55,
+                margin: "10px 0 0",
+                padding: "10px 12px",
+              }}
+            >
+              检测到同名重复联系人。确认笔记后会先进入合并复核，不会创建任何写操作。
+              你也可以先到{" "}
+              <a href="/app/contacts/new">联系人导入与合并</a>
+              {" "}处理重复项。
+            </p>
           ) : null}
 
           <div style={{ marginTop: 16 }}>

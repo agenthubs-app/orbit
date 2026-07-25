@@ -212,7 +212,7 @@ export default async function AppTodayPage({
               </h1>
               {merged.today.state !== "failure" ? (
                 <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-                  其余的 Orbit 已经准备好了 —— 确认即可完成，所有操作都可撤销。
+                  其余的 Orbit 已经准备好了 —— 确认后执行；支持补偿的操作可撤销。
                 </p>
               ) : null}
             </div>
