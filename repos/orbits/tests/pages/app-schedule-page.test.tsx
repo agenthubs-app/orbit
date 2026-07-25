@@ -35,11 +35,20 @@ test("/app/schedule renders data-backed clickable arrangements", async () => {
   const realPageSource = source(
     "app/(app)/app/schedule/orbit-real-schedule-page.tsx",
   );
+  // ScheduleArrangementCard (data-orbit-schedule-arrangement, href=) moved to
+  // today/orbit-today-arrangements.tsx as part of the today-schedule merge
+  // T1 — the schedule page now imports and renders it from there so the
+  // merged Today workspace's "可复核安排" section shares the exact same
+  // card, see that task's report for the extraction rationale.
+  const arrangementCardSource = source(
+    "app/(app)/app/today/orbit-today-arrangements.tsx",
+  );
 
   assert.match(pageSource, /loadAppScheduleRouteViewModel/);
   assert.doesNotMatch(pageSource, /AppFollowupsPage/);
-  assert.match(realPageSource, /data-orbit-schedule-arrangement/);
-  assert.match(realPageSource, /href=\{arrangement\.href\}/);
+  assert.match(realPageSource, /ScheduleArrangementCard/);
+  assert.match(arrangementCardSource, /data-orbit-schedule-arrangement/);
+  assert.match(arrangementCardSource, /href=\{arrangement\.href\}/);
 
   const Page = (await import("../../app/(app)/app/schedule/page")).default;
   const html = renderToStaticMarkup(await Page());

@@ -78,11 +78,24 @@ function EntryRow({
 }
 
 export function OrbitRealToday({
+  onlyKeys,
+  suppressStateBoundary,
   viewModel,
 }: {
+  /** Render only the listed sections (still in canonical decide/prepared/
+   *  recent order). Omit to render all of them — used by the merged Today
+   *  page to slot "可复核安排" between the decide section and the
+   *  collapsed prepared/recent sections (see today/page.tsx). */
+  onlyKeys?: readonly TodaySectionKey[];
+  /** The merged page renders this component twice (once per onlyKeys
+   *  slice); only the first call should show the failure/empty state
+   *  boundary, or the message would repeat twice on the page. */
+  suppressStateBoundary?: boolean;
   viewModel: AppTodayRouteViewModel;
 }) {
   if (viewModel.state === "failure") {
+    if (suppressStateBoundary) return null;
+
     return (
       <div data-orbit-route="app-today-route-state" style={{ padding: 32 }}>
         <div className="eyebrow">Today</div>
@@ -95,6 +108,8 @@ export function OrbitRealToday({
   }
 
   if (viewModel.state === "empty") {
+    if (suppressStateBoundary) return null;
+
     return (
       <div data-orbit-route="app-today-route-empty" style={{ padding: 32 }}>
         <div className="eyebrow">Today</div>
@@ -106,28 +121,17 @@ export function OrbitRealToday({
     );
   }
 
+  const sections = onlyKeys
+    ? viewModel.sections.filter((section) => onlyKeys.includes(section.key))
+    : viewModel.sections;
+
+  if (sections.length === 0) return null;
+
   return (
     <div data-orbit-today-list style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <header>
-        <div className="eyebrow">Today</div>
-        <h1 style={{ fontSize: 28, lineHeight: 1.25, margin: "10px 0 8px" }}>
-          今晚有 {viewModel.decideCount} 件事需要你决定。
-        </h1>
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-          其余的 Orbit 已经准备好了 —— 确认即可完成，所有操作都可撤销。
-        </p>
-      </header>
-
-      {viewModel.sections.map((section) => (
-        <section data-orbit-today-section={section.key} key={section.key}>
-          <div
-            style={{
-              alignItems: "center",
-              display: "flex",
-              gap: 8,
-              marginBottom: 12,
-            }}
-          >
+      {sections.map((section) => {
+        const heading = (
+          <>
             <Icon name={SECTION_ICONS[section.key] ?? "list"} size={16} />
             <span className="eyebrow">{section.title}</span>
             <span
@@ -136,7 +140,9 @@ export function OrbitRealToday({
             >
               {section.entries.length}
             </span>
-          </div>
+          </>
+        );
+        const rows = (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {section.entries.map((entry) => (
               <EntryRow
@@ -146,8 +152,48 @@ export function OrbitRealToday({
               />
             ))}
           </div>
-        </section>
-      ))}
+        );
+
+        // "需要你决定" stays expanded; "ORBIT 已准备"/"最近完成" default to
+        // collapsed (content-priority — completed/queued work shouldn't
+        // compete with pending decisions for attention). A native
+        // disclosure element needs no client state and adds no hand-rolled
+        // toggle button for the button-ratchet gate to worry about.
+        if (section.key === "decide") {
+          return (
+            <section data-orbit-today-section={section.key} key={section.key}>
+              <div
+                style={{
+                  alignItems: "center",
+                  display: "flex",
+                  gap: 8,
+                  marginBottom: 12,
+                }}
+              >
+                {heading}
+              </div>
+              {rows}
+            </section>
+          );
+        }
+
+        return (
+          <details data-orbit-today-section={section.key} key={section.key}>
+            <summary
+              style={{
+                alignItems: "center",
+                cursor: "pointer",
+                display: "flex",
+                gap: 8,
+                marginBottom: 12,
+              }}
+            >
+              {heading}
+            </summary>
+            {rows}
+          </details>
+        );
+      })}
     </div>
   );
 }

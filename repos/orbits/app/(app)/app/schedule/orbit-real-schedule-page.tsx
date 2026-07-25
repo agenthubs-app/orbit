@@ -6,166 +6,17 @@
  */
 import { AccountTopNav } from "../orbit-account-shell";
 import { Icon } from "../orbit-reference-primitives";
+import { ScheduleArrangementCard } from "../today/orbit-today-arrangements";
 import type {
   AppScheduleArrangementViewModel,
   AppScheduleRouteStateViewModel,
   AppScheduleRouteViewModel,
 } from "./schedule-route-view-model";
 
-function ScheduleArrangementCard({
-  arrangement,
-}: {
-  arrangement: AppScheduleArrangementViewModel;
-}) {
-  return (
-    <a
-      className="card orbit-schedule-arrangement-card"
-      data-orbit-schedule-arrangement={arrangement.target.kind}
-      data-orbit-schedule-target-state={arrangement.targetState}
-      href={arrangement.href}
-      aria-disabled={
-        arrangement.targetState === "detail-unavailable" ? true : undefined
-      }
-      style={{
-        color: "inherit",
-        display: "grid",
-        gap: 12,
-        padding: 16,
-        textDecoration: "none",
-      }}
-    >
-      <div
-        className="orbit-schedule-card-head"
-        style={{ alignItems: "flex-start", display: "flex", gap: 12 }}
-      >
-        <span
-          aria-hidden
-          style={{
-            alignItems: "center",
-            background:
-              arrangement.target.kind === "event"
-                ? "var(--amber-soft)"
-                : "var(--accent-softer)",
-            borderRadius: 12,
-            color:
-              arrangement.target.kind === "event"
-                ? "var(--amber)"
-                : "var(--accent)",
-            display: "inline-flex",
-            flexShrink: 0,
-            height: 38,
-            justifyContent: "center",
-            width: 38,
-          }}
-        >
-          <Icon
-            name={arrangement.target.kind === "event" ? "calendar" : "user"}
-            size={18}
-          />
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            className="orbit-schedule-arrangement-title"
-            style={{
-              color: "var(--ink)",
-              fontSize: 15,
-              fontWeight: 720,
-              lineHeight: 1.3,
-            }}
-          >
-            {arrangement.primaryName}
-          </div>
-          <div
-            className="orbit-schedule-arrangement-subtitle"
-            style={{
-              color: "var(--text-3)",
-              fontSize: 12.5,
-              lineHeight: 1.45,
-              marginTop: 3,
-            }}
-          >
-            {arrangement.secondaryName}
-          </div>
-        </div>
-        <span
-          className="badge badge-soon orbit-schedule-status"
-          style={{ flexShrink: 0 }}
-        >
-          {arrangement.statusLabel}
-        </span>
-      </div>
-      <p
-        className="orbit-schedule-arrangement-copy"
-        style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.55, margin: 0 }}
-      >
-        {arrangement.reason}
-      </p>
-      <div
-        style={{
-          display: "grid",
-          gap: 8,
-          gridTemplateColumns: "1fr",
-        }}
-      >
-        <span
-          className="orbit-schedule-meta-line"
-          style={{
-            alignItems: "center",
-            color: "var(--text-3)",
-            display: "inline-flex",
-            fontSize: 12.5,
-            gap: 6,
-          }}
-        >
-          <Icon name="clock" size={13} />
-          {arrangement.timing}
-        </span>
-        <span
-          className="orbit-schedule-meta-line"
-          style={{
-            alignItems: "center",
-            color: "var(--text-3)",
-            display: "inline-flex",
-            fontSize: 12.5,
-            gap: 6,
-          }}
-        >
-          <Icon name="doc" size={13} />
-          {arrangement.sourceContext}
-        </span>
-      </div>
-      {arrangement.targetNote ? (
-        <p
-          className="card-flat orbit-schedule-arrangement-copy"
-          data-orbit-schedule-target-note
-          style={{
-            color: "var(--text-2)",
-            fontSize: 12.5,
-            lineHeight: 1.55,
-            margin: 0,
-            padding: 12,
-          }}
-        >
-          {arrangement.targetNote}
-        </p>
-      ) : null}
-      <span
-        className="orbit-schedule-arrangement-action"
-        style={{
-          alignItems: "center",
-          color: "var(--accent)",
-          display: "inline-flex",
-          fontSize: 13,
-          fontWeight: 700,
-          gap: 5,
-        }}
-      >
-        {arrangement.actionLabel}
-        <Icon name="arrowUR" size={14} />
-      </span>
-    </a>
-  );
-}
+// ScheduleArrangementCard used to be defined here. It now lives in
+// today/orbit-today-arrangements.tsx so this page and the merged Today
+// workspace's "可复核安排" section render from the exact same source — see
+// T1 of the today-schedule merge plan.
 
 function ScheduleMobileConstraints() {
   return (
