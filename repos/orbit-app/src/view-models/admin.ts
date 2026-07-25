@@ -1,3 +1,5 @@
+import { eventsToSummaries, type EventSummary } from "./events";
+
 export type AdminSurface = "access" | "dashboard" | "events";
 export type AdminEventState = "active" | "ended" | "upcoming";
 
@@ -24,6 +26,7 @@ export interface AdminStatView {
 }
 
 export interface AdminEventView {
+  coverPath?: string;
   detail: string;
   href: `/events/${string}`;
   id: string;
@@ -242,11 +245,16 @@ function eventDetail(event: UnknownRecord): string {
   );
 }
 
-function eventToView(event: UnknownRecord, now: number): AdminEventView {
+function eventToView(
+  event: UnknownRecord,
+  now: number,
+  summary?: EventSummary
+): AdminEventView {
   const id = stringField(event, "id", "event");
   const state = eventState(event, now);
 
   return {
+    ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
     detail: eventDetail(event),
     href: `/events/${encodeURIComponent(id)}`,
     id,
@@ -335,7 +343,16 @@ export function adminToView({
 }): AdminView {
   const rawEvents = listFromPayload(events);
   const nowTime = now.getTime();
-  const eventViews = rawEvents.map((event) => eventToView(event, nowTime));
+  const summaryById = new Map(
+    eventsToSummaries(events).map((event) => [event.id, event])
+  );
+  const eventViews = rawEvents.map((event) =>
+    eventToView(
+      event,
+      nowTime,
+      summaryById.get(stringField(event, "id", "event"))
+    )
+  );
   const profileView = profileRecord(profile);
   const orgName = cleanText(
     stringField(profileView, "company") ||

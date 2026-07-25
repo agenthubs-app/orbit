@@ -1,3 +1,5 @@
+import { eventsToSummaries, type EventSummary } from "./events";
+
 export type PlatformEventState = "active" | "ended" | "upcoming";
 
 export interface PlatformStatView {
@@ -9,6 +11,7 @@ export interface PlatformStatView {
 }
 
 export interface PlatformReviewItemView {
+  coverPath?: string;
   detail: string;
   href: `/events/${string}`;
   id: string;
@@ -218,12 +221,14 @@ function detailForEvent(event: UnknownRecord): string {
 
 function eventToReviewItem(
   event: UnknownRecord,
-  now: number
+  now: number,
+  summary?: EventSummary
 ): PlatformReviewItemView {
   const id = stringField(event, "id", "event");
   const state = eventState(event, now);
 
   return {
+    ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
     detail: detailForEvent(event),
     href: `/events/${encodeURIComponent(id)}`,
     id,
@@ -289,8 +294,17 @@ export function platformToView({
 }): PlatformView {
   const rawEvents = listFromPayload(events);
   const nowTime = now.getTime();
+  const summaryById = new Map(
+    eventsToSummaries(events).map((event) => [event.id, event])
+  );
   const reviewQueue = rawEvents
-    .map((event) => eventToReviewItem(event, nowTime))
+    .map((event) =>
+      eventToReviewItem(
+        event,
+        nowTime,
+        summaryById.get(stringField(event, "id", "event"))
+      )
+    )
     .filter((event) => event.state !== "ended")
     .slice(0, 8);
   const profileView = profileRecord(profile);
