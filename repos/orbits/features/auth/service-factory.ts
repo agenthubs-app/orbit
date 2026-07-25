@@ -9,7 +9,14 @@ import {
   createStorageAuthUserProvider,
 } from "./storage/auth-user-live-record-provider";
 
-const mockAuthUserStore = createMemoryLiveRecordStore();
+interface AuthRuntimeGlobal {
+  __orbitMockAuthUserStore?: ReturnType<typeof createMemoryLiveRecordStore>;
+}
+
+const runtimeGlobal = globalThis as typeof globalThis & AuthRuntimeGlobal;
+const mockAuthUserStore =
+  runtimeGlobal.__orbitMockAuthUserStore ?? createMemoryLiveRecordStore();
+runtimeGlobal.__orbitMockAuthUserStore = mockAuthUserStore;
 
 export const authUserServiceFactory =
   createModuleServiceFactory<AuthUserService>({
