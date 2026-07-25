@@ -57,6 +57,7 @@ function ChatListContent({ data }: { data: unknown }) {
 
   return (
     <>
+      <RelationshipAgentEntry onPress={() => router.push("/ai" as Href)} />
       <DataCard detail={view.summary} title={view.title}>
         <MetricGrid metrics={view.metrics} />
         <View style={styles.callout}>
@@ -80,6 +81,27 @@ function ChatListContent({ data }: { data: unknown }) {
         </View>
       </DataCard>
     </>
+  );
+}
+
+function RelationshipAgentEntry({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.agentEntry, pressed ? styles.pressed : null]}
+    >
+      <View style={styles.agentEntryIcon}>
+        <Ionicons color={colors.onAccent} name="sparkles-outline" size={19} />
+      </View>
+      <View style={styles.agentEntryBody}>
+        <Text style={styles.agentEntryTitle}>Orbit AI 关系管家</Text>
+        <Text style={styles.agentPrompt}>
+          {"让 Orbit AI 先帮我判断该联系谁、怎么写、下一步放在哪里。"}
+        </Text>
+      </View>
+      <Ionicons color={colors.text3} name="chevron-forward" size={17} />
+    </Pressable>
   );
 }
 
@@ -131,6 +153,38 @@ function ConversationRow({
 }
 
 const styles = StyleSheet.create({
+  agentEntry: {
+    alignItems: "center",
+    backgroundColor: colors.ink,
+    borderRadius: radius.lg,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.lg
+  },
+  agentEntryBody: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  agentEntryIcon: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    height: 42,
+    justifyContent: "center",
+    width: 42
+  },
+  agentEntryTitle: {
+    color: colors.onAccent,
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 22
+  },
+  agentPrompt: {
+    color: colors.accentSoft,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
   bodyText: {
     color: colors.text,
     fontSize: typography.small,

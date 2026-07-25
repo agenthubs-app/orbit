@@ -1,12 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import {
+  ImageBackground,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View
 } from "react-native";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
@@ -22,6 +24,15 @@ import {
   type ScheduleTimelineSection,
   type ScheduleTimelineView
 } from "../../view-models/schedule";
+
+function assetUrl(baseUrl: string, path: string): string {
+  if (/^https?:\/\//iu.test(path)) {
+    return path;
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
+}
 
 function usable<TData>(
   state: ReturnType<typeof useApiResource<TData>>
@@ -44,13 +55,13 @@ export function ScheduleScreen() {
     eventsState.refresh();
   }
 
-  const view =
-    usable(tasksState) && usable(eventsState)
-      ? scheduleToTimelineView({
-          events: eventsState.data,
-          tasks: tasksState.data
-        })
-      : null;
+  const hasAnyData = usable(tasksState) || usable(eventsState);
+  const view = hasAnyData
+    ? scheduleToTimelineView({
+        events: usable(eventsState) ? eventsState.data : { events: [] },
+        tasks: usable(tasksState) ? tasksState.data : { tasks: [] }
+      })
+    : null;
   const loading =
     tasksState.kind === "loading" || eventsState.kind === "loading";
 
@@ -95,6 +106,9 @@ function ScheduleWorkspace({ view }: { view: ScheduleTimelineView }) {
           ))}
         </View>
       </DataCard>
+      {view.eventHighlights.length > 0 ? (
+        <ScheduleEventHighlights items={view.eventHighlights} />
+      ) : null}
       {view.sections.length > 0 ? (
         view.sections.map((section) => (
           <ScheduleSection key={section.id} section={section} />
@@ -103,6 +117,26 @@ function ScheduleWorkspace({ view }: { view: ScheduleTimelineView }) {
         <EmptyState message={view.emptyMessage} title={view.emptyTitle} />
       )}
     </>
+  );
+}
+
+function ScheduleEventHighlights({ items }: { items: ScheduleTimelineItem[] }) {
+  const router = useRouter();
+  const { baseUrl } = useOrbitApiBaseUrl();
+
+  return (
+    <DataCard detail={`${items.length} 场活动需要提前看`} title="待准备活动">
+      <View style={styles.itemStack}>
+        {items.map((item) => (
+          <EventTimelineModule
+            baseUrl={baseUrl}
+            item={item}
+            key={`highlight-${item.id}`}
+            onPress={() => router.push(item.href as Href)}
+          />
+        ))}
+      </View>
+    </DataCard>
   );
 }
 
@@ -120,7 +154,18 @@ function ScheduleSection({ section }: { section: ScheduleTimelineSection }) {
 
 function TimelineItemRow({ item }: { item: ScheduleTimelineItem }) {
   const router = useRouter();
-  const isEvent = item.kind === "event";
+  const { baseUrl } = useOrbitApiBaseUrl();
+
+  if (item.kind === "event") {
+    return (
+      <EventTimelineModule
+        baseUrl={baseUrl}
+        item={item}
+        onPress={() => router.push(item.href as Href)}
+      />
+    );
+  }
+
   const supportingText = item.reason !== item.detail ? item.reason : "";
 
   return (
@@ -136,12 +181,8 @@ function TimelineItemRow({ item }: { item: ScheduleTimelineItem }) {
         <Text numberOfLines={1} style={styles.timeText}>
           {item.timeLabel || "待定"}
         </Text>
-        <View style={[styles.iconBadge, isEvent ? styles.eventIcon : styles.followupIcon]}>
-          <Ionicons
-            color={isEvent ? colors.amber : colors.accent}
-            name={isEvent ? "calendar-outline" : "person-outline"}
-            size={16}
-          />
+        <View style={[styles.iconBadge, styles.followupIcon]}>
+          <Ionicons color={colors.accent} name="person-outline" size={16} />
         </View>
       </View>
       <View style={styles.itemContent}>
@@ -153,7 +194,7 @@ function TimelineItemRow({ item }: { item: ScheduleTimelineItem }) {
             numberOfLines={1}
             style={[
               styles.statusPill,
-              isEvent ? styles.eventStatus : styles.followupStatus
+              styles.followupStatus
             ]}
           >
             {item.statusLabel}
@@ -183,6 +224,83 @@ function TimelineItemRow({ item }: { item: ScheduleTimelineItem }) {
   );
 }
 
+function EventTimelineModule({
+  baseUrl,
+  item,
+  onPress
+}: {
+  baseUrl: string;
+  item: ScheduleTimelineItem;
+  onPress: () => void;
+}) {
+  const imagePath = item.coverPath;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.eventTimelineCard,
+        pressed ? styles.itemRowPressed : null
+      ]}
+    >
+      <View style={styles.eventTimelineMediaColumn}>
+        {imagePath ? (
+          <ImageBackground
+            imageStyle={styles.eventTimelineThumbImage}
+            source={{ uri: assetUrl(baseUrl, imagePath) }}
+            style={styles.eventTimelineThumbFrame}
+          >
+            <View style={styles.eventTimelineThumbOverlay} />
+          </ImageBackground>
+        ) : (
+          <View style={styles.eventTimelineFallbackThumb}>
+            <Ionicons color={colors.amber} name="calendar-outline" size={19} />
+          </View>
+        )}
+        <Text numberOfLines={1} style={[styles.statusPill, styles.eventStatus]}>
+          {item.statusLabel}
+        </Text>
+      </View>
+      <View style={styles.eventTimelineContent}>
+        <Text numberOfLines={2} style={styles.itemTitle}>
+          {item.title}
+        </Text>
+        <View style={styles.eventTimelineMeta}>
+          <View style={styles.eventTimelineMetaLine}>
+            <Ionicons color={colors.text3} name="time-outline" size={14} />
+            <Text numberOfLines={1} style={styles.itemMeta}>
+              {item.timeLabel || "时间待定"}
+            </Text>
+          </View>
+          {item.location ? (
+            <View style={styles.eventTimelineMetaLine}>
+              <Ionicons color={colors.text3} name="location-outline" size={14} />
+              <Text numberOfLines={1} style={styles.itemMeta}>
+                {item.location}
+              </Text>
+            </View>
+          ) : null}
+          {item.participantCountLabel ? (
+            <View style={styles.eventTimelineMetaLine}>
+              <Ionicons color={colors.text3} name="people-outline" size={14} />
+              <Text numberOfLines={1} style={styles.itemMeta}>
+                {item.participantCountLabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.eventTimelineFooter}>
+          <Text numberOfLines={1} style={styles.itemReason}>
+            打开活动背景
+          </Text>
+          <Text style={styles.actionText}>{item.actionLabel}</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   actionRow: {
     alignItems: "center",
@@ -199,8 +317,68 @@ const styles = StyleSheet.create({
     backgroundColor: colors.amberSoft
   },
   eventStatus: {
+    alignSelf: "stretch",
     backgroundColor: colors.amberSoft,
-    color: colors.amber
+    color: colors.amber,
+    textAlign: "center"
+  },
+  eventTimelineCard: {
+    alignItems: "flex-start",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingBottom: spacing.md
+  },
+  eventTimelineContent: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  eventTimelineFallbackThumb: {
+    alignItems: "center",
+    backgroundColor: colors.amberSoft,
+    borderRadius: radius.control,
+    height: 72,
+    justifyContent: "center",
+    width: 72
+  },
+  eventTimelineFooter: {
+    alignItems: "center",
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between",
+    paddingTop: spacing.xs
+  },
+  eventTimelineMediaColumn: {
+    flexShrink: 0,
+    gap: spacing.xs,
+    width: 72
+  },
+  eventTimelineMeta: {
+    gap: spacing.xxs
+  },
+  eventTimelineMetaLine: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  eventTimelineThumbFrame: {
+    backgroundColor: colors.surface3,
+    borderRadius: radius.control,
+    height: 72,
+    overflow: "hidden",
+    width: 72
+  },
+  eventTimelineThumbImage: {
+    borderRadius: radius.control
+  },
+  eventTimelineThumbOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10,10,16,0.10)"
   },
   followupIcon: {
     backgroundColor: colors.accentSofter

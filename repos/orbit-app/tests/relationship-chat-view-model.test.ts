@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildRelationshipChatMessageRequest,
+  relationshipChatExtractionToView,
+  relationshipChatMessageSendToView,
+  relationshipChatSummaryToView,
   relationshipChatListToView,
   relationshipChatThreadToView
 } from "../src/view-models/relationship-chat";
@@ -135,6 +139,85 @@ test("relationshipChatThreadToView keeps message delivery as review-only", () =>
   ]);
 });
 
+test("buildRelationshipChatMessageRequest prepares review-only draft requests", () => {
+  const request = buildRelationshipChatMessageRequest(
+    "conversation/demo 1",
+    "  下周我先整理两个试点时间窗口，再发你确认。  "
+  );
+
+  assert.deepEqual(request, {
+    request: {
+      endpoint: "/api/chat/conversations/conversation%2Fdemo%201/messages",
+      options: {
+        body: {
+          body: "下周我先整理两个试点时间窗口，再发你确认。"
+        }
+      },
+    },
+    success: true
+  });
+
+  assert.deepEqual(buildRelationshipChatMessageRequest("", "hello"), {
+    error: "缺少对话 ID，暂时不能保存草稿。",
+    success: false
+  });
+  assert.deepEqual(buildRelationshipChatMessageRequest("conversation_001", " "), {
+    error: "先写一版回复草稿。",
+    success: false
+  });
+});
+
+test("relationshipChatMessageSendToView maps saved drafts without live-send wording", () => {
+  const view = relationshipChatMessageSendToView({
+    conversationId: "demo-conversation-1",
+    message: {
+      body: "下周我先整理两个试点时间窗口，再发你确认。",
+      createdAt: "2026-06-25T23:55:00.000Z",
+      deliveryState: "mock_recorded_locally",
+      messageId: "demo-message-local-demo-conversation-1",
+      senderName: "Alex Tan",
+      senderRole: "orbit_user"
+    },
+    messages: [
+      {
+        body: "Can you send the pilot timing comparison?",
+        createdAt: "2026-06-25T10:20:00+09:00",
+        deliveryState: "mock_received",
+        messageId: "demo-message-1",
+        senderName: "Maya Chen",
+        senderRole: "contact"
+      },
+      {
+        body: "下周我先整理两个试点时间窗口，再发你确认。",
+        createdAt: "2026-06-25T23:55:00.000Z",
+        deliveryState: "mock_recorded_locally",
+        messageId: "demo-message-local-demo-conversation-1",
+        senderName: "Alex Tan",
+        senderRole: "orbit_user"
+      }
+    ],
+    oneToOneContext: {
+      latestContext:
+        "Maya asked for a pilot timing comparison after the breakfast conversation.",
+      recommendedFollowup:
+        "Send the two-window pilot comparison and ask which operator questions matter most."
+    },
+    sendMessageState: {
+      confirmationRequiredBeforeLiveSend: true,
+      externalSendRequested: false,
+      status: "ready"
+    },
+    state: "success"
+  });
+
+  assert.equal(view.title, "回复草稿已保存");
+  assert.equal(view.summary, "已记录为本地草稿，尚未真正发出。");
+  assert.equal(view.nextAction, "先复核草稿和上下文，再决定是否确认发送。");
+  assert.equal(view.thread.sendBoundary, "可以写草稿；真正发出前还要确认。");
+  assert.equal(view.thread.messages.at(-1)?.deliveryLabel, "本地草稿");
+  assert.equal(view.thread.messages.at(-1)?.fromMe, true);
+});
+
 test("relationship chat view models clean live generated chat wording", () => {
   const listView = relationshipChatListToView({
     conversations: [
@@ -215,4 +298,114 @@ test("relationship chat view models clean live generated chat wording", () => {
     threadView.messages[0]?.body,
     "围绕「日本中小制造业 AI 工作流 PoC 买方」准备一版具体跟进。"
   );
+});
+
+test("relationshipChatSummaryToView maps source-backed summaries for mobile review", () => {
+  const view = relationshipChatSummaryToView({
+    conversationId: "demo-conversation-1",
+    organization: "Kumo Grid",
+    participantName: "Maya Chen",
+    provenance: {
+      evidenceIds: ["evidence:chat:maya:breakfast"],
+      sourceLabel: "Mock chat summary and extraction fixture"
+    },
+    state: "success",
+    summary: {
+      evidenceIds: [
+        "evidence:chat:maya:breakfast",
+        "evidence:chat:maya:pilot-timing"
+      ],
+      narrative:
+        "Maya Chen asked for a pilot timing comparison tied to operator readiness questions from the Tokyo climate breakfast. The sensible follow-up is to send two pilot windows and ask which operator concern Kumo Grid wants resolved first."
+    },
+    nextAction:
+      "Review extracted needs, tasks, and profile suggestions before any profile confirmation or follow-up action."
+  });
+
+  assert.deepEqual(view, {
+    evidenceLabel: "2 条证据",
+    narrative:
+      "Maya 想比较两个试点时间窗口，重点是运营方准备度。先发一版对比，再问 Kumo Grid 最想先解决哪个问题。",
+    nextAction: "先复核需求、任务和资料建议，再决定是否写入关系资料。",
+    sourceLabel: "对话摘要提取",
+    title: "对话摘要"
+  });
+});
+
+test("relationshipChatExtractionToView maps extracted relationship signals without profile writes", () => {
+  const view = relationshipChatExtractionToView({
+    confirmationRequiredProfileSuggestions: [
+      {
+        field: "priorityTopic",
+        proposedValue: "Operator readiness pilot timing",
+        reason:
+          "Updating a relationship profile from chat extraction requires human review.",
+        suggestionId: "profile-suggestion:chat:maya:priority-topic"
+      }
+    ],
+    extractedNeeds: [
+      {
+        needId: "need:chat:maya:pilot-window",
+        priority: "high",
+        statement:
+          "Maya needs an operator readiness comparison for two pilot timing windows before deciding the next review step."
+      }
+    ],
+    extractedTasks: [
+      {
+        dueHint: "After the Tokyo climate operator breakfast follow-up",
+        rationale:
+          "The chat evidence asks for a concrete comparison before Kumo Grid reviews operator readiness.",
+        taskId: "task:chat:maya:send-pilot-comparison",
+        title: "Send Maya the pilot timing comparison"
+      }
+    ],
+    provenance: {
+      sourceLabel: "Mock chat extraction fixture"
+    },
+    relationshipProfileUpdates: [
+      {
+        field: "latestContext",
+        proposedValue:
+          "Maya is comparing pilot timing windows through the lens of operator readiness.",
+        updateId: "profile-update:chat:maya:operator-readiness"
+      }
+    ],
+    state: "success"
+  });
+
+  assert.deepEqual(view, {
+    emptyText: "",
+    needs: [
+      {
+        detail: "高优先级",
+        id: "need:chat:maya:pilot-window",
+        title: "Maya 需要一版运营方准备度和两个试点时间窗口的对比。"
+      }
+    ],
+    nextAction: "这些只是提取结果。写入资料或创建任务前，还要你确认。",
+    profileSuggestions: [
+      {
+        detail: "需要确认后才能写入",
+        id: "profile-suggestion:chat:maya:priority-topic",
+        title: "priorityTopic：运营方准备度和试点时间"
+      }
+    ],
+    profileUpdates: [
+      {
+        detail: "暂未写入关系资料",
+        id: "profile-update:chat:maya:operator-readiness",
+        title: "latestContext：Maya 正在按运营方准备度比较试点时间窗口。"
+      }
+    ],
+    sourceLabel: "关系信号提取",
+    tasks: [
+      {
+        detail: "东京气候运营者早餐会后",
+        id: "task:chat:maya:send-pilot-comparison",
+        title: "给 Maya 发送试点时间对比"
+      }
+    ],
+    title: "提取结果"
+  });
 });
