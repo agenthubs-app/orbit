@@ -48,3 +48,23 @@ test("an expanded message draft can be copied or opened in communication without
   assert.match(html, /只复制或继续编辑，不会自动发送/);
   assert.doesNotMatch(html, />发送</);
 });
+
+test("expanded audit details stay inside their mobile grid column", async () => {
+  const baseline = await loadAppAllActionsRouteViewModel({});
+  const entry = baseline.entries[0];
+  assert.ok(entry);
+
+  const model = await loadAppAllActionsRouteViewModel({
+    entry: entry.entryId,
+  });
+  const html = renderToStaticMarkup(<OrbitRealAllActions viewModel={model} />);
+
+  assert.match(
+    html,
+    /\.orbit-all-actions-entry-detail\s*\{[^}]*box-sizing:\s*border-box;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*min-width:\s*0;[^}]*width:\s*100%;/s,
+  );
+  assert.match(
+    html,
+    /\.orbit-all-actions-entry-detail \.chip\s*\{[^}]*max-width:\s*100%;[^}]*overflow-wrap:\s*anywhere;[^}]*white-space:\s*normal;/s,
+  );
+});

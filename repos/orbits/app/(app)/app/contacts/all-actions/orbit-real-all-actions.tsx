@@ -316,10 +316,14 @@ export function OrbitRealAllActions({
           background: var(--surface-2);
           border: 1px solid var(--border);
           border-radius: var(--r-md);
+          box-sizing: border-box;
           display: grid;
           flex-basis: 100%;
           gap: 16px;
+          grid-template-columns: minmax(0, 1fr);
+          min-width: 0;
           padding: 16px;
+          width: 100%;
         }
         .orbit-all-actions-entry-detail h3 {
           font-size: 13px;
@@ -361,6 +365,11 @@ export function OrbitRealAllActions({
           margin-top: 6px;
           overflow-wrap: anywhere;
           white-space: pre-wrap;
+        }
+        .orbit-all-actions-entry-detail .chip {
+          max-width: 100%;
+          overflow-wrap: anywhere;
+          white-space: normal;
         }
         @media (max-width: 760px) {
           .orbit-all-actions-entry {
