@@ -815,12 +815,27 @@ const reactReferenceIsolationStyles = `
   justify-content: space-between;
 }
 /* Match the homepage nav's taller, roomier bar on desktop (mobile keeps its
-   own compact 56px bar from the <=640px block above). */
+   own compact 56px bar from the <=640px block above). Grid 1fr/auto/1fr keeps
+   the centre link group geometrically centred regardless of how wide the
+   right-hand account cluster is (我的 vs 登录+注册) — decoupled by design. */
 @media (min-width: 641px) {
   [data-orbit-real-page] .orbit-top-nav {
+    align-items: center;
+    column-gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     height: auto;
     min-height: 0;
     padding: 18px clamp(20px, 5vw, 56px);
+  }
+  [data-orbit-real-page] .orbit-top-nav > .orbit-nav-lead {
+    justify-self: start;
+  }
+  [data-orbit-real-page] .orbit-top-nav > .orbit-nav-links {
+    justify-self: center;
+  }
+  [data-orbit-real-page] .orbit-top-nav > .orbit-top-actions {
+    justify-self: end;
   }
 }
 [data-orbit-real-page] .orbit-nav-lead {
