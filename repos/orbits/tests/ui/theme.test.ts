@@ -198,7 +198,11 @@ test("global CSS defines compact product primitives and layout guardrails", () =
   assert.match(css, /max-width:\s*100%/);
   assert.match(css, /overflow-wrap:\s*anywhere/);
   assert.match(css, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*220px\),\s*1fr\)\)/);
-  assert.match(css, /\.primary-action:disabled,\s*\.secondary-action:disabled/);
+  // Selectors are namespaced under `.orbit-dev-root` (T8) so this stylesheet
+  // never leaks onto product pages; allow that prefix between the comma and
+  // the next selector without weakening the check that both rules are still
+  // combined into a single declaration block.
+  assert.match(css, /\.primary-action:disabled,\s*(?:\.orbit-dev-root\s+)?\.secondary-action:disabled/);
   assert.match(css, /border-style:\s*dashed/);
   assert.doesNotMatch(css, /border-radius:\s*(?:9|[1-9][0-9])px/);
 });

@@ -82,16 +82,33 @@ test("FormField is imported and rendered by at least 3 files outside its own def
 
 // ---- (b) role="alert" must not regress sitewide ----
 
+// Strip `//` line comments and `/* */` block comments before counting, so a
+// source comment that merely *mentions* `role="alert"` (documenting why a
+// marker exists, e.g. the exemption note on the registration workspace)
+// cannot inflate the count. This is a plain-text heuristic, not a real
+// JS/TS tokenizer — it doesn't account for `//`/`/*` appearing inside a
+// string literal, which doesn't occur in this codebase's usage today.
+function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+}
+
 // Baseline captured after T7's migration (register/account-auth/admin onto
 // FormField + the event-registration-workspace aria-invalid alignment).
 // FormField itself sets role="alert" dynamically (`role={error ? "alert" :
 // undefined}`), so this literal-string count intentionally only tracks the
 // hand-rolled markers that existed before T7 — it must never go down.
-const ROLE_ALERT_BASELINE = 8;
+// 7 is the true code-level count (comments stripped) across
+// account/mobile-google, account-auth, contacts/all-actions-controls,
+// events/[id]/register/event-registration-workspace (2 real banners),
+// profile, and today/orbit-today-decision-form. The raw (unstripped) count
+// was 8: event-registration-workspace also has a `//` comment that
+// documents the alignment by *naming* `role="alert"`, which isn't a marker
+// and must not count.
+const ROLE_ALERT_BASELINE = 7;
 
 test('role="alert" count in app/(app)/app does not decrease', () => {
   const count = walk(APP_DIR)
-    .map((full) => readFileSync(full, "utf8"))
+    .map((full) => stripComments(readFileSync(full, "utf8")))
     .reduce((total, text) => total + (text.match(/role="alert"/g) ?? []).length, 0);
 
   assert.ok(

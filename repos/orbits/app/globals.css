@@ -1,4 +1,17 @@
-:root {
+/*
+ * Dev workbench stylesheet — scoped under `.orbit-dev-root`.
+ *
+ * This file backs the `app/dev/**` internal tooling (capability debug
+ * dashboards, foundation/style reference, mock registry, knowledge wiki,
+ * orbit-ai trace debugger). It is intentionally NOT imported by the
+ * `app/(app)/app` product route group — every rule below is namespaced
+ * under `.orbit-dev-root` so it cannot leak bare `button`/`input`/`select`/
+ * `textarea` resets (or any of the `--orbit-*` tokens) onto real product
+ * surfaces. Wrap dev page content in an element carrying `.orbit-dev-root`
+ * (see `app/dev/layout.tsx`) to pick these styles up.
+ */
+
+.orbit-dev-root {
   color-scheme: light;
   --orbit-canvas: #f4f7f5;
   --orbit-surface: #ffffff;
@@ -52,16 +65,15 @@
   --orbit-color-privacy: var(--orbit-privacy);
 }
 
-* {
+.orbit-dev-root,
+.orbit-dev-root * {
   box-sizing: border-box;
 }
 
-html {
-  background: var(--orbit-canvas);
-  min-width: 0;
-}
-
-body {
+/* Stands in for the old `html`/`body` rules: this is the workbench's own
+   full-bleed canvas now that the stylesheet no longer touches real page
+   chrome. `.workbench-frame` (below) already carries `min-height: 100vh`. */
+.orbit-dev-root {
   background: var(--orbit-canvas);
   color: var(--orbit-text);
   font-family: var(--orbit-font-body);
@@ -71,23 +83,18 @@ body {
   overflow-x: hidden;
 }
 
-body:has(.workbench-frame) {
-  background: var(--orbit-canvas);
-  color: var(--orbit-text);
-}
-
-img,
-svg,
-video,
-canvas {
+.orbit-dev-root img,
+.orbit-dev-root svg,
+.orbit-dev-root video,
+.orbit-dev-root canvas {
   height: auto;
   max-width: 100%;
 }
 
-button,
-input,
-select,
-textarea {
+.orbit-dev-root button,
+.orbit-dev-root input,
+.orbit-dev-root select,
+.orbit-dev-root textarea {
   background: var(--orbit-surface);
   border: 1px solid var(--orbit-border-strong);
   border-radius: var(--orbit-radius-control);
@@ -101,14 +108,14 @@ textarea {
   padding: 8px 10px;
 }
 
-input,
-select,
-textarea {
+.orbit-dev-root input,
+.orbit-dev-root select,
+.orbit-dev-root textarea {
   width: 100%;
 }
 
-input[type="checkbox"],
-input[type="radio"] {
+.orbit-dev-root input[type="checkbox"],
+.orbit-dev-root input[type="radio"] {
   background: none;
   border: 0;
   border-radius: 0;
@@ -117,32 +124,32 @@ input[type="radio"] {
   width: auto;
 }
 
-textarea {
+.orbit-dev-root textarea {
   min-height: 96px;
   resize: vertical;
 }
 
-button {
+.orbit-dev-root button {
   cursor: pointer;
   font-weight: 750;
   min-width: var(--orbit-control-min-width);
 }
 
-button:disabled,
-input:disabled,
-select:disabled,
-textarea:disabled {
+.orbit-dev-root button:disabled,
+.orbit-dev-root input:disabled,
+.orbit-dev-root select:disabled,
+.orbit-dev-root textarea:disabled {
   cursor: not-allowed;
   opacity: 0.58;
 }
 
-:focus-visible {
+.orbit-dev-root :focus-visible {
   box-shadow: var(--orbit-shadow-focus);
   outline: 2px solid transparent;
   outline-offset: 2px;
 }
 
-details {
+.orbit-dev-root details {
   background: var(--orbit-surface-raised);
   border: 1px solid var(--orbit-border);
   border-radius: var(--orbit-radius-control);
@@ -152,7 +159,7 @@ details {
   padding: 8px 10px;
 }
 
-summary {
+.orbit-dev-root summary {
   color: var(--orbit-text);
   cursor: pointer;
   font-size: 0.82rem;
@@ -162,11 +169,11 @@ summary {
   overflow-wrap: anywhere;
 }
 
-details > :not(summary) {
+.orbit-dev-root details > :not(summary) {
   margin-top: 8px;
 }
 
-.workbench-frame {
+.orbit-dev-root .workbench-frame {
   background: var(--orbit-canvas);
   color: var(--orbit-text);
   display: grid;
@@ -176,7 +183,7 @@ details > :not(summary) {
   padding: var(--orbit-space-md);
 }
 
-.workbench-shell {
+.orbit-dev-root .workbench-shell {
   display: grid;
   gap: var(--orbit-space-md);
   margin: 0 auto;
@@ -185,14 +192,14 @@ details > :not(summary) {
   width: 100%;
 }
 
-.workbench-header {
+.orbit-dev-root .workbench-header {
   display: grid;
   gap: var(--orbit-space-sm);
   min-width: 0;
 }
 
-.workbench-kicker,
-.surface-eyebrow {
+.orbit-dev-root .workbench-kicker,
+.orbit-dev-root .surface-eyebrow {
   color: var(--orbit-primary-action-hover);
   font-family: var(--orbit-font-mono);
   font-size: 0.74rem;
@@ -204,8 +211,8 @@ details > :not(summary) {
   text-transform: uppercase;
 }
 
-.workbench-header h1,
-.surface-heading h2 {
+.orbit-dev-root .workbench-header h1,
+.orbit-dev-root .surface-heading h2 {
   font-family: var(--orbit-font-display);
   font-weight: 760;
   letter-spacing: 0;
@@ -213,13 +220,13 @@ details > :not(summary) {
   overflow-wrap: anywhere;
 }
 
-.workbench-header h1 {
+.orbit-dev-root .workbench-header h1 {
   font-size: 2.25rem;
   line-height: 1.05;
   max-width: 720px;
 }
 
-.workbench-intro {
+.orbit-dev-root .workbench-intro {
   color: var(--orbit-muted-text);
   font-size: 0.98rem;
   line-height: 1.6;
@@ -228,22 +235,22 @@ details > :not(summary) {
   overflow-wrap: anywhere;
 }
 
-.workbench-grid,
-.token-grid,
-.dense-grid,
-.chip-row,
-.button-row {
+.orbit-dev-root .workbench-grid,
+.orbit-dev-root .token-grid,
+.orbit-dev-root .dense-grid,
+.orbit-dev-root .chip-row,
+.orbit-dev-root .button-row {
   display: grid;
   gap: var(--orbit-space-sm);
   max-width: 100%;
   min-width: 0;
 }
 
-.dense-grid {
+.orbit-dev-root .dense-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
 }
 
-.workbench-surface {
+.orbit-dev-root .workbench-surface {
   background: var(--orbit-surface);
   border: 1px solid var(--orbit-border);
   border-radius: var(--orbit-radius-card);
@@ -256,29 +263,29 @@ details > :not(summary) {
   padding: var(--orbit-space-md);
 }
 
-.workbench-surface-raised {
+.orbit-dev-root .workbench-surface-raised {
   background: var(--orbit-surface-raised);
   box-shadow: var(--orbit-shadow-raised);
 }
 
-.surface-heading {
+.orbit-dev-root .surface-heading {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
 
-.surface-heading h2 {
+.orbit-dev-root .surface-heading h2 {
   font-size: 1rem;
   line-height: 1.2;
 }
 
-.type-stack {
+.orbit-dev-root .type-stack {
   display: grid;
   gap: var(--orbit-space-sm);
   min-width: 0;
 }
 
-.type-title {
+.orbit-dev-root .type-title {
   font-family: var(--orbit-font-display);
   font-size: 1.55rem;
   font-weight: 760;
@@ -287,7 +294,7 @@ details > :not(summary) {
   overflow-wrap: anywhere;
 }
 
-.type-body {
+.orbit-dev-root .type-body {
   color: var(--orbit-muted-text);
   font-size: 0.94rem;
   line-height: 1.55;
@@ -295,7 +302,7 @@ details > :not(summary) {
   overflow-wrap: anywhere;
 }
 
-.type-caption {
+.orbit-dev-root .type-caption {
   color: #6d7a75;
   font-family: var(--orbit-font-mono);
   font-size: 0.76rem;
@@ -304,13 +311,13 @@ details > :not(summary) {
   overflow-wrap: anywhere;
 }
 
-.relationship-record {
+.orbit-dev-root .relationship-record {
   display: grid;
   gap: var(--orbit-space-sm);
   min-width: 0;
 }
 
-.relationship-record header {
+.orbit-dev-root .relationship-record header {
   border-bottom: 1px solid var(--orbit-border);
   display: grid;
   gap: 4px;
@@ -318,7 +325,7 @@ details > :not(summary) {
   padding-bottom: var(--orbit-space-sm);
 }
 
-.relationship-name {
+.orbit-dev-root .relationship-name {
   font-size: 1.08rem;
   font-weight: 760;
   line-height: 1.25;
@@ -326,34 +333,34 @@ details > :not(summary) {
   overflow-wrap: anywhere;
 }
 
-.relationship-meta {
+.orbit-dev-root .relationship-meta {
   display: grid;
   gap: 10px;
   margin: 0;
   min-width: 0;
 }
 
-.relationship-meta div {
+.orbit-dev-root .relationship-meta div {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
-.relationship-meta dt,
-.guard-list dt {
+.orbit-dev-root .relationship-meta dt,
+.orbit-dev-root .guard-list dt {
   color: var(--orbit-primary-action-hover);
   font-size: 0.78rem;
   font-weight: 760;
   line-height: 1.35;
 }
 
-.relationship-meta dt {
+.orbit-dev-root .relationship-meta dt {
   font-family: var(--orbit-font-mono);
   text-transform: uppercase;
 }
 
-.relationship-meta dd,
-.guard-list dd {
+.orbit-dev-root .relationship-meta dd,
+.orbit-dev-root .guard-list dd {
   color: var(--orbit-muted-text);
   font-size: 0.88rem;
   line-height: 1.45;
@@ -361,7 +368,7 @@ details > :not(summary) {
   overflow-wrap: anywhere;
 }
 
-.privacy-note {
+.orbit-dev-root .privacy-note {
   background: var(--orbit-accent-soft);
   border: 1px solid rgba(81, 68, 122, 0.18);
   border-left: 3px solid var(--orbit-privacy);
@@ -374,20 +381,20 @@ details > :not(summary) {
   padding: 9px 10px;
 }
 
-.action-guard {
+.orbit-dev-root .action-guard {
   display: grid;
   gap: var(--orbit-space-sm);
   min-width: 0;
 }
 
-.guard-list {
+.orbit-dev-root .guard-list {
   display: grid;
   gap: 0;
   margin: 0;
   min-width: 0;
 }
 
-.guard-list div {
+.orbit-dev-root .guard-list div {
   border-top: 1px solid var(--orbit-border);
   display: grid;
   gap: 4px;
@@ -395,12 +402,12 @@ details > :not(summary) {
   padding: 10px 0;
 }
 
-.guard-list div:first-child {
+.orbit-dev-root .guard-list div:first-child {
   border-top: 0;
   padding-top: 0;
 }
 
-.handoff-preview {
+.orbit-dev-root .handoff-preview {
   background: var(--orbit-surface-raised);
   border: 1px solid var(--orbit-border);
   border-radius: var(--orbit-radius-control);
@@ -412,7 +419,7 @@ details > :not(summary) {
   padding: 10px;
 }
 
-.token-swatch {
+.orbit-dev-root .token-swatch {
   align-items: center;
   background: var(--orbit-surface);
   border: 1px solid var(--orbit-border);
@@ -426,78 +433,78 @@ details > :not(summary) {
   padding: var(--orbit-space-sm);
 }
 
-.token-swatch > span {
+.orbit-dev-root .token-swatch > span {
   border: 1px solid var(--orbit-border-strong);
   border-radius: var(--orbit-radius-control);
   height: 42px;
   width: 42px;
 }
 
-.token-swatch-canvas > span {
+.orbit-dev-root .token-swatch-canvas > span {
   background: var(--orbit-canvas);
 }
 
-.token-swatch-surface > span {
+.orbit-dev-root .token-swatch-surface > span {
   background: var(--orbit-surface);
 }
 
-.token-swatch-raised > span {
+.orbit-dev-root .token-swatch-raised > span {
   background: var(--orbit-surface-raised);
 }
 
-.token-swatch-border > span {
+.orbit-dev-root .token-swatch-border > span {
   background: var(--orbit-border);
 }
 
-.token-swatch-text > span {
+.orbit-dev-root .token-swatch-text > span {
   background: var(--orbit-text);
 }
 
-.token-swatch-muted > span {
+.orbit-dev-root .token-swatch-muted > span {
   background: var(--orbit-muted-text);
 }
 
-.token-swatch-primary > span {
+.orbit-dev-root .token-swatch-primary > span {
   background: var(--orbit-primary-action);
 }
 
-.token-swatch-evidence > span {
+.orbit-dev-root .token-swatch-evidence > span {
   background: var(--orbit-evidence);
 }
 
-.token-swatch-confirmation > span {
+.orbit-dev-root .token-swatch-confirmation > span {
   background: var(--orbit-confirmation);
 }
 
-.token-swatch-privacy > span {
+.orbit-dev-root .token-swatch-privacy > span {
   background: var(--orbit-privacy);
 }
 
-.token-swatch-warning > span {
+.orbit-dev-root .token-swatch-warning > span {
   background: var(--orbit-warning);
 }
 
-.token-swatch-success > span {
+.orbit-dev-root .token-swatch-success > span {
   background: var(--orbit-success);
 }
 
-.token-swatch strong,
-.token-swatch code {
+.orbit-dev-root .token-swatch strong,
+.orbit-dev-root .token-swatch code {
   display: block;
 }
 
-.token-swatch strong {
+.orbit-dev-root .token-swatch strong {
   font-size: 0.84rem;
   line-height: 1.35;
 }
 
-.token-swatch code {
+.orbit-dev-root .token-swatch code {
   color: var(--orbit-muted-text);
   font-family: var(--orbit-font-mono);
   font-size: 0.76rem;
 }
 
-.orbit-chip {
+.orbit-dev-root .orbit-chip {
   align-items: center;
   border: 1px solid var(--orbit-border-strong);
   border-radius: var(--orbit-radius-control);
@@ -515,93 +522,93 @@ details > :not(summary) {
   width: fit-content;
 }
 
-.orbit-chip-neutral {
+.orbit-dev-root .orbit-chip-neutral {
   background: var(--orbit-surface-raised);
   color: var(--orbit-text);
 }
 
-.orbit-chip-primary {
+.orbit-dev-root .orbit-chip-primary {
   background: rgba(21, 94, 117, 0.1);
   border-color: rgba(21, 94, 117, 0.3);
   color: var(--orbit-primary-action-hover);
 }
 
-.orbit-chip-evidence,
-.inline-metric-evidence,
-.status-display-evidence {
+.orbit-dev-root .orbit-chip-evidence,
+.orbit-dev-root .inline-metric-evidence,
+.orbit-dev-root .status-display-evidence {
   background: rgba(29, 78, 216, 0.08);
   border-color: rgba(29, 78, 216, 0.24);
   color: var(--orbit-evidence);
 }
 
-.orbit-chip-confirmation,
-.inline-metric-confirmation,
-.status-display-confirmation {
+.orbit-dev-root .orbit-chip-confirmation,
+.orbit-dev-root .inline-metric-confirmation,
+.orbit-dev-root .status-display-confirmation {
   background: rgba(111, 78, 55, 0.09);
   border-color: rgba(111, 78, 55, 0.24);
   color: var(--orbit-confirmation);
 }
 
-.orbit-chip-privacy,
-.inline-metric-privacy,
-.status-display-privacy {
+.orbit-dev-root .orbit-chip-privacy,
+.orbit-dev-root .inline-metric-privacy,
+.orbit-dev-root .status-display-privacy {
   background: rgba(81, 68, 122, 0.08);
   border-color: rgba(81, 68, 122, 0.24);
   color: var(--orbit-privacy);
 }
 
-.orbit-chip-warning,
-.inline-metric-warning,
-.status-display-warning {
+.orbit-dev-root .orbit-chip-warning,
+.orbit-dev-root .inline-metric-warning,
+.orbit-dev-root .status-display-warning {
   background: rgba(154, 52, 18, 0.08);
   border-color: rgba(154, 52, 18, 0.24);
   color: var(--orbit-warning);
 }
 
-.orbit-chip-success,
-.inline-metric-success,
-.status-display-success {
+.orbit-dev-root .orbit-chip-success,
+.orbit-dev-root .inline-metric-success,
+.orbit-dev-root .status-display-success {
   background: rgba(22, 101, 52, 0.08);
   border-color: rgba(22, 101, 52, 0.24);
   color: var(--orbit-success);
 }
 
-.chip-row,
-.button-row {
+.orbit-dev-root .chip-row,
+.orbit-dev-root .button-row {
   align-items: start;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), max-content));
 }
 
-.control-stack {
+.orbit-dev-root .control-stack {
   display: grid;
   gap: var(--orbit-space-sm);
   max-width: 100%;
   min-width: 0;
 }
 
-.control-field {
+.orbit-dev-root .control-field {
   display: grid;
   gap: 6px;
   max-width: 100%;
   min-width: 0;
 }
 
-.control-field span {
+.orbit-dev-root .control-field span {
   font-size: 0.8rem;
   font-weight: 750;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
-.control-field small {
+.orbit-dev-root .control-field small {
   color: var(--orbit-muted-text);
   font-size: 0.76rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
-.primary-action,
-.secondary-action {
+.orbit-dev-root .primary-action,
+.orbit-dev-root .secondary-action {
   align-items: center;
   display: inline-flex;
   justify-content: center;
@@ -612,33 +619,33 @@ details > :not(summary) {
   text-align: center;
 }
 
-.primary-action {
+.orbit-dev-root .primary-action {
   background: var(--orbit-primary-action);
   border-color: var(--orbit-primary-action);
   color: var(--orbit-primary-action-text);
 }
 
-.primary-action:hover {
+.orbit-dev-root .primary-action:hover {
   background: var(--orbit-primary-action-hover);
   border-color: var(--orbit-primary-action-hover);
 }
 
-.secondary-action {
+.orbit-dev-root .secondary-action {
   background: var(--orbit-surface);
   border-color: var(--orbit-border-strong);
   color: var(--orbit-text);
 }
 
-.primary-action:disabled,
-.secondary-action:disabled {
+.orbit-dev-root .primary-action:disabled,
+.orbit-dev-root .secondary-action:disabled {
   background: var(--orbit-surface-raised);
   border-color: var(--orbit-border-strong);
   border-style: dashed;
   color: var(--orbit-muted-text);
 }
 
-.inline-metric,
-.status-display {
+.orbit-dev-root .inline-metric,
+.orbit-dev-root .status-display {
   border: 1px solid var(--orbit-border);
   border-radius: var(--orbit-radius-control);
   display: grid;
@@ -650,21 +657,21 @@ details > :not(summary) {
   padding: 9px 10px;
 }
 
-.inline-metric-neutral,
-.status-display-neutral {
+.orbit-dev-root .inline-metric-neutral,
+.orbit-dev-root .status-display-neutral {
   background: var(--orbit-surface-raised);
   color: var(--orbit-text);
 }
 
-.inline-metric-primary,
-.status-display-primary {
+.orbit-dev-root .inline-metric-primary,
+.orbit-dev-root .status-display-primary {
   background: rgba(21, 94, 117, 0.1);
   border-color: rgba(21, 94, 117, 0.3);
   color: var(--orbit-primary-action-hover);
 }
 
-.inline-metric span,
-.status-display span {
+.orbit-dev-root .inline-metric span,
+.orbit-dev-root .status-display span {
   color: var(--orbit-muted-text);
   font-size: 0.72rem;
   font-weight: 750;
@@ -672,37 +679,37 @@ details > :not(summary) {
   text-transform: uppercase;
 }
 
-.inline-metric strong,
-.status-display strong {
+.orbit-dev-root .inline-metric strong,
+.orbit-dev-root .status-display strong {
   color: inherit;
   font-size: 0.96rem;
   line-height: 1.25;
 }
 
 @media (min-width: 760px) {
-  .workbench-frame {
+  .orbit-dev-root .workbench-frame {
     padding: var(--orbit-space-xl);
   }
 
-  .workbench-shell {
+  .orbit-dev-root .workbench-shell {
     gap: var(--orbit-space-lg);
   }
 
-  .workbench-grid {
+  .orbit-dev-root .workbench-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .token-grid {
+  .orbit-dev-root .token-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 420px) {
-  .workbench-frame {
+  .orbit-dev-root .workbench-frame {
     padding: var(--orbit-space-sm);
   }
 
-  .workbench-header h1 {
+  .orbit-dev-root .workbench-header h1 {
     font-size: 1.88rem;
   }
 }
