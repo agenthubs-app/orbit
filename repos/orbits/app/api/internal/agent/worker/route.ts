@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createOrbitAgentRuntimeService } from "../../../../../features/agent/runtime/service-factory";
+import { createAgentOperationsService } from "../../../../../features/agent/operations/service-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,13 @@ export async function POST(request: Request): Promise<Response> {
       actorId: actorId.slice(0, 240),
     });
     const result = await runtime.processOutbox({ limit, workerId });
+    await createAgentOperationsService({ actorId }).recordHeartbeat({
+      automationRuns: 0,
+      outboxProcessed: result.processed,
+      recordedAt: new Date().toISOString(),
+      signalAutomationRuns: 0,
+      workerId,
+    });
 
     return NextResponse.json({ data: result }, { status: 200 });
   } catch (error) {

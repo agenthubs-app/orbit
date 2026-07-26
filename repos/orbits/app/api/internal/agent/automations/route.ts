@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runDueAgentAutomations } from "../../../../../features/agent/automations/runner";
 import { createAgentAutomationService } from "../../../../../features/agent/automations/service-factory";
 import { createAgentMemoryService } from "../../../../../features/agent/memory/service-factory";
+import { createAgentOperationsService } from "../../../../../features/agent/operations/service-factory";
 import { resolveModuleMode } from "../../../../../shared/services/module-mode";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +81,13 @@ export async function POST(request: Request): Promise<Response> {
       },
       { memory },
     );
+    await createAgentOperationsService({ actorId }).recordHeartbeat({
+      automationRuns: automations.length,
+      outboxProcessed: 0,
+      recordedAt: new Date().toISOString(),
+      signalAutomationRuns: 0,
+      workerId,
+    });
     return NextResponse.json({ data: { automations } });
   } catch (error) {
     return NextResponse.json(

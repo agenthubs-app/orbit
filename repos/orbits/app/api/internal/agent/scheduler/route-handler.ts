@@ -26,7 +26,7 @@ export interface AgentSchedulerRouteDependencies {
     actorId: string,
     mode: ModuleMode,
   ) => PreEventBriefCandidateCollector;
-  preferences?: () => Promise<SchedulerPreferences>;
+  preferences?: (actorId: string) => Promise<SchedulerPreferences>;
   push?: () => OrbitPushAdapter | null;
   resolveActorId?: (request: Request) => string | null;
   resolveMode?: () => ModuleMode;
@@ -73,7 +73,8 @@ export function createAgentSchedulerRouteHandler(
         mode,
       }));
   const preferences =
-    dependencies.preferences ?? (() => createAgentPreferencesService().get());
+    dependencies.preferences ??
+    ((actorId) => createAgentPreferencesService({ actorId }).get());
   const push = dependencies.push ?? createConfiguredExpoPushAdapter;
 
   return async function handleAgentSchedulerRequest(
@@ -127,7 +128,7 @@ export function createAgentSchedulerRouteHandler(
         collector: collectorForActor(actorId, mode),
         runtime: runtimeForActor(actorId, mode),
         push: push(),
-        preferences: await preferences(),
+        preferences: await preferences(actorId),
       });
       const result = await scheduler.tick();
       return NextResponse.json({ data: result }, { status: 200 });

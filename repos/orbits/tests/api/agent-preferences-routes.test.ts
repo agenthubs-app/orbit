@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createAgentPreferencesRouteHandlers } from "../../app/api/agent/preferences/route";
 import {
-  GET as getPreferences,
-  PUT as updatePreferences,
-} from "../../app/api/agent/preferences/route";
-import { resetAgentPreferencesServiceForTests } from "../../features/agent/preferences";
+  createAgentPreferencesService,
+  resetAgentPreferencesServiceForTests,
+} from "../../features/agent/preferences";
+
+const { GET: getPreferences, PUT: updatePreferences } =
+  createAgentPreferencesRouteHandlers({
+    resolveActorId: async () => "actor:preferences-route-test",
+    serviceForActor: (actorId) =>
+      createAgentPreferencesService({ actorId }),
+  });
 
 test.beforeEach(() => {
   resetAgentPreferencesServiceForTests();
@@ -49,4 +56,30 @@ test("PUT preferences rejects an invalid IANA time zone", async () => {
   assert.equal(response.status, 400);
   const body = await response.json();
   assert.equal(body.error.code, "AGENT_PREFERENCES_INVALID");
+});
+
+test("preferences require an authenticated actor boundary", async () => {
+  const handlers = createAgentPreferencesRouteHandlers({
+    resolveActorId: async () => null,
+  });
+  assert.equal((await handlers.GET()).status, 401);
+});
+
+test("preferences are isolated between authenticated actors", async () => {
+  let actorId = "actor:preferences-a";
+  const handlers = createAgentPreferencesRouteHandlers({
+    resolveActorId: async () => actorId,
+    serviceForActor: (actor) =>
+      createAgentPreferencesService({ actorId: actor }),
+  });
+  await handlers.PUT(
+    new Request("http://localhost/api/agent/preferences", {
+      body: JSON.stringify({ externalCalendarWritesEnabled: true }),
+      headers: { "content-type": "application/json" },
+      method: "PUT",
+    }),
+  );
+  actorId = "actor:preferences-b";
+  const body = await (await handlers.GET()).json();
+  assert.equal(body.data.externalCalendarWritesEnabled, false);
 });

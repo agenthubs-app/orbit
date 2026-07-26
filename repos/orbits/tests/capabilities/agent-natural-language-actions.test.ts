@@ -101,7 +101,24 @@ test("external calendar proposals require provider authorization before reaching
   );
 
   const permissionChecks: { permission: string; provider: string }[] = [];
+  await assert.rejects(
+    createAgentNaturalLanguageActionProposalService({
+      externalCalendarWritesEnabled: false,
+      permissionGuard: {
+        async assertPermission() {
+          throw new Error("Policy must reject before provider access.");
+        },
+      },
+      runtime,
+    }).propose({
+      conversationId: "conversation:calendar-policy-disabled",
+      message: "在 Google Calendar 创建项目会议。",
+      requests: [request],
+    }),
+    /External calendar writes are disabled/,
+  );
   const result = await createAgentNaturalLanguageActionProposalService({
+    externalCalendarWritesEnabled: true,
     permissionGuard: {
       async assertPermission(input) {
         permissionChecks.push(input);

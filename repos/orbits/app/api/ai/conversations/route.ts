@@ -17,11 +17,13 @@ import { createOrbitAgentConversationService } from "../../../../features/orbit-
 import { createAgentMemoryService } from "../../../../features/agent/memory/service-factory";
 import { createAgentFeedbackService } from "../../../../features/agent/feedback/service-factory";
 import {
+  AgentExternalCalendarWritesDisabledError,
   AgentMemoryLearningDisabledError,
   AgentNaturalLanguageActionPermissionError,
   createAgentNaturalLanguageActionProposalService,
   type AgentNaturalLanguageActionPermissionGuard,
 } from "../../../../features/agent/natural-language-actions/service";
+import { createAgentPreferencesService } from "../../../../features/agent/preferences";
 import type { AgentRuntimeService } from "../../../../features/agent/runtime/service";
 import { createConfiguredOrbitIntegrationService } from "../../../../features/integrations/service-factory";
 import { latestConversationRuntimeLink } from "../../../../features/orbit-ai/conversation-runtime-links";
@@ -233,6 +235,7 @@ async function persistNaturalLanguageActionProposals(
   runtime: AgentRuntimeService,
   permissionGuard?: AgentNaturalLanguageActionPermissionGuard,
   memoryLearningAllowed = true,
+  externalCalendarWritesEnabled = false,
 ): Promise<OrbitAgentConversationResult> {
   if (result.success === false) return result;
   const {
@@ -262,6 +265,7 @@ async function persistNaturalLanguageActionProposals(
   try {
     const proposed =
       await createAgentNaturalLanguageActionProposalService({
+        externalCalendarWritesEnabled,
         memoryLearningAllowed,
         permissionGuard,
         runtime,
@@ -279,6 +283,22 @@ async function persistNaturalLanguageActionProposals(
       },
     };
   } catch (error) {
+    if (error instanceof AgentExternalCalendarWritesDisabledError) {
+      return {
+        success: true,
+        data: {
+          ...publicData,
+          actionIds: [],
+          assistantMessage:
+            input.locale === "en"
+              ? "External calendar writes are off in Agent execution settings, so I did not create a confirmation card or write anything."
+              : "Agent 执行设置已关闭“外部日历写入”，因此我没有创建确认卡，也没有写入任何日历。",
+          nextAction:
+            "Enable per-operation external calendar writes in Settings before asking Orbit to create a provider calendar event.",
+          runId: undefined,
+        },
+      };
+    }
     if (error instanceof AgentMemoryLearningDisabledError) {
       return {
         success: true,
@@ -428,6 +448,11 @@ export async function POST(request: Request): Promise<Response> {
   const memorySettings = memoryService
     ? await memoryService.getSettings()
     : null;
+  const executionPreferences = agentContext.actorId
+    ? await createAgentPreferencesService({
+        actorId: agentContext.actorId,
+      }).get()
+    : null;
   const feedbackService = agentContext.actorId
     ? createAgentFeedbackService({
         actorId: agentContext.actorId,
@@ -478,6 +503,7 @@ export async function POST(request: Request): Promise<Response> {
           }) ?? undefined
         : undefined,
       memorySettings?.allowConversationLearning ?? true,
+      executionPreferences?.externalCalendarWritesEnabled ?? false,
     );
   }
   timing.finish("orbit-service", serviceStartedAt);

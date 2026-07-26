@@ -4,10 +4,33 @@ import { useEffect, useState } from "react";
 
 interface Preferences {
   autoPrepareMeetingNotes: boolean;
+  externalCalendarWritesEnabled: boolean;
   postEventReminderPushEnabled: boolean;
   preEventBriefPushEnabled: boolean;
   quietHours: { start: string; end: string };
   timeZone: string;
+}
+
+interface AgentOperationsHealth {
+  ai: {
+    configured: boolean;
+    provider: "deepseek" | "gemini" | "openai";
+  };
+  database: {
+    durable: boolean;
+  };
+  policy: {
+    externalCalendarWritesEnabled: boolean;
+    externalMessages: "never";
+    writesRequireConfirmation: true;
+  };
+  worker: {
+    state: "healthy" | "stale" | "not_seen";
+    lastHeartbeat: {
+      recordedAt: string;
+      workerId: string;
+    } | null;
+  };
 }
 
 interface IntegrationStatus {
@@ -31,6 +54,7 @@ interface IntegrationStatus {
 
 const DEFAULT_PREFERENCES: Preferences = {
   autoPrepareMeetingNotes: true,
+  externalCalendarWritesEnabled: false,
   postEventReminderPushEnabled: true,
   preEventBriefPushEnabled: true,
   quietHours: { start: "22:00", end: "08:00" },
@@ -85,19 +109,34 @@ export function OrbitAgentExecutionSettings() {
     useState<readonly IntegrationStatus[]>([]);
   const [checkingProvider, setCheckingProvider] =
     useState<IntegrationStatus["provider"] | null>(null);
+  const [operationsHealth, setOperationsHealth] =
+    useState<AgentOperationsHealth | null>(null);
+  const [refreshingHealth, setRefreshingHealth] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     void Promise.all([
       fetch("/api/agent/preferences", { signal: controller.signal }),
       fetch("/api/integrations", { signal: controller.signal }),
+      fetch("/api/agent/operations/health", {
+        cache: "no-store",
+        signal: controller.signal,
+      }),
     ])
-      .then(async ([preferencesResponse, integrationsResponse]) => {
+      .then(async ([
+        preferencesResponse,
+        integrationsResponse,
+        operationsResponse,
+      ]) => {
         const preferencesBody =
           (await preferencesResponse.json()) as { data?: Preferences };
         const integrationsBody =
           (await integrationsResponse.json()) as {
             data?: readonly IntegrationStatus[];
+          };
+        const operationsBody =
+          (await operationsResponse.json()) as {
+            data?: AgentOperationsHealth;
           };
         if (preferencesResponse.ok && preferencesBody.data) {
           setPreferences(preferencesBody.data);
@@ -105,11 +144,34 @@ export function OrbitAgentExecutionSettings() {
         if (integrationsResponse.ok && integrationsBody.data) {
           setIntegrations(integrationsBody.data);
         }
+        if (operationsResponse.ok && operationsBody.data) {
+          setOperationsHealth(operationsBody.data);
+        }
       })
       .catch(() => undefined)
       .finally(() => setLoading(false));
     return () => controller.abort();
   }, []);
+
+  async function refreshOperationsHealth(): Promise<void> {
+    setRefreshingHealth(true);
+    try {
+      const response = await fetch("/api/agent/operations/health", {
+        cache: "no-store",
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { data?: AgentOperationsHealth }
+        | null;
+      if (!response.ok || !body?.data) {
+        throw new Error("operations health unavailable");
+      }
+      setOperationsHealth(body.data);
+    } catch {
+      setMessage("运行状态暂时无法刷新");
+    } finally {
+      setRefreshingHealth(false);
+    }
+  }
 
   async function save(): Promise<void> {
     setSaving(true);
@@ -122,6 +184,7 @@ export function OrbitAgentExecutionSettings() {
       });
       if (!response.ok) throw new Error("save failed");
       setMessage("已保存");
+      await refreshOperationsHealth();
     } catch {
       setMessage("保存失败，请重试");
     } finally {
@@ -219,6 +282,16 @@ export function OrbitAgentExecutionSettings() {
           setPreferences((current) => ({
             ...current,
             autoPrepareMeetingNotes,
+          }))
+        }
+      />
+      <ToggleRow
+        checked={preferences.externalCalendarWritesEnabled}
+        label="允许逐次确认后写入外部日历"
+        onChange={(externalCalendarWritesEnabled) =>
+          setPreferences((current) => ({
+            ...current,
+            externalCalendarWritesEnabled,
           }))
         }
       />
@@ -328,6 +401,74 @@ export function OrbitAgentExecutionSettings() {
           type="button"
         >
           {saving ? "保存中…" : "保存设置"}
+        </button>
+      </div>
+
+      <div
+        className="eyebrow"
+        data-agent-operations-health
+        style={{ marginBottom: 4, marginTop: 28 }}
+      >
+        运行状态
+      </div>
+      <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 10px" }}>
+        这里不展示密钥或 Token，只确认 AI、持久化存储与后台执行器是否真的可用。
+      </p>
+      <div
+        style={{
+          display: "grid",
+          gap: 8,
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+        }}
+      >
+        <div className="card" style={{ padding: 12 }}>
+          <strong style={{ display: "block", fontSize: 13 }}>AI 服务</strong>
+          <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+            {operationsHealth
+              ? `${operationsHealth.ai.provider} · ${
+                  operationsHealth.ai.configured ? "已配置" : "缺少密钥"
+                }`
+              : "正在检查…"}
+          </span>
+        </div>
+        <div className="card" style={{ padding: 12 }}>
+          <strong style={{ display: "block", fontSize: 13 }}>关系数据</strong>
+          <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+            {operationsHealth
+              ? operationsHealth.database.durable
+                ? "持久化数据库"
+                : "仅本地临时存储"
+              : "正在检查…"}
+          </span>
+        </div>
+        <div className="card" style={{ padding: 12 }}>
+          <strong style={{ display: "block", fontSize: 13 }}>后台执行器</strong>
+          <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+            {operationsHealth
+              ? operationsHealth.worker.state === "healthy"
+                ? "运行正常"
+                : operationsHealth.worker.state === "stale"
+                  ? "心跳已过期"
+                  : "尚未观察到"
+              : "正在检查…"}
+          </span>
+          {operationsHealth?.worker.lastHeartbeat ? (
+            <span style={{ color: "var(--text-4)", display: "block", fontSize: 11, marginTop: 3 }}>
+              {new Date(
+                operationsHealth.worker.lastHeartbeat.recordedAt,
+              ).toLocaleString("zh-CN")}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+        <button
+          className="btn btn-sm btn-ghost"
+          disabled={refreshingHealth}
+          onClick={() => void refreshOperationsHealth()}
+          type="button"
+        >
+          {refreshingHealth ? "刷新中…" : "刷新运行状态"}
         </button>
       </div>
 

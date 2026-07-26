@@ -108,7 +108,7 @@ test("conversation POST calls planner sendMessage exactly once for ordinary requ
   assert.equal(sendCalls, 1);
 });
 
-test("ordinary conversation responses never inherit an older run link", async () => {
+test("ordinary conversation responses use a fresh progress run and never inherit older actions", async () => {
   resetOrbitAgentRuntimeServicesForTests();
   const runtime = createOrbitAgentRuntimeService("mock");
   await runtime.createRun({
@@ -158,6 +158,7 @@ test("ordinary conversation responses never inherit an older run link", async ()
   };
 
   assert.equal(response.status, 200);
-  assert.equal(envelope.data?.runId, undefined);
+  assert.match(envelope.data?.runId ?? "", /^run:conversation:/);
+  assert.notEqual(envelope.data?.runId, "run:historical");
   assert.equal(envelope.data?.actionIds, undefined);
 });

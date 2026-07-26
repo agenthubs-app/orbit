@@ -4,6 +4,7 @@ import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store
 
 export interface AgentPreferences {
   autoPrepareMeetingNotes: boolean;
+  externalCalendarWritesEnabled: boolean;
   postEventReminderPushEnabled: boolean;
   preEventBriefPushEnabled: boolean;
   quietHours: {
@@ -21,6 +22,7 @@ export interface AgentPreferencesService {
       Pick<
         AgentPreferences,
         | "autoPrepareMeetingNotes"
+        | "externalCalendarWritesEnabled"
         | "postEventReminderPushEnabled"
         | "preEventBriefPushEnabled"
         | "quietHours"
@@ -32,6 +34,7 @@ export interface AgentPreferencesService {
 
 const DEFAULT_PREFERENCES: AgentPreferences = {
   autoPrepareMeetingNotes: true,
+  externalCalendarWritesEnabled: false,
   postEventReminderPushEnabled: true,
   preEventBriefPushEnabled: true,
   quietHours: { start: "22:00", end: "08:00" },
@@ -102,6 +105,9 @@ export function createStorageAgentPreferencesService(input: {
         autoPrepareMeetingNotes:
           patch.autoPrepareMeetingNotes ??
           existing.autoPrepareMeetingNotes,
+        externalCalendarWritesEnabled:
+          patch.externalCalendarWritesEnabled ??
+          existing.externalCalendarWritesEnabled,
         postEventReminderPushEnabled:
           patch.postEventReminderPushEnabled ??
           existing.postEventReminderPushEnabled,
@@ -132,33 +138,41 @@ export function createStorageAgentPreferencesService(input: {
 }
 
 interface OrbitAgentPreferencesGlobal {
-  __orbitAgentPreferencesService?: AgentPreferencesService;
+  __orbitAgentPreferencesServices?: Map<string, AgentPreferencesService>;
 }
 
 const preferencesGlobal = globalThis as typeof globalThis &
   OrbitAgentPreferencesGlobal;
 
-export function createAgentPreferencesService(): AgentPreferencesService {
-  if (preferencesGlobal.__orbitAgentPreferencesService) {
-    return preferencesGlobal.__orbitAgentPreferencesService;
-  }
+export function createAgentPreferencesService(
+  input: { actorId?: string } = {},
+): AgentPreferencesService {
+  const actorId = input.actorId?.trim() || "local-test-actor";
+  const services =
+    preferencesGlobal.__orbitAgentPreferencesServices ??
+    new Map<string, AgentPreferencesService>();
+  preferencesGlobal.__orbitAgentPreferencesServices = services;
   const configured =
     createConfiguredPostgresLiveRecordStore<PreferencesPayload>();
-  preferencesGlobal.__orbitAgentPreferencesService =
-    createStorageAgentPreferencesService(
-      configured
-        ? {
-            store: configured.store,
-            workspaceId: configured.workspaceId,
-          }
-        : {
-            store: createMemoryLiveRecordStore<PreferencesPayload>(),
-            workspaceId: "orbit-agent-local",
-          },
-    );
-  return preferencesGlobal.__orbitAgentPreferencesService;
+  const workspaceId = configured?.workspaceId ?? "orbit-agent-local";
+  const cacheKey = `${workspaceId}\u0000${actorId}`;
+  const cached = services.get(cacheKey);
+  if (cached) return cached;
+  const service = createStorageAgentPreferencesService(
+    configured
+      ? {
+          store: configured.store,
+          workspaceId: `${configured.workspaceId}:agent-actor:${actorId}`,
+        }
+      : {
+          store: createMemoryLiveRecordStore<PreferencesPayload>(),
+          workspaceId: `orbit-agent-local:agent-actor:${actorId}`,
+        },
+  );
+  services.set(cacheKey, service);
+  return service;
 }
 
 export function resetAgentPreferencesServiceForTests(): void {
-  delete preferencesGlobal.__orbitAgentPreferencesService;
+  preferencesGlobal.__orbitAgentPreferencesServices?.clear();
 }

@@ -56,6 +56,7 @@ store。
 - `ORBIT_AGENT_WORKER_ID`：可选的实例标识。
 - `ORBIT_AGENT_WORKER_POLL_MS`：可选轮询间隔，默认 2000ms，最低 500ms。
 - `ORBIT_AGENT_SIGNAL_POLL_MS`：可选信号刷新间隔，默认 60000ms，最低 10000ms。
+- `ORBIT_AGENT_HEARTBEAT_MS`：可选运行心跳间隔，默认 30000ms，最低 10000ms。
 - live database 配置和当前 AI provider 配置。
 
 可通过 `npm run agent:worker` 启动。HTTP 部署也可以调用
@@ -149,6 +150,11 @@ provider record id 写入执行回执。
 `calendar.events.write`，proposal service 与 integration service 都会验证；缺失
 连接或 scope 时 fail closed，不创建确认卡，也不会发出 provider 请求。
 
+Agent preferences 现在按 authenticated actor 隔离。外部日历写入还有独立的用户总
+开关 `externalCalendarWritesEnabled`，默认关闭；即使 OAuth 已连接且具备 write scope，
+总开关关闭时 proposal service 也会在创建 Run、Action 和确认卡之前拒绝。打开后仍然
+保留逐次确认与 provider permission 两层保护。对外消息始终没有可开启的发送策略。
+
 确认后的日历写入复用统一 runtime outbox、幂等键和 receipt。Google Calendar 使用
 稳定 provider event id，Microsoft Calendar 使用 transaction id。provider 请求失败
 进入现有重试/死信状态，不绕过操作账本重试。当前 provider 侧删除没有稳定回执输入，
@@ -199,6 +205,13 @@ Live Actions 可以接规划器、LLM、任务调度器或外部动作 provider�
 所有工具调用和写操作 proposal 都必须经过 Capability Registry 与严格 schema 校验。
 模型不能动态发明工具、权限、风险等级或 executor；无效参数、未登记能力、缺少权限和
 混合读写请求一律 fail closed。
+
+`features/agent/operations` 保存 actor-scoped worker 心跳；CLI worker、内部 outbox
+worker 和 automation worker 都复用同一记录。`GET /api/agent/operations/health` 只向
+登录账号返回脱敏后的 AI provider 配置状态、数据库是否持久化、worker 心跳新鲜度和
+当前执行策略，不返回 API key、数据库 URL、OAuth token 或原始 trace。设置页可以手动
+刷新该状态。完整 prompt/工具 trace 继续只在 development endpoint 开放，生产环境
+返回 404。
 
 ## 测试要求
 

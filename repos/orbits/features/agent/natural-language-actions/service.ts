@@ -69,6 +69,17 @@ export class AgentMemoryLearningDisabledError extends Error {
   }
 }
 
+export class AgentExternalCalendarWritesDisabledError extends Error {
+  readonly code = "AGENT_EXTERNAL_CALENDAR_WRITES_DISABLED";
+
+  constructor() {
+    super(
+      "External calendar writes are disabled in Agent execution settings.",
+    );
+    this.name = "AgentExternalCalendarWritesDisabledError";
+  }
+}
+
 async function capabilityFor(
   request: AgentNaturalLanguageActionRequest,
   permissionGuard?: AgentNaturalLanguageActionPermissionGuard,
@@ -178,6 +189,7 @@ function actionCopy(
 }
 
 export function createAgentNaturalLanguageActionProposalService(input: {
+  externalCalendarWritesEnabled?: boolean;
   memoryLearningAllowed?: boolean;
   permissionGuard?: AgentNaturalLanguageActionPermissionGuard;
   runtime: AgentRuntimeService;
@@ -196,6 +208,14 @@ export function createAgentNaturalLanguageActionProposalService(input: {
         )
       ) {
         throw new AgentMemoryLearningDisabledError();
+      }
+      if (
+        input.externalCalendarWritesEnabled === false &&
+        proposalInput.requests.some(
+          (request) => request.capabilityId === "calendar.syncEvent",
+        )
+      ) {
+        throw new AgentExternalCalendarWritesDisabledError();
       }
 
       const capabilities = await Promise.all(

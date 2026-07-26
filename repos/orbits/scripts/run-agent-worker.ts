@@ -5,6 +5,7 @@ import {
 } from "../features/agent/automations/runner";
 import { createAgentAutomationService } from "../features/agent/automations/service-factory";
 import { createAgentMemoryService } from "../features/agent/memory/service-factory";
+import { createAgentOperationsService } from "../features/agent/operations/service-factory";
 import { createOrbitAgentRuntimeService } from "../features/agent/runtime/service-factory";
 import { createAgentSignalService } from "../features/agent/signals/service-factory";
 
@@ -24,6 +25,13 @@ const signalPollIntervalMs = Math.max(
     10,
   ) || 60_000,
 );
+const heartbeatIntervalMs = Math.max(
+  10_000,
+  Number.parseInt(
+    process.env.ORBIT_AGENT_HEARTBEAT_MS ?? "30000",
+    10,
+  ) || 30_000,
+);
 
 async function main(): Promise<void> {
   const actorId = process.env.ORBIT_AGENT_WORKER_ACTOR_ID?.trim();
@@ -38,8 +46,10 @@ async function main(): Promise<void> {
     mode: "live",
   });
   const memory = createAgentMemoryService({ actorId, mode: "live" });
+  const operations = createAgentOperationsService({ actorId });
   const signals = createAgentSignalService({ actorId, mode: "live" });
   let nextSignalRefreshAt = 0;
+  let nextHeartbeatAt = 0;
 
   while (true) {
     const iterationStartedAt = Date.now();
@@ -96,6 +106,29 @@ async function main(): Promise<void> {
           ),
         })}\n`,
       );
+    }
+    if (iterationStartedAt >= nextHeartbeatAt) {
+      nextHeartbeatAt = iterationStartedAt + heartbeatIntervalMs;
+      try {
+        await operations.recordHeartbeat({
+          automationRuns: automationRuns.length,
+          outboxProcessed: outbox.processed,
+          recordedAt: new Date().toISOString(),
+          signalAutomationRuns: signalAutomationRuns.length,
+          workerId,
+        });
+      } catch (error) {
+        process.stderr.write(
+          `${JSON.stringify({
+            code: "AGENT_HEARTBEAT_FAILED",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Agent worker heartbeat failed.",
+            workerId,
+          })}\n`,
+        );
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
