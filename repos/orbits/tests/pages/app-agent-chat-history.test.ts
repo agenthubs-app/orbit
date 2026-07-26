@@ -183,6 +183,24 @@ test("agent chat history titles are compact phrases derived from the first quest
     ]),
     "帮我推荐下周适合见 Maya 的活动",
   );
+  assert.equal(
+    titleFromMessages([
+      {
+        role: "user",
+        text: "请基于我在 Orbit 中已有的人脉与活动数据，推荐下周最值得联系的人；不要发送消息或创建日程",
+      },
+    ]),
+    "人脉与活动数据",
+  );
+  assert.equal(
+    titleFromMessages([
+      {
+        role: "user",
+        text: "在我现有的人脉中找适合聊出海的人",
+      },
+    ]),
+    "聊出海人脉",
+  );
 });
 
 test("agent sidebar persists sessions through the Orbit Agent sessions API", () => {
@@ -232,4 +250,20 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /data-orbit-agent-history-resize-handle/);
   assert.match(source, /setHistorySidebarWidth/);
   assert.match(source, /role="separator"/);
+});
+
+test("agent history uses a flat, left-aligned navigation list", () => {
+  const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+  const styles = readProjectFile("app/(app)/app/orbit-reference-styles.tsx");
+
+  assert.match(source, /orbit-agent-new-chat/);
+  assert.match(source, /orbit-agent-history-entry/);
+  assert.match(source, /orbit-agent-history-title/);
+  assert.match(source, /orbit-agent-history-more/);
+  assert.match(source, /orbit-agent-history-menu/);
+  assert.match(source, /title=\{item\.q \|\| item\.title\}/);
+  assert.match(source, /item\.pinned \? "pin" : "message"/);
+  assert.match(styles, /\.btn\.orbit-agent-history-entry[\s\S]*border: 0;/);
+  assert.match(styles, /\.orbit-agent-history-title \{[\s\S]*text-align: left;/);
+  assert.match(styles, /\.orbit-agent-history-menu \.btn \{[\s\S]*border: 0;/);
 });

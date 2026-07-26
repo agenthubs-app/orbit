@@ -2559,8 +2559,54 @@ html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
   border-color: var(--border) !important;
 }
 
+[data-orbit-real-page="agent"] .orbit-agent-history-actions {
+  padding: 12px 12px 10px;
+}
+
+[data-orbit-real-page="agent"] .btn.orbit-agent-new-chat {
+  align-items: center;
+  background: var(--accent-softer);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 650;
+  gap: 9px;
+  height: 40px;
+  justify-content: flex-start;
+  padding: 0 12px;
+  text-align: left;
+}
+
+[data-orbit-real-page="agent"] .btn.orbit-agent-new-chat:hover {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+[data-orbit-real-page="agent"] .btn.orbit-agent-new-chat:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  outline-offset: 2px;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-heading {
+  padding: 8px 16px 10px;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-scroll {
+  padding: 0 8px 18px;
+}
+
 [data-orbit-real-page="agent"] .orbit-agent-history-list {
   gap: 18px !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-group {
+  padding: 0 10px 6px;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-group-list {
+  gap: 2px;
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-list .eyebrow {
@@ -2573,15 +2619,84 @@ html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
 [data-orbit-real-page="agent"] .orbit-agent-history-row {
   border: 1px solid transparent;
   border-radius: 8px !important;
+  min-height: 40px;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-row::before {
+  background: transparent;
+  border-radius: 999px;
+  bottom: 8px;
+  content: "";
+  left: 1px;
+  position: absolute;
+  top: 8px;
+  transition: background-color 120ms ease;
+  width: 3px;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-row:hover {
+  background: var(--surface-2) !important;
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-row.is-active {
   background: var(--accent-softer) !important;
-  border-color: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: transparent;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-row.is-active::before {
+  background: var(--accent);
+}
+
+[data-orbit-real-page="agent"] .btn.orbit-agent-history-entry {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  gap: 9px;
+  min-height: 34px;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+[data-orbit-real-page="agent"] .btn.orbit-agent-history-entry:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  outline: none;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-title {
+  text-align: left;
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-row button span {
   font-size: 14px !important;
+}
+
+[data-orbit-real-page="agent"] .btn.orbit-agent-history-more {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-row:hover .orbit-agent-history-more,
+[data-orbit-real-page="agent"] .orbit-agent-history-more:hover,
+[data-orbit-real-page="agent"] .orbit-agent-history-more:focus-visible,
+[data-orbit-real-page="agent"] .orbit-agent-history-more[aria-expanded="true"] {
+  background: var(--surface-2);
+  color: var(--text-2) !important;
+  opacity: 1 !important;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-menu .btn {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+}
+
+[data-orbit-real-page="agent"] .orbit-agent-history-menu .btn:hover,
+[data-orbit-real-page="agent"] .orbit-agent-history-menu .btn:focus-visible {
+  background: var(--surface-2);
+  outline: none;
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-history-resize {

@@ -418,11 +418,14 @@ function clampHistorySidebarWidth(value: number): number {
 
 function compactTitlePhrase(subject: string, suffix: string): string {
   const text = cleanAgentTitleText(subject)
+    .replace(/^基于我在\s*Orbit\s*中(?:已有|现有)的?\s*/i, "")
+    .replace(/^在我(?:已有|现有)的?\s*/i, "")
     .replace(/^(今天|明天|本周|下周|这个月|本月|适合|適合|关于|有关|围绕)\s*/i, "")
     .replace(/(的人|的联系人|联系人|人脉|活动|会议|峰会|邮件|消息|草稿)$/i, "")
+    .replace(/^(人脉|联系人)中$/i, "现有人脉")
     .trim();
   const joiner = /^[\x00-\x7F]+$/.test(text) && /[^\x00-\x7F]/.test(suffix) ? " " : "";
-  const title = suffix && text && !text.endsWith(suffix) ? `${text}${joiner}${suffix}` : text;
+  const title = suffix && text && !text.includes(suffix) ? `${text}${joiner}${suffix}` : text;
 
   return truncateAgentChatTitle(title || subject || suffix);
 }
@@ -437,6 +440,14 @@ export function compactAgentChatTitleFromQuestion(question: string): string {
     return "New chat";
   }
 
+  const existingNetworkSubject = firstClause.match(
+    /^在我(?:已有|现有)的?(?:人脉|联系人)中(?:找|推荐|筛选)?\s*(.*)$/i,
+  );
+  if (existingNetworkSubject) {
+    const subject = cleanAgentTitleText(existingNetworkSubject[1] ?? "");
+    return subject ? compactTitlePhrase(subject, "人脉") : "现有人脉";
+  }
+
   const chatSubject = firstClause.match(/聊\s*([^，,。.!！?？；;的人]+?)\s*的人/);
   if (chatSubject?.[1]) {
     return compactTitlePhrase(chatSubject[1], "人脉");
@@ -448,7 +459,13 @@ export function compactAgentChatTitleFromQuestion(question: string): string {
   }
 
   const hasEventIntent = /活动|会议|峰会|event|conference/i.test(cleaned);
-  const hasDraftIntent = /邮件|消息|草稿|email|message|draft/i.test(cleaned);
+  const hasNegatedDraftIntent =
+    /(?:不要|无需|不需要|禁止|请勿).{0,8}(?:发送|起草|生成)?(?:邮件|消息|草稿)|(?:do not|don't|without).{0,16}(?:send|write|draft)?(?:email|message|draft)/i.test(
+      cleaned,
+    );
+  const hasDraftIntent =
+    !hasNegatedDraftIntent &&
+    /邮件|消息|草稿|email|message|draft/i.test(cleaned);
   const hasPeopleIntent =
     /人脉|联系人|认识|找人|找.*人|适合聊|connect|contact|people/i.test(cleaned);
   const suffix = hasDraftIntent ? "消息草稿" : hasEventIntent ? "活动" : hasPeopleIntent ? "人脉" : "";
@@ -739,13 +756,13 @@ function AgentHistoryList({
   }, [historyMenuOpenId]);
 
   return (
-    <div className="orbit-agent-history-list" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="orbit-agent-history-list" style={{ display: "flex", flexDirection: "column" }}>
       {groups.map((group) => (
         <div key={group}>
-          <div className="eyebrow" style={{ padding: "0 8px 6px" }}>
+          <div className="eyebrow orbit-agent-history-group">
             {group}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div className="orbit-agent-history-group-list" style={{ display: "flex", flexDirection: "column" }}>
             {history
               .filter((item) => item.group === group)
               .map((item) => {
@@ -770,8 +787,8 @@ function AgentHistoryList({
                       background: active ? "var(--accent-softer)" : "transparent",
                       borderRadius: "var(--r-sm)",
                       display: "flex",
-                      gap: 8,
-                      padding: "2px 4px 2px 10px",
+                      gap: 2,
+                      padding: "2px 4px",
                       position: "relative",
                       width: "100%",
                     }}
@@ -814,16 +831,17 @@ function AgentHistoryList({
                       </form>
                     ) : (
                       <button
-                        className="btn btn-quiet"
+                        className="btn btn-quiet orbit-agent-history-entry"
                         type="button"
                         onClick={() => {
                           setHistoryMenuOpenId(null);
                           onPick(item);
                         }}
-                        style={{ flex: 1, height: "auto", justifyContent: "flex-start", minWidth: 0, padding: "7px 0" }}
+                        title={item.q || item.title}
+                        style={{ flex: 1, height: "auto", justifyContent: "flex-start", minWidth: 0 }}
                       >
-                        <Icon name="message" size={15} color={active ? "var(--accent)" : "var(--text-4)"} />
-                        <span style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <Icon name={item.pinned ? "pin" : "message"} size={15} color={active || item.pinned ? "var(--accent)" : "var(--text-4)"} />
+                        <span className="orbit-agent-history-title" style={{ color: active ? "var(--accent)" : "var(--text)", flex: 1, fontSize: 14, fontWeight: active ? 600 : 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {item.title}
                         </span>
                       </button>
@@ -834,7 +852,7 @@ function AgentHistoryList({
                           aria-expanded={menuOpen}
                           aria-haspopup="menu"
                           aria-label={t({ en: "More actions", zh: "更多操作" })}
-                          className="btn btn-icon btn-quiet"
+                          className="btn btn-icon btn-quiet orbit-agent-history-more"
                           data-orbit-agent-history-menu-button={item.sessionId}
                           onClick={() => setHistoryMenuOpenId(menuOpen ? null : item.id)}
                           title={t({ en: "More actions", zh: "更多操作" })}
@@ -851,6 +869,7 @@ function AgentHistoryList({
                         </button>
                         {menuOpen ? (
                           <div
+                            className="orbit-agent-history-menu"
                             data-orbit-agent-history-menu={item.sessionId}
                             role="menu"
                             style={{
@@ -1813,16 +1832,16 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
       <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <aside className="orbit-agent-history" data-orbit-agent-history-sidebar style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, maxWidth: HISTORY_SIDEBAR_MAX_WIDTH, minWidth: HISTORY_SIDEBAR_MIN_WIDTH, width: historySidebarWidth }}>
-          <div style={{ padding: 14 }}>
-            <button className="btn btn-ghost btn-block" type="button" onClick={newChat}>
+          <div className="orbit-agent-history-actions">
+            <button className="btn btn-block orbit-agent-new-chat" type="button" onClick={newChat}>
               <Icon name="plus" size={16} color="var(--accent)" />
               {t({ en: "New chat", zh: "新对话" })}
             </button>
           </div>
-          <div style={{ padding: "4px 18px 8px" }}>
+          <div className="orbit-agent-history-heading">
             <div className="eyebrow">{t({ en: "Chat history", zh: "对话历史" })}</div>
           </div>
-          <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 10px 18px" }}>
+          <div className="scroll orbit-agent-history-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} />
           </div>
         </aside>
@@ -1898,8 +1917,8 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               <div style={{ flex: 1 }} />
               <IconButton ariaLabel={t({ en: "Close", zh: "关闭" })} name="x" onClick={() => setHistOpen(false)} size={16} />
             </div>
-            <div style={{ padding: 12 }}>
-              <button className="btn btn-ghost btn-block" type="button" onClick={newChat}>
+            <div className="orbit-agent-history-actions">
+              <button className="btn btn-block orbit-agent-new-chat" type="button" onClick={newChat}>
                 <Icon name="plus" size={16} color="var(--accent)" />
                 {t({ en: "New chat", zh: "新对话" })}
               </button>
