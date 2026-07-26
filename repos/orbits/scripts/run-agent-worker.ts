@@ -1,4 +1,9 @@
+import { loadEnvConfig } from "@next/env";
+import { runDueAgentAutomations } from "../features/agent/automations/runner";
+import { createAgentAutomationService } from "../features/agent/automations/service-factory";
 import { createOrbitAgentRuntimeService } from "../features/agent/runtime/service-factory";
+
+loadEnvConfig(process.cwd());
 
 const pollIntervalMs = Math.max(
   500,
@@ -16,11 +21,31 @@ async function main(): Promise<void> {
     );
   }
   const runtime = createOrbitAgentRuntimeService("live", { actorId });
+  const automations = createAgentAutomationService({
+    actorId,
+    mode: "live",
+  });
 
   while (true) {
-    const result = await runtime.processOutbox({ limit: 20, workerId });
-    if (result.processed > 0) {
-      process.stdout.write(`${JSON.stringify({ workerId, ...result })}\n`);
+    const [outbox, automationRuns] = await Promise.all([
+      runtime.processOutbox({ limit: 20, workerId }),
+      runDueAgentAutomations(automations, {
+        limit: 10,
+        now: new Date().toISOString(),
+        workerId: `${workerId}:automations`,
+      }),
+    ]);
+    if (outbox.processed > 0 || automationRuns.length > 0) {
+      process.stdout.write(
+        `${JSON.stringify({
+          workerId,
+          outbox,
+          automationRuns: automationRuns.map((automation) => ({
+            automationId: automation.automationId,
+            status: automation.lastRun?.status ?? automation.status,
+          })),
+        })}\n`,
+      );
     }
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }

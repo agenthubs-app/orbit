@@ -14,7 +14,13 @@ function readCapability(
   input: Pick<
     AgentCapabilityDefinition,
     "description" | "domains" | "title" | "toolName"
-  >,
+  > &
+    Partial<
+      Pick<
+        AgentCapabilityDefinition,
+        "triggers" | "userConfigurableAutomation"
+      >
+    >,
 ): AgentCapabilityDefinition {
   return {
     id: input.toolName,
@@ -31,8 +37,9 @@ function readCapability(
     evidenceRequired: true,
     compensationSupported: false,
     operationTypes: [],
-    triggers: ["chat", "manual"],
-    userConfigurableAutomation: false,
+    triggers: input.triggers ?? ["chat", "manual"],
+    userConfigurableAutomation:
+      input.userConfigurableAutomation ?? false,
     surfaces: ["chat"],
     toolName: input.toolName,
   };
@@ -151,6 +158,8 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
     description:
       "Rank source-backed events and preparation opportunities for review.",
     domains: ["agent", "events"],
+    triggers: ["chat", "scheduler", "domain_signal", "manual"],
+    userConfigurableAutomation: true,
   }),
   readCapability({
     toolName: AGENT_READ_TOOL_NAMES[1],
@@ -158,6 +167,8 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
     description:
       "Find source-backed contacts and warm relationship paths.",
     domains: ["agent", "contacts"],
+    triggers: ["chat", "scheduler", "domain_signal", "manual"],
+    userConfigurableAutomation: true,
   }),
   readCapability({
     toolName: AGENT_READ_TOOL_NAMES[2],
@@ -165,6 +176,8 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
     description:
       "Rank overdue, upcoming, and dormant relationship follow-ups.",
     domains: ["agent", "followups"],
+    triggers: ["chat", "scheduler", "domain_signal", "manual"],
+    userConfigurableAutomation: true,
   }),
   readCapability({
     toolName: AGENT_READ_TOOL_NAMES[3],
@@ -172,6 +185,8 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
     description:
       "Read grounded relationship context for explanations and drafting.",
     domains: ["agent", "chat", "contacts"],
+    triggers: ["chat", "scheduler", "domain_signal", "manual"],
+    userConfigurableAutomation: true,
   }),
   runtimeAction({
     executorKey: AGENT_RUNTIME_EXECUTOR_KEYS[0],

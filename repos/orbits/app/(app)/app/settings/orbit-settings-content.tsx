@@ -1,6 +1,7 @@
 "use client";
 
 import { useOrbitLanguage } from "../orbit-language-context";
+import { OrbitAgentAutomationSettings } from "./orbit-agent-automation-settings";
 import { OrbitAppearanceSettings } from "./orbit-appearance-settings";
 
 export function OrbitSettingsContent() {
@@ -35,6 +36,7 @@ export function OrbitSettingsContent() {
         </p>
       </header>
       <OrbitAppearanceSettings />
+      <OrbitAgentAutomationSettings />
     </>
   );
 }

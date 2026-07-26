@@ -31,6 +31,31 @@ Agent 工具名、工作流键、执行器键、风险等级、确认策略、�
 仍由各 feature service 拥有；能力清单只负责发现、路由和策略元数据，不复制执行
 实现。
 
+## 自动任务与触发
+
+`features/agent/automations` 是 actor 隔离的自动任务内核。用户只能为 capability
+manifest 中明确标记 `userConfigurableAutomation: true` 的只读能力创建任务；
+当前开放跟进复核、人脉推荐、活动推荐和关系上下文复核。高风险写操作和外部动作
+不能绕过原有确认策略进入自动任务。
+
+调度支持一次、每天和每周三种计划，并把用户的 IANA 时区写入任务，而不是在服务端
+换算后丢失时区。任务创建、暂停、恢复、立即运行、失败结果和最近一次 AI 输出都写入
+live record store。存储 workspace 还会追加 actor scope，避免不同账号之间读取或
+运行彼此的任务。
+
+`scripts/run-agent-worker.ts` 是唯一后台轮询入口，同时处理 runtime outbox 和到期
+自动任务，避免维护两套 worker 生命周期。运行 live worker 需要：
+
+- `ORBIT_AGENT_WORKER_ACTOR_ID`：该 worker 服务的账号 actor id。
+- `ORBIT_AGENT_WORKER_ID`：可选的实例标识。
+- `ORBIT_AGENT_WORKER_POLL_MS`：可选轮询间隔，默认 2000ms，最低 500ms。
+- live database 配置和当前 AI provider 配置。
+
+可通过 `npm run agent:worker` 启动。HTTP 部署也可以调用
+`POST /api/internal/agent/automations`，生产环境必须配置
+`ORBIT_AGENT_WORKER_SECRET` 并使用 Bearer header；actor 身份只能来自
+`x-orbit-actor-id` 服务端边界，不能从请求 body 注入。
+
 ## Mock 行为
 
 Mock action queue 根据本地关系、活动和跟进 fixture 生成稳定动作。Sandbox 返回 no-op preview，不发消息、不写数据库、不触发通知。Autonomy mock 只表达策略，不真的调度后台任务。
