@@ -35,10 +35,44 @@ export type AgentAutomationSchedule =
       timeZone: string;
     };
 
+export const AGENT_AUTOMATION_SIGNAL_TYPES = [
+  "followup_due",
+  "event_upcoming",
+  "relationship_stale",
+] as const;
+export type AgentAutomationSignalType =
+  (typeof AGENT_AUTOMATION_SIGNAL_TYPES)[number];
+
+export type AgentAutomationTrigger =
+  | {
+      kind: "schedule";
+      schedule: AgentAutomationSchedule;
+    }
+  | {
+      kind: "signal";
+      signalTypes: readonly AgentAutomationSignalType[];
+      minimumImportance: number;
+    };
+
+export interface AgentAutomationRevision {
+  version: number;
+  capabilityId: string;
+  title: string;
+  instruction: string;
+  trigger: AgentAutomationTrigger;
+  delivery: AgentAutomationDeliveryChannel;
+  source: "manual" | "natural_language";
+  changeNote: string;
+  createdAt: string;
+}
+
 export interface AgentAutomationRunOutcome {
   status: "success" | "failure";
   summary: string;
   runId?: string;
+  sourceModules?: readonly string[];
+  evidenceIds?: readonly string[];
+  triggerEventId?: string;
   completedAt: string;
 }
 
@@ -47,17 +81,22 @@ export interface AgentAutomation {
   capabilityId: string;
   title: string;
   instruction: string;
-  schedule: AgentAutomationSchedule;
+  trigger: AgentAutomationTrigger;
   delivery: AgentAutomationDeliveryChannel;
   status: AgentAutomationStatus;
   nextRunAt: string | null;
   lastRun: AgentAutomationRunOutcome | null;
   runCount: number;
+  version: number;
+  revisions: readonly AgentAutomationRevision[];
+  handledEventIds: readonly string[];
   lease?: {
     leaseId: string;
     workerId: string;
     claimedAt: string;
     resumeStatus: "active" | "paused";
+    triggerEventId?: string;
+    triggerEventIds?: readonly string[];
   };
   createdAt: string;
   updatedAt: string;
@@ -71,17 +110,20 @@ export interface CreateAgentAutomationInput {
   capabilityId: string;
   title: string;
   instruction: string;
-  schedule: AgentAutomationSchedule;
+  trigger: AgentAutomationTrigger;
   delivery: AgentAutomationDeliveryChannel;
+  source?: "manual" | "natural_language";
 }
 
 export interface UpdateAgentAutomationInput {
   capabilityId?: string;
   title?: string;
   instruction?: string;
-  schedule?: AgentAutomationSchedule;
+  trigger?: AgentAutomationTrigger;
   delivery?: AgentAutomationDeliveryChannel;
   status?: "active" | "paused";
+  source?: "manual" | "natural_language";
+  changeNote?: string;
 }
 
 export interface ClaimAgentAutomationsInput {
@@ -114,6 +156,15 @@ export interface AgentAutomationService {
     claimedAt: string;
     workerId: string;
   }) => Promise<AgentAutomation>;
+  claimForSignal: (input: {
+    batchId: string;
+    eventIds: readonly string[];
+    signalType: AgentAutomationSignalType;
+    importance: number;
+    claimedAt: string;
+    workerId: string;
+    limit: number;
+  }) => Promise<readonly AgentAutomation[]>;
   recordRun: (
     input: RecordAgentAutomationRunInput,
   ) => Promise<AgentAutomation>;
@@ -230,6 +281,35 @@ export function validateAgentAutomationSchedule(
   ) {
     throw new Error(
       "Weekly automations require at least one weekday from 0 through 6.",
+    );
+  }
+}
+
+export function validateAgentAutomationTrigger(
+  trigger: AgentAutomationTrigger,
+): void {
+  if (trigger.kind === "schedule") {
+    validateAgentAutomationSchedule(trigger.schedule);
+    return;
+  }
+  if (
+    trigger.signalTypes.length === 0 ||
+    trigger.signalTypes.some(
+      (signalType) =>
+        !AGENT_AUTOMATION_SIGNAL_TYPES.includes(signalType),
+    )
+  ) {
+    throw new Error(
+      "Signal-triggered automations require at least one allowed signal type.",
+    );
+  }
+  if (
+    !Number.isInteger(trigger.minimumImportance) ||
+    trigger.minimumImportance < 0 ||
+    trigger.minimumImportance > 100
+  ) {
+    throw new Error(
+      "Signal trigger minimum importance must be an integer from 0 through 100.",
     );
   }
 }

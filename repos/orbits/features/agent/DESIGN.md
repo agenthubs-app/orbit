@@ -33,15 +33,21 @@ Agent 工具名、工作流键、执行器键、风险等级、确认策略、�
 
 ## 自动任务与触发
 
-`features/agent/automations` 是 actor 隔离的自动任务内核。用户只能为 capability
-manifest 中明确标记 `userConfigurableAutomation: true` 的只读能力创建任务；
-当前开放跟进复核、人脉推荐、活动推荐和关系上下文复核。高风险写操作和外部动作
-不能绕过原有确认策略进入自动任务。
+`features/agent/automations` 是 actor 隔离的 Playbook 内核。用户只能创建只读复核；
+当前开放跟进复核、人脉推荐、活动推荐和关系上下文复核。即使 capability manifest
+中的写能力允许用户配置，也不能借 Playbook 绕过逐次确认、权限和外部副作用边界。
 
-调度支持一次、每天和每周三种计划，并把用户的 IANA 时区写入任务，而不是在服务端
-换算后丢失时区。任务创建、暂停、恢复、立即运行、失败结果和最近一次 AI 输出都写入
-live record store。存储 workspace 还会追加 actor scope，避免不同账号之间读取或
-运行彼此的任务。
+Playbook 可以从设置页手动定义，也可以由 `features/agent/playbooks` 把自然语言要求
+编译成严格结构化草案。模型只能从服务端 allowlist 选择能力和触发器，编译失败时
+fail closed；用户可以复核草案并运行无副作用 Trial，确认后才持久化。配置修改生成
+不可变版本记录，暂停和恢复只改变运行状态，不伪造新版本。
+
+触发支持一次、每天、每周三种时间计划，以及跟进到期、活动临近、关系转冷三种真实
+关系信号。时间计划保留用户 IANA 时区。信号 Playbook 会扫描仍处于 `new` 状态的真实
+信号，并用 `signalId:lastMeaningfulChangeAt` 作为事件幂等键：新建 Playbook 不会漏掉
+尚未处理的存量信号，同一信号未发生实质变化时也不会重复运行。创建、暂停、恢复、
+立即运行、版本、失败结果、来源模块和 evidence ids 全部写入 actor-scoped live record
+store。
 
 `scripts/run-agent-worker.ts` 是唯一后台轮询入口，同时处理 runtime outbox 和到期
 自动任务，避免维护两套 worker 生命周期。运行 live worker 需要：
@@ -49,6 +55,7 @@ live record store。存储 workspace 还会追加 actor scope，避免不同账�
 - `ORBIT_AGENT_WORKER_ACTOR_ID`：该 worker 服务的账号 actor id。
 - `ORBIT_AGENT_WORKER_ID`：可选的实例标识。
 - `ORBIT_AGENT_WORKER_POLL_MS`：可选轮询间隔，默认 2000ms，最低 500ms。
+- `ORBIT_AGENT_SIGNAL_POLL_MS`：可选信号刷新间隔，默认 60000ms，最低 10000ms。
 - live database 配置和当前 AI provider 配置。
 
 可通过 `npm run agent:worker` 启动。HTTP 部署也可以调用

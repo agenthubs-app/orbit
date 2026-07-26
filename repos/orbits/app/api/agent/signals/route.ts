@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { createAgentAutomationService } from "../../../../features/agent/automations/service-factory";
+import { runAgentAutomationsForSignals } from "../../../../features/agent/automations/runner";
+import { createAgentMemoryService } from "../../../../features/agent/memory/service-factory";
+import { resolveModuleMode } from "../../../../shared/services/module-mode";
 import {
   agentSignalErrorResponse,
   agentSignalUnauthorizedResponse,
@@ -29,8 +33,33 @@ export async function POST(): Promise<Response> {
   try {
     const context = await resolveAgentSignalRequest();
     if (!context) return agentSignalUnauthorizedResponse();
+    const result = await context.service.refresh();
+    const actionableSignals = result.signals.filter(
+      (signal) => signal.status === "new",
+    );
+    const mode = resolveModuleMode();
+    const automationRuns = await runAgentAutomationsForSignals(
+      createAgentAutomationService({
+        actorId: context.actorId,
+        mode,
+      }),
+      actionableSignals,
+      {
+        memory: await createAgentMemoryService({
+          actorId: context.actorId,
+          mode,
+        }).context(),
+        workerId: `signal-refresh:${context.actorId.slice(0, 80)}`,
+      },
+    );
     return NextResponse.json({
-      data: await context.service.refresh(),
+      data: {
+        ...result,
+        automationRuns: automationRuns.map((automation) => ({
+          automationId: automation.automationId,
+          status: automation.lastRun?.status ?? automation.status,
+        })),
+      },
     });
   } catch (error) {
     return agentSignalErrorResponse(error);

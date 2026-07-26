@@ -5,14 +5,17 @@ import type {
 import { createAgentCapabilityRegistry } from "../capabilities/registry";
 import {
   type AgentAutomation,
+  type AgentAutomationRevision,
   AGENT_AUTOMATION_LEASE_TIMEOUT_MS,
   type AgentAutomationRecordPayload,
   type AgentAutomationService,
   type AgentAutomationSchedule,
+  type AgentAutomationTrigger,
   type CreateAgentAutomationInput,
   nextAgentAutomationRunAt,
   type UpdateAgentAutomationInput,
   validateAgentAutomationSchedule,
+  validateAgentAutomationTrigger,
 } from "./contract";
 
 export const AGENT_AUTOMATION_COLLECTION = "agentAutomations" as const;
@@ -62,7 +65,119 @@ function requireAutomationCapability(capabilityId: string): string {
       `Agent capability ${capability.id} does not allow user-configurable automation.`,
     );
   }
+  if (capability.kind !== "read") {
+    throw new Error(
+      `Agent Playbook capability ${capability.id} must be read-only; any proposed write still requires an Action confirmation.`,
+    );
+  }
   return capability.id;
+}
+
+function triggerFor(input: AgentAutomationTrigger): AgentAutomationTrigger {
+  validateAgentAutomationTrigger(input);
+  if (input.kind === "schedule") {
+    return { kind: "schedule", schedule: scheduleFor(input.schedule) };
+  }
+  return {
+    kind: "signal",
+    minimumImportance: input.minimumImportance,
+    signalTypes: [...new Set(input.signalTypes)].sort(),
+  };
+}
+
+function nextRunFor(
+  trigger: AgentAutomationTrigger,
+  after: string,
+): string | null {
+  return trigger.kind === "schedule"
+    ? nextAgentAutomationRunAt(trigger.schedule, after)
+    : null;
+}
+
+function revisionFor(input: {
+  automation: Pick<
+    AgentAutomation,
+    | "capabilityId"
+    | "delivery"
+    | "instruction"
+    | "title"
+    | "trigger"
+    | "version"
+  >;
+  changeNote: string;
+  createdAt: string;
+  source: AgentAutomationRevision["source"];
+}): AgentAutomationRevision {
+  return {
+    capabilityId: input.automation.capabilityId,
+    changeNote: input.changeNote,
+    createdAt: input.createdAt,
+    delivery: input.automation.delivery,
+    instruction: input.automation.instruction,
+    source: input.source,
+    title: input.automation.title,
+    trigger: input.automation.trigger,
+    version: input.automation.version,
+  };
+}
+
+function normalizeStoredAutomation(
+  value: AgentAutomation,
+): AgentAutomation {
+  const legacy = value as AgentAutomation & {
+    schedule?: AgentAutomationSchedule;
+  };
+  const trigger = legacy.trigger
+    ? triggerFor(legacy.trigger)
+    : legacy.schedule
+      ? triggerFor({ kind: "schedule", schedule: legacy.schedule })
+      : null;
+  if (!trigger) {
+    throw new Error(
+      `Agent automation ${value.automationId} does not have a valid trigger.`,
+    );
+  }
+  const version =
+    Number.isInteger(value.version) && value.version > 0 ? value.version : 1;
+  const normalized: AgentAutomation = {
+    ...value,
+    handledEventIds: Array.isArray(value.handledEventIds)
+      ? value.handledEventIds.filter(
+          (eventId): eventId is string => typeof eventId === "string",
+        )
+      : [],
+    revisions: Array.isArray(value.revisions) ? value.revisions : [],
+    trigger,
+    version,
+  };
+  if (normalized.revisions.length > 0) return normalized;
+  return {
+    ...normalized,
+    revisions: [
+      revisionFor({
+        automation: normalized,
+        changeNote: "Imported existing automation as version 1.",
+        createdAt: normalized.createdAt,
+        source: "manual",
+      }),
+    ],
+  };
+}
+
+function configurationChanged(
+  existing: AgentAutomation,
+  candidate: Pick<
+    AgentAutomation,
+    "capabilityId" | "delivery" | "instruction" | "title" | "trigger"
+  >,
+): boolean {
+  return (
+    existing.capabilityId !== candidate.capabilityId ||
+    existing.delivery !== candidate.delivery ||
+    existing.instruction !== candidate.instruction ||
+    existing.title !== candidate.title ||
+    JSON.stringify(existing.trigger) !== JSON.stringify(candidate.trigger)
+  );
 }
 
 function recordFor(
@@ -83,6 +198,7 @@ function recordFor(
       automation.instruction,
       automation.capabilityId,
       automation.status,
+      automation.trigger.kind,
     ].join(" "),
     payload: { automation },
     createdAt: automation.createdAt,
@@ -146,7 +262,9 @@ export function createStorageAgentAutomationService({
       collectionName: AGENT_AUTOMATION_COLLECTION,
     });
     return records
-      .map((record) => record.payload.automation)
+      .map((record) =>
+        normalizeStoredAutomation(record.payload.automation),
+      )
       .sort((left, right) => {
         if (!left.nextRunAt && !right.nextRunAt) {
           return right.updatedAt.localeCompare(left.updatedAt);
@@ -167,7 +285,7 @@ export function createStorageAgentAutomationService({
     if (!record) {
       throw new Error(`Agent automation ${normalizedId} was not found.`);
     }
-    return record.payload.automation;
+    return normalizeStoredAutomation(record.payload.automation);
   }
 
   async function save(automation: AgentAutomation): Promise<AgentAutomation> {
@@ -185,29 +303,44 @@ export function createStorageAgentAutomationService({
         collectionName: AGENT_AUTOMATION_COLLECTION,
         recordId: normalizedId,
       });
-      return record?.payload.automation ?? null;
+      return record
+        ? normalizeStoredAutomation(record.payload.automation)
+        : null;
     },
     async create(input: CreateAgentAutomationInput) {
       return serial(async () => {
         const createdAt = now();
-        const schedule = scheduleFor(input.schedule);
-        const nextRunAt = nextAgentAutomationRunAt(schedule, createdAt);
-        if (!nextRunAt) {
+        const trigger = triggerFor(input.trigger);
+        const nextRunAt = nextRunFor(trigger, createdAt);
+        if (trigger.kind === "schedule" && !nextRunAt) {
           throw new Error("Automation schedule must have a future run time.");
         }
-        const automation: AgentAutomation = {
+        const base: Omit<AgentAutomation, "revisions"> = {
           automationId: id(),
           capabilityId: requireAutomationCapability(input.capabilityId),
           title: text(input.title, "Automation title", 120),
           instruction: text(input.instruction, "Automation instruction", 4_000),
-          schedule,
+          trigger,
           delivery: requireDelivery(input.delivery),
           status: "active",
           nextRunAt,
           lastRun: null,
           runCount: 0,
+          version: 1,
+          handledEventIds: [],
           createdAt,
           updatedAt: createdAt,
+        };
+        const automation: AgentAutomation = {
+          ...base,
+          revisions: [
+            revisionFor({
+              automation: base,
+              changeNote: "Initial Playbook version.",
+              createdAt,
+              source: input.source ?? "manual",
+            }),
+          ],
         };
         return save(automation);
       });
@@ -224,9 +357,9 @@ export function createStorageAgentAutomationService({
           );
         }
         const updatedAt = now();
-        const schedule = input.schedule
-          ? scheduleFor(input.schedule)
-          : existing.schedule;
+        const trigger = input.trigger
+          ? triggerFor(input.trigger)
+          : existing.trigger;
         const status = input.status ?? (
           existing.status === "completed" || existing.status === "failed"
             ? "active"
@@ -235,11 +368,15 @@ export function createStorageAgentAutomationService({
         const nextRunAt =
           status === "paused"
             ? null
-            : nextAgentAutomationRunAt(schedule, updatedAt);
-        if (status === "active" && !nextRunAt) {
+            : nextRunFor(trigger, updatedAt);
+        if (
+          status === "active" &&
+          trigger.kind === "schedule" &&
+          !nextRunAt
+        ) {
           throw new Error("Automation schedule must have a future run time.");
         }
-        return save({
+        const candidate = {
           ...existing,
           capabilityId:
             input.capabilityId === undefined
@@ -257,7 +394,7 @@ export function createStorageAgentAutomationService({
                   "Automation instruction",
                   4_000,
                 ),
-          schedule,
+          trigger,
           delivery:
             input.delivery === undefined
               ? existing.delivery
@@ -266,7 +403,31 @@ export function createStorageAgentAutomationService({
           nextRunAt,
           lease: undefined,
           updatedAt,
-        });
+        };
+        if (!configurationChanged(existing, candidate)) {
+          return save(candidate);
+        }
+        const versioned: AgentAutomation = {
+          ...candidate,
+          version: existing.version + 1,
+          revisions: [
+            ...existing.revisions,
+            revisionFor({
+              automation: {
+                ...candidate,
+                version: existing.version + 1,
+              },
+              changeNote: text(
+                input.changeNote ?? "Updated Playbook configuration.",
+                "Playbook change note",
+                240,
+              ),
+              createdAt: updatedAt,
+              source: input.source ?? "manual",
+            }),
+          ].slice(-20),
+        };
+        return save(versioned);
       });
     },
     async remove(automationId) {
@@ -290,7 +451,8 @@ export function createStorageAgentAutomationService({
         const due = (await listRecords())
           .filter(
             (automation) =>
-              (automation.status === "active" &&
+              (automation.trigger.kind === "schedule" &&
+                automation.status === "active" &&
                 Boolean(automation.nextRunAt) &&
                 automation.nextRunAt! <= input.now) ||
               hasExpiredLease(automation, input.now),
@@ -345,6 +507,55 @@ export function createStorageAgentAutomationService({
         });
       });
     },
+    async claimForSignal(input) {
+      return serial(async () => {
+        const batchId = text(input.batchId, "Trigger batch id", 240);
+        const eventIds = [
+          ...new Set(
+            input.eventIds.map((eventId) =>
+              text(eventId, "Trigger event id", 240),
+            ),
+          ),
+        ].slice(0, 50);
+        if (eventIds.length === 0) {
+          throw new Error(
+            "At least one trigger event id is required.",
+          );
+        }
+        const matching = (await listRecords())
+          .filter(
+            (automation) =>
+              automation.status === "active" &&
+              automation.trigger.kind === "signal" &&
+              automation.trigger.signalTypes.includes(input.signalType) &&
+              input.importance >= automation.trigger.minimumImportance &&
+              eventIds.some(
+                (eventId) =>
+                  !automation.handledEventIds.includes(eventId),
+              ),
+          )
+          .slice(0, Math.max(0, input.limit));
+        const claimed: AgentAutomation[] = [];
+        for (const automation of matching) {
+          claimed.push(
+            await save({
+              ...automation,
+              lease: {
+                claimedAt: input.claimedAt,
+                leaseId: leaseId(),
+                resumeStatus: "active",
+                triggerEventId: batchId,
+                triggerEventIds: eventIds,
+                workerId: text(input.workerId, "Worker id", 120),
+              },
+              status: "running",
+              updatedAt: input.claimedAt,
+            }),
+          );
+        }
+        return claimed;
+      });
+    },
     async recordRun(input) {
       return serial(async () => {
         const existing = await getRequired(input.automationId);
@@ -362,8 +573,14 @@ export function createStorageAgentAutomationService({
           );
         }
         const summary = text(input.outcome.summary, "Run summary", 4_000);
-        const recurring = existing.schedule.kind !== "once";
+        const recurring =
+          existing.trigger.kind === "signal" ||
+          existing.trigger.schedule.kind !== "once";
         const resumeStatus = existing.lease?.resumeStatus ?? "active";
+        const triggerEventId = existing.lease?.triggerEventId;
+        const triggerEventIds =
+          existing.lease?.triggerEventIds ??
+          (triggerEventId ? [triggerEventId] : []);
         return save({
           ...existing,
           status: recurring
@@ -374,16 +591,20 @@ export function createStorageAgentAutomationService({
           nextRunAt: recurring
             ? resumeStatus === "paused"
               ? null
-              : nextAgentAutomationRunAt(
-                  existing.schedule,
-                  input.completedAt,
-                )
+              : nextRunFor(existing.trigger, input.completedAt)
             : null,
           lastRun: {
             ...input.outcome,
             summary,
             completedAt: input.completedAt,
+            triggerEventId,
           },
+          handledEventIds: [
+            ...new Set([
+              ...existing.handledEventIds,
+              ...triggerEventIds,
+            ]),
+          ].slice(-50),
           runCount: existing.runCount + 1,
           lease: undefined,
           updatedAt: input.completedAt,

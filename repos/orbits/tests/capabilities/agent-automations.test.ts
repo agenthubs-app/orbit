@@ -70,10 +70,13 @@ test("agent automations are actor scoped and support create, pause, resume, and 
     capabilityId: "followups.reviewQueue",
     delivery: "in_app",
     instruction: "Review relationships that need attention this week.",
-    schedule: {
-      kind: "daily",
-      time: "09:00",
-      timeZone: "Asia/Tokyo",
+    trigger: {
+      kind: "schedule",
+      schedule: {
+        kind: "daily",
+        time: "09:00",
+        timeZone: "Asia/Tokyo",
+      },
     },
     title: "Morning relationship review",
   });
@@ -115,9 +118,12 @@ test("agent automations only accept capabilities declared safe for user automati
       capabilityId: "calendar.syncEvent",
       delivery: "in_app",
       instruction: "Create calendar events automatically.",
-      schedule: {
-        at: "2026-07-27T03:00:00.000Z",
-        kind: "once",
+      trigger: {
+        kind: "schedule",
+        schedule: {
+          at: "2026-07-27T03:00:00.000Z",
+          kind: "once",
+        },
       },
       title: "Unsafe calendar automation",
     }),
@@ -138,10 +144,13 @@ test("due automations are claimed once and advance after a successful run", asyn
     capabilityId: "followups.reviewQueue",
     delivery: "in_app",
     instruction: "Review this week's follow-ups.",
-    schedule: {
-      kind: "daily",
-      time: "21:01",
-      timeZone: "Asia/Tokyo",
+    trigger: {
+      kind: "schedule",
+      schedule: {
+        kind: "daily",
+        time: "21:01",
+        timeZone: "Asia/Tokyo",
+      },
     },
     title: "Daily follow-up review",
   });
@@ -190,10 +199,13 @@ test("expired automation leases are reclaimed and fence stale workers", async ()
     capabilityId: "followups.reviewQueue",
     delivery: "in_app",
     instruction: "Review this week's follow-ups.",
-    schedule: {
-      kind: "daily",
-      time: "21:01",
-      timeZone: "Asia/Tokyo",
+    trigger: {
+      kind: "schedule",
+      schedule: {
+        kind: "daily",
+        time: "21:01",
+        timeZone: "Asia/Tokyo",
+      },
     },
     title: "Daily follow-up review",
   });
@@ -263,10 +275,13 @@ test("agent automations can run immediately and persist their real result summar
     capabilityId: "followups.reviewQueue",
     delivery: "in_app",
     instruction: "Review this week's follow-ups.",
-    schedule: {
-      kind: "daily",
-      time: "09:00",
-      timeZone: "Asia/Tokyo",
+    trigger: {
+      kind: "schedule",
+      schedule: {
+        kind: "daily",
+        time: "09:00",
+        timeZone: "Asia/Tokyo",
+      },
     },
     title: "Daily follow-up review",
   });
