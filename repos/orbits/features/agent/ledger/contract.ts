@@ -43,6 +43,7 @@ export const AGENT_LEDGER_OPERATION_TYPES = [
   "accept_intro_request",
   "propose_meeting_slots",
   "sync_event_to_calendar",
+  "save_memory",
 ] as const;
 
 // 语音只允许保存“用户编辑确认后的转写文本”；原始音频永不进入 evidence。

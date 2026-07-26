@@ -15,6 +15,7 @@ import {
 } from "../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
 import { createAgentMemoryService } from "../../../../features/agent/memory/service-factory";
+import { createAgentNaturalLanguageActionProposalService } from "../../../../features/agent/natural-language-actions/service";
 import type { AgentRuntimeService } from "../../../../features/agent/runtime/service";
 import { latestConversationRuntimeLink } from "../../../../features/orbit-ai/conversation-runtime-links";
 import {
@@ -219,6 +220,71 @@ async function withRuntimeLinks(
   }
 }
 
+async function persistNaturalLanguageActionProposals(
+  result: OrbitAgentConversationResult,
+  input: OrbitAgentSendMessageInput,
+  runtime: AgentRuntimeService,
+): Promise<OrbitAgentConversationResult> {
+  if (result.success === false) return result;
+  const {
+    proposedActionRequests = [],
+    ...publicData
+  } = result.data;
+  if (proposedActionRequests.length === 0) {
+    return { success: true, data: publicData };
+  }
+  const conversationId = result.data.activeConversationId?.trim() ?? "";
+  const message = input.message?.trim() ?? "";
+  if (!conversationId || !message) {
+    return {
+      success: true,
+      data: {
+        ...publicData,
+        assistantMessage:
+          input.locale === "en"
+            ? "I understood the write request, but no active conversation was available, so nothing was proposed or written."
+            : "我理解了这项写操作，但当前没有可绑定的有效对话，因此没有创建操作，也没有写入数据。",
+        nextAction:
+          "Start an active Agent conversation before creating a reviewable action proposal.",
+      },
+    };
+  }
+
+  try {
+    const proposed =
+      await createAgentNaturalLanguageActionProposalService({
+        runtime,
+      }).propose({
+        conversationId,
+        message,
+        requests: proposedActionRequests,
+      });
+    return {
+      success: true,
+      data: {
+        ...publicData,
+        actionIds: proposed.actions.map((action) => action.actionId),
+        runId: proposed.runId ?? undefined,
+      },
+    };
+  } catch {
+    return {
+      success: true,
+      data: {
+        ...publicData,
+        actionIds: [],
+        assistantMessage:
+          input.locale === "en"
+            ? "I understood the write request, but Orbit could not safely create a confirmable proposal. Nothing was written or executed."
+            : "我理解了这项写操作，但 Orbit 暂时无法安全创建可确认的操作草稿；没有写入或执行任何内容。",
+        nextAction:
+          "Retry after checking Agent storage and permission status; do not execute the write outside the confirmation ledger.",
+        runId: undefined,
+      },
+    };
+  }
+}
+
 export async function GET(request: Request): Promise<Response> {
   // GET 只读取会话列表/状态，不触发模型 provider。
   const timing = createRouteTiming();
@@ -279,7 +345,11 @@ export async function POST(request: Request): Promise<Response> {
   } else {
     // 未命中已知工作流的普通请求保持原 bounded planner 路径，并且只调用一次。
     result = await withRuntimeLinks(
-      await service.sendMessage(trustedInput),
+      await persistNaturalLanguageActionProposals(
+        await service.sendMessage(trustedInput),
+        trustedInput,
+        agentContext.runtime,
+      ),
       agentContext.runtime,
     );
   }

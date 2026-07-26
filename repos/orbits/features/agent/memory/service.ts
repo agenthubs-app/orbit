@@ -54,6 +54,17 @@ function category(value: string): AgentMemoryCategory {
   return value as AgentMemoryCategory;
 }
 
+function memoryId(value: string | undefined, fallback: () => string): string {
+  const normalized = value?.trim() || fallback();
+  if (!normalized || normalized === SETTINGS_RECORD_ID) {
+    throw new Error("A valid Agent memory id is required.");
+  }
+  if (normalized.length > 180) {
+    throw new Error("Agent memory id must be 180 characters or fewer.");
+  }
+  return normalized;
+}
+
 function memoryRecord(
   workspaceId: string,
   memory: AgentMemory,
@@ -151,7 +162,7 @@ export function createStorageAgentMemoryService({
       return serial(async () => {
         const createdAt = now();
         const memory: AgentMemory = {
-          memoryId: id(),
+          memoryId: memoryId(input.memoryId, id),
           category: category(input.category),
           content: content(input.content),
           source: input.source === "conversation" ? "conversation" : "manual",

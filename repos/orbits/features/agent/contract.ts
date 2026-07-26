@@ -128,7 +128,10 @@ export type AgentActionSourceReference = SourceReferenceDTO & {
     | "system";
   label: string;
   providerRecordId: string;
-  generatedBy: "mock-agent-action-rules" | "live-store-query";
+  generatedBy:
+    | "mock-agent-action-rules"
+    | "live-store-query"
+    | "model-provider-planner";
 };
 
 // provenance 是建议动作队列的安全账本，所有外部副作用都固定为 false。

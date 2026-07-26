@@ -1445,6 +1445,7 @@ test("live Gemini Orbit Agent requires confirmation before creating reminders", 
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
       fetchImplementation: typeof fetch;
     }) => {
       sendMessage: (input: { message?: string | null }) => Promise<{
@@ -1452,6 +1453,9 @@ test("live Gemini Orbit Agent requires confirmation before creating reminders", 
         data?: {
           artifacts: readonly unknown[];
           assistantMessage: string;
+          proposedActionRequests?: readonly {
+            capabilityId: string;
+          }[];
           proposedToolIntents: readonly unknown[];
           provenance: {
             generationMethod: string;
@@ -1471,10 +1475,28 @@ test("live Gemini Orbit Agent requires confirmation before creating reminders", 
   }>("features/orbit-ai/live-conversation-service.ts");
 
   const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
     fetchImplementation: (async (_url, init) => {
       requests.push(init);
 
-      return jsonResponse({});
+      return jsonResponse({
+        output_text: JSON.stringify({
+          actionRequests: [
+            {
+              arguments: {
+                dueAt: "2030-05-22T15:00:00+09:00",
+                title: "联系 Maya",
+              },
+              capabilityId: "notifications.createReminder",
+              requiresUserConfirmation: true,
+            },
+          ],
+          assistantMessage:
+            "我准备了一条提醒建议，确认前不会创建或投递提醒。",
+          intent: "action_proposal",
+          toolRequests: [],
+        }),
+      });
     }) as typeof fetch,
   });
   const result = await service.sendMessage({
@@ -1482,18 +1504,25 @@ test("live Gemini Orbit Agent requires confirmation before creating reminders", 
   });
 
   assert.equal(result.success, true);
-  assert.equal(requests.length, 0);
+  assert.equal(requests.length, 1);
   assert.equal(result.data?.artifacts.length, 0);
   assert.equal(result.data?.proposedToolIntents.length, 0);
+  assert.equal(
+    result.data?.proposedActionRequests?.[0]?.capabilityId,
+    "notifications.createReminder",
+  );
   assert.match(result.data?.assistantMessage ?? "", /确认|复核|提醒|任务/);
-  assert.match(result.data?.assistantMessage ?? "", /没有调用|没有创建|没有投递/);
+  assert.match(result.data?.assistantMessage ?? "", /不会创建|不会投递/);
   assert.equal(
     result.data?.provenance.source,
-    "local:orbit-agent-state-change-boundary",
+    "provider:gemini-interactions-api",
   );
-  assert.equal(result.data?.provenance.generationMethod, "rule-based-agent-reply");
-  assert.equal(result.data?.provenance.safety.aiProviderRequested, false);
-  assert.equal(result.data?.provenance.safety.externalNetworkRequested, false);
+  assert.equal(
+    result.data?.provenance.generationMethod,
+    "model-provider-live-agent-reply",
+  );
+  assert.equal(result.data?.provenance.safety.aiProviderRequested, true);
+  assert.equal(result.data?.provenance.safety.externalNetworkRequested, true);
   assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, false);
   assert.equal(result.data?.provenance.safety.liveDatabaseWriteExecuted, false);
   assert.equal(result.data?.provenance.safety.notificationDelivered, false);

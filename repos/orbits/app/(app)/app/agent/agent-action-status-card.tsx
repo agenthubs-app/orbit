@@ -7,6 +7,7 @@ type AgentActionStatusLanguage = "en" | "zh";
 export interface AgentChatLinkedAction {
   actionId: string;
   operationIds: readonly string[];
+  preview: string;
   riskLevel: string;
   status: string;
   title: string;
@@ -68,6 +69,7 @@ export function parseAgentChatRunActions(
       {
         actionId,
         operationIds,
+        preview: readString(candidate.preview) ?? "",
         riskLevel: readString(candidate.riskLevel) ?? "unknown",
         status: readString(candidate.status) ?? "unknown",
         title: readString(candidate.title) ?? actionId,
@@ -98,6 +100,7 @@ function parseTransitionedAction(value: unknown): AgentChatLinkedAction | null {
     operationIds: operations.flatMap((operation) =>
       isRecord(operation) ? readStringArray([operation.operationId]) : [],
     ),
+    preview: readString(value.data.entry.preview) ?? "",
     riskLevel: readString(value.data.entry.riskLevel) ?? "unknown",
     status: readString(value.data.entry.status) ?? "unknown",
     title: readString(value.data.entry.title) ?? actionId,
@@ -136,6 +139,22 @@ export function agentChatActionCanConfirm(
     action.operationIds.length > 0 &&
     action.riskLevel !== "external"
   );
+}
+
+function actionRiskLabel(
+  riskLevel: string,
+  language: AgentActionStatusLanguage,
+): string {
+  const labels: Record<string, { en: string; zh: string }> = {
+    draft: { en: "Save draft", zh: "保存草稿" },
+    external: { en: "External action", zh: "外部操作" },
+    read: { en: "Read only", zh: "只读" },
+    write: { en: "Writes to Orbit", zh: "写入 Orbit" },
+  };
+  return (labels[riskLevel] ?? {
+    en: "Review required",
+    zh: "需要复核",
+  })[language];
 }
 
 function transitionError(value: unknown, language: AgentActionStatusLanguage) {
@@ -207,6 +226,45 @@ export function AgentActionStatusCard({
     };
   }, [language, runId, stableActionIds]);
 
+  const hasPendingExecution = actions.some(
+    (action) =>
+      action.status === "approved" || action.status === "executing",
+  );
+
+  useEffect(() => {
+    if (!hasPendingExecution) return;
+    let cancelled = false;
+
+    async function refreshExecutionStatus() {
+      try {
+        const response = await fetch(
+          `/api/ai/runs/${encodeURIComponent(runId)}`,
+          { cache: "no-store" },
+        );
+        const body = (await response.json().catch(() => null)) as unknown;
+        if (!cancelled && response.ok) {
+          const updated = parseAgentChatRunActions(body, stableActionIds);
+          if (updated.length > 0) {
+            setActions(updated);
+          }
+        }
+      } catch {
+        // Keep the last confirmed state visible. The initial load and explicit
+        // transition paths own user-facing errors; transient polling does not.
+      }
+    }
+
+    void refreshExecutionStatus();
+    const interval = window.setInterval(
+      () => void refreshExecutionStatus(),
+      1_000,
+    );
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [hasPendingExecution, runId, stableActionIds]);
+
   async function applyTransition(
     action: AgentChatLinkedAction,
     transition: "confirm" | "defer" | "reject",
@@ -257,6 +315,7 @@ export function AgentActionStatusCard({
       : stableActionIds.map((actionId) => ({
           actionId,
           operationIds: [],
+          preview: "",
           riskLevel: "unknown",
           status: "unknown",
           title: actionId,
@@ -301,9 +360,9 @@ export function AgentActionStatusCard({
             <div style={{ alignItems: "flex-start", display: "flex", gap: 10, justifyContent: "space-between" }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{action.title}</div>
-                <code style={{ color: "var(--text-3)", fontSize: 10, overflowWrap: "anywhere" }}>
-                  {action.actionId}
-                </code>
+                <div style={{ color: "var(--text-3)", fontSize: 11, marginTop: 3 }}>
+                  {actionRiskLabel(action.riskLevel, language)}
+                </div>
               </div>
               <span className="chip" data-agent-action-status={action.status} style={{ flexShrink: 0, fontSize: 11 }}>
                 {loading && action.status === "unknown"
@@ -313,6 +372,20 @@ export function AgentActionStatusCard({
                   : agentChatActionStatusLabel(action.status, language)}
               </span>
             </div>
+
+            {action.preview ? (
+              <p
+                style={{
+                  color: "var(--text-2)",
+                  fontSize: 12,
+                  lineHeight: 1.55,
+                  margin: 0,
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {action.preview}
+              </p>
+            ) : null}
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {action.status !== "deferred" ? (

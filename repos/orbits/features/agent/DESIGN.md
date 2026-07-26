@@ -2,7 +2,7 @@
 
 ## 设计定位
 
-Actions 负责把 Orbit 已经掌握的关系证据转成“下一步动作”。它不是自动执行器。当前产品原则是：Actions 可以排序、解释、准备和预览动作，但外部发送、日程修改、通知投递、联系人写入都必须停在确认边界前。
+Actions 负责把 Orbit 已经掌握的关系证据转成“下一步动作”。它不是不受约束的自动执行器。当前产品原则是：Actions 可以排序、解释、准备和预览动作；用户确认后可以执行 capability manifest 明确登记的 Orbit 内部写操作；外部发送、外部日程修改和联系人写入仍必须停在各自的权限与确认边界前。
 
 这个模块原先在文档中称为 Agent。现在产品术语改为 Actions，用来强调它管理的是外部副作用动作的确认、沙箱和审计边界，而不是一个自由自治的 AI agent。当前代码路径和兼容 API 仍沿用 `features/agent`、`/app/agent` 和 `/api/agent/*`。
 
@@ -76,6 +76,32 @@ actor 的上下文，并通过独立的 `userMemory` 字段传给 planner 和 sy
 - `GET/POST /api/agent/memory`：读取和新增当前 actor 的 Memory。
 - `PATCH/DELETE /api/agent/memory/:id`：编辑或删除一条 Memory。
 - `GET/PATCH /api/agent/memory/settings`：读取或更新使用与学习开关。
+
+## 自然语言写操作
+
+自然语言写操作遵循“模型只提议、服务端决定、worker 执行”的单向边界。Planner 的
+`action_proposal` 输出不会直接进入客户端执行，也不能携带任意工具名。当前只接受
+四种有界能力：
+
+- `followups.createTask`：创建跟进任务。
+- `notifications.createReminder`：创建提醒。
+- `followups.saveDraft`：保存草稿，不发送消息。
+- `memory.save`：保存一条用户可控 Memory。
+
+每个 proposal 都必须通过严格 schema 校验，并声明 `requiresUserConfirmation: true`。
+同一次模型输出不能混合只读工具调用和写操作提议。对话 API 会消费并移除模型输出的
+`actionRequests`，再根据 Capability Registry 重新检查能力是否允许 chat trigger、
+是否有运行时执行器、所需权限和逐次确认策略。任何一步不满足都会 fail closed，不会
+把未持久化或不可执行的“假确认卡片”返回给用户。
+
+通过校验的提议会创建一个幂等的 `natural_language_action_v1` run。确认前操作保持
+`awaiting_confirmation`，没有业务副作用；确认后才写入 outbox，由统一 worker 调用
+现有业务 executor。执行结果、证据、payload hash、receipt 与补偿状态全部进入操作
+账本。支持补偿的操作可以从对话卡片或操作账本撤销，重复确认和重复撤销都必须幂等。
+
+相对时间由模型结合服务端提供的当前时间和用户默认时区转换为绝对 ISO 时间；最终值
+仍由 action schema 验证。外部消息永不由这条链路发送，后续集成必须额外通过 provider
+权限和外部执行边界。
 
 ## Mock 行为
 

@@ -3,6 +3,7 @@ import type { EventActionWriter } from "../../events/action-writer";
 import type { EventMatchmakingService } from "../../events/matchmaking/service";
 import type { FollowupActionWriter } from "../../followups/action-writer";
 import type { ReminderActionWriter } from "../../notifications/action-writer";
+import type { AgentMemoryService } from "../memory/contract";
 import {
   getAgentRuntimeExecutorDescriptor,
 } from "../capabilities/registry";
@@ -14,6 +15,7 @@ export interface AgentDomainExecutorDependencies {
   followups: FollowupActionWriter;
   notifications: ReminderActionWriter;
   matchmaking: EventMatchmakingService;
+  memory: AgentMemoryService;
   calendar?: {
     createEvent: (
       payload: Readonly<Record<string, unknown>>,
@@ -400,6 +402,33 @@ export function createAgentDomainExecutors(
           resultRef: `matchmakingIntroductionRequests:${request.requestId}`,
           summary:
             "Introduction request created. Contact details remain hidden until mutual consent.",
+        };
+      },
+    },
+    {
+      ...getAgentRuntimeExecutorDescriptor("memory.save"),
+      async execute(payload) {
+        const result = await dependencies.memory.create({
+          category: requiredString(payload, "category") as
+            | "identity"
+            | "goal"
+            | "preference"
+            | "constraint",
+          content: requiredString(payload, "content"),
+          memoryId: requiredString(payload, "memoryId"),
+          source: "conversation",
+        });
+        return {
+          resultRef: `agentMemories:${result.memoryId}`,
+          summary: "User-confirmed Agent memory saved.",
+        };
+      },
+      async compensate(payload) {
+        const memoryId = requiredString(payload, "memoryId");
+        await dependencies.memory.remove(memoryId);
+        return {
+          resultRef: `agentMemories:${memoryId}`,
+          summary: "Agent memory removed.",
         };
       },
     },

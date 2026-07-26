@@ -41,6 +41,7 @@ export type AgentMemoryRecordPayload =
 export interface CreateAgentMemoryInput {
   category: AgentMemoryCategory;
   content: string;
+  memoryId?: string;
   source?: AgentMemory["source"];
 }
 

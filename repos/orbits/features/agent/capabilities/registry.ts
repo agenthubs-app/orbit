@@ -321,6 +321,20 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
     userConfigurableAutomation: false,
     surfaces: ["chat", "today", "ledger", "event"],
   }),
+  runtimeAction({
+    executorKey: AGENT_RUNTIME_EXECUTOR_KEYS[10],
+    title: "Save Agent memory",
+    description:
+      "Save user-confirmed long-term context from an explicit conversation request.",
+    domains: ["agent", "memory"],
+    riskLevel: "write",
+    requiredPermissions: [],
+    compensationSupported: true,
+    operationTypes: ["save_memory"],
+    triggers: ["chat", "manual"],
+    userConfigurableAutomation: false,
+    surfaces: ["chat", "ledger"],
+  }),
   workflowServiceAction({
     id: "matchmaking.acceptIntroductionRequest",
     title: "Respond to introduction request",

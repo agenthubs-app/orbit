@@ -4,6 +4,7 @@ import { createEventMatchmakingService } from "../../events/matchmaking/service"
 import { createStorageFollowupActionWriter } from "../../followups/action-writer";
 import { createStorageReminderActionWriter } from "../../notifications/action-writer";
 import { createConfiguredOrbitIntegrationService } from "../../integrations/service-factory";
+import { createAgentMemoryService } from "../memory/service-factory";
 import {
   resolveModuleMode,
   type ModuleMode,
@@ -87,6 +88,10 @@ export function createOrbitAgentRuntimeService(
         workspaceId,
       }),
       matchmaking: createEventMatchmakingService({ store, workspaceId }),
+      memory: createAgentMemoryService({
+        actorId: actorId || "mock-agent-runtime",
+        mode,
+      }),
       calendar: integrations
         ? {
             createEvent: async (payload, idempotencyKey) => {

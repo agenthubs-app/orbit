@@ -418,6 +418,24 @@ function isRelationshipStateMutationRequest(message: string): boolean {
   return mutationVerb.test(message) && relationshipObject.test(message);
 }
 
+function isSupportedNaturalLanguageWriteRequest(message: string): boolean {
+  const createTask =
+    /(?:创建|建立|新增|新建|添加).{0,12}(?:跟进)?任务|(?:create|add).{0,16}(?:follow[ -]?up )?task/i;
+  const createReminder =
+    /(?:提醒我|设置提醒|新增提醒|创建提醒)|(?:remind me|create.{0,12}reminder)/i;
+  const saveDraft =
+    /(?:保存|存为|留作).{0,12}(?:消息|邮件|跟进)?草稿|save.{0,16}(?:message |email )?draft/i;
+  const saveMemory =
+    /(?:请)?记住|(?:please )?remember/i;
+
+  return (
+    createTask.test(message) ||
+    createReminder.test(message) ||
+    saveDraft.test(message) ||
+    saveMemory.test(message)
+  );
+}
+
 function requestedActionText(message: string): string {
   // Safety boundaries must distinguish requested actions from actions the user
   // explicitly prohibits. Keep privacy/secret/permission checks on the complete
@@ -705,7 +723,10 @@ export function createLiveOrbitAgentLocalBoundaryPayload(
   }
   const actionRequest = requestedActionText(message);
 
-  if (isRelationshipStateMutationRequest(actionRequest)) {
+  if (
+    isRelationshipStateMutationRequest(actionRequest) &&
+    !isSupportedNaturalLanguageWriteRequest(actionRequest)
+  ) {
     return stateChangeBoundaryPayload(message);
   }
   if (isMultiIntentWorkflowRequest(actionRequest)) {
@@ -743,6 +764,10 @@ export function routingDecisionFromPlannerIntent(
       intent: "followup_context",
       toolFamily: "followups",
     },
+    action_proposal: {
+      intent: "action_proposal",
+      toolFamily: null,
+    },
     general_chat: {
       intent: "general_conversation",
       toolFamily: null,
@@ -753,7 +778,8 @@ export function routingDecisionFromPlannerIntent(
     },
   };
   const mapped = mapping[intent];
-  const needsTool = intent !== "general_chat";
+  const needsTool =
+    intent !== "general_chat" && intent !== "action_proposal";
 
   return {
     confidence: 0.86,
@@ -762,7 +788,9 @@ export function routingDecisionFromPlannerIntent(
     needsTool,
     reason: needsTool
       ? "The configured model provider classified this as Orbit relationship work and selected the matching reviewable capability."
-      : "The configured model provider classified this as ordinary conversation, so no Orbit tool is proposed.",
+      : intent === "action_proposal"
+        ? "The configured model provider proposed a schema-validated action that remains blocked until user confirmation."
+        : "The configured model provider classified this as ordinary conversation, so no Orbit tool is proposed.",
     safety: {
       externalSideEffectsAllowed: false,
       toolCallsExecuted: false,
@@ -1075,6 +1103,7 @@ export function conversationForRuntimeSuccess(input: {
     },
     messages,
     nextAction,
+    proposedActionRequests: input.plannerResult.data.actionRequests,
     proposedToolIntents: input.toolRequests.map((request) =>
       proposedIntentForTool(request, input.locale),
     ),

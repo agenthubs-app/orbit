@@ -9,6 +9,7 @@ import type {
   OrbitAiMessageRoleCode,
   OrbitAiProposedToolIntentContract,
 } from "../../shared/contract/orbit-ai";
+import type { AgentNaturalLanguageActionRequest } from "../agent/natural-language-actions/contract";
 
 // Conversation contract 是 Chat Agent 的对外数据协议。
 // API route、UI 组件、mock service 和 live service 都必须通过这里的类型交互。
@@ -95,6 +96,7 @@ export type OrbitAgentRoutingIntent =
   | "event_discovery"
   | "followup_context"
   | "general_conversation"
+  | "action_proposal"
   | "todo_synthesis"
   | "unsafe_side_effect";
 
@@ -170,6 +172,11 @@ export interface OrbitAgentConversationPayload {
   assistantMessage: string;
   artifacts: readonly OrbitAgentArtifactPayload[];
   proposedToolIntents: readonly OrbitAiProposedToolIntentContract[];
+  /**
+   * Model-planned, schema-validated write proposals. The API consumes and
+   * removes these after persisting runtime actions; clients never execute them.
+   */
+  proposedActionRequests?: readonly AgentNaturalLanguageActionRequest[];
   provenance: OrbitAgentConversationProvenance;
   routingDecision?: OrbitAgentRoutingDecision;
   nextAction: string;

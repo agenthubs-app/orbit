@@ -66,6 +66,7 @@ export const AGENT_RUNTIME_EXECUTOR_KEYS = [
   "contacts.archive",
   "calendar.syncEvent",
   "events.createIntroductionRequest",
+  "memory.save",
 ] as const;
 
 export type AgentCapabilityKind =
@@ -97,6 +98,7 @@ export interface AgentCapabilityDefinition {
     | "events"
     | "followups"
     | "matchmaking"
+    | "memory"
     | "notifications"
   )[];
   executionBoundary: AgentCapabilityExecutionBoundary;
