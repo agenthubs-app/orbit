@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAgentPreferencesRouteHandlers } from "../../app/api/agent/preferences/route";
+import { createAgentPreferencesRouteHandlers } from "../../app/api/agent/preferences/route-handler";
 import {
   createAgentPreferencesService,
   resetAgentPreferencesServiceForTests,
