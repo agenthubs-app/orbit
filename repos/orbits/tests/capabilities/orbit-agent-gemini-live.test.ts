@@ -1387,6 +1387,55 @@ test("live Orbit Agent does not treat explicitly prohibited side effects as requ
   assert.equal(boundary, null);
 });
 
+test("live Orbit Agent allows investor relationship work while retaining professional-advice boundaries", async () => {
+  const runtime = await importProjectModule<{
+    createLiveOrbitAgentLocalBoundaryPayload: (
+      message: string,
+    ) => { assistantMessage?: string } | null;
+  }>("features/orbit-ai/live-agent-runtime.ts");
+
+  assert.equal(
+    runtime.createLiveOrbitAgentLocalBoundaryPayload(
+      "帮我准备与一位 venture capital investor 的跟进，我们上次聊的是 seed fundraising；请写一条关系维护消息。",
+    ),
+    null,
+  );
+  assert.equal(
+    runtime.createLiveOrbitAgentLocalBoundaryPayload(
+      "帮我约一位医疗健康领域投资人聊行业合作，不要给诊断或投资建议。",
+    ),
+    null,
+  );
+  assert.equal(
+    runtime.createLiveOrbitAgentLocalBoundaryPayload(
+      "帮我准备与西村大地的跟进。已知背景：current-user relationship record from an offline meeting。请给出下一步和消息草稿。",
+    ),
+    null,
+  );
+  assert.equal(
+    runtime.createLiveOrbitAgentLocalBoundaryPayload(
+      "帮我准备与遠藤悠斗的跟进。已知背景：relationship record from a business card exchange。请给出下一步和消息草稿。",
+    ),
+    null,
+  );
+  assert.ok(
+    runtime.createLiveOrbitAgentLocalBoundaryPayload(
+      "请记录一下这次联系，并更新联系人备注。",
+    ),
+  );
+
+  const financialBoundary =
+    runtime.createLiveOrbitAgentLocalBoundaryPayload(
+      "我应该买哪只基金？请给我具体投资建议。",
+    );
+  assert.ok(financialBoundary);
+  assert.match(financialBoundary.assistantMessage ?? "", /投资|财务|买卖/);
+  assert.doesNotMatch(
+    financialBoundary.assistantMessage ?? "",
+    /胸口痛|急诊/,
+  );
+});
+
 test("live Gemini Orbit Agent requires confirmation before relationship state mutations", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{

@@ -20,6 +20,7 @@ import { Avatar, Cover, Icon, IconButton, gradientFromString } from "../orbit-re
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
+import { OrbitAgentTodayWorkspace } from "./orbit-agent-today-workspace";
 
 interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
@@ -954,7 +955,7 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
   const { language, t } = useOrbitLanguage();
 
   return (
-    <div className="orbit-agent-welcome" style={{ alignItems: "center", display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "50vh", padding: "24px 8px", textAlign: "center" }}>
+    <div className="orbit-agent-welcome" style={{ alignItems: "center", display: "flex", flexDirection: "column", justifyContent: "center", padding: "48px 8px 24px", textAlign: "center" }}>
       <span className="avatar g-indigo orbit-agent-mark" style={{ alignItems: "center", borderRadius: "var(--r-lg)", display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
         <Icon name="sparkle" size={26} color="var(--on-dark)" />
       </span>
@@ -1868,7 +1869,12 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         <div className="orbit-agent-center" style={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}>
           <div ref={scrollRef} className="scroll orbit-agent-transcript" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 28px" }}>
             <div className="orbit-agent-transcript-inner" style={{ margin: "0 auto", maxWidth: 720 }}>
-              {!messages.length && !thinking ? <AgentWelcome onPick={ask} viewModel={viewModel} /> : renderBubbles(false)}
+              {!messages.length && !thinking ? (
+                <>
+                  <OrbitAgentTodayWorkspace navigate={navigate} onAsk={ask} surface="desktop" />
+                  <AgentWelcome onPick={ask} viewModel={viewModel} />
+                </>
+              ) : renderBubbles(false)}
             </div>
           </div>
           <div className="orbit-agent-composer-dock" style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "12px 28px 18px" }}>
@@ -1901,7 +1907,12 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
       <div className="orbit-mobile-only" style={{ flex: 1, flexDirection: "column", minHeight: 0 }}>
         <div ref={scrollRef} className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "18px 16px 12px" }}>
-          {!messages.length && !thinking ? <AgentWelcome onPick={ask} viewModel={viewModel} /> : renderBubbles(true)}
+          {!messages.length && !thinking ? (
+            <>
+              <OrbitAgentTodayWorkspace navigate={navigate} onAsk={ask} surface="mobile" />
+              <AgentWelcome onPick={ask} viewModel={viewModel} />
+            </>
+          ) : renderBubbles(true)}
         </div>
         <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "10px 16px 18px" }}>
           <ChatBox value={text} onChange={setText} onSend={send} />

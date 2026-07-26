@@ -386,12 +386,16 @@ function isUnsupportedRealtimeLookupRequest(message: string): boolean {
 }
 
 function isProfessionalAdviceRequest(message: string): boolean {
+  const requestedMessage = requestedActionText(message);
   const adviceVerb =
-    /(?:应该|應該|要不要|怎么处理|怎麼處理|怎么办|怎麼辦|吃什么药|吃什麼藥|用什么药|用什麼藥|诊断|診斷|起诉|诉讼|合同|避税|报税|买哪只|卖哪只|投资建议|should i|what should i|diagnose|prescribe|sue|lawsuit|contract|tax|invest|buy|sell)/i;
+    /(?:应该|應該|要不要|怎么处理|怎麼處理|怎么办|怎麼辦|吃什么药|吃什麼藥|用什么药|用什麼藥|诊断|診斷|起诉|诉讼|合同|避税|报税|买哪只|卖哪只|投资建议|should i|what should i|diagnose|prescribe|sue|lawsuit|contract|tax|\binvest\b|\bbuy\b|\bsell\b)/i;
   const professionalDomain =
     /(?:胸口痛|胸痛|头痛|發燒|发烧|药|藥|医生|醫生|急诊|急診|医疗|醫療|法律|律师|律師|法院|起诉|诉讼|合同|税|稅|股票|基金|债券|債券|期权|期權|投资|投資|财务|財務|medical|doctor|medicine|legal|lawyer|court|tax|stock|fund|bond|option|financial|investment)/i;
 
-  return adviceVerb.test(message) && professionalDomain.test(message);
+  return (
+    adviceVerb.test(requestedMessage) &&
+    professionalDomain.test(requestedMessage)
+  );
 }
 
 function isCrisisSupportRequest(message: string): boolean {
@@ -414,11 +418,16 @@ function isAmbiguousRecipientDraftRequest(message: string): boolean {
 
 function isRelationshipStateMutationRequest(message: string): boolean {
   const mutationVerb =
-    /(?:更新|修改|改成|改为|保存|記住|记住|记录|添加|新增|新建|创建|建立|加入|加到|导入|匯入|提醒|通知|刪除|删除|移除|忘记|update|change|save|remember|record|add|create|import|remind|notify|delete|remove|forget)/i;
+    /(?:更新|修改|改成|改为|保存|記住|记住|添加|新增|新建|创建|建立|加入|加到|导入|匯入|提醒|通知|刪除|删除|移除|忘记|\b(?:update|change|save|remember|add|create|import|remind|notify|delete|remove|forget)\b)/i;
+  const recordMutationVerb =
+    /(?:(?:请|請|帮我|幫我|替我|为我|為我|需要|想要|我要).{0,8}记录|記錄(?:一下|下|这次|這次|本次|一条|一條|新的|到|在)|(?:please|can you|could you|i (?:want|need) to).{0,12}\brecord\b|\brecord\s+(?:this|the|a|my)\b)/i;
   const relationshipObject =
     /(?:联系人|关系|资料|資料|公司|职位|职务|标签|备注|画像|联系|联络|聯絡|跟进|跟進|contact|relationship|profile|company|title|tag|note|call|message|email|follow[ -]?up)/i;
 
-  return mutationVerb.test(message) && relationshipObject.test(message);
+  return (
+    (mutationVerb.test(message) || recordMutationVerb.test(message)) &&
+    relationshipObject.test(message)
+  );
 }
 
 function isSupportedNaturalLanguageWriteRequest(message: string): boolean {
@@ -644,9 +653,28 @@ function unsupportedRealtimeBoundaryPayload(
 function professionalAdviceBoundaryPayload(
   message: string,
 ): OrbitAgentConversationPayload {
+  const medical =
+    /(?:胸口痛|胸痛|头痛|發燒|发烧|药|藥|医生|醫生|急诊|急診|医疗|醫療|medical|doctor|medicine|diagnose|prescribe)/i.test(
+      message,
+    );
+  const urgentMedical =
+    /(?:胸口痛|胸痛|呼吸困难|呼吸困難|昏厥|失去意识|失去意識|chest pain|difficulty breathing|faint|unconscious)/i.test(
+      message,
+    );
+  const legal =
+    /(?:法律|律师|律師|法院|起诉|诉讼|合同|legal|lawyer|court|sue|lawsuit|contract)/i.test(
+      message,
+    );
+  const assistant = medical
+    ? urgentMedical
+      ? "这涉及可能需要紧急处理的健康问题。Orbit 已停在本地边界：没有调用模型，也不会给诊断、用药或剂量建议。请尽快联系当地急救服务或前往急诊，并联系可信任的人陪同。"
+      : "这涉及医疗判断。Orbit 已停在本地边界：没有调用模型，也不会给诊断或用药建议。请联系合格的医疗专业人士；我可以在你提供可靠材料后帮你整理问题清单。"
+    : legal
+      ? "这涉及法律判断。Orbit 已停在本地边界：没有调用模型，也不会替代律师给出法律结论或起草应直接依赖的法律意见。请咨询合格律师；我可以帮你整理事实、时间线和待确认问题。"
+      : "这涉及具体的投资或财务决策。Orbit 已停在本地边界：没有调用模型，也不会给买卖、税务或个性化投资指令。请咨询合格的财务或税务专业人士；我可以帮你整理公开材料和待确认问题。";
+
   return localBoundaryPayload({
-    assistant:
-      "这属于医疗、法律或财务等专业判断。Orbit 已停在本地边界：没有调用模型，也不会给诊断、用药、法律结论或投资指令。胸口痛这类情况请尽快联系医生；如果症状严重或突然出现，请直接联系急救或去急诊。",
+    assistant,
     label: "Orbit Agent local professional advice boundary",
     message,
     nextAction:
