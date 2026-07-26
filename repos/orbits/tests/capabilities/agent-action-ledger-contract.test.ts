@@ -61,6 +61,7 @@ test("operation types cover the design-derived write operations", () => {
       "accept_intro_request",
       "propose_meeting_slots",
       "sync_event_to_calendar",
+      "save_memory",
     ],
   );
 });

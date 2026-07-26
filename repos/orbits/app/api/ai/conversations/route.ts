@@ -15,8 +15,13 @@ import {
 } from "../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
 import { createAgentMemoryService } from "../../../../features/agent/memory/service-factory";
-import { createAgentNaturalLanguageActionProposalService } from "../../../../features/agent/natural-language-actions/service";
+import {
+  AgentNaturalLanguageActionPermissionError,
+  createAgentNaturalLanguageActionProposalService,
+  type AgentNaturalLanguageActionPermissionGuard,
+} from "../../../../features/agent/natural-language-actions/service";
 import type { AgentRuntimeService } from "../../../../features/agent/runtime/service";
+import { createConfiguredOrbitIntegrationService } from "../../../../features/integrations/service-factory";
 import { latestConversationRuntimeLink } from "../../../../features/orbit-ai/conversation-runtime-links";
 import {
   createChatKnownWorkflowOrchestrator,
@@ -224,6 +229,7 @@ async function persistNaturalLanguageActionProposals(
   result: OrbitAgentConversationResult,
   input: OrbitAgentSendMessageInput,
   runtime: AgentRuntimeService,
+  permissionGuard?: AgentNaturalLanguageActionPermissionGuard,
 ): Promise<OrbitAgentConversationResult> {
   if (result.success === false) return result;
   const {
@@ -253,6 +259,7 @@ async function persistNaturalLanguageActionProposals(
   try {
     const proposed =
       await createAgentNaturalLanguageActionProposalService({
+        permissionGuard,
         runtime,
       }).propose({
         conversationId,
@@ -267,7 +274,27 @@ async function persistNaturalLanguageActionProposals(
         runId: proposed.runId ?? undefined,
       },
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof AgentNaturalLanguageActionPermissionError) {
+      const providerLabel =
+        error.provider === "microsoft_graph"
+          ? "Microsoft Calendar"
+          : "Google Calendar";
+      return {
+        success: true,
+        data: {
+          ...publicData,
+          actionIds: [],
+          assistantMessage:
+            input.locale === "en"
+              ? `Connect ${providerLabel} with calendar write access in Settings before Orbit can prepare this external action. Nothing was written or executed.`
+              : `请先在设置中连接 ${providerLabel} 并授予日历写入权限；在此之前 Orbit 不会创建确认卡，也不会执行任何外部写入。`,
+          nextAction:
+            "Open Settings, connect the selected calendar provider, and run its read-only health check before retrying.",
+          runId: undefined,
+        },
+      };
+    }
     return {
       success: true,
       data: {
@@ -344,13 +371,18 @@ export async function POST(request: Request): Promise<Response> {
         : await withRuntimeLinks(workflowResponse.result, agentContext.runtime);
   } else {
     // 未命中已知工作流的普通请求保持原 bounded planner 路径，并且只调用一次。
-    result = await withRuntimeLinks(
-      await persistNaturalLanguageActionProposals(
-        await service.sendMessage(trustedInput),
-        trustedInput,
-        agentContext.runtime,
-      ),
+    // 普通 planner 的本轮 action links 由 proposal 持久化结果明确返回。
+    // 这里不能按 conversationId 回查“最近一次”历史 run，否则本轮无动作或
+    // 权限拒绝时会错误挂上前一轮卡片。
+    result = await persistNaturalLanguageActionProposals(
+      await service.sendMessage(trustedInput),
+      trustedInput,
       agentContext.runtime,
+      agentContext.actorId
+        ? createConfiguredOrbitIntegrationService({
+            actorId: agentContext.actorId,
+          }) ?? undefined
+        : undefined,
     );
   }
   timing.finish("orbit-service", serviceStartedAt);

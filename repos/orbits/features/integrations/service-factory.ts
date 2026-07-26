@@ -6,6 +6,7 @@ import {
   createIntegrationOAuthStateStore,
   createPostgresIntegrationOAuthStateAtomicConsume,
 } from "./oauth-state-store";
+import { createIntegrationHealthStore } from "./health-store";
 
 const cachedServices = new Map<string, OrbitIntegrationService>();
 
@@ -117,6 +118,11 @@ export function createConfiguredOrbitIntegrationService(
   );
   const service = createOrbitIntegrationService({
     configs,
+    healthStore: createIntegrationHealthStore({
+      store: configuredStore.store,
+      workspaceId: configuredStore.workspaceId,
+      userId: actorId,
+    }),
     oauthStates: createIntegrationOAuthStateStore({
       store: configuredStore.store,
       workspaceId: configuredStore.workspaceId,

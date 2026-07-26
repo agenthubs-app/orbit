@@ -7,6 +7,22 @@ export const ORBIT_INTEGRATION_PROVIDERS = [
 export type OrbitIntegrationProvider =
   (typeof ORBIT_INTEGRATION_PROVIDERS)[number];
 
+export const ORBIT_INTEGRATION_CAPABILITIES = [
+  "calendar.read",
+  "calendar.write",
+  "mail.metadata.read",
+] as const;
+
+export type OrbitIntegrationCapability =
+  (typeof ORBIT_INTEGRATION_CAPABILITIES)[number];
+
+export type IntegrationHealthStatus =
+  | "healthy"
+  | "not_checked"
+  | "action_required"
+  | "degraded"
+  | "unavailable";
+
 export const ORBIT_INTEGRATION_SCOPES = {
   google_calendar: [
     "calendar.events.readonly",
@@ -25,9 +41,21 @@ export interface IntegrationAuthorization {
   provider: OrbitIntegrationProvider;
   scopes: readonly string[];
   status: "pending" | "active" | "revoked" | "expired" | "unavailable";
+  capabilities: readonly OrbitIntegrationCapability[];
+  healthStatus: IntegrationHealthStatus;
+  healthMessage: string;
+  lastCheckedAt?: string;
   createdAt: string;
   updatedAt: string;
   expiresAt?: string;
+}
+
+export interface IntegrationHealthRecord {
+  provider: OrbitIntegrationProvider;
+  status: "healthy" | "degraded";
+  message: string;
+  checkedAt: string;
+  latencyMs: number;
 }
 
 export interface IntegrationToken {

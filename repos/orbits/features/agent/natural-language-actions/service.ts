@@ -10,6 +10,9 @@ import type {
 import { stablePayloadHash } from "../runtime/hash";
 import type { AgentRuntimeService } from "../runtime/service";
 import type { AgentNaturalLanguageActionRequest } from "./contract";
+import type {
+  OrbitIntegrationProvider,
+} from "../../integrations/contract";
 
 const WORKFLOW_KEY = "natural_language_action_v1";
 
@@ -34,9 +37,31 @@ function shortHash(value: unknown): string {
   return stablePayloadHash(value).replace("fnv1a:", "");
 }
 
-function capabilityFor(
+export interface AgentNaturalLanguageActionPermissionGuard {
+  assertPermission: (input: {
+    provider: OrbitIntegrationProvider;
+    permission: string;
+  }) => Promise<void>;
+}
+
+export class AgentNaturalLanguageActionPermissionError extends Error {
+  readonly code = "AGENT_ACTION_PERMISSION_REQUIRED";
+
+  constructor(
+    readonly provider: OrbitIntegrationProvider,
+    readonly permissions: readonly string[],
+  ) {
+    super(
+      `${provider} must be connected with ${permissions.join(", ")} before this action can be proposed.`,
+    );
+    this.name = "AgentNaturalLanguageActionPermissionError";
+  }
+}
+
+async function capabilityFor(
   request: AgentNaturalLanguageActionRequest,
-): AgentCapabilityDefinition {
+  permissionGuard?: AgentNaturalLanguageActionPermissionGuard,
+): Promise<AgentCapabilityDefinition> {
   const capability = createAgentCapabilityRegistry().getByExecutorKey(
     request.capabilityId,
   );
@@ -52,9 +77,30 @@ function capabilityFor(
     );
   }
   if (capability.requiredPermissions.length > 0) {
-    throw new Error(
-      `Capability ${request.capabilityId} is missing required permissions: ${capability.requiredPermissions.join(", ")}.`,
-    );
+    if (
+      request.capabilityId !== "calendar.syncEvent" ||
+      !permissionGuard
+    ) {
+      throw new AgentNaturalLanguageActionPermissionError(
+        request.capabilityId === "calendar.syncEvent"
+          ? request.arguments.provider
+          : "google_calendar",
+        capability.requiredPermissions,
+      );
+    }
+    try {
+      for (const permission of capability.requiredPermissions) {
+        await permissionGuard.assertPermission({
+          provider: request.arguments.provider,
+          permission,
+        });
+      }
+    } catch {
+      throw new AgentNaturalLanguageActionPermissionError(
+        request.arguments.provider,
+        capability.requiredPermissions,
+      );
+    }
   }
   return capability;
 }
@@ -66,7 +112,8 @@ function actionCopy(
     | "create_followup_task"
     | "create_followup_reminder"
     | "save_message_draft"
-    | "save_memory";
+    | "save_memory"
+    | "sync_event_to_calendar";
   payload: Readonly<Record<string, unknown>>;
   preview: string;
   title: string;
@@ -102,10 +149,25 @@ function actionCopy(
         preview: `记住：${request.arguments.content}`,
         title: "保存到 Agent Memory",
       };
+    case "calendar.syncEvent":
+      return {
+        operationType: "sync_event_to_calendar",
+        payload: request.arguments,
+        preview: `${request.arguments.startsAt} · ${request.arguments.title}${
+          request.arguments.location
+            ? ` · ${request.arguments.location}`
+            : ""
+        }`,
+        title:
+          request.arguments.provider === "microsoft_graph"
+            ? "同步到 Microsoft Calendar"
+            : "同步到 Google Calendar",
+      };
   }
 }
 
 export function createAgentNaturalLanguageActionProposalService(input: {
+  permissionGuard?: AgentNaturalLanguageActionPermissionGuard;
   runtime: AgentRuntimeService;
 }): AgentNaturalLanguageActionProposalService {
   return {
@@ -116,7 +178,11 @@ export function createAgentNaturalLanguageActionProposalService(input: {
         return { actions: [], runId: null };
       }
 
-      const capabilities = proposalInput.requests.map(capabilityFor);
+      const capabilities = await Promise.all(
+        proposalInput.requests.map((request) =>
+          capabilityFor(request, input.permissionGuard),
+        ),
+      );
       const runId = `run:natural-language:${shortHash({
         conversationId,
         message,
@@ -172,7 +238,10 @@ export function createAgentNaturalLanguageActionProposalService(input: {
         const operation: AgentActionOperationPayload = {
           compensation: {
             executorKey: capability.executorKey,
-            supported: capability.compensationSupported,
+            supported:
+              request.capabilityId === "calendar.syncEvent"
+                ? false
+                : capability.compensationSupported,
           },
           executorKey: capability.executorKey,
           idempotencyKey: `${actionId}:v1`,

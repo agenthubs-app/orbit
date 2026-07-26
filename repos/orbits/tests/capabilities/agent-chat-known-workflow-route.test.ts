@@ -5,6 +5,10 @@ import {
   orbitAgentConversationServiceFactory,
 } from "../../features/orbit-ai/service-factory";
 import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
+import {
+  createOrbitAgentRuntimeService,
+  resetOrbitAgentRuntimeServicesForTests,
+} from "../../features/agent/runtime/service-factory";
 
 afterEach(() => {
   mock.restoreAll();
@@ -102,4 +106,58 @@ test("conversation POST calls planner sendMessage exactly once for ordinary requ
   assert.equal(envelope.success, true);
   assert.equal(listCalls, 0);
   assert.equal(sendCalls, 1);
+});
+
+test("ordinary conversation responses never inherit an older run link", async () => {
+  resetOrbitAgentRuntimeServicesForTests();
+  const runtime = createOrbitAgentRuntimeService("mock");
+  await runtime.createRun({
+    conversationId: "demo-orbit-agent-conversation-1",
+    runId: "run:historical",
+    trigger: "chat",
+    workflowKey: "post_event_capture_v1",
+  });
+  await runtime.proposeAction({
+    actionId: "action:historical",
+    compensation: { supported: false },
+    conversationId: "demo-orbit-agent-conversation-1",
+    evidenceChips: [],
+    evidenceIds: ["evidence:historical"],
+    operations: [],
+    payloadVersion: 1,
+    preview: "Historical action must not appear on this turn.",
+    riskLevel: "write",
+    runId: "run:historical",
+    sourceRefs: [],
+    title: "Historical action",
+    whyNow: "Historical request",
+    workflowKey: "post_event_capture_v1",
+    workflowVersion: 1,
+  });
+
+  const delegate = createMockOrbitAgentConversationService();
+  mock.method(orbitAgentConversationServiceFactory, "create", () => ({
+    mode: "mock" as const,
+    service: delegate,
+    success: true as const,
+  }));
+  const route = await import("../../app/api/ai/conversations/route");
+  const response = await route.POST(
+    new Request("https://orbit.local/api/ai/conversations", {
+      body: JSON.stringify({
+        conversationId: "demo-orbit-agent-conversation-1",
+        locale: "zh",
+        message: "普通对话，不创建任何动作",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+  );
+  const envelope = (await response.json()) as {
+    data?: { actionIds?: readonly string[]; runId?: string };
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(envelope.data?.runId, undefined);
+  assert.equal(envelope.data?.actionIds, undefined);
 });

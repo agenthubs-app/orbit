@@ -2,12 +2,14 @@ import {
   AGENT_MEMORY_CATEGORIES,
   type AgentMemoryCategory,
 } from "../memory/contract";
+import type { OrbitIntegrationProvider } from "../../integrations/contract";
 
 export const AGENT_NATURAL_LANGUAGE_ACTION_CAPABILITY_IDS = [
   "followups.createTask",
   "notifications.createReminder",
   "followups.saveDraft",
   "memory.save",
+  "calendar.syncEvent",
 ] as const;
 
 export type AgentNaturalLanguageActionCapabilityId =
@@ -43,6 +45,19 @@ export type AgentNaturalLanguageActionRequest =
       arguments: {
         category: AgentMemoryCategory;
         content: string;
+      };
+    })
+  | (ConfirmedActionRequestBase & {
+      capabilityId: "calendar.syncEvent";
+      arguments: {
+        provider: Extract<
+          OrbitIntegrationProvider,
+          "google_calendar" | "microsoft_graph"
+        >;
+        title: string;
+        startsAt: string;
+        endsAt?: string;
+        location?: string;
       };
     });
 
@@ -123,6 +138,38 @@ export function parseAgentNaturalLanguageActionRequest(
         arguments: {
           category: category as AgentMemoryCategory,
           content,
+        },
+        capabilityId: value.capabilityId,
+        requiresUserConfirmation: true,
+      };
+    }
+    case "calendar.syncEvent": {
+      const title = boundedString(value.arguments.title, 180);
+      const startsAt = normalizedDate(value.arguments.startsAt);
+      const rawEndsAt = value.arguments.endsAt;
+      const endsAt =
+        rawEndsAt === undefined || rawEndsAt === null || rawEndsAt === ""
+          ? undefined
+          : normalizedDate(rawEndsAt);
+      const location = boundedString(value.arguments.location, 300);
+      const provider = value.arguments.provider;
+      if (
+        !title ||
+        !startsAt ||
+        (rawEndsAt !== undefined && !endsAt) ||
+        (endsAt && Date.parse(endsAt) <= Date.parse(startsAt)) ||
+        (provider !== "google_calendar" &&
+          provider !== "microsoft_graph")
+      ) {
+        return null;
+      }
+      return {
+        arguments: {
+          provider,
+          title,
+          startsAt,
+          ...(endsAt ? { endsAt } : {}),
+          ...(location ? { location } : {}),
         },
         capabilityId: value.capabilityId,
         requiresUserConfirmation: true,

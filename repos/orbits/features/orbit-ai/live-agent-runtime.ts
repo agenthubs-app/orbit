@@ -427,12 +427,15 @@ function isSupportedNaturalLanguageWriteRequest(message: string): boolean {
     /(?:保存|存为|留作).{0,12}(?:消息|邮件|跟进)?草稿|save.{0,16}(?:message |email )?draft/i;
   const saveMemory =
     /(?:请)?记住|(?:please )?remember/i;
+  const syncCalendar =
+    /(?:同步|创建|新建|添加).{0,20}(?:Google|Microsoft|谷歌|微软).{0,12}(?:日历|Calendar)|(?:create|add).{0,24}(?:Google|Microsoft).{0,12}calendar/i;
 
   return (
     createTask.test(message) ||
     createReminder.test(message) ||
     saveDraft.test(message) ||
-    saveMemory.test(message)
+    saveMemory.test(message) ||
+    syncCalendar.test(message)
   );
 }
 

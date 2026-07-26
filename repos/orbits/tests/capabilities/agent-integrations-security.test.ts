@@ -7,11 +7,23 @@ import {
   verifyIntegrationOAuthState,
 } from "../../features/integrations/oauth-state";
 import { createIntegrationOAuthStateStore } from "../../features/integrations/oauth-state-store";
-import { createOrbitIntegrationService } from "../../features/integrations/service";
+import {
+  createOrbitIntegrationService,
+  integrationCapabilitiesFor,
+} from "../../features/integrations/service";
+import { createIntegrationHealthStore } from "../../features/integrations/health-store";
 import { validateIntegrationScopes } from "../../features/integrations/service-factory";
 import { integrationSessionBinding } from "../../features/integrations/session-binding";
 import { createEncryptedIntegrationTokenVault } from "../../features/integrations/token-vault";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import {
+  createAgentDomainExecutors,
+  type AgentDomainExecutorDependencies,
+} from "../../features/agent/runtime/domain-executors";
+import { createAgentExecutorRegistry } from "../../features/agent/runtime/executor-registry";
+import { createMemoryAgentRuntimeRepository } from "../../features/agent/runtime/repository";
+import { createAgentRuntimeService } from "../../features/agent/runtime/service";
+import { createAgentNaturalLanguageActionProposalService } from "../../features/agent/natural-language-actions/service";
 
 test("OAuth session binding uses only the authenticated session cookie and supports chunking", () => {
   const direct = integrationSessionBinding(
@@ -282,6 +294,173 @@ test("integration scope policy rejects mail send/body access while accepting met
     () => validateIntegrationScopes("microsoft_graph", ["mail.readwrite"]),
     /metadata\/calendar-only/,
   );
+  assert.deepEqual(
+    integrationCapabilitiesFor("google_calendar", [
+      "calendar.events.readonly",
+    ]),
+    ["calendar.read"],
+  );
+  assert.deepEqual(
+    integrationCapabilitiesFor("microsoft_graph", [
+      "Calendars.ReadWrite",
+      "Mail.ReadBasic",
+    ]),
+    ["calendar.read", "calendar.write", "mail.metadata.read"],
+  );
+});
+
+test("integration health is actor-scoped, durable, and uses a read-only provider probe", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "integration-health";
+  const userId = "user:integration-health";
+  const vault = createEncryptedIntegrationTokenVault({
+    encryptionKeyBase64: randomBytes(32).toString("base64"),
+    store,
+    workspaceId,
+    userId,
+  });
+  await vault.save(
+    "google_calendar",
+    {
+      accessToken: "calendar-token",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      scopes: ["calendar.events"],
+      tokenType: "Bearer",
+    },
+    "2026-07-25T00:00:00.000Z",
+  );
+  const healthStore = createIntegrationHealthStore({
+    store,
+    workspaceId,
+    userId,
+  });
+  const service = createOrbitIntegrationService({
+    healthStore,
+    oauthStates: createIntegrationOAuthStateStore({
+      store,
+      workspaceId,
+      userId,
+    }),
+    vault,
+    configs: {
+      google_calendar: {
+        authorizationEndpoint: "https://provider.example/authorize",
+        tokenEndpoint: "https://provider.example/token",
+        apiBaseUrl: "https://provider.example/api",
+        clientId: "client",
+        clientSecret: "client-secret",
+        redirectUri: "https://orbit.example/callback",
+        scopes: ["calendar.events"],
+      },
+    },
+  });
+  const requests: { method: string; url: string }[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (request, init) => {
+    requests.push({
+      method: init?.method ?? "GET",
+      url: String(request),
+    });
+    return Response.json({ items: [] });
+  };
+  try {
+    const before = (await service.listAuthorizations(
+      "2026-07-25T01:00:00.000Z",
+    ))[0];
+    assert.equal(before.healthStatus, "not_checked");
+    assert.deepEqual(before.capabilities, [
+      "calendar.read",
+      "calendar.write",
+    ]);
+
+    const checked = await service.checkHealth(
+      "google_calendar",
+      "2026-07-25T01:01:00.000Z",
+    );
+    assert.equal(checked.healthStatus, "healthy");
+    assert.equal(checked.lastCheckedAt, "2026-07-25T01:01:00.000Z");
+    assert.deepEqual(requests, [
+      {
+        method: "GET",
+        url: "https://provider.example/api/users/me/calendarList?maxResults=1",
+      },
+    ]);
+    assert.equal(
+      (await healthStore.get("google_calendar"))?.status,
+      "healthy",
+    );
+
+    await service.revoke(
+      "google_calendar",
+      "2026-07-25T01:02:00.000Z",
+    );
+    assert.equal(await healthStore.get("google_calendar"), null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("external calendar writes fail closed before provider access when write scope is missing", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "integration-calendar-permissions";
+  const userId = "user:integration-calendar-permissions";
+  const vault = createEncryptedIntegrationTokenVault({
+    encryptionKeyBase64: randomBytes(32).toString("base64"),
+    store,
+    workspaceId,
+    userId,
+  });
+  await vault.save(
+    "google_calendar",
+    {
+      accessToken: "readonly-token",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      scopes: ["calendar.events.readonly"],
+      tokenType: "Bearer",
+    },
+    "2026-07-25T00:00:00.000Z",
+  );
+  const service = createOrbitIntegrationService({
+    oauthStates: createIntegrationOAuthStateStore({
+      store,
+      workspaceId,
+      userId,
+    }),
+    vault,
+    configs: {
+      google_calendar: {
+        authorizationEndpoint: "https://provider.example/authorize",
+        tokenEndpoint: "https://provider.example/token",
+        apiBaseUrl: "https://provider.example/api",
+        clientId: "client",
+        clientSecret: "client-secret",
+        redirectUri: "https://orbit.example/callback",
+        scopes: ["calendar.events.readonly"],
+      },
+    },
+  });
+  let providerRequests = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    providerRequests += 1;
+    return Response.json({ id: "must-not-exist" });
+  };
+  try {
+    await assert.rejects(
+      service.createCalendarEvent({
+        provider: "google_calendar",
+        idempotencyKey: "action:readonly:v1",
+        payload: {
+          title: "Should remain blocked",
+          startsAt: "2026-07-26T01:00:00.000Z",
+        },
+      }),
+      /does not grant calendar\.events\.write/,
+    );
+    assert.equal(providerRequests, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("expired provider tokens refresh and email signals never expose message bodies or send capability", async () => {
@@ -429,6 +608,136 @@ test("calendar replay uses a deterministic provider id derived from the Action i
     assert.equal(requests[0].body.id, requests[1].body.id);
     assert.match(String(requests[0].body.id), /^orbit[0-9a-f]{64}$/);
     assert.equal(requests[0].idempotencyKey, "action:event-1:v1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("confirmed external calendar action executes once through outbox and records a provider receipt", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "integration-calendar-runtime";
+  const userId = "user:integration-calendar-runtime";
+  const vault = createEncryptedIntegrationTokenVault({
+    encryptionKeyBase64: randomBytes(32).toString("base64"),
+    store,
+    workspaceId,
+    userId,
+  });
+  await vault.save(
+    "google_calendar",
+    {
+      accessToken: "calendar-write-token",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      scopes: ["calendar.events"],
+      tokenType: "Bearer",
+    },
+    "2026-07-25T00:00:00.000Z",
+  );
+  const integrations = createOrbitIntegrationService({
+    oauthStates: createIntegrationOAuthStateStore({
+      store,
+      workspaceId,
+      userId,
+    }),
+    vault,
+    configs: {
+      google_calendar: {
+        authorizationEndpoint: "https://provider.example/authorize",
+        tokenEndpoint: "https://provider.example/token",
+        apiBaseUrl: "https://provider.example/api",
+        clientId: "client",
+        clientSecret: "client-secret",
+        redirectUri: "https://orbit.example/callback",
+        scopes: ["calendar.events"],
+      },
+    },
+  });
+  const executors = createAgentDomainExecutors({
+    calendar: {
+      createEvent: (payload, idempotencyKey) =>
+        integrations.createCalendarEvent({
+          provider:
+            payload.provider === "microsoft_graph"
+              ? "microsoft_graph"
+              : "google_calendar",
+          payload,
+          idempotencyKey,
+        }),
+    },
+  } as AgentDomainExecutorDependencies);
+  const runtime = createAgentRuntimeService({
+    executors: createAgentExecutorRegistry(executors),
+    now: () => "2026-07-25T01:00:00.000Z",
+    repository: createMemoryAgentRuntimeRepository(),
+  });
+  const requests: { body: Record<string, unknown>; url: string }[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (request, init) => {
+    requests.push({
+      body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+      url: String(request),
+    });
+    return Response.json({ id: "provider-event-1" });
+  };
+  try {
+    const proposal =
+      await createAgentNaturalLanguageActionProposalService({
+        permissionGuard: integrations,
+        runtime,
+      }).propose({
+        conversationId: "conversation:external-calendar-runtime",
+        message: "在 Google Calendar 创建项目复盘会议。",
+        requests: [
+          {
+            arguments: {
+              provider: "google_calendar",
+              title: "项目复盘会议",
+              startsAt: "2026-07-28T01:00:00.000Z",
+              endsAt: "2026-07-28T02:00:00.000Z",
+              location: "Tokyo",
+            },
+            capabilityId: "calendar.syncEvent",
+            requiresUserConfirmation: true,
+          },
+        ],
+      });
+    const action = proposal.actions[0];
+    assert.ok(action);
+    assert.equal(action.status, "awaiting_confirmation");
+    assert.equal(requests.length, 0);
+
+    await runtime.approveAction({
+      actionId: action.actionId,
+      actorLabel: "Orbit user",
+    });
+    assert.equal(requests.length, 0);
+    const processed = await runtime.processOutbox({
+      actionId: action.actionId,
+      workerId: "external-calendar-worker",
+    });
+
+    assert.equal(processed.completed, 1);
+    assert.equal(requests.length, 1);
+    assert.equal(
+      requests[0]?.url,
+      "https://provider.example/api/calendars/primary/events",
+    );
+    assert.equal(requests[0]?.body.summary, "项目复盘会议");
+    assert.deepEqual(requests[0]?.body.start, {
+      dateTime: "2026-07-28T01:00:00.000Z",
+    });
+    const detail = await runtime.getRun(proposal.runId!);
+    assert.equal(detail?.actions[0]?.status, "completed");
+    assert.equal(detail?.receipts[0]?.status, "completed");
+    assert.equal(
+      detail?.receipts[0]?.resultRef,
+      "calendar:provider-event-1",
+    );
+    await runtime.processOutbox({
+      actionId: action.actionId,
+      workerId: "external-calendar-replay-worker",
+    });
+    assert.equal(requests.length, 1);
   } finally {
     globalThis.fetch = originalFetch;
   }

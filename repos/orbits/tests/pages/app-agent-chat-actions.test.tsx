@@ -81,6 +81,7 @@ test("chat narrows run actions to the action ids linked by the conversation API"
     {
       actionId: "action:linked",
       operationIds: ["operation:note", "operation:draft"],
+      preview: "",
       riskLevel: "write",
       status: "awaiting_confirmation",
       title: "Review the follow-up",
@@ -99,6 +100,7 @@ test("chat never offers one-click confirmation for external actions", () => {
     agentChatActionCanConfirm({
       actionId: "action:external-calendar",
       operationIds: ["operation:calendar-write"],
+      preview: "Create an external calendar event",
       riskLevel: "external",
       status: "awaiting_confirmation",
       title: "Write to external calendar",
@@ -109,6 +111,7 @@ test("chat never offers one-click confirmation for external actions", () => {
     agentChatActionCanConfirm({
       actionId: "action:internal-task",
       operationIds: ["operation:create-task"],
+      preview: "Create an internal task",
       riskLevel: "write",
       status: "awaiting_confirmation",
       title: "Create task",

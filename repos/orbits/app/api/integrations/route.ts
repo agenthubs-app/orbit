@@ -23,6 +23,9 @@ export async function GET(): Promise<Response> {
         provider,
         status: "unavailable",
         scopes: [],
+        capabilities: [],
+        healthStatus: "unavailable",
+        healthMessage: "Provider configuration is unavailable.",
       })),
     });
   }

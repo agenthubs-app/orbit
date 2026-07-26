@@ -81,12 +81,14 @@ actor 的上下文，并通过独立的 `userMemory` 字段传给 planner 和 sy
 
 自然语言写操作遵循“模型只提议、服务端决定、worker 执行”的单向边界。Planner 的
 `action_proposal` 输出不会直接进入客户端执行，也不能携带任意工具名。当前只接受
-四种有界能力：
+五种有界能力：
 
 - `followups.createTask`：创建跟进任务。
 - `notifications.createReminder`：创建提醒。
 - `followups.saveDraft`：保存草稿，不发送消息。
 - `memory.save`：保存一条用户可控 Memory。
+- `calendar.syncEvent`：在已单独授权的 Google Calendar 或 Microsoft
+  Calendar 创建事件。
 
 每个 proposal 都必须通过严格 schema 校验，并声明 `requiresUserConfirmation: true`。
 同一次模型输出不能混合只读工具调用和写操作提议。对话 API 会消费并移除模型输出的
@@ -100,8 +102,41 @@ actor 的上下文，并通过独立的 `userMemory` 字段传给 planner 和 sy
 账本。支持补偿的操作可以从对话卡片或操作账本撤销，重复确认和重复撤销都必须幂等。
 
 相对时间由模型结合服务端提供的当前时间和用户默认时区转换为绝对 ISO 时间；最终值
-仍由 action schema 验证。外部消息永不由这条链路发送，后续集成必须额外通过 provider
-权限和外部执行边界。
+仍由 action schema 验证。外部消息永不由这条链路发送。外部日历 action 在创建确认卡
+前检查 provider 写权限，worker 执行时再次检查；只有逐次确认后才调用 provider，并把
+provider record id 写入执行回执。
+
+## 集成健康与外部执行
+
+`features/integrations` 把“登录账号”“OAuth 授权”“连接健康”和“Agent 执行权限”
+分成四层。授权 token 继续按 actor 加密存储；健康检查使用只读 provider endpoint，
+不会因为点击“检查连接”产生写操作。检查结果按 actor 持久化，设置页展示连接状态、
+上次检查时间和当前实际具备的能力，而不是只展示原始 scope 字符串。
+
+标准能力映射为 `calendar.read`、`calendar.write` 和 `mail.metadata.read`。邮件集成只
+允许元数据读取，不存在发送 executor。日历写操作需要 Capability Registry 声明的
+`calendar.events.write`，proposal service 与 integration service 都会验证；缺失
+连接或 scope 时 fail closed，不创建确认卡，也不会发出 provider 请求。
+
+确认后的日历写入复用统一 runtime outbox、幂等键和 receipt。Google Calendar 使用
+稳定 provider event id，Microsoft Calendar 使用 transaction id。provider 请求失败
+进入现有重试/死信状态，不绕过操作账本重试。当前 provider 侧删除没有稳定回执输入，
+因此自然语言日历写入不会承诺一键撤销。
+
+本地或部署环境需要先配置 `ORBIT_INTEGRATION_TOKEN_KEY`（base64 编码的 32-byte key）
+和 `ORBIT_INTEGRATION_STATE_SECRET`，再按 provider 配置以下同前缀字段：
+`AUTHORIZATION_ENDPOINT`、`TOKEN_ENDPOINT`、`API_BASE_URL`、`CLIENT_ID`、
+`CLIENT_SECRET`、`REDIRECT_URI`、`SCOPES`。
+
+- Google Calendar 前缀 `ORBIT_GOOGLE_CALENDAR`，标准 API base 为
+  `https://www.googleapis.com/calendar/v3`。
+- Gmail 前缀 `ORBIT_GMAIL`，标准 API base 为
+  `https://gmail.googleapis.com/gmail/v1/users/me`。
+- Microsoft Graph 前缀 `ORBIT_MICROSOFT_GRAPH`，标准 API base 为
+  `https://graph.microsoft.com/v1.0`。
+
+provider 控制台的 OAuth callback 必须与对应 `REDIRECT_URI` 完全一致；Orbit 登录 OAuth
+不能替代上述数据授权。
 
 ## Mock 行为
 

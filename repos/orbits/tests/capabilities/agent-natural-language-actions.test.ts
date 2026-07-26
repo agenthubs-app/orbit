@@ -34,6 +34,16 @@ test("natural-language action request parser accepts only bounded confirmed allo
     capabilityId: "memory.save",
     requiresUserConfirmation: true,
   });
+  const calendar = parseAgentNaturalLanguageActionRequest({
+    arguments: {
+      provider: "google_calendar",
+      title: "项目会议",
+      startsAt: "2030-05-20T09:00:00+09:00",
+      endsAt: "2030-05-20T10:00:00+09:00",
+    },
+    capabilityId: "calendar.syncEvent",
+    requiresUserConfirmation: true,
+  });
 
   assert.equal(reminder?.capabilityId, "notifications.createReminder");
   assert.equal(
@@ -41,6 +51,11 @@ test("natural-language action request parser accepts only bounded confirmed allo
     "2030-05-20T00:00:00.000Z",
   );
   assert.equal(memory?.capabilityId, "memory.save");
+  assert.equal(calendar?.capabilityId, "calendar.syncEvent");
+  assert.equal(
+    calendar?.arguments.startsAt,
+    "2030-05-20T00:00:00.000Z",
+  );
   assert.equal(
     parseAgentNaturalLanguageActionRequest({
       arguments: { title: "绕过确认" },
@@ -60,6 +75,55 @@ test("natural-language action request parser accepts only bounded confirmed allo
   assert.equal(
     parseAgentNaturalLanguageActionRequests(new Array(5).fill(memory)),
     null,
+  );
+});
+
+test("external calendar proposals require provider authorization before reaching confirmation", async () => {
+  resetOrbitAgentRuntimeServicesForTests();
+  const runtime = createOrbitAgentRuntimeService("mock");
+  const request = {
+    arguments: {
+      provider: "google_calendar" as const,
+      title: "项目会议",
+      startsAt: "2030-05-20T00:00:00.000Z",
+    },
+    capabilityId: "calendar.syncEvent" as const,
+    requiresUserConfirmation: true as const,
+  };
+
+  await assert.rejects(
+    createAgentNaturalLanguageActionProposalService({ runtime }).propose({
+      conversationId: "conversation:calendar-without-permission",
+      message: "在 Google Calendar 创建项目会议。",
+      requests: [request],
+    }),
+    /must be connected with calendar\.events\.write/,
+  );
+
+  const permissionChecks: { permission: string; provider: string }[] = [];
+  const result = await createAgentNaturalLanguageActionProposalService({
+    permissionGuard: {
+      async assertPermission(input) {
+        permissionChecks.push(input);
+      },
+    },
+    runtime,
+  }).propose({
+    conversationId: "conversation:calendar-with-permission",
+    message: "在 Google Calendar 创建项目会议。",
+    requests: [request],
+  });
+
+  assert.deepEqual(permissionChecks, [
+    {
+      permission: "calendar.events.write",
+      provider: "google_calendar",
+    },
+  ]);
+  assert.equal(result.actions[0]?.riskLevel, "external");
+  assert.equal(
+    result.actions[0]?.operations[0]?.compensation.supported,
+    false,
   );
 });
 

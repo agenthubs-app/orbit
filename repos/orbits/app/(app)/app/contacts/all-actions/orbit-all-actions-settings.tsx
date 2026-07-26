@@ -14,6 +14,19 @@ interface IntegrationStatus {
   provider: "google_calendar" | "gmail" | "microsoft_graph";
   status: "active" | "expired" | "pending" | "revoked" | "unavailable";
   scopes: readonly string[];
+  capabilities: readonly (
+    | "calendar.read"
+    | "calendar.write"
+    | "mail.metadata.read"
+  )[];
+  healthStatus:
+    | "healthy"
+    | "not_checked"
+    | "action_required"
+    | "degraded"
+    | "unavailable";
+  healthMessage: string;
+  lastCheckedAt?: string;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -69,6 +82,8 @@ export function OrbitAllActionsSettings() {
   const [message, setMessage] = useState<string | null>(null);
   const [integrations, setIntegrations] =
     useState<readonly IntegrationStatus[]>([]);
+  const [checkingProvider, setCheckingProvider] =
+    useState<IntegrationStatus["provider"] | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -126,11 +141,50 @@ export function OrbitAllActionsSettings() {
     setIntegrations((current) =>
       current.map((integration) =>
         integration.provider === provider
-          ? { ...integration, status: "revoked" }
+          ? {
+              ...integration,
+              capabilities: [],
+              healthMessage: "Connect this provider to enable its capabilities.",
+              healthStatus: "action_required",
+              lastCheckedAt: undefined,
+              scopes: [],
+              status: "revoked",
+            }
           : integration,
       ),
     );
     setMessage("已断开连接");
+  }
+
+  async function checkIntegration(provider: IntegrationStatus["provider"]) {
+    setCheckingProvider(provider);
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `/api/integrations/${encodeURIComponent(provider)}/health`,
+        { method: "POST" },
+      );
+      const body = (await response.json().catch(() => null)) as
+        | { data?: IntegrationStatus }
+        | null;
+      if (!response.ok || !body?.data) {
+        throw new Error("health check failed");
+      }
+      setIntegrations((current) =>
+        current.map((integration) =>
+          integration.provider === provider ? body.data! : integration,
+        ),
+      );
+      setMessage(
+        body.data.healthStatus === "healthy"
+          ? "连接检查通过"
+          : "连接异常，请重新授权或稍后重试",
+      );
+    } catch {
+      setMessage("连接检查失败，请重试");
+    } finally {
+      setCheckingProvider(null);
+    }
   }
 
   return (
@@ -265,7 +319,7 @@ export function OrbitAllActionsSettings() {
         外部数据连接
       </div>
       <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 8px" }}>
-        登录与数据授权分离。邮箱只读取必要元数据；Orbit 不具备自动发信能力。
+        登录与数据授权分离。健康检查只发起只读请求；外部日历写入逐次确认并记录回执，Orbit 永不自动发信。
       </p>
       {integrations.map((integration) => {
         const label = {
@@ -274,6 +328,18 @@ export function OrbitAllActionsSettings() {
           microsoft_graph: "Microsoft Calendar / Mail metadata",
         }[integration.provider];
         const connected = integration.status === "active";
+        const healthLabel = {
+          healthy: "连接正常",
+          not_checked: "待检查",
+          action_required: "需要授权",
+          degraded: "连接异常",
+          unavailable: "未配置",
+        }[integration.healthStatus];
+        const capabilityLabels = integration.capabilities.map((capability) => ({
+          "calendar.read": "读取日历",
+          "calendar.write": "写入日历",
+          "mail.metadata.read": "读取邮件元数据",
+        })[capability]);
         return (
           <div
             key={integration.provider}
@@ -291,20 +357,47 @@ export function OrbitAllActionsSettings() {
               </span>
               <span style={{ color: "var(--text-4)", display: "block", fontSize: 12, marginTop: 2 }}>
                 {connected
-                  ? `已授权：${integration.scopes.join("、")}`
+                  ? `${healthLabel} · ${
+                      capabilityLabels.length > 0
+                        ? capabilityLabels.join("、")
+                        : "没有可用权限"
+                    }`
                   : integration.status === "unavailable"
                     ? "部署环境尚未配置"
-                    : "未连接"}
+                    : integration.status === "expired"
+                      ? "授权已过期"
+                      : "未连接"}
               </span>
+              {connected ? (
+                <span style={{ color: "var(--text-4)", display: "block", fontSize: 11, marginTop: 3 }}>
+                  {integration.healthMessage}
+                  {integration.lastCheckedAt
+                    ? ` · ${new Date(integration.lastCheckedAt).toLocaleString("zh-CN")}`
+                    : ""}
+                </span>
+              ) : null}
             </span>
             {connected ? (
-              <button
-                className="btn btn-quiet"
-                onClick={() => void disconnect(integration.provider)}
-                type="button"
-              >
-                断开
-              </button>
+              <span style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="btn btn-ghost"
+                  disabled={checkingProvider === integration.provider}
+                  onClick={() => void checkIntegration(integration.provider)}
+                  type="button"
+                >
+                  {checkingProvider === integration.provider
+                    ? "检查中…"
+                    : "检查连接"}
+                </button>
+                <button
+                  className="btn btn-quiet"
+                  disabled={checkingProvider === integration.provider}
+                  onClick={() => void disconnect(integration.provider)}
+                  type="button"
+                >
+                  断开
+                </button>
+              </span>
             ) : integration.status !== "unavailable" ? (
               <a
                 className="btn btn-ghost"
