@@ -1307,6 +1307,20 @@ test("live Gemini Orbit Agent asks for a contact before drafting to an ambiguous
   );
 });
 
+test("live Orbit Agent does not treat explicitly prohibited side effects as requested mutations", async () => {
+  const runtime = await importProjectModule<{
+    createLiveOrbitAgentLocalBoundaryPayload: (
+      message: string,
+    ) => unknown | null;
+  }>("features/orbit-ai/live-agent-runtime.ts");
+
+  const boundary = runtime.createLiveOrbitAgentLocalBoundaryPayload(
+    "请基于我在 Orbit 中已有的人脉与活动数据，推荐下周最值得联系的 3 个人，并说明理由；不要发送消息或创建日程。",
+  );
+
+  assert.equal(boundary, null);
+});
+
 test("live Gemini Orbit Agent requires confirmation before relationship state mutations", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{

@@ -418,6 +418,17 @@ function isRelationshipStateMutationRequest(message: string): boolean {
   return mutationVerb.test(message) && relationshipObject.test(message);
 }
 
+function requestedActionText(message: string): string {
+  // Safety boundaries must distinguish requested actions from actions the user
+  // explicitly prohibits. Keep privacy/secret/permission checks on the complete
+  // message, but remove negated action clauses before workflow and mutation
+  // classification so “不要发送消息或创建日程” cannot become a write request.
+  return message.replace(
+    /(?:^|[，。！？；,\n.!?;]\s*)(?:(?:请|請)?(?:不要|别|別|勿|无需|無需|不需要)|do not|don't|don’t)\s*[^，。！？；,\n.!?;]*(?=$|[，。！？；,\n.!?;])/gi,
+    " ",
+  );
+}
+
 function detectWorkflowSignals(message: string): string[] {
   const signals: string[] = [];
   const hasEventWork =
@@ -692,13 +703,15 @@ export function createLiveOrbitAgentLocalBoundaryPayload(
   if (isProfessionalAdviceRequest(message)) {
     return professionalAdviceBoundaryPayload(message);
   }
-  if (isRelationshipStateMutationRequest(message)) {
+  const actionRequest = requestedActionText(message);
+
+  if (isRelationshipStateMutationRequest(actionRequest)) {
     return stateChangeBoundaryPayload(message);
   }
-  if (isMultiIntentWorkflowRequest(message)) {
+  if (isMultiIntentWorkflowRequest(actionRequest)) {
     return multiIntentBoundaryPayload(message);
   }
-  if (isAmbiguousRecipientDraftRequest(message)) {
+  if (isAmbiguousRecipientDraftRequest(actionRequest)) {
     return clarificationBoundaryPayload(message);
   }
 
