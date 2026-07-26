@@ -15,7 +15,9 @@ import {
 } from "../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
 import { createAgentMemoryService } from "../../../../features/agent/memory/service-factory";
+import { createAgentFeedbackService } from "../../../../features/agent/feedback/service-factory";
 import {
+  AgentMemoryLearningDisabledError,
   AgentNaturalLanguageActionPermissionError,
   createAgentNaturalLanguageActionProposalService,
   type AgentNaturalLanguageActionPermissionGuard,
@@ -230,6 +232,7 @@ async function persistNaturalLanguageActionProposals(
   input: OrbitAgentSendMessageInput,
   runtime: AgentRuntimeService,
   permissionGuard?: AgentNaturalLanguageActionPermissionGuard,
+  memoryLearningAllowed = true,
 ): Promise<OrbitAgentConversationResult> {
   if (result.success === false) return result;
   const {
@@ -259,6 +262,7 @@ async function persistNaturalLanguageActionProposals(
   try {
     const proposed =
       await createAgentNaturalLanguageActionProposalService({
+        memoryLearningAllowed,
         permissionGuard,
         runtime,
       }).propose({
@@ -275,6 +279,22 @@ async function persistNaturalLanguageActionProposals(
       },
     };
   } catch (error) {
+    if (error instanceof AgentMemoryLearningDisabledError) {
+      return {
+        success: true,
+        data: {
+          ...publicData,
+          actionIds: [],
+          assistantMessage:
+            input.locale === "en"
+              ? "Conversation learning is off in Agent Memory settings, so I did not create a memory proposal or save anything."
+              : "Agent 记忆设置已关闭“从对话中经确认后学习”，因此我没有创建记忆确认卡，也没有保存任何内容。",
+          nextAction:
+            "Turn on approved conversation learning in Settings before asking Orbit to remember chat context.",
+          runId: undefined,
+        },
+      };
+    }
     if (error instanceof AgentNaturalLanguageActionPermissionError) {
       const providerLabel =
         error.provider === "microsoft_graph"
@@ -399,16 +419,28 @@ export async function POST(request: Request): Promise<Response> {
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const readBodyStartedAt = timing.now();
   const input = await readSendInput(request);
-  const trustedInput =
-    agentContext.actorId === null
-      ? input
-      : {
-          ...input,
-          memory: await createAgentMemoryService({
-            actorId: agentContext.actorId,
-            mode,
-          }).context(),
-        };
+  const memoryService = agentContext.actorId
+    ? createAgentMemoryService({
+        actorId: agentContext.actorId,
+        mode,
+      })
+    : null;
+  const memorySettings = memoryService
+    ? await memoryService.getSettings()
+    : null;
+  const feedbackService = agentContext.actorId
+    ? createAgentFeedbackService({
+        actorId: agentContext.actorId,
+        mode,
+      })
+    : null;
+  const trustedInput = memoryService
+    ? {
+        ...input,
+        memory: await memoryService.context(),
+        outcomes: await feedbackService?.context(),
+      }
+    : input;
   timing.finish("orbit-read-body", readBodyStartedAt);
   const serviceStartedAt = timing.now();
   const service = createOrbitAgentConversationService();
@@ -445,6 +477,7 @@ export async function POST(request: Request): Promise<Response> {
             actorId: agentContext.actorId,
           }) ?? undefined
         : undefined,
+      memorySettings?.allowConversationLearning ?? true,
     );
   }
   timing.finish("orbit-service", serviceStartedAt);

@@ -56,6 +56,11 @@ live record store。存储 workspace 还会追加 actor scope，避免不同账�
 `ORBIT_AGENT_WORKER_SECRET` 并使用 Bearer header；actor 身份只能来自
 `x-orbit-actor-id` 服务端边界，不能从请求 body 注入。
 
+Web 服务不会在确认请求内同步执行 outbox。这样即使浏览器断开、请求超时或 worker
+重启，已确认意图、幂等键和执行回执仍能独立恢复。相应地，本地完整验收必须同时启动
+Web 和与测试账号匹配的 actor-scoped worker；只启动 `npm run dev` 时，动作会正确停在
+`approved`，但不会伪装成已经完成。
+
 ## 用户可控 Memory
 
 `features/agent/memory` 保存跨对话长期有效、且由用户明确管理的个人上下文。Memory
@@ -70,12 +75,31 @@ actor 的上下文，并通过独立的 `userMemory` 字段传给 planner 和 sy
 用户可以在设置页查看、新增、编辑和删除每条 Memory，也可以全局关闭使用。关闭后
 服务端向模型返回空上下文，但保留原数据，重新开启即可恢复。会话学习默认关闭；
 即使用户开启，也只允许后续写操作流程提出待确认记忆，不能静默抽取或自动落库。
+关闭会话学习时，服务端会在创建 Run 和 Action 之前拒绝 `memory.save` proposal，
+因此页面不会出现虚假的确认卡，outbox 和 Memory 也不会留下半成品。
 
 相关 API：
 
 - `GET/POST /api/agent/memory`：读取和新增当前 actor 的 Memory。
 - `PATCH/DELETE /api/agent/memory/:id`：编辑或删除一条 Memory。
 - `GET/PATCH /api/agent/memory/settings`：读取或更新使用与学习开关。
+
+## 结果反馈与业务结果学习
+
+`features/agent/feedback` 只保存用户主动提交的结果评价和后续业务结果，不从聊天内容
+猜测“是否有帮助”或“是否促成会面”。评价包括 `helpful`、`not_relevant`；业务结果
+包括 `contacted`、`meeting_booked`、`goal_advanced`。同一 Run 只有一条 actor-scoped
+记录，后续结果会和先前评价合并，并保留本轮真实来源模块与 evidence ids。
+
+聊天结果下方可以记录评价和业务结果；设置页可以检查或删除任意记录。最近记录会由
+服务端压缩为独立的 `userRecordedOutcomes` 上下文交给 planner 和 synthesis。它只能
+作为弱个性化信号，不能覆盖当前请求、工具证据、安全规则、权限、确认策略和工具
+allowlist。客户端不能在对话请求中伪造这份上下文。
+
+相关 API：
+
+- `GET/POST /api/agent/feedback`：列出当前 actor 的结果学习记录或按 Run 合并写入。
+- `GET/DELETE /api/agent/feedback/:runId`：读取或删除一条 Run 级学习记录。
 
 ## 自然语言写操作
 

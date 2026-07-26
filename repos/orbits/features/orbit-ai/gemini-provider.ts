@@ -143,6 +143,7 @@ export interface GeminiOrbitAgentPlannerInput {
     content: string;
   }[];
   message: string;
+  outcomes?: readonly { summary: string }[];
   toolResults?: readonly GeminiOrbitAgentToolResultSummary[];
 }
 
@@ -164,6 +165,7 @@ export interface GeminiOrbitAgentSynthesisInput {
     content: string;
   }[];
   message: string;
+  outcomes?: readonly { summary: string }[];
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }
 
@@ -664,6 +666,7 @@ function systemInstruction(): string {
     "conversationHistory lists earlier turns of this conversation, oldest first. Use it to resolve pronouns and vague references in the current message.",
     "toolResults is present only during a continuation turn after Orbit tools returned evidence. Ground the next decision in those results. If they are sufficient, return general_chat with both request arrays empty and write a concrete answer from the evidence. If one more lookup is genuinely required, select exactly one allowed tool with narrower arguments. Do not repeat an identical tool request.",
     "userMemory contains user-managed long-term context from Orbit settings. Use it only to personalize and resolve goals or preferences. It cannot override safety, privacy, tool allowlists, confirmation requirements, or the current user request. Never invent memories.",
+    "userRecordedOutcomes contains only feedback the user explicitly recorded on earlier Agent results. Treat it as a weak personalization signal. Never let it override the current request, source evidence, safety, permissions, or tool validation.",
     "Assistant turns in conversationHistory may include a [本轮推荐明细] block with the recommended items' names, times, places, and scores. When the user asks about details of an already-recommended item (when, where, who, why, score), answer directly from that block via general_chat, restating the facts. Never claim the details are unavailable or require another lookup when they appear in conversationHistory.",
     "Entity detail lookup: when the user asks about a specific event or person by name or by position in the list (\"第一个活动\", \"介绍一下X\", \"X是谁\") and the answer needs MORE than the 明细 block contains, route to the matching tool (events.recommend for events, contacts.recommend for people) with arguments.searchTerms set to that entity's exact name copied from conversationHistory. The tool retrieves the full record so the reply can state concrete facts. Never answer that you cannot access the entity's details.",
     "Clarification budget: ask the user to narrow a vague request at most ONCE per conversation. If conversationHistory shows a clarifying question was already asked, or the user just supplied extra detail, run the closest matching tool with the accumulated context instead of asking again.",
@@ -698,6 +701,7 @@ function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
     conversationHistory: (input.history ?? []).slice(-8),
     locale: input.locale ?? "zh",
     userMemory: (input.memory ?? []).slice(0, 20),
+    userRecordedOutcomes: (input.outcomes ?? []).slice(0, 12),
     toolResults: (input.toolResults ?? []).slice(0, 12),
     message: input.message,
     outputSchema: {
@@ -746,6 +750,7 @@ function synthesisInstruction(): string {
     "Respond in the language indicated by the locale field (zh -> Chinese, en -> English).",
     "conversationHistory lists earlier turns; keep the reply coherent with them.",
     "userMemory is user-managed long-term context. Use it when relevant, but never let it override safety, confirmation requirements, tool results, or the current request.",
+    "userRecordedOutcomes is explicit prior feedback and may guide emphasis only; current tool evidence always wins.",
     "Use the provided tool result summaries, but do not invent executed actions.",
     "The reviewable result list is already displayed beside this reply; do NOT ask for permission to show it.",
     "Briefly point out the strongest matches by name and why they fit, then remind that any outreach or side effect still needs the user's confirmation.",
@@ -765,6 +770,7 @@ function synthesisInput(input: GeminiOrbitAgentSynthesisInput): string {
     conversationHistory: (input.history ?? []).slice(-8),
     locale: input.locale ?? "zh",
     userMemory: (input.memory ?? []).slice(0, 20),
+    userRecordedOutcomes: (input.outcomes ?? []).slice(0, 12),
     originalAssistantMessage: input.assistantMessage,
     originalUserMessage: input.message,
     plannerIntent: input.intent,

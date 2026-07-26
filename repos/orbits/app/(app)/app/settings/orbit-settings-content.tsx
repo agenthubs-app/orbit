@@ -4,6 +4,7 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { OrbitAgentAutomationSettings } from "./orbit-agent-automation-settings";
 import { OrbitAgentExecutionSettings } from "./orbit-agent-execution-settings";
 import { OrbitAgentMemorySettings } from "./orbit-agent-memory-settings";
+import { OrbitAgentFeedbackSettings } from "./orbit-agent-feedback-settings";
 import { OrbitAppearanceSettings } from "./orbit-appearance-settings";
 
 export function OrbitSettingsContent() {
@@ -39,6 +40,7 @@ export function OrbitSettingsContent() {
       </header>
       <OrbitAppearanceSettings />
       <OrbitAgentMemorySettings />
+      <OrbitAgentFeedbackSettings />
       <OrbitAgentAutomationSettings />
       <OrbitAgentExecutionSettings />
     </>

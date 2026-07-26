@@ -1260,6 +1260,7 @@ export async function runLiveOrbitAgentRuntime(
       locale: input.locale,
       memory: input.memory,
       message,
+      outcomes: input.outcomes,
     });
     timings.push(timingSpan("planner", plannerStartedAt));
 
@@ -1330,6 +1331,7 @@ export async function runLiveOrbitAgentRuntime(
       locale: input.locale,
       memory: input.memory,
       message,
+      outcomes: input.outcomes,
       toolResults: artifacts.map(artifactSummaryForSynthesis),
     });
     timings.push(timingSpan("replan", replanStartedAt));
@@ -1383,6 +1385,7 @@ export async function runLiveOrbitAgentRuntime(
         locale: input.locale,
         memory: input.memory,
         message,
+        outcomes: input.outcomes,
         toolRequests: accumulatedToolRequests,
       })
     : null;

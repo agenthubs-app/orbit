@@ -58,6 +58,17 @@ export class AgentNaturalLanguageActionPermissionError extends Error {
   }
 }
 
+export class AgentMemoryLearningDisabledError extends Error {
+  readonly code = "AGENT_MEMORY_LEARNING_DISABLED";
+
+  constructor() {
+    super(
+      "Approved learning from Agent conversations is disabled in Memory settings.",
+    );
+    this.name = "AgentMemoryLearningDisabledError";
+  }
+}
+
 async function capabilityFor(
   request: AgentNaturalLanguageActionRequest,
   permissionGuard?: AgentNaturalLanguageActionPermissionGuard,
@@ -167,6 +178,7 @@ function actionCopy(
 }
 
 export function createAgentNaturalLanguageActionProposalService(input: {
+  memoryLearningAllowed?: boolean;
   permissionGuard?: AgentNaturalLanguageActionPermissionGuard;
   runtime: AgentRuntimeService;
 }): AgentNaturalLanguageActionProposalService {
@@ -176,6 +188,14 @@ export function createAgentNaturalLanguageActionProposalService(input: {
       const message = proposalInput.message.trim();
       if (!conversationId || !message || proposalInput.requests.length === 0) {
         return { actions: [], runId: null };
+      }
+      if (
+        input.memoryLearningAllowed === false &&
+        proposalInput.requests.some(
+          (request) => request.capabilityId === "memory.save",
+        )
+      ) {
+        throw new AgentMemoryLearningDisabledError();
       }
 
       const capabilities = await Promise.all(

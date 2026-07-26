@@ -63,6 +63,10 @@ export interface OrbitAgentMemoryContext {
   content: string;
 }
 
+export interface OrbitAgentOutcomeContext {
+  summary: string;
+}
+
 export interface OrbitAgentConversationLookupInput
   extends OrbitAgentConversationInput {
   conversationId?: string | null;
@@ -76,6 +80,11 @@ export interface OrbitAgentSendMessageInput extends OrbitAgentConversationInput 
    * this field from the client.
    */
   memory?: readonly OrbitAgentMemoryContext[];
+  /**
+   * Server-trusted summaries of feedback the current actor explicitly
+   * recorded. API body parsers must never accept this field from the client.
+   */
+  outcomes?: readonly OrbitAgentOutcomeContext[];
   message?: string | null;
   locale?: "zh" | "en" | string | null;
 }

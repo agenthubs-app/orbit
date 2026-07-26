@@ -20,6 +20,7 @@ import { Avatar, Cover, Icon, IconButton, gradientFromString } from "../orbit-re
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
+import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
 import { OrbitAgentTodayWorkspace } from "./orbit-agent-today-workspace";
 
 interface OrbitRealAgentProps {
@@ -1888,6 +1889,18 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                   <AgentEvidenceSources
                     references={message.evidenceRefs ?? []}
                   />
+                  {message.runId ? (
+                    <AgentOutcomeFeedback
+                      evidenceIds={(message.evidenceRefs ?? []).flatMap(
+                        (reference) => reference.evidenceIds,
+                      )}
+                      language={language === "zh" ? "zh" : "en"}
+                      runId={message.runId}
+                      sourceModules={(message.evidenceRefs ?? []).flatMap(
+                        (reference) => reference.sourceModules,
+                      )}
+                    />
+                  ) : null}
                   {message.runId ? (
                     <AgentActionStatusCard
                       actionIds={message.actionIds ?? []}
