@@ -4,20 +4,46 @@
  * 用户通过 `?lang=zh|en` 切换语言时，这里把语言写入请求头和 cookie。
  * 页面 layout 再从 `x-orbit-lang` 或 `orbit-lang` cookie 恢复语言上下文。
  */
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+import { auth } from "./auth";
+import {
+  isOrbitPrivateAppPath,
+  normalizeOrbitAuthReturnPath,
+} from "./features/auth/app-auth-routing";
 
 function normalizeOrbitLanguage(value: string | null) {
   // 只允许产品声明过的语言值进入 header/cookie，避免任意 query 污染请求上下文。
   return value === "en" ? "en" : value === "zh" ? "zh" : null;
 }
 
-export function proxy(request: NextRequest) {
+export const proxy = auth((request) => {
   // Next proxy 不能直接改原 request，因此复制 headers 后交给 NextResponse.next。
   const language = normalizeOrbitLanguage(request.nextUrl.searchParams.get("lang"));
   const requestHeaders = new Headers(request.headers);
 
   if (language) {
     requestHeaders.set("x-orbit-lang", language);
+  }
+
+  if (isOrbitPrivateAppPath(request.nextUrl.pathname) && !request.auth?.user?.id) {
+    const loginUrl = new URL("/app/account/login", request.url);
+    loginUrl.searchParams.set(
+      "next",
+      normalizeOrbitAuthReturnPath(
+        `${request.nextUrl.pathname}${request.nextUrl.search}`,
+      ),
+    );
+
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    if (language) {
+      redirectResponse.cookies.set("orbit-lang", language, {
+        maxAge: 31536000,
+        path: "/",
+        sameSite: "lax",
+      });
+    }
+    return redirectResponse;
   }
 
   const response = NextResponse.next({
@@ -36,7 +62,7 @@ export function proxy(request: NextRequest) {
   }
 
   return response;
-}
+});
 
 export const config = {
   // 只作用于产品 app 路由；公开落地页和 API 不通过这个语言 proxy。

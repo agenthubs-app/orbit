@@ -10,7 +10,9 @@
  */
 import type { ReactNode } from "react";
 import { cookies, headers } from "next/headers";
+import { SessionProvider } from "next-auth/react";
 
+import { auth } from "../../../auth";
 import { OrbitLanguageProvider } from "./orbit-language-context";
 import { normalizeOrbitLanguage } from "./orbit-language-core";
 import { OrbitResponsiveA11y } from "./orbit-responsive-a11y";
@@ -19,17 +21,20 @@ import { OrbitThemeStyles, OrbitThemeToggle } from "./orbit-theme";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const requestHeaders = await headers();
   const cookieStore = await cookies();
+  const session = await auth();
   const language = normalizeOrbitLanguage(
     requestHeaders.get("x-orbit-lang") ?? cookieStore.get("orbit-lang")?.value,
   );
 
   return (
-    <OrbitLanguageProvider initialLanguage={language}>
-      <link href="/iorbit-starfield/fonts/desktop.css" rel="stylesheet" />
-      <OrbitResponsiveA11y />
-      <OrbitThemeStyles />
-      {children}
-      <OrbitThemeToggle />
-    </OrbitLanguageProvider>
+    <SessionProvider refetchOnWindowFocus={false} session={session}>
+      <OrbitLanguageProvider initialLanguage={language}>
+        <link href="/iorbit-starfield/fonts/desktop.css" rel="stylesheet" />
+        <OrbitResponsiveA11y />
+        <OrbitThemeStyles />
+        {children}
+        <OrbitThemeToggle />
+      </OrbitLanguageProvider>
+    </SessionProvider>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 import { useOrbitLanguage } from "./orbit-language-context";
 import { Avatar, Icon, Logo, gradientFromString } from "./orbit-reference-primitives";
@@ -24,48 +24,26 @@ type OrbitNavSessionUser = { email: string; id: string; name: string };
 
 // 右上角账号位:未知会话时渲染与旧"我的"链接完全相同的 DOM(避免闪烁);
 // 已登录显示头像+菜单(个人资料/退出登录),未登录显示 登录/注册。
-// 会话通过 /api/auth/session 客户端获取,不需要 SessionProvider。
+// 会话由 /app layout 在服务端读取并注入 SessionProvider，导航和页面保护共用
+// 同一份 NextAuth session，避免客户端二次请求造成的闪烁和状态分裂。
 // `meHref` used to feed the session-unknown branch's "Me" link; that branch is
 // now a neutral placeholder (UI-audit P0-4) and the signed-in menu links to
 // /app/profile directly, so the control no longer needs a caller-supplied href.
 function OrbitNavAccountControl() {
   const { preserveHref, t } = useOrbitLanguage();
-  const [sessionUser, setSessionUser] = useState<
-    OrbitNavSessionUser | null | undefined
-  >(undefined);
+  const { data: session, status } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    // UI-audit fix P0-4. A failing session endpoint (a 500 from a missing
-    // AUTH_SECRET, an offline network) used to resolve to `null`, and `null`
-    // renders "Sign in / Sign up" — the nav asserted "you are signed out" when
-    // it had simply failed to find out. On a page whose body was rendering a
-    // profile and a "Sign out" button, that read as a broken app. An
-    // indeterminate result must stay indeterminate.
-    fetch("/api/auth/session")
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("session unavailable"))))
-      .then((session: { user?: { email?: string; id?: string; name?: string } } | null) => {
-        if (cancelled) return;
-        setSessionUser(
-          session?.user?.id
-            ? {
-                email: session.user.email ?? "",
-                id: session.user.id,
-                name: session.user.name ?? session.user.email ?? "Orbit",
-              }
-            : null,
-        );
-      })
-      .catch(() => {
-        // Stay `undefined` (unknown) rather than claiming signed-out.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const sessionUser: OrbitNavSessionUser | null | undefined =
+    status === "loading"
+      ? undefined
+      : session?.user?.id
+        ? {
+            email: session.user.email ?? "",
+            id: session.user.id,
+            name: session.user.name ?? session.user.email ?? "Orbit",
+          }
+        : null;
 
   useEffect(() => {
     if (!menuOpen) return undefined;

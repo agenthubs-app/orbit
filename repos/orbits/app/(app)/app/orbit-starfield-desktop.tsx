@@ -29,7 +29,13 @@ const desktopCss = `html:has(.sk-home-desktop),body:has(.sk-home-desktop){margin
 #skRoot .sk-cardx:hover .sk-more{max-height:56px;opacity:1;padding-top:9px !important;border-top-color:rgba(150,145,200,0.12) !important;}
 @media (max-width:767px){.sk-home-desktop{display:none;}}`;
 
-export function OrbitStarfieldDesktop({ active }: { active: boolean }) {
+export function OrbitStarfieldDesktop({
+  active,
+  authenticated,
+}: {
+  active: boolean;
+  authenticated: boolean;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,9 +111,20 @@ export function OrbitStarfieldDesktop({ active }: { active: boolean }) {
               </button>
             </span>
             {' '}
-            <a href="/app/profile" style={{"padding":"7px 16px","borderRadius":"999px","fontSize":"13px","textDecoration":"none","color":"rgba(236,234,248,0.92)","background":"rgba(255,255,255,0.05)","border":"1px solid rgba(150,145,200,0.18)"}} style-hover="background:rgba(255,255,255,0.11);" data-i18n="account">
-              {"我的"}
-            </a>
+            {authenticated ? (
+              <a href="/app/profile" style={{"padding":"7px 16px","borderRadius":"999px","fontSize":"13px","textDecoration":"none","color":"rgba(236,234,248,0.92)","background":"rgba(255,255,255,0.05)","border":"1px solid rgba(150,145,200,0.18)"}} style-hover="background:rgba(255,255,255,0.11);" data-i18n="account">
+                {"我的"}
+              </a>
+            ) : (
+              <>
+                <a href="/app/account/login?next=%2Fapp%2Fhome" style={{"padding":"7px 12px","borderRadius":"999px","fontSize":"13px","textDecoration":"none","color":"rgba(236,234,248,0.92)"}} style-hover="color:#fff;" data-i18n="signIn">
+                  {"登录"}
+                </a>
+                <a href="/app/account/signup?next=%2Fapp%2Fhome" style={{"padding":"7px 16px","borderRadius":"999px","fontSize":"13px","textDecoration":"none","color":"rgba(236,234,248,0.92)","background":"rgba(139,123,240,0.16)","border":"1px solid rgba(139,123,240,0.45)"}} style-hover="background:rgba(139,123,240,0.26);" data-i18n="signUp">
+                  {"注册"}
+                </a>
+              </>
+            )}
             {' '}
           </div>
           {' '}
@@ -440,10 +457,10 @@ export function OrbitStarfieldDesktop({ active }: { active: boolean }) {
                 {' '}
               </p>
               {' '}
-              <a href="/app/register" style={{"pointerEvents":"auto","display":"inline-flex","alignItems":"center","gap":"8px","padding":"14px 28px","borderRadius":"999px","cursor":"pointer","fontSize":"14.5px","textDecoration":"none","color":"#f1eef8","border":"1px solid rgba(139,123,240,0.5)","background":"rgba(139,123,240,0.10)"}} style-hover="border-color:rgba(139,123,240,0.85);background:rgba(139,123,240,0.18);">
+              <a href={authenticated ? "/app/home" : "/app/account/signup?next=%2Fapp%2Fhome"} style={{"pointerEvents":"auto","display":"inline-flex","alignItems":"center","gap":"8px","padding":"14px 28px","borderRadius":"999px","cursor":"pointer","fontSize":"14.5px","textDecoration":"none","color":"#f1eef8","border":"1px solid rgba(139,123,240,0.5)","background":"rgba(139,123,240,0.10)"}} style-hover="border-color:rgba(139,123,240,0.85);background:rgba(139,123,240,0.18);">
                 {' '}
-                <span data-i18n="leftCTA">
-                  {"创建我的人脉星图 · 注册"}
+                <span data-i18n={authenticated ? "enterStarfield" : "leftCTA"}>
+                  {authenticated ? "进入我的人脉星图" : "创建我的人脉星图 · 注册"}
                 </span>
                 <span style={{"color":"#8b7bf0"}}>
                   {"→"}

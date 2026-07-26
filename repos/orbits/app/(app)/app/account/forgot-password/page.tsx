@@ -4,6 +4,9 @@
  * 这个文件选择 forgot 模式 view model，并读取 account session 边界。
  */
 import { StateView } from "../../../../../shared/ui/state-view";
+import { redirect } from "next/navigation";
+import { auth } from "../../../../../auth";
+import { normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-auth-routing";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
@@ -62,9 +65,15 @@ export default async function AppAccountForgotPasswordPage({
 }: {
   searchParams?: Promise<AppAccountAuthSearchParams>;
 } = {}) {
+  const resolvedSearchParams = await searchParams;
+  const session = await auth();
+  if (session?.user?.id) {
+    redirect(normalizeOrbitAuthReturnPath(resolvedSearchParams?.next));
+  }
+
   const routeModel = await loadAppAccountAuthRouteViewModel({
     authMode: "forgot",
-    searchParams: await searchParams,
+    searchParams: resolvedSearchParams,
   });
   const language =
     routeModel.state === "success" ? await getAccountForgotPageLanguage() : "zh";

@@ -18,7 +18,11 @@ const MOBILE_QUERY = "(max-width: 767px)";
 
 type Variant = "ssr" | "desktop" | "mobile";
 
-export function OrbitStarfieldHome() {
+export function OrbitStarfieldHome({
+  authenticated = false,
+}: {
+  authenticated?: boolean;
+}) {
   const [variant, setVariant] = useState<Variant>("ssr");
 
   useEffect(() => {
@@ -32,10 +36,16 @@ export function OrbitStarfieldHome() {
   return (
     <main data-orbit-real-page="starfield-home">
       {variant !== "mobile" && (
-        <OrbitStarfieldDesktop active={variant === "desktop"} />
+        <OrbitStarfieldDesktop
+          active={variant === "desktop"}
+          authenticated={authenticated}
+        />
       )}
       {variant !== "desktop" && (
-        <OrbitStarfieldMobile active={variant === "mobile"} />
+        <OrbitStarfieldMobile
+          active={variant === "mobile"}
+          authenticated={authenticated}
+        />
       )}
     </main>
   );
