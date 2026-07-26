@@ -1063,6 +1063,17 @@ export function toolRequestsForPlannerResult(
       : [];
 }
 
+function toolRequestKey(request: GeminiOrbitAgentToolRequest): string {
+  const argumentsJson = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(request.arguments).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
+  );
+  return `${request.toolName}:${argumentsJson}`;
+}
+
 /**
  * 超纲问题的确定性路由覆盖。
  *
@@ -1281,7 +1292,7 @@ export async function runLiveOrbitAgentRuntime(
   timings.push(timingSpan("tool_mapping", toolMappingStartedAt));
   const shouldExecuteDomainTools = runtime.maxLoopSteps >= 2;
   const artifactStartedAt = nowMs();
-  const artifacts = shouldExecuteDomainTools
+  const artifacts: OrbitAgentArtifactPayload[] = shouldExecuteDomainTools
     ? (
         await Promise.all(
           toolRequests.map((request) =>
@@ -1306,19 +1317,73 @@ export async function runLiveOrbitAgentRuntime(
     ),
   );
 
+  const accumulatedToolRequests = [...toolRequests];
+  let assistantMessageForSynthesis = plan.assistantMessage;
+  if (
+    runtime.maxLoopSteps >= 3 &&
+    plannerResult &&
+    artifacts.length > 0
+  ) {
+    const replanStartedAt = nowMs();
+    const replanResult = await runtime.planner.plan({
+      history: historyTurns,
+      locale: input.locale,
+      memory: input.memory,
+      message,
+      toolResults: artifacts.map(artifactSummaryForSynthesis),
+    });
+    timings.push(timingSpan("replan", replanStartedAt));
+
+    if (replanResult.success) {
+      assistantMessageForSynthesis = replanResult.data.assistantMessage;
+      const previousRequestKeys = new Set(
+        accumulatedToolRequests.map(toolRequestKey),
+      );
+      const nextToolRequests = toolRequestsForPlannerResult(replanResult).filter(
+        (request) => !previousRequestKeys.has(toolRequestKey(request)),
+      );
+      accumulatedToolRequests.push(...nextToolRequests);
+
+      const continuationToolsStartedAt = nowMs();
+      const continuationArtifacts = (
+        await Promise.all(
+          nextToolRequests.map((request) =>
+            artifactForRequest({
+              artifactTaskService: runtime.artifactTaskService,
+              history: historyTurns,
+              locale,
+              message,
+              request,
+            }),
+          ),
+        )
+      ).filter((artifact): artifact is OrbitAgentArtifactPayload =>
+        Boolean(artifact),
+      );
+      artifacts.push(...continuationArtifacts);
+      timings.push(
+        timingSpan(
+          "artifact_generation_replan",
+          continuationToolsStartedAt,
+          nextToolRequests.length === 0,
+        ),
+      );
+    }
+  }
+
   const shouldSynthesizeAfterTools =
     runtime.maxLoopSteps >= 3 && artifacts.length > 0;
   const synthesisStartedAt = nowMs();
   const synthesisResult = shouldSynthesizeAfterTools
     ? await runtime.planner.synthesize({
         artifacts: artifacts.map(artifactSummaryForSynthesis),
-        assistantMessage: plan.assistantMessage,
+        assistantMessage: assistantMessageForSynthesis,
         history: historyTurns,
         intent: plan.intent,
         locale: input.locale,
         memory: input.memory,
         message,
-        toolRequests,
+        toolRequests: accumulatedToolRequests,
       })
     : null;
   timings.push(
@@ -1328,7 +1393,7 @@ export async function runLiveOrbitAgentRuntime(
   const finalAssistantMessage =
     synthesisResult?.success === true
       ? synthesisResult.data.assistantMessage
-      : plan.assistantMessage;
+      : assistantMessageForSynthesis;
   const finalResponseStartedAt = nowMs();
   timings.push(timingSpan("final_response", finalResponseStartedAt));
   const conversation = conversationForRuntimeSuccess({
@@ -1343,7 +1408,7 @@ export async function runLiveOrbitAgentRuntime(
     routingDecision,
     shouldSynthesizeAfterTools,
     timings,
-    toolRequests,
+    toolRequests: accumulatedToolRequests,
   });
 
   return {
@@ -1360,6 +1425,6 @@ export async function runLiveOrbitAgentRuntime(
     state: "completed",
     synthesisResult,
     timings,
-    toolRequests,
+    toolRequests: accumulatedToolRequests,
   };
 }

@@ -163,8 +163,13 @@ function runStepLabel(name: string, language: AgentActionStatusLanguage) {
   const labels: Record<string, { en: string; zh: string }> = {
     local_boundary: { en: "Safety check", zh: "安全边界检查" },
     planner: { en: "Plan", zh: "理解与规划" },
+    replan: { en: "Replan from evidence", zh: "根据证据继续规划" },
     tool_mapping: { en: "Choose tools", zh: "选择可信工具" },
     artifact_generation: { en: "Read context", zh: "读取关系上下文" },
+    artifact_generation_replan: {
+      en: "Read additional context",
+      zh: "补充读取上下文",
+    },
     synthesis: { en: "Synthesize", zh: "综合证据" },
     final_response: { en: "Prepare response", zh: "生成答复" },
     validate_natural_language_action_proposals: {

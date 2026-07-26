@@ -215,5 +215,7 @@ test("Agent chat keeps run and action ids in persisted assistant messages", asyn
   assert.match(source, /actionIds\?: readonly string\[\]/);
   assert.match(source, /runId\?: string/);
   assert.match(source, /payload\.data\.actionIds/);
+  assert.match(source, /evidenceRefsFromArtifacts/);
+  assert.match(source, /data-agent-evidence-sources/);
   assert.match(source, /<AgentActionStatusCard/);
 });

@@ -154,9 +154,19 @@ Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限�
 
 - `1`：只做 model provider planner。
 - `2`：planner 后允许 Orbit 内部 tool/artifact mapping。
-- `3`：tool/artifact 返回后，再调用 model provider synthesis 生成最终自然语言回复。
+- `3`：tool/artifact 返回后，把带来源的结果摘要回灌给 planner；planner
+  可以结束、收窄同一检索或选择一个不同的白名单工具。Runtime 只执行未重复
+  的新请求，然后基于全部 artifact 调用 synthesis。
 
-默认值是 `3`，但交互路径可以选择更低的默认值以减少顺序 provider round trip。任何实现都不允许开放式无限循环。
+共享 runtime 的交互默认值是 `2`，完整 trace 与显式配置为 `3` 时启用再规划和
+synthesis；当前产品环境可通过 `ORBIT_AGENT_MAX_LOOP_STEPS=3` 打开完整链路。
+任何实现都不允许开放式无限循环。
+
+再规划仍受同一 schema、intent/tool 对应关系、工具白名单和确认边界约束。
+完全相同的工具与参数会被指纹去重，避免模型循环。每轮 `replan` 和补充
+artifact 读取都会进入 conversation timings，随后持久化为 Run step。产品聊天
+同时保留 artifact 的 source modules、evidence ids、生成时间和记录数，用户可从
+回复下方的「查看依据」复核，而不是只能相信模型自然语言。
 
 ## 人脉推荐工具
 

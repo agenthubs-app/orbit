@@ -32,6 +32,7 @@ type AgentMessage =
   | { role: "user"; text: string }
   | {
       actionIds?: readonly string[];
+      evidenceRefs?: readonly AgentEvidenceRef[];
       items: OrbitAgentScenarioView["items"];
       kind: OrbitAgentScenarioView["kind"];
       note?: string;
@@ -44,6 +45,14 @@ type AgentMessage =
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
 type AgentHistoryLanguage = "en" | "zh" | "ja";
+
+interface AgentEvidenceRef {
+  evidenceIds: readonly string[];
+  generatedAt: string;
+  itemCount: number;
+  label: string;
+  sourceModules: readonly string[];
+}
 
 const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
 const AGENT_CHAT_SESSIONS_API_PATH = "/api/ai/conversations/sessions";
@@ -109,8 +118,36 @@ interface AgentArtifactRecord {
     };
     kind?: string;
     presentation?: { title?: string };
+    provenance?: {
+      evidenceIds?: readonly string[];
+      generatedAt?: string;
+      sourceModules?: readonly string[];
+    };
   };
   task?: { kind?: string };
+}
+
+function evidenceRefsFromArtifacts(artifacts: unknown): AgentEvidenceRef[] {
+  if (!Array.isArray(artifacts)) return [];
+
+  return (artifacts as AgentArtifactRecord[]).flatMap((artifact) => {
+    const provenance = artifact.result?.provenance;
+    const label = artifact.result?.presentation?.title?.trim();
+    if (!provenance || !label) return [];
+    const items =
+      artifact.result?.generatedView?.sections?.flatMap(
+        (section) => section.items ?? [],
+      ) ?? [];
+    return [
+      {
+        evidenceIds: [...new Set(provenance.evidenceIds ?? [])],
+        generatedAt: provenance.generatedAt ?? "",
+        itemCount: items.length,
+        label,
+        sourceModules: [...new Set(provenance.sourceModules ?? [])],
+      },
+    ];
+  });
 }
 
 function artifactOfKind(
@@ -286,7 +323,18 @@ function isStoredAgentMessage(value: unknown): value is AgentMessage {
     (typeof value.runId === "undefined" || typeof value.runId === "string") &&
     (typeof value.actionIds === "undefined" ||
       (Array.isArray(value.actionIds) &&
-        value.actionIds.every((actionId) => typeof actionId === "string")))
+        value.actionIds.every((actionId) => typeof actionId === "string"))) &&
+    (typeof value.evidenceRefs === "undefined" ||
+      (Array.isArray(value.evidenceRefs) &&
+        value.evidenceRefs.every(
+          (reference) =>
+            isRecord(reference) &&
+            typeof reference.label === "string" &&
+            typeof reference.itemCount === "number" &&
+            typeof reference.generatedAt === "string" &&
+            Array.isArray(reference.evidenceIds) &&
+            Array.isArray(reference.sourceModules),
+        )))
   );
 }
 
@@ -696,6 +744,63 @@ function AgentMessageCopyButton({ text }: { text: string }) {
     >
       <Icon name={copied ? "check" : "copy"} size={14} />
     </button>
+  );
+}
+
+function AgentEvidenceSources({
+  references,
+}: {
+  references: readonly AgentEvidenceRef[];
+}) {
+  const { t } = useOrbitLanguage();
+  if (references.length === 0) return null;
+  const totalItems = references.reduce(
+    (total, reference) => total + reference.itemCount,
+    0,
+  );
+
+  return (
+    <details
+      data-agent-evidence-sources
+      style={{
+        borderTop: "1px solid var(--border)",
+        color: "var(--text-3)",
+        fontSize: 11,
+        marginTop: 10,
+        paddingTop: 8,
+      }}
+    >
+      <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+        {t({
+          en: `Sources · ${totalItems} records`,
+          zh: `查看依据 · ${totalItems} 条真实记录`,
+        })}
+      </summary>
+      <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+        {references.map((reference, index) => (
+          <div
+            key={`${reference.label}:${reference.generatedAt}:${index}`}
+            style={{ display: "grid", gap: 2 }}
+          >
+            <span style={{ color: "var(--text-2)" }}>
+              {reference.label} · {reference.itemCount}
+            </span>
+            <span>
+              {t({ en: "Source", zh: "来源" })}:{" "}
+              {reference.sourceModules.join(" · ") || "Orbit"}
+              {reference.generatedAt
+                ? ` · ${new Date(reference.generatedAt).toLocaleString()}`
+                : ""}
+            </span>
+            {reference.evidenceIds.length > 0 ? (
+              <span className="mono" style={{ overflowWrap: "anywhere" }}>
+                {reference.evidenceIds.slice(0, 3).join(" · ")}
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -1465,11 +1570,13 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               : [],
           )
         : [];
+      const evidenceRefs = evidenceRefsFromArtifacts(payload.data.artifacts);
 
       setMessages((current) => [
         ...current,
         {
           actionIds,
+          evidenceRefs,
           items,
           kind,
           panelTitle,
@@ -1778,6 +1885,9 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               <div className="orbit-agent-assistant-content" style={{ alignItems: "flex-end", display: "flex", gap: 8 }}>
                 <div className="orbit-agent-assistant-message" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", flex: 1, fontSize: 15, lineHeight: 1.6, minWidth: 0, padding: "12px 15px" }}>
                   <AgentMarkdown text={message.text} />
+                  <AgentEvidenceSources
+                    references={message.evidenceRefs ?? []}
+                  />
                   {message.runId ? (
                     <AgentActionStatusCard
                       actionIds={message.actionIds ?? []}

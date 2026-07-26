@@ -2225,6 +2225,28 @@ test("live Gemini Orbit Agent uses loop limit 3 to synthesize after tools", asyn
         });
       }
 
+      if (requests.length === 2) {
+        return jsonResponse({
+          steps: [
+            {
+              content: [
+                {
+                  text: JSON.stringify({
+                    actionRequests: [],
+                    assistantMessage:
+                      "已有活动证据足够，可以直接给出推荐。",
+                    intent: "general_chat",
+                    toolRequests: [],
+                  }),
+                  type: "text",
+                },
+              ],
+              type: "model_output",
+            },
+          ],
+        });
+      }
+
       return jsonResponse({
         steps: [
           {
@@ -2248,13 +2270,103 @@ test("live Gemini Orbit Agent uses loop limit 3 to synthesize after tools", asyn
   });
 
   assert.equal(result.success, true);
-  assert.equal(requests.length, 2);
+  assert.equal(requests.length, 3);
   assert.equal(result.data?.artifacts.length, 1);
   assert.equal(
     result.data?.assistantMessage,
     "我找到了一个适合 review 的活动推荐，右侧面板已经准备好，任何报名或日历动作都需要你确认。",
   );
   assert.equal(result.data?.provenance.safety.domainToolCallsExecuted, true);
+  const continuationRequest = JSON.parse(
+    String((requests[1] as RequestInit).body),
+  ) as {
+    input: string;
+  };
+  assert.match(continuationRequest.input, /toolResults/);
+  assert.match(continuationRequest.input, /Recommended events/);
+});
+
+test("live Orbit Agent replans from tool evidence and executes one new non-repeated lookup", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      maxLoopSteps: number;
+      model: string;
+    }) => {
+      sendMessage: (input: { message: string }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly unknown[];
+          proposedToolIntents: readonly { toolFamily: string }[];
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+      const outputs = [
+        {
+          actionRequests: [],
+          assistantMessage: "先找到相关活动。",
+          intent: "event_recommendations",
+          toolRequests: [
+            {
+              arguments: { searchTerms: "ai investor event" },
+              requiresUserConfirmation: true,
+              toolName: "events.recommend",
+            },
+          ],
+        },
+        {
+          actionRequests: [],
+          assistantMessage: "活动证据表明还需要找合适的引荐人。",
+          intent: "contact_recommendations",
+          toolRequests: [
+            {
+              arguments: { searchTerms: "ai investor introduction" },
+              requiresUserConfirmation: true,
+              toolName: "contacts.recommend",
+            },
+          ],
+        },
+      ];
+      const output = outputs[requests.length - 1];
+      return jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: output
+                  ? JSON.stringify(output)
+                  : "已根据活动与人脉两组证据完成综合，任何后续动作仍需确认。",
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      });
+    }) as typeof fetch,
+    maxLoopSteps: 3,
+    model: "gemini-3.5-flash",
+  });
+
+  const result = await service.sendMessage({
+    message: "帮我找一个 AI 活动，再看看谁能引荐我认识投资人",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 3);
+  assert.equal(result.data?.artifacts.length, 2);
+  assert.deepEqual(
+    result.data?.proposedToolIntents.map((intent) => intent.toolFamily),
+    ["events", "contacts"],
+  );
 });
 
 test("live Gemini Orbit Agent loop limit 1 plans but skips domain tools", async () => {
