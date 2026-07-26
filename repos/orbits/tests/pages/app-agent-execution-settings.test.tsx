@@ -1,19 +1,21 @@
 /**
- * All actions 权限与通知设置区测试。
+ * Agent 执行、通知与外部连接设置区测试。
  *
- * 设置读取并持久化到 Agent preferences；外部连接使用独立 OAuth 授权。
+ * 设置读取并持久化到 Agent preferences；外部连接使用独立 OAuth 授权；
+ * 操作账本只负责审计，不再承载设置。
  */
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { OrbitAllActionsSettings } from "../../app/(app)/app/contacts/all-actions/orbit-all-actions-settings";
+import { OrbitAgentExecutionSettings } from "../../app/(app)/app/settings/orbit-agent-execution-settings";
 import { loadAppAllActionsRouteViewModel } from "../../app/(app)/app/contacts/all-actions/compose-app-all-actions-from-agent-ledger/all-actions-route-view-model";
 import { OrbitRealAllActions } from "../../app/(app)/app/contacts/all-actions/orbit-real-all-actions";
 
 test("the settings block renders the three designed controls", () => {
-  const html = renderToStaticMarkup(<OrbitAllActionsSettings />);
+  const html = renderToStaticMarkup(<OrbitAgentExecutionSettings />);
 
-  assert.ok(html.includes("权限与通知"));
+  assert.ok(html.includes("Agent 执行与通知"));
+  assert.ok(html.includes("安全执行与外部连接"));
   assert.ok(html.includes("自动准备会面笔记"));
   assert.ok(html.includes("活动后推送跟进提醒"));
   assert.ok(html.includes("安静时段"));
@@ -24,18 +26,26 @@ test("the settings block renders the three designed controls", () => {
 });
 
 test("the settings block exposes a persistent save action", () => {
-  const html = renderToStaticMarkup(<OrbitAllActionsSettings />);
+  const html = renderToStaticMarkup(<OrbitAgentExecutionSettings />);
 
   assert.ok(html.includes("保存设置"));
   assert.ok(!html.includes("尚未保存"));
 });
 
 test("all three toggles render as checkboxes defaulted on", () => {
-  const html = renderToStaticMarkup(<OrbitAllActionsSettings />);
+  const html = renderToStaticMarkup(<OrbitAgentExecutionSettings />);
   const checkboxes = html.match(/type="checkbox"/g) ?? [];
 
   assert.equal(checkboxes.length, 3);
   assert.equal((html.match(/checked=""/g) ?? []).length, 3);
+});
+
+test("the action ledger stays focused on audit instead of embedding settings", async () => {
+  const model = await loadAppAllActionsRouteViewModel({});
+  const html = renderToStaticMarkup(<OrbitRealAllActions viewModel={model} />);
+
+  assert.ok(!html.includes("data-orbit-agent-execution-settings"));
+  assert.ok(!html.includes("外部数据连接"));
 });
 
 test("an empty ledger renders the dedicated empty state", async () => {

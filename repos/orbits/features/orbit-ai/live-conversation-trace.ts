@@ -565,16 +565,24 @@ function dataSourcesForArtifacts(
 
 function toolCallsFor(input: {
   artifacts: readonly OrbitAgentArtifactPayload[];
+  requestSource: "guardrail" | "planner";
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }): readonly OrbitAiTraceToolCall[] {
-  // toolCalls 同时包含 planner 计划和 artifact provenance，区分“计划调用”和“mock 生成结果”。
+  // toolCalls 同时包含 planner/guardrail 路由和 artifact provenance，
+  // 区分“谁选择了工具”与“谁真正生成结果”。
   return [
     ...input.toolRequests.map((request) => ({
-      evidenceIds: ["evidence:orbit-agent:model-provider"],
+      evidenceIds: [
+        input.requestSource === "guardrail"
+          ? "evidence:orbit-agent:service-scope-guardrail"
+          : "evidence:orbit-agent:model-provider",
+      ],
       reason:
-        "Planner selected this Orbit tool and trace mode recorded the requested handoff.",
+        input.requestSource === "guardrail"
+          ? "The deterministic service-scope guardrail selected this Orbit tool without calling the planner."
+          : "Planner selected this Orbit tool and trace mode recorded the requested handoff.",
       renderHint: "tool_call_table",
-      source: "planner" as const,
+      source: input.requestSource,
       status: "planned" as const,
       toolFamily: toolFamilyForToolName(request.toolName),
       toolName: request.toolName,
@@ -617,6 +625,7 @@ function currentLoopSummary(): OrbitAiTraceLoopSummary {
 function graphForTrace(input: {
   artifacts: readonly OrbitAgentArtifactPayload[];
   databaseInteractions: readonly OrbitAiTraceDatabaseInteraction[];
+  requestSource?: "guardrail" | "planner";
   stages: readonly OrbitAiTraceStage[];
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }): OrbitAiTraceGraph {
@@ -679,7 +688,10 @@ function graphForTrace(input: {
       stageId: "tool_mapping",
       status: "completed",
       durationMs: 0,
-      summary: `Planner selected ${request.toolName}.`,
+      summary:
+        input.requestSource === "guardrail"
+          ? `Service-scope guardrail selected ${request.toolName}.`
+          : `Planner selected ${request.toolName}.`,
     });
     nodes.push({
       id: artifactProducerNodeId,
@@ -747,6 +759,7 @@ function fullChain(input: {
   message: string;
   plannerResult?: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
   raw?: OrbitAiTraceFullChain["raw"];
+  requestSource?: "guardrail" | "planner";
   stages: readonly OrbitAiTraceStage[];
   toolCalls: readonly OrbitAiTraceToolCall[];
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
@@ -760,6 +773,7 @@ function fullChain(input: {
     graph: graphForTrace({
       artifacts: input.conversation.artifacts,
       databaseInteractions: input.databaseInteractions,
+      requestSource: input.requestSource,
       stages: input.stages,
       toolRequests: input.toolRequests,
     }),
@@ -963,7 +977,9 @@ export function createLiveOrbitAgentTrace(
         conversation,
         locale,
         message,
+        plan,
         plannerResult,
+        plannerSkippedByGuardrail,
         shouldExecuteDomainTools,
         shouldSynthesizeAfterTools,
         synthesisResult,
@@ -975,7 +991,14 @@ export function createLiveOrbitAgentTrace(
       ];
       const databaseDurationMs = elapsedSince(databaseStartedAt);
       const dataSources = dataSourcesForArtifacts(artifacts);
-      const toolCalls = toolCallsFor({ artifacts, toolRequests });
+      const requestSource = plannerSkippedByGuardrail
+        ? ("guardrail" as const)
+        : ("planner" as const);
+      const toolCalls = toolCallsFor({
+        artifacts,
+        requestSource,
+        toolRequests,
+      });
       const stages = [
         stage(0, {
           durationMs: 0,
@@ -999,31 +1022,48 @@ export function createLiveOrbitAgentTrace(
           durationMs: durationForPhase(runtimeResult.timings, "local_boundary"),
           id: "local_guardrails",
           label: "Local guardrails",
-          outputSource: sourceView({ matched: null }),
+          outputSource: sourceView({
+            matched: plannerSkippedByGuardrail ? "service_scope" : null,
+          }),
           renderHint: "source_json",
           safety: safetyLedger({
             aiProviderRequested: false,
             externalNetworkRequested: false,
           }),
           status: "completed",
-          summary: "No local boundary stopped this prompt.",
+          summary: plannerSkippedByGuardrail
+            ? "Service-scope guardrail deterministically routed this prompt before planner execution."
+            : "No local boundary stopped this prompt.",
         }),
         stage(2, {
           durationMs: durationForPhase(runtimeResult.timings, "planner"),
           id: "planner",
           label: "Planner",
-          outputSource: sourceView({
-            assistantMessage: plannerResult.data.assistantMessage,
-            intent: plannerResult.data.intent,
-            model: plannerResult.data.model,
-            provider: plannerResult.data.provider,
-            source: plannerResult.data.source,
-            toolRequests,
-          }),
-          outputs: plannerResult.data,
+          outputSource: sourceView(
+            plannerResult
+              ? {
+                  assistantMessage: plannerResult.data.assistantMessage,
+                  intent: plannerResult.data.intent,
+                  model: plannerResult.data.model,
+                  provider: plannerResult.data.provider,
+                  source: plannerResult.data.source,
+                  toolRequests,
+                }
+              : {
+                  intent: plan.intent,
+                  source: "guardrail:service-scope-v1",
+                  toolRequests,
+                },
+          ),
+          outputs: plannerResult?.data,
           renderHint: "source_json",
-          status: "completed",
-          summary: `Planner selected ${plannerResult.data.intent}.`,
+          skipReason: plannerSkippedByGuardrail
+            ? "The deterministic service-scope guardrail selected the route before planner execution."
+            : undefined,
+          status: plannerSkippedByGuardrail ? "skipped" : "completed",
+          summary: plannerSkippedByGuardrail
+            ? "Planner was skipped; the service-scope guardrail selected contact recommendations."
+            : `Planner selected ${plannerResult?.data.intent}.`,
         }),
         stage(3, {
           durationMs: durationForPhase(runtimeResult.timings, "tool_mapping"),
@@ -1103,7 +1143,9 @@ export function createLiveOrbitAgentTrace(
           summary:
             synthesisResult?.success === true
               ? "Synthesized the final assistant response from the artifact summaries."
-              : "Used the planner assistant message as the final response.",
+              : plannerSkippedByGuardrail
+                ? "Used the deterministic service-scope guardrail response."
+                : "Used the planner assistant message as the final response.",
         }),
         stage(7, {
           durationMs: durationForPhase(runtimeResult.timings, "final_response"),
@@ -1128,23 +1170,40 @@ export function createLiveOrbitAgentTrace(
             message,
             plannerResult,
             raw: {
-              plannerOutputText: plannerResult.data.rawOutputText,
+              plannerOutputText: plannerResult?.data.rawOutputText,
               synthesisOutputText:
                 synthesisResult?.success === true
                   ? synthesisResult.data.rawOutputText
                   : synthesisResult?.error.rawOutputText,
             },
+            requestSource,
             stages,
             toolCalls,
             toolRequests,
             totalDurationMs: elapsedSince(traceStartedAt),
           }),
-          plannerOnly: plannerOnlyTrace({
-            locale,
-            message,
-            plannerResult,
-            toolRequests,
-          }),
+          plannerOnly: plannerResult
+            ? plannerOnlyTrace({
+                locale,
+                message,
+                plannerResult,
+                toolRequests,
+              })
+            : {
+                skippedReason:
+                  "The deterministic service-scope guardrail selected the route before planner execution.",
+                status: "skipped",
+                toolTrace: {
+                  domainToolCallsWouldExecute: toolRequests.length > 0,
+                  toolRequests: toolRequests.map((request) => ({
+                    arguments: request.arguments,
+                    requiresUserConfirmation:
+                      request.requiresUserConfirmation,
+                    toolFamily: toolFamilyForToolName(request.toolName),
+                    toolName: request.toolName,
+                  })),
+                },
+              },
         },
         success: true,
       };

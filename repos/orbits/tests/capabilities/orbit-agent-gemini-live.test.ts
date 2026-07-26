@@ -609,6 +609,72 @@ test("live Gemini Orbit Agent fails closed without an API key", async () => {
   );
 });
 
+test("service-scope guardrail routes before planner without a provider request", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      maxLoopSteps: number;
+    }) => {
+      sendMessage: (input: { locale: string; message: string }) => Promise<{
+        success: boolean;
+        data?: {
+          assistantMessage: string;
+          diagnostics?: {
+            timings: readonly { phase: string; skipped?: boolean }[];
+          };
+          proposedToolIntents: readonly {
+            intentId: string;
+            reason: string;
+            toolFamily: string;
+          }[];
+          provenance: {
+            generationMethod: string;
+            safety: {
+              aiProviderRequested: boolean;
+              externalNetworkRequested: boolean;
+            };
+            source: string;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "provider-must-not-be-used",
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+      throw new Error("service-scope guardrail must run before planner");
+    }) as typeof fetch,
+    maxLoopSteps: 1,
+  });
+  const result = await service.sendMessage({
+    locale: "zh",
+    message: "麻辣香锅怎么做？给我详细菜谱",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 0);
+  assert.equal(
+    result.data?.proposedToolIntents[0]?.toolFamily,
+    "contacts",
+  );
+  assert.match(result.data?.proposedToolIntents[0]?.intentId ?? "", /contacts\.recommend/);
+  assert.match(result.data?.proposedToolIntents[0]?.reason ?? "", /未调用 planner/);
+  assert.match(result.data?.assistantMessage ?? "", /不属于 Orbit|不会直接回答/);
+  assert.equal(
+    result.data?.diagnostics?.timings.find((timing) => timing.phase === "planner")
+      ?.skipped,
+    true,
+  );
+  assert.equal(result.data?.provenance.source, "guardrail:service-scope-v1");
+  assert.equal(result.data?.provenance.generationMethod, "rule-based-agent-reply");
+  assert.equal(result.data?.provenance.safety.aiProviderRequested, false);
+  assert.equal(result.data?.provenance.safety.externalNetworkRequested, false);
+});
+
 test("live Gemini Orbit Agent handles privacy control requests locally", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{

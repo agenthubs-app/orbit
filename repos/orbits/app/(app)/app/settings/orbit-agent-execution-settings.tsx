@@ -38,9 +38,10 @@ const DEFAULT_PREFERENCES: Preferences = {
 };
 
 /**
- * 权限与通知设置区。
+ * Agent 执行、通知与外部连接设置。
  *
  * 设置写入 Agent preferences；外部集成仍独立 OAuth 授权，不复用登录身份。
+ * 组件只出现在统一设置中心，操作账本只负责审计。
  */
 function ToggleRow({
   checked,
@@ -74,7 +75,7 @@ function ToggleRow({
   );
 }
 
-export function OrbitAllActionsSettings() {
+export function OrbitAgentExecutionSettings() {
   const [preferences, setPreferences] =
     useState<Preferences>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(true);
@@ -188,10 +189,25 @@ export function OrbitAllActionsSettings() {
   }
 
   return (
-    <section data-orbit-all-actions-settings style={{ marginTop: 36 }}>
+    <section
+      aria-labelledby="orbit-agent-execution-settings-title"
+      data-orbit-agent-execution-settings
+      style={{ marginTop: 28 }}
+    >
       <div className="eyebrow" style={{ marginBottom: 4 }}>
-        权限与通知
+        Agent 执行与通知
       </div>
+      <h2
+        id="orbit-agent-execution-settings-title"
+        style={{
+          color: "var(--ink)",
+          fontSize: 22,
+          lineHeight: 1.3,
+          margin: "8px 0 6px",
+        }}
+      >
+        安全执行与外部连接
+      </h2>
       <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 8px" }}>
         读取与草稿自动完成；系统内写入逐次确认；对外消息永不自动发送。
       </p>

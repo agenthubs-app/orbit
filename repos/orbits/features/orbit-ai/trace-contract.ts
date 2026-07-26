@@ -154,7 +154,7 @@ export interface OrbitAiTraceToolCall {
   evidenceIds: readonly string[];
   reason: string;
   renderHint: OrbitAiTraceRenderHint | string;
-  source: "artifact" | "planner";
+  source: "artifact" | "guardrail" | "planner";
   status: "completed" | "failed" | "planned" | "skipped";
   toolFamily: string;
   toolName: GeminiOrbitAgentToolName | string;

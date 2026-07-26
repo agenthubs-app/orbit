@@ -6,7 +6,6 @@
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
 import type { AppAllActionsRouteViewModel } from "./compose-app-all-actions-from-agent-ledger/all-actions-route-view-model";
 import { OrbitAllActionsControls } from "./orbit-all-actions-controls";
-import { OrbitAllActionsSettings } from "./orbit-all-actions-settings";
 import { OrbitCopyDraftButton } from "./orbit-copy-draft-button";
 import { OrbitEditDraftButton } from "./orbit-edit-draft-button";
 
@@ -301,7 +300,6 @@ export function OrbitRealAllActions({
           ))}
         </ul>
       )}
-      <OrbitAllActionsSettings />
       {/* Mobile audit P1: rows with two action buttons (重试失败项 + 撤销)
           squeezed the title down to ~1ch and it stacked one character per
           line. Desktop keeps the original single flex row (base rule below

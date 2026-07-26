@@ -26,6 +26,7 @@ import {
 import {
   createGeminiOrbitAgentPlanner,
   type GeminiOrbitAgentIntent,
+  type GeminiOrbitAgentPlannerOutput,
   type GeminiOrbitAgentPlannerResult,
   type GeminiOrbitAgentProviderConfig,
   type GeminiOrbitAgentSynthesisResult,
@@ -86,7 +87,9 @@ export type LiveOrbitAgentRuntimeResult =
       finalAssistantMessage: string;
       locale: OrbitAgentLocale;
       message: string;
-      plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
+      plan: GeminiOrbitAgentPlannerOutput;
+      plannerResult?: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
+      plannerSkippedByGuardrail: boolean;
       shouldExecuteDomainTools: boolean;
       shouldSynthesizeAfterTools: boolean;
       state: "completed";
@@ -838,6 +841,7 @@ export function toolFamilyForToolName(toolName: string): string {
 export function proposedIntentForTool(
   request: GeminiOrbitAgentToolRequest,
   locale: OrbitAgentLocale = "en",
+  source: "guardrail" | "planner" = "planner",
 ): OrbitAgentProposedToolIntent {
   const labels: Record<
     GeminiOrbitAgentToolName,
@@ -864,10 +868,16 @@ export function proposedIntentForTool(
   return {
     intentId: `intent:gemini:${request.toolName}`,
     label: localize(locale, labels[request.toolName]),
-    reason: localize(locale, {
-      en: "The configured model provider selected this allowed Orbit tool from the user prompt; execution remains inside Orbit and requires confirmation before side effects.",
-      zh: "模型 provider 从用户请求中选择了这个 Orbit 允许工具；执行仍停留在 Orbit 内部，任何副作用前都需要确认。",
-    }),
+    reason:
+      source === "guardrail"
+        ? localize(locale, {
+            en: "Orbit's deterministic service-scope guardrail selected this allowed tool without calling the planner; execution stays inside Orbit and any side effect still requires confirmation.",
+            zh: "Orbit 的确定性服务范围 guardrail 未调用 planner，直接选择了这个允许工具；执行仍停留在 Orbit 内部，任何副作用前都需要确认。",
+          })
+        : localize(locale, {
+            en: "The configured model provider selected this allowed Orbit tool from the user prompt; execution remains inside Orbit and requires confirmation before side effects.",
+            zh: "模型 provider 从用户请求中选择了这个 Orbit 允许工具；执行仍停留在 Orbit 内部，任何副作用前都需要确认。",
+          }),
     requiresUserConfirmation: true,
     toolFamily: toolFamilyForToolName(request.toolName) as
       OrbitAgentProposedToolIntent["toolFamily"],
@@ -1057,12 +1067,14 @@ export function toolRequestsForOutOfScopeMessage(
 }
 
 export function conversationForRuntimeSuccess(input: {
+  aiProviderRequested: boolean;
   artifacts: readonly OrbitAgentArtifactPayload[];
   finalAssistantMessage: string;
   locale: OrbitAgentLocale;
   maxLoopSteps: number;
   message: string;
-  plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
+  plan: GeminiOrbitAgentPlannerOutput;
+  plannerResult?: Extract<GeminiOrbitAgentPlannerResult, { success: true }>;
   routingDecision?: OrbitAgentRoutingDecision;
   shouldSynthesizeAfterTools: boolean;
   timings: readonly OrbitAgentConversationTimingSpan[];
@@ -1073,9 +1085,9 @@ export function conversationForRuntimeSuccess(input: {
     assistantMessage(input.finalAssistantMessage),
   ];
   const safety = safetyLedger({
-    aiProviderRequested: true,
+    aiProviderRequested: input.aiProviderRequested,
     domainToolCallsExecuted: input.artifacts.length > 0,
-    externalNetworkRequested: true,
+    externalNetworkRequested: input.aiProviderRequested,
   });
   const nextAction =
     input.maxLoopSteps === 1 && input.toolRequests.length > 0
@@ -1100,21 +1112,30 @@ export function conversationForRuntimeSuccess(input: {
     conversations: [conversationSummary(messages[messages.length - 1])],
     diagnostics: {
       maxLoopSteps: input.maxLoopSteps,
-      model: input.plannerResult.data.model,
-      provider: input.plannerResult.data.provider,
+      model: input.plannerResult?.data.model,
+      provider: input.plannerResult?.data.provider,
       timings: input.timings,
     },
     messages,
     nextAction,
-    proposedActionRequests: input.plannerResult.data.actionRequests,
+    proposedActionRequests: input.plan.actionRequests,
     proposedToolIntents: input.toolRequests.map((request) =>
-      proposedIntentForTool(request, input.locale),
+      proposedIntentForTool(
+        request,
+        input.locale,
+        input.plannerResult ? "planner" : "guardrail",
+      ),
     ),
     provenance: provenance({
-      generationMethod: "model-provider-live-agent-reply",
-      label: `Orbit Agent live reply via ${input.plannerResult.data.provider}:${input.plannerResult.data.model}`,
+      generationMethod: input.plannerResult
+        ? "model-provider-live-agent-reply"
+        : "rule-based-agent-reply",
+      label: input.plannerResult
+        ? `Orbit Agent live reply via ${input.plannerResult.data.provider}:${input.plannerResult.data.model}`
+        : "Orbit Agent deterministic service-scope guardrail",
       safety,
-      source: input.plannerResult.data.source,
+      source:
+        input.plannerResult?.data.source ?? "guardrail:service-scope-v1",
     }),
     routingDecision: input.routingDecision,
     state: "success",
@@ -1175,37 +1196,60 @@ export async function runLiveOrbitAgentRuntime(
   const historyTurns = (input.history ?? [])
     .filter((turn) => readText(turn.content))
     .slice(-8);
-  const plannerStartedAt = nowMs();
-  const plannerResult = await runtime.planner.plan({
-    history: historyTurns,
-    locale: input.locale,
-    memory: input.memory,
-    message,
-  });
-  timings.push(timingSpan("planner", plannerStartedAt));
+  const outOfScopeToolRequests = toolRequestsForOutOfScopeMessage(message);
+  let plannerResult:
+    | Extract<GeminiOrbitAgentPlannerResult, { success: true }>
+    | undefined;
+  let plan: GeminiOrbitAgentPlannerOutput;
 
-  if (plannerResult.success === false) {
-    return {
-      failureResult: failureForPlannerResult(plannerResult),
-      locale,
-      message,
-      plannerResult,
-      state: "planner_failure",
-      timings,
+  if (outOfScopeToolRequests) {
+    const plannerStartedAt = nowMs();
+    plan = {
+      actionRequests: [],
+      assistantMessage: localize(locale, {
+        en: "This topic is outside Orbit's relationship-work scope, so I won't answer it directly. I can instead look through your network for people who may be able to help.",
+        zh: "这个问题不属于 Orbit 的关系工作范围，我不会直接回答；可以改为从你的人脉中找可能帮得上忙的人。",
+      }),
+      intent: "contact_recommendations",
+      toolRequests: outOfScopeToolRequests,
     };
+    timings.push(timingSpan("planner", plannerStartedAt, true));
+  } else {
+    const plannerStartedAt = nowMs();
+    const providerPlannerResult = await runtime.planner.plan({
+      history: historyTurns,
+      locale: input.locale,
+      memory: input.memory,
+      message,
+    });
+    timings.push(timingSpan("planner", plannerStartedAt));
+
+    if (providerPlannerResult.success === false) {
+      return {
+        failureResult: failureForPlannerResult(providerPlannerResult),
+        locale,
+        message,
+        plannerResult: providerPlannerResult,
+        state: "planner_failure",
+        timings,
+      };
+    }
+
+    plannerResult = providerPlannerResult;
+    plan = providerPlannerResult.data;
   }
 
   // 意图路由完全交给模型：general_chat 会自然带空 toolRequests 流经工具管线，
-  // 得到模型自由回复；其它 intent 走既有工具/合成链路。
+  // 得到模型自由回复；其它 intent 走既有工具/合成链路。服务范围 guardrail
+  // 命中时 plan 由上方代码直接生成，planner 完全不被调用。
   const routingDecision = routingDecisionFromPlannerIntent(
-    plannerResult.data.intent,
+    plan.intent,
   );
 
   const toolMappingStartedAt = nowMs();
-  // 服务范围超纲时，路由由代码确定性接管，不采用 planner 的选择。
-  const outOfScopeToolRequests = toolRequestsForOutOfScopeMessage(message);
   const toolRequests =
-    outOfScopeToolRequests ?? toolRequestsForPlannerResult(plannerResult);
+    outOfScopeToolRequests ??
+    (plannerResult ? toolRequestsForPlannerResult(plannerResult) : []);
   timings.push(timingSpan("tool_mapping", toolMappingStartedAt));
   const shouldExecuteDomainTools = runtime.maxLoopSteps >= 2;
   const artifactStartedAt = nowMs();
@@ -1240,9 +1284,9 @@ export async function runLiveOrbitAgentRuntime(
   const synthesisResult = shouldSynthesizeAfterTools
     ? await runtime.planner.synthesize({
         artifacts: artifacts.map(artifactSummaryForSynthesis),
-        assistantMessage: plannerResult.data.assistantMessage,
+        assistantMessage: plan.assistantMessage,
         history: historyTurns,
-        intent: plannerResult.data.intent,
+        intent: plan.intent,
         locale: input.locale,
         memory: input.memory,
         message,
@@ -1256,15 +1300,17 @@ export async function runLiveOrbitAgentRuntime(
   const finalAssistantMessage =
     synthesisResult?.success === true
       ? synthesisResult.data.assistantMessage
-      : plannerResult.data.assistantMessage;
+      : plan.assistantMessage;
   const finalResponseStartedAt = nowMs();
   timings.push(timingSpan("final_response", finalResponseStartedAt));
   const conversation = conversationForRuntimeSuccess({
+    aiProviderRequested: Boolean(plannerResult || synthesisResult),
     artifacts,
     finalAssistantMessage,
     locale,
     maxLoopSteps: runtime.maxLoopSteps,
     message,
+    plan,
     plannerResult,
     routingDecision,
     shouldSynthesizeAfterTools,
@@ -1278,7 +1324,9 @@ export async function runLiveOrbitAgentRuntime(
     finalAssistantMessage,
     locale,
     message,
+    plan,
     plannerResult,
+    plannerSkippedByGuardrail: !plannerResult,
     shouldExecuteDomainTools,
     shouldSynthesizeAfterTools,
     state: "completed",

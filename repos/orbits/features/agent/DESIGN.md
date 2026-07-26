@@ -150,6 +150,25 @@ Live Actions 可以接规划器、LLM、任务调度器或外部动作 provider�
 
 当前产品入口仍是 legacy route `/app/agent`，也会被 `/app` 的 AI command center 调用。API 包括 action list、accept、dismiss、settings 和 sandbox external actions。页面显示动作理由、来源证据、确认需求和外部影响边界。
 
+设置入口统一在 `/app/settings`。外观、Memory、自动任务、执行通知和外部数据连接都由
+设置页承载；`/app/contacts/all-actions` 只负责展示可追溯、可撤销的操作账本，不再同时
+承担配置职责。这样用户只需要记住一个配置入口，账本也可以保持单一审计职责。
+
+## 运行可观测性与边界
+
+`/dev/orbit-ai/trace` 展示一次 Agent 请求从本地边界、规划器、工具映射、artifact 执行
+到 synthesis 的阶段状态、耗时、工具参数与失败位置。trace 只记录经过裁剪的诊断信息，
+不把 provider 密钥、OAuth token 或原始用户 Memory 暴露给页面。
+
+服务范围判断位于 planner 之前。明显超出 Orbit 人脉、活动和关系工作范围的请求由
+`service-scope-v1` 本地规则直接路由到安全回复和可复核的人脉建议，planner 阶段标记为
+`skipped`。这条前置护栏不会产生写操作；当 loop 配置允许后续 synthesis 时，synthesis
+只能润色既定边界，不能重新开放被拒绝的能力。
+
+所有工具调用和写操作 proposal 都必须经过 Capability Registry 与严格 schema 校验。
+模型不能动态发明工具、权限、风险等级或 executor；无效参数、未登记能力、缺少权限和
+混合读写请求一律 fail closed。
+
 ## 测试要求
 
 - action queue 测试确认每个动作有 evidence 和 priority。
@@ -157,6 +176,11 @@ Live Actions 可以接规划器、LLM、任务调度器或外部动作 provider�
 - autonomy 测试覆盖 low、medium、high 等策略状态。
 - sandbox 测试确认 external side effect 标记为 false。
 - 页面测试确认用户能看见确认保护和动作来源。
+- 浏览器验收必须使用真实登录态和实际 AI provider，覆盖只读推荐、服务范围护栏、
+  Memory CRUD 与开关、自动任务生命周期、写操作确认/回执/撤销，以及外部连接
+  fail-closed 状态。
+- provider OAuth 凭据不可用时，不允许用 mock 冒充真实外部成功；浏览器验收连接不可用
+  与不发出写请求的行为，provider 请求契约在受控 service-boundary 测试中验证。
 
 ## 团队协作规则
 

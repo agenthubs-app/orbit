@@ -140,7 +140,7 @@ const SNAPPED_FILES = [
   "app/(app)/app/today/orbit-real-today.tsx",
   "app/(app)/app/today/orbit-today-decision-panel.tsx",
   "app/(app)/app/today/orbit-today-decision-form.tsx",
-  "app/(app)/app/contacts/all-actions/orbit-all-actions-settings.tsx",
+  "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
   "app/(app)/app/contacts/all-actions/orbit-real-all-actions.tsx",
   "app/(app)/app/contacts/all-actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/agent/orbit-real-agent.tsx",
