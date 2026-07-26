@@ -10,6 +10,7 @@ import {
 } from "../../orbit-language-server";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
+import { OrbitRouteBoundaryFrame } from "../../orbit-route-boundary-frame";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { StateView } from "../../../../../shared/ui/state-view";
 import { contactDetailRouteToOrbitContactsViewModel } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
@@ -55,11 +56,7 @@ function ContactDetailRouteStateView({
   routeModel: AppContactDetailBoundaryModel;
 }) {
   return (
-    <main
-      className="orbit-page"
-      data-orbit-real-page="contact-detail"
-      style={{ background: "var(--bg)", minHeight: "100dvh", padding: 24 }}
-    >
+    <OrbitRouteBoundaryFrame navActive="cards" page="contact-detail">
       <StateView
         description={routeModel.description}
         emptyState={routeModel.description}
@@ -71,11 +68,13 @@ function ContactDetailRouteStateView({
           href: action.href,
           id: `contact-detail-recovery-${index}`,
           label: action.label,
-          recoveryCopy: routeModel.nextStep,
+          // Each action describes itself. Passing routeModel.nextStep here gave
+          // every button the same sentence (UI-audit P0-1).
+          recoveryCopy: action.recoveryCopy,
         }))}
         title={routeModel.title}
       />
-    </main>
+    </OrbitRouteBoundaryFrame>
   );
 }
 

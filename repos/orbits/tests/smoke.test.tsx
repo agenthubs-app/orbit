@@ -56,7 +56,16 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
     fs.readFileSync(path.join(projectRoot, "package.json"), "utf8"),
   );
   assert.equal(packageJson.scripts.dev, "next dev --webpack");
-  assert.equal(packageJson.scripts.build, "next build --webpack");
+  // `build` regenerates the prototype stylesheet asset before compiling
+  // (UI-audit fix P0-2 — see scripts/build-reference-css.mjs). The Next build
+  // itself must stay `next build --webpack`; assert the pair rather than
+  // pinning the whole string, so the codegen prefix is allowed but a change to
+  // the bundler flags is still caught.
+  assert.equal(packageJson.scripts["build:reference-css"], "node scripts/build-reference-css.mjs");
+  assert.equal(
+    packageJson.scripts.build,
+    "npm run build:reference-css && next build --webpack",
+  );
   assert.match(
     packageJson.scripts.lint,
     /^eslint next\.config\.js --ext \.js && tsc --noEmit --incremental false --allowJs false --jsx react-jsx --target ES2017 --lib dom,dom\.iterable,esnext --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck /,

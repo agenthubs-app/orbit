@@ -61,6 +61,12 @@ html[data-theme="light"] [data-orbit-real-page] {
   --sky: #1d4ed8;
   --sky-soft: rgba(29, 78, 216, 0.12);
   --signal: #C8323B;
+  /* Light-theme half of the destructive token added in the dark scale
+     (orbit-reference-styles.tsx). Type/spacing/radius/z scales are
+     theme-independent and are declared once there. */
+  --danger: #be123c;
+  --danger-soft: rgba(190, 18, 60, 0.12);
+  --on-danger: #ffffff;
   --sh-xs: none;
   --sh-sm: none;
   --sh-md: none;
@@ -73,6 +79,15 @@ html[data-theme="light"] [data-orbit-real-page] {
 
 html[data-theme="light"] body:has([data-orbit-real-page]) {
   background: #ffffff;
+}
+
+/* Light-theme half of UI-audit fix P0-5 — see the html:has(...) rule in
+   orbit-reference-styles.tsx. The root element is painted per theme so
+   overscroll, route transitions and native scrollbars never expose the other
+   theme's canvas. */
+html[data-theme="light"]:has([data-orbit-real-page]) {
+  background-color: #ffffff;
+  color-scheme: light;
 }
 
 html[data-theme="light"] [data-orbit-real-page].orbit-account-auth-page {
@@ -198,8 +213,10 @@ html[data-theme="light"] [data-orbit-real-page] .orbit-view-toggle button.is-act
   right: 18px;
   bottom: 18px;
   /* Below overlays/dropdowns/modals/toasts (see app/(app)/app/orbit-z.ts) by
-     design — the toggle must not float above sheets, menus, or dialogs. */
-  z-index: 100;
+     design — the toggle must not float above sheets, menus, or dialogs.
+     Literal fallback because the toggle renders outside
+     [data-orbit-real-page], where the --z-* scale is not in scope. */
+  z-index: var(--z-sticky, 100);
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -192,7 +192,7 @@ export function getOrbitAdminViewModel(): OrbitAdminViewModel {
     adminEvents: events,
     adminPhases: ["创建", "报名", "签到", "匹配", "复盘"],
     adminStats: [
-      { label: "总报名", value: String(totalRegistered), delta: "local remote", icon: "users", g: "g-indigo" },
+      { label: "总报名", value: String(totalRegistered), delta: "来源：本地报名表", icon: "users", g: "g-indigo" },
       { label: "已签到", value: String(totalCheckedIn), delta: `${events.length} events`, icon: "checkCircle", g: "g-emerald" },
       { label: "完成匹配", value: String(totalMatched), delta: "hybrid matches", icon: "sparkle", g: "g-violet" },
       { label: "进行中活动", value: String(activeCount), delta: "computed status", icon: "zap", g: "g-amber" },
@@ -236,10 +236,10 @@ export function getOrbitPlatformViewModel(): OrbitPlatformViewModel {
 
   return {
     platformStats: [
-      { label: "主办方账号", value: String(data.accounts?.length ?? 1), note: "local remote", icon: "building", tone: "indigo" },
-      { label: "累计活动", value: String(events.length), note: "events table", icon: "calendar", tone: "live" },
-      { label: "待审核", value: String(reviewQueue.length), note: "review queue", icon: "checkCircle", tone: "amber" },
-      { label: "平台用户", value: String(data.contacts.length), note: "contacts table", icon: "users", tone: "sky" },
+      { label: "主办方账号", value: String(data.accounts?.length ?? 1), note: "来源：本地账号表", icon: "building", tone: "indigo" },
+      { label: "累计活动", value: String(events.length), note: "来源：活动表", icon: "calendar", tone: "live" },
+      { label: "待审核", value: String(reviewQueue.length), note: "来源：审核队列", icon: "checkCircle", tone: "amber" },
+      { label: "平台用户", value: String(data.contacts.length), note: "来源：联系人表", icon: "users", tone: "sky" },
     ],
     reviewQueue,
     orgAccounts: [

@@ -18,19 +18,6 @@ type Copy = { en: string; zh: string };
 // Static demo data (UI-only; ported from docs/designs/cards/03-dashboard.html)
 // ---------------------------------------------------------------------------
 
-const crmNav: { href: string; icon: string; key: string; label: Copy; count?: number }[] = [
-  { key: "list", href: "/app/contacts", icon: "wallet", label: { en: "All contacts", zh: "全部人脉" }, count: 128 },
-  { key: "pipeline", href: "/app/contacts/pipeline", icon: "list", label: { en: "Pipeline", zh: "跟进管线" }, count: 24 },
-  { key: "graph", href: "/app/contacts/graph", icon: "users", label: { en: "Network graph", zh: "人脉图谱" } },
-  { key: "intros", href: "/app/contacts/intros", icon: "share", label: { en: "Introductions", zh: "引荐记录" }, count: 6 },
-  { key: "dashboard", href: "/app/contacts/dashboard", icon: "grid", label: { en: "Dashboard", zh: "人脉表盘" } },
-];
-
-const captureNav: { href: string; icon: string; key: string; label: Copy }[] = [
-  { key: "import", href: "/app/contacts/new", icon: "download", label: { en: "Import hub", zh: "导入中心" } },
-  { key: "scan", href: "/app/contacts/new", icon: "scan", label: { en: "Scan card", zh: "扫名片" } },
-];
-
 const overviewStats: {
   label: Copy;
   value: string;
@@ -402,51 +389,6 @@ function OrbitMap({ model, language, t }: { model: OrbitModel; language: OrbitLa
 // Shared building blocks
 // ---------------------------------------------------------------------------
 
-function SideNav({ t }: { t: Translate }) {
-  const groups: { title: Copy; items: typeof crmNav }[] = [
-    { title: { en: "Wallet", zh: "名片夹" }, items: crmNav },
-    { title: { en: "Capture", zh: "采集" }, items: captureNav },
-  ];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      {groups.map((group, gi) => (
-        <div key={gi} style={{ marginTop: gi === 0 ? 0 : 18 }}>
-          <div className="eyebrow" style={{ padding: "0 12px 10px" }}>{t(group.title)}</div>
-          {group.items.map((item) => {
-            const on = item.key === "dashboard";
-            return (
-              <a
-                href={item.href}
-                key={item.key}
-                style={{
-                  alignItems: "center",
-                  background: on ? "var(--accent-soft)" : "transparent",
-                  borderRadius: 11,
-                  color: on ? "var(--accent)" : "var(--text-2)",
-                  display: "flex",
-                  fontFamily: "var(--ff)",
-                  fontSize: 14,
-                  fontWeight: on ? 600 : 500,
-                  gap: 12,
-                  padding: "10px 12px",
-                  textDecoration: "none",
-                }}
-              >
-                <Icon name={item.icon} size={19} stroke={on ? 2 : 1.7} />
-                <span style={{ flex: 1 }}>{t(item.label)}</span>
-                {item.count != null ? (
-                  <span style={{ fontFamily: "var(--ff-mono)", fontSize: 12, opacity: 0.7 }}>{item.count}</span>
-                ) : null}
-              </a>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function SectionTitle({ icon, iconColor, title, note, t }: { icon: string; iconColor: string; title: Copy; note?: Copy; t: Translate }) {
   return (
     <div className="nc-sec-title">
@@ -814,7 +756,7 @@ export function OrbitRealCardsDashboard() {
       </div>
 
       {toast ? (
-        <div className="nc-toast-host">
+        <div aria-live="polite" className="nc-toast-host" role="status">
           <div className="nc-toast show">
             <Icon name="check" size={15} color="var(--accent)" />
             {toast}

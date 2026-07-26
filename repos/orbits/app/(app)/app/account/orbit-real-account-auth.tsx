@@ -225,7 +225,7 @@ export function OrbitRealAccountAuth({
                   />
                 </FormField>
                 <FormField className="orbit-account-auth-field" id="orbit-auth-new-password" label={t({ en: "New password", zh: "新密码" })}>
-                  <span style={{ display: "flex", gap: 8 }}>
+                  <span className="orbit-field-with-affordance">
                     <input
                       autoComplete="new-password"
                       className="field"
@@ -239,7 +239,8 @@ export function OrbitRealAccountAuth({
                     />
                     <button
                       aria-label={showPassword ? t({ en: "Hide password", zh: "隐藏密码" }) : t({ en: "Show password", zh: "显示密码" })}
-                      className="btn btn-ghost hit-44"
+                      className="btn btn-icon orbit-field-affordance"
+                      aria-pressed={showPassword}
                       onClick={() => setShowPassword((current) => !current)}
                       type="button"
                     >
@@ -271,7 +272,7 @@ export function OrbitRealAccountAuth({
                   </a>
                 ) : undefined}
               >
-                <span style={{ display: "flex", gap: 8 }}>
+                <span className="orbit-field-with-affordance">
                   <input
                     autoComplete={isSignup ? "new-password" : "current-password"}
                     className="field"
@@ -285,8 +286,9 @@ export function OrbitRealAccountAuth({
                   />
                   <button
                     aria-label={showPassword ? t({ en: "Hide password", zh: "隐藏密码" }) : t({ en: "Show password", zh: "显示密码" })}
-                    className="btn btn-ghost hit-44"
-                    onClick={() => setShowPassword((current) => !current)}
+                    className="btn btn-icon orbit-field-affordance"
+                    aria-pressed={showPassword}
+                      onClick={() => setShowPassword((current) => !current)}
                     type="button"
                   >
                     <Icon name="eye" size={17} />

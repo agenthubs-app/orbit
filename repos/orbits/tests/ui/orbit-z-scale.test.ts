@@ -108,5 +108,56 @@ test("inline zIndex number literals in app/(app)/app stay within the documented 
 test("orbit-theme.tsx no longer uses z-index: 9999 for the theme toggle", () => {
   const theme = source("app/(app)/app/orbit-theme.tsx");
   assert.ok(!theme.includes("9999"), "9999 still present in orbit-theme.tsx");
-  assert.ok(/\.orbit-theme-toggle\s*\{[\s\S]*?z-index:\s*100;/.test(theme));
+  // The toggle renders outside [data-orbit-real-page], so the --z-* scale is
+  // out of scope there and the literal fallback is what actually applies.
+  assert.ok(
+    /\.orbit-theme-toggle\s*\{[\s\S]*?z-index:\s*var\(--z-sticky,\s*100\);/.test(theme),
+    "theme toggle should sit on the sticky tier via var(--z-sticky, 100)",
+  );
+});
+
+// ---- (d) the CSS scale and ORBIT_Z are one scale, not two ----
+
+test("the CSS --z-* tokens match ORBIT_Z", () => {
+  const styles = source("app/(app)/app/orbit-reference-styles.tsx");
+  const z = source("app/(app)/app/orbit-z.ts");
+
+  for (const tier of ["raised", "sticky", "dropdown", "overlay", "modal", "toast"]) {
+    const fromTs = z.match(new RegExp(`${tier}:\\s*(\\d+)`))?.[1];
+    const fromCss = styles.match(new RegExp(`--z-${tier}:\\s*(\\d+)`))?.[1];
+
+    assert.ok(fromTs, `ORBIT_Z.${tier} is missing`);
+    assert.ok(fromCss, `--z-${tier} is missing from orbit-reference-styles.tsx`);
+    assert.equal(
+      fromCss,
+      fromTs,
+      `--z-${tier} (${fromCss}) and ORBIT_Z.${tier} (${fromTs}) must agree`,
+    );
+  }
+});
+
+test("the product stylesheet declares no global z-index outside the scale", () => {
+  // 0/1/2 are local stacking inside a single component (a badge over an
+  // avatar, a label over a gradient) — they never participate in the global
+  // layer order, so they are not a tier and do not need a token.
+  const LOCAL_STACKING = new Set(["0", "1", "2"]);
+  const styles = source("app/(app)/app/orbit-reference-styles.tsx");
+  const offenders: string[] = [];
+
+  for (const match of styles.matchAll(/z-index:\s*([^;\n}]+)/g)) {
+    const value = match[1].trim();
+    if (value.startsWith("var(--z-") || value.startsWith("calc(var(--z-")) continue;
+    if (LOCAL_STACKING.has(value)) continue;
+    offenders.push(value);
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    "Use var(--z-<tier>) instead of a raw z-index. Before this gate the " +
+      "stylesheet ran three incompatible scales at once (35/60/70/90/100/120, " +
+      "ORBIT_Z's 10..500, and the namecard layer's 3900/3950/4000), which is " +
+      "how .nc-basis-pop ended up at 60 — below the sticky nav that occluded it. " +
+      `Offending values: ${offenders.join(", ")}`,
+  );
 });

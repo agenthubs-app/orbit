@@ -25,7 +25,10 @@ type OrbitNavSessionUser = { email: string; id: string; name: string };
 // 右上角账号位:未知会话时渲染与旧"我的"链接完全相同的 DOM(避免闪烁);
 // 已登录显示头像+菜单(个人资料/退出登录),未登录显示 登录/注册。
 // 会话通过 /api/auth/session 客户端获取,不需要 SessionProvider。
-function OrbitNavAccountControl({ meHref }: { meHref: string }) {
+// `meHref` used to feed the session-unknown branch's "Me" link; that branch is
+// now a neutral placeholder (UI-audit P0-4) and the signed-in menu links to
+// /app/profile directly, so the control no longer needs a caller-supplied href.
+function OrbitNavAccountControl() {
   const { preserveHref, t } = useOrbitLanguage();
   const [sessionUser, setSessionUser] = useState<
     OrbitNavSessionUser | null | undefined
@@ -35,8 +38,14 @@ function OrbitNavAccountControl({ meHref }: { meHref: string }) {
   useEffect(() => {
     let cancelled = false;
 
+    // UI-audit fix P0-4. A failing session endpoint (a 500 from a missing
+    // AUTH_SECRET, an offline network) used to resolve to `null`, and `null`
+    // renders "Sign in / Sign up" — the nav asserted "you are signed out" when
+    // it had simply failed to find out. On a page whose body was rendering a
+    // profile and a "Sign out" button, that read as a broken app. An
+    // indeterminate result must stay indeterminate.
     fetch("/api/auth/session")
-      .then((response) => response.json())
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("session unavailable"))))
       .then((session: { user?: { email?: string; id?: string; name?: string } } | null) => {
         if (cancelled) return;
         setSessionUser(
@@ -50,7 +59,7 @@ function OrbitNavAccountControl({ meHref }: { meHref: string }) {
         );
       })
       .catch(() => {
-        if (!cancelled) setSessionUser(null);
+        // Stay `undefined` (unknown) rather than claiming signed-out.
       });
 
     return () => {
@@ -67,12 +76,27 @@ function OrbitNavAccountControl({ meHref }: { meHref: string }) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [menuOpen]);
 
-  // 会话未知:保持旧导航的原样,首屏与登录系统接入前逐像素一致。
+  // 会话未知:渲染一个中性占位,不断言登录状态。
+  //
+  // UI-audit fix P0-4. This used to render a "Me" link, which is an assertion
+  // in the other direction — an anonymous visitor got a link into an account
+  // area they do not have. A placeholder that reserves the same footprint keeps
+  // the nav honest while the session resolves and keeps the bar from reflowing
+  // when the real control swaps in.
   if (sessionUser === undefined) {
     return (
-      <a className="orbit-me-link" href={preserveHref(meHref)}>
-        {t({ en: "Me", zh: "我的" })}
-      </a>
+      <span
+        aria-busy="true"
+        aria-label={t({ en: "Checking sign-in status", zh: "正在确认登录状态" })}
+        role="status"
+        style={{
+          background: "var(--surface-2)",
+          borderRadius: "var(--r-pill)",
+          display: "inline-block",
+          height: 32,
+          minWidth: 64,
+        }}
+      />
     );
   }
 
@@ -189,6 +213,52 @@ function OrbitNavAccountControl({ meHref }: { meHref: string }) {
 // ceiling (tests/ui/orbit-button-ratchet.test.ts), so this reuses the
 // existing `<a className="orbit-nav-menu-item">` pattern (role="button", no
 // real navigation) instead of a hand-rolled button element.
+const ORBIT_LANG_BUTTONS: readonly {
+  code: "zh" | "en" | "ja";
+  label: string;
+  aria: { en: string; zh: string };
+}[] = [
+  { aria: { en: "Switch to Chinese", zh: "切换到中文" }, code: "zh", label: "中" },
+  { aria: { en: "Switch to English", zh: "切换到英文" }, code: "en", label: "EN" },
+  { aria: { en: "Switch to Japanese", zh: "切换到日文" }, code: "ja", label: "日" },
+];
+
+/**
+ * Language switcher, rendered in two places from ONE source (so the button
+ * ratchet in tests/ui/orbit-button-ratchet.test.ts still sees a single
+ * hand-rolled button): the desktop top bar, and the mobile hamburger menu.
+ *
+ * UI-audit fix P0-3 / P1-f. Keeping it in the mobile bar cost ~91px of a 375px
+ * viewport that already held seven control groups, which squeezed the page
+ * title until it wrapped to two lines and overflowed the 56px bar. It also had
+ * the smallest tap targets in the product (19x29). CSS shows exactly one
+ * variant per breakpoint — see .orbit-lang-toggle--bar / --menu.
+ */
+function OrbitLangToggle({ variant }: { variant: "bar" | "menu" }) {
+  const { language, setLanguage, t } = useOrbitLanguage();
+
+  return (
+    <span className={`orbit-lang-toggle orbit-lang-toggle--${variant} mono`}>
+      {ORBIT_LANG_BUTTONS.map((entry, index) => (
+        <span key={entry.code} style={{ display: "contents" }}>
+          {index > 0 ? (
+            <span aria-hidden="true" className="orbit-lang-sep">/</span>
+          ) : null}
+          <button
+            aria-label={t(entry.aria)}
+            aria-pressed={language === entry.code}
+            className={language === entry.code ? "is-active" : ""}
+            onClick={() => setLanguage(entry.code)}
+            type="button"
+          >
+            {entry.label}
+          </button>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function OrbitNavThemeMenuItem() {
   const { t } = useOrbitLanguage();
   const [theme, setTheme] = useState<OrbitTheme | null>(null);
@@ -274,12 +344,6 @@ export function OrbitTopNav({
     { active: active === "me" || active === "home", href: meHref, icon: "user", key: "me", label: t({ en: "Me", zh: "我的" }) },
   ];
 
-  const langButtons: readonly { code: "zh" | "en" | "ja"; label: string; aria: { en: string; zh: string } }[] = [
-    { aria: { en: "Switch to Chinese", zh: "切换到中文" }, code: "zh", label: "中" },
-    { aria: { en: "Switch to English", zh: "切换到英文" }, code: "en", label: "EN" },
-    { aria: { en: "Switch to Japanese", zh: "切换到日文" }, code: "ja", label: "日" },
-  ];
-
   return (
     <>
       <header className="orbit-top-nav orbit-nav-menu">
@@ -309,26 +373,9 @@ export function OrbitTopNav({
         </nav>
 
         <div className="orbit-top-actions">
-          <span className="orbit-lang-toggle mono">
-            {langButtons.map((entry, index) => (
-              <span key={entry.code} style={{ display: "contents" }}>
-                {index > 0 ? (
-                  <span aria-hidden="true" className="orbit-lang-sep">/</span>
-                ) : null}
-                <button
-                  aria-label={t(entry.aria)}
-                  aria-pressed={language === entry.code}
-                  className={language === entry.code ? "is-active" : ""}
-                  onClick={() => setLanguage(entry.code)}
-                  type="button"
-                >
-                  {entry.label}
-                </button>
-              </span>
-            ))}
-          </span>
+          <OrbitLangToggle variant="bar" />
           {rightExtra}
-          <OrbitNavAccountControl meHref={meHref} />
+          <OrbitNavAccountControl />
           <a aria-label="iOrbit" className={`orbit-nav-iorbit-icon hit-44${isAgent ? " is-active" : ""}`} href={preserveHref("/app/agent")}>
             <Icon name="sparkle" size={18} />
           </a>
@@ -360,6 +407,7 @@ export function OrbitTopNav({
               </a>
             ))}
             <OrbitNavThemeMenuItem />
+            <OrbitLangToggle variant="menu" />
           </nav>
         </div>
       ) : null}

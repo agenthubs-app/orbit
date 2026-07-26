@@ -102,6 +102,13 @@ export interface AppContactDetailBoundaryModel {
   recoveryActions: readonly {
     href: string;
     label: string;
+    /**
+     * Per-action guidance. UI-audit fix P0-1: the page used to pass the single
+     * route-level `nextStep` to every action, so "Retry contact detail" and
+     * "Return to contacts list" rendered the identical sentence and the second
+     * one described the first one's behaviour.
+     */
+    recoveryCopy: string;
   }[];
   routeState: Exclude<AppContactDetailRouteState, "success">;
   title: string;
@@ -163,10 +170,14 @@ const routeBoundaryCopy = {
       {
         href: "/app/contacts",
         label: "Return to contacts list",
+        recoveryCopy:
+          "Go back to the sourced list and pick a relationship that already has evidence.",
       },
       {
         href: "/app/contacts/demo-contact-1",
         label: "Open Kenji detail",
+        recoveryCopy:
+          "Open the one relationship this boundary can already show end to end.",
       },
     ],
     title: "No contact detail is available",
@@ -181,10 +192,14 @@ const routeBoundaryCopy = {
       {
         href: "/app/contacts/demo-contact-1",
         label: "Retry contact detail",
+        recoveryCopy:
+          "Load the detail again once the local capability boundary is available.",
       },
       {
         href: "/app/contacts",
         label: "Return to contacts list",
+        recoveryCopy:
+          "Leave this relationship and keep working from the sourced list.",
       },
     ],
     title: "Contact detail could not load",
@@ -198,10 +213,14 @@ const routeBoundaryCopy = {
       {
         href: "/app/contacts/demo-contact-1",
         label: "Check current detail",
+        recoveryCopy:
+          "Re-read the detail after the pending source evidence settles.",
       },
       {
         href: "/app/contacts",
         label: "Return to contacts list",
+        recoveryCopy:
+          "Leave this relationship and keep working from the sourced list.",
       },
     ],
     title: "Contact detail is loading",

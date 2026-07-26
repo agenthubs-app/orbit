@@ -45,8 +45,20 @@ function mobileCrmTabItems(t: Translate): { href: string; key: CrmMode | "allAct
     { key: "graph", href: "/home/cards/graph", label: t({ en: "Graph", zh: "图谱" }) },
     { key: "intros", href: "/home/cards/intros", label: t({ en: "Intros", zh: "引荐" }) },
     { key: "dashboard", href: "/home/cards/dashboard", label: t({ en: "Dashboard", zh: "表盘" }) },
-    { key: "allActions", href: "/app/contacts/all-actions", label: "All actions" },
+    { key: "allActions", href: "/app/contacts/all-actions", label: t({ en: "All actions", zh: "操作账本" }) },
   ];
+}
+
+/**
+ * SVG <text> cannot ellipsize, so graph labels are trimmed in JS. An explicit
+ * ellipsis marks the cut: without it "Kenji Watanabe" rendered as "Kenji Wa",
+ * which reads as somebody's actual name rather than a shortened one
+ * (UI audit L5). Pair every call with a <title> carrying the full value.
+ */
+function truncateGraphLabel(value: string | undefined | null, max = 10): string {
+  const text = String(value ?? "").trim();
+  if (!text) return "?";
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
 const stageColors = ["var(--amber)", "var(--sky)", "var(--live)"];
@@ -155,7 +167,7 @@ function MobileCrmHeader({
   return (
     <div style={{ flexShrink: 0, padding: "16px 18px 0" }}>
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-        <h1 className="h-display" style={{ margin: "6px 0" }}>{t({ en: "Contacts", zh: "名片夹" })}</h1>
+        <h1 className="h-display" style={{ margin: "6px 0" }}>{t({ en: "All contacts", zh: "全部人脉" })}</h1>
         {action || (
           <a
             aria-label={t({ en: "Scan card", zh: "扫名片" })}
@@ -189,7 +201,7 @@ function MobileCrmHeader({
           value={query}
         />
       </div>
-      <div className="scroll noscroll" style={{ display: "flex", gap: 8, margin: "0 -18px", overflowX: "auto", padding: "0 18px 12px" }}>
+      <div className="scroll noscroll orbit-chip-scroller" style={{ display: "flex", gap: 8, margin: "0 -18px", overflowX: "auto", padding: "0 18px 12px" }}>
         {mobileCrmTabItems(t).map((item) => (
           <a
             className={`chip${active === item.key ? " is-active" : ""}`}
@@ -371,7 +383,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <CrmSidebar active="list" />
+          <CrmSidebar active="list" counts={{ list: items.length }} />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 22 }}>
               <div>
@@ -672,7 +684,8 @@ function GraphCanvas({
             return (
               <g key={event.id}>
                 <circle cx={point.x} cy={point.y} r="9" fill="var(--surface)" stroke="var(--accent)" strokeWidth="1.5" />
-                <text x={point.x} y={point.y + 22} textAnchor="middle" fontSize="9" fill="var(--text-3)">{t({ en: "Event", zh: "活动" })}</text>
+                <title>{event.name || t({ en: "Event", zh: "活动" })}</title>
+                <text x={point.x} y={point.y + 22} textAnchor="middle" fontSize="11" fill="var(--text-3)">{truncateGraphLabel(event.name) || t({ en: "Event", zh: "活动" })}</text>
               </g>
             );
           })}
@@ -682,7 +695,8 @@ function GraphCanvas({
             return (
               <g key={connection.id}>
                 <circle cx={point.x} cy={point.y} r="6" fill={graphStatusColor[connection.pipelineStatus] || "var(--amber)"} />
-                <text x={point.x} y={point.y - 11} textAnchor="middle" fontSize="10" fill="var(--ink)">{(connection.displayName || "?").slice(0, 8)}</text>
+                <title>{connection.displayName || "?"}</title>
+                <text x={point.x} y={point.y - 11} textAnchor="middle" fontSize="11" fill="var(--ink)">{truncateGraphLabel(connection.displayName)}</text>
               </g>
             );
           })}
@@ -711,11 +725,17 @@ export function OrbitRealCardsGraph({ viewModel }: { viewModel: OrbitContactsVie
   }, [graph, query]);
   const view = useMemo(() => graphLayout(visible), [visible]);
   const summary = `${view.connections.length} ${t({ en: "contacts", zh: "位联系人" })} · ${view.events.length} ${t({ en: "events", zh: "场活动" })}`;
+  // UI-audit fix P1-b: zoom out was btn-ghost and zoom in was btn-primary, so a
+  // symmetric pair rendered at two different visual weights (and two widths,
+  // 35px vs 38px). A control pair takes one variant; neither half of "zoom" is
+  // the page's primary action. The class list is repeated literally rather than
+  // hoisted to a const because tests/ui/orbit-button-ratchet.test.ts reads the
+  // opening tag as source text — a variable reads as a hand-rolled button.
   const zoom = (className: string) => (
     <div className={className}>
-      <button aria-label={t({ en: "Zoom out", zh: "缩小" })} className="btn btn-ghost btn-sm hit-44" onClick={() => setScale((value) => Math.max(0.5, value - 0.2))} type="button">-</button>
+      <button aria-label={t({ en: "Zoom out", zh: "缩小" })} className="btn btn-ghost btn-sm btn-icon hit-44" onClick={() => setScale((value) => Math.max(0.5, value - 0.2))} type="button">-</button>
       <span className="mono">{Math.round(scale * 100)}%</span>
-      <button aria-label={t({ en: "Zoom in", zh: "放大" })} className="btn btn-primary btn-sm hit-44" onClick={() => setScale((value) => Math.min(2.2, value + 0.2))} type="button">+</button>
+      <button aria-label={t({ en: "Zoom in", zh: "放大" })} className="btn btn-ghost btn-sm btn-icon hit-44" onClick={() => setScale((value) => Math.min(2.2, value + 0.2))} type="button">+</button>
     </div>
   );
 
@@ -724,7 +744,7 @@ export function OrbitRealCardsGraph({ viewModel }: { viewModel: OrbitContactsVie
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <CrmSidebar active="graph" />
+          <CrmSidebar active="graph" counts={{ list: view.connections.length }} />
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 20, justifyContent: "space-between", padding: "24px 32px 16px" }}>
               <div>
@@ -915,7 +935,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <CrmSidebar active="intros" />
+          <CrmSidebar active="intros" counts={{ intros: stats.total }} />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 20, justifyContent: "space-between", marginBottom: 22 }}>
               <div>
@@ -949,7 +969,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
         />
         <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "2px 18px 36px" }}>
           {statsNode}
-          <div className="scroll noscroll" style={{ display: "flex", gap: 8, margin: "0 -18px 14px", overflowX: "auto", padding: "0 18px" }}>
+          <div className="scroll noscroll orbit-chip-scroller" style={{ display: "flex", gap: 8, margin: "0 -18px 14px", overflowX: "auto", padding: "0 18px" }}>
             {filters.map((item) => (
               <button aria-pressed={filter === item.key} className={`chip${filter === item.key ? " is-active" : ""}`} key={item.key} onClick={() => setFilter(item.key)} style={{ flexShrink: 0 }} type="button">
                 {item.label}<span style={{ fontFamily: "var(--ff-mono)", fontSize: 11, marginLeft: 4, opacity: 0.6 }}>{item.count}</span>

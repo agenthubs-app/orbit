@@ -143,7 +143,16 @@ function eventChoiceToLandingEvent(
     },
     status,
     summaryZh: description,
-    tags: [event.status, `readiness-${event.readinessScore}`],
+    // UI-audit fix C5. This synthesised "tags" from two values that are not
+    // topics: the raw status enum and the readiness score formatted as a slug.
+    // Both surfaces that read event.tags treat it as the card's topic row and
+    // as the topic filter chips, so /app/events offered filters reading
+    // "confirmed", "imported", "draft" and "readiness-75" — internal tokens,
+    // untranslated, and the status one duplicating the dedicated status chip
+    // group right beside it. Status stays available as event.status; readiness
+    // is a score, not a topic. No real topic data exists yet, so the row falls
+    // back to industry alone rather than inventing labels.
+    tags: [],
     theme: "relationship",
     venue: event.venue,
     youRsvped: true,

@@ -38,7 +38,7 @@ export interface StateViewProps {
 // --orbit-* token、不依赖 `.orbit-dev-root` 作用域的字面量值。
 const stateViewStyles = `
 .type-body {
-  color: #52615d;
+  color: var(--text-2, #52615d);
   font-size: 0.94rem;
   line-height: 1.55;
   margin: 0;
@@ -59,7 +59,7 @@ const stateViewStyles = `
 }
 
 .guard-list div {
-  border-top: 1px solid #d5ddd9;
+  border-top: 1px solid var(--border, #d5ddd9);
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -72,14 +72,14 @@ const stateViewStyles = `
 }
 
 .guard-list dt {
-  color: #0f4758;
+  color: var(--accent, #0f4758);
   font-size: 0.78rem;
   font-weight: 760;
   line-height: 1.35;
 }
 
 .guard-list dd {
-  color: #52615d;
+  color: var(--text-2, #52615d);
   font-size: 0.88rem;
   line-height: 1.45;
   margin: 0;
@@ -96,11 +96,11 @@ const stateViewStyles = `
 }
 
 .privacy-note {
-  background: #e8f2f0;
-  border: 1px solid rgba(81, 68, 122, 0.18);
-  border-left: 3px solid #51447a;
-  border-radius: 6px;
-  color: #51447a;
+  background: var(--accent-softer, #e8f2f0);
+  border: 1px solid var(--border, rgba(81, 68, 122, 0.18));
+  border-left: 3px solid var(--accent, #51447a);
+  border-radius: var(--r-xs, 6px);
+  color: var(--text-2, #51447a);
   font-size: 0.82rem;
   line-height: 1.45;
   margin: 0;
@@ -118,9 +118,9 @@ const stateViewStyles = `
 
 .state-recovery-action {
   align-content: start;
-  background: #ffffff;
-  border: 1px solid #d5ddd9;
-  border-radius: 6px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #d5ddd9);
+  border-radius: var(--r-xs, 6px);
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -129,16 +129,16 @@ const stateViewStyles = `
 
 .state-recovery-control {
   align-items: center;
-  background: #155e75;
-  border: 1px solid #0f4758;
-  border-radius: 6px;
-  color: #ffffff;
+  background: var(--accent, #155e75);
+  border: 1px solid var(--accent, #0f4758);
+  border-radius: var(--r-sm, 6px);
+  color: var(--on-accent, #ffffff);
   display: inline-flex;
   font-size: 0.9rem;
   font-weight: 760;
   justify-content: center;
   line-height: 1.25;
-  min-height: 40px;
+  min-height: 44px;
   min-width: 0;
   overflow-wrap: anywhere;
   padding: 8px 12px;
@@ -149,7 +149,7 @@ const stateViewStyles = `
 }
 
 .state-recovery-action p {
-  color: #52615d;
+  color: var(--text-2, #52615d);
   font-size: 0.86rem;
   line-height: 1.45;
   margin: 0;

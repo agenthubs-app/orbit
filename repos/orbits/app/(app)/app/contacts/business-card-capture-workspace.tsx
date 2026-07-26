@@ -544,7 +544,7 @@ export function BusinessCardCaptureWorkspace() {
     return (
       <section className="bcc-shell" data-business-card-capture="idle">
         <style>{CAPTURE_STYLE}</style>
-        <div className="bcc-kicker">PRIVATE CAPTURE · BUSINESS CARD</div>
+        <div className="bcc-kicker">{t({ en: "PRIVATE CAPTURE · BUSINESS CARD", zh: "本地采集 · 名片" })}</div>
         <h2>{t({ en: "Turn a card into a relationship", zh: "把一张名片，变成一段可信关系" })}</h2>
         <p className="bcc-lede">
           {t({
@@ -593,7 +593,7 @@ export function BusinessCardCaptureWorkspace() {
     return (
       <section className="bcc-shell" data-business-card-capture={state.kind}>
         <style>{CAPTURE_STYLE}</style>
-        <div className="bcc-kicker">CAPTURE PREVIEW</div>
+        <div className="bcc-kicker">{t({ en: "CAPTURE PREVIEW", zh: "采集预览" })}</div>
         <div className="bcc-preview-stage">
           <img alt="待识别名片预览" src={state.previewUrl} />
           {state.kind === "processing" ? (
@@ -645,7 +645,7 @@ export function BusinessCardCaptureWorkspace() {
         <style>{CAPTURE_STYLE}</style>
         <div className="bcc-review-head">
           <div>
-            <div className="bcc-kicker">CAPTURE → REVIEW</div>
+            <div className="bcc-kicker">{t({ en: "CAPTURE → REVIEW", zh: "采集 → 复核" })}</div>
             <h2>{t({ en: "Review what Orbit saw", zh: "复核 Orbit 识别到的内容" })}</h2>
           </div>
           <span className="bcc-provider">
@@ -797,7 +797,7 @@ export function BusinessCardCaptureWorkspace() {
         <div className="bcc-success">
           <span><Icon name="check" size={20} /></span>
           <div>
-            <div className="bcc-kicker">CONTACT CONFIRMED</div>
+            <div className="bcc-kicker">{t({ en: "CONTACT CONFIRMED", zh: "联系人已确认" })}</div>
             <h2>{state.displayName || t({ en: "Contact saved", zh: "联系人已收录" })}</h2>
             <p>{t({ en: "Now decide whether to invite them. This is optional and separately confirmed.", zh: "现在可以决定是否邀请对方。该操作完全可选，并需要单独确认。" })}</p>
           </div>

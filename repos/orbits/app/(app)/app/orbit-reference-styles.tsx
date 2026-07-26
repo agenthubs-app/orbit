@@ -7,8 +7,28 @@ const prototypeHtmlPath = path.join(
   "public/orbit-reference/orbit-reference.html",
 );
 
+// Built by `npm run build:reference-css` (scripts/build-reference-css.mjs) and
+// committed. Serving it as a static file rather than inlining the prototype
+// stylesheet into every page is UI-audit fix P0-2: the inline form shipped
+// ~10 MB of HTML per navigation (5 MB in the `<style>` tag, the same 5 MB again
+// in the RSC flight payload) and measured a 4.9 s first contentful paint.
+const GENERATED_CSS_ROUTE = "/orbit-reference/orbit-reference.generated.css";
+const generatedCssPath = path.join(
+  process.cwd(),
+  "public/orbit-reference/orbit-reference.generated.css",
+);
+
+// Kept in sync with UNUSED_FONT_FAMILIES in scripts/build-reference-css.mjs.
+const UNUSED_PROTOTYPE_FONT_FAMILIES = ["Inter", "Inter Tight", "Geist Mono"];
+
 let cachedStyleText: string | undefined;
+let cachedGeneratedCssExists: boolean | undefined;
 const cachedScriptText = new Map<string, string>();
+
+function generatedCssExists() {
+  cachedGeneratedCssExists ??= fs.existsSync(generatedCssPath);
+  return cachedGeneratedCssExists;
+}
 
 const reactReferenceIsolationStyles = `
 [data-orbit-real-page] button,
@@ -42,7 +62,7 @@ const reactReferenceIsolationStyles = `
 .orbit-party-auth-overlay {
   position: absolute;
   inset: 0;
-  z-index: 90;
+  z-index: var(--z-overlay);
 }
 
 .orbit-live-checkin-page button {
@@ -102,7 +122,7 @@ const reactReferenceIsolationStyles = `
   overflow: hidden;
   padding: 10px 18px;
   position: relative;
-  z-index: 35;
+  z-index: var(--z-raised);
 }
 
 [data-orbit-real-page].orbit-party-page .orbit-party-return-icon {
@@ -638,13 +658,21 @@ const reactReferenceIsolationStyles = `
   border-color: var(--border-strong);
 }
 
+/* UI-audit fix P1-a. btn-quiet had a fully transparent resting state with no
+   border, so on /app/contacts/all-actions its real actions ("撤销",
+   "重试失败项") read as plain text while the NON-interactive status badges
+   beside them ("等待确认", "已完成") carried a filled pill — affordance
+   inverted, and users aimed at the badge. A hairline gives it a resting
+   silhouette without promoting it to the weight of btn-ghost. */
 [data-orbit-real-page] .btn-quiet {
   background: transparent;
+  border-color: var(--border);
   color: var(--text-2);
 }
 
 [data-orbit-real-page] .btn-quiet:hover {
   background: var(--surface-3);
+  border-color: var(--border-strong);
   color: var(--text);
 }
 
@@ -666,13 +694,20 @@ const reactReferenceIsolationStyles = `
   width: 100%;
 }
 
+/* UI-audit fix P1-f: was 40x40, under the 44px touch floor that every other
+   part of the system targets (and that .hit-44 exists to retrofit). */
 [data-orbit-real-page] .btn-icon {
   border-radius: var(--r-sm);
-  height: 40px;
+  height: var(--tap-min);
   padding: 0;
-  width: 40px;
+  width: var(--tap-min);
 }
 
+/* UI-audit fix P1-e. Colour alone did not carry the state: on the dark theme
+   --surface-3 (#1D1936) is LIGHTER than the --surface (#12101F) a disabled
+   button sits on, so /app/events/[id]'s disabled "已结束" / "回看" pair looked
+   like ordinary soft buttons. Opacity makes the state read the same way on
+   either theme regardless of which surface the button lands on. */
 [data-orbit-real-page] .btn[disabled],
 [data-orbit-real-page] .btn.is-disabled {
   background: var(--surface-3);
@@ -680,6 +715,7 @@ const reactReferenceIsolationStyles = `
   box-shadow: none;
   color: var(--text-4);
   cursor: not-allowed;
+  opacity: 0.45;
 }
 
 [data-orbit-real-page] .orbit-agent-btn {
@@ -860,9 +896,13 @@ const reactReferenceIsolationStyles = `
   font-weight: 500;
   letter-spacing: 0.02em;
 }
+/* UI-audit fix P1-k. This rendered the product's own tagline ("由 iOrbit
+   智能匹配引擎驱动") at 9px — the smallest text anywhere in the app, below the
+   11px floor the codebase already states elsewhere, and in --text-3 on a dark
+   canvas. It sits in the top nav on every single page. */
 [data-orbit-real-page] .orbit-brand-sub {
   color: var(--text-3);
-  font-size: 9px;
+  font-size: var(--fs-11);
   letter-spacing: 0.03em;
   margin-top: 4px;
 }
@@ -1822,6 +1862,76 @@ const reactReferenceIsolationStyles = `
   --r-lg: 18px;
   --r-xl: 24px;
   --r-pill: 999px;
+
+  /* ---------------------------------------------------------------
+     Scales added by UI audit 2026-07-26 §8. Purely additive: nothing
+     consumes them yet, so this block cannot change a single rendered
+     pixel. They exist so the migrations that follow (and any new code)
+     have one place to reference instead of inventing another value.
+
+     The audit measured, inside app/(app)/app alone: 26 distinct font
+     sizes (25 inline + 3 CSS-only), 20 distinct radii, 229 distinct
+     hardcoded hex colours across 484 occurrences, and z-indexes ranging
+     over 35 / 50 / 60 / 70 / 90 / 100 / 3900 / 3950 / 4000 while
+     orbit-z.ts declared a 10/100/200/300/400/500 scale that CSS had no
+     way to reach. Tokens are the only thing that makes those numbers
+     reviewable.
+     --------------------------------------------------------------- */
+
+  /* Type scale. These are NOT new values — they are the scale already
+     enforced by tests/ui/orbit-scale-ratchet.test.ts (FONT_SIZE_SCALE),
+     given names so CSS can reference them the way TSX already references
+     the numbers. Inventing a second, "nicer" scale here would have
+     produced exactly the fragmentation this work is removing.
+     11px is the floor for user-facing text; the audit found 9px brand
+     copy and 10px date tiles still in the wild. */
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-22: 22px;
+  --fs-28: 28px;
+  --lh-tight: 1.25;
+  --lh-body: 1.55;
+
+  /* Spacing — mirrors GAP_SCALE in the same ratchet test. */
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-12: 12px;
+  --sp-16: 16px;
+  --sp-20: 20px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+  --sp-48: 48px;
+
+  /* Control sizing. --tap-min is the floor for anything clickable. */
+  --ctl-sm: 36px;
+  --ctl-md: 44px;
+  --ctl-lg: 50px;
+  --tap-min: 44px;
+
+  /* Stacking scale — mirrors ORBIT_Z in app/(app)/app/orbit-z.ts, which
+     only TSX inline styles could reach. The stylesheet had no way to use
+     it, so its layers used raw numbers (35 / 50 / 60 / 70 / 90 / 100 and
+     the namecard layer's 3900 / 3950 / 4000). Concrete consequence found
+     by the audit: .nc-basis-pop sat at 60, below the sticky nav at 100,
+     so the "view the basis" popover was occluded near the top of a page.
+     tests/ui/orbit-z-scale.test.ts keeps the two representations equal. */
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-dropdown: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+
+  /* Destructive semantic colour. The audit found no danger token at all —
+     delete/sign-out actions were reaching for a literal #C2410C. */
+  --danger: #F0718B;
+  --danger-soft: rgba(224, 65, 95, 0.17);
+  --on-danger: #0B0A15;
   --ff: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   /* --ff-serif: serif for in-content body headings. --ff-display: serif for
      hero/display headlines and large numerals (the landing block below
@@ -1858,6 +1968,27 @@ html[lang="en"] [data-orbit-real-page] {
    gradient, verbatim values. */
 body:has([data-orbit-real-page]) {
   background: radial-gradient(130% 100% at 50% 14%, #14122A 0%, #0D0B1E 42%, #08070F 72%, #06050D 100%) fixed #06050D;
+}
+
+/* UI-audit fix P0-5. The canvas above only paints the body element, but the
+   root element keeps app/layout.tsx's light globalStyles defaults — so html
+   stayed #ffffff with color-scheme: light. Anywhere the root element shows
+   through (overscroll, a route transition where the new body is shorter than
+   the viewport, the native scrollbar and form-control rendering) a dark
+   product page flashed white. Painting the root too removes the flash; the
+   matching color-scheme also makes scrollbars and native controls render
+   dark. */
+html:has([data-orbit-real-page]) {
+  background-color: #06050D;
+  color-scheme: dark;
+}
+
+/* UI-audit fix L3. Filtering a list from 4 rows to 1 removed the vertical
+   scrollbar, which widened the viewport and shifted the whole page ~15px to
+   the right — a visible horizontal jump on every filter, sort and search
+   interaction. Reserving the gutter keeps the layout still. */
+html:has([data-orbit-real-page]) {
+  scrollbar-gutter: stable;
 }
 
 /* Prototype chrome that hardcodes light glass/white surfaces (not token
@@ -1970,6 +2101,74 @@ body:has([data-orbit-real-page]) {
   white-space: nowrap;
 }
 
+/* UI-audit fix L1. The prototype grows every span in these rows:
+   .orbit-platform-organizer-mini span, .orbit-platform-account-cell span
+   { min-width: 0; flex: 1 }. That selector is meant for the name/meta
+   column, but the avatar and the status badge are spans too — so on
+   /app/platform the "O" avatar rendered 163x40 instead of a 40px circle and
+   the "已认证" badge stretched to 181px instead of a ~66px pill. (The table
+   variant already worked around it with an inline flexShrink on the avatar
+   only, which is why the bug survived there but not here.) Fixed material:
+   only the text column may grow. */
+/* UI-audit fix P1-j. The password toggle was a sibling of the input inside a
+   flex row, so the password field was 318px wide next to a 382px email field —
+   two inputs of different widths stacked in the same form. Making the toggle a
+   trailing affordance inside the field keeps every input the same width, which
+   is what the form reads as a system rather than as two one-off rows. */
+/* UI-audit fix L2. Horizontally-scrolling chip rows (the mobile 名片夹 segment
+   nav, filter rows) hide the scrollbar via .noscroll and gave no other cue, so
+   the last item was simply clipped at the viewport edge — at 375px the
+   操作账本 chip ended at right:408 with nothing to suggest it was reachable.
+   A right-edge mask makes the cut read as "more content" rather than as a
+   layout bug, and scroll-snap gives the row a resting position per chip. */
+@media (max-width: 640px) {
+  [data-orbit-real-page] .orbit-chip-scroller {
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+    scroll-padding-inline: 18px;
+    scroll-snap-type: x proximity;
+  }
+  [data-orbit-real-page] .orbit-chip-scroller > * {
+    scroll-snap-align: start;
+  }
+}
+
+[data-orbit-real-page] .orbit-field-with-affordance {
+  align-items: center;
+  display: flex;
+  position: relative;
+}
+[data-orbit-real-page] .orbit-field-with-affordance > .field {
+  padding-right: 52px;
+  width: 100%;
+}
+/* Composes on .btn .btn-icon rather than replacing it: the toggle keeps the
+   system's 44px hit area, focus ring and press behaviour, and this rule only
+   adds the in-field positioning plus a chromeless resting state. Building it as
+   a standalone control would have been one more bespoke button in a codebase
+   whose whole problem is bespoke buttons. */
+[data-orbit-real-page] .orbit-field-affordance {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--text-3);
+  position: absolute;
+  right: 2px;
+}
+[data-orbit-real-page] .orbit-field-affordance:hover,
+[data-orbit-real-page] .orbit-field-affordance[aria-pressed="true"] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+}
+
+[data-orbit-real-page] .orbit-platform-organizer-mini > .avatar,
+[data-orbit-real-page] .orbit-platform-organizer-mini > .badge,
+[data-orbit-real-page] .orbit-platform-account-cell > .avatar,
+[data-orbit-real-page] .orbit-platform-account-cell > .badge {
+  flex: 0 0 auto;
+}
+
 /* ===================================================================
    Starfield coordination: carry the homepage's warm gold secondary and
    its restrained cosmic palette into every inner page, so product screens
@@ -2016,6 +2215,11 @@ body:has([data-orbit-real-page]) {
   gap: 2px;
   letter-spacing: 0.05em;
 }
+/* UI-audit fix P1-f. These measured 19x29 / 22x28 — the smallest tap targets
+   in the product, and the only nav controls with no .hit-44. The padding now
+   carries a real 44px-tall target instead of a pseudo-element overlay: an
+   overlay wide enough to reach 44px would spill onto the neighbouring language
+   (they sit ~30px apart), and the later sibling would steal the tap. */
 [data-orbit-real-page] .orbit-lang-toggle button {
   background: none;
   border: 0;
@@ -2023,7 +2227,8 @@ body:has([data-orbit-real-page]) {
   cursor: pointer;
   font: inherit;
   letter-spacing: inherit;
-  padding: 6px 3px;
+  min-width: 30px;
+  padding: 11px 7px;
   position: relative;
 }
 [data-orbit-real-page] .orbit-lang-toggle button::after {
@@ -2031,8 +2236,8 @@ body:has([data-orbit-real-page]) {
   position: absolute;
   top: 50%;
   left: 50%;
-  height: 40px;
-  width: 36px;
+  height: 44px;
+  width: 100%;
   transform: translate(-50%, -50%);
 }
 [data-orbit-real-page] .orbit-lang-toggle button.is-active {
@@ -2040,6 +2245,41 @@ body:has([data-orbit-real-page]) {
 }
 [data-orbit-real-page] .orbit-lang-sep {
   color: var(--text-4);
+}
+
+/* One language switcher, two placements (see OrbitLangToggle in
+   orbit-public-shell.tsx): the desktop bar, and the mobile hamburger menu.
+   Exactly one is visible at any width. */
+[data-orbit-real-page] .orbit-lang-toggle--menu {
+  display: none;
+}
+@media (max-width: 640px) {
+  [data-orbit-real-page] .orbit-lang-toggle--bar {
+    display: none;
+  }
+  /* Menu placement borrows the row geometry of .orbit-nav-menu-item so the
+     language row lines up with the destinations above it. */
+  [data-orbit-real-page] .orbit-nav-menu-panel .orbit-lang-toggle--menu {
+    align-items: center;
+    display: flex;
+    font-size: 15px;
+    gap: 4px;
+    min-height: 56px;
+    padding: 0 18px;
+  }
+  [data-orbit-real-page] .orbit-nav-menu-panel .orbit-lang-toggle--menu button {
+    border-radius: var(--r-sm);
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 10px;
+  }
+  [data-orbit-real-page] .orbit-nav-menu-panel .orbit-lang-toggle--menu button::after {
+    content: none;
+  }
+  [data-orbit-real-page] .orbit-nav-menu-panel .orbit-lang-toggle--menu button.is-active {
+    background: var(--accent-softer);
+    color: var(--accent);
+  }
 }
 
 /* Button loading state — standard async affordance for every .btn variant.
@@ -2097,13 +2337,33 @@ body:has([data-orbit-real-page]) {
 }
 
 @media (max-width: 640px) {
+  /* UI-audit fix P0-3. This was display: inline with no wrapping rule, so
+     inside the flex .orbit-nav-lead it collapsed to its minimum content width
+     (23px) and broke a two-character page title onto two lines — "我/的",
+     "人/脉" — 49px of content inside a 56px bar. Clamping to a single line with
+     an ellipsis keeps the bar's height stable no matter how long the title is. */
   [data-orbit-real-page] .orbit-nav-menu .orbit-nav-page-title {
     color: var(--ink);
-    display: inline;
+    display: block;
     font-family: var(--ff-display);
     font-size: 17px;
     font-weight: 600;
     letter-spacing: -0.01em;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The lead group is the only flexible cell in the bar: it absorbs the
+     remaining width and yields it to the (fixed-size) action cluster, so the
+     title truncates instead of the actions overflowing. */
+  [data-orbit-real-page] .orbit-top-nav > .orbit-nav-lead {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+  [data-orbit-real-page] .orbit-top-nav .orbit-brand-link {
+    flex: 0 0 auto;
   }
   [data-orbit-real-page] .orbit-nav-iorbit-icon,
   [data-orbit-real-page] .orbit-nav-menu-btn {
@@ -2128,7 +2388,7 @@ body:has([data-orbit-real-page]) {
     display: block;
     inset: 0;
     position: fixed;
-    z-index: 70;
+    z-index: var(--z-overlay);
   }
   [data-orbit-real-page] .orbit-nav-menu-scrim {
     background: var(--scrim);
@@ -2183,13 +2443,15 @@ body:has([data-orbit-real-page]) {
   line-height: 1.4;
 }
 
-/* Z-index scale: 0–10 in-page, 35 sticky bars, 60 top nav, 70 dropdowns,
-   90 sheets/overlays-in-page, 100 modal dialogs, 120 toasts. The prototype
-   scattered modal layers across 40/90/120 — pin them all to the modal tier. */
+/* Every overlay layer resolves through the one --z-* scale (mirrored from
+   ORBIT_Z). This block used to document a third, incompatible scale of its
+   own — "35 sticky bars, 60 top nav, 70 dropdowns, 90 sheets, 100 modals,
+   120 toasts" — while orbit-z.ts declared 10/100/200/300/400/500 and the
+   namecard layer used 3900/3950/4000. Three scales, no shared ordering. */
 [data-orbit-real-page] .orbit-host-modal-layer,
 [data-orbit-real-page] .orbit-host-auth-overlay,
 [data-orbit-real-page] .orbit-party-picker-overlay {
-  z-index: 100;
+  z-index: var(--z-modal);
 }
 
 /* Modal cards share one radius (20px, the ModalShell standard). */
@@ -2651,6 +2913,18 @@ function unpackTemplate(srcDoc: string) {
   return template;
 }
 
+/**
+ * Fallback extraction path. The normal path serves
+ * `public/orbit-reference/orbit-reference.generated.css` (built by
+ * `npm run build:reference-css`) as a cacheable `<link>`; this only runs when
+ * that asset is missing, so a fresh checkout that has not run the build script
+ * still renders instead of shipping an unstyled page.
+ *
+ * Mirrors the stripping the build script does: the Inter / Inter Tight / Geist
+ * Mono `@font-face` blocks (4.8 MB of base64) never win a font-family lookup
+ * because the token layer below remaps every `--ff*` to Noto Sans SC / Noto
+ * Serif SC / JetBrains Mono.
+ */
 function readReferenceStyles() {
   if (cachedStyleText) return cachedStyleText;
 
@@ -2664,7 +2938,11 @@ function readReferenceStyles() {
   const template = unpackTemplate(decodeHtmlAttribute(srcDoc));
   cachedStyleText = [...template.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
     .map((match) => match[1])
-    .join("\n");
+    .join("\n")
+    .replace(/@font-face\s*\{[^}]*\}\s*/g, (block) => {
+      const family = block.match(/font-family:\s*['"]([^'"]+)['"]/)?.[1];
+      return family && UNUSED_PROTOTYPE_FONT_FAMILIES.includes(family) ? "" : block;
+    });
 
   return cachedStyleText;
 }
@@ -2749,10 +3027,10 @@ const orbitNamecardStyles = `
 [data-orbit-real-page] .nc-basis-rule { color:rgba(139,123,240,.72); } [data-orbit-real-page] .nc-basis-rule:hover, [data-orbit-real-page] .nc-basis-rule.is-open { color:var(--accent); }
 [data-orbit-real-page] .nc-basis-evidence { color:rgba(111,168,248,.72); } [data-orbit-real-page] .nc-basis-evidence:hover, [data-orbit-real-page] .nc-basis-evidence.is-open { color:var(--sky); }
 [data-orbit-real-page] .nc-basis-you { color:var(--text-4); } [data-orbit-real-page] .nc-basis-you:hover, [data-orbit-real-page] .nc-basis-you.is-open { color:var(--text-2); }
-[data-orbit-real-page] .nc-basis-pop { display:none; position:absolute; bottom:calc(100% + 8px); left:0; z-index:60; width:264px; padding:12px 13px; border-radius:var(--r-md); background:var(--surface-3); border:1px solid var(--border-2); box-shadow:var(--sh-pop); color:var(--text-2); font-size:12px; font-weight:400; line-height:1.55; text-align:left; cursor:default; white-space:normal; }
+[data-orbit-real-page] .nc-basis-pop { display:none; position:absolute; bottom:calc(100% + 8px); left:0; z-index:var(--z-dropdown); width:264px; padding:12px 13px; border-radius:var(--r-md); background:var(--surface-3); border:1px solid var(--border-2); box-shadow:var(--sh-pop); color:var(--text-2); font-size:12px; font-weight:400; line-height:1.55; text-align:left; cursor:default; white-space:normal; }
 [data-orbit-real-page] .nc-basis-pop.below { bottom:auto; top:calc(100% + 8px); }
 [data-orbit-real-page] .nc-basis-pop.right { left:auto; right:0; }
-[data-orbit-real-page] .nc-basis-pop .mm { display:inline-block; margin-bottom:6px; padding:1px 8px; border-radius:var(--r-pill); font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+[data-orbit-real-page] .nc-basis-pop .mm { display:inline-block; margin-bottom:6px; padding:1px 8px; border-radius:var(--r-pill); font-size:var(--fs-11); font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
 [data-orbit-real-page] .nc-basis-pop b { color:var(--text); font-weight:600; }
 [data-orbit-real-page] .nc-basis-pop .ev { display:inline-flex; align-items:center; gap:5px; margin-top:8px; color:var(--sky); font-family:var(--ff-mono); font-size:11px; }
 [data-orbit-real-page] .nc-basis-pop .ev svg { width:12px; height:12px; }
@@ -2767,13 +3045,13 @@ const orbitNamecardStyles = `
 [data-orbit-real-page] .nc-pcard .nc-act svg { color:var(--accent); }
 
 /* toast + email compose sheet (shared interaction feedback) */
-.nc-toast-host { position:fixed; left:0; right:0; bottom:26px; display:flex; flex-direction:column; align-items:center; gap:8px; z-index:4000; pointer-events:none; }
+.nc-toast-host { position:fixed; left:0; right:0; bottom:26px; display:flex; flex-direction:column; align-items:center; gap:8px; z-index:var(--z-toast); pointer-events:none; }
 .nc-toast { display:inline-flex; align-items:center; gap:9px; max-width:80%; padding:11px 16px; border-radius:var(--r-pill); background:var(--surface-3); border:1px solid var(--border-2); box-shadow:var(--sh-pop); color:var(--text); font-size:13px; font-weight:500; opacity:0; transform:translateY(8px); transition:opacity .18s, transform .18s; }
 .nc-toast.show { opacity:1; transform:translateY(0); }
 .nc-toast svg { width:15px; height:15px; color:var(--accent); flex-shrink:0; }
-.nc-scrim { position:fixed; inset:0; background:var(--scrim); backdrop-filter:blur(2px); opacity:0; transition:opacity .2s; z-index:3900; }
+.nc-scrim { position:fixed; inset:0; background:var(--scrim); backdrop-filter:blur(2px); opacity:0; transition:opacity .2s; z-index:var(--z-overlay); }
 .nc-scrim.show { opacity:1; }
-.nc-sheet { position:fixed; top:0; right:0; bottom:0; width:min(460px, 94%); background:var(--surface); border-left:1px solid var(--border-2); box-shadow:var(--sh-pop); z-index:3950; transform:translateX(100%); transition:transform .24s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
+.nc-sheet { position:fixed; top:0; right:0; bottom:0; width:min(460px, 94%); background:var(--surface); border-left:1px solid var(--border-2); box-shadow:var(--sh-pop); z-index:calc(var(--z-overlay) + 1); transform:translateX(100%); transition:transform .24s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
 .nc-sheet.show { transform:translateX(0); }
 .nc-sheet-head { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--hairline); }
 .nc-sheet-head h3 { margin:0; font-size:16px; color:var(--ink); }
@@ -2785,6 +3063,30 @@ const orbitNamecardStyles = `
 .nc-flabel { display:block; font-size:13px; font-weight:600; color:var(--text-2); margin:0 0 6px; }
 `;
 
+/**
+ * Emits the product stylesheet in cascade order:
+ *
+ *   1. the prototype base — a cacheable `<link>` (React hoists it into `<head>`,
+ *      so it stays ahead of everything below in document order);
+ *   2. the Orbit override layer + namecard components, still inline because they
+ *      are authored here and total ~90 KB.
+ *
+ * When the generated asset is missing (fresh checkout, no build step yet) the
+ * base falls back to inline extraction so pages never render unstyled.
+ */
 export function OrbitReferenceStyles() {
-  return <style dangerouslySetInnerHTML={{ __html: `${readReferenceStyles()}\n${reactReferenceIsolationStyles}\n${orbitNamecardStyles}` }} />;
+  const overrides = `${reactReferenceIsolationStyles}\n${orbitNamecardStyles}`;
+
+  if (!generatedCssExists()) {
+    return (
+      <style dangerouslySetInnerHTML={{ __html: `${readReferenceStyles()}\n${overrides}` }} />
+    );
+  }
+
+  return (
+    <>
+      <link href={GENERATED_CSS_ROUTE} rel="stylesheet" />
+      <style dangerouslySetInnerHTML={{ __html: overrides }} />
+    </>
+  );
 }

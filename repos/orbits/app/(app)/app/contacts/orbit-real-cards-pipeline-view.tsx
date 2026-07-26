@@ -336,61 +336,6 @@ function ReminderRow({ compact, reminder, t }: { compact?: boolean; reminder: Re
   );
 }
 
-function CrmSidebar({ t }: { t: Translate }) {
-  const primary: { count?: number; href: string; icon: string; key: string; label: Copy }[] = [
-    { key: "list", href: "/app/contacts", icon: "wallet", count: 128, label: { en: "All contacts", zh: "全部人脉" } },
-    { key: "pipeline", href: "/app/contacts/pipeline", icon: "network", count: 24, label: { en: "Pipeline", zh: "跟进管线" } },
-    { key: "graph", href: "/app/contacts/graph", icon: "share", label: { en: "Graph", zh: "人脉图谱" } },
-    { key: "intros", href: "/app/contacts/intros", icon: "users", count: 6, label: { en: "Intros", zh: "引荐记录" } },
-    { key: "dashboard", href: "/app/contacts/dashboard", icon: "grid", label: { en: "Dashboard", zh: "人脉表盘" } },
-  ];
-  const capture: { href: string; icon: string; key: string; label: Copy }[] = [
-    { key: "import", href: "/app/contacts/new", icon: "download", label: { en: "Import hub", zh: "导入中心" } },
-    { key: "scan", href: "/app/contacts/new", icon: "scan", label: { en: "Scan card", zh: "扫名片" } },
-  ];
-
-  const group = (title: Copy, items: typeof primary, marginTop = 0) => (
-    <>
-      <div className="eyebrow" style={{ marginTop, padding: "0 10px", marginBottom: 10 }}>{t(title)}</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {items.map((item) => {
-          const on = item.key === "pipeline";
-          return (
-            <a
-              href={item.href}
-              key={item.key}
-              style={{
-                alignItems: "center",
-                background: on ? "var(--accent-soft)" : "transparent",
-                borderRadius: "var(--r-sm)",
-                color: on ? "var(--accent)" : "var(--text-2)",
-                display: "flex",
-                fontSize: 14,
-                fontWeight: on ? 600 : 500,
-                gap: 11,
-                height: 40,
-                padding: "0 11px",
-                textDecoration: "none",
-              }}
-            >
-              <Icon color={on ? "var(--accent)" : "var(--text-3)"} name={item.icon} size={19} />
-              <span style={{ flex: 1 }}>{t(item.label)}</span>
-              {item.count != null ? <span className="mono" style={{ fontSize: 12, opacity: 0.7 }}>{item.count}</span> : null}
-            </a>
-          );
-        })}
-      </div>
-    </>
-  );
-
-  return (
-    <div style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", overflowY: "auto", padding: "22px 14px" }}>
-      {group({ en: "Wallet", zh: "名片夹" }, primary)}
-      {group({ en: "Capture", zh: "采集" }, capture, 22)}
-    </div>
-  );
-}
-
 const LOCAL_STYLES = `
 [data-orbit-real-page="contacts-pipeline"] .nc-evt { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:var(--r-pill); background:var(--amber-soft); color:var(--amber-text); font-size:13px; font-weight:600; border:1px solid transparent; }
 [data-orbit-real-page="contacts-pipeline"] .nc-evt svg { color:var(--amber); }
@@ -571,7 +516,7 @@ export function OrbitRealCardsPipelineView({ viewModel }: { viewModel: OrbitCont
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
-          <SharedCrmSidebar active="pipeline" />
+          <SharedCrmSidebar active="pipeline" counts={{ pipeline: liveColumns.reduce((sum, column) => sum + column.cards.length, 0) }} />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ alignItems: "flex-end", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 22 }}>
               <div>
@@ -697,7 +642,7 @@ export function OrbitRealCardsPipelineView({ viewModel }: { viewModel: OrbitCont
       </div>
 
       {toast ? (
-        <div className="nc-toast"><Icon name="mail" size={15} />{toast}</div>
+        <div aria-live="polite" className="nc-toast" role="status"><Icon name="mail" size={15} />{toast}</div>
       ) : null}
     </main>
   );

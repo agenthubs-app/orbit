@@ -64,6 +64,12 @@ export function buildOrbitParty(language: OrbitLanguage): OrbitPartyViewModel {
       time: item.time,
     })),
     eventName: pick(PARTY_CONTENT.eventName, language),
+    // UI-audit fix C10. Every other element of this demo surface is written for
+    // an event that is happening right now — the "TONIGHT" eyebrow, the enabled
+    // check-in CTA, "今晚流程", the live agenda marker. The lone hardcoded
+    // "已结束" pill in the page chrome was the outlier, and the two rendered
+    // together. Stating the phase once here makes the whole screen agree.
+    eventPhase: "active",
     eventVenue: pick(PARTY_CONTENT.eventVenue, language),
     icebreakers: PARTY_CONTENT.icebreakers.map((item) => pick(item, language)),
     me: {

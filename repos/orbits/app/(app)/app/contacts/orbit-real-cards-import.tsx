@@ -210,7 +210,7 @@ export function OrbitRealCardsImport() {
                   <Icon name="lock" size={16} color="var(--accent)" />
                   <span>{t({
                     en: "Every source creates a draft first; nothing is written to your contacts until you confirm.",
-                    zh: "所有来源先生成待确认 contact draft，确认前不写入联系人库。",
+                    zh: "所有来源都先生成待确认草稿，确认前不写入联系人库。",
                   })}</span>
                 </div>
               </section>

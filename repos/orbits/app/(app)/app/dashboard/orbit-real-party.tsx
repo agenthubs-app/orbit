@@ -166,7 +166,9 @@ function PartyDesktopChrome({
           <strong>{t({ en: "Live event", zh: "活动现场" })}</strong>
           <span>{t({ en: "Your seat", zh: "你的座位" })} {viewModel.me.seat}</span>
         </div>
-        <span className="orbit-party-ended-pill">{t({ en: "Ended", zh: "已结束" })}</span>
+        {viewModel.eventPhase === "ended" ? (
+          <span className="orbit-party-ended-pill">{t({ en: "Ended", zh: "已结束" })}</span>
+        ) : null}
       </div>
       <nav aria-label={t({ en: "Event pages", zh: "活动内部页面" })} className="orbit-party-desktop-tabs" role="tablist">
         {tabs.map(([key, icon, label]) => {
@@ -254,20 +256,36 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
   return (
     <div className="orbit-party-home-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 32px" }}>
       <div className="card" style={{ marginTop: 12, overflow: "hidden", padding: 20, position: "relative" }}>
-        <span className="badge badge-live" style={{ position: "absolute", right: 16, top: 16 }}>
-          <span className="dot dot-live" />
-          {t({ en: "Live", zh: "进行中" })}
-        </span>
-        <div className="eyebrow">{`TONIGHT · ${t({ en: "On site", zh: "现场" })}`}</div>
+        {viewModel.eventPhase === "active" ? (
+          <span className="badge badge-live" style={{ position: "absolute", right: 16, top: 16 }}>
+            <span className="dot dot-live" />
+            {t({ en: "Live", zh: "进行中" })}
+          </span>
+        ) : viewModel.eventPhase === "upcoming" ? (
+          <span className="badge badge-soon" style={{ position: "absolute", right: 16, top: 16 }}>
+            {t({ en: "Upcoming", zh: "即将开始" })}
+          </span>
+        ) : (
+          <span className="badge badge-ended" style={{ position: "absolute", right: 16, top: 16 }}>
+            {t({ en: "Ended", zh: "已结束" })}
+          </span>
+        )}
+        <div className="eyebrow">
+          {viewModel.eventPhase === "ended"
+            ? t({ en: "RECAP · On site", zh: "回顾 · 现场" })
+            : `TONIGHT · ${t({ en: "On site", zh: "现场" })}`}
+        </div>
         <h1 className="h-display" style={{ margin: "8px 0 0" }}>
           {t({ en: "Good evening, ", zh: "晚上好，" })}
           {viewModel.me.initial}
         </h1>
         <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>{`${viewModel.eventName} · ${viewModel.eventVenue}`}</div>
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button className="btn btn-primary" onClick={() => navigateTo("/app/party/checkin")} style={{ flex: "1 1 0%" }}>
+          <button className="btn btn-primary" disabled={viewModel.eventPhase === "ended"} onClick={() => navigateTo("/app/party/checkin")} style={{ flex: "1 1 0%" }}>
             <Icon color="var(--on-dark)" name="ticket" size={16} />
-            {t({ en: "Check in", zh: "签到" })}
+            {viewModel.eventPhase === "ended"
+              ? t({ en: "Check-in closed", zh: "签到已结束" })
+              : t({ en: "Check in", zh: "签到" })}
           </button>
           <button className="btn btn-ghost" onClick={() => go("table")} style={{ flex: "1 1 0%" }}>
             <Icon name="seat" size={16} />
@@ -344,7 +362,14 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
                   {item.time}
                 </span>
                 <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{item.label}</span>
-                {index === 2 ? (
+                {/* UI-audit fix C10 (second source). The agenda marked its third
+                    row "进行中" purely by array index, with no reference to the
+                    clock or the event state — so an event that had already
+                    ended still showed an item in progress, right below a badge
+                    saying the event was over. Gating on the phase removes the
+                    contradiction; which specific row is live is still an index
+                    heuristic rather than a time comparison. */}
+                {index === 2 && viewModel.eventPhase === "active" ? (
                   <span className="badge badge-live" style={{ height: 20 }}>
                     {t({ en: "Live", zh: "进行中" })}
                   </span>

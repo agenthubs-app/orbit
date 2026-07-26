@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { OrbitPlatformViewModel } from "../orbit-admin-platform-route-view-model";
+import { formatOrbitDateTime } from "../orbit-datetime";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Cover, Icon } from "../orbit-reference-primitives";
 
@@ -22,7 +23,7 @@ function PlatformStat({ s }: { s: OrbitPlatformViewModel["platformStats"][number
 }
 
 export function OrbitRealPlatform({ viewModel }: { viewModel: OrbitPlatformViewModel }) {
-  const { t } = useOrbitLanguage();
+  const { language, t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
   const [queue, setQueue] = useState(viewModel.reviewQueue);
   const [selId, setSelId] = useState(viewModel.reviewQueue[0]?.id ?? "");
@@ -60,7 +61,7 @@ export function OrbitRealPlatform({ viewModel }: { viewModel: OrbitPlatformViewM
             <div className="orbit-platform-review">
               <div className="orbit-platform-review-list">
                 <div className="orbit-platform-review-title"><h1 className="h-display">{t({ en: "Event review", zh: "活动审核" })}</h1><p>{t({ en: `${queue.length} events awaiting review`, zh: `${queue.length} 个待审核活动` })}</p></div>
-                <div className="orbit-platform-review-items">{queue.map((record) => <button className={`orbit-platform-review-item${sel && sel.id === record.id ? " is-active" : ""}`} key={record.id} onClick={() => setSelId(record.id)} type="button"><Cover g={record.g} monogram={{ text: record.letter, size: 18 }} style={{ borderRadius: 11, flexShrink: 0, height: 46, width: 46 }} /><span><strong>{record.name}</strong><small>{record.org} · {record.submitted}</small><em>{t({ en: "Pending review", zh: "待审核" })}</em></span></button>)}</div>
+                <div className="orbit-platform-review-items">{queue.map((record) => <button className={`orbit-platform-review-item${sel && sel.id === record.id ? " is-active" : ""}`} key={record.id} onClick={() => setSelId(record.id)} type="button"><Cover g={record.g} monogram={{ text: record.letter, size: 18 }} style={{ borderRadius: 11, flexShrink: 0, height: 46, width: 46 }} /><span><strong>{record.name}</strong><small>{record.org} · {formatOrbitDateTime(record.submitted, language)}</small><em>{t({ en: "Pending review", zh: "待审核" })}</em></span></button>)}</div>
               </div>
               <div className="orbit-platform-review-detail">
                 {sel ? (
@@ -85,7 +86,7 @@ export function OrbitRealPlatform({ viewModel }: { viewModel: OrbitPlatformViewM
               <div className="orbit-platform-header"><h1 className="h-display">{t({ en: "Overview", zh: "平台总览" })}</h1><p>{t({ en: "Organizer, event, and user health across the platform", zh: "整个平台的主办方、活动与用户健康度" })}</p></div>
               <div className="orbit-platform-stats">{viewModel.platformStats.map((stat) => <PlatformStat key={stat.label} s={stat} />)}</div>
               <div className="orbit-platform-overview-grid">
-                <div className="card orbit-platform-panel"><div className="orbit-platform-panel-head"><h2 className="h-section">{t({ en: "Events awaiting review", zh: "待审核活动" })}</h2><button className="btn btn-ghost btn-sm" onClick={() => setView("review")} type="button">{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></button></div><div className="orbit-platform-mini-list">{viewModel.reviewQueue.map((record) => <button className="orbit-platform-mini-row" key={record.id} onClick={() => { setView("review"); setSelId(record.id); }} type="button"><Cover g={record.g} monogram={{ text: record.letter, size: 16 }} style={{ borderRadius: "var(--r-sm)", flexShrink: 0, height: 40, width: 40 }} /><div className="orbit-platform-mini-copy"><span>{record.name}</span><small>{record.org} · {record.submitted}</small></div><span className="badge badge-soon" style={{ height: 22 }}>{t({ en: "Pending", zh: "待审" })}</span></button>)}</div></div>
+                <div className="card orbit-platform-panel"><div className="orbit-platform-panel-head"><h2 className="h-section">{t({ en: "Events awaiting review", zh: "待审核活动" })}</h2><button className="btn btn-ghost btn-sm" onClick={() => setView("review")} type="button">{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></button></div><div className="orbit-platform-mini-list">{viewModel.reviewQueue.map((record) => <button className="orbit-platform-mini-row" key={record.id} onClick={() => { setView("review"); setSelId(record.id); }} type="button"><Cover g={record.g} monogram={{ text: record.letter, size: 16 }} style={{ borderRadius: "var(--r-sm)", flexShrink: 0, height: 40, width: 40 }} /><div className="orbit-platform-mini-copy"><span>{record.name}</span><small>{record.org} · {formatOrbitDateTime(record.submitted, language)}</small></div><span className="badge badge-soon" style={{ height: 22 }}>{t({ en: "Pending", zh: "待审" })}</span></button>)}</div></div>
                 <div className="card orbit-platform-panel"><div className="orbit-platform-panel-head"><h2 className="h-section">{t({ en: "Organizer accounts", zh: "主办方账号" })}</h2><button className="btn btn-ghost btn-sm" onClick={() => setView("accounts")} type="button">{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></button></div><div className="orbit-platform-mini-list">{viewModel.orgAccounts.slice(0, 4).map((account) => <div className="orbit-platform-organizer-mini" key={account.name}><span className={`avatar ${account.g}`} style={{ fontSize: 16, height: 40, width: 40 }}>{account.letter}</span><span><strong>{account.name}</strong><small>{t({ en: `${account.events} events`, zh: `${account.events} 场活动` })} · {account.owner}</small></span>{account.status === "已认证" ? <span className="badge badge-live" style={{ height: 22 }}>{t({ en: "Verified", zh: "已认证" })}</span> : <span className="badge badge-soon" style={{ height: 22 }}>{t({ en: "Pending", zh: "待审" })}</span>}</div>)}</div></div>
               </div>
             </>
