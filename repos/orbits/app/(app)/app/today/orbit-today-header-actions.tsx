@@ -69,11 +69,7 @@ export function OrbitTodayHeaderActions({
             background: var(--accent);
             border: none;
             border-radius: var(--r-pill);
-            /* orbit-theme.tsx's .orbit-theme-toggle sits at right:18/
-               bottom:18, 44px, on every page (rendered from layout.tsx) —
-               stack the FAB above it (18 + 44 + 12 gap) instead of
-               overlapping the same corner. */
-            bottom: 74px;
+            bottom: 18px;
             box-shadow: var(--sh-pop);
             display: flex;
             height: 56px;

@@ -46,9 +46,8 @@ test("the language toggle uses discrete buttons in .orbit-lang-toggle", () => {
   assert.ok(!shell.includes("orbit-lang-button"), "cycling button retired");
 });
 
-test("the mobile hamburger and menu layer are back, with Today in the menu", () => {
+test("the mobile hamburger and compact menu layer are present", () => {
   for (const cls of [
-    "orbit-nav-iorbit-icon",
     "orbit-nav-menu-btn",
     "orbit-nav-menu-layer",
     "orbit-nav-menu-scrim",
@@ -59,23 +58,25 @@ test("the mobile hamburger and menu layer are back, with Today in the menu", () 
   }
   const menuIdx = shell.indexOf("const menuItems");
   const menuBlock = shell.slice(menuIdx, shell.indexOf("];", menuIdx));
+  assert.ok(menuBlock.includes('"agent"'), "iOrbit present in the mobile menu");
   assert.ok(menuBlock.includes('"today"'), "Today present in the mobile menu");
-  assert.ok(menuBlock.includes('"me"'), "Me present in the mobile menu");
+  assert.ok(!menuBlock.includes("icon:"), "mobile destinations are text-only");
+  assert.ok(shell.includes("OrbitNavMobileAccountLinks"), "session-aware account group present");
+  assert.ok(shell.includes("orbit-nav-menu-divider"), "primary and account groups are separated");
 });
 
 // T3 (today-schedule merge): the hamburger used to carry a standalone
 // "schedule" entry (clock icon) alongside "today". Schedule folded into
 // Today (now labeled 日程/Schedule, calendar icon) — the standalone entry
 // must be gone.
-test("the standalone schedule menu item is gone; the today item carries the calendar icon", () => {
+test("the standalone schedule item is gone and the primary order stays canonical", () => {
   const menuIdx = shell.indexOf("const menuItems");
   const menuBlock = shell.slice(menuIdx, shell.indexOf("];", menuIdx));
 
   assert.ok(!/key: "schedule"/.test(menuBlock), "no standalone schedule entry in the mobile menu");
-  assert.match(
-    menuBlock,
-    /active === "today"[^}]*icon: "calendar"[^}]*key: "today"/,
-    "the today entry uses the calendar icon",
+  assert.ok(
+    menuBlock.indexOf('key: "agent"') < menuBlock.indexOf('key: "events"'),
+    "mobile menu starts with iOrbit",
   );
   assert.ok(
     menuBlock.indexOf('key: "events"') < menuBlock.indexOf('key: "today"'),
@@ -93,25 +94,20 @@ test("session account control and inbox extras stay in the actions segment", () 
   const actions = shell.slice(actionsIdx, headerEnd);
   assert.ok(actions.includes("OrbitNavAccountControl"));
   assert.ok(actions.includes("{rightExtra}"));
+  assert.ok(actions.includes("orbit-nav-account-slot"));
+  assert.ok(actions.includes("orbit-nav-extra"));
 });
 
-// Mobile audit P1: the floating .orbit-theme-toggle (orbit-theme.tsx)
-// overlaps sticky bottom CTA bars on mobile pages. Fix hides it <=640px and
-// moves the same toggle into the hamburger menu instead.
-test("the floating theme toggle is hidden on mobile and replaced by a hamburger menu item", () => {
+test("theme controls are absent from global navigation", () => {
   const themeSource = readFileSync(
     join(projectRoot, "app/(app)/app/orbit-theme.tsx"),
     "utf8",
   );
 
-  assert.ok(themeSource.includes("@media (max-width: 640px)"), "mobile breakpoint present");
-  assert.match(
-    themeSource,
-    /\.orbit-theme-toggle\s*\{\s*display:\s*none;\s*\}/,
-    "toggle hidden on mobile",
-  );
-  assert.ok(shell.includes("OrbitNavThemeMenuItem"), "hamburger menu carries a theme toggle item");
-  assert.ok(shell.includes("toggleOrbitTheme"), "menu item reuses the shared theme toggle helper");
+  assert.ok(!themeSource.includes("OrbitThemeToggle"), "floating toggle component removed");
+  assert.ok(!themeSource.includes(".orbit-theme-toggle"), "floating toggle styles removed");
+  assert.ok(!shell.includes("OrbitNavThemeMenuItem"), "hamburger theme item removed");
+  assert.ok(!shell.includes("toggleOrbitTheme"), "navigation no longer mutates theme");
 });
 
 test("the ledger pages carry the real-page scope the nav CSS requires", () => {

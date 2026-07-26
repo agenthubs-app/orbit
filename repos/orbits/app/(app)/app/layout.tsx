@@ -16,7 +16,7 @@ import { auth } from "../../../auth";
 import { OrbitLanguageProvider } from "./orbit-language-context";
 import { normalizeOrbitLanguage } from "./orbit-language-core";
 import { OrbitResponsiveA11y } from "./orbit-responsive-a11y";
-import { OrbitThemeStyles, OrbitThemeToggle } from "./orbit-theme";
+import { OrbitThemeStyles } from "./orbit-theme";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const requestHeaders = await headers();
@@ -33,7 +33,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <OrbitResponsiveA11y />
         <OrbitThemeStyles />
         {children}
-        <OrbitThemeToggle />
       </OrbitLanguageProvider>
     </SessionProvider>
   );

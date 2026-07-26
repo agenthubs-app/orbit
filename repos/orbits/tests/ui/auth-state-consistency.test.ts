@@ -19,6 +19,11 @@ test("proxy protects personal routes with the same NextAuth session used by the 
   assert.match(proxySource, /\/app\/account\/login/);
 });
 
+test("settings is a protected personal route", () => {
+  const routingSource = source("features/auth/app-auth-routing.ts");
+  assert.match(routingSource, /"\/app\/settings"/);
+});
+
 test("/app layout injects the server session and the shared nav does not refetch it", () => {
   const layoutSource = source("app/(app)/app/layout.tsx");
   const navSource = source("app/(app)/app/orbit-public-shell.tsx");
@@ -40,6 +45,15 @@ test("starfield homepage uses account signup for guests and the personal home fo
     assert.match(starfieldSource, /\/app\/account\/signup\?next=%2Fapp%2Fhome/);
     assert.doesNotMatch(starfieldSource, /href="\/app\/register"/);
     assert.match(starfieldSource, /enterStarfield/);
+  }
+});
+
+test("signed-in mobile navigation exposes profile and settings", () => {
+  const mobileSource = source("app/(app)/app/orbit-starfield-mobile.tsx");
+  const sharedNavSource = source("app/(app)/app/orbit-public-shell.tsx");
+
+  for (const navSource of [mobileSource, sharedNavSource]) {
+    assert.match(navSource, /href="\/app\/settings"|preserveHref\("\/app\/settings"\)/);
   }
 });
 

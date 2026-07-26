@@ -14,10 +14,6 @@
 // init script (mounted in the root layout <head>) sets it before first paint to
 // avoid a flash. Absence of the attribute == dark (the default identity).
 
-import { useEffect, useState } from "react";
-
-import { Icon } from "./orbit-reference-primitives";
-
 // Runs before paint in the document <head>. Kept dependency-free and defensive.
 export const ORBIT_THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('orbit-theme');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
 
@@ -206,54 +202,6 @@ html[data-theme="light"] [data-orbit-real-page] .orbit-view-toggle button.is-act
   color: #fff;
 }
 
-/* The toggle renders outside [data-orbit-real-page], so design tokens don't
-   resolve here — use explicit per-theme colors so it's visible in both themes. */
-.orbit-theme-toggle {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  /* Below overlays/dropdowns/modals/toasts (see app/(app)/app/orbit-z.ts) by
-     design — the toggle must not float above sheets, menus, or dialogs.
-     Literal fallback because the toggle renders outside
-     [data-orbit-real-page], where the --z-* scale is not in scope. */
-  z-index: var(--z-sticky, 100);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  transition: transform .08s ease, background .15s ease, border-color .15s ease;
-  /* dark theme (default) */
-  background: #1b1830;
-  color: #f2f0fb;
-  border: 1px solid rgba(150,145,200,0.34);
-  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
-}
-html[data-theme="light"] .orbit-theme-toggle {
-  background: #ffffff;
-  color: #17211f;
-  border: 1px solid rgba(23,33,31,0.14);
-  box-shadow: 0 4px 14px rgba(23,33,31,0.14);
-}
-.orbit-theme-toggle:hover { transform: translateY(-1px); }
-.orbit-theme-toggle:focus-visible { outline: 3px solid rgba(14,116,144,0.5); outline-offset: 2px; }
-
-/* Mobile audit P1: the floating toggle sits at right:18/bottom:18 on every
-   page and overlaps sticky bottom CTA bars (event detail's 回看/已结束 bar,
-   the contacts pipeline's mobile create bar, etc.) — those bars don't know
-   the toggle exists and can't reserve space for it. Rather than teach every
-   sticky bar about a fixed corner widget, drop the floating toggle on mobile
-   and surface the same action from the hamburger menu instead (see
-   OrbitNavThemeMenuItem in orbit-public-shell.tsx, which calls
-   toggleOrbitTheme() below). The Today page's own FAB (orbit-today-header-
-   actions.tsx) already stacks above this toggle at bottom:74 — it does not
-   need to change since the toggle it was stacking above is now hidden here. */
-@media (max-width: 640px) {
-  .orbit-theme-toggle { display: none; }
-}
 `;
 
 // Animated avatars (item 4): a subtle orbiting sheen on every Avatar primitive,
@@ -277,17 +225,13 @@ const AVATAR_MOTION_CSS = `
 }
 `;
 
-// Server-safe: emits the light-theme stylesheet + avatar motion + toggle chrome once per app tree.
+// Server-safe: emits the light-theme stylesheet + avatar motion once per app tree.
 export function OrbitThemeStyles() {
   return <style data-orbit-theme-styles>{`${LIGHT_THEME_CSS}\n${AVATAR_MOTION_CSS}`}</style>;
 }
 
 export type OrbitTheme = "light" | "dark";
 
-// Shared with OrbitNavThemeMenuItem (orbit-public-shell.tsx), the mobile
-// replacement for this component's floating button (see the
-// `.orbit-theme-toggle` mobile media query above) — both read/write the same
-// document attribute + localStorage key, so either trigger stays in sync.
 export function getOrbitTheme(): OrbitTheme {
   if (typeof document === "undefined") return "dark";
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
@@ -302,26 +246,4 @@ export function toggleOrbitTheme(): OrbitTheme {
     // ignore storage failures (private mode etc.)
   }
   return next;
-}
-
-export function OrbitThemeToggle() {
-  const [theme, setTheme] = useState<OrbitTheme>("dark");
-
-  useEffect(() => {
-    setTheme(getOrbitTheme());
-  }, []);
-
-  const isLight = theme === "light";
-
-  return (
-    <button
-      type="button"
-      className="orbit-theme-toggle"
-      onClick={() => setTheme(toggleOrbitTheme())}
-      aria-label={isLight ? "切换到深色模式" : "切换到明亮模式"}
-      title={isLight ? "深色模式" : "明亮模式"}
-    >
-      <Icon name={isLight ? "moon" : "sun"} size={18} />
-    </button>
-  );
 }

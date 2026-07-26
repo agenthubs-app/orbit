@@ -2247,41 +2247,7 @@ html:has([data-orbit-real-page]) {
   color: var(--text-4);
 }
 
-/* One language switcher, two placements (see OrbitLangToggle in
-   orbit-public-shell.tsx): the desktop bar, and the mobile hamburger menu.
-   Exactly one is visible at any width. */
-[data-orbit-real-page] .orbit-lang-toggle--menu {
-  display: none;
-}
-@media (max-width: 640px) {
-  [data-orbit-real-page] .orbit-lang-toggle--bar {
-    display: none;
-  }
-  /* Menu placement borrows the row geometry of .orbit-nav-menu-item so the
-     language row lines up with the destinations above it. */
-  [data-orbit-real-page] .orbit-nav-menu-panel .orbit-lang-toggle--menu {
-    align-items: center;
-    display: flex;
-    font-size: 15px;
-    gap: 4px;
-    min-height: 56px;
-    padding: 0 18px;
-  }
-  [data-orbit-real-page] .orbit-nav-menu-panel .orbit-lang-toggle--menu button {
-    border-radius: var(--r-sm);
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0 10px;
-  }
-  [data-orbit-real-page] .orbit-nav-menu-panel .orbit-lang-toggle--menu button::after {
-    content: none;
-  }
-  [data-orbit-real-page] .orbit-nav-menu-panel .orbit-lang-toggle--menu button.is-active {
-    background: var(--accent-softer);
-    color: var(--accent);
-  }
-}
-
+/* The desktop text switcher becomes a compact page-colored pill on mobile. */
 /* Button loading state — standard async affordance for every .btn variant.
    Pair with disabled + aria-busy at the call site. */
 @keyframes orbit-btn-spin {
@@ -2327,13 +2293,21 @@ html:has([data-orbit-real-page]) {
   }
 }
 
-/* Mobile top-nav elements (page title, iOrbit icon, hamburger, menu panel):
-   desktop keeps the full link bar, so these only exist <=640px. */
+/* Mobile top-nav elements (page title, hamburger, menu panel): desktop keeps
+   the full link bar, so these only exist <=640px. */
 [data-orbit-real-page] .orbit-nav-page-title,
-[data-orbit-real-page] .orbit-nav-iorbit-icon,
 [data-orbit-real-page] .orbit-nav-menu-btn,
 [data-orbit-real-page] .orbit-nav-menu-layer {
   display: none;
+}
+
+[data-orbit-real-page] .orbit-nav-extra {
+  display: contents;
+}
+
+[data-orbit-real-page] .orbit-nav-account-slot {
+  align-items: center;
+  display: inline-flex;
 }
 
 @media (max-width: 640px) {
@@ -2365,7 +2339,6 @@ html:has([data-orbit-real-page]) {
   [data-orbit-real-page] .orbit-top-nav .orbit-brand-link {
     flex: 0 0 auto;
   }
-  [data-orbit-real-page] .orbit-nav-iorbit-icon,
   [data-orbit-real-page] .orbit-nav-menu-btn {
     align-items: center;
     background: transparent;
@@ -2378,11 +2351,34 @@ html:has([data-orbit-real-page]) {
     justify-content: center;
     width: 36px;
   }
-  [data-orbit-real-page] .orbit-nav-iorbit-icon {
+
+  [data-orbit-real-page] .orbit-nav-extra,
+  [data-orbit-real-page] .orbit-nav-account-slot {
+    display: none;
+  }
+
+  [data-orbit-real-page] .orbit-lang-toggle {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    gap: 0;
+    padding: 3px;
+  }
+  [data-orbit-real-page] .orbit-lang-toggle button {
+    border-radius: var(--r-pill);
+    min-height: 36px;
+    min-width: 40px;
+    padding: 0 9px;
+  }
+  [data-orbit-real-page] .orbit-lang-toggle button::after {
+    content: none;
+  }
+  [data-orbit-real-page] .orbit-lang-toggle button.is-active {
+    background: var(--accent-soft);
     color: var(--accent);
   }
-  [data-orbit-real-page] .orbit-nav-iorbit-icon.is-active {
-    background: var(--accent-soft);
+  [data-orbit-real-page] .orbit-lang-sep {
+    display: none;
   }
   [data-orbit-real-page] .orbit-nav-menu-layer {
     bottom: 0;
@@ -2394,7 +2390,7 @@ html:has([data-orbit-real-page]) {
     z-index: var(--z-overlay);
   }
   [data-orbit-real-page] .orbit-nav-menu-scrim {
-    background: var(--scrim);
+    background: transparent;
     border: 0;
     cursor: pointer;
     inset: 0;
@@ -2403,30 +2399,48 @@ html:has([data-orbit-real-page]) {
   [data-orbit-real-page] .orbit-nav-menu-panel {
     animation: pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
     background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    border-radius: 0 0 20px 20px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
     box-shadow: var(--sh-pop);
-    left: 0;
-    padding: 8px 10px 14px;
+    left: auto;
+    max-width: calc(100vw - 28px);
+    min-width: 176px;
+    padding: 8px;
     position: absolute;
-    right: 0;
-    top: 0;
+    right: 14px;
+    top: 8px;
+    width: 220px;
   }
   [data-orbit-real-page] .orbit-nav-menu-item {
     align-items: center;
     border-radius: var(--r-sm);
     color: var(--text-2);
     display: flex;
-    font-size: 16px;
-    font-weight: 600;
-    gap: 14px;
-    min-height: 56px;
+    font-size: 14.5px;
+    font-weight: 500;
+    min-height: 44px;
     padding: 0 14px;
     text-decoration: none;
   }
   [data-orbit-real-page] .orbit-nav-menu-item.is-active {
     background: var(--accent-softer);
     color: var(--accent);
+  }
+  [data-orbit-real-page] .orbit-nav-menu-item.is-accent {
+    color: var(--accent);
+  }
+  [data-orbit-real-page] .orbit-nav-menu-divider {
+    background: var(--border);
+    display: block;
+    height: 1px;
+    margin: 5px 8px;
+  }
+  [data-orbit-real-page] .orbit-nav-menu-status {
+    color: var(--text-3);
+    display: block;
+    font-size: 13px;
+    min-height: 44px;
+    padding: 13px 14px;
   }
 }
 

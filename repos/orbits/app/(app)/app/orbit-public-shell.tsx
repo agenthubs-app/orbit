@@ -2,11 +2,11 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { signOut, useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 
 import { useOrbitLanguage } from "./orbit-language-context";
 import { Avatar, Icon, Logo, gradientFromString } from "./orbit-reference-primitives";
 import { productHref } from "./orbit-product-href";
-import { getOrbitTheme, toggleOrbitTheme, type OrbitTheme } from "./orbit-theme";
 import { ORBIT_Z } from "./orbit-z";
 
 // "schedule" no longer has a nav entry of its own (T3, today-schedule merge —
@@ -16,7 +16,7 @@ import { ORBIT_Z } from "./orbit-z";
 // `active="schedule"` — both files stay in place (unreachable from normal
 // navigation now that schedule/page.tsx and followups/page.tsx redirect to
 // /app/today, but not deleted; see those route adapters).
-export type OrbitNavActive = "home" | "today" | "events" | "schedule" | "cards" | "agent" | "me";
+export type OrbitNavActive = "home" | "today" | "events" | "schedule" | "cards" | "agent" | "me" | "settings";
 
 export { productHref } from "./orbit-product-href";
 
@@ -32,6 +32,7 @@ type OrbitNavSessionUser = { email: string; id: string; name: string };
 function OrbitNavAccountControl() {
   const { preserveHref, t } = useOrbitLanguage();
   const { data: session, status } = useSession();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const sessionUser: OrbitNavSessionUser | null | undefined =
@@ -79,10 +80,7 @@ function OrbitNavAccountControl() {
   }
 
   if (sessionUser === null) {
-    const nextPath =
-      typeof window === "undefined"
-        ? "/app"
-        : window.location.pathname + window.location.search;
+    const nextPath = pathname || "/app";
 
     return (
       <span style={{ alignItems: "center", display: "inline-flex", gap: 10 }}>
@@ -156,6 +154,14 @@ function OrbitNavAccountControl() {
             <Icon name="users" size={15} />
             {t({ en: "Profile", zh: "个人资料" })}
           </a>
+          <a
+            href={preserveHref("/app/settings")}
+            role="menuitem"
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+          >
+            <Icon name="settings" size={15} />
+            {t({ en: "Settings", zh: "设置" })}
+          </a>
           <button
             onClick={() => {
               setMenuOpen(false);
@@ -174,23 +180,6 @@ function OrbitNavAccountControl() {
   );
 }
 
-// Mobile audit P1: `.orbit-theme-toggle` (orbit-theme.tsx) is hidden at
-// <=640px because its fixed right:18/bottom:18 corner overlaps sticky bottom
-// CTA bars on mobile pages. This menu item is the mobile replacement — it
-// lives in the hamburger panel and drives the exact same
-// document.documentElement[data-theme] + localStorage toggle via the shared
-// toggleOrbitTheme() helper, so both triggers always agree.
-//
-// Hydration safety: theme starts `null` (not read from `document` — that
-// would differ between the server's guess and the client's real DOM
-// attribute) so the first client render matches SSR exactly; the real theme
-// is read once after mount, matching the mounted-state pattern used
-// elsewhere in this file (OrbitNavAccountControl's sessionUser).
-//
-// Ratchet note: the sitewide non-.btn button-element count is at its
-// ceiling (tests/ui/orbit-button-ratchet.test.ts), so this reuses the
-// existing `<a className="orbit-nav-menu-item">` pattern (role="button", no
-// real navigation) instead of a hand-rolled button element.
 const ORBIT_LANG_BUTTONS: readonly {
   code: "zh" | "en" | "ja";
   label: string;
@@ -202,21 +191,15 @@ const ORBIT_LANG_BUTTONS: readonly {
 ];
 
 /**
- * Language switcher, rendered in two places from ONE source (so the button
- * ratchet in tests/ui/orbit-button-ratchet.test.ts still sees a single
- * hand-rolled button): the desktop top bar, and the mobile hamburger menu.
- *
- * UI-audit fix P0-3 / P1-f. Keeping it in the mobile bar cost ~91px of a 375px
- * viewport that already held seven control groups, which squeezed the page
- * title until it wrapped to two lines and overflowed the 56px bar. It also had
- * the smallest tap targets in the product (19x29). CSS shows exactly one
- * variant per breakpoint — see .orbit-lang-toggle--bar / --menu.
+ * Shared language switcher. The same compact pill is used in the desktop and
+ * mobile top bars; account/inbox actions move into the mobile menu so the
+ * current page title still has enough room.
  */
-function OrbitLangToggle({ variant }: { variant: "bar" | "menu" }) {
+function OrbitLangToggle() {
   const { language, setLanguage, t } = useOrbitLanguage();
 
   return (
-    <span className={`orbit-lang-toggle orbit-lang-toggle--${variant} mono`}>
+    <span className="orbit-lang-toggle mono">
       {ORBIT_LANG_BUTTONS.map((entry, index) => (
         <span key={entry.code} style={{ display: "contents" }}>
           {index > 0 ? (
@@ -237,36 +220,63 @@ function OrbitLangToggle({ variant }: { variant: "bar" | "menu" }) {
   );
 }
 
-function OrbitNavThemeMenuItem() {
-  const { t } = useOrbitLanguage();
-  const [theme, setTheme] = useState<OrbitTheme | null>(null);
+function OrbitNavMobileAccountLinks({
+  active,
+  meHref,
+}: {
+  active: OrbitNavActive;
+  meHref: string;
+}) {
+  const { preserveHref, t } = useOrbitLanguage();
+  const { data: session, status } = useSession();
+  const pathname = usePathname();
 
-  useEffect(() => {
-    setTheme(getOrbitTheme());
-  }, []);
+  if (status === "loading") {
+    return (
+      <span className="orbit-nav-menu-status" role="status">
+        {t({ en: "Checking sign-in status…", zh: "正在确认登录状态…" })}
+      </span>
+    );
+  }
 
-  const isLight = theme === "light";
-  const label =
-    theme === null
-      ? t({ en: "Toggle theme", zh: "切换主题" })
-      : isLight
-        ? t({ en: "Dark mode", zh: "深色模式" })
-        : t({ en: "Light mode", zh: "浅色模式" });
+  if (session?.user?.id) {
+    return (
+      <>
+        <a
+          aria-current={active === "me" || active === "home" ? "page" : undefined}
+          className={`orbit-nav-menu-item${active === "me" || active === "home" ? " is-active" : ""}`}
+          href={preserveHref(meHref)}
+        >
+          {t({ en: "Me", zh: "我的" })}
+        </a>
+        <a
+          aria-current={active === "settings" ? "page" : undefined}
+          className={`orbit-nav-menu-item is-accent${active === "settings" ? " is-active" : ""}`}
+          href={preserveHref("/app/settings")}
+        >
+          {t({ en: "Settings", zh: "设置" })}
+        </a>
+      </>
+    );
+  }
+
+  const nextPath = pathname || "/app";
 
   return (
-    <a
-      aria-pressed={theme === null ? undefined : isLight}
-      className="orbit-nav-menu-item"
-      href="#"
-      onClick={(event) => {
-        event.preventDefault();
-        setTheme(toggleOrbitTheme());
-      }}
-      role="button"
-    >
-      <Icon name={isLight ? "moon" : "sun"} size={20} />
-      <span>{label}</span>
-    </a>
+    <>
+      <a
+        className="orbit-nav-menu-item"
+        href={preserveHref(`/app/account/login?next=${encodeURIComponent(nextPath)}`)}
+      >
+        {t({ en: "Sign in", zh: "登录" })}
+      </a>
+      <a
+        className="orbit-nav-menu-item is-accent"
+        href={preserveHref(`/app/account/signup?next=${encodeURIComponent(nextPath)}`)}
+      >
+        {t({ en: "Sign up", zh: "注册" })}
+      </a>
+    </>
   );
 }
 
@@ -308,6 +318,7 @@ export function OrbitTopNav({
     // Unreachable via the nav (see the OrbitNavActive comment above) but kept
     // for the two orphaned components that still pass active="schedule".
     schedule: { en: "Calendar", zh: "日程" },
+    settings: { en: "Settings", zh: "设置" },
     today: { en: "Schedule", zh: "日程" },
   };
   const links = [
@@ -316,10 +327,10 @@ export function OrbitTopNav({
     ["/contacts", t({ en: "Contacts", zh: "人脉" }), "cards"],
   ] as const;
   const menuItems = [
-    { active: active === "events", href: productHref("/events"), icon: "calendar", key: "events", label: t({ en: "Events", zh: "活动" }) },
-    { active: active === "today", href: productHref("/today"), icon: "calendar", key: "today", label: t({ en: "Schedule", zh: "日程" }) },
-    { active: active === "cards", href: productHref("/contacts"), icon: "users", key: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
-    { active: active === "me" || active === "home", href: meHref, icon: "user", key: "me", label: t({ en: "Me", zh: "我的" }) },
+    { active: isAgent, href: "/app/agent", key: "agent", label: "iOrbit" },
+    { active: active === "events", href: productHref("/events"), key: "events", label: t({ en: "Events", zh: "活动" }) },
+    { active: active === "today", href: productHref("/today"), key: "today", label: t({ en: "Schedule", zh: "日程" }) },
+    { active: active === "cards", href: productHref("/contacts"), key: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
   ];
 
   return (
@@ -351,12 +362,9 @@ export function OrbitTopNav({
         </nav>
 
         <div className="orbit-top-actions">
-          <OrbitLangToggle variant="bar" />
-          {rightExtra}
-          <OrbitNavAccountControl />
-          <a aria-label="iOrbit" className={`orbit-nav-iorbit-icon hit-44${isAgent ? " is-active" : ""}`} href={preserveHref("/app/agent")}>
-            <Icon name="sparkle" size={18} />
-          </a>
+          <OrbitLangToggle />
+          <span className="orbit-nav-extra">{rightExtra}</span>
+          <span className="orbit-nav-account-slot"><OrbitNavAccountControl /></span>
           <button
             aria-expanded={menuOpen}
             aria-label={menuOpen ? t({ en: "Close menu", zh: "关闭菜单" }) : t({ en: "Open menu", zh: "打开菜单" })}
@@ -379,13 +387,11 @@ export function OrbitTopNav({
                 href={preserveHref(item.href)}
                 key={item.key}
               >
-                <Icon name={item.icon} size={20} />
                 <span>{item.label}</span>
-                <Icon name="chevR" size={16} style={{ marginLeft: "auto", opacity: 0.5 }} />
               </a>
             ))}
-            <OrbitNavThemeMenuItem />
-            <OrbitLangToggle variant="menu" />
+            <span aria-hidden="true" className="orbit-nav-menu-divider" />
+            <OrbitNavMobileAccountLinks active={active} meHref={meHref} />
           </nav>
         </div>
       ) : null}
@@ -394,5 +400,5 @@ export function OrbitTopNav({
 }
 
 export function PublicTopNav({ active = "events" }: { active?: OrbitNavActive }) {
-  return <OrbitTopNav active={active} meHref="/app/account/login" />;
+  return <OrbitTopNav active={active} meHref="/app/profile" />;
 }

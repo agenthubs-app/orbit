@@ -160,9 +160,14 @@ export function OrbitStarfieldMobile({
           </div>
           {' '}
           {authenticated ? (
-            <a href="/app/profile" data-i18n="account" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"#cdc6f5"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-              {"我的"}
-            </a>
+            <>
+              <a href="/app/profile" data-i18n="account" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
+                {"我的"}
+              </a>
+              <a href="/app/settings" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"#cdc6f5"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
+                {"设置"}
+              </a>
+            </>
           ) : (
             <>
               <a href="/app/account/login?next=%2Fapp%2Fhome" data-i18n="signIn" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">

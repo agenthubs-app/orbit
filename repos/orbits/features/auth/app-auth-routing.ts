@@ -8,6 +8,7 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/party",
   "/app/profile",
   "/app/schedule",
+  "/app/settings",
   "/app/today",
 ] as const;
 

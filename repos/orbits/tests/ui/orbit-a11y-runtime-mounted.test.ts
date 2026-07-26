@@ -24,7 +24,7 @@ test("the app layout links the desktop font bundle", () => {
   assert.ok(layout.includes("/iorbit-starfield/fonts/desktop.css"));
 });
 
-test("the theme system stays mounted", () => {
+test("the theme styles stay mounted without a global floating control", () => {
   assert.ok(layout.includes("OrbitThemeStyles"));
-  assert.ok(layout.includes("OrbitThemeToggle"));
+  assert.ok(!layout.includes("OrbitThemeToggle"));
 });

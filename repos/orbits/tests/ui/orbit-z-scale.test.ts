@@ -103,17 +103,13 @@ test("inline zIndex number literals in app/(app)/app stay within the documented 
   );
 });
 
-// ---- (c) theme toggle no longer floats above every other layer ----
+// ---- (c) theme is controlled from settings, not a global floating layer ----
 
-test("orbit-theme.tsx no longer uses z-index: 9999 for the theme toggle", () => {
+test("orbit-theme.tsx contains no floating theme-toggle layer", () => {
   const theme = source("app/(app)/app/orbit-theme.tsx");
   assert.ok(!theme.includes("9999"), "9999 still present in orbit-theme.tsx");
-  // The toggle renders outside [data-orbit-real-page], so the --z-* scale is
-  // out of scope there and the literal fallback is what actually applies.
-  assert.ok(
-    /\.orbit-theme-toggle\s*\{[\s\S]*?z-index:\s*var\(--z-sticky,\s*100\);/.test(theme),
-    "theme toggle should sit on the sticky tier via var(--z-sticky, 100)",
-  );
+  assert.ok(!theme.includes(".orbit-theme-toggle"));
+  assert.ok(!theme.includes("OrbitThemeToggle"));
 });
 
 // ---- (d) the CSS scale and ORBIT_Z are one scale, not two ----

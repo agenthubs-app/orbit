@@ -25,7 +25,7 @@ export function AccountTopNav({
   rightExtra,
 }: {
   accountInitial?: string;
-  active?: "agent" | "today" | "events" | "schedule" | "cards" | "me";
+  active?: "agent" | "today" | "events" | "schedule" | "cards" | "me" | "settings";
   agentTone?: "default" | "selected";
   rightExtra?: ReactNode;
 }) {
@@ -33,7 +33,7 @@ export function AccountTopNav({
     <OrbitTopNav
       active={active}
       agentActive={agentTone ? agentTone === "selected" : active === "agent"}
-      meHref="/app/home"
+      meHref="/app/profile"
       rightExtra={
         // 关系收件箱入口在所有 /app/** 顶栏默认出现；页面传入的 rightExtra 仍保留。
         <>
