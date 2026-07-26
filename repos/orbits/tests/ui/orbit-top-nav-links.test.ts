@@ -17,6 +17,16 @@ const shellSource = readFileSync(
   join(projectRoot, "app/(app)/app/orbit-public-shell.tsx"),
   "utf8",
 );
+const starfieldSources = [
+  readFileSync(
+    join(projectRoot, "app/(app)/app/orbit-starfield-desktop.tsx"),
+    "utf8",
+  ),
+  readFileSync(
+    join(projectRoot, "app/(app)/app/orbit-starfield-mobile.tsx"),
+    "utf8",
+  ),
+];
 
 function navHrefs(): readonly string[] {
   const start = shellSource.indexOf("const links = [");
@@ -39,8 +49,36 @@ function navHrefs(): readonly string[] {
   return hrefs;
 }
 
-test("the nav exposes Schedule (formerly Today) plus events and contacts — schedule folded in (T3)", () => {
-  assert.deepEqual(navHrefs(), ["/today", "/events", "/contacts"]);
+test("the nav order is always iOrbit, events, schedule, contacts", () => {
+  assert.deepEqual(navHrefs(), ["/events", "/today", "/contacts"]);
+});
+
+test("starfield desktop and mobile navigation use the same product order", () => {
+  for (const starfieldSource of starfieldSources) {
+    const agentIndexes = [
+      ...starfieldSource.matchAll(/href="\/app\/agent"/g),
+    ].map((match) => match.index);
+
+    assert.ok(agentIndexes.length > 0);
+    for (const agentIndex of agentIndexes) {
+      const eventIndex = starfieldSource.indexOf('href="/app/events"', agentIndex);
+      const scheduleIndex = starfieldSource.indexOf(
+        'href="/app/home/events"',
+        eventIndex,
+      );
+      const contactsIndex = starfieldSource.indexOf(
+        'href="/app/contacts"',
+        scheduleIndex,
+      );
+
+      assert.ok(
+        agentIndex < eventIndex &&
+          eventIndex < scheduleIndex &&
+          scheduleIndex < contactsIndex,
+        "expected iOrbit → 活动 → 日程 → 人脉",
+      );
+    }
+  }
 });
 
 test("every nav href resolves to a real App Router page", () => {
@@ -72,7 +110,10 @@ test("the retired /schedule and /followups routes still have a page.tsx (redirec
 });
 
 test("the nav label for the merged entry is 日程/Schedule, not the old Today wording", () => {
-  assert.match(shellSource, /const links = \[\s*\["\/today", t\(\{ en: "Schedule", zh: "日程" \}\), "today"\]/);
+  assert.match(
+    shellSource,
+    /const links = \[\s*\["\/events", t\(\{ en: "Events", zh: "活动" \}\), "events"\],\s*\["\/today", t\(\{ en: "Schedule", zh: "日程" \}\), "today"\]/,
+  );
 });
 
 test("the retired prototype hrefs are gone", () => {

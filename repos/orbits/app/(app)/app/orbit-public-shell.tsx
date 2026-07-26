@@ -311,13 +311,13 @@ export function OrbitTopNav({
     today: { en: "Schedule", zh: "日程" },
   };
   const links = [
-    ["/today", t({ en: "Schedule", zh: "日程" }), "today"],
     ["/events", t({ en: "Events", zh: "活动" }), "events"],
+    ["/today", t({ en: "Schedule", zh: "日程" }), "today"],
     ["/contacts", t({ en: "Contacts", zh: "人脉" }), "cards"],
   ] as const;
   const menuItems = [
-    { active: active === "today", href: productHref("/today"), icon: "calendar", key: "today", label: t({ en: "Schedule", zh: "日程" }) },
     { active: active === "events", href: productHref("/events"), icon: "calendar", key: "events", label: t({ en: "Events", zh: "活动" }) },
+    { active: active === "today", href: productHref("/today"), icon: "calendar", key: "today", label: t({ en: "Schedule", zh: "日程" }) },
     { active: active === "cards", href: productHref("/contacts"), icon: "users", key: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
     { active: active === "me" || active === "home", href: meHref, icon: "user", key: "me", label: t({ en: "Me", zh: "我的" }) },
   ];

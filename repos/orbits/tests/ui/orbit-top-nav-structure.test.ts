@@ -77,6 +77,14 @@ test("the standalone schedule menu item is gone; the today item carries the cale
     /active === "today"[^}]*icon: "calendar"[^}]*key: "today"/,
     "the today entry uses the calendar icon",
   );
+  assert.ok(
+    menuBlock.indexOf('key: "events"') < menuBlock.indexOf('key: "today"'),
+    "mobile menu keeps 活动/Events before 日程/Schedule",
+  );
+  assert.ok(
+    menuBlock.indexOf('key: "today"') < menuBlock.indexOf('key: "cards"'),
+    "mobile menu keeps 日程/Schedule before 人脉/Contacts",
+  );
 });
 
 test("session account control and inbox extras stay in the actions segment", () => {
