@@ -1778,9 +1778,9 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               <div className="orbit-agent-assistant-content" style={{ alignItems: "flex-end", display: "flex", gap: 8 }}>
                 <div className="orbit-agent-assistant-message" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", flex: 1, fontSize: 15, lineHeight: 1.6, minWidth: 0, padding: "12px 15px" }}>
                   <AgentMarkdown text={message.text} />
-                  {message.runId && message.actionIds?.length ? (
+                  {message.runId ? (
                     <AgentActionStatusCard
-                      actionIds={message.actionIds}
+                      actionIds={message.actionIds ?? []}
                       language={language === "zh" ? "zh" : "en"}
                       navigate={navigate}
                       runId={message.runId}

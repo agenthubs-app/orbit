@@ -7,6 +7,7 @@ import {
 } from "../../features/agent/runtime/executor-registry";
 import { createMemoryAgentRuntimeRepository } from "../../features/agent/runtime/repository";
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
+import { agentRunProgress } from "../../features/agent/runtime/service";
 import {
   executeOrbitAgentTool,
   getOrbitAgentToolMetadata,
@@ -136,6 +137,101 @@ test("confirmation is idempotent, freezes all proposed operations, and only queu
   assert.equal(harness.executionCount(), 1);
 });
 
+test("run steps expose progress and support cancel plus idempotent retry", async () => {
+  const harness = createHarness({});
+  const run = await harness.runtime.createRun({
+    runId: "run:progress",
+    trigger: "chat",
+    workflowKey: "relationship_research_v1",
+  });
+  await harness.runtime.addRunStep({
+    attempt: 1,
+    kind: "ai",
+    name: "plan",
+    runId: run.runId,
+    status: "queued",
+    stepId: "step:plan",
+  });
+  await harness.runtime.addRunStep({
+    attempt: 1,
+    kind: "tool",
+    name: "read_relationship_context",
+    runId: run.runId,
+    status: "queued",
+    stepId: "step:context",
+  });
+  await harness.runtime.updateRunStep({
+    runId: run.runId,
+    status: "running",
+    stepId: "step:plan",
+  });
+  await harness.runtime.updateRunStep({
+    outputRef: "artifact:plan",
+    runId: run.runId,
+    status: "completed",
+    stepId: "step:plan",
+  });
+
+  let detail = (await harness.runtime.getRun(run.runId))!;
+  assert.deepEqual(agentRunProgress(detail), {
+    activeStepId: "step:context",
+    canCancel: true,
+    canRetry: false,
+    completedSteps: 1,
+    failedSteps: 0,
+    percent: 50,
+    totalSteps: 2,
+  });
+
+  detail = await harness.runtime.cancelRun(run.runId);
+  assert.equal(detail.run.status, "canceled");
+  assert.equal(detail.steps[1]?.status, "canceled");
+  assert.equal((await harness.runtime.cancelRun(run.runId)).run.status, "canceled");
+
+  detail = await harness.runtime.retryRun(run.runId);
+  assert.equal(detail.run.status, "running");
+  assert.equal(detail.steps[0]?.status, "completed");
+  assert.equal(detail.steps[1]?.status, "queued");
+  assert.equal(detail.steps[1]?.attempt, 2);
+});
+
+test("failed run steps retain an error and retry only the failed step", async () => {
+  const harness = createHarness({});
+  const run = await harness.runtime.createRun({
+    runId: "run:failed-step",
+    trigger: "domain_signal",
+    workflowKey: "signal_followup_v1",
+  });
+  await harness.runtime.addRunStep({
+    attempt: 1,
+    kind: "tool",
+    name: "load_contact",
+    runId: run.runId,
+    status: "running",
+    stepId: "step:load-contact",
+  });
+  await harness.runtime.updateRunStep({
+    error: {
+      code: "CONTACT_AMBIGUOUS",
+      message: "Multiple relationships matched.",
+      retryable: true,
+    },
+    runId: run.runId,
+    status: "failed",
+    stepId: "step:load-contact",
+  });
+
+  let detail = (await harness.runtime.getRun(run.runId))!;
+  assert.equal(detail.run.status, "failed");
+  assert.equal(detail.run.error?.code, "CONTACT_AMBIGUOUS");
+  assert.equal(agentRunProgress(detail).canRetry, true);
+
+  detail = await harness.runtime.retryRun(run.runId);
+  assert.equal(detail.steps[0]?.status, "queued");
+  assert.equal(detail.steps[0]?.attempt, 2);
+  assert.equal(detail.steps[0]?.error, undefined);
+});
+
 test("concurrent workers atomically claim an outbox event and execute it once", async () => {
   const harness = createHarness({});
   const action = await proposeTestAction(harness);
@@ -150,6 +246,26 @@ test("concurrent workers atomically claim an outbox event and execute it once", 
   ]);
   assert.equal(first.processed + second.processed, 1);
   assert.equal(harness.executionCount(), 1);
+});
+
+test("canceling an approved action cancels its pending outbox before a worker can execute it", async () => {
+  const harness = createHarness({});
+  const action = await proposeTestAction(harness, {
+    actionId: "action:cancel-before-worker",
+  });
+  await harness.runtime.approveAction({
+    actionId: action.actionId,
+    actorLabel: "Orbit user",
+  });
+
+  const canceled = await harness.runtime.cancelAction(action.actionId);
+  assert.equal(canceled.status, "canceled");
+  assert.equal(
+    (await harness.runtime.getRun(action.runId))?.outbox[0]?.status,
+    "canceled",
+  );
+  assert.equal((await harness.runtime.processOutbox()).processed, 0);
+  assert.equal(harness.executionCount(), 0);
 });
 
 test("a stale worker lease is reclaimed after a worker crash", async () => {

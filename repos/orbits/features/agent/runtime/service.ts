@@ -6,6 +6,7 @@ import type {
   AgentOutboxEvent,
   AgentRun,
   AgentRunDetail,
+  AgentRunProgress,
   AgentRunStep,
 } from "./contract";
 import type { AgentExecutorRegistry } from "./executor-registry";
@@ -50,11 +51,21 @@ export interface AgentRuntimeService {
       createdAt?: string;
     },
   ) => Promise<AgentRunStep>;
+  updateRunStep: (input: {
+    runId: string;
+    stepId: string;
+    status: AgentRunStep["status"];
+    inputRef?: string;
+    outputRef?: string;
+    error?: AgentRunStep["error"];
+  }) => Promise<AgentRunStep>;
   updateRunStatus: (
     runId: string,
     status: AgentRun["status"],
     error?: AgentRun["error"],
   ) => Promise<AgentRun>;
+  cancelRun: (runId: string) => Promise<AgentRunDetail>;
+  retryRun: (runId: string) => Promise<AgentRunDetail>;
   proposeAction: (input: AgentActionProposalInput) => Promise<AgentActionRecord>;
   approveAction: (input: {
     actionId: string;
@@ -94,6 +105,66 @@ export interface AgentRuntimeService {
     failed: number;
     deadLettered: number;
   }>;
+}
+
+const TERMINAL_RUN_STATUSES = new Set<AgentRun["status"]>([
+  "completed",
+  "failed",
+  "canceled",
+]);
+
+const FINISHED_STEP_STATUSES = new Set<AgentRunStep["status"]>([
+  "completed",
+  "failed",
+  "canceled",
+  "skipped",
+]);
+
+export function agentRunProgress(detail: AgentRunDetail): AgentRunProgress {
+  const completedSteps = detail.steps.filter(
+    (step) => step.status === "completed" || step.status === "skipped",
+  ).length;
+  const failedSteps = detail.steps.filter(
+    (step) => step.status === "failed",
+  ).length;
+  const totalSteps = detail.steps.length;
+  const activeStep =
+    detail.steps.find((step) => step.status === "running") ??
+    detail.steps.find((step) => step.status === "waiting") ??
+    detail.steps.find((step) => step.status === "queued");
+
+  return {
+    activeStepId: activeStep?.stepId,
+    canCancel: !TERMINAL_RUN_STATUSES.has(detail.run.status),
+    canRetry:
+      (detail.run.status === "failed" ||
+        detail.run.status === "canceled") &&
+      detail.steps.some(
+        (step) => step.status === "failed" || step.status === "canceled",
+      ),
+    completedSteps,
+    failedSteps,
+    percent:
+      totalSteps === 0
+        ? detail.run.status === "completed"
+          ? 100
+          : 0
+        : Math.round((completedSteps / totalSteps) * 100),
+    totalSteps,
+  };
+}
+
+function orderedRunDetail(detail: AgentRunDetail): AgentRunDetail {
+  return {
+    ...detail,
+    steps: [...detail.steps].sort(
+      (left, right) =>
+        (left.sequence ?? Number.MAX_SAFE_INTEGER) -
+          (right.sequence ?? Number.MAX_SAFE_INTEGER) ||
+        left.createdAt.localeCompare(right.createdAt) ||
+        left.stepId.localeCompare(right.stepId),
+    ),
+  };
 }
 
 export interface AgentRuntimeServiceOptions {
@@ -210,6 +281,24 @@ export function createAgentRuntimeService({
     };
     await repository.saveAction(updated);
     return updated;
+  }
+
+  async function cancelPendingOutbox(
+    events: readonly AgentOutboxEvent[],
+    timestamp: string,
+  ): Promise<void> {
+    for (const event of events) {
+      if (
+        event.status === "pending" ||
+        event.status === "retry_scheduled"
+      ) {
+        await repository.saveOutbox({
+          ...event,
+          status: "canceled",
+          updatedAt: timestamp,
+        });
+      }
+    }
   }
 
   async function refreshRunStatus(runId: string): Promise<void> {
@@ -351,13 +440,101 @@ export function createAgentRuntimeService({
       return run;
     },
     async addRunStep(input) {
+      const detail = await repository.getRun(input.runId);
+      if (!detail) {
+        throw new Error(`Agent run ${input.runId} was not found.`);
+      }
       const timestamp = input.createdAt ?? now();
       const step: AgentRunStep = {
         ...input,
         createdAt: timestamp,
+        sequence:
+          input.sequence ??
+          Math.max(0, ...detail.steps.map((item) => item.sequence ?? 0)) + 1,
         updatedAt: timestamp,
       };
       await repository.saveRunStep(step);
+      return step;
+    },
+    async updateRunStep(input) {
+      const detail = await repository.getRun(input.runId);
+      if (!detail) {
+        throw new Error(`Agent run ${input.runId} was not found.`);
+      }
+      if (detail.run.status === "canceled") {
+        throw new Error(`Agent run ${input.runId} was canceled.`);
+      }
+      const existing = detail.steps.find(
+        (step) => step.stepId === input.stepId,
+      );
+      if (!existing) {
+        throw new Error(`Agent run step ${input.stepId} was not found.`);
+      }
+      if (
+        FINISHED_STEP_STATUSES.has(existing.status) &&
+        existing.status !== input.status
+      ) {
+        throw new Error(
+          `Agent run step ${input.stepId} cannot transition from ${existing.status}.`,
+        );
+      }
+      const timestamp = now();
+      const step: AgentRunStep = {
+        ...existing,
+        error: input.error,
+        inputRef: input.inputRef ?? existing.inputRef,
+        outputRef: input.outputRef ?? existing.outputRef,
+        startedAt:
+          input.status === "running"
+            ? existing.startedAt ?? timestamp
+            : existing.startedAt,
+        completedAt: FINISHED_STEP_STATUSES.has(input.status)
+          ? timestamp
+          : undefined,
+        status: input.status,
+        updatedAt: timestamp,
+      };
+      await repository.saveRunStep(step);
+
+      const nextRun: AgentRun =
+        input.status === "failed"
+          ? {
+              ...detail.run,
+              currentStepId: step.stepId,
+              error:
+                input.error ?? {
+                  code: "AGENT_RUN_STEP_FAILED",
+                  message: `Step ${step.name} failed.`,
+                  retryable: true,
+                },
+              failedAt: timestamp,
+              status: "failed",
+              updatedAt: timestamp,
+            }
+          : {
+              ...detail.run,
+              currentStepId: step.stepId,
+              error: undefined,
+              failedAt: undefined,
+              status:
+                input.status === "waiting"
+                  ? step.kind === "confirmation"
+                    ? "waiting_for_confirmation"
+                    : "waiting_for_input"
+                  : "running",
+              updatedAt: timestamp,
+            };
+      await repository.saveRun(nextRun);
+      if (input.status === "failed") {
+        await analytics("agent_run_failed", {
+          runId: nextRun.runId,
+          workflowKey: nextRun.workflowKey,
+          metadata: {
+            code: nextRun.error?.code ?? "AGENT_RUN_STEP_FAILED",
+            stepId: step.stepId,
+          },
+        });
+      }
       return step;
     },
     async updateRunStatus(runId, status, error) {
@@ -394,6 +571,102 @@ export function createAgentRuntimeService({
         });
       }
       return run;
+    },
+    async cancelRun(runId) {
+      const detail = await repository.getRun(runId);
+      if (!detail) throw new Error(`Agent run ${runId} was not found.`);
+      if (detail.run.status === "canceled") return detail;
+      if (detail.run.status === "completed") {
+        throw new Error(`Completed Agent run ${runId} cannot be canceled.`);
+      }
+      if (
+        detail.actions.some(
+          (action) =>
+            action.status === "executing" ||
+            action.status === "completed" ||
+            action.status === "partially_failed",
+        )
+      ) {
+        throw new Error(
+          `Agent run ${runId} has executing or completed actions and cannot be canceled.`,
+        );
+      }
+      const timestamp = now();
+      for (const step of detail.steps) {
+        if (!FINISHED_STEP_STATUSES.has(step.status)) {
+          await repository.saveRunStep({
+            ...step,
+            completedAt: timestamp,
+            status: "canceled",
+            updatedAt: timestamp,
+          });
+        }
+      }
+      for (const action of detail.actions) {
+        if (
+          action.status === "awaiting_confirmation" ||
+          action.status === "deferred" ||
+          action.status === "approved"
+        ) {
+          await saveActionStatus(
+            action,
+            "canceled",
+            "canceledAt",
+          );
+        }
+      }
+      await cancelPendingOutbox(detail.outbox, timestamp);
+      await repository.saveRun({
+        ...detail.run,
+        canceledAt: timestamp,
+        error: undefined,
+        status: "canceled",
+        updatedAt: timestamp,
+      });
+      return orderedRunDetail((await repository.getRun(runId))!);
+    },
+    async retryRun(runId) {
+      const detail = await repository.getRun(runId);
+      if (!detail) throw new Error(`Agent run ${runId} was not found.`);
+      if (
+        detail.run.status !== "failed" &&
+        detail.run.status !== "canceled"
+      ) {
+        throw new Error(
+          `Agent run ${runId} cannot retry from ${detail.run.status}.`,
+        );
+      }
+      const timestamp = now();
+      const retryableSteps = detail.steps.filter(
+        (step) =>
+          step.status === "failed" || step.status === "canceled",
+      );
+      if (retryableSteps.length === 0) {
+        throw new Error(`Agent run ${runId} has no retryable step.`);
+      }
+      for (const step of retryableSteps) {
+        await repository.saveRunStep({
+          ...step,
+          attempt: step.attempt + 1,
+          completedAt: undefined,
+          error: undefined,
+          startedAt: undefined,
+          status: "queued",
+          updatedAt: timestamp,
+        });
+      }
+      await repository.saveRun({
+        ...detail.run,
+        canceledAt: undefined,
+        completedAt: undefined,
+        currentStepId: retryableSteps[0]?.stepId,
+        error: undefined,
+        failedAt: undefined,
+        startedAt: timestamp,
+        status: "running",
+        updatedAt: timestamp,
+      });
+      return orderedRunDetail((await repository.getRun(runId))!);
     },
     async proposeAction(input) {
       const existingAction = await repository.getAction(input.actionId);
@@ -556,6 +829,12 @@ export function createAgentRuntimeService({
         "deferred",
         "approved",
       ]);
+      const detail = await repository.getRun(action.runId);
+      const timestamp = now();
+      await cancelPendingOutbox(
+        detail?.outbox.filter((event) => event.actionId === actionId) ?? [],
+        timestamp,
+      );
       const updated = await saveActionStatus(
         action,
         "canceled",
@@ -742,7 +1021,10 @@ export function createAgentRuntimeService({
       return updated;
     },
     recordAnalytics: analytics,
-    getRun: repository.getRun,
+    async getRun(runId) {
+      const detail = await repository.getRun(runId);
+      return detail ? orderedRunDetail(detail) : null;
+    },
     listActions: repository.listActions,
     async processOutbox(input = {}) {
       const timestamp = now();

@@ -18,9 +18,19 @@ import { createAgentRuntimeService, type AgentRuntimeService } from "./service";
 
 interface OrbitAgentRuntimeGlobal {
   __orbitAgentRuntimeServices?: Map<string, AgentRuntimeService>;
+  __orbitAgentRuntimeServicesVersion?: number;
 }
 
 const runtimeGlobal = globalThis as typeof globalThis & OrbitAgentRuntimeGlobal;
+const RUNTIME_SERVICE_CACHE_VERSION = 2;
+if (
+  runtimeGlobal.__orbitAgentRuntimeServicesVersion !==
+  RUNTIME_SERVICE_CACHE_VERSION
+) {
+  runtimeGlobal.__orbitAgentRuntimeServices?.clear();
+  runtimeGlobal.__orbitAgentRuntimeServicesVersion =
+    RUNTIME_SERVICE_CACHE_VERSION;
+}
 const cachedServices =
   runtimeGlobal.__orbitAgentRuntimeServices ??
   (runtimeGlobal.__orbitAgentRuntimeServices = new Map<

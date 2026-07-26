@@ -312,6 +312,68 @@ async function persistNaturalLanguageActionProposals(
   }
 }
 
+async function persistConversationRunTrace(
+  result: OrbitAgentConversationResult,
+  runtime: AgentRuntimeService,
+): Promise<OrbitAgentConversationResult> {
+  if (result.success === false) return result;
+  const existingRunId = result.data.runId?.trim();
+  const runId = existingRunId || `run:conversation:${crypto.randomUUID()}`;
+  const conversationId = result.data.activeConversationId?.trim() || undefined;
+  const run = await runtime.createRun({
+    conversationId,
+    runId,
+    trigger: "chat",
+    workflowKey: "agent_conversation_v1",
+    workflowVersion: 1,
+  });
+  const spans = result.data.diagnostics?.timings ?? [];
+  const traceSteps =
+    spans.length > 0
+      ? spans
+      : [
+          {
+            durationMs: 0,
+            phase: "final_response",
+            skipped: false,
+          },
+        ];
+  for (let index = 0; index < traceSteps.length; index += 1) {
+    const span = traceSteps[index];
+    await runtime.addRunStep({
+      attempt: 1,
+      inputRef:
+        index === 0 && conversationId
+          ? `conversation:${conversationId}`
+          : undefined,
+      kind:
+        span.phase === "planner" || span.phase === "synthesis"
+          ? "ai"
+          : span.phase === "artifact_generation" ||
+              span.phase === "tool_mapping"
+            ? "tool"
+            : "deterministic",
+      name: span.phase,
+      outputRef:
+        index === traceSteps.length - 1 ? `${runId}:response` : undefined,
+      runId,
+      sequence: index + 1,
+      status: span.skipped ? "skipped" : "completed",
+      stepId: `${runId}:step:${index + 1}:${span.phase}`,
+    });
+  }
+  if (!existingRunId && run.status !== "completed") {
+    await runtime.updateRunStatus(runId, "completed");
+  }
+  return {
+    success: true,
+    data: {
+      ...result.data,
+      runId,
+    },
+  };
+}
+
 export async function GET(request: Request): Promise<Response> {
   // GET 只读取会话列表/状态，不触发模型 provider。
   const timing = createRouteTiming();
@@ -386,6 +448,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
   timing.finish("orbit-service", serviceStartedAt);
+  result = await persistConversationRunTrace(result, agentContext.runtime);
 
   return responseForResult(result, mode, timing);
 }

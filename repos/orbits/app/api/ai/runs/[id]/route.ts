@@ -16,6 +16,7 @@ import {
   agentRequestUnauthorizedResponse,
   resolveAgentRequestContext,
 } from "../../../_shared/agent-request-context";
+import { agentRunProgress } from "../../../../../features/agent/runtime/service";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,11 @@ export async function GET(
     const agentRun = await agentContext.runtime.getRun(id);
     if (agentRun) {
       return NextResponse.json(
-        success({ ...agentRun, runKind: "agent" as const }),
+        success({
+          ...agentRun,
+          progress: agentRunProgress(agentRun),
+          runKind: "agent" as const,
+        }),
         {
           headers: runtimeBoundaryHeaders(mode),
           status: 200,

@@ -13,6 +13,28 @@ export interface AgentChatLinkedAction {
   title: string;
 }
 
+interface AgentChatRunStepView {
+  stepId: string;
+  name: string;
+  sequence: number;
+  status: string;
+  error?: string;
+}
+
+interface AgentChatRunView {
+  status: string;
+  progress: {
+    activeStepId?: string;
+    canCancel: boolean;
+    canRetry: boolean;
+    completedSteps: number;
+    failedSteps: number;
+    percent: number;
+    totalSteps: number;
+  };
+  steps: readonly AgentChatRunStepView[];
+}
+
 interface AgentActionStatusCardProps {
   actionIds: readonly string[];
   language: AgentActionStatusLanguage;
@@ -76,6 +98,81 @@ export function parseAgentChatRunActions(
       },
     ];
   });
+}
+
+export function parseAgentChatRunView(value: unknown): AgentChatRunView | null {
+  if (
+    !isRecord(value) ||
+    value.success !== true ||
+    !isRecord(value.data) ||
+    !isRecord(value.data.run) ||
+    !isRecord(value.data.progress)
+  ) {
+    return null;
+  }
+  const status = readString(value.data.run.status);
+  if (!status) return null;
+  const progress = value.data.progress;
+  const number = (candidate: unknown): number =>
+    typeof candidate === "number" && Number.isFinite(candidate)
+      ? candidate
+      : 0;
+  const steps = Array.isArray(value.data.steps)
+    ? value.data.steps.flatMap((candidate) => {
+        if (!isRecord(candidate)) return [];
+        const stepId = readString(candidate.stepId);
+        const name = readString(candidate.name);
+        const stepStatus = readString(candidate.status);
+        if (!stepId || !name || !stepStatus) return [];
+        return [
+          {
+            error: isRecord(candidate.error)
+              ? readString(candidate.error.message) ?? undefined
+              : undefined,
+            name,
+            sequence:
+              typeof candidate.sequence === "number"
+                ? candidate.sequence
+                : Number.MAX_SAFE_INTEGER,
+            status: stepStatus,
+            stepId,
+          },
+        ];
+      })
+    : [];
+  return {
+    progress: {
+      activeStepId: readString(progress.activeStepId) ?? undefined,
+      canCancel: progress.canCancel === true,
+      canRetry: progress.canRetry === true,
+      completedSteps: number(progress.completedSteps),
+      failedSteps: number(progress.failedSteps),
+      percent: Math.max(0, Math.min(100, number(progress.percent))),
+      totalSteps: number(progress.totalSteps),
+    },
+    status,
+    steps: steps.sort(
+      (left, right) =>
+        left.sequence - right.sequence ||
+        left.stepId.localeCompare(right.stepId),
+    ),
+  };
+}
+
+function runStepLabel(name: string, language: AgentActionStatusLanguage) {
+  const labels: Record<string, { en: string; zh: string }> = {
+    local_boundary: { en: "Safety check", zh: "安全边界检查" },
+    planner: { en: "Plan", zh: "理解与规划" },
+    tool_mapping: { en: "Choose tools", zh: "选择可信工具" },
+    artifact_generation: { en: "Read context", zh: "读取关系上下文" },
+    synthesis: { en: "Synthesize", zh: "综合证据" },
+    final_response: { en: "Prepare response", zh: "生成答复" },
+    validate_natural_language_action_proposals: {
+      en: "Validate actions",
+      zh: "校验操作方案",
+    },
+  };
+  return (labels[name] ?? { en: name, zh: name })[language];
 }
 
 function parseTransitionedAction(value: unknown): AgentChatLinkedAction | null {
@@ -182,6 +279,7 @@ export function AgentActionStatusCard({
     [actionIds],
   );
   const [actions, setActions] = useState<AgentChatLinkedAction[]>([]);
+  const [runView, setRunView] = useState<AgentChatRunView | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -199,6 +297,7 @@ export function AgentActionStatusCard({
         const body = (await response.json().catch(() => null)) as unknown;
         if (!cancelled) {
           setActions(parseAgentChatRunActions(body, stableActionIds));
+          setRunView(parseAgentChatRunView(body));
           setError(
             response.ok
               ? null
@@ -230,9 +329,14 @@ export function AgentActionStatusCard({
     (action) =>
       action.status === "approved" || action.status === "executing",
   );
+  const hasPendingRun =
+    runView?.status === "queued" ||
+    runView?.status === "running" ||
+    runView?.status === "waiting_for_input" ||
+    runView?.status === "waiting_for_confirmation";
 
   useEffect(() => {
-    if (!hasPendingExecution) return;
+    if (!hasPendingExecution && !hasPendingRun) return;
     let cancelled = false;
 
     async function refreshExecutionStatus() {
@@ -247,6 +351,7 @@ export function AgentActionStatusCard({
           if (updated.length > 0) {
             setActions(updated);
           }
+          setRunView(parseAgentChatRunView(body));
         }
       } catch {
         // Keep the last confirmed state visible. The initial load and explicit
@@ -263,7 +368,38 @@ export function AgentActionStatusCard({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [hasPendingExecution, runId, stableActionIds]);
+  }, [hasPendingExecution, hasPendingRun, runId, stableActionIds]);
+
+  async function applyRunTransition(action: "cancel" | "retry") {
+    setPendingActionId(`run:${action}`);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/ai/runs/${encodeURIComponent(runId)}/transition`,
+        {
+          body: JSON.stringify({ action }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        },
+      );
+      const body = (await response.json().catch(() => null)) as unknown;
+      const updated = parseAgentChatRunView(body);
+      if (!response.ok || !updated) {
+        setError(transitionError(body, language));
+        return;
+      }
+      setRunView(updated);
+      setActions(parseAgentChatRunActions(body, stableActionIds));
+    } catch {
+      setError(
+        language === "zh"
+          ? "网络错误，Run 状态没有改变。"
+          : "Network error. The run was not changed.",
+      );
+    } finally {
+      setPendingActionId(null);
+    }
+  }
 
   async function applyTransition(
     action: AgentChatLinkedAction,
@@ -337,12 +473,106 @@ export function AgentActionStatusCard({
     >
       <div style={{ alignItems: "center", display: "flex", gap: 8, justifyContent: "space-between" }}>
         <strong style={{ fontSize: 13 }}>
-          {language === "zh" ? "本次产生的操作" : "Actions from this turn"}
+          {language === "zh" ? "本次 Agent 过程" : "Agent run"}
         </strong>
         <span style={{ color: "var(--text-3)", fontSize: 11 }}>
-          {language === "zh" ? "与 Today 共用同一状态" : "Same state as Today"}
+          {runView
+            ? `${runView.progress.completedSteps}/${runView.progress.totalSteps}`
+            : language === "zh"
+              ? "正在同步"
+              : "Syncing"}
         </span>
       </div>
+
+      {runView ? (
+        <div
+          data-agent-run-status={runView.status}
+          style={{ display: "grid", gap: 8 }}
+        >
+          <div
+            aria-label={
+              language === "zh"
+                ? `Agent 进度 ${runView.progress.percent}%`
+                : `Agent progress ${runView.progress.percent}%`
+            }
+            style={{
+              background: "var(--surface-3)",
+              borderRadius: "var(--r-pill)",
+              height: 6,
+              overflow: "hidden",
+            }}
+          >
+            <span
+              style={{
+                background:
+                  runView.progress.failedSteps > 0
+                    ? "var(--danger, #b4413c)"
+                    : "var(--accent)",
+                display: "block",
+                height: "100%",
+                transition: "width .2s ease",
+                width: `${runView.progress.percent}%`,
+              }}
+            />
+          </div>
+          <div style={{ display: "grid", gap: 5 }}>
+            {runView.steps.map((step) => (
+              <div
+                data-agent-run-step={step.stepId}
+                key={step.stepId}
+                style={{
+                  alignItems: "center",
+                  color:
+                    step.status === "failed"
+                      ? "var(--danger, #b4413c)"
+                      : "var(--text-2)",
+                  display: "flex",
+                  fontSize: 11,
+                  gap: 7,
+                }}
+              >
+                <span aria-hidden>
+                  {step.status === "completed"
+                    ? "✓"
+                    : step.status === "skipped"
+                      ? "–"
+                      : step.status === "failed"
+                        ? "!"
+                        : "•"}
+                </span>
+                <span>{runStepLabel(step.name, language)}</span>
+                {step.error ? <span>· {step.error}</span> : null}
+              </div>
+            ))}
+          </div>
+          {runView.progress.canCancel || runView.progress.canRetry ? (
+            <div style={{ display: "flex", gap: 6 }}>
+              {runView.progress.canCancel ? (
+                <button
+                  className="btn btn-quiet"
+                  data-agent-run-cancel
+                  disabled={pendingActionId === "run:cancel"}
+                  onClick={() => void applyRunTransition("cancel")}
+                  type="button"
+                >
+                  {language === "zh" ? "取消 Run" : "Cancel run"}
+                </button>
+              ) : null}
+              {runView.progress.canRetry ? (
+                <button
+                  className="btn btn-quiet"
+                  data-agent-run-retry
+                  disabled={pendingActionId === "run:retry"}
+                  onClick={() => void applyRunTransition("retry")}
+                  type="button"
+                >
+                  {language === "zh" ? "从失败步骤重试" : "Retry failed step"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {visibleActions.map((action) => {
         const editable =

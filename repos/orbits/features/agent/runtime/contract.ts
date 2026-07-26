@@ -110,12 +110,14 @@ export interface AgentRunStep {
   runId: string;
   kind: AgentRunStepKind;
   name: string;
+  sequence?: number;
   status:
     | "queued"
     | "running"
     | "waiting"
     | "completed"
     | "failed"
+    | "canceled"
     | "skipped";
   attempt: number;
   inputRef?: string;
@@ -250,4 +252,14 @@ export interface AgentRunDetail {
   actions: readonly AgentActionRecord[];
   outbox: readonly AgentOutboxEvent[];
   receipts: readonly AgentExecutionReceipt[];
+}
+
+export interface AgentRunProgress {
+  totalSteps: number;
+  completedSteps: number;
+  failedSteps: number;
+  activeStepId?: string;
+  percent: number;
+  canCancel: boolean;
+  canRetry: boolean;
 }

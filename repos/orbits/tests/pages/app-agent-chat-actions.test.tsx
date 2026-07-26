@@ -8,6 +8,7 @@ import {
   agentChatActionCanConfirm,
   agentChatActionStatusLabel,
   parseAgentChatRunActions,
+  parseAgentChatRunView,
 } from "../../app/(app)/app/agent/agent-action-status-card";
 import { latestConversationRuntimeLink } from "../../features/orbit-ai/conversation-runtime-links";
 
@@ -95,6 +96,68 @@ test("chat action state labels are product-readable in Chinese and English", () 
   assert.equal(agentChatActionStatusLabel("new-server-state", "zh"), "正在同步");
 });
 
+test("chat derives ordered Run progress and retry controls from the server envelope", () => {
+  const run = parseAgentChatRunView({
+    success: true,
+    data: {
+      progress: {
+        activeStepId: "step:2",
+        canCancel: false,
+        canRetry: true,
+        completedSteps: 1,
+        failedSteps: 1,
+        percent: 50,
+        totalSteps: 2,
+      },
+      run: { status: "failed" },
+      steps: [
+        {
+          error: { message: "Provider timed out." },
+          name: "synthesis",
+          sequence: 2,
+          status: "failed",
+          stepId: "step:2",
+        },
+        {
+          name: "planner",
+          sequence: 1,
+          status: "completed",
+          stepId: "step:1",
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(run, {
+    progress: {
+      activeStepId: "step:2",
+      canCancel: false,
+      canRetry: true,
+      completedSteps: 1,
+      failedSteps: 1,
+      percent: 50,
+      totalSteps: 2,
+    },
+    status: "failed",
+    steps: [
+      {
+        error: undefined,
+        name: "planner",
+        sequence: 1,
+        status: "completed",
+        stepId: "step:1",
+      },
+      {
+        error: "Provider timed out.",
+        name: "synthesis",
+        sequence: 2,
+        status: "failed",
+        stepId: "step:2",
+      },
+    ],
+  });
+});
+
 test("chat never offers one-click confirmation for external actions", () => {
   assert.equal(
     agentChatActionCanConfirm({
@@ -132,8 +195,8 @@ test("chat action card exposes the shared action id and canonical Today and ledg
 
   assert.match(html, /data-agent-run-id="run:post-event:1"/);
   assert.match(html, /data-agent-action-id="action:post-event:1"/);
-  assert.match(html, /本次产生的操作/);
-  assert.match(html, /与 Today 共用同一状态/);
+  assert.match(html, /本次 Agent 过程/);
+  assert.match(html, /正在同步/);
   assert.match(html, /在 Today 查看/);
   assert.match(html, /全部操作/);
 });
