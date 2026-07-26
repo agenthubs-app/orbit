@@ -1,13 +1,12 @@
 import type { AgentActionRecord, AgentRun } from "../../agent/runtime/contract";
+import {
+  AGENT_WORKFLOW_KEYS,
+  type AgentWorkflowKey,
+} from "../../agent/capabilities/contract";
 
-export const ORBIT_KNOWN_WORKFLOW_KEYS = [
-  "post_event_followup_v1",
-  "pre_event_brief_v1",
-  "event_matchmaking_v1",
-] as const;
+export const ORBIT_KNOWN_WORKFLOW_KEYS = AGENT_WORKFLOW_KEYS;
 
-export type OrbitKnownWorkflowKey =
-  (typeof ORBIT_KNOWN_WORKFLOW_KEYS)[number];
+export type OrbitKnownWorkflowKey = AgentWorkflowKey;
 
 export interface OrbitWorkflowResult<TArtifact = unknown> {
   run: AgentRun;

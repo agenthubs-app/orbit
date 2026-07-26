@@ -3,6 +3,9 @@ import type { EventActionWriter } from "../../events/action-writer";
 import type { EventMatchmakingService } from "../../events/matchmaking/service";
 import type { FollowupActionWriter } from "../../followups/action-writer";
 import type { ReminderActionWriter } from "../../notifications/action-writer";
+import {
+  getAgentRuntimeExecutorDescriptor,
+} from "../capabilities/registry";
 import type { AgentActionExecutor } from "./executor-registry";
 
 export interface AgentDomainExecutorDependencies {
@@ -54,8 +57,7 @@ export function createAgentDomainExecutors(
 ): readonly AgentActionExecutor[] {
   return [
     {
-      key: "followups.createTask",
-      riskLevel: "write",
+      ...getAgentRuntimeExecutorDescriptor("followups.createTask"),
       async execute(payload, context) {
         const taskId = optionalString(payload, "taskId") ??
           `task:agent:${context.idempotencyKey}`;
@@ -84,8 +86,7 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "notifications.createReminder",
-      riskLevel: "write",
+      ...getAgentRuntimeExecutorDescriptor("notifications.createReminder"),
       async execute(payload, context) {
         const reminderId =
           optionalString(payload, "reminderId") ??
@@ -119,8 +120,7 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "followups.saveDraft",
-      riskLevel: "draft",
+      ...getAgentRuntimeExecutorDescriptor("followups.saveDraft"),
       async execute(payload, context) {
         const draftId =
           optionalString(payload, "draftId") ??
@@ -149,8 +149,7 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "events.saveMeetingNote",
-      riskLevel: "write",
+      ...getAgentRuntimeExecutorDescriptor("events.saveMeetingNote"),
       async execute(payload, context) {
         const noteId =
           optionalString(payload, "noteId") ??
@@ -188,8 +187,7 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "events.saveBrief",
-      riskLevel: "draft",
+      ...getAgentRuntimeExecutorDescriptor("events.saveBrief"),
       async execute(payload, context) {
         const briefId =
           optionalString(payload, "briefId") ??
@@ -223,8 +221,7 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "events.saveGoal",
-      riskLevel: "write",
+      ...getAgentRuntimeExecutorDescriptor("events.saveGoal"),
       async execute(payload, context) {
         const goalId =
           optionalString(payload, "goalId") ??
@@ -257,8 +254,7 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "events.addToOrbitSchedule",
-      riskLevel: "write",
+      ...getAgentRuntimeExecutorDescriptor("events.addToOrbitSchedule"),
       async execute(payload, context) {
         const scheduleId =
           optionalString(payload, "scheduleId") ??
@@ -294,8 +290,7 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "contacts.archive",
-      riskLevel: "write",
+      ...getAgentRuntimeExecutorDescriptor("contacts.archive"),
       async execute(payload, context) {
         const contacts = Array.isArray(payload.contacts)
           ? payload.contacts.filter(
@@ -343,8 +338,7 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "calendar.syncEvent",
-      riskLevel: "external",
+      ...getAgentRuntimeExecutorDescriptor("calendar.syncEvent"),
       async execute(payload, context) {
         if (!dependencies.calendar) {
           throw new Error(
@@ -376,8 +370,9 @@ export function createAgentDomainExecutors(
       },
     },
     {
-      key: "events.createIntroductionRequest",
-      riskLevel: "write",
+      ...getAgentRuntimeExecutorDescriptor(
+        "events.createIntroductionRequest",
+      ),
       async execute(payload, context) {
         const requestId =
           optionalString(payload, "requestId") ??

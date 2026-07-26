@@ -5,17 +5,16 @@ import type {
 } from "../artifact-contract";
 import type { OrbitAiTraceRenderHint } from "../trace-contract";
 import type { ModuleMode } from "../../../shared/services/module-mode";
+import {
+  AGENT_READ_TOOL_NAMES,
+  type AgentReadToolName,
+} from "../../agent/capabilities/contract";
 
 export type OrbitAgentToolRiskLevel = "read" | "draft" | "write" | "external";
 
-export const ORBIT_AGENT_TOOL_NAMES = [
-  "events.recommend",
-  "contacts.recommend",
-  "followups.reviewQueue",
-  "chat.context",
-] as const;
+export const ORBIT_AGENT_TOOL_NAMES = AGENT_READ_TOOL_NAMES;
 
-export type OrbitAgentToolName = (typeof ORBIT_AGENT_TOOL_NAMES)[number];
+export type OrbitAgentToolName = AgentReadToolName;
 
 export interface ValidatorResult<TValue> {
   success: boolean;

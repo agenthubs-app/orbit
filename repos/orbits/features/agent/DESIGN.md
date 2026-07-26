@@ -20,6 +20,17 @@ Actions 负责把 Orbit 已经掌握的关系证据转成“下一步动作”�
 
 `features/agent/service.ts` 定义 action queue、decision 和 autonomy 服务接口。`service-factory.ts` 是唯一入口。
 
+细粒度运行能力统一登记在 `features/agent/capabilities/registry.ts`。这里是
+Agent 工具名、工作流键、执行器键、风险等级、确认策略、权限、触发器、展示入口
+和撤销能力的唯一描述层。`shared/services/capability-registry.ts` 仍只负责整个产品的
+粗粒度模块清单，两者职责不同：前者回答“Agent 可以做哪一个动作”，后者回答
+“产品有哪些业务模块”。
+
+新增 Agent 能力时必须先登记 manifest，再接入 planner、workflow 或 executor。
+页面、模型 provider 和调度器不得分别维护另一套风险等级或权限表。实际业务逻辑
+仍由各 feature service 拥有；能力清单只负责发现、路由和策略元数据，不复制执行
+实现。
+
 ## Mock 行为
 
 Mock action queue 根据本地关系、活动和跟进 fixture 生成稳定动作。Sandbox 返回 no-op preview，不发消息、不写数据库、不触发通知。Autonomy mock 只表达策略，不真的调度后台任务。
