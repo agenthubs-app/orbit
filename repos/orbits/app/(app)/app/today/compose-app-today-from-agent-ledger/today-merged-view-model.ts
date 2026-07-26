@@ -38,6 +38,7 @@ import {
   type AppTodayRouteViewModel,
   type AppTodaySearchParams,
 } from "./today-route-view-model";
+import type { AgentLedgerService } from "../../../../../features/agent/ledger/service";
 
 export type AppTodayMergedSearchParams = AppTodaySearchParams &
   AppFollowupsSearchParams;
@@ -75,6 +76,16 @@ const defaultLoaders: AppTodayMergedLoaders = {
   loadSchedule: loadAppScheduleRouteViewModel,
   loadToday: loadAppTodayRouteViewModel,
 };
+
+export function createAppTodayMergedLoaders(
+  ledgerService: AgentLedgerService | null,
+): AppTodayMergedLoaders {
+  return {
+    ...defaultLoaders,
+    loadToday: (searchParams) =>
+      loadAppTodayRouteViewModel(searchParams, { ledgerService }),
+  };
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "未知错误";

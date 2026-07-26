@@ -5,6 +5,7 @@ import test from "node:test";
 
 import {
   createAgentLedgerForRequest,
+  resolveAgentLedgerForServerPage,
   resolveAgentRequestContext,
 } from "../../app/api/_shared/agent-request-context";
 import { POST as runAgentWorker } from "../../app/api/internal/agent/worker/route";
@@ -13,6 +14,7 @@ import {
   createOrbitAgentRuntimeService,
   resetOrbitAgentRuntimeServicesForTests,
 } from "../../features/agent/runtime/service-factory";
+import { createAgentLedgerService } from "../../features/agent/service-factory";
 import type { EventRecord } from "../../features/events/event-crud-and-import/contract";
 import type {
   ExternalCalendarEventSummary,
@@ -200,6 +202,28 @@ test("live request context rejects missing auth and keeps ledger actions actor-s
   resetOrbitAgentRuntimeServicesForTests();
 });
 
+test("server-rendered ledger pages resolve the authenticated actor without building an API context", async () => {
+  const missing = await resolveAgentLedgerForServerPage("live", {
+    authenticate: async () => null,
+    ledgerForActor() {
+      throw new Error("ledger must not be constructed without auth");
+    },
+  });
+  assert.equal(missing, null);
+
+  let resolvedActorId = "";
+  const ledger = await resolveAgentLedgerForServerPage("live", {
+    authenticate: async () => ({ user: { id: "user:page-reader" } }),
+    ledgerForActor(actorId) {
+      resolvedActorId = actorId;
+      return createAgentLedgerService("mock");
+    },
+  });
+  assert.equal(resolvedActorId, "user:page-reader");
+  assert.ok(ledger);
+  assert.equal((await ledger.listEntries()).success, true);
+});
+
 test("Agent ledger and queue routes resolve server auth instead of request identity fields", () => {
   for (const route of [
     "app/api/agent/ledger/route.ts",
@@ -218,6 +242,17 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
     const source = readFileSync(join(process.cwd(), route), "utf8");
     assert.match(source, /resolveAgentRequestContext/);
     assert.doesNotMatch(source, /body\.(actorId|workspaceId)/);
+  }
+});
+
+test("Today and All actions server pages use the authenticated ledger entry point", () => {
+  for (const page of [
+    "app/(app)/app/today/page.tsx",
+    "app/(app)/app/contacts/all-actions/page.tsx",
+  ]) {
+    const source = readFileSync(join(process.cwd(), page), "utf8");
+    assert.match(source, /resolveAgentLedgerForServerPage/);
+    assert.match(source, /ledgerService/);
   }
 });
 

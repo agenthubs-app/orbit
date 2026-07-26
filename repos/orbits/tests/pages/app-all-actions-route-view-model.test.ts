@@ -64,6 +64,16 @@ test("the failure scenario yields a typed failure view model", async () => {
   assert.equal(model.entries.length, 0);
 });
 
+test("an explicitly missing live actor fails closed instead of showing mock entries", async () => {
+  const model = await loadAppAllActionsRouteViewModel({}, {
+    ledgerService: null,
+  });
+
+  assert.equal(model.state, "failure");
+  assert.equal(model.errorCode, "AGENT_LEDGER_ACTOR_REQUIRED");
+  assert.equal(model.entries.length, 0);
+});
+
 test("an active filter with zero matches keeps its pill visible", async () => {
   const model = await loadAppAllActionsRouteViewModel({ status: "failed" });
 

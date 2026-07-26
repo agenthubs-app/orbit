@@ -70,6 +70,7 @@ export const AGENT_LEDGER_ERROR_CODES = [
   "AGENT_LEDGER_TRANSITION_INVALID",
   "AGENT_LEDGER_DRAFT_NOT_EDITABLE",
   "AGENT_LEDGER_MOCK_FAILED",
+  "AGENT_LEDGER_ACTOR_REQUIRED",
   "AGENT_LEDGER_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
@@ -265,6 +266,13 @@ export const AGENT_LEDGER_ERROR_DEFINITIONS = {
     message: "The mock agent ledger boundary is pinned to a controlled failure scenario.",
     recovery:
       "Render the controlled failure state and do not retry autonomous execution or external side effects.",
+  },
+  AGENT_LEDGER_ACTOR_REQUIRED: {
+    code: "AGENT_LEDGER_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "Sign in is required to read the live agent ledger.",
+    recovery:
+      "Resolve the authenticated server-side actor before creating a live agent ledger service.",
   },
   AGENT_LEDGER_LIVE_STORE_UNCONFIGURED: {
     code: "AGENT_LEDGER_LIVE_STORE_UNCONFIGURED",

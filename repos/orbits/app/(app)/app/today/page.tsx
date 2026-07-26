@@ -20,10 +20,12 @@ import type { OrbitLanguage } from "../orbit-language-core";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import {
+  createAppTodayMergedLoaders,
   loadAppTodayMergedViewModel,
   type AppTodayMergedSearchParams,
   type AppTodayMergedViewModel,
 } from "./compose-app-today-from-agent-ledger/today-merged-view-model";
+import { resolveAgentLedgerForServerPage } from "../../../api/_shared/agent-request-context";
 import { OrbitRealToday } from "./orbit-real-today";
 import { OrbitTodayArrangements } from "./orbit-today-arrangements";
 import { OrbitTodayHeaderActions } from "./orbit-today-header-actions";
@@ -139,7 +141,11 @@ export default async function AppTodayPage({
   searchParams?: Promise<AppTodayMergedSearchParams>;
 } = {}) {
   const resolvedSearchParams = await searchParams;
-  const merged = await loadAppTodayMergedViewModel(resolvedSearchParams);
+  const ledgerService = await resolveAgentLedgerForServerPage();
+  const merged = await loadAppTodayMergedViewModel(
+    resolvedSearchParams,
+    createAppTodayMergedLoaders(ledgerService),
+  );
   const language = await getTodayPageLanguage();
   const localizedToday = localizeOrbitTree(merged.today, language);
   const localizedSchedule = localizeOrbitTree(merged.schedule, language);

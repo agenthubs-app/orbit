@@ -12,6 +12,7 @@ import {
   type AppAllActionsSearchParams,
 } from "./compose-app-all-actions-from-agent-ledger/all-actions-route-view-model";
 import { OrbitRealAllActions } from "./orbit-real-all-actions";
+import { resolveAgentLedgerForServerPage } from "../../../../api/_shared/agent-request-context";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,10 @@ export default async function AppAllActionsPage({
 }: {
   searchParams?: Promise<AppAllActionsSearchParams>;
 } = {}) {
-  const viewModel = await loadAppAllActionsRouteViewModel(await searchParams);
+  const ledgerService = await resolveAgentLedgerForServerPage();
+  const viewModel = await loadAppAllActionsRouteViewModel(await searchParams, {
+    ledgerService,
+  });
   const language = await getOrbitServerLanguage();
 
   return (

@@ -8,11 +8,13 @@
  * deferred（稍后处理）刻意不在 Today 出现，只在 All actions 可见。
  */
 import {
+  AGENT_LEDGER_ERROR_DEFINITIONS,
   agentLedgerFailureToAppError,
   type AgentLedgerEntry,
   type AgentLedgerEntryStatus,
 } from "../../../../../features/agent/ledger/contract";
 import { createAgentLedgerService } from "../../../../../features/agent/service-factory";
+import type { AgentLedgerService } from "../../../../../features/agent/ledger/service";
 import { isUnviewedPreEventBriefEntry } from "../../../../../features/agent/ledger/pre-event-brief";
 
 export type AppTodaySearchParams = Record<
@@ -36,6 +38,10 @@ export interface AppTodayRouteViewModel {
   evidenceIds: readonly string[];
   errorCode: string | null;
   failureMessage: string | null;
+}
+
+export interface AppTodayRouteDependencies {
+  ledgerService?: AgentLedgerService | null;
 }
 
 const SECTION_TITLES: Record<TodaySectionKey, string> = {
@@ -85,8 +91,23 @@ function readParam(
 
 export async function loadAppTodayRouteViewModel(
   searchParams?: AppTodaySearchParams,
+  dependencies: AppTodayRouteDependencies = {},
 ): Promise<AppTodayRouteViewModel> {
-  const service = createAgentLedgerService();
+  if (dependencies.ledgerService === null) {
+    return {
+      decideCount: 0,
+      errorCode: "AGENT_LEDGER_ACTOR_REQUIRED",
+      evidenceIds: [],
+      failureMessage:
+        AGENT_LEDGER_ERROR_DEFINITIONS.AGENT_LEDGER_ACTOR_REQUIRED.message,
+      sections: [],
+      selectedEntry: null,
+      state: "failure",
+    };
+  }
+
+  const service =
+    dependencies.ledgerService ?? createAgentLedgerService();
   const result = await service.listEntries({
     scenario: readParam(searchParams, "scenario"),
   });

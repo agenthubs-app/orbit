@@ -80,6 +80,33 @@ export function createAgentLedgerForRequest(
     : createAgentLedgerService(context.mode);
 }
 
+export interface AgentLedgerServerPageDependencies {
+  authenticate?: AgentRequestContextDependencies["authenticate"];
+  ledgerForActor?: (actorId: string) => AgentLedgerService;
+}
+
+/**
+ * Server-rendered Agent surfaces need the same actor isolation as API routes,
+ * but they do not need to construct the full queue/runtime request context.
+ * Keep auth server-side and return null instead of falling back to mock data
+ * when a live page has no authenticated actor.
+ */
+export async function resolveAgentLedgerForServerPage(
+  requestedMode?: ModuleMode | string,
+  dependencies: AgentLedgerServerPageDependencies = {},
+): Promise<AgentLedgerService | null> {
+  const mode = resolveModuleMode(requestedMode);
+  if (mode !== "live") return createAgentLedgerService(mode);
+
+  const authenticate = dependencies.authenticate ?? auth;
+  const session = await authenticate();
+  const actorId = session?.user?.id?.trim() || null;
+  if (!actorId) return null;
+
+  return (dependencies.ledgerForActor ?? ((id) =>
+    createLiveAgentLedgerService({ actorId: id })))(actorId);
+}
+
 export function createAgentActionQueueForRequest(
   context: AgentRequestContext,
 ): AgentActionQueueService {

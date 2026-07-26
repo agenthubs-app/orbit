@@ -1,6 +1,6 @@
 /**
- * Live agent ledger 存根：数据库 provider 落地前，所有方法返回未配置 failure。
- * Postgres live-record-provider 在后续计划（All actions live 化）中实现。
+ * Live agent ledger：把 actor-scoped persistent runtime 投影成可复核账本。
+ * 构造失败时保持 fail-closed，并区分缺少登录身份与缺少数据库配置。
  */
 import {
   AGENT_LEDGER_ERROR_DEFINITIONS,
@@ -12,11 +12,15 @@ import { createRuntimeBackedAgentLedgerService } from "./runtime-adapter";
 import { createOrbitAgentRuntimeService } from "../runtime/service-factory";
 import type { AgentRuntimeService } from "../runtime/service";
 
-function unconfiguredFailure(): AgentLedgerFailure {
+function liveLedgerFailure(
+  code:
+    | "AGENT_LEDGER_ACTOR_REQUIRED"
+    | "AGENT_LEDGER_LIVE_STORE_UNCONFIGURED",
+): AgentLedgerFailure {
   return {
     success: false,
     error: {
-      ...AGENT_LEDGER_ERROR_DEFINITIONS.AGENT_LEDGER_LIVE_STORE_UNCONFIGURED,
+      ...AGENT_LEDGER_ERROR_DEFINITIONS[code],
       state: "failure",
       provenance: {
         ...mockAgentLedgerProvenance,
@@ -41,11 +45,16 @@ export function createLiveAgentLedgerService(input?: {
           input?.actorId ? { actorId: input.actorId } : undefined,
         ),
     });
-  } catch {
+  } catch (error) {
+    const code =
+      error instanceof Error &&
+      error.message.includes("authenticated actor context")
+        ? "AGENT_LEDGER_ACTOR_REQUIRED"
+        : "AGENT_LEDGER_LIVE_STORE_UNCONFIGURED";
     return {
-      listEntries: () => unconfiguredFailure(),
-      applyTransition: () => unconfiguredFailure(),
-      updateDraft: () => unconfiguredFailure(),
+      listEntries: () => liveLedgerFailure(code),
+      applyTransition: () => liveLedgerFailure(code),
+      updateDraft: () => liveLedgerFailure(code),
     };
   }
 }

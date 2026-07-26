@@ -11,11 +11,11 @@ test("mock mode resolves a working ledger service", async () => {
   assert.equal(result.success, true);
 });
 
-test("live mode returns the unconfigured failure until a store exists", async () => {
+test("live mode distinguishes a missing actor from missing storage", async () => {
   const service = createAgentLedgerService("live");
   const result = await service.listEntries();
   assert.equal(result.success, false);
   if (!result.success) {
-    assert.equal(result.error.code, "AGENT_LEDGER_LIVE_STORE_UNCONFIGURED");
+    assert.equal(result.error.code, "AGENT_LEDGER_ACTOR_REQUIRED");
   }
 });

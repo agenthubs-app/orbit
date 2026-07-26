@@ -79,6 +79,16 @@ test("the failure scenario yields a typed failure view model", async () => {
   assert.ok((model.failureMessage ?? "").length > 0);
 });
 
+test("an explicitly missing live actor fails closed instead of showing mock decisions", async () => {
+  const model = await loadAppTodayRouteViewModel({}, {
+    ledgerService: null,
+  });
+
+  assert.equal(model.state, "failure");
+  assert.equal(model.errorCode, "AGENT_LEDGER_ACTOR_REQUIRED");
+  assert.equal(model.sections.length, 0);
+});
+
 test("the empty scenario yields an empty view model with no sections", async () => {
   const model = await loadAppTodayRouteViewModel({ scenario: "empty" });
 

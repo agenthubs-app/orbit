@@ -5,12 +5,14 @@
  * 计数始终基于全量账本，不随当前筛选变化。
  */
 import {
+  AGENT_LEDGER_ERROR_DEFINITIONS,
   AGENT_LEDGER_ENTRY_STATUSES,
   agentLedgerFailureToAppError,
   type AgentLedgerEntry,
   type AgentLedgerEntryStatus,
 } from "../../../../../../features/agent/ledger/contract";
 import { createAgentLedgerService } from "../../../../../../features/agent/service-factory";
+import type { AgentLedgerService } from "../../../../../../features/agent/ledger/service";
 
 export type AppAllActionsSearchParams = Record<
   string,
@@ -35,6 +37,10 @@ export interface AppAllActionsRouteViewModel {
   evidenceIds: readonly string[];
   errorCode: string | null;
   failureMessage: string | null;
+}
+
+export interface AppAllActionsRouteDependencies {
+  ledgerService?: AgentLedgerService | null;
 }
 
 const FILTER_LABELS: Record<AllActionsFilterKey, string> = {
@@ -73,8 +79,24 @@ function resolveFilter(value: string | null): AllActionsFilterKey {
 
 export async function loadAppAllActionsRouteViewModel(
   searchParams?: AppAllActionsSearchParams,
+  dependencies: AppAllActionsRouteDependencies = {},
 ): Promise<AppAllActionsRouteViewModel> {
-  const service = createAgentLedgerService();
+  if (dependencies.ledgerService === null) {
+    return {
+      activeFilter: "all",
+      entries: [],
+      errorCode: "AGENT_LEDGER_ACTOR_REQUIRED",
+      evidenceIds: [],
+      failureMessage:
+        AGENT_LEDGER_ERROR_DEFINITIONS.AGENT_LEDGER_ACTOR_REQUIRED.message,
+      filters: [],
+      selectedEntryId: null,
+      state: "failure",
+    };
+  }
+
+  const service =
+    dependencies.ledgerService ?? createAgentLedgerService();
   const result = await service.listEntries({
     scenario: readParam(searchParams, "scenario"),
   });
