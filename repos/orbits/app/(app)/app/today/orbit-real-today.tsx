@@ -151,10 +151,10 @@ export function OrbitRealToday({
     if (suppressStateBoundary) return null;
 
     return (
-      <div data-orbit-route="app-today-route-state" style={{ padding: 32 }}>
-        <div className="eyebrow">Today</div>
-        <h1 style={{ fontSize: 22, margin: "8px 0 12px" }}>账本暂时读不出来</h1>
-        <p style={{ color: "var(--text-2)", fontSize: 14 }}>
+      <div className="card" data-orbit-route="app-today-route-state" style={{ padding: 20 }}>
+        <div className="eyebrow">需要你决定</div>
+        <h2 style={{ fontSize: 18, margin: "8px 0 8px" }}>决策账本暂时不可用</h2>
+        <p style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, margin: 0 }}>
           {viewModel.failureMessage}
         </p>
       </div>
@@ -165,10 +165,10 @@ export function OrbitRealToday({
     if (suppressStateBoundary) return null;
 
     return (
-      <div data-orbit-route="app-today-route-empty" style={{ padding: 32 }}>
-        <div className="eyebrow">Today</div>
-        <h1 style={{ fontSize: 22, margin: "8px 0 12px" }}>今天没有需要你决定的事</h1>
-        <p style={{ color: "var(--text-2)", fontSize: 14 }}>
+      <div className="card" data-orbit-route="app-today-route-empty" style={{ padding: 20 }}>
+        <div className="eyebrow">需要你决定</div>
+        <h2 style={{ fontSize: 18, margin: "8px 0 8px" }}>今天没有需要你决定的事</h2>
+        <p style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, margin: 0 }}>
           Orbit 会在有新的跟进窗口时把决策放到这里。
         </p>
       </div>

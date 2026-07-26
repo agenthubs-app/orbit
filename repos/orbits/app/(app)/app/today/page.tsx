@@ -42,7 +42,7 @@ function readRawParam(
 }
 
 function greetingHeadline(today: AppTodayMergedViewModel["today"]): string {
-  if (today.state === "failure") return "今天的账本暂时读不出来。";
+  if (today.state === "failure") return "今天的日程仍可查看。";
   if (today.decideCount === 0) return "今晚没有需要你决定的事。";
   return `今晚有 ${today.decideCount} 件事需要你决定。`;
 }
@@ -210,11 +210,11 @@ export default async function AppTodayPage({
               <h1 style={{ fontSize: 28, lineHeight: 1.25, margin: "10px 0 8px" }}>
                 {greetingHeadline(merged.today)}
               </h1>
-              {merged.today.state !== "failure" ? (
-                <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-                  其余的 Orbit 已经准备好了 —— 确认后执行；支持补偿的操作可撤销。
-                </p>
-              ) : null}
+              <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
+                {merged.today.state === "failure"
+                  ? "决策账本暂时不可用，日程和可复核安排仍可使用。"
+                  : "其余的 Orbit 已经准备好了 —— 确认后执行；支持补偿的操作可撤销。"}
+              </p>
             </div>
             <OrbitTodayHeaderActions connections={headerConnections} />
           </header>

@@ -274,7 +274,7 @@ test("/app/today keeps working when a ?date= without any meetings is requested",
 // on the selected day. Use a deterministic fixture instead of hoping the
 // real mock data happens to have a meeting on today's wall-clock date. ----
 
-test("meeting cards in the time spine expose 查看名片/起草邮件/展开详情", () => {
+test("meeting cards expose a real compose action without repeating their topic", () => {
   // Two entries on the selected day: the first is defaultOpen (shows
   // 查看名片/起草邮件 and an aria-label of "收起详情"), the second stays
   // closed so its toggle still reads "展开详情" — covering both labels the
@@ -334,6 +334,13 @@ test("meeting cards in the time spine expose 查看名片/起草邮件/展开详
   assert.match(html, /查看名片/);
   assert.match(html, /起草邮件/);
   assert.match(html, /展开详情/);
+  assert.match(html, /data-inbox-compose="true"/);
+  assert.match(html, /09:30 Kenji Watanabe，收起详情/);
+  assert.equal(
+    html.match(/跟进 Kenji Watanabe 的关系进展/g)?.length,
+    1,
+    "the meeting topic should appear once, not repeat in the expanded detail",
+  );
 });
 
 // ---- T2: decision cards become inline accordions (design doc §2, §5) ----

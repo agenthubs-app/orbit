@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { ModalShell } from "../orbit-account-shell";
+import { openRelationshipInboxCompose } from "../inbox/relationship-inbox-panel";
 import { useOrbitLanguage } from "../orbit-language-context";
 import type {
   OrbitScheduleConnectionView,
@@ -70,7 +71,7 @@ export function SchedRow({
     <div className={`sch-card${open ? " is-open" : ""}`}>
       <button
         aria-expanded={open}
-        aria-label={open ? t({ en: "Collapse details", zh: "收起详情" }) : t({ en: "Expand details", zh: "展开详情" })}
+        aria-label={`${schedule.time} ${connection.displayName}，${open ? t({ en: "collapse details", zh: "收起详情" }) : t({ en: "expand details", zh: "展开详情" })}`}
         className="sch-card-head"
         onClick={() => setOpen((value) => !value)}
         type="button"
@@ -80,10 +81,11 @@ export function SchedRow({
           <span className="sch-time-d">{schedule.dur}</span>
         </span>
         <span className="sch-rail" />
-        <Avatar letter={connection.initial} g={connection.g} size={34} />
+        <Avatar letter={connection.initial} g={connection.g} size={38} />
         <span className="sch-who">
           <span className="sch-name">{connection.displayName}</span>
           <span className="sch-sub">{[role, connection.company].filter(Boolean).join(" · ")}</span>
+          <span className="sch-topic">{topic}</span>
         </span>
         <span className="sch-status" style={{ background: status.soft, color: status.c }}>
           <span className="sch-status-dot" style={{ background: status.c }} />
@@ -93,19 +95,30 @@ export function SchedRow({
       </button>
       {open ? (
         <div className="sch-detail">
-          <div className="sch-detail-topic">{topic}</div>
-          <div className="sch-detail-facts">
-            <span className="sch-fact"><Icon name="clock" size={13} />{schedule.time} · {schedule.dur}</span>
-            {schedule.place ? <span className="sch-fact"><Icon name="pin" size={13} />{schedule.place}</span> : null}
-            <span className="sch-fact"><Icon name="status" size={13} />{statusLabel(schedule.status, language)}</span>
-          </div>
+          {schedule.place ? (
+            <span className="sch-fact">
+              <Icon name="pin" size={14} />
+              {schedule.place}
+            </span>
+          ) : null}
           <div className="sch-detail-actions">
             <a className="btn btn-ghost btn-sm" href={detailHref}>
               <Icon name="user" size={14} />{t({ en: "View contact", zh: "查看名片" })}
             </a>
-            <a className="btn btn-ghost btn-sm" href={detailHref}>
+            <button
+              className="btn btn-primary btn-sm"
+              data-inbox-compose
+              onClick={() =>
+                openRelationshipInboxCompose({
+                  organization: connection.company,
+                  recipient: connection.displayName,
+                  subject: topic,
+                })
+              }
+              type="button"
+            >
               <Icon name="mail" size={14} />{t({ en: "Draft email", zh: "起草邮件" })}
-            </a>
+            </button>
           </div>
         </div>
       ) : null}
@@ -614,7 +627,7 @@ export function OrbitTodayTimeSpine({
   return (
     <div data-orbit-today-time-spine style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div className="orbit-time-spine-desktop-calendar">
-        <MonthCalendar {...monthCalendarProps} />
+        <MonthCalendar compact {...monthCalendarProps} />
       </div>
       <WeekStrip
         language={language}
@@ -677,22 +690,22 @@ export function TimeSpineStyles() {
 .sch-timeline { display:flex; flex-direction:column; gap:10px; }
 .sch-card { border:1px solid var(--border); border-radius:var(--r-md); background:var(--surface); overflow:hidden; transition:border-color .14s; }
 .sch-card.is-open { border-color:var(--border-strong); }
-.sch-card-head { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; background:transparent; border:0; cursor:pointer; text-align:left; }
-.sch-card-head:hover { background:var(--surface-2); }
-.sch-time { display:flex; flex-direction:column; align-items:center; width:50px; flex-shrink:0; }
+[data-orbit-real-page] .sch-card-head { width:100%; display:flex; align-items:center; gap:14px; min-height:82px; padding:14px 16px; background:transparent; border:0; border-radius:0; color:inherit; cursor:pointer; font-family:var(--ff); text-align:left; }
+[data-orbit-real-page] .sch-card-head:hover { background:var(--surface-2); }
+[data-orbit-real-page] .sch-card-head:focus-visible { background:var(--accent-softer); box-shadow:inset 0 0 0 2px var(--accent); outline:0; }
+.sch-time { display:flex; flex-direction:column; align-items:flex-start; width:54px; flex-shrink:0; }
 .sch-time-h { font-family:var(--ff-mono); font-size:15px; font-weight:700; color:var(--ink); }
 .sch-time-d { font-size:11px; color:var(--text-3); margin-top:2px; }
 .sch-rail { align-self:stretch; width:1px; background:var(--border); flex-shrink:0; }
-.sch-who { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+.sch-who { display:flex; flex-direction:column; gap:3px; flex:1; min-width:0; }
 .sch-name { font-size:14px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sch-sub { font-size:12px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sch-topic { color:var(--text-2); font-size:13px; line-height:1.45; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sch-status { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px; border-radius:var(--r-pill); font-size:12px; font-weight:600; flex-shrink:0; }
 .sch-status-dot { width:6px; height:6px; border-radius:var(--r-pill); }
 .sch-card-head > svg:last-child { color:var(--text-4); transition:transform .16s; flex-shrink:0; }
 .sch-card.is-open .sch-card-head > svg:last-child { transform:rotate(90deg); }
-.sch-detail { padding:2px 16px 15px 64px; display:flex; flex-direction:column; gap:11px; }
-.sch-detail-topic { font-size:13.5px; line-height:1.55; color:var(--text-2); }
-.sch-detail-facts { display:flex; flex-wrap:wrap; gap:8px 16px; }
+.sch-detail { border-top:1px solid var(--border); margin-left:154px; padding:12px 16px 15px 0; display:flex; flex-direction:column; gap:11px; }
 .sch-fact { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-3); }
 .sch-fact svg { color:var(--text-4); }
 .sch-detail-actions { display:flex; flex-wrap:wrap; gap:8px; }
@@ -721,6 +734,24 @@ export function TimeSpineStyles() {
 @media (max-width: 760px) {
   .orbit-time-spine-desktop-calendar { display:none; }
   .orbit-week-strip { display:flex; }
+  [data-orbit-real-page] .sch-card-head {
+    align-items:start;
+    display:grid;
+    gap:4px 10px;
+    grid-template-areas:"time avatar who chev" "time avatar status chev";
+    grid-template-columns:50px 38px minmax(0, 1fr) 18px;
+    min-height:0;
+    padding:14px;
+  }
+  .sch-time { grid-area:time; width:50px; }
+  .sch-rail { display:none; }
+  .sch-card-head > .avatar { grid-area:avatar; }
+  .sch-who { grid-area:who; }
+  .sch-topic { white-space:normal; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .sch-status { grid-area:status; justify-self:start; margin-top:3px; }
+  .sch-card-head > svg:last-child { align-self:center; grid-area:chev; }
+  .sch-detail { margin-left:0; padding:12px 14px 14px; }
+  .sch-detail-actions .btn { flex:1; justify-content:center; min-width:0; }
 }
 `,
       }}
