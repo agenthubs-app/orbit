@@ -57,6 +57,11 @@ export interface OrbitAgentConversationHistoryTurn {
   content: string;
 }
 
+export interface OrbitAgentMemoryContext {
+  category: string;
+  content: string;
+}
+
 export interface OrbitAgentConversationLookupInput
   extends OrbitAgentConversationInput {
   conversationId?: string | null;
@@ -65,6 +70,11 @@ export interface OrbitAgentConversationLookupInput
 export interface OrbitAgentSendMessageInput extends OrbitAgentConversationInput {
   conversationId?: string | null;
   history?: readonly OrbitAgentConversationHistoryTurn[];
+  /**
+   * Server-trusted, actor-scoped memory. API body parsers must never accept
+   * this field from the client.
+   */
+  memory?: readonly OrbitAgentMemoryContext[];
   message?: string | null;
   locale?: "zh" | "en" | string | null;
 }

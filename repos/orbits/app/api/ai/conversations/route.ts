@@ -14,6 +14,7 @@ import {
   type OrbitAgentSendMessageInput,
 } from "../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
+import { createAgentMemoryService } from "../../../../features/agent/memory/service-factory";
 import type { AgentRuntimeService } from "../../../../features/agent/runtime/service";
 import { latestConversationRuntimeLink } from "../../../../features/orbit-ai/conversation-runtime-links";
 import {
@@ -243,12 +244,22 @@ export async function POST(request: Request): Promise<Response> {
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const readBodyStartedAt = timing.now();
   const input = await readSendInput(request);
+  const trustedInput =
+    agentContext.actorId === null
+      ? input
+      : {
+          ...input,
+          memory: await createAgentMemoryService({
+            actorId: agentContext.actorId,
+            mode,
+          }).context(),
+        };
   timing.finish("orbit-read-body", readBodyStartedAt);
   const serviceStartedAt = timing.now();
   const service = createOrbitAgentConversationService();
   let result: OrbitAgentConversationResult;
 
-  if (isChatKnownWorkflowInput(input)) {
+  if (isChatKnownWorkflowInput(trustedInput)) {
     // 已知工作流必须在 bounded planner/provider 之前命中。listConversations
     // 只读取会话基态，用来保留 activeConversationId；它不会生成模型回复。
     const conversationResult = await service.listConversations({
@@ -258,7 +269,7 @@ export async function POST(request: Request): Promise<Response> {
       processOutboxAfterStart: mode === "mock",
       runtime: agentContext.runtime,
     }).handle({
-      conversationInput: input,
+      conversationInput: trustedInput,
       conversationResult,
     });
     result =
@@ -268,7 +279,7 @@ export async function POST(request: Request): Promise<Response> {
   } else {
     // 未命中已知工作流的普通请求保持原 bounded planner 路径，并且只调用一次。
     result = await withRuntimeLinks(
-      await service.sendMessage(input),
+      await service.sendMessage(trustedInput),
       agentContext.runtime,
     );
   }

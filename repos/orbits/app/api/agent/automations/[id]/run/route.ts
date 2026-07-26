@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { runAgentAutomation } from "../../../../../../features/agent/automations/runner";
+import { createAgentMemoryService } from "../../../../../../features/agent/memory/service-factory";
+import { resolveModuleMode } from "../../../../../../shared/services/module-mode";
 import {
   agentAutomationErrorResponse,
   agentAutomationUnauthorizedResponse,
@@ -17,7 +19,12 @@ export async function POST(
 
   try {
     const { id } = await context.params;
+    const memory = await createAgentMemoryService({
+      actorId: requestContext.actorId,
+      mode: resolveModuleMode(),
+    }).context();
     const automation = await runAgentAutomation(requestContext.service, id, {
+      memory,
       workerId: `manual:${requestContext.actorId.slice(0, 80)}`,
     });
     return NextResponse.json({ data: { automation } });

@@ -2,6 +2,7 @@ import type {
   AgentAutomation,
   AgentAutomationService,
 } from "./contract";
+import type { AgentMemoryContext } from "../memory/contract";
 import {
   createOrbitAgentConversationService,
 } from "../../orbit-ai/service-factory";
@@ -17,6 +18,7 @@ export interface AgentAutomationRunnerDependencies {
   ) => Promise<AgentAutomationExecutionResult>;
   now?: () => string;
   workerId?: string;
+  memory?: readonly AgentMemoryContext[];
 }
 
 async function finishClaimedAgentAutomation(
@@ -63,11 +65,13 @@ async function finishClaimedAgentAutomation(
 
 async function executeWithOrbitAgent(
   automation: AgentAutomation,
+  memory: readonly AgentMemoryContext[] = [],
 ): Promise<AgentAutomationExecutionResult> {
   const service = createOrbitAgentConversationService();
   const result = await service.sendMessage({
     conversationId: `automation:${automation.automationId}`,
     locale: "zh",
+    memory,
     message: automation.instruction,
   });
   if (result.success === false) {
@@ -85,7 +89,10 @@ export async function runAgentAutomation(
   dependencies: AgentAutomationRunnerDependencies = {},
 ): Promise<AgentAutomation> {
   const now = dependencies.now ?? (() => new Date().toISOString());
-  const execute = dependencies.execute ?? executeWithOrbitAgent;
+  const execute =
+    dependencies.execute ??
+    ((automation) =>
+      executeWithOrbitAgent(automation, dependencies.memory));
   const workerId = dependencies.workerId ?? "agent-automation-runner";
   const claimed = await service.claim({
     automationId,
@@ -107,7 +114,10 @@ export async function runDueAgentAutomations(
     "now" | "workerId"
   > = {},
 ): Promise<readonly AgentAutomation[]> {
-  const execute = dependencies.execute ?? executeWithOrbitAgent;
+  const execute =
+    dependencies.execute ??
+    ((automation) =>
+      executeWithOrbitAgent(automation, dependencies.memory));
   const claimed = await service.claimDue(input);
   return Promise.all(
     claimed.map((automation) =>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runDueAgentAutomations } from "../../../../../features/agent/automations/runner";
 import { createAgentAutomationService } from "../../../../../features/agent/automations/service-factory";
+import { createAgentMemoryService } from "../../../../../features/agent/memory/service-factory";
 import { resolveModuleMode } from "../../../../../shared/services/module-mode";
 
 export const dynamic = "force-dynamic";
@@ -66,11 +67,19 @@ export async function POST(request: Request): Promise<Response> {
       actorId: actorId.slice(0, 240),
       mode: resolveModuleMode(),
     });
-    const automations = await runDueAgentAutomations(service, {
-      limit,
-      now: new Date().toISOString(),
-      workerId,
-    });
+    const memory = await createAgentMemoryService({
+      actorId: actorId.slice(0, 240),
+      mode: resolveModuleMode(),
+    }).context();
+    const automations = await runDueAgentAutomations(
+      service,
+      {
+        limit,
+        now: new Date().toISOString(),
+        workerId,
+      },
+      { memory },
+    );
     return NextResponse.json({ data: { automations } });
   } catch (error) {
     return NextResponse.json(

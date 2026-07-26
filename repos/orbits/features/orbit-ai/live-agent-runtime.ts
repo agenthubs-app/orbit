@@ -1147,6 +1147,7 @@ export async function runLiveOrbitAgentRuntime(
   const plannerResult = await runtime.planner.plan({
     history: historyTurns,
     locale: input.locale,
+    memory: input.memory,
     message,
   });
   timings.push(timingSpan("planner", plannerStartedAt));
@@ -1211,6 +1212,7 @@ export async function runLiveOrbitAgentRuntime(
         history: historyTurns,
         intent: plannerResult.data.intent,
         locale: input.locale,
+        memory: input.memory,
         message,
         toolRequests,
       })

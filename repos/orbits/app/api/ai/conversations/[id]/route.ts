@@ -14,6 +14,11 @@ import {
   type OrbitAgentSendMessageInput,
 } from "../../../../../features/orbit-ai/conversation-contract";
 import { createOrbitAgentConversationService } from "../../../../../features/orbit-ai/service-factory";
+import { createAgentMemoryService } from "../../../../../features/agent/memory/service-factory";
+import {
+  agentRequestUnauthorizedResponse,
+  resolveAgentRequestContext,
+} from "../../../_shared/agent-request-context";
 
 // 带 id 的 conversation route 适配单个会话。
 // 它和 `/api/ai/conversations` 使用同一个 service，只是从路径参数补 conversationId。
@@ -101,6 +106,8 @@ export async function GET(
 ): Promise<Response> {
   // GET 读取指定 conversation 的状态，不发送新消息。
   const mode = resolveFeatureMode();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
   const { id } = await context.params;
   const service = createOrbitAgentConversationService();
   const result = await service.getConversation(readLookupInput(request, id));
@@ -114,9 +121,22 @@ export async function POST(
 ): Promise<Response> {
   // POST 在指定 conversation 上追加用户消息；是否 live 调模型由 service factory 决定。
   const mode = resolveFeatureMode();
+  const agentContext = await resolveAgentRequestContext(mode);
+  if (!agentContext) return agentRequestUnauthorizedResponse();
   const { id } = await context.params;
   const service = createOrbitAgentConversationService();
-  const result = await service.sendMessage(await readSendInput(request, id));
+  const input = await readSendInput(request, id);
+  const result = await service.sendMessage(
+    agentContext.actorId === null
+      ? input
+      : {
+          ...input,
+          memory: await createAgentMemoryService({
+            actorId: agentContext.actorId,
+            mode,
+          }).context(),
+        },
+  );
 
   return responseForResult(result, mode);
 }

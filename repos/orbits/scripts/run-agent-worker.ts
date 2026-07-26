@@ -1,6 +1,7 @@
 import { loadEnvConfig } from "@next/env";
 import { runDueAgentAutomations } from "../features/agent/automations/runner";
 import { createAgentAutomationService } from "../features/agent/automations/service-factory";
+import { createAgentMemoryService } from "../features/agent/memory/service-factory";
 import { createOrbitAgentRuntimeService } from "../features/agent/runtime/service-factory";
 
 loadEnvConfig(process.cwd());
@@ -25,15 +26,20 @@ async function main(): Promise<void> {
     actorId,
     mode: "live",
   });
+  const memory = createAgentMemoryService({ actorId, mode: "live" });
 
   while (true) {
     const [outbox, automationRuns] = await Promise.all([
       runtime.processOutbox({ limit: 20, workerId }),
-      runDueAgentAutomations(automations, {
-        limit: 10,
-        now: new Date().toISOString(),
-        workerId: `${workerId}:automations`,
-      }),
+      runDueAgentAutomations(
+        automations,
+        {
+          limit: 10,
+          now: new Date().toISOString(),
+          workerId: `${workerId}:automations`,
+        },
+        { memory: await memory.context() },
+      ),
     ]);
     if (outbox.processed > 0 || automationRuns.length > 0) {
       process.stdout.write(

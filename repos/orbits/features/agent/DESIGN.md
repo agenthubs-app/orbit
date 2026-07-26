@@ -56,6 +56,27 @@ live record store。存储 workspace 还会追加 actor scope，避免不同账�
 `ORBIT_AGENT_WORKER_SECRET` 并使用 Bearer header；actor 身份只能来自
 `x-orbit-actor-id` 服务端边界，不能从请求 body 注入。
 
+## 用户可控 Memory
+
+`features/agent/memory` 保存跨对话长期有效、且由用户明确管理的个人上下文。Memory
+只包含身份称呼、长期目标、表达偏好和稳定约束四类信息；联系人关系、活动和跟进事实
+仍由各自业务模块拥有，不能复制到 Memory 形成第二份事实来源。
+
+Memory 使用 actor 隔离的 live record store，workspace 会追加当前账号的 actor id。
+客户端不能在对话请求里直接注入 memory；API 在完成身份解析后从服务端读取当前
+actor 的上下文，并通过独立的 `userMemory` 字段传给 planner 和 synthesis provider。
+模型提示明确规定 Memory 不能覆盖安全规则、权限策略、工具边界和用户本轮要求。
+
+用户可以在设置页查看、新增、编辑和删除每条 Memory，也可以全局关闭使用。关闭后
+服务端向模型返回空上下文，但保留原数据，重新开启即可恢复。会话学习默认关闭；
+即使用户开启，也只允许后续写操作流程提出待确认记忆，不能静默抽取或自动落库。
+
+相关 API：
+
+- `GET/POST /api/agent/memory`：读取和新增当前 actor 的 Memory。
+- `PATCH/DELETE /api/agent/memory/:id`：编辑或删除一条 Memory。
+- `GET/PATCH /api/agent/memory/settings`：读取或更新使用与学习开关。
+
 ## Mock 行为
 
 Mock action queue 根据本地关系、活动和跟进 fixture 生成稳定动作。Sandbox 返回 no-op preview，不发消息、不写数据库、不触发通知。Autonomy mock 只表达策略，不真的调度后台任务。
