@@ -257,15 +257,36 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
 
   return (
     <div className="orbit-shell" data-orbit-real-page="explore">
+      <style>{`
+        [data-orbit-real-page="explore"] .orbit-event-view-switcher {
+          align-items: center;
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          border-radius: var(--r-pill);
+          display: inline-flex;
+          gap: 2px;
+          padding: 3px;
+        }
+
+        [data-orbit-real-page="explore"] .orbit-event-view-switcher > .orbit-event-view-option {
+          border-color: transparent;
+          border-radius: var(--r-pill);
+          box-shadow: none;
+        }
+
+        [data-orbit-real-page="explore"] .orbit-event-view-switcher > .orbit-event-view-option:focus-visible {
+          outline-offset: -3px;
+        }
+      `}</style>
       <div className="orbit-desktop-only" style={{ background: "var(--bg)", minHeight: "100dvh" }}>
         <PublicTopNav />
         <main className="orbit-main" data-appscroll>
           <div className="orbit-browse-head">
             <div><div className="eyebrow" style={{ marginBottom: 8 }}>{t({ en: "EXPLORE · Tokyo", zh: "EXPLORE · 东京" })}</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
             <div className="orbit-browse-tools">
-              <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", display: "inline-flex", padding: 3 }}>
-                <button className={`btn btn-sm ${effMode === "modules" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("modules")} type="button"><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容" })}</button>
-                {canShowMap ? <button className={`btn btn-sm ${effMode === "map" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("map")} type="button"><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button> : null}
+              <div aria-label={t({ en: "Event view", zh: "活动视图" })} className="orbit-event-view-switcher" role="group">
+                <button aria-pressed={effMode === "modules"} className={`btn btn-sm orbit-event-view-option ${effMode === "modules" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("modules")} type="button"><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容" })}</button>
+                {canShowMap ? <button aria-pressed={effMode === "map"} className={`btn btn-sm orbit-event-view-option ${effMode === "map" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("map")} type="button"><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button> : null}
               </div>
               <div className="orbit-search-box">
                 <Icon color="var(--text-3)" name="search" size={18} style={{ left: 14, position: "absolute", top: 15 }} />
