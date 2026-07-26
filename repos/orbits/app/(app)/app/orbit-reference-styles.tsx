@@ -2385,9 +2385,12 @@ html:has([data-orbit-real-page]) {
     background: var(--accent-soft);
   }
   [data-orbit-real-page] .orbit-nav-menu-layer {
+    bottom: 0;
     display: block;
-    inset: 0;
+    left: 0;
     position: fixed;
+    right: 0;
+    top: 56px;
     z-index: var(--z-overlay);
   }
   [data-orbit-real-page] .orbit-nav-menu-scrim {
@@ -2407,7 +2410,7 @@ html:has([data-orbit-real-page]) {
     padding: 8px 10px 14px;
     position: absolute;
     right: 0;
-    top: 56px;
+    top: 0;
   }
   [data-orbit-real-page] .orbit-nav-menu-item {
     align-items: center;
