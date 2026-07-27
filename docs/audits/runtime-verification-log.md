@@ -430,3 +430,41 @@ Exact production runtime on isolated port 3100:
 Verification boundary:
 
 - The authenticated actor had no current Today arrangements, so the browser confirms the exact shell, canonical route, controls, and honest empty states; arrangement-card density is covered by the unchanged scale gate and component source rather than claimed as populated runtime evidence.
+
+## 2026-07-27 — Agent contract and actor-context closure
+
+Regression and build verification:
+
+- Reconciled all 24 legacy Agent assertions against the current Conversation
+  API → artifact → Run/Action Ledger boundary. Focused Agent/localization
+  verification passed 43/43 before the actor-context addition.
+- Added actor forwarding for live Event recommendations and an actor-scoped
+  Contacts-graph adapter for relationship recommendations. Focused
+  actor-context verification passed 20/20, including owner-visible and
+  cross-actor-empty relationship search.
+- Final full suite: 1,256 tests, 1,256 passed, 0 failed, 0
+  skipped/cancelled/todo, 36.1 seconds.
+- `pnpm lint` passed. `pnpm build` compiled and type-checked the exact worktree,
+  generated all 39 static pages, and `next-env.d.ts` was restored to the
+  development route-types path.
+
+Exact production runtime on isolated port 3100:
+
+| Surface / boundary | Authoritative evidence | Result |
+| --- | --- | --- |
+| Agent structure and safety | Authenticated rendered DOM on `/app/agent` | One persistent H1, a 44×44 visible send control, the contact/event/to-do accessible input name, and the pre-send privacy/confirmation boundary were present. Desktop composer was visible and the CSS-gated mobile duplicate was hidden at the fixed desktop viewport. |
+| Request lifecycle | DOM attributes during a real Conversation POST | Request state changed `idle → pending → idle`; `aria-busy` was true while waiting and the concurrent/blank send guard remained active. |
+| DeepSeek contact recommendation | Authenticated provider-backed request and artifact DOM | The Agent returned named contacts with reasons and evidence-backed contact cards; no fixture or route error was rendered. |
+| Stale artifact clearing | Contact result followed by an ordinary one-sentence greeting | Visible result panels changed from 1 to 0 while the new assistant reply remained visible. |
+| Actor-bound Event recommendation | Authenticated provider-backed request after the fix | The request no longer contained `EVENTS_ACTOR_REQUIRED` or `events-live-store-unconfigured`; the current actor had no matching records, so the UI honestly reported 0 real records without Mock fallback. |
+
+Verification boundary:
+
+- The latest Agent delta was browser-verified at the available fixed desktop
+  viewport. Mobile behavior for the delta is covered by the two CSS-gated
+  trees and current component/source tests; this entry does not claim a new
+  mobile-browser viewport run.
+- The current actor had no matching Event records, so this verifies actor-bound
+  provider access and honest empty behavior, not a populated Event card.
+- No external message, calendar event, notification, profile update, or other
+  side effect was executed during these checks.
