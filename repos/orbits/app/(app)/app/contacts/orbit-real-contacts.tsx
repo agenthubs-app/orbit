@@ -13,6 +13,7 @@ import type {
 import { AccountTopNav, MobileBar, ModalShell, orbitNavigate } from "../orbit-account-shell";
 import { CrmSidebar } from "./orbit-crm-sidebar";
 import { OrbitCardsInteractions } from "./orbit-cards-interactions";
+import { OrbitContactAvatar } from "./orbit-contact-avatar";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, IconButton } from "../orbit-reference-primitives";
@@ -324,7 +325,7 @@ function PersonCard({
 }) {
   return (
     <a className="card card-hover nc-pcard" href={`/app/contacts/${item.id}`}>
-      <Avatar letter={crmInitial(item.displayName)} g={item.g || "g-violet"} size={56} />
+      <OrbitContactAvatar contact={item} size={56} />
       <div style={{ minWidth: 0 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
           {/* Mobile audit P2: single-line ellipsis truncated names hard

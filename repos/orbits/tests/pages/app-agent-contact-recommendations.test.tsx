@@ -277,7 +277,7 @@ test("contact detail mapping translates live source and relationship tokens into
 
   assert.match(visibleText, /投资意向/);
   assert.match(visibleText, /社群上下文/);
-  assert.match(visibleText, /种子轮融资投资人引荐/);
+  assert.match(visibleText, /种子轮融资的投资人暖介绍/);
   assert.match(visibleText, /QR scan at Japan-China AI Workflow PoC Roundtable/);
   assert.doesNotMatch(
     visibleText,
@@ -287,20 +287,18 @@ test("contact detail mapping translates live source and relationship tokens into
 
 test("contact detail presenter exposes one identity, provenance, and follow-up surface", () => {
   const source = readProjectFile(
-    "app/(app)/app/contacts/orbit-real-contacts.tsx",
+    "app/(app)/app/contacts/orbit-real-card-connection.tsx",
   );
 
-  assert.match(source, /const \[isMobileLayout, setIsMobileLayout\]/);
-  assert.match(source, /data-orbit-contact-detail-summary="relationship-story"/);
-  assert.match(source, /返回应用首页/);
-  assert.doesNotMatch(source, /aria-hidden=\{isMobileLayout\}/);
-  assert.doesNotMatch(source, /aria-hidden=\{!isMobileLayout\}/);
-  assert.doesNotMatch(source, /display: isMobileLayout \? "none"/);
-  assert.doesNotMatch(source, /display: isMobileLayout \? "flex" : "none"/);
-  assert.match(source, /data-orbit-contact-detail-identity="primary"/);
-  assert.match(source, /data-orbit-contact-detail-provenance="primary"/);
-  assert.match(source, /data-orbit-contact-detail-follow-up="primary"/);
-  assert.match(source, /data-orbit-contact-detail-actions="primary"/);
+  assert.match(source, /className="orbit-desktop-only"/);
+  assert.match(source, /className="orbit-mobile-only"/);
+  assert.match(source, /<OrbitContactAvatar contact=\{contact\}/);
+  assert.match(source, /<SourceBadge source=\{contact\.source\}/);
+  assert.match(source, /data-agent-context="contact"/);
+  assert.match(source, /data-inbox-compose/);
+  assert.match(source, /<TimelineCard contact=\{contact\}/);
+  assert.match(source, /<NextStepCard(?: compact)? contact=\{contact\}/);
+  assert.doesNotMatch(source, /isMobileLayout|setIsMobileLayout/);
 });
 
 test("contact recommendation documentation records evaluation threshold and live replacement path", () => {

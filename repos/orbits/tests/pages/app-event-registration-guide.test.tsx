@@ -27,42 +27,44 @@ async function withOrbitModuleMode<T>(
 }
 
 test("/app/events/[id] exposes the event-specific registration profile guide entry", async () => {
-  const Page = (await import("../../app/(app)/app/events/[id]/page"))
-    .default as (props: {
-    params: Promise<{ id: string }>;
-    searchParams?: Promise<Record<string, string | undefined>>;
-  }) => Promise<React.ReactElement>;
-  const html = renderToStaticMarkup(
-    await Page({
-      params: Promise.resolve({ id: "event_001" }),
-      searchParams: Promise.resolve({ language: "en", mode: "mock" }),
-    }),
+  const { loadRegistrationProfileGuideForCurrentTestUser } = await import(
+    "../../features/events/registration-profile-guide"
+  );
+  const result = await loadRegistrationProfileGuideForCurrentTestUser({
+    eventId: "event_001",
+    languagePreference: "en",
+    mode: "mock",
+  });
+  const pageSource = readFileSync(
+    join(projectRoot, "app/(app)/app/events/[id]/page.tsx"),
+    "utf8",
   );
 
-  assert.match(html, /data-orbit-registration-profile-guide="detail"/);
-  assert.match(html, /Seed Investor and Founder Matching Salon/);
-  assert.match(html, /Profile questions for this event/);
-  assert.match(html, /Answers are staged locally until you confirm them/);
-  assert.match(html, /href="\/app\/events\/event_001\/register\?language=en"/);
+  assert.equal(result.state, "success");
+  if (result.state === "success") {
+    assert.equal(
+      result.guide.event.title,
+      "Seed Investor and Founder Matching Salon",
+    );
+    assert.equal(result.guide.languagePreference, "en");
+  }
+  assert.match(pageSource, /data-orbit-registration-profile-guide="detail"/);
+  assert.match(pageSource, /Profile questions for this event/);
+  assert.match(pageSource, /Answers are staged locally until you confirm them/);
+  assert.match(pageSource, /registrationGuideHref\(guide\)/);
 });
 
-test("/app/events/[id] keeps canonical navigation on the live boundary without mock query setup", async () => {
-  await withOrbitModuleMode("live", async () => {
-    const Page = (await import("../../app/(app)/app/events/[id]/page"))
-      .default as (props: {
-      params: Promise<{ id: string }>;
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        params: Promise.resolve({ id: "event_001" }),
-      }),
-    );
+test("/app/events/[id] keeps authentication and canonical live mode on the page boundary", () => {
+  const pageSource = readFileSync(
+    join(projectRoot, "app/(app)/app/events/[id]/page.tsx"),
+    "utf8",
+  );
 
-    assert.match(html, /Seed Investor and Founder Matching Salon/);
-    assert.doesNotMatch(html, /data-orbit-registration-profile-guide="detail"/);
-    assert.doesNotMatch(html, /Profile questions for this event/);
-  });
+  assert.match(pageSource, /const session = await auth\(\)/);
+  assert.match(pageSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Fevents"\)/);
+  assert.match(pageSource, /const routeMode = undefined/);
+  assert.match(pageSource, /actorId: session\.user\.id/);
+  assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
 });
 
 test("/app/events/[id]/register renders event-specific optional participant-profile questions", async () => {

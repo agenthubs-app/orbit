@@ -385,3 +385,26 @@ Implementation boundary:
 - Focused result: 27/27 passed. Lint passed. Production build passed.
 - Exact production build on port 3100 returned `401 UNAUTHORIZED` for anonymous `GET /api/ai/runs/demo-ai-run-1`; anonymous `/app/profile` returned `307` to `/app/account/login?next=%2Fapp%2Fprofile`.
 - Full suite: 1,253 tests, 1,207 passed, 46 open-baseline failures, zero skipped/cancelled/todo, 35.8 seconds. Seven prior failure identities were removed and no new identity appeared.
+
+## 2026-07-27 — Current non-Agent visual and route contracts
+
+Production and regression verification:
+
+- Contact list and Contact Detail now share `OrbitContactAvatar`: declared demo-person portraits resolve through the local visual-asset manifest, while records without an asset retain the existing initials fallback.
+- Updated stale root, Event registration, Organizer, and Contact contract tests to exercise the current product boundaries instead of retired markup, copy, or direct Auth.js page invocation outside a request context.
+- Focused contact-detail and surface-contract suites passed 16/16. `pnpm lint` passed. `pnpm build` passed, and `next-env.d.ts` was restored to the development route-types path.
+- Full suite: 1,253 tests, 1,215 passed, 38 open-baseline failures, zero skipped/cancelled/todo, 35.7 seconds. Eight prior failure identities were removed and no new identity appeared.
+
+Exact production runtime on isolated port 3100:
+
+| Surface / boundary | Authoritative evidence | Result |
+| --- | --- | --- |
+| Root landing | Authenticated browser URL and rendered DOM | The current starfield landing composition loaded with its accessible brand navigation, Agent prompt, relationship content, and no rendered error state. |
+| Contacts | Authenticated browser URL and rendered DOM | The account's current source-backed Contacts result was empty (`0` records), so no claim is made that a portrait was visually observed on a live contact card. Rendered-markup tests cover list/detail portrait selection independently. |
+| Local portrait asset | Real HTTP request to `/orbit-demo-assets/avatars/demo-contact-1.svg` | Returned `200 OK`, `Content-Type: image/svg+xml`, and 1,809 bytes. No remote image dependency is used. |
+| Anonymous Event Detail | Real HTTP request to `/app/events/event_001` | Returned `307` to `/app/account/login?next=%2Fapp%2Fevents`; the protected page was not invoked directly as a plain function. |
+
+Verification boundary:
+
+- The browser evidence establishes that the exact production build serves the current root and protected Contacts compositions.
+- Because the authenticated actor had no contact records, live portrait rendering was not observable in that session; the asset HTTP response and source-backed rendered-markup tests are recorded separately rather than presented as equivalent evidence.

@@ -17,17 +17,10 @@ import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-
 import { eventsRouteToOrbitLandingViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { OrbitRealEventDetail } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
 import { OrbitRealExploreClient } from "../../app/(app)/app/events/orbit-real-explore-client";
+import { OrbitStarfieldHome } from "../../app/(app)/app/orbit-starfield-home";
 
 async function renderRootLanding(): Promise<string> {
-  const Page = (await import("../../app/page")).default as (props: {
-    searchParams?: Promise<Record<string, string | undefined>>;
-  }) => Promise<React.ReactElement>;
-
-  return renderToStaticMarkup(
-    await Page({
-      searchParams: Promise.resolve({ language: "en" }),
-    }),
-  );
+  return renderToStaticMarkup(<OrbitStarfieldHome authenticated={false} />);
 }
 
 async function renderEventsPage(): Promise<string> {
@@ -149,20 +142,22 @@ function assertImageMarkup(html: string, label: string): void {
 function assertNamedBrandLink(html: string, label: string): void {
   assert.match(
     html,
-    /<a[^>]+class="[^"]*orbit-brand-link[^"]*"[^>]*>[\s\S]*?(?:Back to Orbit home|返回 Orbit 首页|返回应用首页)[\s\S]*?<\/a>/,
-    `${label} should include hidden text in icon-only brand links`,
+    /<a[^>]+aria-label="Orbit"[^>]+class="[^"]*orbit-brand-link[^"]*"[^>]+href="\/"/,
+    `${label} should expose an accessible Orbit home link`,
   );
 }
 
-test("root landing activity and event cards render manifest images with alt text", async () => {
+test("root landing renders the local desktop and mobile starfield without remote images", async () => {
   const html = await renderRootLanding();
 
-  assertImageMarkup(html, "root landing");
-  assert.match(html, /data-demo-visual-asset-id="orbit-demo-event-/);
-  assert.match(html, /data-demo-visual-asset-id="orbit-demo-avatar-/);
+  assert.match(html, /data-orbit-real-page="starfield-home"/);
+  assert.match(html, /class="sk-home-desktop"/);
+  assert.match(html, /class="sk-home-mobile"/);
+  assert.match(html, /<canvas/);
+  assert.doesNotMatch(html, /src="https?:\/\//);
 });
 
-test("event list and event detail render manifest scene and avatar images", async () => {
+test("event list and event detail render manifest scene images", async () => {
   const listHtml = await renderEventsPage();
   const detailHtml = await renderEventDetailPage();
 
@@ -170,7 +165,6 @@ test("event list and event detail render manifest scene and avatar images", asyn
   assertImageMarkup(detailHtml, "event detail");
   assertNamedBrandLink(listHtml, "event list");
   assert.match(detailHtml, /data-demo-visual-asset-id="orbit-demo-event-/);
-  assert.match(detailHtml, /data-demo-visual-asset-id="orbit-demo-avatar-/);
 });
 
 test("contact list and contact detail render manifest avatar images", async () => {

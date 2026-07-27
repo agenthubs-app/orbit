@@ -3,13 +3,13 @@
 Command: `pnpm test` in `repos/orbits`
 
 - Tests: 1,253
-- Passed: 1,207
-- Failed: 46
+- Passed: 1,215
+- Failed: 38
 - Skipped/cancelled/todo: 0
-- Duration: 35.8 seconds
+- Duration: 35.7 seconds
 - Production build and TypeScript: passed separately.
 
-The current rerun keeps the complete actor-bound acquisition suite and adds an ownerless-event-seed rejection test. Seven prior failures were removed: obsolete Agent route-source and workflow-entry assertions now follow thin route bindings into authenticated handlers; AI run provider failure is exercised through an injectable authenticated handler; Event live seeds carry an explicit owner; relationship-value assertions follow the current generated graph record; Profile live-store coverage supplies an actor; and Profile source coverage verifies actor-scoped adapter mapping instead of retired founder hardcoding. No new failure identity remains.
+The current rerun keeps the complete actor-bound acquisition suite and removes eight more stale surface-contract failures without adding a new failure identity. Contact list/detail now resolve local manifest portraits through one shared component with an honest fallback; root and Event visual assertions follow the current rendered composition and accessible navigation; Event registration coverage uses the service and authenticated page boundary instead of invoking an Auth.js page outside request context; and Organizer coverage follows the live-capable presenter and current public page.
 
 Classification totals:
 
@@ -18,11 +18,7 @@ Classification totals:
 | agent-legacy-contract | 24 | Tests lock an older Agent composition/DOM/source-boundary contract and require requirement-by-requirement reconciliation, not bulk deletion. |
 | design-scale-ratchet | 4 | Current source exceeds literal design-token ratchets. |
 | reference-css-contract | 4 | Tests expect the extracted stylesheet route while current product composition differs. |
-| asset-manifest-contract | 3 | Image-manifest and alt-text contract drift. |
 | button-style-ratchet | 2 | Shared button-class exemptions are out of sync with the remaining source controls. |
-| contact-detail-legacy-contract | 2 | Presenter/mapping expectations differ from current contact-detail implementation. |
-| event-detail-legacy-contract | 2 | Event detail desktop/mobile hierarchy contract drift. |
-| organizer-legacy-contract | 1 | Organizer page loader contract drift. |
 | sample-data-ratchet | 1 | Legacy route sample-record scan still finds a violation. |
 | scaffold-contract | 1 | App Router scaffold source contract drift. |
 | theme-contract | 1 | Theme control icon contract drift. |
@@ -39,8 +35,6 @@ Every failing test:
 | agent-legacy-contract | /app/agent calendar-action source keeps route composition out of API routes | open-baseline |
 | agent-legacy-contract | /app/agent UI source exposes recommendation reason, snippets, confidence, and detail anchors | open-baseline |
 | agent-legacy-contract | /app/agent makes contact discovery explicit before a user submits a goal | open-baseline |
-| contact-detail-legacy-contract | contact detail mapping translates live source and relationship tokens into labels | open-baseline |
-| contact-detail-legacy-contract | contact detail presenter exposes one identity, provenance, and follow-up surface | open-baseline |
 | agent-legacy-contract | /app/agent UI source exposes event recommendation cards, reasons, people, timing, confidence, and detail anchors | open-baseline |
 | agent-legacy-contract | /app/agent makes event discovery explicit before a user submits a goal | open-baseline |
 | agent-legacy-contract | /app/agent source clears stale panels only for turns that do not return a tool panel | open-baseline |
@@ -56,12 +50,6 @@ Every failing test:
 | agent-legacy-contract | /app/agent GET q=今日待办 renders the answered to-do state above the launcher | open-baseline |
 | agent-legacy-contract | /app/agent source exposes to-do prompt affordances without owning business logic | open-baseline |
 | agent-legacy-contract | /app/agent input has an explicit to-do capable accessible name | open-baseline |
-| asset-manifest-contract | root landing activity and event cards render manifest images with alt text | open-baseline |
-| asset-manifest-contract | event list and event detail render manifest scene and avatar images | open-baseline |
-| asset-manifest-contract | contact list and contact detail render manifest avatar images | open-baseline |
-| event-detail-legacy-contract | /app/events/[id] exposes the event-specific registration profile guide entry | open-baseline |
-| event-detail-legacy-contract | /app/events/[id] keeps canonical navigation on the live boundary without mock query setup | open-baseline |
-| organizer-legacy-contract | /app/o/[slug] page uses a live-capable organizer loader instead of the legacy landing view model | open-baseline |
 | agent-legacy-contract | Orbit agent submit controls remain hittable while blank prompts are guarded in handlers | open-baseline |
 | agent-legacy-contract | Orbit agent gates responsive chat layout and exposes request state | open-baseline |
 | sample-data-ratchet | legacy route files no longer embed old product sample records | open-baseline |

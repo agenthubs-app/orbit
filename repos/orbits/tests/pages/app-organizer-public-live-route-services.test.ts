@@ -74,9 +74,13 @@ test("/app/o/[slug] page uses a live-capable organizer loader instead of the leg
   assert.match(pageSource, /StateView/);
   assert.match(pageSource, /OrbitRealOrganizerPublic/);
   assert.doesNotMatch(pageSource, /getOrbitOrganizerPublicViewModel/);
-  assert.doesNotMatch(organizerSource, /productHref/);
-  assert.match(organizerSource, /orbit-organizer-public-title/);
-  assert.match(organizerSource, /max-width: 640px/);
+  assert.match(organizerSource, /PublicTopNav active="events"/);
+  assert.match(
+    organizerSource,
+    /href=\{productHref\(`\/events\/\$\{event\.code\}`\)\}/,
+  );
+  assert.match(organizerSource, /data-orbit-real-page="organizer-public"/);
+  assert.match(organizerSource, /imageAlt=\{name\}/);
 });
 
 test("app organizer public route loader returns organizer events in mock mode", async () => {

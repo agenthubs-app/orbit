@@ -11,8 +11,9 @@ import type {
 import { AccountTopNav } from "../orbit-account-shell";
 import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
 import { OrbitCardsInteractions } from "./orbit-cards-interactions";
+import { OrbitContactAvatar } from "./orbit-contact-avatar";
 import { useOrbitLanguage } from "../orbit-language-context";
-import { Avatar, Icon } from "../orbit-reference-primitives";
+import { Icon } from "../orbit-reference-primitives";
 import { openRelationshipInboxCompose } from "../inbox/relationship-inbox-panel";
 import { Basis, SourceBadge } from "./orbit-real-contacts";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
@@ -309,7 +310,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             <a className="nc-back" href="/app/contacts"><Icon name="chevL" size={16} />{t({ en: "Back to contacts", zh: "返回名片夹" })}</a>
 
             <div className="nc-hero">
-              <Avatar letter={crmInitial(contact.displayName)} g={contact.g || "g-violet"} size={72} />
+              <OrbitContactAvatar contact={contact} size={72} />
               <div style={{ minWidth: 0 }}>
                 <div className="nc-hero-id">
                   <h1 className="h-display">{contact.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h1>
@@ -359,7 +360,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
         </div>
         <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0, overflowY: "auto", padding: "10px 18px 36px" }}>
           <div className="nc-mhero">
-            <Avatar letter={crmInitial(contact.displayName)} g={contact.g || "g-violet"} size={56} />
+            <OrbitContactAvatar contact={contact} size={56} />
             <div style={{ minWidth: 0 }}>
               <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
                 <span className="h-section" style={{ fontSize: 16 }}>{contact.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</span>
