@@ -63,7 +63,7 @@ test("starfield desktop and mobile navigation use the same product order", () =>
     for (const agentIndex of agentIndexes) {
       const eventIndex = starfieldSource.indexOf('href="/app/events"', agentIndex);
       const scheduleIndex = starfieldSource.indexOf(
-        'href="/app/home/events"',
+        'href="/app/today"',
         eventIndex,
       );
       const contactsIndex = starfieldSource.indexOf(

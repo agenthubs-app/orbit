@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useContext, useEffect, useState, type ReactNode } from "react";
+import { SessionContext, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
 import { useOrbitLanguage } from "./orbit-language-context";
@@ -22,6 +22,19 @@ export { productHref } from "./orbit-product-href";
 
 type OrbitNavSessionUser = { email: string; id: string; name: string };
 
+/**
+ * Read the session injected by the shared /app layout without making the
+ * navigation impossible to render in isolation (error boundaries, previews,
+ * and server-side UI tests do not necessarily mount the layout provider).
+ *
+ * The provider is always present in the real /app tree. Outside that tree we
+ * fail closed to the anonymous state instead of throwing or inventing a
+ * signed-in user.
+ */
+function useOrbitNavSession() {
+  return useContext(SessionContext) ?? { data: null, status: "unauthenticated" as const };
+}
+
 // 右上角账号位:未知会话时渲染与旧"我的"链接完全相同的 DOM(避免闪烁);
 // 已登录显示头像+菜单(个人资料/退出登录),未登录显示 登录/注册。
 // 会话由 /app layout 在服务端读取并注入 SessionProvider，导航和页面保护共用
@@ -31,7 +44,7 @@ type OrbitNavSessionUser = { email: string; id: string; name: string };
 // /app/profile directly, so the control no longer needs a caller-supplied href.
 function OrbitNavAccountControl() {
   const { preserveHref, t } = useOrbitLanguage();
-  const { data: session, status } = useSession();
+  const { data: session, status } = useOrbitNavSession();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -228,7 +241,7 @@ function OrbitNavMobileAccountLinks({
   meHref: string;
 }) {
   const { preserveHref, t } = useOrbitLanguage();
-  const { data: session, status } = useSession();
+  const { data: session, status } = useOrbitNavSession();
   const pathname = usePathname();
 
   if (status === "loading") {

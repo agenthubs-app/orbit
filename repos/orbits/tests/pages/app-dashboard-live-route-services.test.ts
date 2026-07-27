@@ -104,30 +104,17 @@ test("app dashboard route loader returns a controlled live failure when storage 
   });
 });
 
-test("/app/dashboard page renders the real dashboard route adapter", async () => {
+test("/app/dashboard redirects to the single canonical Party workspace", () => {
   const pageSource = source("app/(app)/app/dashboard/page.tsx");
 
-  assert.match(pageSource, /loadAppDashboardRouteViewModel/);
-  assert.match(pageSource, /dashboardRouteToOrbitDashboardViewModel/);
-  assert.match(pageSource, /OrbitRealDashboard/);
-  assert.match(pageSource, /StateView/);
-  assert.doesNotMatch(pageSource, /AppDashboardCommandCenter/);
-  assert.doesNotMatch(pageSource, /OrbitRealParty|getOrbitPartyViewModel/);
-
-  await withUnconfiguredLiveDashboard(async () => {
-    const Page = (await import("../../app/(app)/app/dashboard/page")).default;
-    const html = renderToStaticMarkup(await Page());
-
-    assert.match(html, /app-dashboard-route-state/);
-    assert.match(html, /Dashboard could not load/);
-  });
+  assert.match(pageSource, /redirect\("\/app\/party"\)/);
+  assert.doesNotMatch(
+    pageSource,
+    /loadAppDashboardRouteViewModel|dashboardRouteToOrbitDashboardViewModel|OrbitRealDashboard|OrbitRealParty/,
+  );
 });
 
-test("real dashboard success UI hides command-center provenance details", async () => {
-  const pageSource = source("app/(app)/app/dashboard/page.tsx");
-
-  assert.match(pageSource, /OrbitRealDashboard/);
-
+test("the retired relationship dashboard component still hides command-center provenance details", async () => {
   await withModuleMode("mock", async () => {
     const { loadAppDashboardRouteViewModel } = await import(
       "../../app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model"

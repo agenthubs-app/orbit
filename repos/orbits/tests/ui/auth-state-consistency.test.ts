@@ -24,13 +24,15 @@ test("settings is a protected personal route", () => {
   assert.match(routingSource, /"\/app\/settings"/);
 });
 
-test("/app layout injects the server session and the shared nav does not refetch it", () => {
+test("/app layout injects the server session and the shared nav reads it without refetching", () => {
   const layoutSource = source("app/(app)/app/layout.tsx");
   const navSource = source("app/(app)/app/orbit-public-shell.tsx");
 
   assert.match(layoutSource, /const session = await auth\(\)/);
   assert.match(layoutSource, /<SessionProvider[^>]*session=\{session\}/);
-  assert.match(navSource, /useSession\(\)/);
+  assert.match(navSource, /useContext\(SessionContext\)/);
+  assert.match(navSource, /status: "unauthenticated"/);
+  assert.doesNotMatch(navSource, /useSession\(\)/);
   assert.doesNotMatch(navSource, /fetch\("\/api\/auth\/session"\)/);
 });
 

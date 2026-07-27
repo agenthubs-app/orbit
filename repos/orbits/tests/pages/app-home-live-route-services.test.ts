@@ -251,7 +251,7 @@ test("app home hub entry cards link to live app routes", () => {
 
   assert.match(homeUiSource, /href: "\/app\/profile"/);
   assert.match(homeUiSource, /href: "\/app\/contacts"/);
-  assert.match(homeUiSource, /href: "\/app\/schedule"/);
+  assert.match(homeUiSource, /href: "\/app\/today"/);
   assert.match(homeUiSource, /title: t\(\{ en: "Universal profile", zh: "通用画像" \}\)/);
   assert.match(homeUiSource, /sub: t\(\{ en: "Meetings and interaction log", zh: "约见与交往记录" \}\)/);
   assert.match(homeUiSource, /<h3 className="h-section"[^>]*>\{item\.title\}<\/h3>/);
@@ -268,7 +268,7 @@ test("product route href mapping is idempotent for concrete app paths", async ()
   assert.equal(productHref("/app/contacts"), "/app/contacts");
   assert.equal(productHref("/app/schedule"), "/app/schedule");
   assert.equal(productHref("/app/events/EVT01"), "/app/events/EVT01");
-  assert.equal(productHref("/home/schedule"), "/app/schedule");
+  assert.equal(productHref("/home/schedule"), "/app/today");
   assert.equal(productHref("/home/cards"), "/app/contacts");
 });
 
