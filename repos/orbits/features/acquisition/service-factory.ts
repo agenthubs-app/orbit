@@ -3,6 +3,7 @@
 // 当前全部是 mock-first 实现，页面和 API route 通过这里统一取服务，避免直接依赖 fixture。
 import {
   createModuleServiceFactory,
+  resolveModuleMode,
   type ModuleMode,
   type ServiceResolution,
 } from "../../shared/services/module-mode";
@@ -190,7 +191,7 @@ export const duplicateMergeServiceFactory =
     implementations: {
       live: () =>
         createLiveDuplicateMergeService({
-          provider: createConfiguredStorageDuplicateMergeProvider(),
+          provider: null,
         }),
       mock: () => createMockDuplicateMergeService(),
     },
@@ -374,6 +375,21 @@ export function createDuplicateMergeService(
   mode?: ModuleMode | string,
 ): DuplicateDetectionMergeService | MockDuplicateMergeService {
   return createRequiredService(resolveDuplicateMergeService(mode));
+}
+
+export function createDuplicateMergeServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): DuplicateDetectionMergeService {
+  const resolvedMode = resolveModuleMode(mode);
+
+  if (resolvedMode !== "live") {
+    return createDuplicateMergeService(resolvedMode);
+  }
+
+  return createLiveDuplicateMergeService({
+    provider: createConfiguredStorageDuplicateMergeProvider({ actorId }),
+  });
 }
 
 export function createContactAcquisitionServices(

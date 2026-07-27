@@ -29,6 +29,7 @@ export interface LiveDuplicateMergeProvider {
 }
 
 export interface StorageDuplicateMergeProviderOptions {
+  actorId: string;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -36,6 +37,7 @@ export interface StorageDuplicateMergeProviderOptions {
 }
 
 export interface ConfiguredStorageDuplicateMergeProviderOptions {
+  actorId: string;
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
 }
@@ -50,12 +52,14 @@ function latestTimestamp(values: readonly string[]): string {
 }
 
 export function createStorageDuplicateMergeProvider({
+  actorId,
   source,
   sourceLabel = "Duplicate merge shared live storage",
   store,
   workspaceId,
 }: StorageDuplicateMergeProviderOptions): LiveDuplicateMergeProvider {
   const draftProvider = createStorageContactAcquisitionDraftProvider({
+    actorId,
     source: `live-record-store:duplicate-merge-drafts:${workspaceId}`,
     sourceLabel,
     store,
@@ -77,7 +81,7 @@ export function createStorageDuplicateMergeProvider({
     async readDuplicateMergeGraph(): Promise<LiveDuplicateMergeGraph> {
       const [draftResult, contactGraph] = await Promise.all([
         draftService.listContactDrafts(),
-        contactProvider.readContactGraph(),
+        contactProvider.readContactGraph(actorId),
       ]);
       const contactDrafts =
         draftResult.success === true ? draftResult.data.drafts : [];
@@ -98,9 +102,14 @@ export function createStorageDuplicateMergeProvider({
 }
 
 export function createConfiguredStorageDuplicateMergeProvider({
+  actorId,
   env,
   sourceLabel = "Duplicate merge Postgres live storage",
-}: ConfiguredStorageDuplicateMergeProviderOptions = {}): LiveDuplicateMergeProvider | null {
+}: ConfiguredStorageDuplicateMergeProviderOptions): LiveDuplicateMergeProvider | null {
+  if (!actorId.trim()) {
+    return null;
+  }
+
   const configuredStore = createConfiguredPostgresLiveRecordStore({
     env,
   });
@@ -110,6 +119,7 @@ export function createConfiguredStorageDuplicateMergeProvider({
   }
 
   return createStorageDuplicateMergeProvider({
+    actorId,
     source: `postgres-live-record-store:duplicate-merge:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

@@ -273,3 +273,27 @@ Verification limitation:
 
 - No browser warning or error entries were recorded during the Contact Detail and Chat verification.
 - The in-app browser remained fixed at `1280 × 720`; this phase does not claim a new mobile-browser pass. Chat and Contact Detail mobile/shared behavior is covered by focused component and route tests.
+
+## 2026-07-27 — Duplicate merge actor boundary
+
+Production runtime:
+
+- Ran `npm run lint`; TypeScript validation completed successfully.
+- Ran 24 focused duplicate-merge Mock/Live/API, central contact-draft, manual-contact, and core factory tests; all passed.
+- Rebuilt the exact worktree with `npm run build`; compilation, TypeScript, 39 static pages, and build traces completed successfully.
+- Started that build on isolated port 3100; port 3000 was not touched.
+
+Authorization and identity results:
+
+| Boundary | Authoritative evidence | Result |
+| --- | --- | --- |
+| Anonymous merge suggestions | Real `GET /api/contact-drafts/merge-suggestions` against the production build | Returned `401 UNAUTHORIZED` with `authenticated-actor-required` before provider/storage access. |
+| Anonymous/spoofed apply preview | Real `POST /api/contact-drafts/merge-suggestions/demo-merge-1/apply` with caller-supplied `actorLabel` | Returned `401 UNAUTHORIZED`; the client label was not accepted as identity. |
+| Cross-actor Live provider | Isolated memory-store test | The owning actor received one source-backed candidate; a different actor received an honest empty result with zero candidates and suggestions. |
+| Authenticated audit label | Injected handler test | Apply derived `confirmedBy` from the server actor and ignored a JSON `actorLabel` spoof. |
+
+Implementation boundary:
+
+- `route.ts` files remain valid thin App Router exports; injectable authentication and parsing live in adjacent `handler.ts` modules.
+- The actor-scoped duplicate provider passes one server actor to both the contact-draft provider and contact graph.
+- Actor-scoped contact-draft providers persist `userId` on new records and filter reads by server actor metadata; unscoped legacy factory use now fails closed in Live rather than reading relationship records.

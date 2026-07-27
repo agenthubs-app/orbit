@@ -70,6 +70,7 @@ export const CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageContactAcquisitionDraftProviderOptions {
+  actorId?: string;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -77,6 +78,7 @@ export interface StorageContactAcquisitionDraftProviderOptions {
 }
 
 export interface ConfiguredStorageContactAcquisitionDraftProviderOptions {
+  actorId?: string;
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
 }
@@ -352,14 +354,29 @@ async function listCollection(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   collectionName: string,
+  actorId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({
+  const records = await store.listRecords({
     workspaceId,
     collectionName,
   });
+  const normalizedActorId = actorId?.trim();
+
+  if (!normalizedActorId) {
+    return records;
+  }
+
+  return records.filter(
+    (record) =>
+      record.userId === normalizedActorId ||
+      record.payload.accountId === normalizedActorId ||
+      record.payload.actorId === normalizedActorId ||
+      record.payload.ownerId === normalizedActorId,
+  );
 }
 
 export function createStorageContactAcquisitionDraftProvider({
+  actorId,
   source,
   sourceLabel = "Contact acquisition draft shared live storage",
   store,
@@ -377,12 +394,12 @@ export function createStorageContactAcquisitionDraftProvider({
         personRecords,
         evidenceRecords,
       ] = await Promise.all([
-        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.contactDrafts),
-        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.events),
-        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.attendees),
-        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.eventParticipantIntents),
-        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.networkPeople),
-        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.evidence),
+        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.contactDrafts, actorId),
+        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.events, actorId),
+        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.attendees, actorId),
+        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.eventParticipantIntents, actorId),
+        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.networkPeople, actorId),
+        listCollection(store, workspaceId, CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.evidence, actorId),
       ]);
 
       return {
@@ -434,7 +451,7 @@ export function createStorageContactAcquisitionDraftProvider({
         workspaceId,
         collectionName: CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.contactDrafts,
         recordId: draft.id,
-        userId: null,
+        userId: actorId?.trim() || null,
         sourceType: draft.source.type,
         sourceId: draft.source.id,
         sourceLabel: draft.source.label,
@@ -463,6 +480,7 @@ export function createStorageContactAcquisitionDraftProvider({
 }
 
 export function createConfiguredStorageContactAcquisitionDraftProvider({
+  actorId,
   env,
   sourceLabel = "Contact acquisition draft Postgres live storage",
 }: ConfiguredStorageContactAcquisitionDraftProviderOptions = {}): LiveContactAcquisitionDraftProvider | null {
@@ -475,6 +493,7 @@ export function createConfiguredStorageContactAcquisitionDraftProvider({
   }
 
   return createStorageContactAcquisitionDraftProvider({
+    actorId,
     source: `postgres-live-record-store:contact-drafts:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

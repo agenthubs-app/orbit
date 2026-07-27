@@ -250,35 +250,55 @@ test("mock duplicate merge service is deterministic rule-based code with no exte
 
 test("duplicate merge API routes return stable envelopes with empty and controlled failure paths", async () => {
   const listRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-  }>("app/api/contact-drafts/merge-suggestions/route.ts");
+    createDuplicateMergeSuggestionsGetHandler: (
+      resolveActor: () => Promise<{
+        id: string;
+        name?: string | null;
+      } | null>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/contact-drafts/merge-suggestions/handler.ts");
   const applyRoute = await importProjectModule<{
-    POST: (
+    createApplyDuplicateMergePostHandler: (
+      resolveActor: () => Promise<{
+        id: string;
+        name?: string | null;
+      } | null>,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/contact-drafts/merge-suggestions/[id]/apply/route.ts");
+  }>("app/api/contact-drafts/merge-suggestions/[id]/apply/handler.ts");
   const fixtures = await importProjectModule<{
     mockDuplicateMergeSuggestionsFixture: unknown;
     mockEmptyDuplicateMergeSuggestionsFixture: unknown;
     mockAppliedDuplicateMergeFixture: unknown;
   }>("features/acquisition/merge-fixtures.ts");
 
-  const listResponse = await listRoute.GET(
+  const resolveActor = async () => ({
+    id: "user:duplicate-merge-reviewer",
+    name: "Verifier",
+  });
+  const listHandler =
+    listRoute.createDuplicateMergeSuggestionsGetHandler(resolveActor);
+  const applyHandler =
+    applyRoute.createApplyDuplicateMergePostHandler(resolveActor);
+  const listResponse = await listHandler(
     new Request("https://orbit.local/api/contact-drafts/merge-suggestions", {
       method: "GET",
     }),
   );
-  const applyResponse = await applyRoute.POST(
+  const applyResponse = await applyHandler(
     new Request(
       "https://orbit.local/api/contact-drafts/merge-suggestions/demo-merge-1/apply",
       {
+        body: JSON.stringify({ actorLabel: "Client spoof" }),
+        headers: { "content-type": "application/json" },
         method: "POST",
       },
     ),
     { params: Promise.resolve({ id: "demo-merge-1" }) },
   );
-  const emptyResponse = await listRoute.GET(
+  const emptyResponse = await listHandler(
     new Request(
       "https://orbit.local/api/contact-drafts/merge-suggestions?scenario=empty",
       {
@@ -286,7 +306,7 @@ test("duplicate merge API routes return stable envelopes with empty and controll
       },
     ),
   );
-  const failureResponse = await listRoute.GET(
+  const failureResponse = await listHandler(
     new Request(
       "https://orbit.local/api/contact-drafts/merge-suggestions?scenario=failure",
       {
@@ -294,7 +314,7 @@ test("duplicate merge API routes return stable envelopes with empty and controll
       },
     ),
   );
-  const pendingApplyResponse = await applyRoute.POST(
+  const pendingApplyResponse = await applyHandler(
     new Request(
       "https://orbit.local/api/contact-drafts/merge-suggestions/demo-merge-1/apply?scenario=pending",
       {
@@ -303,7 +323,7 @@ test("duplicate merge API routes return stable envelopes with empty and controll
     ),
     { params: Promise.resolve({ id: "demo-merge-1" }) },
   );
-  const missingApplyResponse = await applyRoute.POST(
+  const missingApplyResponse = await applyHandler(
     new Request(
       "https://orbit.local/api/contact-drafts/merge-suggestions/missing-merge/apply",
       {
@@ -327,6 +347,24 @@ test("duplicate merge API routes return stable envelopes with empty and controll
     success: true,
     data: fixtures.mockAppliedDuplicateMergeFixture,
   });
+
+  const unauthorizedList =
+    await listRoute.createDuplicateMergeSuggestionsGetHandler(
+      async () => null,
+    )(
+      new Request("https://orbit.local/api/contact-drafts/merge-suggestions"),
+    );
+  const unauthorizedApply =
+    await applyRoute.createApplyDuplicateMergePostHandler(async () => null)(
+      new Request(
+        "https://orbit.local/api/contact-drafts/merge-suggestions/demo-merge-1/apply",
+        { method: "POST" },
+      ),
+      { params: Promise.resolve({ id: "demo-merge-1" }) },
+    );
+
+  assert.equal(unauthorizedList.status, 401);
+  assert.equal(unauthorizedApply.status, 401);
 
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), {

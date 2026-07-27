@@ -10,6 +10,7 @@ import {
 } from "../../shared/storage/live-record-store";
 
 const WORKSPACE_ID = "workspace:duplicate-merge-live-test";
+const ACTOR_ID = "user:duplicate-merge-live-test";
 const NOW = "2026-07-02T09:45:00.000Z";
 const DRAFT_ID = "event-draft:live:event_founder_salon:attendee_akira";
 const CONTACT_ID = "contact_live_akira";
@@ -29,7 +30,7 @@ function record(
     workspaceId: WORKSPACE_ID,
     collectionName,
     recordId,
-    userId: null,
+    userId: ACTOR_ID,
     sourceType: "event_import",
     sourceId: `source:${collectionName}:${recordId}`,
     sourceLabel: `Live ${collectionName} seed`,
@@ -143,6 +144,7 @@ function createSeedStore() {
 test("duplicate merge live service detects source-backed draft/contact duplicates without writes", async () => {
   const store = createSeedStore();
   const provider = createStorageDuplicateMergeProvider({
+    actorId: ACTOR_ID,
     store,
     workspaceId: WORKSPACE_ID,
   });
@@ -182,6 +184,7 @@ test("duplicate merge live service detects source-backed draft/contact duplicate
 test("duplicate merge live apply returns confirmation preview and leaves contacts unchanged", async () => {
   const store = createSeedStore();
   const provider = createStorageDuplicateMergeProvider({
+    actorId: ACTOR_ID,
     store,
     workspaceId: WORKSPACE_ID,
   });
@@ -232,6 +235,26 @@ test("duplicate merge live service fails closed when storage is unconfigured", a
   assert.equal(result.error.provenance.databaseWriteExecuted, false);
 });
 
+test("duplicate merge live service cannot read another actor's candidates", async () => {
+  const store = createSeedStore();
+  const provider = createStorageDuplicateMergeProvider({
+    actorId: "user:other-duplicate-reviewer",
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const service = createLiveDuplicateMergeService({
+    now: () => NOW,
+    provider,
+  });
+
+  const result = await service.listMergeSuggestions();
+
+  assert.equal(result.success, true);
+  assert.equal(result.data.state, "empty");
+  assert.equal(result.data.duplicateCandidates.length, 0);
+  assert.equal(result.data.mergeSuggestions.length, 0);
+});
+
 test("duplicate merge factory exposes live mode without breaking default mock", async () => {
   const previousModuleMode = process.env.ORBIT_MODULE_MODE;
   const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
@@ -276,15 +299,21 @@ test("duplicate merge API resolves ORBIT_MODULE_MODE=live and fails closed witho
     delete process.env.ORBIT_DATABASE_URL;
 
     const listRoute = await import(
-      "../../app/api/contact-drafts/merge-suggestions/route"
+      "../../app/api/contact-drafts/merge-suggestions/handler"
     );
     const applyRoute = await import(
-      "../../app/api/contact-drafts/merge-suggestions/[id]/apply/route"
+      "../../app/api/contact-drafts/merge-suggestions/[id]/apply/handler"
     );
-    const listResponse = await listRoute.GET(
+    const listHandler = listRoute.createDuplicateMergeSuggestionsGetHandler(
+      async () => ({ id: ACTOR_ID, name: "Live reviewer" }),
+    );
+    const applyHandler = applyRoute.createApplyDuplicateMergePostHandler(
+      async () => ({ id: ACTOR_ID, name: "Live reviewer" }),
+    );
+    const listResponse = await listHandler(
       new Request("https://orbit.local/api/contact-drafts/merge-suggestions"),
     );
-    const applyResponse = await applyRoute.POST(
+    const applyResponse = await applyHandler(
       new Request(
         `https://orbit.local/api/contact-drafts/merge-suggestions/${SUGGESTION_ID}/apply`,
         {
