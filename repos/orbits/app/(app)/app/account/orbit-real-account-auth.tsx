@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
+import { normalizeOrbitAuthReturnPath } from "../../../../features/auth/app-auth-routing";
 import type { OrbitAccountAuthViewModel } from "../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { useOrbitModalA11y } from "../orbit-modal-a11y";
@@ -35,7 +36,7 @@ function accountAuthQueryFallback(defaultNext: string): AccountAuthQuery {
 function readAccountAuthQueryFromLocation(defaultNext: string): AccountAuthQuery {
   const searchParams = new URLSearchParams(window.location.search);
   const rawNext = searchParams.get("next") ?? "";
-  const next = rawNext.startsWith("/") ? rawNext : defaultNext;
+  const next = normalizeOrbitAuthReturnPath(rawNext, defaultNext);
 
   return {
     created: searchParams.get("created") === "1",

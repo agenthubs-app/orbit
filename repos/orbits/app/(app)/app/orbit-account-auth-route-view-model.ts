@@ -37,7 +37,7 @@ const accountAuthCopy: Record<OrbitAccountAuthMode, Omit<OrbitAccountAuthViewMod
 export function getOrbitAccountAuthViewModel(mode: OrbitAccountAuthMode): OrbitAccountAuthViewModel {
   return {
     ...accountAuthCopy[mode],
-    defaultNext: "/home",
+    defaultNext: "/app/home",
     mode,
   };
 }

@@ -49,6 +49,9 @@ export function normalizeOrbitAuthReturnPath(
 
     if (
       parsed.origin !== SAFE_ORIGIN ||
+      (parsed.pathname !== "/app" &&
+        parsed.pathname !== "/" &&
+        !parsed.pathname.startsWith("/app/")) ||
       isOrbitAuthEntryPath(parsed.pathname)
     ) {
       return fallback;

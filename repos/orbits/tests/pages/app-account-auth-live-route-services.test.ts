@@ -46,6 +46,56 @@ test("app account auth loader returns form copy without consulting mock account 
   if (routeModel.state === "success") {
     assert.equal(routeModel.auth.mode, "signup");
     assert.equal(routeModel.auth.title, "创建你的 Orbit 账号");
+    assert.equal(routeModel.auth.defaultNext, "/app/home");
     assert.ok(!("session" in routeModel));
   }
+});
+
+test("account auth loader preserves one canonical safe return path across login signup and recovery", async () => {
+  const { loadAppAccountAuthRouteViewModel } = await import(
+    "../../app/(app)/app/account/compose-app-account-auth-from-previously-approved-mock-first-capabilities/account-auth-route-view-model"
+  );
+
+  for (const authMode of ["login", "signup", "forgot"] as const) {
+    const routeModel = await loadAppAccountAuthRouteViewModel({
+      authMode,
+      searchParams: { next: "/app/agent?q=follow-up" },
+    });
+
+    assert.equal(routeModel.state, "success");
+    if (routeModel.state === "success") {
+      assert.equal(routeModel.auth.defaultNext, "/app/agent?q=follow-up");
+    }
+  }
+
+  for (const unsafeNext of [
+    "/home",
+    "/app/account/login",
+    "https://evil.example/steal",
+  ]) {
+    const routeModel = await loadAppAccountAuthRouteViewModel({
+      authMode: "login",
+      searchParams: { next: unsafeNext },
+    });
+
+    assert.equal(routeModel.state, "success");
+    if (routeModel.state === "success") {
+      assert.equal(routeModel.auth.defaultNext, "/app/home");
+    }
+  }
+});
+
+test("client account auth normalizes the hydrated next query with the shared auth boundary", () => {
+  const accountAuthSource = source(
+    "app/(app)/app/account/orbit-real-account-auth.tsx",
+  );
+
+  assert.match(
+    accountAuthSource,
+    /normalizeOrbitAuthReturnPath\(rawNext,\s*defaultNext\)/,
+  );
+  assert.doesNotMatch(
+    accountAuthSource,
+    /rawNext\.startsWith\("\/"\)\s*\?\s*rawNext/,
+  );
 });

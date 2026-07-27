@@ -55,6 +55,7 @@ test("auth return paths preserve safe local destinations and reject redirect att
     normalizeOrbitAuthReturnPath("/app/contacts?view=graph#person"),
     "/app/contacts?view=graph#person",
   );
+  assert.equal(normalizeOrbitAuthReturnPath("/"), "/");
   assert.equal(normalizeOrbitAuthReturnPath(["/app/today", "/app/home"]), "/app/today");
 
   for (const unsafe of [
@@ -63,6 +64,9 @@ test("auth return paths preserve safe local destinations and reject redirect att
     "/\\evil.example/steal",
     "/app/account/login",
     "/app/account/signup?next=/app/account/signup",
+    "/home",
+    "/unknown-route",
+    "/application",
     "",
     undefined,
   ]) {

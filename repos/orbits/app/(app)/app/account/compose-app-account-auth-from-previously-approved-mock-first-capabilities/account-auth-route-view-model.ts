@@ -3,6 +3,7 @@ import {
   type OrbitAccountAuthMode,
   type OrbitAccountAuthViewModel,
 } from "../../orbit-account-auth-route-view-model";
+import { normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-auth-routing";
 
 export type AppAccountAuthSearchParams = Record<
   string,
@@ -49,9 +50,18 @@ export type AppAccountAuthRouteViewModel =
 
 export async function loadAppAccountAuthRouteViewModel({
   authMode,
+  searchParams,
 }: AppAccountAuthRouteInput): Promise<AppAccountAuthRouteViewModel> {
+  const auth = getOrbitAccountAuthViewModel(authMode);
+
   return {
-    auth: getOrbitAccountAuthViewModel(authMode),
+    auth: {
+      ...auth,
+      defaultNext: normalizeOrbitAuthReturnPath(
+        searchParams?.next,
+        auth.defaultNext,
+      ),
+    },
     state: "success",
   };
 }
