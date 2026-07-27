@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `841092e41b7ee13c511eec602b3a524cd55e5f1e`
-- Deterministic generated timestamp (commit time): 2026-07-27T18:27:12+09:00
+- Indexed commit: `c599360f0e3a3763ade1a94cb08c878816e5fff3`
+- Deterministic generated timestamp (commit time): 2026-07-27T18:40:54+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
@@ -37,7 +37,7 @@
 | `/app/events` | Event discovery | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 34 | 30 | 0 |
 | `/app/followups` | Follow-up workspace | authenticated | Unclassified | 0 | 30 | 0 |
 | `/app/home/events` | Event discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 30 | 0 |
-| `/app/home` | Authenticated home | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 22 | 0 |
+| `/app/home` | Authenticated home | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 21 | 0 |
 | `/app/login-admin` | Legacy admin sign in entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 1 | 0 |
 | `/app/o/[slug]` | Organizer public profile | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 23 | 30 | 0 |
 | `/app` | Public product entry | public-at-proxy | Live, Mock, Derived, User Confirmed | 40 | 30 | 0 |
@@ -49,7 +49,7 @@
 | `/app/register` | Legacy registration entry | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 3 | 30 | 0 |
 | `/app/schedule/events/[id]` | Event detail and event operations | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 38 | 30 | 0 |
 | `/app/schedule` | Calendar and schedule | authenticated | Unclassified | 0 | 30 | 0 |
-| `/app/settings` | User, Agent, memory, automation, and appearance settings | authenticated | Live, Mock, Fixture, AI Generated, User Confirmed | 62 | 15 | 0 |
+| `/app/settings` | User, Agent, memory, automation, and appearance settings | authenticated | Live, Mock, Fixture, AI Generated, User Confirmed | 62 | 16 | 0 |
 | `/app/today` | Today timeline and action review | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 64 | 25 | 0 |
 | `/` | Public landing and Agent entry | public-at-proxy | Live, Mock, Derived, User Confirmed | 40 | 2 | 0 |
 
