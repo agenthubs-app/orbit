@@ -66,6 +66,7 @@ export interface OrbitPartyMeView {
 export interface OrbitPartyViewModel {
   accessCode: string;
   agenda: OrbitPartyAgendaItemView[];
+  eventId: string;
   eventName: string;
   /**
    * UI-audit fix C10. The party screen hardcoded BOTH an "已结束" pill in its
@@ -229,6 +230,7 @@ export function getOrbitPartyViewModel(): OrbitPartyViewModel {
   return {
     accessCode: event ? passCodeForEvent(event) : "ORBT-0000",
     agenda: partyAgenda(data),
+    eventId: event?.id ?? "",
     eventName: event?.name ?? "Orbit local remote event",
     eventPhase: event ? eventStatusFor(event, data.generatedAt) : "upcoming",
     eventVenue: event?.location ?? "Local remote database",

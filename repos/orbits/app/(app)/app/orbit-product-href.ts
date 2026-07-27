@@ -23,3 +23,26 @@ export function productHref(prototypeHref: string) {
   if (prototypeHref.startsWith("/register")) return `/app/register${prototypeHref.includes("?") ? `?${prototypeHref.split("?")[1]}` : ""}`;
   return `/app${prototypeHref}`;
 }
+
+export type OrbitPartySubroute = "" | "/checkin" | "/graph";
+
+/**
+ * Builds every Party URL from the same source event identity.
+ *
+ * Party, check-in, and graph are separate routes, but they are one workspace.
+ * Keeping eventId in one shared helper prevents a route transition from falling
+ * back to an unrelated demo/default event.
+ */
+export function partyHrefForEvent(
+  eventId: string,
+  subroute: OrbitPartySubroute = "",
+): string {
+  const normalizedEventId = eventId.trim();
+  const pathname = `/app/party${subroute}`;
+
+  if (!normalizedEventId) {
+    return pathname;
+  }
+
+  return `${pathname}?eventId=${encodeURIComponent(normalizedEventId)}`;
+}

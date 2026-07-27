@@ -2,9 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
-import { getOrbitPartyViewModel, type OrbitPartyPersonView, type OrbitPartyViewModel } from "../orbit-party-route-view-model";
+import type { OrbitPartyPersonView, OrbitPartyViewModel } from "../orbit-party-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { ModalShell } from "../orbit-account-shell";
+import {
+  partyHrefForEvent,
+  productHref,
+} from "../orbit-product-href";
 import { PublicTopNav } from "../orbit-public-shell";
 import { Icon, Logo } from "../orbit-reference-primitives";
 import { ORBIT_Z } from "../orbit-z";
@@ -44,12 +48,6 @@ const partyReturnStorageKey = "orbit-party-return-url";
 
 function navigateTo(path: string) {
   window.location.href = path;
-}
-
-function productHref(prototypeHref: string) {
-  if (prototypeHref === "/party") return "/app/party";
-  if (prototypeHref.startsWith("/app")) return prototypeHref;
-  return `/app${prototypeHref}`;
 }
 
 function navigatePrototype(prototypeHref: string) {
@@ -281,7 +279,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
         </h1>
         <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 6 }}>{`${viewModel.eventName} · ${viewModel.eventVenue}`}</div>
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button className="btn btn-primary" disabled={viewModel.eventPhase === "ended"} onClick={() => navigateTo("/app/party/checkin")} style={{ flex: "1 1 0%" }}>
+          <button className="btn btn-primary" disabled={viewModel.eventPhase === "ended"} onClick={() => navigateTo(partyHrefForEvent(viewModel.eventId, "/checkin"))} style={{ flex: "1 1 0%" }}>
             <Icon color="var(--on-dark)" name="ticket" size={16} />
             {viewModel.eventPhase === "ended"
               ? t({ en: "Check-in closed", zh: "签到已结束" })
@@ -737,17 +735,22 @@ function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; pers
   );
 }
 
-export function OrbitRealPartyCheckin({ viewModel }: { viewModel?: OrbitPartyViewModel } = {}) {
+export function OrbitRealPartyCheckin({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const { t } = useOrbitLanguage();
+  const resolved = viewModel;
   const [checkedIn, setCheckedIn] = useState(false);
   const [redirectIn, setRedirectIn] = useState(3);
   const [returnedToParty, setReturnedToParty] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const returnToParty = useCallback(() => {
-    window.history.pushState(null, "", productHref("/party"));
+    window.history.pushState(
+      null,
+      "",
+      partyHrefForEvent(resolved.eventId),
+    );
     setReturnedToParty(true);
-  }, []);
+  }, [resolved.eventId]);
 
   useEffect(() => {
     if (!checkedIn) return undefined;
@@ -772,7 +775,7 @@ export function OrbitRealPartyCheckin({ viewModel }: { viewModel?: OrbitPartyVie
   }
 
   if (returnedToParty) {
-    return <OrbitRealParty viewModel={viewModel ?? getOrbitPartyViewModel()} />;
+    return <OrbitRealParty viewModel={resolved} />;
   }
 
   if (checkedIn) {
@@ -876,7 +879,7 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
     <div className="orbit-party-graph-screen" data-orbit-real-page style={{ minHeight: "100dvh" }}>
       <div style={{ margin: "0 auto", maxWidth: 720, minHeight: "100dvh", padding: "18px clamp(16px,4vw,32px) 48px", position: "relative", zIndex: ORBIT_Z.raised }}>
         <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between" }}>
-          <button aria-label={t({ en: "Back", zh: "返回" })} className="btn btn-ghost hit-44" onClick={() => navigateTo("/app/party")} style={{ minWidth: 40, padding: 0 }} type="button">
+          <button aria-label={t({ en: "Back", zh: "返回" })} className="btn btn-ghost hit-44" onClick={() => navigateTo(partyHrefForEvent(viewModel.eventId))} style={{ minWidth: 40, padding: 0 }} type="button">
             <Icon name="chevL" size={18} />
           </button>
           <div style={{ display: "grid", gap: 4, justifyItems: "center" }}>

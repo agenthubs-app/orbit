@@ -17,6 +17,7 @@ import {
   resolveModuleMode,
   type ModuleMode,
 } from "../../../../../shared/services/module-mode";
+import { eventStatusFor } from "../../orbit-hybrid-route-data";
 
 export type AppPartySearchParams = Record<
   string,
@@ -95,13 +96,13 @@ function compactId(value: string): string {
   return value.replace(/[^a-z0-9]+/giu, "").toUpperCase();
 }
 
-function defaultEventIdFor(mode?: ModuleMode | string | null): string {
+function defaultEventIdFor(mode?: ModuleMode | string | null): string | null {
   const resolvedMode = resolveModuleMode(mode ?? undefined);
 
-  return resolvedMode === "mock" ? "demo-event-1" : "event_01";
+  return resolvedMode === "mock" ? "demo-event-1" : null;
 }
 
-function routeEventId(input: AppPartyRouteInput): string {
+function routeEventId(input: AppPartyRouteInput): string | null {
   return (
     input.eventId?.trim() ||
     readSearchParam(input.searchParams, "eventId")?.trim() ||
@@ -346,6 +347,11 @@ function partyViewModel(input: {
   return {
     accessCode: `${(compactId(event.id) || "ORBT").slice(0, 4)}-4821`,
     agenda: agendaFor(input.event),
+    eventId: event.id,
+    eventPhase: eventStatusFor(
+      event,
+      input.event.eventDetail.provenance.collectedAt,
+    ),
     eventName: input.event.canonicalEvent.title,
     eventVenue: input.event.canonicalEvent.venue,
     icebreakers: [
@@ -369,8 +375,17 @@ export async function loadAppPartyRouteViewModel(
   const scenario = normalizeScenario(
     input.scenario ?? readSearchParam(input.searchParams, "scenario"),
   );
+  const eventId = routeEventId(input);
+
+  if (!eventId) {
+    return routeState({
+      evidenceIds: [],
+      scenario: "empty",
+    });
+  }
+
   const eventRoute = await loadAppEventDetailRoute({
-    eventId: routeEventId(input),
+    eventId,
     mode,
     scenario,
   });

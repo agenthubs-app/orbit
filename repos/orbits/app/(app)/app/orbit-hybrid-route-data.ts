@@ -141,7 +141,7 @@ export function passCodeForEvent(event: EventDTO, index = 0): string {
 }
 
 export function eventStatusFor(
-  event: EventDTO,
+  event: Pick<EventDTO, "endsAt" | "startsAt">,
   generatedAt: string,
 ): "active" | "upcoming" | "ended" {
   const now = new Date(generatedAt).getTime();

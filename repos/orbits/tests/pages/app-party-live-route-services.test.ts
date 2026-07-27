@@ -72,7 +72,9 @@ test("/app/party routes use a live-capable party loader instead of the legacy hy
 
   for (const pageSource of [partyPageSource, graphPageSource]) {
     assert.match(pageSource, /loadAppPartyRouteViewModel/);
+    assert.match(pageSource, /routeModel\.party/);
     assert.match(pageSource, /StateView/);
+    assert.doesNotMatch(pageSource, /buildOrbitParty/);
     assert.doesNotMatch(pageSource, /getOrbitPartyViewModel/);
   }
 });
@@ -82,9 +84,11 @@ test("/app/party/checkin uses the same live-capable party loader without compone
   const partyComponentSource = source("app/(app)/app/dashboard/orbit-real-party.tsx");
 
   assert.match(checkinPageSource, /loadAppPartyRouteViewModel/);
-  assert.match(checkinPageSource, /StateView/);
-  assert.match(checkinPageSource, /OrbitRealPartyCheckin/);
-  assert.doesNotMatch(partyComponentSource, /getOrbitPartyViewModel/);
+    assert.match(checkinPageSource, /StateView/);
+    assert.match(checkinPageSource, /OrbitRealPartyCheckin/);
+    assert.match(checkinPageSource, /routeModel\.party/);
+    assert.doesNotMatch(checkinPageSource, /buildOrbitParty/);
+    assert.doesNotMatch(partyComponentSource, /getOrbitPartyViewModel/);
 });
 
 test("app party route loader returns a real party model in mock mode", async () => {
@@ -99,13 +103,24 @@ test("app party route loader returns a real party model in mock mode", async () 
     assert.equal(routeModel.state, "success");
 
     if (routeModel.state === "success") {
+      assert.equal(routeModel.party.eventId, "demo-event-1");
       assert.equal(routeModel.party.eventName, "Climate founders dinner");
       assert.equal(routeModel.party.eventVenue, "Kanda Founders Table");
+      assert.ok(
+        ["active", "ended", "upcoming"].includes(routeModel.party.eventPhase),
+      );
       assert.ok(routeModel.party.me.name);
       assert.ok(routeModel.party.recommendations.length > 0);
       assert.ok(routeModel.party.tableMates.length > 0);
     }
   });
+});
+
+test("/app/dashboard redirects to the canonical Party route", () => {
+  const dashboardPageSource = source("app/(app)/app/dashboard/page.tsx");
+
+  assert.match(dashboardPageSource, /redirect\("\/app\/party"\)/);
+  assert.doesNotMatch(dashboardPageSource, /buildOrbitParty|OrbitRealParty/);
 });
 
 test("app party check-in page renders the mock success page from the party loader", async () => {

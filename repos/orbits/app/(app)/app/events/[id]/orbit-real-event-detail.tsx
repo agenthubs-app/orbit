@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../../orbit-language-context";
+import { partyHrefForEvent } from "../../orbit-product-href";
 import { productHref, PublicTopNav } from "../../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
@@ -142,7 +143,7 @@ function enterAction(
   return (
     <ActionButton
       className="btn btn-ghost"
-      href={productHref("/party")}
+      href={partyHrefForEvent(event.id)}
       onBeforeNavigate={() => {
         window.sessionStorage.setItem("orbit-party-return-url", window.location.href);
       }}

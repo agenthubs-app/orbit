@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { OrbitLandingEventView, OrbitLandingViewModel } from "../orbit-landing-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
+import { partyHrefForEvent } from "../orbit-product-href";
 import { productHref, PublicTopNav } from "../orbit-public-shell";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
@@ -132,7 +133,7 @@ function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
           <div className="orbit-event-module-foot">
             <span>{event.status === "ended" ? t({ en: "Review event context", zh: "回看活动背景" }) : t({ en: "Open event context", zh: "打开活动背景" })}</span>
             {canEnter ? (
-              <span role="button" tabIndex={0} onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.assign(preserveHref(productHref("/party"))); }} className="btn btn-soft btn-sm" style={{ height: 30, fontSize: 12.5 }}>{enterLabel}<Icon name="arrowUR" size={14} /></span>
+              <span role="button" tabIndex={0} onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.assign(preserveHref(partyHrefForEvent(event.id))); }} className="btn btn-soft btn-sm" style={{ height: 30, fontSize: 12.5 }}>{enterLabel}<Icon name="arrowUR" size={14} /></span>
             ) : (
               <strong>{actionLabel}<Icon name="chevR" size={14} /></strong>
             )}

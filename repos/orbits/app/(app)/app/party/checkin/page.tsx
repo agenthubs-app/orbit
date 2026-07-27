@@ -7,8 +7,10 @@
 import { StateView } from "../../../../../shared/ui/state-view";
 import { OrbitRealPartyCheckin } from "../../dashboard/orbit-real-party";
 import type { OrbitLanguage } from "../../orbit-language-core";
-import { getOrbitServerLanguage } from "../../orbit-language-server";
-import { buildOrbitParty } from "../../orbit-party-presentation";
+import {
+  getOrbitServerLanguage,
+  localizeOrbitTree,
+} from "../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import {
@@ -76,7 +78,7 @@ export default async function AppPartyCheckinPage({
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-party-checkin-route">
           <OrbitRealPartyCheckin
-            viewModel={buildOrbitParty(language)}
+            viewModel={localizeOrbitTree(routeModel.party, language)}
           />
         </div>
       ) : (

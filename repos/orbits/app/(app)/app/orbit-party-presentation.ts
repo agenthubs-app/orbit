@@ -63,6 +63,7 @@ export function buildOrbitParty(language: OrbitLanguage): OrbitPartyViewModel {
       label: pick(item.label, language),
       time: item.time,
     })),
+    eventId: "demo-event-1",
     eventName: pick(PARTY_CONTENT.eventName, language),
     // UI-audit fix C10. Every other element of this demo surface is written for
     // an event that is happening right now — the "TONIGHT" eyebrow, the enabled

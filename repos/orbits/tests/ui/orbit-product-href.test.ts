@@ -9,7 +9,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { productHref } from "../../app/(app)/app/orbit-product-href";
+import {
+  partyHrefForEvent,
+  productHref,
+} from "../../app/(app)/app/orbit-product-href";
 import { productHref as shellProductHref } from "../../app/(app)/app/orbit-public-shell";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
@@ -39,4 +42,16 @@ test("the shell re-exports the shared implementation", () => {
   );
   assert.ok(shellSource.includes('export { productHref } from "./orbit-product-href"'));
   assert.ok(!/export function productHref/.test(shellSource));
+});
+
+test("Party workspace routes preserve one encoded source event id", () => {
+  assert.equal(
+    partyHrefForEvent("event_001"),
+    "/app/party?eventId=event_001",
+  );
+  assert.equal(
+    partyHrefForEvent("event / 東京", "/checkin"),
+    "/app/party/checkin?eventId=event%20%2F%20%E6%9D%B1%E4%BA%AC",
+  );
+  assert.equal(partyHrefForEvent("", "/graph"), "/app/party/graph");
 });
