@@ -353,13 +353,41 @@ function PersonCard({
   );
 }
 
-function filterConnections(connections: OrbitContactView[], query: string, stage: "all" | OrbitContactPipelineStatus = "all") {
+export function filterConnections(
+  connections: OrbitContactView[],
+  query: string,
+  stage: "all" | OrbitContactPipelineStatus = "all",
+  valueTag: string | null = null,
+) {
   const keyword = query.trim().toLowerCase();
+  const normalizedValueTag = valueTag?.trim().toLowerCase() ?? "";
 
   return connections.filter((item) => {
     const matchesStage = stage === "all" || item.pipelineStatus === stage;
-    const haystack = [item.displayName, item.company, item.title, item.industry].filter(Boolean).join(" ").toLowerCase();
-    return matchesStage && (!keyword || haystack.includes(keyword));
+    const matchesValueTag =
+      !normalizedValueTag ||
+      item.valueTags.some(
+        (tag) => tag.trim().toLowerCase() === normalizedValueTag,
+      );
+    const haystack = [
+      item.displayName,
+      item.company,
+      item.title,
+      item.industry,
+      item.offering,
+      item.seeking,
+      item.nextAction?.text,
+      item.nextAction?.reason,
+      ...item.valueTags,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return (
+      matchesStage &&
+      matchesValueTag &&
+      (!keyword || haystack.includes(keyword))
+    );
   });
 }
 
@@ -367,15 +395,40 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
   const { t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState<"all" | OrbitContactPipelineStatus>("all");
+  const [valueTag, setValueTag] = useState<string | null>(null);
   const items = viewModel.connections;
   const counts: Record<string, number> & { all: number } = { all: items.length };
   for (const status of viewModel.pipelineStatuses) {
     counts[status.value] = items.filter((item) => item.pipelineStatus === status.value).length;
   }
   const eventCount = new Set(items.map((item) => item.lastEventId).filter(Boolean)).size;
-  const filtered = filterConnections(items, query, stage);
+  const valueFilters = Array.from(
+    new Set(items.flatMap((item) => item.valueTags.map((tag) => tag.trim()))),
+  )
+    .filter(Boolean)
+    .slice(0, 3);
+  const filtered = filterConnections(items, query, stage, valueTag);
   const filters: ["all" | OrbitContactPipelineStatus, string][] = [["all", t({ en: "All", zh: "全部" })], ...viewModel.pipelineStatuses.map((status) => [status.value, status.label] as ["all" | OrbitContactPipelineStatus, string])];
+  const searchSuggestions = [
+    {
+      label: t({ en: "Who can intro an investor?", zh: "谁能介绍投资人？" }),
+      query: t({ en: "Investor", zh: "投资人" }),
+    },
+    {
+      label: t({ en: "Founders met in 3 months", zh: "近三个月认识的创始人" }),
+      query: t({ en: "Founder", zh: "创始人" }),
+    },
+    {
+      label: t({ en: "High-value to follow up", zh: "待跟进的高价值关系" }),
+      query: t({ en: "High value", zh: "高价值" }),
+    },
+  ];
   const subtitle = `${items.length} ${t({ en: "contacts", zh: "位联系人" })}${eventCount ? ` · ${t({ en: `from ${eventCount} events`, zh: `来自 ${eventCount} 场活动` })}` : ""}`;
+  const clearFilters = () => {
+    setQuery("");
+    setStage("all");
+    setValueTag(null);
+  };
 
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
@@ -397,12 +450,14 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
             </div>
             <div className="nc-nlsearch">
               <span className="nc-lead"><Icon name="sparkle" size={22} /></span>
-              <input aria-label={t({ en: "Search contacts", zh: "搜索人脉" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Find people who know restaurant owners…", zh: "帮我找认识餐饮老板的人…" })} style={{ paddingRight: 116 }} type="search" value={query} />
-              <button className="btn btn-soft btn-sm" style={{ position: "absolute", right: 8, top: 8 }} type="button">{t({ en: "Ask", zh: "智能搜索" })}</button>
+              <input aria-label={t({ en: "Search contacts", zh: "搜索人脉" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search name, company, role, industry, or value", zh: "搜索姓名、公司、职位、行业或关系价值" })} style={{ paddingRight: 104 }} type="search" value={query} />
+              <span aria-live="polite" className="mono" style={{ color: "var(--text-3)", fontSize: 12, position: "absolute", right: 16, top: 18 }}>
+                {t({ en: `${filtered.length} results`, zh: `${filtered.length} 条` })}
+              </span>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-              {[{ en: "Who can intro an investor?", zh: "谁能介绍投资人？" }, { en: "Founders met in 3 months", zh: "近三个月认识的创始人" }, { en: "High-value to follow up", zh: "待跟进的高价值关系" }].map((ex, i) => (
-                <button className="chip" key={i} onClick={() => setQuery(t(ex))} type="button">{t(ex)}</button>
+              {searchSuggestions.map((suggestion) => (
+                <button className="chip" key={suggestion.label} onClick={() => setQuery(suggestion.query)} type="button">{suggestion.label}</button>
               ))}
             </div>
             <div style={{ alignItems: "center", display: "flex", gap: 8, flexWrap: "wrap", margin: "20px 0 16px" }}>
@@ -412,11 +467,29 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
                 </button>
               ))}
               <span style={{ width: 1, height: 20, background: "var(--hairline)", margin: "0 2px" }} />
-              {[{ en: "Prospect", zh: "潜在客户" }, { en: "Investor", zh: "投资人" }, { en: "Connector", zh: "资源介绍人" }].map((vt, i) => (
-                <button className="chip" key={i} type="button">{t(vt)}</button>
+              {valueFilters.map((tag) => (
+                <button
+                  aria-pressed={valueTag === tag}
+                  className={`chip${valueTag === tag ? " is-active" : ""}`}
+                  key={tag}
+                  onClick={() => setValueTag((current) => current === tag ? null : tag)}
+                  type="button"
+                >
+                  {tag}
+                  <span className="mono" style={{ marginLeft: 5 }}>
+                    {items.filter((item) => item.valueTags.includes(tag)).length}
+                  </span>
+                </button>
               ))}
             </div>
-            {!filtered.length ? <div className="card-flat" style={{ color: "var(--text-3)", fontSize: 14, padding: 18 }}>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</div> : null}
+            {!filtered.length ? (
+              <div className="card-flat" style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 14, gap: 12, justifyContent: "space-between", padding: 18 }}>
+                <span>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</span>
+                <button className="btn btn-ghost btn-sm" onClick={clearFilters} type="button">
+                  {t({ en: "Clear filters", zh: "清除筛选" })}
+                </button>
+              </div>
+            ) : null}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
           </div>
         </div>
@@ -426,6 +499,44 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
         <MobileCrmHeader active="list" onQueryChange={setQuery} query={query} t={t} />
         <div className="scroll" data-appscroll style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0, overflowY: "auto", padding: "2px 18px 36px" }}>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 10 }}>{subtitle}</div>
+          <div
+            aria-label={t({ en: "Contact filters", zh: "联系人筛选" })}
+            className="scroll noscroll orbit-chip-scroller"
+            style={{ display: "flex", gap: 8, margin: "0 -18px", overflowX: "auto", padding: "0 18px 8px" }}
+          >
+            {filters.map(([key, label]) => (
+              <button
+                aria-pressed={stage === key}
+                className={`chip${stage === key ? " is-active" : ""}`}
+                key={key}
+                onClick={() => setStage(key)}
+                style={{ flexShrink: 0 }}
+                type="button"
+              >
+                {label}
+              </button>
+            ))}
+            {valueFilters.map((tag) => (
+              <button
+                aria-pressed={valueTag === tag}
+                className={`chip${valueTag === tag ? " is-active" : ""}`}
+                key={tag}
+                onClick={() => setValueTag((current) => current === tag ? null : tag)}
+                style={{ flexShrink: 0 }}
+                type="button"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+          {!filtered.length ? (
+            <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 10, padding: 16 }}>
+              <span>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</span>
+              <button className="btn btn-ghost btn-sm" onClick={clearFilters} type="button">
+                {t({ en: "Clear filters", zh: "清除筛选" })}
+              </button>
+            </div>
+          ) : null}
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
         </div>
       </div>

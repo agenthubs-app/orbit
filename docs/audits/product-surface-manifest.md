@@ -1,12 +1,12 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 1
-- Indexed commit: `09ef6cb76623d76c376c98a9de1576e735eafbd3`
-- Deterministic generated timestamp (commit time): 2026-07-27T12:18:33+09:00
+- Indexed commit: `19072882570d4cb32b2d2e52284632ff2942dbf7`
+- Deterministic generated timestamp (commit time): 2026-07-27T12:37:44+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
-- Actions/interactions: 1808
+- Actions/interactions: 1826
 - Authenticated routes: 22
 - Public-at-proxy routes: 16
 
@@ -18,19 +18,19 @@
 | `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 14 | 6 | 5 |
 | `/app/account/mobile-google` | Mobile Google authentication completion | public-auth-entry | Live, Mock, User Confirmed | 2 | 2 | 0 |
 | `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 14 | 10 | 5 |
-| `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 50 | 13 | 26 |
+| `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 50 | 14 | 26 |
 | `/app/admin/events` | Admin event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 30 | 36 |
 | `/app/admin` | Admin operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 30 | 36 |
 | `/app/agent` | Relationship operations Agent | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 79 | 30 | 55 |
 | `/app/chat` | Relationship inbox and conversations | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 79 | 30 | 55 |
-| `/app/contacts/[id]` | Contact identity and relationship detail | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 89 | 30 | 47 |
+| `/app/contacts/[id]` | Contact identity and relationship detail | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 92 | 30 | 44 |
 | `/app/contacts/all-actions` | Cross-contact action ledger | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 52 | 10 | 21 |
-| `/app/contacts/dashboard` | Relationship analytics dashboard | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 83 | 24 | 44 |
-| `/app/contacts/graph` | Relationship graph | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 77 | 30 | 38 |
-| `/app/contacts/intros` | Introduction workflow | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 77 | 4 | 38 |
+| `/app/contacts/dashboard` | Relationship analytics dashboard | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 86 | 24 | 41 |
+| `/app/contacts/graph` | Relationship graph | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 80 | 30 | 35 |
+| `/app/contacts/intros` | Introduction workflow | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 80 | 4 | 35 |
 | `/app/contacts/new` | Contact acquisition | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 57 | 3 | 32 |
-| `/app/contacts` | Contact list and discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 77 | 30 | 38 |
-| `/app/contacts/pipeline` | Relationship pipeline | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 92 | 6 | 53 |
+| `/app/contacts` | Contact list and discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 80 | 30 | 35 |
+| `/app/contacts/pipeline` | Relationship pipeline | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 95 | 7 | 50 |
 | `/app/dashboard` | Relationship dashboard | authenticated | Live | 0 | 24 | 2 |
 | `/app/events/[id]` | Event detail and event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 71 | 30 | 41 |
 | `/app/events/[id]/register` | Event registration | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 18 | 30 | 16 |

@@ -90,3 +90,31 @@ Fallback scope:
 
 - The data-source mismatch fallback is covered by source regression tests because the canonical confirmed event correctly resolves the real workspace.
 - The fallback now declares itself read-only, makes answer fields read-only, disables skip checkboxes, states that nothing can be saved, and exposes only real navigation links.
+
+## 2026-07-27 — Authenticated contacts search and filters
+
+Production runtime:
+
+- Rebuilt the current worktree with `npm run build`; compilation and TypeScript passed.
+- Started the resulting production build with `next start` on an isolated local port.
+- Created and signed in with an isolated synthetic audit account through the real Signup and Login UI; no credentials are recorded in this log.
+- Confirmed the protected return path reached `/app/contacts`.
+
+Desktop/default viewport:
+
+| Action | Authoritative evidence | Result |
+| --- | --- | --- |
+| Initial contacts load | DOM snapshot and rendered counts | Loaded 66 route-provided contacts and three value filters derived from actual data: Strategic fit (14), Knowledge exchange (16), and Referral path (12). |
+| Click “Who can intro an investor?” | Search input value, live result count, rendered cards | Applied the bounded local query `Investor` and reduced 66 contacts to 7; the UI no longer claims an AI operation occurred. |
+| Clear search and click “Strategic fit” | Search value, `aria-pressed`, live count, rendered cards | Search cleared to an empty value; the data-derived value tag became pressed and rendered exactly 14 matching contacts. |
+
+Mobile viewport (`390 × 844`):
+
+- `innerWidth`, document client width, and document scroll width were all 390; no horizontal overflow was present.
+- Mobile rendered the same route-derived stage and value filters.
+- Clicking “In progress” set the pressed state and reduced 66 contacts to 53.
+
+Console:
+
+- No application warning or error entries were recorded.
+- Browser-extension-owned warnings were excluded by source URL and were not emitted by iOrbit.
