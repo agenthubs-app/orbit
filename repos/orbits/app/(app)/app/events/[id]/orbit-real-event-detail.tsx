@@ -5,6 +5,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../../orbit-language-context";
 import { partyHrefForEvent } from "../../orbit-product-href";
+import { agentHrefForContext } from "../../orbit-agent-context-href";
 import { productHref, PublicTopNav } from "../../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
@@ -332,6 +333,13 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
   const monogram = name.slice(0, 1);
   const codeUpper = String(event.code || "").toUpperCase();
   const sceneAsset = getDemoEventSceneAsset(event.id);
+  const askAgentHref = agentHrefForContext({
+    details: [event.venue, time.date].filter(Boolean).join(" · "),
+    id: event.id,
+    kind: "event",
+    label: name,
+    language: language === "zh" ? "zh" : "en",
+  });
 
   return (
     <div className="orbit-shell" data-appscroll data-orbit-real-page="event-detail">
@@ -382,7 +390,18 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
           <div className="orbit-detail-main">
             <div>
               <div className="orbit-desktop-only" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}><span className="chip" style={{ height: 26, fontSize: 12, background: "var(--accent-softer)", color: "var(--accent)" }}>{event.code}</span><StatusBadge language={language} status={event.status} /></div>
-              <h1 className="h-display" style={{ margin: 0 }}>{name}</h1>
+              <div style={{ alignItems: "flex-start", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
+                <h1 className="h-display" style={{ margin: 0 }}>{name}</h1>
+                <a
+                  className="btn btn-soft btn-sm"
+                  data-agent-context="event"
+                  href={askAgentHref}
+                  style={{ flexShrink: 0, textDecoration: "none" }}
+                >
+                  <Icon name="sparkle" size={16} />
+                  {t({ en: "Ask iOrbit about this event", zh: "问 iOrbit 这场活动" })}
+                </a>
+              </div>
               <div className="mono" style={{ fontSize: 13, color: "var(--text-3)", letterSpacing: "0.06em", marginTop: 8 }}>{codeUpper}</div>
               {event.summaryZh ? <p style={{ fontSize: 16, color: "var(--text-2)", lineHeight: 1.5, marginTop: 14, marginBottom: 0 }}>{event.summaryZh}</p> : null}
             </div>

@@ -17,6 +17,7 @@ import { openRelationshipInboxCompose } from "../inbox/relationship-inbox-panel"
 import { Basis, SourceBadge } from "./orbit-real-contacts";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
+import { agentHrefForContext } from "../orbit-agent-context-href";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -423,8 +424,15 @@ function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: T
 }
 
 export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: string; viewModel: OrbitContactsViewModel }) {
-  const { t } = useOrbitLanguage();
+  const { language, t } = useOrbitLanguage();
   const contact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
+  const askAgentHref = agentHrefForContext({
+    details: crmRole(contact, t),
+    id: contactId,
+    kind: "contact",
+    label: contact.displayName,
+    language: language === "zh" ? "zh" : "en",
+  });
   const [toast, setToast] = useState<string | null>(null);
   const [status, setStatus] = useState<OrbitContactPipelineStatus>(contact.pipelineStatus);
 
@@ -477,6 +485,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
               </div>
               <div className="nc-hero-cta">
                 <a className="btn btn-ghost" href="#" onClick={(event) => event.preventDefault()}><Icon name="edit" size={16} />{t({ en: "Edit", zh: "编辑" })}</a>
+                <a className="btn btn-soft" data-agent-context="contact" href={askAgentHref}><Icon name="sparkle" size={16} />{t({ en: "Ask iOrbit", zh: "问 iOrbit" })}</a>
                 <button className="btn btn-primary" data-inbox-compose onClick={draftEmail} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
               </div>
             </div>
@@ -525,7 +534,10 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             </div>
           </div>
 
-          <button className="btn btn-primary btn-block" data-inbox-compose onClick={draftEmail} style={{ margin: "16px 0" }} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr", margin: "16px 0" }}>
+            <a className="btn btn-soft btn-block" data-agent-context="contact" href={askAgentHref}><Icon name="sparkle" size={16} />{t({ en: "Ask iOrbit", zh: "问 iOrbit" })}</a>
+            <button className="btn btn-primary btn-block" data-inbox-compose onClick={draftEmail} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <AboutCard contact={contact} t={t} />
