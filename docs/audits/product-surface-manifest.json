@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "3db8d78a35ce19aa5d4009790116fa0d3194a1b7",
-  "generatedAt": "2026-07-27T17:18:04+09:00",
+  "commit": "2de61b1ac717e40bae97731fac3fffd10e307a9a",
+  "generatedAt": "2026-07-27T17:32:23+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -12138,14 +12138,14 @@
         "mockBoundaryImports": [
           {
             "sourceFile": "repos/orbits/features/acquisition/service-factory.ts",
-            "line": 30,
+            "line": 31,
             "import": "import { createMockContactAcquisitionDraftService } from \"./mock-service\";",
             "classification": "factory-mode-registration",
             "runtimeResultRisk": "resolved-by-static-boundary"
           },
           {
             "sourceFile": "repos/orbits/features/acquisition/service-factory.ts",
-            "line": 31,
+            "line": 32,
             "import": "import type { MockContactAcquisitionDraftService } from \"./mock-service\";",
             "classification": "type-only-contract-reference",
             "runtimeResultRisk": "resolved-by-static-boundary"
