@@ -18,6 +18,7 @@ import type {
   FollowupTask,
   FollowupTaskGenerationResult,
 } from "../../../../features/followups/contract";
+import { contactIdFromConnectionIdentity } from "../../../../shared/relationship-identity";
 import type { FollowupTaskGenerationService } from "../../../../features/followups/service";
 import { createFollowupTaskGenerationService } from "../../../../features/followups/service-factory";
 import type { ModuleMode } from "../../../../shared/services/module-mode";
@@ -324,6 +325,12 @@ function taskMatchesContact(
   task: FollowupTask,
   contact: ContactListItem,
 ): boolean {
+  const targetContactId = contactIdFromConnectionIdentity(task.connectionId);
+
+  if (targetContactId) {
+    return targetContactId === contact.id;
+  }
+
   const contactIdentities = [
     contact.id,
     contact.displayName,

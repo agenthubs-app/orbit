@@ -25,6 +25,7 @@ import {
   createAppFollowupsRouteServices,
   type AppFollowupsRouteServices,
 } from "./followups-service-factory";
+import { contactIdFromConnectionIdentity } from "../../../../../shared/relationship-identity";
 
 export type AppFollowupsSearchParams = Record<
   string,
@@ -84,6 +85,7 @@ export interface AppFollowupsWorkflowCardViewModel {
   reviewStatus: string;
   sourceContext: string;
   stepLabel: string;
+  targetContactId?: string | null;
   title: string;
 }
 
@@ -535,32 +537,50 @@ function workflowCardsViewModel(input: {
   const cards: AppFollowupsWorkflowCardViewModel[] = [];
 
   for (const task of input.tasks) {
+    const targetContactId = contactIdFromConnectionIdentity(task.connectionId);
+
     cards.push({
       body: task.recommendedAction,
       due: dueSentenceLabel(task.dueInDays),
       dueAt: task.dueAt,
       evidenceIds: task.evidenceIds,
       id: task.taskId,
-      recordIds: [],
+      recordIds: [task.connectionId, targetContactId].filter(
+        (recordId): recordId is string => Boolean(recordId),
+      ),
       relationship: `${task.contactName} · ${task.organization}`,
       reviewStatus: bilingualText("本地复核暂缓", "Held for local review"),
       sourceContext: task.source.label,
       stepLabel: bilingualText("待判断任务", "Task to decide"),
+      targetContactId,
       title: task.title,
     });
   }
 
   if (input.draft) {
+    const matchingTask =
+      input.tasks.find(
+        (task) =>
+          task.contactName.normalize("NFKC") ===
+            input.draft?.recipientName.normalize("NFKC") &&
+          task.organization.normalize("NFKC") ===
+            input.draft?.organization.normalize("NFKC"),
+      ) ?? null;
+    const targetContactId = matchingTask
+      ? contactIdFromConnectionIdentity(matchingTask.connectionId)
+      : null;
+
     cards.push({
       body: input.draft.body,
       due: input.draft.recommendedSendWindow,
       evidenceIds: input.draft.evidenceIds,
       id: input.draft.draftId,
-      recordIds: [],
+      recordIds: targetContactId ? [targetContactId] : [],
       relationship: `${input.draft.recipientName} · ${input.draft.organization}`,
       reviewStatus: draftReadinessLabel(input.draft),
       sourceContext: input.draft.relationshipContext,
       stepLabel: bilingualText("待复核消息草稿", "Message draft to review"),
+      targetContactId,
       title: input.draft.subject,
     });
   }

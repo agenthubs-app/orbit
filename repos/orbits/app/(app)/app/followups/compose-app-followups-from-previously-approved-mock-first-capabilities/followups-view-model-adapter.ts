@@ -87,9 +87,12 @@ export function followupsRouteToOrbitScheduleViewModel(
   model: AppFollowupsSuccessRouteViewModel,
 ): OrbitScheduleViewModel {
   const connections = new Map<string, OrbitScheduleConnectionView>();
-  const ensureConnection = (relationship: string): OrbitScheduleConnectionView => {
+  const ensureConnection = (
+    relationship: string,
+    targetContactId?: string | null,
+  ): OrbitScheduleConnectionView => {
     const { company, name } = splitRelationship(relationship);
-    const id = connectionIdFor(name);
+    const id = targetContactId ?? connectionIdFor(name);
     const existing = connections.get(id);
 
     if (existing) {
@@ -117,7 +120,10 @@ export function followupsRouteToOrbitScheduleViewModel(
 
   const schedules: OrbitScheduleItemView[] = model.workspace.workflowCards.map(
     (card, index) => {
-      const connection = ensureConnection(card.relationship);
+      const connection = ensureConnection(
+        card.relationship,
+        card.targetContactId,
+      );
 
       return {
         cid: connection.id,

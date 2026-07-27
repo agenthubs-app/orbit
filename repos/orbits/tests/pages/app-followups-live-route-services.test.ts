@@ -19,6 +19,7 @@ import {
   type AppFollowupsRouteServices,
 } from "../../app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-service-factory";
 import { followupsRouteToOrbitScheduleViewModel } from "../../app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-view-model-adapter";
+import { contactIdFromConnectionIdentity } from "../../shared/relationship-identity";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
 const liveDatabaseEnvKeys = [
@@ -601,4 +602,51 @@ test("followups product schedule adapter keeps duplicate source ids unique for R
     schedule.schedules.map((item) => item.id),
     ["notification_001:0", "notification_001:1"],
   );
+});
+
+test("followup schedules preserve real contact ids instead of display-name slugs", () => {
+  assert.equal(
+    contactIdFromConnectionIdentity("connection_for_contact_021"),
+    "contact_021",
+  );
+  assert.equal(
+    contactIdFromConnectionIdentity("connection:mock:maya"),
+    null,
+  );
+
+  const schedule = followupsRouteToOrbitScheduleViewModel({
+    state: "success",
+    workspace: {
+      actionResult: null,
+      ledger: {
+        draftCount: 0,
+        dueTodayCount: 1,
+        reminderCount: 0,
+        taskCount: 1,
+      },
+      priority: null,
+      reminderQueue: {
+        entries: [],
+        evidenceIds: [],
+      },
+      workflowCards: [
+        {
+          body: "Review follow-up",
+          due: "Due today",
+          evidenceIds: ["evidence:task:001"],
+          id: "task_001",
+          recordIds: ["connection_for_contact_021", "contact_021"],
+          relationship: "山崎 美穂 · Aoba Technologies",
+          reviewStatus: "Held for review",
+          sourceContext: "live task",
+          stepLabel: "Review",
+          targetContactId: "contact_021",
+          title: "Review follow-up for contact_021",
+        },
+      ],
+    },
+  });
+
+  assert.equal(schedule.connections[0]?.id, "contact_021");
+  assert.equal(schedule.schedules[0]?.cid, "contact_021");
 });
