@@ -1,8 +1,7 @@
 # iOrbit 全产品功能补全与真实流程治理 Prompt
 
-> 用途：在新的 GPT-5.6 Sol Session 中创建长期 Goal。由于 Goal 文本限制为
-> 4000 字以内，请把本文末尾的“Goal 启动词”粘贴到 Goal 中；模型必须先完整读取
-> 本文件，再按这里的要求持续执行。
+> 用途：在新的 GPT-5.6 Sol Session 中创建长期 Goal。Goal 启动词应明确要求
+> 模型先完整读取本文件，再按这里的要求持续执行。
 
 ## 最终目标
 
@@ -421,42 +420,3 @@ URL、DOM、数据库状态、API 结果或反馈。
 10. 远程推送结果。
 11. 用户可立即测试的完整路径。
 12. Manifest、报告和扫描脚本的文件链接。
-
----
-
-## Goal 启动词（复制到新 Session，少于 4000 字）
-
-你正在 `/Users/li/work/orbit` 仓库工作。请创建并持续执行一个 Goal：系统完成
-iOrbit 除已基本可用的 Agent 外，其余所有生产页面的功能盘点、成熟产品对标、
-架构治理、按钮覆盖、真实数据接入、桌面/移动端验证和最终风险扫描。
-
-开始前完整读取并严格执行：
-`/Users/li/work/orbit/docs/prompts/iorbit-product-surface-completion-goal.md`
-
-同时读取并遵守仓库 `AGENTS.md`。修改符号前做 GitNexus impact analysis，
-HIGH/CRITICAL 风险先报告；提交前运行 `detect_changes()`。先检查当前分支、远程
-状态及用户未提交修改，在不覆盖、不 stash、不 reset、不误提交用户文件的前提下
-获取最新代码。不得输出或提交 `.env.local` 中的任何密钥。
-
-必须从真实代码、数据库、API、登录态和浏览器行为出发，不得主观臆测，不得通过
-隐藏按钮、吞错、写死 ID、假成功或 Live 失败后静默切 Mock 解决问题。优先复用
-已有组件、领域模型、Provider、Presenter、路由和状态 helper；重复逻辑应抽成
-简洁共享能力。不得只交付方案或报告：完成审计后按 P0→P1→P2 实施修复，每个
-阶段执行影响分析、测试、真实浏览器验证、Manifest 更新和独立 Commit。
-
-必须扫描所有生产路由、按钮、链接、表单、菜单、卡片操作、FAB、弹层和快捷键，
-建立可持续维护的 Surface Manifest、Button/Action Coverage 和 Mock/Live
-清单。检查行为、路由、实体 ID、权限、确认、撤销、幂等、loading、empty、
-partial、error、移动端、可访问性和真实持久化。对标成熟 Agent、CRM、日程、
-任务、消息和活动产品的官方设计资料，形成“保留、补齐、优化、合并、移除、
-暂缓、依赖集成”的功能决策表，但不得机械照抄。
-
-真实验证至少覆盖登录和导航、首页到 Agent、DeepSeek 调用、联系人/活动上下文
-Agent、Today、活动报名、Party/Check-in/Graph、人脉各子页面、Chat/Inbox、
-Profile、Settings、Organizer/Platform/Admin。桌面端与移动端都要验证。禁止
-使用固定 sleep 代替 URL、DOM、API、数据库状态或成功反馈验证。
-
-只有当文档中“Goal 完成标准”全部满足，所有 P0 修复，本轮测试和生产构建通过，
-全量测试失败逐项分类，真实浏览器链路通过，所有改动分阶段提交并推送远程，且
-用户原有修改未被覆盖时，才能将 Goal 标记完成。除非缺少新的权限、凭据或存在
-会改变产品方向的关键选择，否则不要停下来询问；请自主持续执行直到真正完成。
