@@ -1,11 +1,11 @@
 import type {
-  ContactDetail,
-  ContactDetailTagStatusResult,
-  ContactDetailTagStatusService,
-} from "../../../../features/contacts/detail-contract";
-import { createContactDetailTagStatusService } from "../../../../features/contacts/service-factory";
+  ContactListItem,
+  ContactsListSearchResult,
+} from "../../../../features/contacts/contract";
+import type { ContactsListSearchAndFilterService } from "../../../../features/contacts/service";
+import { createContactsListSearchAndFilterService } from "../../../../features/contacts/service-factory";
 import type {
-  EventDetailResult,
+  EventListResult,
   EventRecord,
 } from "../../../../features/events/event-crud-and-import/contract";
 import type { EventCrudAndImportService } from "../../../../features/events/event-crud-and-import/service";
@@ -29,10 +29,6 @@ import {
   scheduleEventVenue,
 } from "./schedule-event-display";
 
-const scheduleContactId = "demo-contact-1";
-const scheduleEventId = "event_001";
-const scheduleProbeMode: ModuleMode = "mock";
-
 export type AppScheduleSearchParams = Record<
   string,
   string | string[] | undefined
@@ -40,7 +36,7 @@ export type AppScheduleSearchParams = Record<
 export type AppScheduleRouteScenario = "empty" | "pending" | "failure";
 
 export interface AppScheduleRouteServices {
-  contactDetail: ContactDetailTagStatusService;
+  contacts: ContactsListSearchAndFilterService;
   events: EventCrudAndImportService;
   followups: FollowupTaskGenerationService;
 }
@@ -93,17 +89,15 @@ export type AppScheduleRouteViewModel =
     };
 
 type ScheduleSourceResult =
-  | ContactDetailTagStatusResult
-  | EventDetailResult
-  | FollowupTaskGenerationResult;
+  ContactsListSearchResult | EventListResult | FollowupTaskGenerationResult;
 
 interface ScheduleSourceResults {
-  contactResult: ContactDetailTagStatusResult;
-  eventResult: EventDetailResult;
+  contactResult: ContactsListSearchResult;
+  eventResult: EventListResult;
   followupResult: FollowupTaskGenerationResult;
   results: readonly [
-    ContactDetailTagStatusResult,
-    EventDetailResult,
+    ContactsListSearchResult,
+    EventListResult,
     FollowupTaskGenerationResult,
   ];
 }
@@ -126,7 +120,11 @@ function readRouteScenario(
 ): AppScheduleRouteScenario | null {
   const scenario = readSearchParam(searchParams, "scenario");
 
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
+  if (
+    scenario === "empty" ||
+    scenario === "pending" ||
+    scenario === "failure"
+  ) {
     return scenario;
   }
 
@@ -158,11 +156,15 @@ function routeScenarioForResults(
     return "failure";
   }
 
-  if (results.some((result) => result.success && result.data.state === "pending")) {
+  if (
+    results.some((result) => result.success && result.data.state === "pending")
+  ) {
     return "pending";
   }
 
-  if (results.some((result) => result.success && result.data.state === "empty")) {
+  if (
+    results.some((result) => result.success && result.data.state === "empty")
+  ) {
     return "empty";
   }
 
@@ -190,8 +192,7 @@ function routeStateCopy(scenario: AppScheduleRouteScenario) {
       description:
         "还没有可用于安排的关系、活动或跟进来源。先补充来源，再判断下一步约见。",
       eyebrow: "日程安排",
-      guardrail:
-        "没有来源证据时，Orbit 不会创建日历、提醒、消息或外部同步。",
+      guardrail: "没有来源证据时，Orbit 不会创建日历、提醒、消息或外部同步。",
       nextStep: "添加关系来源，或返回查看已有安排。",
       title: "暂无可安排的关系事项",
     };
@@ -199,19 +200,16 @@ function routeStateCopy(scenario: AppScheduleRouteScenario) {
 
   if (scenario === "pending") {
     return {
-      description:
-        "关系、活动和跟进来源仍在复核中，暂时不展示未确认的安排。",
+      description: "关系、活动和跟进来源仍在复核中，暂时不展示未确认的安排。",
       eyebrow: "日程安排",
-      guardrail:
-        "复核完成前，Orbit 不会写入日历、发送通知或触发外部服务。",
+      guardrail: "复核完成前，Orbit 不会写入日历、发送通知或触发外部服务。",
       nextStep: "来源复核完成后返回日程安排。",
       title: "日程来源仍在复核",
     };
   }
 
   return {
-    description:
-      "日程来源暂时不可用，联系人、活动或跟进边界返回了受控失败。",
+    description: "日程来源暂时不可用，联系人、活动或跟进边界返回了受控失败。",
     eyebrow: "日程安排",
     guardrail:
       "不可用期间，Orbit 只显示恢复入口，不会写入日历、提醒、消息或外部系统。",
@@ -240,12 +238,10 @@ async function loadScheduleSourceResults(input: {
   services: AppScheduleRouteServices;
 }): Promise<ScheduleSourceResults> {
   const [contactResult, eventResult, followupResult] = await Promise.all([
-    input.services.contactDetail.getContactDetail({
-      contactId: scheduleContactId,
+    input.services.contacts.listContacts({
       scenario: input.scenario,
     }),
-    input.services.events.getEvent({
-      eventId: scheduleEventId,
+    input.services.events.listEvents({
       scenario: input.scenario,
     }),
     input.services.followups.listTasks({
@@ -262,23 +258,13 @@ async function loadScheduleSourceResults(input: {
   };
 }
 
-function shouldUseScheduleProbeFallback(input: {
-  requestedScenario: AppScheduleRouteScenario | null;
-  results: readonly ScheduleSourceResult[];
-  servicesWereProvided: boolean;
-}): boolean {
-  return (
-    input.requestedScenario === null &&
-    !input.servicesWereProvided &&
-    input.results.some(isFailure)
-  );
-}
-
-function sourceLabelForContact(contact: ContactDetail): string {
-  const labels: Record<ContactDetail["source"]["type"], string> = {
+function sourceLabelForContact(contact: ContactListItem): string {
+  const labels: Record<ContactListItem["source"]["type"], string> = {
+    business_card_ocr: "名片识别",
     calendar_signal: "日历信号",
     email_signal: "邮件信号",
     event_import: "活动导入",
+    external_contacts: "外部联系人",
     manual: "手动记录",
     qr_scan: "二维码扫描",
     referral: "引荐来源",
@@ -287,8 +273,8 @@ function sourceLabelForContact(contact: ContactDetail): string {
   return labels[contact.source.type] ?? "关系来源";
 }
 
-function statusLabelForContact(status: ContactDetail["status"]): string {
-  const labels: Record<ContactDetail["status"], string> = {
+function statusLabelForContact(status: ContactListItem["status"]): string {
+  const labels: Record<ContactListItem["status"], string> = {
     active: "进行中",
     archived: "已归档",
     needs_follow_up: "待跟进",
@@ -326,15 +312,105 @@ function localizedContactRole(role: string): string {
   return roles[role] ?? role;
 }
 
+function normalizedEntityIdentity(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/^(?:contact|connection)[:_-]/, "")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function taskMatchesContact(
+  task: FollowupTask,
+  contact: ContactListItem,
+): boolean {
+  const contactIdentities = [
+    contact.id,
+    contact.displayName,
+    `${contact.displayName}${contact.organization}`,
+  ].map(normalizedEntityIdentity);
+  const taskIdentities = [
+    task.connectionId,
+    task.contactName,
+    `${task.contactName}${task.organization}`,
+  ].map(normalizedEntityIdentity);
+
+  return contactIdentities.some((identity) =>
+    taskIdentities.includes(identity),
+  );
+}
+
+function followupTaskForContact(
+  contact: ContactListItem,
+  tasks: readonly FollowupTask[],
+): FollowupTask | null {
+  return tasks.find((task) => taskMatchesContact(task, contact)) ?? null;
+}
+
+function selectScheduleContact(
+  contacts: readonly ContactListItem[],
+  tasks: readonly FollowupTask[],
+): ContactListItem | null {
+  return (
+    [...contacts].sort((left, right) => {
+      const score = (contact: ContactListItem) => {
+        const taskScore = followupTaskForContact(contact, tasks) ? 100 : 0;
+        const statusScore =
+          contact.status === "needs_follow_up"
+            ? 30
+            : contact.status === "active"
+              ? 20
+              : contact.status === "nurture"
+                ? 10
+                : 0;
+        return taskScore + statusScore + contact.value.score / 100;
+      };
+
+      return score(right) - score(left);
+    })[0] ?? null
+  );
+}
+
+function selectScheduleEvent(
+  events: readonly EventRecord[],
+  now = new Date(),
+): EventRecord | null {
+  const candidates = events.filter(
+    (event) => event.status === "confirmed" || event.status === "imported",
+  );
+  const nowValue = now.getTime();
+  const priorityFor = (event: EventRecord) =>
+    event.status === "confirmed" ? 0 : 1;
+  const upcoming = candidates
+    .filter((event) => Date.parse(event.endsAt || event.startsAt) >= nowValue)
+    .sort(
+      (left, right) =>
+        priorityFor(left) - priorityFor(right) ||
+        Date.parse(left.startsAt) - Date.parse(right.startsAt),
+    );
+
+  if (upcoming[0]) {
+    return upcoming[0];
+  }
+
+  return (
+    candidates.sort(
+      (left, right) =>
+        priorityFor(left) - priorityFor(right) ||
+        Date.parse(right.startsAt) - Date.parse(left.startsAt),
+    )[0] ?? null
+  );
+}
+
 function contactReasonForSchedule(input: {
-  contact: ContactDetail;
+  contact: ContactListItem;
   followupTask: FollowupTask | null;
 }): string {
   const followupSignal = input.followupTask
     ? `跟进任务已确认 ${dueLabelForTask(input.followupTask)} 需要复核。`
     : "跟进任务仍待来源确认。";
 
-  return `关系原因：${input.contact.displayName} 与 ${input.contact.organization} 的关系证据显示有明确后续需求。${followupSignal}下一步先在联系人详情中复核来源，再决定是否安排会面或准备引荐。`;
+  return `关系原因：${input.contact.displayName} 当前标记为${statusLabelForContact(input.contact.status)}，有 ${input.contact.evidence.length} 条关系来源可供复核。${followupSignal}下一步先打开联系人详情核对记录，再决定是否安排会面或准备引荐。`;
 }
 
 function eventReasonForSchedule(event: EventRecord): string {
@@ -342,22 +418,18 @@ function eventReasonForSchedule(event: EventRecord): string {
 }
 
 function buildContactArrangement(input: {
-  contact: ContactDetail;
+  contact: ContactListItem;
   followupTask: FollowupTask | null;
-  targetRoutesMayNeedRecovery: boolean;
 }): AppScheduleArrangementViewModel {
   const followupLabel = dueLabelForTask(input.followupTask);
-  const targetRoutesMayNeedRecovery = input.targetRoutesMayNeedRecovery;
 
   return {
-    actionLabel: targetRoutesMayNeedRecovery
-      ? "查看联系人详情状态"
-      : "打开联系人详情",
+    actionLabel: "打开联系人详情",
     evidenceIds: [
       ...input.contact.evidence.map((item) => item.evidenceId),
       ...(input.followupTask?.evidenceIds ?? []),
     ],
-    href: `/app/contacts/${scheduleContactId}`,
+    href: `/app/contacts/${encodeURIComponent(input.contact.id)}`,
     id: `schedule-arrangement-contact-${input.contact.id}`,
     primaryName: input.contact.displayName,
     reason: contactReasonForSchedule({
@@ -368,13 +440,12 @@ function buildContactArrangement(input: {
     sourceContext: `来源：${sourceLabelForContact(input.contact)}，证据 ${input.contact.evidence.length} 条`,
     statusLabel: statusLabelForContact(input.contact.status),
     target: {
-      id: scheduleContactId,
+      id: input.contact.id,
       kind: "contact",
     },
-    targetNote: targetRoutesMayNeedRecovery
-      ? "联系人详情来源仍在接入中；打开后可能先显示受控恢复页，不会写入日历、提醒、消息或外部系统。"
-      : undefined,
-    targetState: targetRoutesMayNeedRecovery ? "detail-unavailable" : "ready",
+    targetNote:
+      "打开联系人详情只读取当前关系记录；不会写入日历、提醒、消息或外部系统。",
+    targetState: "ready",
     timing: `跟进时机：${followupLabel}`,
   };
 }
@@ -386,9 +457,9 @@ function buildEventArrangement(input: {
   const title = scheduleEventTitle(input.event);
 
   return {
-    actionLabel: "查看活动安排预览",
+    actionLabel: "打开活动详情",
     evidenceIds,
-    href: `/app/schedule/events/${scheduleEventId}`,
+    href: `/app/events/${encodeURIComponent(input.event.id)}`,
     id: `schedule-arrangement-event-${input.event.id}`,
     primaryName: title,
     reason: eventReasonForSchedule(input.event),
@@ -396,12 +467,11 @@ function buildEventArrangement(input: {
     sourceContext: `来源：${scheduleEventSourceLabel(input.event)}，证据 ${evidenceIds.length} 条`,
     statusLabel: statusLabelForEvent(input.event.status),
     target: {
-      id: scheduleEventId,
+      id: input.event.id,
       kind: "event",
     },
-    targetNote:
-      `安排预览保留活动名称、时间、来源和下一步；活动详情仍在接入中。打开 ${title} 不会写入日历、提醒、消息或外部系统。`,
-    targetState: "detail-unavailable",
+    targetNote: `打开 ${title} 的活动详情只读取当前记录，不会写入日历、提醒、消息或外部系统。`,
+    targetState: "ready",
     timing: `活动时间：${formatScheduleEventWindow(input.event)}`,
   };
 }
@@ -450,7 +520,7 @@ export function createAppScheduleRouteServices(
   mode?: ModuleMode | string,
 ): AppScheduleRouteServices {
   return {
-    contactDetail: createContactDetailTagStatusService(mode),
+    contacts: createContactsListSearchAndFilterService(mode),
     events: createEventCrudAndImportService(mode),
     followups: createFollowupTaskGenerationService(mode),
   };
@@ -463,29 +533,51 @@ export async function loadAppScheduleRouteViewModel(
   const requestedScenario = readRouteScenario(searchParams);
   const scenario = requestedScenario ?? undefined;
   const servicesWereProvided = services !== undefined;
-  let usedProbeFallback = false;
-  let sourceResults = await loadScheduleSourceResults({
+  const sourceResults = await loadScheduleSourceResults({
     scenario,
     services: services ?? createAppScheduleRouteServices(),
   });
 
-  if (
-    shouldUseScheduleProbeFallback({
-      requestedScenario,
-      results: sourceResults.results,
-      servicesWereProvided,
-    })
-  ) {
-    usedProbeFallback = true;
-    sourceResults = await loadScheduleSourceResults({
-      services: createAppScheduleRouteServices(scheduleProbeMode),
-    });
+  const { contactResult, eventResult, followupResult, results } = sourceResults;
+  const agentScheduleItems =
+    requestedScenario || servicesWereProvided
+      ? []
+      : await listConfiguredOrbitScheduleItems();
+
+  if (requestedScenario) {
+    return {
+      routeState: routeStateViewModel({
+        results,
+        scenario: requestedScenario,
+      }),
+      state: "route-state",
+    };
   }
 
-  const { contactResult, eventResult, followupResult, results } = sourceResults;
-  const routeScenario = requestedScenario ?? routeScenarioForResults(results);
+  const contacts = contactResult.success ? contactResult.data.contacts : [];
+  const events = eventResult.success ? eventResult.data.events : [];
+  const followupTasks = followupResult.success ? followupResult.data.tasks : [];
+  const contact = selectScheduleContact(contacts, followupTasks);
+  const event = selectScheduleEvent(events);
+  const contactTask = contact
+    ? followupTaskForContact(contact, followupTasks)
+    : null;
+  const arrangements = [
+    ...(contact
+      ? [
+          buildContactArrangement({
+            contact,
+            followupTask: contactTask,
+          }),
+        ]
+      : []),
+    ...(event ? [buildEventArrangement({ event })] : []),
+    ...agentScheduleItems.map(buildAgentScheduleArrangement),
+  ];
 
-  if (routeScenario) {
+  if (arrangements.length === 0) {
+    const routeScenario = routeScenarioForResults(results) ?? "empty";
+
     return {
       routeState: routeStateViewModel({
         results,
@@ -494,36 +586,6 @@ export async function loadAppScheduleRouteViewModel(
       state: "route-state",
     };
   }
-
-  if (
-    contactResult.success === false ||
-    eventResult.success === false ||
-    followupResult.success === false ||
-    !contactResult.data.contact
-  ) {
-    return {
-      routeState: routeStateViewModel({
-        results,
-        scenario: "failure",
-      }),
-      state: "route-state",
-    };
-  }
-
-  const agentScheduleItems = servicesWereProvided
-    ? []
-    : await listConfiguredOrbitScheduleItems();
-  const arrangements = [
-    buildContactArrangement({
-      contact: contactResult.data.contact,
-      followupTask: followupResult.data.tasks[0] ?? null,
-      targetRoutesMayNeedRecovery: usedProbeFallback,
-    }),
-    buildEventArrangement({
-      event: eventResult.data.event,
-    }),
-    ...agentScheduleItems.map(buildAgentScheduleArrangement),
-  ];
 
   return {
     arrangements,
@@ -534,6 +596,13 @@ export async function loadAppScheduleRouteViewModel(
       ]),
     ],
     state: "success",
-    summary: `已从联系人、活动和跟进来源整理 ${arrangements.length} 条可复核安排。`,
+    summary: `已从当前可用的联系人、活动和跟进来源整理 ${arrangements.length} 条可复核安排。`,
   };
 }
+
+export const __internal = {
+  followupTaskForContact,
+  normalizedEntityIdentity,
+  selectScheduleContact,
+  selectScheduleEvent,
+};

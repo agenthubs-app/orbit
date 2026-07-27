@@ -4,7 +4,6 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { createMockEventCrudAndImportService } from "../../features/events/event-crud-and-import/mock-service";
 import {
   loadAppScheduleRouteViewModel,
@@ -68,25 +67,29 @@ test("schedule route model maps arrangements through contact, event, and follow-
 
   assert.ok(contactArrangement, "expected a contact-backed arrangement");
   assert.ok(eventArrangement, "expected an event-backed arrangement");
-  assert.equal(contactArrangement.href, "/app/contacts/demo-contact-1");
-  assert.equal(eventArrangement.href, "/app/schedule/events/event_001");
+  assert.equal(
+    contactArrangement.href,
+    `/app/contacts/${encodeURIComponent(contactArrangement.target.id)}`,
+  );
+  assert.equal(
+    eventArrangement.href,
+    `/app/events/${encodeURIComponent(eventArrangement.target.id)}`,
+  );
+  assert.equal(contactArrangement.target.id, "contact:kenji-watanabe");
+  assert.equal(eventArrangement.target.id, "demo-event-1");
   assert.match(contactArrangement.primaryName, /Kenji Watanabe/);
   assert.match(contactArrangement.secondaryName, /创始人 · Aster Grid/);
   assert.match(contactArrangement.reason, /关系原因/);
   assert.match(contactArrangement.reason, /引荐|复核来源/);
   assert.match(contactArrangement.timing, /跟进时机/);
   assert.match(contactArrangement.sourceContext, /来源/);
-  assert.match(eventArrangement.primaryName, /种子轮投资人与创始人匹配沙龙/);
-  assert.match(eventArrangement.secondaryName, /地点：Orbit 关系室/);
+  assert.match(eventArrangement.primaryName, /Climate founders dinner/);
+  assert.match(eventArrangement.secondaryName, /地点：Kanda Founders Table/);
   assert.match(eventArrangement.reason, /活动原因/);
-  assert.match(eventArrangement.timing, /2026年7月9日/);
+  assert.match(eventArrangement.timing, /2026年6月28日/);
   assert.match(eventArrangement.sourceContext, /来源/);
-  assert.equal(eventArrangement.targetState, "detail-unavailable");
-  assert.match(eventArrangement.targetNote ?? "", /安排预览/);
-  assert.match(
-    eventArrangement.targetNote ?? "",
-    /种子轮投资人与创始人匹配沙龙/,
-  );
+  assert.equal(eventArrangement.targetState, "ready");
+  assert.match(eventArrangement.targetNote ?? "", /Climate founders dinner/);
   assert.match(eventArrangement.targetNote ?? "", /活动详情/);
   assert.match(eventArrangement.targetNote ?? "", /不会写入日历/);
 
@@ -105,23 +108,23 @@ test("schedule route model maps arrangements through contact, event, and follow-
   );
 });
 
-test("default schedule route keeps data-backed arrangements when live sources are unavailable", async () => {
+test("default schedule route never swaps live failures for unrelated demo entities", async () => {
   const model = await withOrbitModuleMode("live", () =>
     loadAppScheduleRouteViewModel(),
   );
 
-  assert.equal(model.state, "success");
+  assert.equal(model.state, "route-state");
 
-  if (model.state !== "success") return;
+  if (model.state !== "route-state") return;
 
-  assert.equal(model.arrangements[0]?.href, "/app/contacts/demo-contact-1");
-  assert.equal(model.arrangements[1]?.href, "/app/schedule/events/event_001");
-  assert.equal(model.arrangements[0]?.targetState, "detail-unavailable");
-  assert.match(model.arrangements[0]?.targetNote ?? "", /联系人详情/);
-  assert.match(model.summary, /可复核安排/);
+  assert.equal(model.routeState.scenario, "failure");
+  assert.doesNotMatch(
+    JSON.stringify(model),
+    /demo-contact-1|event_001|Kenji Watanabe/,
+  );
 });
 
-test("schedule arrangement targets resolve through existing detail boundaries", async () => {
+test("schedule arrangements preserve the exact entity ids returned by their sources", async () => {
   const model = await loadAppScheduleRouteViewModel();
 
   assert.equal(model.state, "success");
@@ -130,18 +133,13 @@ test("schedule arrangement targets resolve through existing detail boundaries", 
 
   for (const arrangement of model.arrangements) {
     if (arrangement.target.kind === "contact") {
-      const contactRoute = await loadAppContactDetailRoute({
-        contactId: arrangement.target.id,
-        mode: "mock",
-      });
-
       assert.equal(
-        contactRoute.routeState,
-        "success",
-        `contact href ${arrangement.href} should resolve through contact detail`,
+        arrangement.href,
+        `/app/contacts/${encodeURIComponent(arrangement.target.id)}`,
       );
+      assert.equal(arrangement.targetState, "ready");
     } else {
-      const eventResult = createMockEventCrudAndImportService().getEvent({
+      const eventResult = await createMockEventCrudAndImportService().getEvent({
         eventId: arrangement.target.id,
       });
 
@@ -152,17 +150,17 @@ test("schedule arrangement targets resolve through existing detail boundaries", 
       );
       assert.match(
         arrangement.href,
-        /^\/app\/schedule\/events\/[^/]+$/,
-        `event href ${arrangement.href} should use the schedule preview route while composed detail is unavailable`,
+        /^\/app\/events\/[^/]+$/,
+        `event href ${arrangement.href} should use the canonical event detail route`,
       );
+      assert.equal(arrangement.targetState, "ready");
     }
   }
 });
 
 test("schedule event preview route preserves unavailable event context", async () => {
-  const { loadAppScheduleEventPreviewRouteViewModel } = await import(
-    "../../app/(app)/app/schedule/events/[id]/event-preview-route-view-model"
-  );
+  const { loadAppScheduleEventPreviewRouteViewModel } =
+    await import("../../app/(app)/app/schedule/events/[id]/event-preview-route-view-model");
   const model = await loadAppScheduleEventPreviewRouteViewModel({
     eventId: "event_001",
   });
@@ -241,7 +239,7 @@ test("schedule route view model owns arrangement mapping outside the page compon
     "app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts",
   );
 
-  assert.match(routeModelSource, /createContactDetailTagStatusService/);
+  assert.match(routeModelSource, /createContactsListSearchAndFilterService/);
   assert.match(routeModelSource, /createEventCrudAndImportService/);
   assert.match(routeModelSource, /createFollowupTaskGenerationService/);
   assert.match(routeModelSource, /AppScheduleArrangementViewModel/);
@@ -255,7 +253,10 @@ test("schedule live implementation doc records replacement boundary", () => {
 
   assert.match(doc, /schedule-route-view-model\.ts/);
   assert.match(doc, /features\/contacts\/live/);
-  assert.match(doc, /features\/events\/event-crud-and-import\/live-service\.ts/);
+  assert.match(
+    doc,
+    /features\/events\/event-crud-and-import\/live-service\.ts/,
+  );
   assert.match(doc, /features\/followups\/live-service\.ts/);
   assert.match(doc, /ORBIT_MODULE_MODE/);
   assert.match(doc, /privacy|隐私/i);
