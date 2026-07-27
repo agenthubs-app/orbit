@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "a31966698f9996af54adf9429af2e14f453853cf",
-  "generatedAt": "2026-07-27T18:16:16+09:00",
+  "commit": "841092e41b7ee13c511eec602b3a524cd55e5f1e",
+  "generatedAt": "2026-07-27T18:27:12+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -683,6 +683,7 @@
         "repos/orbits/tests/pages/app-contacts-new-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-event-registration-guide.test.tsx",
         "repos/orbits/tests/pages/app-events-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-home-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-party-live-route-services.test.ts",
@@ -1311,6 +1312,7 @@
         "repos/orbits/tests/pages/agent-workflow-route-boundary.test.ts",
         "repos/orbits/tests/pages/app-agent-todo-summary.test.tsx",
         "repos/orbits/tests/pages/app-contacts-list-filtering.test.ts",
+        "repos/orbits/tests/pages/app-demo-visual-assets.test.tsx",
         "repos/orbits/tests/pages/app-party-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-relationship-inbox-panel.test.tsx"
       ],
@@ -4934,7 +4936,7 @@
         {
           "actionId": "/app/contacts/[id]#2",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-card-connection.tsx",
-          "line": 266,
+          "line": 267,
           "kind": "link",
           "tag": "a",
           "label": "View pipeline",
@@ -4953,7 +4955,7 @@
         {
           "actionId": "/app/contacts/[id]#3",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-card-connection.tsx",
-          "line": 309,
+          "line": 310,
           "kind": "link",
           "tag": "a",
           "label": "Back to contacts",
@@ -4972,7 +4974,7 @@
         {
           "actionId": "/app/contacts/[id]#4",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-card-connection.tsx",
-          "line": 328,
+          "line": 329,
           "kind": "link",
           "tag": "a",
           "label": "Ask iOrbit",
@@ -4991,7 +4993,7 @@
         {
           "actionId": "/app/contacts/[id]#5",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-card-connection.tsx",
-          "line": 329,
+          "line": 330,
           "kind": "button",
           "tag": "button",
           "label": "Draft email",
@@ -5012,7 +5014,7 @@
         {
           "actionId": "/app/contacts/[id]#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-card-connection.tsx",
-          "line": 353,
+          "line": 354,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Back to contacts\", zh: \"返回名片夹\" })",
@@ -5031,7 +5033,7 @@
         {
           "actionId": "/app/contacts/[id]#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-card-connection.tsx",
-          "line": 377,
+          "line": 378,
           "kind": "link",
           "tag": "a",
           "label": "Ask iOrbit",
@@ -5050,7 +5052,7 @@
         {
           "actionId": "/app/contacts/[id]#8",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-card-connection.tsx",
-          "line": 378,
+          "line": 379,
           "kind": "button",
           "tag": "button",
           "label": "Draft email",
@@ -5071,7 +5073,7 @@
         {
           "actionId": "/app/contacts/[id]#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1001,
+          "line": 1002,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts from your card holder. Write the intro note yourself, or leave it blank for the current AI to generate. Intro note Cancel Save introduction",
@@ -5092,7 +5094,7 @@
         {
           "actionId": "/app/contacts/[id]#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1012,
+          "line": 1013,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -5113,7 +5115,7 @@
         {
           "actionId": "/app/contacts/[id]#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1013,
+          "line": 1014,
           "kind": "button",
           "tag": "button",
           "label": "Save introduction",
@@ -5132,7 +5134,7 @@
         {
           "actionId": "/app/contacts/[id]#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1060,
+          "line": 1061,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -5153,7 +5155,7 @@
         {
           "actionId": "/app/contacts/[id]#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1065,
+          "line": 1066,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -5174,7 +5176,7 @@
         {
           "actionId": "/app/contacts/[id]#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1089,
+          "line": 1090,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -5195,7 +5197,7 @@
         {
           "actionId": "/app/contacts/[id]#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 120,
+          "line": 121,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -5214,7 +5216,7 @@
         {
           "actionId": "/app/contacts/[id]#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 170,
+          "line": 171,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -5233,7 +5235,7 @@
         {
           "actionId": "/app/contacts/[id]#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 204,
+          "line": 205,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -5252,7 +5254,7 @@
         {
           "actionId": "/app/contacts/[id]#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 292,
+          "line": 293,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -5274,7 +5276,7 @@
         {
           "actionId": "/app/contacts/[id]#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 326,
+          "line": 327,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -5293,7 +5295,7 @@
         {
           "actionId": "/app/contacts/[id]#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 451,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -5312,7 +5314,7 @@
         {
           "actionId": "/app/contacts/[id]#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 453,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -5331,7 +5333,7 @@
         {
           "actionId": "/app/contacts/[id]#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 464,
+          "line": 465,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -5352,7 +5354,7 @@
         {
           "actionId": "/app/contacts/[id]#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 469,
+          "line": 470,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -5373,7 +5375,7 @@
         {
           "actionId": "/app/contacts/[id]#24",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 475,
+          "line": 476,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -5394,7 +5396,7 @@
         {
           "actionId": "/app/contacts/[id]#25",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 492,
+          "line": 493,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -5415,7 +5417,7 @@
         {
           "actionId": "/app/contacts/[id]#26",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 512,
+          "line": 513,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -5436,7 +5438,7 @@
         {
           "actionId": "/app/contacts/[id]#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 524,
+          "line": 525,
           "kind": "button",
           "tag": "button",
           "label": "{tag}",
@@ -5457,7 +5459,7 @@
         {
           "actionId": "/app/contacts/[id]#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 539,
+          "line": 540,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -5478,7 +5480,7 @@
         {
           "actionId": "/app/contacts/[id]#29",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 553,
+          "line": 554,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -5497,7 +5499,7 @@
         {
           "actionId": "/app/contacts/[id]#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 624,
+          "line": 625,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -5518,7 +5520,7 @@
         {
           "actionId": "/app/contacts/[id]#31",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 851,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -5539,7 +5541,7 @@
         {
           "actionId": "/app/contacts/[id]#32",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 853,
+          "line": 854,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -5560,7 +5562,7 @@
         {
           "actionId": "/app/contacts/[id]#33",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 929,
+          "line": 930,
           "kind": "button",
           "tag": "button",
           "label": "{person.displayName}",
@@ -5581,7 +5583,7 @@
         {
           "actionId": "/app/contacts/[id]#34",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 934,
+          "line": 935,
           "kind": "button",
           "tag": "button",
           "label": "Pick a contact",
@@ -5602,7 +5604,7 @@
         {
           "actionId": "/app/contacts/[id]#35",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 985,
+          "line": 986,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -7849,7 +7851,7 @@
         {
           "actionId": "/app/contacts/dashboard#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1001,
+          "line": 1002,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts from your card holder. Write the intro note yourself, or leave it blank for the current AI to generate. Intro note Cancel Save introduction",
@@ -7870,7 +7872,7 @@
         {
           "actionId": "/app/contacts/dashboard#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1012,
+          "line": 1013,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -7891,7 +7893,7 @@
         {
           "actionId": "/app/contacts/dashboard#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1013,
+          "line": 1014,
           "kind": "button",
           "tag": "button",
           "label": "Save introduction",
@@ -7910,7 +7912,7 @@
         {
           "actionId": "/app/contacts/dashboard#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1060,
+          "line": 1061,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -7931,7 +7933,7 @@
         {
           "actionId": "/app/contacts/dashboard#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1065,
+          "line": 1066,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -7952,7 +7954,7 @@
         {
           "actionId": "/app/contacts/dashboard#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1089,
+          "line": 1090,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -7973,7 +7975,7 @@
         {
           "actionId": "/app/contacts/dashboard#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 120,
+          "line": 121,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -7992,7 +7994,7 @@
         {
           "actionId": "/app/contacts/dashboard#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 170,
+          "line": 171,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -8011,7 +8013,7 @@
         {
           "actionId": "/app/contacts/dashboard#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 204,
+          "line": 205,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -8030,7 +8032,7 @@
         {
           "actionId": "/app/contacts/dashboard#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 292,
+          "line": 293,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -8052,7 +8054,7 @@
         {
           "actionId": "/app/contacts/dashboard#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 326,
+          "line": 327,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -8071,7 +8073,7 @@
         {
           "actionId": "/app/contacts/dashboard#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 451,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -8090,7 +8092,7 @@
         {
           "actionId": "/app/contacts/dashboard#24",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 453,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -8109,7 +8111,7 @@
         {
           "actionId": "/app/contacts/dashboard#25",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 464,
+          "line": 465,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -8130,7 +8132,7 @@
         {
           "actionId": "/app/contacts/dashboard#26",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 469,
+          "line": 470,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -8151,7 +8153,7 @@
         {
           "actionId": "/app/contacts/dashboard#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 475,
+          "line": 476,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -8172,7 +8174,7 @@
         {
           "actionId": "/app/contacts/dashboard#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 492,
+          "line": 493,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -8193,7 +8195,7 @@
         {
           "actionId": "/app/contacts/dashboard#29",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 512,
+          "line": 513,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -8214,7 +8216,7 @@
         {
           "actionId": "/app/contacts/dashboard#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 524,
+          "line": 525,
           "kind": "button",
           "tag": "button",
           "label": "{tag}",
@@ -8235,7 +8237,7 @@
         {
           "actionId": "/app/contacts/dashboard#31",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 539,
+          "line": 540,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -8256,7 +8258,7 @@
         {
           "actionId": "/app/contacts/dashboard#32",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 553,
+          "line": 554,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -8275,7 +8277,7 @@
         {
           "actionId": "/app/contacts/dashboard#33",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 624,
+          "line": 625,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -8296,7 +8298,7 @@
         {
           "actionId": "/app/contacts/dashboard#34",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 851,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -8317,7 +8319,7 @@
         {
           "actionId": "/app/contacts/dashboard#35",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 853,
+          "line": 854,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -8338,7 +8340,7 @@
         {
           "actionId": "/app/contacts/dashboard#36",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 929,
+          "line": 930,
           "kind": "button",
           "tag": "button",
           "label": "{person.displayName}",
@@ -8359,7 +8361,7 @@
         {
           "actionId": "/app/contacts/dashboard#37",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 934,
+          "line": 935,
           "kind": "button",
           "tag": "button",
           "label": "Pick a contact",
@@ -8380,7 +8382,7 @@
         {
           "actionId": "/app/contacts/dashboard#38",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 985,
+          "line": 986,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -9265,7 +9267,7 @@
         {
           "actionId": "/app/contacts/graph#2",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1001,
+          "line": 1002,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts from your card holder. Write the intro note yourself, or leave it blank for the current AI to generate. Intro note Cancel Save introduction",
@@ -9286,7 +9288,7 @@
         {
           "actionId": "/app/contacts/graph#3",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1012,
+          "line": 1013,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -9307,7 +9309,7 @@
         {
           "actionId": "/app/contacts/graph#4",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1013,
+          "line": 1014,
           "kind": "button",
           "tag": "button",
           "label": "Save introduction",
@@ -9326,7 +9328,7 @@
         {
           "actionId": "/app/contacts/graph#5",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1060,
+          "line": 1061,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -9347,7 +9349,7 @@
         {
           "actionId": "/app/contacts/graph#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1065,
+          "line": 1066,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -9368,7 +9370,7 @@
         {
           "actionId": "/app/contacts/graph#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1089,
+          "line": 1090,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -9389,7 +9391,7 @@
         {
           "actionId": "/app/contacts/graph#8",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 120,
+          "line": 121,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -9408,7 +9410,7 @@
         {
           "actionId": "/app/contacts/graph#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 170,
+          "line": 171,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -9427,7 +9429,7 @@
         {
           "actionId": "/app/contacts/graph#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 204,
+          "line": 205,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -9446,7 +9448,7 @@
         {
           "actionId": "/app/contacts/graph#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 292,
+          "line": 293,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -9468,7 +9470,7 @@
         {
           "actionId": "/app/contacts/graph#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 326,
+          "line": 327,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -9487,7 +9489,7 @@
         {
           "actionId": "/app/contacts/graph#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 451,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -9506,7 +9508,7 @@
         {
           "actionId": "/app/contacts/graph#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 453,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -9525,7 +9527,7 @@
         {
           "actionId": "/app/contacts/graph#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 464,
+          "line": 465,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -9546,7 +9548,7 @@
         {
           "actionId": "/app/contacts/graph#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 469,
+          "line": 470,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -9567,7 +9569,7 @@
         {
           "actionId": "/app/contacts/graph#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 475,
+          "line": 476,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -9588,7 +9590,7 @@
         {
           "actionId": "/app/contacts/graph#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 492,
+          "line": 493,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -9609,7 +9611,7 @@
         {
           "actionId": "/app/contacts/graph#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 512,
+          "line": 513,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -9630,7 +9632,7 @@
         {
           "actionId": "/app/contacts/graph#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 524,
+          "line": 525,
           "kind": "button",
           "tag": "button",
           "label": "{tag}",
@@ -9651,7 +9653,7 @@
         {
           "actionId": "/app/contacts/graph#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 539,
+          "line": 540,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -9672,7 +9674,7 @@
         {
           "actionId": "/app/contacts/graph#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 553,
+          "line": 554,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -9691,7 +9693,7 @@
         {
           "actionId": "/app/contacts/graph#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 624,
+          "line": 625,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -9712,7 +9714,7 @@
         {
           "actionId": "/app/contacts/graph#24",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 851,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -9733,7 +9735,7 @@
         {
           "actionId": "/app/contacts/graph#25",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 853,
+          "line": 854,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -9754,7 +9756,7 @@
         {
           "actionId": "/app/contacts/graph#26",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 929,
+          "line": 930,
           "kind": "button",
           "tag": "button",
           "label": "{person.displayName}",
@@ -9775,7 +9777,7 @@
         {
           "actionId": "/app/contacts/graph#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 934,
+          "line": 935,
           "kind": "button",
           "tag": "button",
           "label": "Pick a contact",
@@ -9796,7 +9798,7 @@
         {
           "actionId": "/app/contacts/graph#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 985,
+          "line": 986,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -10744,7 +10746,7 @@
         {
           "actionId": "/app/contacts/intros#2",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1001,
+          "line": 1002,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts from your card holder. Write the intro note yourself, or leave it blank for the current AI to generate. Intro note Cancel Save introduction",
@@ -10765,7 +10767,7 @@
         {
           "actionId": "/app/contacts/intros#3",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1012,
+          "line": 1013,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -10786,7 +10788,7 @@
         {
           "actionId": "/app/contacts/intros#4",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1013,
+          "line": 1014,
           "kind": "button",
           "tag": "button",
           "label": "Save introduction",
@@ -10805,7 +10807,7 @@
         {
           "actionId": "/app/contacts/intros#5",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1060,
+          "line": 1061,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -10826,7 +10828,7 @@
         {
           "actionId": "/app/contacts/intros#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1065,
+          "line": 1066,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -10847,7 +10849,7 @@
         {
           "actionId": "/app/contacts/intros#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1089,
+          "line": 1090,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -10868,7 +10870,7 @@
         {
           "actionId": "/app/contacts/intros#8",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 120,
+          "line": 121,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -10887,7 +10889,7 @@
         {
           "actionId": "/app/contacts/intros#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 170,
+          "line": 171,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -10906,7 +10908,7 @@
         {
           "actionId": "/app/contacts/intros#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 204,
+          "line": 205,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -10925,7 +10927,7 @@
         {
           "actionId": "/app/contacts/intros#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 292,
+          "line": 293,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -10947,7 +10949,7 @@
         {
           "actionId": "/app/contacts/intros#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 326,
+          "line": 327,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -10966,7 +10968,7 @@
         {
           "actionId": "/app/contacts/intros#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 451,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -10985,7 +10987,7 @@
         {
           "actionId": "/app/contacts/intros#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 453,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -11004,7 +11006,7 @@
         {
           "actionId": "/app/contacts/intros#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 464,
+          "line": 465,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -11025,7 +11027,7 @@
         {
           "actionId": "/app/contacts/intros#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 469,
+          "line": 470,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -11046,7 +11048,7 @@
         {
           "actionId": "/app/contacts/intros#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 475,
+          "line": 476,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -11067,7 +11069,7 @@
         {
           "actionId": "/app/contacts/intros#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 492,
+          "line": 493,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -11088,7 +11090,7 @@
         {
           "actionId": "/app/contacts/intros#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 512,
+          "line": 513,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -11109,7 +11111,7 @@
         {
           "actionId": "/app/contacts/intros#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 524,
+          "line": 525,
           "kind": "button",
           "tag": "button",
           "label": "{tag}",
@@ -11130,7 +11132,7 @@
         {
           "actionId": "/app/contacts/intros#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 539,
+          "line": 540,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -11151,7 +11153,7 @@
         {
           "actionId": "/app/contacts/intros#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 553,
+          "line": 554,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -11170,7 +11172,7 @@
         {
           "actionId": "/app/contacts/intros#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 624,
+          "line": 625,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -11191,7 +11193,7 @@
         {
           "actionId": "/app/contacts/intros#24",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 851,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -11212,7 +11214,7 @@
         {
           "actionId": "/app/contacts/intros#25",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 853,
+          "line": 854,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -11233,7 +11235,7 @@
         {
           "actionId": "/app/contacts/intros#26",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 929,
+          "line": 930,
           "kind": "button",
           "tag": "button",
           "label": "{person.displayName}",
@@ -11254,7 +11256,7 @@
         {
           "actionId": "/app/contacts/intros#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 934,
+          "line": 935,
           "kind": "button",
           "tag": "button",
           "label": "Pick a contact",
@@ -11275,7 +11277,7 @@
         {
           "actionId": "/app/contacts/intros#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 985,
+          "line": 986,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -13378,7 +13380,7 @@
         {
           "actionId": "/app/contacts#2",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1001,
+          "line": 1002,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts from your card holder. Write the intro note yourself, or leave it blank for the current AI to generate. Intro note Cancel Save introduction",
@@ -13399,7 +13401,7 @@
         {
           "actionId": "/app/contacts#3",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1012,
+          "line": 1013,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -13420,7 +13422,7 @@
         {
           "actionId": "/app/contacts#4",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1013,
+          "line": 1014,
           "kind": "button",
           "tag": "button",
           "label": "Save introduction",
@@ -13439,7 +13441,7 @@
         {
           "actionId": "/app/contacts#5",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1060,
+          "line": 1061,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -13460,7 +13462,7 @@
         {
           "actionId": "/app/contacts#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1065,
+          "line": 1066,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -13481,7 +13483,7 @@
         {
           "actionId": "/app/contacts#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1089,
+          "line": 1090,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -13502,7 +13504,7 @@
         {
           "actionId": "/app/contacts#8",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 120,
+          "line": 121,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -13521,7 +13523,7 @@
         {
           "actionId": "/app/contacts#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 170,
+          "line": 171,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -13540,7 +13542,7 @@
         {
           "actionId": "/app/contacts#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 204,
+          "line": 205,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -13559,7 +13561,7 @@
         {
           "actionId": "/app/contacts#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 292,
+          "line": 293,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -13581,7 +13583,7 @@
         {
           "actionId": "/app/contacts#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 326,
+          "line": 327,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -13600,7 +13602,7 @@
         {
           "actionId": "/app/contacts#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 451,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -13619,7 +13621,7 @@
         {
           "actionId": "/app/contacts#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 453,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -13638,7 +13640,7 @@
         {
           "actionId": "/app/contacts#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 464,
+          "line": 465,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -13659,7 +13661,7 @@
         {
           "actionId": "/app/contacts#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 469,
+          "line": 470,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -13680,7 +13682,7 @@
         {
           "actionId": "/app/contacts#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 475,
+          "line": 476,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -13701,7 +13703,7 @@
         {
           "actionId": "/app/contacts#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 492,
+          "line": 493,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -13722,7 +13724,7 @@
         {
           "actionId": "/app/contacts#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 512,
+          "line": 513,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -13743,7 +13745,7 @@
         {
           "actionId": "/app/contacts#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 524,
+          "line": 525,
           "kind": "button",
           "tag": "button",
           "label": "{tag}",
@@ -13764,7 +13766,7 @@
         {
           "actionId": "/app/contacts#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 539,
+          "line": 540,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -13785,7 +13787,7 @@
         {
           "actionId": "/app/contacts#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 553,
+          "line": 554,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -13804,7 +13806,7 @@
         {
           "actionId": "/app/contacts#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 624,
+          "line": 625,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -13825,7 +13827,7 @@
         {
           "actionId": "/app/contacts#24",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 851,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -13846,7 +13848,7 @@
         {
           "actionId": "/app/contacts#25",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 853,
+          "line": 854,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -13867,7 +13869,7 @@
         {
           "actionId": "/app/contacts#26",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 929,
+          "line": 930,
           "kind": "button",
           "tag": "button",
           "label": "{person.displayName}",
@@ -13888,7 +13890,7 @@
         {
           "actionId": "/app/contacts#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 934,
+          "line": 935,
           "kind": "button",
           "tag": "button",
           "label": "Pick a contact",
@@ -13909,7 +13911,7 @@
         {
           "actionId": "/app/contacts#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 985,
+          "line": 986,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -14876,7 +14878,7 @@
         {
           "actionId": "/app/contacts/pipeline#3",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1001,
+          "line": 1002,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts from your card holder. Write the intro note yourself, or leave it blank for the current AI to generate. Intro note Cancel Save introduction",
@@ -14897,7 +14899,7 @@
         {
           "actionId": "/app/contacts/pipeline#4",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1012,
+          "line": 1013,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -14918,7 +14920,7 @@
         {
           "actionId": "/app/contacts/pipeline#5",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1013,
+          "line": 1014,
           "kind": "button",
           "tag": "button",
           "label": "Save introduction",
@@ -14937,7 +14939,7 @@
         {
           "actionId": "/app/contacts/pipeline#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1060,
+          "line": 1061,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -14958,7 +14960,7 @@
         {
           "actionId": "/app/contacts/pipeline#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1065,
+          "line": 1066,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -14979,7 +14981,7 @@
         {
           "actionId": "/app/contacts/pipeline#8",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1089,
+          "line": 1090,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -15000,7 +15002,7 @@
         {
           "actionId": "/app/contacts/pipeline#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 120,
+          "line": 121,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -15019,7 +15021,7 @@
         {
           "actionId": "/app/contacts/pipeline#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 170,
+          "line": 171,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -15038,7 +15040,7 @@
         {
           "actionId": "/app/contacts/pipeline#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 204,
+          "line": 205,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -15057,7 +15059,7 @@
         {
           "actionId": "/app/contacts/pipeline#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 292,
+          "line": 293,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -15079,7 +15081,7 @@
         {
           "actionId": "/app/contacts/pipeline#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 326,
+          "line": 327,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -15098,7 +15100,7 @@
         {
           "actionId": "/app/contacts/pipeline#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 451,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -15117,7 +15119,7 @@
         {
           "actionId": "/app/contacts/pipeline#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 453,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -15136,7 +15138,7 @@
         {
           "actionId": "/app/contacts/pipeline#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 464,
+          "line": 465,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -15157,7 +15159,7 @@
         {
           "actionId": "/app/contacts/pipeline#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 469,
+          "line": 470,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -15178,7 +15180,7 @@
         {
           "actionId": "/app/contacts/pipeline#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 475,
+          "line": 476,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -15199,7 +15201,7 @@
         {
           "actionId": "/app/contacts/pipeline#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 492,
+          "line": 493,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -15220,7 +15222,7 @@
         {
           "actionId": "/app/contacts/pipeline#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 512,
+          "line": 513,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -15241,7 +15243,7 @@
         {
           "actionId": "/app/contacts/pipeline#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 524,
+          "line": 525,
           "kind": "button",
           "tag": "button",
           "label": "{tag}",
@@ -15262,7 +15264,7 @@
         {
           "actionId": "/app/contacts/pipeline#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 539,
+          "line": 540,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -15283,7 +15285,7 @@
         {
           "actionId": "/app/contacts/pipeline#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 553,
+          "line": 554,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -15302,7 +15304,7 @@
         {
           "actionId": "/app/contacts/pipeline#24",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 624,
+          "line": 625,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -15323,7 +15325,7 @@
         {
           "actionId": "/app/contacts/pipeline#25",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 851,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -15344,7 +15346,7 @@
         {
           "actionId": "/app/contacts/pipeline#26",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 853,
+          "line": 854,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -15365,7 +15367,7 @@
         {
           "actionId": "/app/contacts/pipeline#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 929,
+          "line": 930,
           "kind": "button",
           "tag": "button",
           "label": "{person.displayName}",
@@ -15386,7 +15388,7 @@
         {
           "actionId": "/app/contacts/pipeline#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 934,
+          "line": 935,
           "kind": "button",
           "tag": "button",
           "label": "Pick a contact",
@@ -15407,7 +15409,7 @@
         {
           "actionId": "/app/contacts/pipeline#29",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 985,
+          "line": 986,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
