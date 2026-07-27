@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `2de61b1ac717e40bae97731fac3fffd10e307a9a`
-- Deterministic generated timestamp (commit time): 2026-07-27T17:32:23+09:00
+- Indexed commit: `7282c797a50f1e7e95b1a0a40ad627fcb474e85b`
+- Deterministic generated timestamp (commit time): 2026-07-27T18:03:48+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
@@ -18,7 +18,7 @@
 | `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 13 | 15 | 0 |
 | `/app/account/mobile-google` | Mobile Google authentication completion | public-auth-entry | Live, Mock, User Confirmed | 2 | 2 | 0 |
 | `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 13 | 10 | 0 |
-| `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 23 | 0 |
+| `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 25 | 0 |
 | `/app/admin/events` | Admin event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
 | `/app/admin` | Admin operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
 | `/app/agent` | Relationship operations Agent | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 76 | 30 | 0 |
