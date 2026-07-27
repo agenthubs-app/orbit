@@ -29,6 +29,7 @@ function personView(
 ): OrbitPartyPersonView {
   return {
     company: person.company,
+    contactId: null,
     g: person.g,
     groupNumber: person.groupNumber,
     icebreakers: person.icebreakers.map((item) => pick(item, language)),
@@ -63,6 +64,7 @@ export function buildOrbitParty(language: OrbitLanguage): OrbitPartyViewModel {
       label: pick(item.label, language),
       time: item.time,
     })),
+    checkInAvailable: false,
     eventId: "demo-event-1",
     eventName: pick(PARTY_CONTENT.eventName, language),
     // UI-audit fix C10. Every other element of this demo surface is written for

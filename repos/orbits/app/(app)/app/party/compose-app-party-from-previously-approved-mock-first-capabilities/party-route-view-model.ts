@@ -5,6 +5,7 @@ import {
 } from "../../events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import {
   loadAppProfileRouteViewModel,
+  type AppProfileActor,
   type AppProfileSearchParams,
 } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { profileRouteToOrbitProfileViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
@@ -26,6 +27,7 @@ export type AppPartySearchParams = Record<
 export type AppPartyRouteScenario = "empty" | "pending" | "failure";
 
 export interface AppPartyRouteInput {
+  actor?: AppProfileActor | null;
   eventId?: string | null;
   mode?: ModuleMode | string | null;
   scenario?: string | null;
@@ -92,10 +94,6 @@ function initialFor(name: string, fallback = "O"): string {
   return name.trim().slice(0, 1).toUpperCase() || fallback;
 }
 
-function compactId(value: string): string {
-  return value.replace(/[^a-z0-9]+/giu, "").toUpperCase();
-}
-
 function defaultEventIdFor(mode?: ModuleMode | string | null): string | null {
   const resolvedMode = resolveModuleMode(mode ?? undefined);
 
@@ -107,7 +105,7 @@ function routeEventId(input: AppPartyRouteInput): string | null {
     input.eventId?.trim() ||
     readSearchParam(input.searchParams, "eventId")?.trim() ||
     readSearchParam(input.searchParams, "code")?.trim() ||
-    defaultEventIdFor(input.mode ?? readSearchParam(input.searchParams, "mode"))
+    defaultEventIdFor(input.mode)
   );
 }
 
@@ -240,11 +238,18 @@ function personFromRecommendation(
     ? recommendation.matchSignals.map((signal) => signal.label).slice(0, 4)
     : [attendee.eventIntent, attendee.relationshipContext].filter(Boolean).slice(0, 4);
   const company = attendee.organization || "Event attendee";
+  const knownContact = model.attendeeRoster.attendees.find(
+    (item) => item.attendeeId === attendee.attendeeId,
+  )?.knownContactMarker;
 
   return {
     company,
+    contactId:
+      knownContact?.isKnownContact === true
+        ? knownContact.contactId
+        : null,
     g: gradientClasses[index % gradientClasses.length],
-    groupNumber: (index % 4) + 1,
+    groupNumber: null,
     icebreakers: [
       recommendation.openingLine.text,
       recommendation.recommendedAction,
@@ -258,7 +263,7 @@ function personFromRecommendation(
       recommendation.reasons.join(" ") ||
       recommendation.openingLine.rationale,
     score: recommendation.score,
-    seat: `${String.fromCharCode(65 + (index % 6))}${index + 1}`,
+    seat: null,
     seeking: recommendation.recommendedAction,
     summary: `${attendee.role} @ ${company}. ${attendee.eventIntent}`,
     title: attendee.role,
@@ -281,8 +286,11 @@ function personFromAttendee(
 
   return {
     company,
+    contactId: attendee.knownContactMarker.isKnownContact
+      ? attendee.knownContactMarker.contactId
+      : null,
     g: gradientClasses[(index + 1) % gradientClasses.length],
-    groupNumber: (index % 4) + 1,
+    groupNumber: null,
     icebreakers: [
       attendee.suggestedNextAction,
       attendee.relationshipContext,
@@ -294,7 +302,7 @@ function personFromAttendee(
     offering: attendee.relationshipContext,
     reason: attendee.relationshipContext,
     score: attendee.eligibleRecommendation.isEligible ? 82 : 70,
-    seat: `${String.fromCharCode(65 + (index % 6))}${index + 2}`,
+    seat: null,
     seeking: attendee.suggestedNextAction,
     summary: `${attendee.role} @ ${company}. ${attendee.relationshipContext}`,
     title: attendee.role,
@@ -321,7 +329,7 @@ function meView(input: {
   const profile = input.profile.profile;
 
   return {
-    groupNumber: 1,
+    groupNumber: null,
     initial: initialFor(profile.fullName),
     name: profile.fullName,
     offering: profile.offering.length ? profile.offering : ["relationship context"],
@@ -331,7 +339,7 @@ function meView(input: {
       "Confirm whether a warm introduction is appropriate.",
     ],
     role: [profile.title, profile.company].filter(Boolean).join(" · "),
-    seat: input.firstAttendee ? "A1" : "S1",
+    seat: null,
     seeking: profile.seeking.length ? profile.seeking : ["relevant introductions"],
     topics: profile.topics.length ? profile.topics : ["relationship context"],
   };
@@ -345,8 +353,9 @@ function partyViewModel(input: {
   const event = input.event.eventDetail.event;
 
   return {
-    accessCode: `${(compactId(event.id) || "ORBT").slice(0, 4)}-4821`,
+    accessCode: null,
     agenda: agendaFor(input.event),
+    checkInAvailable: false,
     eventId: event.id,
     eventPhase: eventStatusFor(
       event,
@@ -371,7 +380,7 @@ function partyViewModel(input: {
 export async function loadAppPartyRouteViewModel(
   input: AppPartyRouteInput = {},
 ): Promise<AppPartyRouteViewModel> {
-  const mode = input.mode ?? readSearchParam(input.searchParams, "mode") ?? undefined;
+  const mode = input.mode ?? undefined;
   const scenario = normalizeScenario(
     input.scenario ?? readSearchParam(input.searchParams, "scenario"),
   );
@@ -385,6 +394,7 @@ export async function loadAppPartyRouteViewModel(
   }
 
   const eventRoute = await loadAppEventDetailRoute({
+    actorId: input.actor?.id,
     eventId,
     mode,
     scenario,
@@ -396,6 +406,7 @@ export async function loadAppPartyRouteViewModel(
 
   const profileRoute = await loadAppProfileRouteViewModel(
     input.searchParams as AppProfileSearchParams | undefined,
+    input.actor,
   );
 
   if (profileRoute.state === "route-state") {

@@ -59,11 +59,7 @@ export const APP_EVENT_DETAIL_COMPOSED_CAPABILITIES = [
   "post-event-review",
 ] as const;
 
-const defaultWantConnectTargetContactId = "contact:priya-shah";
-const canonicalEventRelationshipContextFallbackIds = new Set(["event_001"]);
-
 export type AppEventDetailRouteScenario = "empty" | "pending" | "failure";
-export type AppEventDetailRouteAction = "want-to-connect";
 export type AppEventDetailRouteState =
   | "success"
   | "empty"
@@ -71,12 +67,10 @@ export type AppEventDetailRouteState =
   | "failure";
 
 export interface AppEventDetailRouteInput {
-  action?: string | null;
   actorId?: string | null;
   eventId: string;
   mode?: ModuleMode | string;
   scenario?: string | null;
-  targetContactId?: string | null;
 }
 
 export interface AppEventDetailActionResult {
@@ -312,24 +306,6 @@ function normalizeScenario(
   return null;
 }
 
-function normalizeAction(action?: string | null): AppEventDetailRouteAction | null {
-  // `record-intent` 是历史动作名，当前统一映射到 want-to-connect 本地意图。
-  if (action === "want-to-connect" || action === "record-intent") {
-    return "want-to-connect";
-  }
-
-  return null;
-}
-
-function relationshipContextEventIdFor(eventId: string): string {
-  // Orbit AI 推荐的 event_001 有自己的 canonical event detail record；
-  // 关系上下文仍复用现有 demo-event-1 capability payload，直到 live provider
-  // 为该推荐活动补齐 roster/recommendation/readiness 等同构记录。
-  return canonicalEventRelationshipContextFallbackIds.has(eventId)
-    ? APP_EVENT_DETAIL_EVENT_ID
-    : eventId;
-}
-
 function createBoundaryModel(
   routeState: Exclude<AppEventDetailRouteState, "success">,
   evidence: readonly string[] = routeBoundaryCopy[routeState].evidence,
@@ -442,8 +418,7 @@ function hasEmptySuccessPayloads(
 function targetDisplayName(
   payload: WantConnectPayload,
 ): string {
-  const targetContactId =
-    payload.intent?.targetContactId ?? defaultWantConnectTargetContactId;
+  const targetContactId = payload.intent?.targetContactId;
   const participant = payload.participants.find(
     (item) => item.contactId === targetContactId,
   );
@@ -454,24 +429,21 @@ function targetDisplayName(
 export function selectWantConnectTargetContactId(
   payload: WantConnectMatchesPayload,
   requestedTargetContactId?: string | null,
-): string {
+): string | null {
   const requested = requestedTargetContactId?.trim();
+  const availableTargetContactIds = new Set(
+    payload.matches.flatMap((match) =>
+      match.participantContactIds.filter(
+        (contactId) => contactId !== "contact:operator",
+      ),
+    ),
+  );
 
-  if (requested) {
+  if (requested && availableTargetContactIds.has(requested)) {
     return requested;
   }
 
-  for (const match of payload.matches) {
-    const targetContactId =
-      match.participantContactIds.find((contactId) => contactId !== "contact:operator") ??
-      match.participantContactIds[0];
-
-    if (targetContactId) {
-      return targetContactId;
-    }
-  }
-
-  return defaultWantConnectTargetContactId;
+  return availableTargetContactIds.values().next().value ?? null;
 }
 
 function hasOutsideSideEffects(payload: WantConnectPayload): boolean {
@@ -673,15 +645,14 @@ function buildSourceConsistency(input: {
 }
 
 export async function loadAppEventDetailRoute({
-  action,
   actorId,
   eventId,
   mode,
   scenario,
-  targetContactId,
 }: AppEventDetailRouteInput): Promise<AppEventDetailRouteModel> {
   // 主入口：加载七个 capability payload，统一处理失败/空/pending，
-  // 再生成 opening line、canonical event、一致性摘要和可选 no-op action result。
+  // 再生成 opening line、canonical event 和一致性摘要。页面加载保持只读；
+  // want-to-connect 写入只允许走独立的认证 POST API。
   const services = resolveRouteServices(mode);
 
   if (isBoundaryModel(services)) {
@@ -689,36 +660,34 @@ export async function loadAppEventDetailRoute({
   }
 
   const routeScenario = normalizeScenario(scenario);
-  const relationshipContextEventId = relationshipContextEventIdFor(eventId);
   const eventResult = await services.events.getEvent({
     actorId,
     eventId,
     scenario: routeScenario,
   });
   const attendeeRosterResult = await services.attendeeRoster.getAttendeeRoster({
-    eventId: relationshipContextEventId,
+    eventId,
     scenario: routeScenario,
   });
   const recommendationResult = await services.recommendations.listEventRecommendations({
-    eventId: relationshipContextEventId,
+    eventId,
     limit: 3,
     scenario: routeScenario,
   });
   const readinessResult = await services.readiness.getReadiness({
-    eventId: relationshipContextEventId,
+    eventId,
     scenario: routeScenario,
   });
   const wantConnectMatchesResult = await services.wantConnect.listMatches({
-    eventId: relationshipContextEventId,
+    eventId,
     scenario: routeScenario,
   });
   const encounterNoteResult = await services.encounterNotes.createEncounterNote({
-    contactId: defaultWantConnectTargetContactId,
-    eventId: relationshipContextEventId,
+    eventId,
     scenario: routeScenario,
   });
   const postEventReviewResult = await services.postEventReview.getPostEventReview({
-    eventId: relationshipContextEventId,
+    eventId,
     scenario: routeScenario,
   });
   const baseResults = [
@@ -772,7 +741,7 @@ export async function loadAppEventDetailRoute({
 
   const openingLineResult = await services.recommendations.composeOpeningLine({
     attendeeId: topRecommendation.attendee.attendeeId,
-    eventId: relationshipContextEventId,
+    eventId,
     scenario: routeScenario,
     style: "warm_context",
   });
@@ -791,22 +760,8 @@ export async function loadAppEventDetailRoute({
     recommendations: recommendationResult.data,
     wantConnectMatches: wantConnectMatchesResult.data,
   });
-  const actionResult =
-    normalizeAction(action) === "want-to-connect"
-      ? buildWantConnectActionResult(
-          await services.wantConnect.createWantToConnectIntent({
-            actorContactId: "contact:operator",
-            eventId: relationshipContextEventId,
-            targetContactId: selectWantConnectTargetContactId(
-              wantConnectMatchesResult.data,
-              targetContactId,
-            ),
-          }),
-        )
-      : null;
-
   return {
-    actionResult,
+    actionResult: null,
     attendeeRoster: attendeeRosterResult.data,
     canonicalEvent,
     composedCapabilities: APP_EVENT_DETAIL_COMPOSED_CAPABILITIES,

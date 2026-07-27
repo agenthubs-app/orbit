@@ -177,3 +177,36 @@ Console:
 
 - No application warning or error entries were recorded.
 - The temporary viewport override was reset and the browser tab was finalized.
+
+## 2026-07-27 — Party and Event Detail identity boundary
+
+Production runtime:
+
+- Ran 20 focused Party/Event Detail route, identity, state, desktop component, and mobile component tests; all passed.
+- Ran the production build; compilation, TypeScript, 39 static pages, and build traces completed successfully.
+- Started that exact build on isolated port 3100 and reused the authenticated audit session; port 3000 was not touched.
+- Regenerated the surface manifest from 38 production routes and 1,447 interactions.
+
+Desktop browser (`1280 × 720`):
+
+| Route | Authoritative evidence | Result |
+| --- | --- | --- |
+| `/app/party?eventId=event_001` | URL and rendered DOM | Controlled Party failure; no check-in or contact write claim; no Climate demo event, demo attendee, synthetic seat, or access code. |
+| `/app/party/checkin?eventId=event_001` | URL and rendered DOM | Same authenticated, fail-closed event boundary; no fake check-in success. |
+| `/app/party/graph?eventId=event_001` | URL and rendered DOM | Same authenticated, fail-closed event boundary; no borrowed demo graph context. |
+| `/app/party?eventId=demo-event-1&mode=mock` | URL and rendered DOM | Query-selected Mock mode was ignored; production services returned the controlled boundary and no fixture content. |
+| `/app/events/event_001?mode=mock` | URL and rendered DOM | Authenticated ownership check returned Event not found; query-selected Mock mode did not expose fixture detail. |
+
+Mobile evidence:
+
+- The focused component tests render the source-backed Event Detail model and assert the mobile-only hero, fixed CTA, safe-area inset, reachable schedule/attendee content, and absence of collapsed defaults.
+- Party route authentication, actor propagation, exact event identity, null seat/group/pass state, unavailable check-in, and contact-ID-only links are shared across desktop/mobile markup and covered by the focused tests.
+- The current in-app browser session exposed a fixed `1280 × 720` CSS viewport and no viewport override. No claim of a new 390 px runtime pass is made here; the preceding authenticated Party verification remains the latest real `390 × 844` evidence for the shared Party UI.
+
+Integrity checks:
+
+- `event_001` is no longer rewritten to `demo-event-1` for roster, recommendations, readiness, matches, encounter notes, review, opening line, or want-to-connect intent.
+- Production Event Detail GET navigation no longer forwards action or target-contact query parameters into a storage-writing route action.
+- The Event Detail loader no longer contains any want-to-connect write branch.
+- Production anonymous `POST /api/events/demo-event-1/want-to-connect` with a spoofed actor and Priya target returned `401 UNAUTHORIZED` with `authenticated-actor-required`.
+- The POST handler derives actor identity from the server session, checks event ownership, and rejects missing or non-match targets before the intent service runs.

@@ -36,7 +36,10 @@ test("event detail production route does not silently force a canonical id into 
 
   assert.doesNotMatch(pageSource, /canonicalDemoEventDetailIds/);
   assert.doesNotMatch(pageSource, /has\(input\.eventId\)\s*\?\s*"mock"/);
-  assert.match(pageSource, /return explicitMode \|\| undefined/);
+  assert.match(pageSource, /const routeMode = undefined/);
+  assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
+  assert.doesNotMatch(pageSource, /action: readSearchParam/);
+  assert.doesNotMatch(pageSource, /targetContactId: readSearchParam/);
 });
 
 async function withUnconfiguredLiveEvents<T>(
@@ -96,19 +99,24 @@ test("app event detail route reaches live child services instead of failing at t
 
 test("app event detail route composes the recommended event with relationship context without render-time writes", async () => {
   const routeModel = await loadAppEventDetailRoute({
-    eventId: "event_001",
+    eventId: "demo-event-1",
     mode: "mock",
   });
 
   assert.equal(routeModel.routeState, "success");
 
   if (routeModel.routeState === "success") {
-    assert.equal(routeModel.canonicalEvent.id, "event_001");
+    assert.equal(routeModel.canonicalEvent.id, "demo-event-1");
     assert.equal(
       routeModel.canonicalEvent.title,
-      "Seed Investor and Founder Matching Salon",
+      "Climate founders dinner",
     );
     assert.equal(routeModel.attendeeRoster.event.id, "demo-event-1");
+    assert.equal(routeModel.recommendations.event.id, "demo-event-1");
+    assert.equal(routeModel.readiness.event.id, "demo-event-1");
+    assert.equal(routeModel.wantConnectMatches.event.id, "demo-event-1");
+    assert.equal(routeModel.encounterNote.event.id, "demo-event-1");
+    assert.equal(routeModel.postEventReview.event.id, "demo-event-1");
     assert.ok(routeModel.attendeeRoster.attendees.length > 0);
     assert.ok(routeModel.recommendations.recommendations.length > 0);
     assert.ok(routeModel.wantConnectMatches.matches.length > 0);
@@ -125,7 +133,7 @@ test("app event detail route composes the recommended event with relationship co
 
 test("app event detail route preserves success shape through presenter-owned view models", async () => {
   const routeModel = await loadAppEventDetailRoute({
-    eventId: "event_001",
+    eventId: "demo-event-1",
     mode: "mock",
   });
 
@@ -136,15 +144,15 @@ test("app event detail route preserves success shape through presenter-owned vie
     const relationshipView =
       eventDetailRouteToRelationshipContextView(routeModel);
 
-    assert.equal(routeModel.canonicalEvent.id, "event_001");
-    assert.equal(eventView.id, "event_001");
+    assert.equal(routeModel.canonicalEvent.id, "demo-event-1");
+    assert.equal(eventView.id, "demo-event-1");
     assert.equal(eventView.name, routeModel.canonicalEvent.title);
     assert.equal(eventView.venue, routeModel.canonicalEvent.venue);
     assert.equal(eventView.startsAt, routeModel.canonicalEvent.startsAt);
     assert.equal(eventView.endsAt, routeModel.canonicalEvent.endsAt);
-    assert.equal(eventView.code, "EVENT001");
-    assert.equal(eventView.youRsvped, false);
-    assert.equal(eventView.stats.youRsvped, false);
+    assert.equal(eventView.code, "DEMOEVENT1");
+    assert.equal(eventView.youRsvped, true);
+    assert.equal(eventView.stats.youRsvped, true);
     assert.ok(eventView.agenda.length >= 3);
     assert.ok(eventView.stats.attendees.length > 0);
 
@@ -167,21 +175,21 @@ test("app event detail route preserves success shape through presenter-owned vie
 test("app event detail route preserves empty pending and failure boundaries", async () => {
   const cases = [
     {
-      eventId: "event_001",
+      eventId: "demo-event-1",
       expectedEvidence: /event-detail-empty|event-roster-empty/,
       expectedTitle: "No event workspace is ready",
       scenario: "empty",
       state: "empty",
     },
     {
-      eventId: "event_001",
+      eventId: "demo-event-1",
       expectedEvidence: /event-detail-pending|event-roster-pending/,
       expectedTitle: "Event workspace is loading",
       scenario: "pending",
       state: "pending",
     },
     {
-      eventId: "event_001",
+      eventId: "demo-event-1",
       expectedEvidence:
         /events-controlled-failure|event-detail-failure|event-detail-mock-failure/,
       expectedTitle: "Event workspace could not load",
@@ -189,9 +197,9 @@ test("app event detail route preserves empty pending and failure boundaries", as
       state: "failure",
     },
     {
-      eventId: "event_002",
+      eventId: "event_001",
       expectedEvidence:
-        /events-controlled-failure|event-detail-mock-missing|event-detail-failure/,
+        /event-roster-controlled-failure|event-recommendation-controlled-failure/,
       expectedTitle: "Event workspace could not load",
       scenario: null,
       state: "failure",
@@ -242,6 +250,10 @@ test("app event detail action uses the live match target and allows live storage
     const targetContactId = selectWantConnectTargetContactId(matches.data);
 
     assert.equal(targetContactId, "contact_078");
+    assert.equal(
+      selectWantConnectTargetContactId(matches.data, "contact:not-in-event"),
+      "contact_078",
+    );
 
     const intent = await service.createWantToConnectIntent({
       actorContactId: "contact:operator",

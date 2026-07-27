@@ -47,14 +47,6 @@ function readSearchParam(
   return Array.isArray(value) ? value[0] : value;
 }
 
-function resolveEventDetailRouteMode(input: {
-  explicitMode?: string;
-}): string | undefined {
-  const explicitMode = input.explicitMode?.trim();
-
-  return explicitMode || undefined;
-}
-
 async function getEventDetailPageLanguage(): Promise<OrbitLanguage> {
   try {
     return await getOrbitServerLanguage();
@@ -473,20 +465,17 @@ export default async function AppEventDetailPage({
     );
   }
 
-  const explicitMode = readSearchParam(query, "mode");
-  const routeMode = resolveEventDetailRouteMode({
-    explicitMode,
-  });
+  // Production route mode comes from server configuration. Query parameters
+  // must not switch an authenticated account onto demo capability fixtures.
+  const routeMode = undefined;
   const language = normalizeRegistrationProfileGuideLanguage(
     readSearchParam(query, "language") ?? (await getEventDetailPageLanguage()),
   );
   const routeModel = await loadAppEventDetailRoute({
-    action: readSearchParam(query, "action"),
     actorId: session.user.id,
     eventId: id,
     mode: routeMode,
     scenario: readSearchParam(query, "scenario"),
-    targetContactId: readSearchParam(query, "targetContactId"),
   });
   const registrationGuideResult =
     await loadRegistrationProfileGuideForCurrentTestUser({

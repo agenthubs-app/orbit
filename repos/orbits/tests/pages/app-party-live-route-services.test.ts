@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -118,7 +117,16 @@ test("party recommendations and graph do not claim unpersisted wallet writes", (
 
   assert.match(
     partyComponentSource,
-    /href=\{`\/app\/contacts\/\$\{encodeURIComponent\(p\.id\)\}`\}/,
+    /p\.contactId \?/,
+  );
+  assert.match(
+    partyComponentSource,
+    /encodeURIComponent\(p\.contactId\)/,
+  );
+  assert.match(partyComponentSource, /Attendee is not a saved contact/);
+  assert.doesNotMatch(
+    partyComponentSource,
+    /encodeURIComponent\(p\.id\)/,
   );
   assert.match(partyComponentSource, /source-backed and read only/);
   assert.doesNotMatch(
@@ -149,6 +157,18 @@ test("app party route loader returns a real party model in mock mode", async () 
       assert.ok(routeModel.party.me.name);
       assert.ok(routeModel.party.recommendations.length > 0);
       assert.ok(routeModel.party.tableMates.length > 0);
+      assert.equal(routeModel.party.accessCode, null);
+      assert.equal(routeModel.party.checkInAvailable, false);
+      assert.equal(routeModel.party.me.groupNumber, null);
+      assert.equal(routeModel.party.me.seat, null);
+      assert.ok(
+        routeModel.party.recommendations.every(
+          (person) =>
+            person.contactId === null &&
+            person.groupNumber === null &&
+            person.seat === null,
+        ),
+      );
     }
   });
 });
@@ -160,80 +180,86 @@ test("/app/dashboard redirects to the canonical Party route", () => {
   assert.doesNotMatch(dashboardPageSource, /buildOrbitParty|OrbitRealParty/);
 });
 
-test("app party check-in page renders the mock success page from the party loader", async () => {
-  await withMockParty(async () => {
-    const Page = (await import("../../app/(app)/app/party/checkin/page"))
-      .default as (props?: {
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        searchParams: Promise.resolve({
-          eventId: "demo-event-1",
-          mode: "mock",
-        }),
-      }),
-    );
+test("party pages require an authenticated actor and pass it to the shared loader", () => {
+  const pages = [
+    {
+      path: "app/(app)/app/party/page.tsx",
+      next: "%2Fapp%2Fparty",
+    },
+    {
+      path: "app/(app)/app/party/checkin/page.tsx",
+      next: "%2Fapp%2Fparty%2Fcheckin",
+    },
+    {
+      path: "app/(app)/app/party/graph/page.tsx",
+      next: "%2Fapp%2Fparty%2Fgraph",
+    },
+  ] as const;
 
-    assert.match(html, /data-orbit-route="app-party-checkin-route"/);
-    assert.match(html, /签到|Check in/);
-  });
-});
+  for (const page of pages) {
+    const pageSource = source(page.path);
 
-test("app party page renders a controlled live failure when storage is unconfigured", async () => {
-  await withUnconfiguredLiveParty(async () => {
-    const Page = (await import("../../app/(app)/app/party/page"))
-      .default as (props?: {
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        searchParams: Promise.resolve({ eventId: "event_01", mode: "live" }),
-      }),
-    );
-
-    assert.match(html, /Party could not load/);
+    assert.match(pageSource, /const session = await auth\(\)/);
+    assert.match(pageSource, /if \(!session\?\.user\?\.id\)/);
     assert.match(
-      html,
-      /LIVE_STORE_UNCONFIGURED|live-store-unconfigured|EVENTS_LIVE_STORE_UNCONFIGURED/,
+      pageSource,
+      new RegExp(`redirect\\("/app/account/login\\?next=${page.next}"\\)`),
     );
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-    assert.match(html, /app-party-route-state/);
+    assert.match(pageSource, /actor: \{/);
+    assert.match(pageSource, /id: session\.user\.id/);
+  }
+});
+
+test("party URL query mode cannot activate mock fixtures", async () => {
+  await withUnconfiguredLiveParty(async () => {
+    const { loadAppPartyRouteViewModel } = await import(
+      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+    );
+    const routeModel = await loadAppPartyRouteViewModel({
+      actor: {
+        displayName: "Authenticated member",
+        email: "member@example.com",
+        id: "actor:test",
+      },
+      searchParams: {
+        eventId: "demo-event-1",
+        mode: "mock",
+      },
+    });
+
+    assert.equal(routeModel.state, "route-state");
+    if (routeModel.state === "route-state") {
+      assert.equal(routeModel.routeState.scenario, "failure");
+      assert.match(
+        routeModel.routeState.evidenceIds.join(" "),
+        /live-store-unconfigured|LIVE_STORE_UNCONFIGURED/,
+      );
+    }
   });
 });
 
-test("app party check-in page renders a controlled live failure", async () => {
-  await withUnconfiguredLiveParty(async () => {
-    const Page = (await import("../../app/(app)/app/party/checkin/page"))
-      .default as (props?: {
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        searchParams: Promise.resolve({ eventId: "event_01", mode: "live" }),
-      }),
+test("party production composition preserves exact event identity", async () => {
+  await withMockParty(async () => {
+    const { loadAppPartyRouteViewModel } = await import(
+      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
     );
+    const routeModel = await loadAppPartyRouteViewModel({
+      actor: {
+        displayName: "Authenticated member",
+        email: "member@example.com",
+        id: "actor:test",
+      },
+      eventId: "event_001",
+      mode: "mock",
+    });
 
-    assert.match(html, /Party could not load/);
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-    assert.match(html, /app-party-checkin-route-state/);
-  });
-});
-
-test("app party graph page renders the same controlled live failure", async () => {
-  await withUnconfiguredLiveParty(async () => {
-    const Page = (await import("../../app/(app)/app/party/graph/page"))
-      .default as (props?: {
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        searchParams: Promise.resolve({ eventId: "event_01", mode: "live" }),
-      }),
-    );
-
-    assert.match(html, /Party could not load/);
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-    assert.match(html, /app-party-graph-route-state/);
+    assert.equal(routeModel.state, "route-state");
+    if (routeModel.state === "route-state") {
+      assert.equal(routeModel.routeState.scenario, "failure");
+      assert.match(
+        routeModel.routeState.evidenceIds.join(" "),
+        /event-roster-controlled-failure/,
+      );
+    }
   });
 });

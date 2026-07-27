@@ -28,8 +28,9 @@ import {
 
 export interface OrbitPartyPersonView {
   company: string;
+  contactId: string | null;
   g: string;
-  groupNumber: number;
+  groupNumber: number | null;
   icebreakers: string[];
   id: string;
   industry: string;
@@ -38,7 +39,7 @@ export interface OrbitPartyPersonView {
   offering: string;
   reason: string;
   score: number;
-  seat: string;
+  seat: string | null;
   seeking: string;
   summary: string;
   title: string;
@@ -52,20 +53,21 @@ export interface OrbitPartyAgendaItemView {
 }
 
 export interface OrbitPartyMeView {
-  groupNumber: number;
+  groupNumber: number | null;
   initial: string;
   name: string;
   offering: string[];
   prompts: string[];
   role: string;
-  seat: string;
+  seat: string | null;
   seeking: string[];
   topics: string[];
 }
 
 export interface OrbitPartyViewModel {
-  accessCode: string;
+  accessCode: string | null;
   agenda: OrbitPartyAgendaItemView[];
+  checkInAvailable: boolean;
   eventId: string;
   eventName: string;
   /**
@@ -128,6 +130,7 @@ function personFromContact(
 
   return {
     company: contactCompany(contact),
+    contactId: contact.id,
     g: gradientFor(contact.id, index),
     groupNumber: (index % 4) + 1,
     icebreakers:
@@ -168,6 +171,7 @@ function personFromNetworkPerson(
 
   return {
     company: person.organization ?? "Platform network",
+    contactId: null,
     g: gradientFor(person.id, index),
     groupNumber: (index % 4) + 1,
     icebreakers: recommendation.suggestedActions.length
@@ -230,6 +234,7 @@ export function getOrbitPartyViewModel(): OrbitPartyViewModel {
   return {
     accessCode: event ? passCodeForEvent(event) : "ORBT-0000",
     agenda: partyAgenda(data),
+    checkInAvailable: false,
     eventId: event?.id ?? "",
     eventName: event?.name ?? "Orbit local remote event",
     eventPhase: event ? eventStatusFor(event, data.generatedAt) : "upcoming",

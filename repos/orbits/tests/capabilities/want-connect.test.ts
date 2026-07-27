@@ -274,11 +274,16 @@ test("mock want-to-connect service is deterministic rule-based code with no live
 
 test("on-site want-to-connect API routes return stable envelopes with empty and failure paths", async () => {
   const intentRoute = await importProjectModule<{
-    POST: (
+    createWantConnectPostHandler: (dependencies?: {
+      resolveActor?: () => Promise<{
+        id: string;
+        name?: string | null;
+      } | null>;
+    }) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/want-to-connect/route.ts");
+  }>("app/api/events/[id]/want-to-connect/handler.ts");
   const matchesRoute = await importProjectModule<{
     GET: (
       request: Request,
@@ -289,12 +294,26 @@ test("on-site want-to-connect API routes return stable envelopes with empty and 
     mockWantConnectFixture: unknown;
     mockEmptyWantConnectMatchesFixture: unknown;
   }>("features/events/want-connect/fixtures.ts");
+  const intentHandler = intentRoute.createWantConnectPostHandler({
+    async resolveActor() {
+      return { id: "account:test-operator", name: "Test operator" };
+    },
+  });
+  const unauthenticatedIntentHandler =
+    intentRoute.createWantConnectPostHandler({
+      async resolveActor() {
+        return null;
+      },
+    });
 
-  const intentResponse = await intentRoute.POST(
+  const intentResponse = await intentHandler(
     new Request(
       "https://orbit.local/api/events/demo-event-1/want-to-connect",
       {
-        body: JSON.stringify({ targetContactId: "contact:priya-shah" }),
+        body: JSON.stringify({
+          actorContactId: "spoofed-account",
+          targetContactId: "contact:priya-shah",
+        }),
         headers: { "content-type": "application/json" },
         method: "POST",
       },
@@ -322,9 +341,35 @@ test("on-site want-to-connect API routes return stable envelopes with empty and 
       params: Promise.resolve({ id: "demo-event-1" }),
     },
   );
-  const failureIntentResponse = await intentRoute.POST(
+  const failureIntentResponse = await intentHandler(
     new Request(
       "https://orbit.local/api/events/demo-event-1/want-to-connect?scenario=failure",
+      {
+        body: JSON.stringify({ targetContactId: "contact:priya-shah" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      },
+    ),
+    {
+      params: Promise.resolve({ id: "demo-event-1" }),
+    },
+  );
+  const invalidTargetResponse = await intentHandler(
+    new Request(
+      "https://orbit.local/api/events/demo-event-1/want-to-connect",
+      {
+        body: JSON.stringify({ targetContactId: "contact:not-in-event" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      },
+    ),
+    {
+      params: Promise.resolve({ id: "demo-event-1" }),
+    },
+  );
+  const unauthenticatedResponse = await unauthenticatedIntentHandler(
+    new Request(
+      "https://orbit.local/api/events/demo-event-1/want-to-connect",
       {
         body: JSON.stringify({ targetContactId: "contact:priya-shah" }),
         headers: { "content-type": "application/json" },
@@ -389,6 +434,16 @@ test("on-site want-to-connect API routes return stable envelopes with empty and 
       },
     },
   });
+  assert.equal(invalidTargetResponse.status, 400);
+  assert.match(
+    JSON.stringify(await invalidTargetResponse.json()),
+    /source-backed match/,
+  );
+  assert.equal(unauthenticatedResponse.status, 401);
+  assert.match(
+    JSON.stringify(await unauthenticatedResponse.json()),
+    /UNAUTHORIZED/,
+  );
 });
 
 test("on-site want-to-connect debug route renders all states and the live replacement handoff", async () => {

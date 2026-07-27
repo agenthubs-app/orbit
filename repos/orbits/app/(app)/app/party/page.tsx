@@ -4,6 +4,9 @@
  * route 只连接 party view model 和真实 party UI，现场交互逻辑不写在这里。
  */
 import { StateView } from "../../../../shared/ui/state-view";
+import { redirect } from "next/navigation";
+
+import { auth } from "../../../../auth";
 import { OrbitRealParty } from "../dashboard/orbit-real-party";
 import type { OrbitLanguage } from "../orbit-language-core";
 import {
@@ -67,7 +70,21 @@ export default async function AppPartyRoutePage({
 }: {
   searchParams?: Promise<AppPartySearchParams>;
 } = {}) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fparty");
+  }
+
   const routeModel = await loadAppPartyRouteViewModel({
+    actor: {
+      displayName:
+        session.user.name?.trim() ||
+        session.user.email?.trim() ||
+        "Orbit member",
+      email: session.user.email,
+      id: session.user.id,
+    },
     searchParams: await searchParams,
   });
   const language =

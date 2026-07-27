@@ -48,7 +48,7 @@ async function renderEventsPage(): Promise<string> {
 
 async function renderEventDetailPage(): Promise<string> {
   const routeModel = await loadAppEventDetailRoute({
-    eventId: "event_001",
+    eventId: "demo-event-1",
     mode: "mock",
   });
 

@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `af8fb177f0d7a86d2c49dd9f334f8847e8f8f04a`
-- Deterministic generated timestamp (commit time): 2026-07-27T15:50:12+09:00
+- Indexed commit: `da459c39762049377b041b9471bc78e83aa8b7ae`
+- Deterministic generated timestamp (commit time): 2026-07-27T16:08:52+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
@@ -15,10 +15,10 @@
 | Route | Purpose | Access | Data sources | Actions | Tests | Static risks |
 | --- | --- | --- | --- | ---: | ---: | ---: |
 | `/app/account/forgot-password` | Password recovery | public-auth-entry | Live, Mock, User Confirmed | 13 | 1 | 0 |
-| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 13 | 14 | 0 |
+| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 13 | 15 | 0 |
 | `/app/account/mobile-google` | Mobile Google authentication completion | public-auth-entry | Live, Mock, User Confirmed | 2 | 2 | 0 |
 | `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 13 | 10 | 0 |
-| `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 21 | 0 |
+| `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 22 | 0 |
 | `/app/admin/events` | Admin event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
 | `/app/admin` | Admin operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
 | `/app/agent` | Relationship operations Agent | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 76 | 30 | 0 |

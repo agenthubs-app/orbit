@@ -80,7 +80,7 @@ test("asset manifest covers every displayed demo event across root, events, and 
   const rootLanding = getOrbitLandingViewModel();
   const appEvents = await loadAppEventsRouteViewModel();
   const eventDetail = await loadAppEventDetailRoute({
-    eventId: "event_001",
+    eventId: "demo-event-1",
     mode: "mock",
   });
 
@@ -109,7 +109,7 @@ test("asset manifest covers every displayed demo user or contact across root, co
   const rootLanding = getOrbitLandingViewModel();
   const contacts = await loadAppContactsRouteViewModel();
   const eventDetail = await loadAppEventDetailRoute({
-    eventId: "event_001",
+    eventId: "demo-event-1",
     mode: "mock",
   });
   const contactDetail = await loadAppContactDetailRoute({

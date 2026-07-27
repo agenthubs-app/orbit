@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "af8fb177f0d7a86d2c49dd9f334f8847e8f8f04a",
-  "generatedAt": "2026-07-27T15:50:12+09:00",
+  "commit": "da459c39762049377b041b9471bc78e83aa8b7ae",
+  "generatedAt": "2026-07-27T16:08:52+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -685,6 +685,7 @@
         "repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-events-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-home-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-party-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-today-merged.test.ts",
         "repos/orbits/tests/ui/auth-state-consistency.test.ts"
       ],
@@ -1306,6 +1307,7 @@
         "repos/orbits/tests/capabilities/profile-signal-review-queue.test.ts",
         "repos/orbits/tests/pages/app-agent-todo-summary.test.tsx",
         "repos/orbits/tests/pages/app-contacts-list-filtering.test.ts",
+        "repos/orbits/tests/pages/app-party-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-relationship-inbox-panel.test.tsx"
       ],
       "knownRisks": []
@@ -16972,7 +16974,7 @@
         {
           "actionId": "/app/events/[id]#27",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 289,
+          "line": 281,
           "kind": "link",
           "tag": "a",
           "label": "Continue registration profile guide / 继续填写报名资料",
@@ -16991,7 +16993,7 @@
         {
           "actionId": "/app/events/[id]#28",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 405,
+          "line": 397,
           "kind": "link",
           "tag": "a",
           "label": "Continue registration profile guide / 继续填写报名资料",
@@ -23784,7 +23786,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -23805,7 +23807,28 @@
         {
           "actionId": "/app/party/checkin#1",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 1016,
+          "line": 1002,
+          "kind": "button",
+          "tag": "button",
+          "label": "t({ en: \"Copy access code\", zh: \"复制通行码\" })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party/checkin#2",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 1072,
           "kind": "button",
           "tag": "button",
           "label": "Edit general profile",
@@ -23824,9 +23847,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#2",
+          "actionId": "/app/party/checkin#3",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 1021,
+          "line": 1077,
           "kind": "button",
           "tag": "button",
           "label": "Back to event",
@@ -23845,9 +23868,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#3",
+          "actionId": "/app/party/checkin#4",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 112,
+          "line": 116,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -23867,9 +23890,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#4",
+          "actionId": "/app/party/checkin#5",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 158,
+          "line": 164,
           "kind": "button",
           "tag": "button",
           "label": "Exit event",
@@ -23888,9 +23911,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#5",
+          "actionId": "/app/party/checkin#6",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 175,
+          "line": 185,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -23910,14 +23933,14 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#6",
+          "actionId": "/app/party/checkin#7",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 226,
+          "line": 239,
           "kind": "link",
           "tag": "a",
           "label": "View contact",
           "accessibleName": "present-static",
-          "href": "`/app/contacts/${encodeURIComponent(p.id)}`",
+          "href": "`/app/contacts/${encodeURIComponent(p.contactId)}`",
           "handlers": [],
           "behaviorEvidence": "present-static",
           "imperativeBehaviorEvidence": [],
@@ -23929,12 +23952,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#7",
+          "actionId": "/app/party/checkin#8",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 278,
+          "line": 296,
           "kind": "button",
           "tag": "button",
-          "label": "Check-in closed / Check in",
+          "label": "Check-in unavailable / Check-in closed / Check in",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -23950,12 +23973,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#8",
+          "actionId": "/app/party/checkin#9",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 284,
+          "line": 304,
           "kind": "button",
           "tag": "button",
-          "label": "{`${t({ en: \"My seat\", zh: \"我的座位\" })} ${viewModel.me.seat}`}",
+          "label": "{`${t({ en: \"My seat\", zh: \"我的座位\" })} ${viewModel.me.seat}`} / Seat not assigned",
           "accessibleName": "dynamic-runtime",
           "href": null,
           "handlers": [
@@ -23967,13 +23990,13 @@
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#9",
+          "actionId": "/app/party/checkin#10",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 294,
+          "line": 316,
           "kind": "button",
           "tag": "button",
           "label": "All",
@@ -23992,9 +24015,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#10",
+          "actionId": "/app/party/checkin#11",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 701,
+          "line": 734,
           "kind": "click-handler",
           "tag": "g",
           "label": "{node.initial} {node.name}",
@@ -24013,9 +24036,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#11",
+          "actionId": "/app/party/checkin#12",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 731,
+          "line": 764,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Back to graph\", zh: \"返回图谱\" })",
@@ -24027,25 +24050,6 @@
           "behaviorEvidence": "present-static",
           "imperativeBehaviorEvidence": [],
           "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party/checkin#12",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 770,
-          "kind": "link",
-          "tag": "a",
-          "label": "t({ en: \"Back\", zh: \"返回\" })",
-          "accessibleName": "present-static",
-          "href": "partyHrefForEvent(viewModel.eventId)",
-          "handlers": [],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "read/navigation",
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
@@ -24076,7 +24080,26 @@
         {
           "actionId": "/app/party/checkin#14",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 798,
+          "line": 805,
+          "kind": "link",
+          "tag": "a",
+          "label": "t({ en: \"Back\", zh: \"返回\" })",
+          "accessibleName": "present-static",
+          "href": "partyHrefForEvent(viewModel.eventId)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party/checkin#15",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 833,
           "kind": "link",
           "tag": "a",
           "label": "Return to event home",
@@ -24093,9 +24116,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#15",
+          "actionId": "/app/party/checkin#16",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 817,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Back\", zh: \"返回\" })",
@@ -24114,33 +24137,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#16",
+          "actionId": "/app/party/checkin#17",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 871,
+          "line": 906,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party/checkin#17",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 877,
-          "kind": "button",
-          "tag": "button",
-          "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -24158,28 +24160,7 @@
         {
           "actionId": "/app/party/checkin#18",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 901,
-          "kind": "button",
-          "tag": "button",
-          "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party/checkin#19",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 904,
+          "line": 912,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -24198,12 +24179,33 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/checkin#20",
+          "actionId": "/app/party/checkin#19",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 962,
+          "line": 936,
           "kind": "button",
           "tag": "button",
-          "label": "t({ en: \"Copy access code\", zh: \"复制通行码\" })",
+          "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party/checkin#20",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 939,
+          "kind": "button",
+          "tag": "button",
+          "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -25145,7 +25147,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -25166,7 +25168,28 @@
         {
           "actionId": "/app/party/graph#1",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 1016,
+          "line": 1002,
+          "kind": "button",
+          "tag": "button",
+          "label": "t({ en: \"Copy access code\", zh: \"复制通行码\" })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party/graph#2",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 1072,
           "kind": "button",
           "tag": "button",
           "label": "Edit general profile",
@@ -25185,9 +25208,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#2",
+          "actionId": "/app/party/graph#3",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 1021,
+          "line": 1077,
           "kind": "button",
           "tag": "button",
           "label": "Back to event",
@@ -25206,9 +25229,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#3",
+          "actionId": "/app/party/graph#4",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 112,
+          "line": 116,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -25228,9 +25251,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#4",
+          "actionId": "/app/party/graph#5",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 158,
+          "line": 164,
           "kind": "button",
           "tag": "button",
           "label": "Exit event",
@@ -25249,9 +25272,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#5",
+          "actionId": "/app/party/graph#6",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 175,
+          "line": 185,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -25271,14 +25294,14 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#6",
+          "actionId": "/app/party/graph#7",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 226,
+          "line": 239,
           "kind": "link",
           "tag": "a",
           "label": "View contact",
           "accessibleName": "present-static",
-          "href": "`/app/contacts/${encodeURIComponent(p.id)}`",
+          "href": "`/app/contacts/${encodeURIComponent(p.contactId)}`",
           "handlers": [],
           "behaviorEvidence": "present-static",
           "imperativeBehaviorEvidence": [],
@@ -25290,12 +25313,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#7",
+          "actionId": "/app/party/graph#8",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 278,
+          "line": 296,
           "kind": "button",
           "tag": "button",
-          "label": "Check-in closed / Check in",
+          "label": "Check-in unavailable / Check-in closed / Check in",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -25311,12 +25334,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#8",
+          "actionId": "/app/party/graph#9",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 284,
+          "line": 304,
           "kind": "button",
           "tag": "button",
-          "label": "{`${t({ en: \"My seat\", zh: \"我的座位\" })} ${viewModel.me.seat}`}",
+          "label": "{`${t({ en: \"My seat\", zh: \"我的座位\" })} ${viewModel.me.seat}`} / Seat not assigned",
           "accessibleName": "dynamic-runtime",
           "href": null,
           "handlers": [
@@ -25328,13 +25351,13 @@
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#9",
+          "actionId": "/app/party/graph#10",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 294,
+          "line": 316,
           "kind": "button",
           "tag": "button",
           "label": "All",
@@ -25353,9 +25376,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#10",
+          "actionId": "/app/party/graph#11",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 701,
+          "line": 734,
           "kind": "click-handler",
           "tag": "g",
           "label": "{node.initial} {node.name}",
@@ -25374,9 +25397,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#11",
+          "actionId": "/app/party/graph#12",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 731,
+          "line": 764,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Back to graph\", zh: \"返回图谱\" })",
@@ -25388,25 +25411,6 @@
           "behaviorEvidence": "present-static",
           "imperativeBehaviorEvidence": [],
           "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party/graph#12",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 770,
-          "kind": "link",
-          "tag": "a",
-          "label": "t({ en: \"Back\", zh: \"返回\" })",
-          "accessibleName": "present-static",
-          "href": "partyHrefForEvent(viewModel.eventId)",
-          "handlers": [],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "read/navigation",
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
@@ -25437,7 +25441,26 @@
         {
           "actionId": "/app/party/graph#14",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 798,
+          "line": 805,
+          "kind": "link",
+          "tag": "a",
+          "label": "t({ en: \"Back\", zh: \"返回\" })",
+          "accessibleName": "present-static",
+          "href": "partyHrefForEvent(viewModel.eventId)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party/graph#15",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 833,
           "kind": "link",
           "tag": "a",
           "label": "Return to event home",
@@ -25454,9 +25477,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#15",
+          "actionId": "/app/party/graph#16",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 817,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Back\", zh: \"返回\" })",
@@ -25475,33 +25498,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#16",
+          "actionId": "/app/party/graph#17",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 871,
+          "line": 906,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party/graph#17",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 877,
-          "kind": "button",
-          "tag": "button",
-          "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -25519,28 +25521,7 @@
         {
           "actionId": "/app/party/graph#18",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 901,
-          "kind": "button",
-          "tag": "button",
-          "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party/graph#19",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 904,
+          "line": 912,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -25559,12 +25540,33 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party/graph#20",
+          "actionId": "/app/party/graph#19",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 962,
+          "line": 936,
           "kind": "button",
           "tag": "button",
-          "label": "t({ en: \"Copy access code\", zh: \"复制通行码\" })",
+          "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party/graph#20",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 939,
+          "kind": "button",
+          "tag": "button",
+          "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -26532,7 +26534,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -26553,7 +26555,28 @@
         {
           "actionId": "/app/party#1",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 1016,
+          "line": 1002,
+          "kind": "button",
+          "tag": "button",
+          "label": "t({ en: \"Copy access code\", zh: \"复制通行码\" })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party#2",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 1072,
           "kind": "button",
           "tag": "button",
           "label": "Edit general profile",
@@ -26572,9 +26595,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#2",
+          "actionId": "/app/party#3",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 1021,
+          "line": 1077,
           "kind": "button",
           "tag": "button",
           "label": "Back to event",
@@ -26593,9 +26616,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#3",
+          "actionId": "/app/party#4",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 112,
+          "line": 116,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -26615,9 +26638,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#4",
+          "actionId": "/app/party#5",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 158,
+          "line": 164,
           "kind": "button",
           "tag": "button",
           "label": "Exit event",
@@ -26636,9 +26659,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#5",
+          "actionId": "/app/party#6",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 175,
+          "line": 185,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -26658,14 +26681,14 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#6",
+          "actionId": "/app/party#7",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 226,
+          "line": 239,
           "kind": "link",
           "tag": "a",
           "label": "View contact",
           "accessibleName": "present-static",
-          "href": "`/app/contacts/${encodeURIComponent(p.id)}`",
+          "href": "`/app/contacts/${encodeURIComponent(p.contactId)}`",
           "handlers": [],
           "behaviorEvidence": "present-static",
           "imperativeBehaviorEvidence": [],
@@ -26677,12 +26700,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#7",
+          "actionId": "/app/party#8",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 278,
+          "line": 296,
           "kind": "button",
           "tag": "button",
-          "label": "Check-in closed / Check in",
+          "label": "Check-in unavailable / Check-in closed / Check in",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -26698,12 +26721,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#8",
+          "actionId": "/app/party#9",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 284,
+          "line": 304,
           "kind": "button",
           "tag": "button",
-          "label": "{`${t({ en: \"My seat\", zh: \"我的座位\" })} ${viewModel.me.seat}`}",
+          "label": "{`${t({ en: \"My seat\", zh: \"我的座位\" })} ${viewModel.me.seat}`} / Seat not assigned",
           "accessibleName": "dynamic-runtime",
           "href": null,
           "handlers": [
@@ -26715,13 +26738,13 @@
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "present-static",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#9",
+          "actionId": "/app/party#10",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 294,
+          "line": 316,
           "kind": "button",
           "tag": "button",
           "label": "All",
@@ -26740,9 +26763,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#10",
+          "actionId": "/app/party#11",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 701,
+          "line": 734,
           "kind": "click-handler",
           "tag": "g",
           "label": "{node.initial} {node.name}",
@@ -26761,9 +26784,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#11",
+          "actionId": "/app/party#12",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 731,
+          "line": 764,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Back to graph\", zh: \"返回图谱\" })",
@@ -26775,25 +26798,6 @@
           "behaviorEvidence": "present-static",
           "imperativeBehaviorEvidence": [],
           "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party#12",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 770,
-          "kind": "link",
-          "tag": "a",
-          "label": "t({ en: \"Back\", zh: \"返回\" })",
-          "accessibleName": "present-static",
-          "href": "partyHrefForEvent(viewModel.eventId)",
-          "handlers": [],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "read/navigation",
           "confirmation": "unknown-requires-runtime-verification",
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
@@ -26824,7 +26828,26 @@
         {
           "actionId": "/app/party#14",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 798,
+          "line": 805,
+          "kind": "link",
+          "tag": "a",
+          "label": "t({ en: \"Back\", zh: \"返回\" })",
+          "accessibleName": "present-static",
+          "href": "partyHrefForEvent(viewModel.eventId)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party#15",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 833,
           "kind": "link",
           "tag": "a",
           "label": "Return to event home",
@@ -26841,9 +26864,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#15",
+          "actionId": "/app/party#16",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 817,
+          "line": 852,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Back\", zh: \"返回\" })",
@@ -26862,33 +26885,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#16",
+          "actionId": "/app/party#17",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 871,
+          "line": 906,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party#17",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 877,
-          "kind": "button",
-          "tag": "button",
-          "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -26906,28 +26908,7 @@
         {
           "actionId": "/app/party#18",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 901,
-          "kind": "button",
-          "tag": "button",
-          "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/party#19",
-          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 904,
+          "line": 912,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -26946,12 +26927,33 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/party#20",
+          "actionId": "/app/party#19",
           "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
-          "line": 962,
+          "line": 936,
           "kind": "button",
           "tag": "button",
-          "label": "t({ en: \"Copy access code\", zh: \"复制通行码\" })",
+          "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/party#20",
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+          "line": 939,
+          "kind": "button",
+          "tag": "button",
+          "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -30409,11 +30411,11 @@
         "repos/orbits/tests/capabilities/reminder-schedule-notification-live-store.test.ts",
         "repos/orbits/tests/pages/agent-workflow-route-boundary.test.ts",
         "repos/orbits/tests/pages/app-agent-todo-summary.test.tsx",
-        "repos/orbits/tests/pages/app-event-detail-page.test.tsx",
         "repos/orbits/tests/pages/app-followups-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-home-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-relationship-inbox-alerts.test.ts",
-        "repos/orbits/tests/pages/app-schedule-page.test.tsx"
+        "repos/orbits/tests/pages/app-schedule-page.test.tsx",
+        "repos/orbits/tests/pages/app-schedule-route-services.test.ts"
       ],
       "knownRisks": []
     },
