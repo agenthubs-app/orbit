@@ -3,7 +3,6 @@ import type {
   OrbitContactView,
   OrbitContactsViewModel,
   OrbitContactStrength,
-  OrbitIntroStatus,
   OrbitContactPipelineStatus,
 } from "../../orbit-contacts-route-view-model";
 import type {
@@ -29,15 +28,11 @@ function eventIdForSource(sourceLabel: string): string {
 function pipelineStatusForContact(
   contact: AppContactListItemViewModel,
 ): OrbitContactPipelineStatus {
-  if (contact.needsAttention) {
+  if (contact.status === "needs_follow_up") {
     return "to_contact";
   }
 
-  if (
-    contact.relationshipValueLabels.some((label) =>
-      /commercial|strategic/i.test(label),
-    )
-  ) {
+  if (contact.status === "archived") {
     return "partnered";
   }
 
@@ -47,11 +42,27 @@ function pipelineStatusForContact(
 function sourceKindForContact(
   contact: AppContactListItemViewModel,
 ): OrbitContactView["source"] {
-  if (/business card|qr/i.test(contact.sourceLabel)) {
+  if (contact.sourceType === "business_card_ocr") {
     return "scan";
   }
 
-  if (/manual/i.test(contact.sourceLabel)) {
+  if (contact.sourceType === "qr_scan") {
+    return "qr";
+  }
+
+  if (contact.sourceType === "event_import") {
+    return "event";
+  }
+
+  if (contact.sourceType === "external_contacts") {
+    return "contact";
+  }
+
+  if (contact.sourceType === "referral") {
+    return "referral";
+  }
+
+  if (contact.sourceType === "manual") {
     return "manual";
   }
 
@@ -162,12 +173,6 @@ function contactToOrbitView(
   };
 }
 
-function introStatusForContact(
-  contact: AppContactListItemViewModel,
-): OrbitIntroStatus {
-  return contact.needsAttention ? "draft" : "sent";
-}
-
 export function contactsRouteToOrbitContactsViewModel(
   payload: AppContactsPayloadViewModel,
 ): OrbitContactsViewModel {
@@ -181,13 +186,7 @@ export function contactsRouteToOrbitContactsViewModel(
       id: eventIdForSource(sourceLabel),
       name: sourceLabel,
     })),
-    intros: payload.contacts.slice(0, 6).map((contact) => ({
-      blurb: contact.nextAction || contact.relationshipValueSummary,
-      id: `intro:${contact.id}`,
-      labelA: "Orbit operator",
-      labelB: contact.displayName,
-      statusBadge: introStatusForContact(contact),
-    })),
+    intros: [],
     pipelineStatuses: [
       { value: "to_contact", label: "待联系" },
       { value: "in_progress", label: "在推进" },

@@ -1,14 +1,21 @@
 import {
-  createContactAcquisitionServices,
   createBusinessCardScanOcrService,
   createContactAcquisitionDraftService,
+  createContactAcquisitionDraftServiceForActor,
   createDuplicateMergeService,
+  createDuplicateMergeServiceForActor,
   createEmailCalendarSignalService,
+  createEmailCalendarSignalServiceForActor,
   createEventAttendeeImportService,
+  createEventAttendeeImportServiceForActor,
   createExternalContactsImportService,
+  createExternalContactsImportServiceForActor,
   createManualContactCreationService,
+  createManualContactCreationServiceForActor,
   createQrScanConnectService,
+  createQrScanConnectServiceForActor,
   createReferralRecommendationService,
+  createReferralRecommendationServiceForActor,
 } from "../../../../../../features/acquisition/service-factory";
 import { createPermissionStateService } from "../../../../../../features/permissions/service-factory";
 import {
@@ -42,23 +49,45 @@ export interface AppContactsNewRouteStateViewModel {
 
 // New Contact 页面是一组 acquisition 能力的工作台：
 // 手动录入、名片、QR、活动参会者、外部导入、邮箱/日历信号、推荐和合并都在这里汇总。
-export function createAppContactsNewRouteServices(mode?: ModuleMode | string) {
+export function createAppContactsNewRouteServices(
+  mode?: ModuleMode | string,
+  actorId = "",
+) {
   const resolvedMode = resolveModuleMode(mode);
 
   if (resolvedMode !== "mock") {
-    const services = createContactAcquisitionServices(resolvedMode);
-
     return {
-      businessCards: services.businessCardScanService,
-      contactDrafts: services.draftService,
-      duplicateMerges: services.mergeService,
-      emailCalendarSignals: services.emailCalendarSignalService,
-      eventAttendees: services.eventAttendeeImportService,
-      externalContacts: services.externalImportService,
-      manualContacts: services.manualService,
+      businessCards: createBusinessCardScanOcrService(resolvedMode),
+      contactDrafts: createContactAcquisitionDraftServiceForActor(
+        actorId,
+        resolvedMode,
+      ),
+      duplicateMerges: createDuplicateMergeServiceForActor(
+        actorId,
+        resolvedMode,
+      ),
+      emailCalendarSignals: createEmailCalendarSignalServiceForActor(
+        actorId,
+        resolvedMode,
+      ),
+      eventAttendees: createEventAttendeeImportServiceForActor(
+        actorId,
+        resolvedMode,
+      ),
+      externalContacts: createExternalContactsImportServiceForActor(
+        actorId,
+        resolvedMode,
+      ),
+      manualContacts: createManualContactCreationServiceForActor(
+        actorId,
+        resolvedMode,
+      ),
       permissions: createPermissionStateService(mode),
-      qrConnections: services.qrService,
-      referrals: services.referralService,
+      qrConnections: createQrScanConnectServiceForActor(actorId, resolvedMode),
+      referrals: createReferralRecommendationServiceForActor(
+        actorId,
+        resolvedMode,
+      ),
     };
   }
 
@@ -184,7 +213,7 @@ export async function loadAppContactsNewRouteViewModel(
 ) {
   const requestedMode = readRequestedMode(searchParams);
   const resolvedMode = resolveModuleMode(requestedMode);
-  const services = createAppContactsNewRouteServices(requestedMode);
+  const services = createAppContactsNewRouteServices(requestedMode, actorId);
   const requestedScenario = readRouteScenario(searchParams);
   const eventId = readEventId(searchParams, resolvedMode);
 

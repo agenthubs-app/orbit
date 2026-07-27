@@ -49,9 +49,13 @@ function sourceFor(
   source: ContactDetailSourceReference,
 ): OrbitContactView["source"] {
   if (source.type === "qr_scan") {
-    return "scan";
+    return "qr";
   }
 
+  if (source.type === "business_card_ocr") return "scan";
+  if (source.type === "event_import") return "event";
+  if (source.type === "external_contacts") return "contact";
+  if (source.type === "referral") return "referral";
   return source.type === "manual" ? "manual" : "exchange";
 }
 
@@ -386,7 +390,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
   const contact: OrbitContactView = {
     company: model.contact.organization,
     displayName: model.contact.displayName,
-    email: "",
+    email: model.contact.primaryEmail ?? "",
     encounters: [encounterFor(model, eventId, language)],
     g: "g-violet",
     id: model.contact.id,
@@ -395,7 +399,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
       model.contact.displayName.trim().slice(0, 1).toUpperCase() ||
       model.contact.id.slice(0, 1).toUpperCase(),
     lastEventId: eventId,
-    lineId: "",
+    lineId: model.contact.lineId ?? "",
     location: displayText(model.contact.location, language),
     met: displayText(model.contact.source.label, language),
     note:
@@ -407,13 +411,13 @@ export function contactDetailRouteToOrbitContactsViewModel(
       ),
     notes,
     offering: displayTexts(model.contact.publicProfile.offering, language).join(", "),
-    phone: "",
+    phone: model.contact.primaryPhone ?? "",
     pipelineStatus: pipelineStatusFor(model.contact.status),
     seeking: displayTexts(model.contact.publicProfile.seeking, language).join(", "),
     source: sourceFor(model.contact.source),
     stage: model.contact.status,
     title: displayText(model.contact.role, language),
-    wechat: "",
+    wechat: model.contact.wechatId ?? "",
     strength: strengthFromScore(
       model.assessment.priorityScore.value || model.connection.strengthScore,
     ),

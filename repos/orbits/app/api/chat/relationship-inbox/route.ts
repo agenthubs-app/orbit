@@ -156,13 +156,10 @@ function createResponseForResult(
   });
 }
 
-// draft→thread 写入入口：从确认后的消息草稿发起一个新的对话线程（本地 staged 预览）。
+// draft→thread 入口：所有 runtime 都允许把用户确认过的文本转换成仅存在于
+// 当前浏览器会话的 staged 预览。它不读取 mock inbox、不落库、也不执行外发。
 export async function POST(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
-
-  if (mode !== "mock") {
-    return unavailableResponse(mode);
-  }
 
   const body = await readJsonBody(request);
   const input: AsyncConversationCreateFromDraftInput = {
@@ -172,6 +169,7 @@ export async function POST(request: Request): Promise<Response> {
     subject: readString(body.subject),
     body: readString(body.body),
     sourceLabel: readString(body.sourceLabel),
+    stagedAt: new Date().toISOString(),
   };
   const service = createAsyncRelationshipConversationService("mock");
   const result = await service.createConversationFromDraft(input);

@@ -807,8 +807,15 @@ function createFromDraftPayload(
   const organization = asyncTrimmed(input.organization);
   const contactId =
     asyncTrimmed(input.contactId) || `contact:${asyncSlug(participantName)}`;
-  const conversationId = `conversation:new:${asyncSlug(`${participantName}-${subject}`)}`;
-  const stagedAt = "2026-07-09T09:00:00+09:00";
+  const requestedStagedAt = asyncTrimmed(input.stagedAt);
+  const stagedAt =
+    requestedStagedAt && Number.isFinite(Date.parse(requestedStagedAt))
+      ? new Date(requestedStagedAt).toISOString()
+      : "2026-07-09T09:00:00+09:00";
+  const liveSuffix = requestedStagedAt
+    ? `-${asyncSlug(stagedAt)}`
+    : "";
+  const conversationId = `conversation:new:${asyncSlug(`${participantName}-${subject}`)}${liveSuffix}`;
   const sourceLabel =
     asyncTrimmed(input.sourceLabel) ||
     "Staged from a reviewed message draft";

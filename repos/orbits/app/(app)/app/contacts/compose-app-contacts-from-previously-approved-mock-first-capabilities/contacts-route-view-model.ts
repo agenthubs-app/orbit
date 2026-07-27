@@ -55,6 +55,8 @@ export interface AppContactListItemViewModel {
   role: string;
   searchIndexReadExecuted: boolean;
   sourceLabel: string;
+  sourceType: SourceType;
+  status: StatusType;
   statusLabel: string;
   tags: readonly string[];
   valueRationale: string;
@@ -317,6 +319,8 @@ function contactViewModel(contact: ContactListItem): AppContactListItemViewModel
     role: contact.role,
     searchIndexReadExecuted: contact.searchIndexReadExecuted,
     sourceLabel: sourceLabel(contact.source.type),
+    sourceType: contact.source.type,
+    status: contact.status,
     statusLabel: statusLabel(contact.status),
     tags: contact.tags,
     valueRationale: contact.value.rationale,

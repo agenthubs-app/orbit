@@ -4,6 +4,7 @@ import type {
   RelationshipEvidenceDTO,
 } from "../../../shared/domain/contracts";
 import {
+  isNetworkCategory,
   isRelationshipStage,
   isRelationshipValueType,
   isSourceType,
@@ -113,6 +114,40 @@ function contactFromRecord(
     primaryEmail: optionalString(payload.primaryEmail),
     primaryPhone: optionalString(payload.primaryPhone),
     profileSnippet: optionalString(payload.profileSnippet),
+    handles: isRecord(payload.handles)
+      ? {
+          email: optionalString(payload.handles.email),
+          phone: optionalString(payload.handles.phone),
+          wechatId: optionalString(payload.handles.wechatId),
+          lineId: optionalString(payload.handles.lineId),
+          website: optionalString(payload.handles.website),
+        }
+      : undefined,
+    publicProfile: isRecord(payload.publicProfile)
+      ? {
+          bio: optionalString(payload.publicProfile.bio),
+          selfIntroduction: optionalString(
+            payload.publicProfile.selfIntroduction,
+          ),
+          industry: optionalString(payload.publicProfile.industry),
+          offering: stringArray(payload.publicProfile.offering),
+          seeking: stringArray(payload.publicProfile.seeking),
+          topics: stringArray(payload.publicProfile.topics),
+          conversationPrompts: stringArray(
+            payload.publicProfile.conversationPrompts,
+          ),
+        }
+      : undefined,
+    networkCategory: isNetworkCategory(payload.networkCategory)
+      ? payload.networkCategory
+      : undefined,
+    nextAction: isRecord(payload.nextAction) && nonEmptyString(payload.nextAction.text)
+      ? {
+          text: payload.nextAction.text,
+          reason: optionalString(payload.nextAction.reason),
+          evidenceId: optionalString(payload.nextAction.evidenceId),
+        }
+      : undefined,
     stage: payload.stage,
     source,
     evidenceIds: ids,

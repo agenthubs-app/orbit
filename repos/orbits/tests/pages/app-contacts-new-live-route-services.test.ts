@@ -69,21 +69,21 @@ test("app contacts new route loader returns a controlled live failure when stora
   });
 });
 
-test("/app/contacts/new page renders the capability-first acquisition route boundary", async () => {
+test("/app/contacts/new renders the action workspace without preflight side effects", async () => {
   const pageSource = source("app/(app)/app/contacts/new/page.tsx");
   const importWorkspaceSource = source(
     "app/(app)/app/contacts/orbit-real-cards-import.tsx",
   );
 
-  assert.match(pageSource, /loadAppContactsNewRouteViewModel/);
   assert.match(pageSource, /await auth\(\)/);
-  assert.match(pageSource, /session\.user\.id/);
+  assert.match(pageSource, /session\?\.user\?\.id/);
   assert.match(pageSource, /redirect\("\/app\/account\/login\?next=/);
+  assert.match(pageSource, /OrbitRealCardsImport/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
-  assert.doesNotMatch(pageSource, /mode=mock|Open preview data/);
-  assert.match(pageSource, /Retry live workspace/);
+  assert.doesNotMatch(
+    pageSource,
+    /loadAppContactsNewRouteViewModel|scanBusinessCard|scanQrCode|importEventAttendees/,
+  );
   assert.match(importWorkspaceSource, /BusinessCardCaptureWorkspace/);
-
-  assert.match(pageSource, /app-contacts-new-route/);
-  assert.match(pageSource, /Contact acquisition workspace could not load/);
+  assert.match(importWorkspaceSource, /Not connected|未连接/);
 });

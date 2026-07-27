@@ -47,7 +47,9 @@ const supportedInteractionChannels = new Set<ContactDetailLastInteractionChannel
 );
 const contactDetailSourceTypes = new Set<ContactDetailSourceType>([
   "manual",
+  "business_card_ocr",
   "event_import",
+  "external_contacts",
   "email_signal",
   "calendar_signal",
   "referral",
@@ -55,9 +57,11 @@ const contactDetailSourceTypes = new Set<ContactDetailSourceType>([
 ]);
 
 const sourceTypeLabels: Record<ContactDetailSourceType, string> = {
+  business_card_ocr: "Business card scan",
   calendar_signal: "Calendar signal",
   email_signal: "Email signal",
   event_import: "Event import",
+  external_contacts: "Imported contact",
   manual: "Manual note",
   qr_scan: "QR scan",
   referral: "Referral",
@@ -403,6 +407,13 @@ function detailFor(input: {
     role: input.contact.role ?? "Relationship contact",
     organization: input.contact.organization ?? "Unknown organization",
     location: input.contact.location ?? "Unknown location",
+    primaryEmail:
+      input.contact.primaryEmail ?? input.contact.handles?.email ?? "",
+    primaryPhone:
+      input.contact.primaryPhone ?? input.contact.handles?.phone ?? "",
+    wechatId: input.contact.handles?.wechatId ?? "",
+    lineId: input.contact.handles?.lineId ?? "",
+    website: input.contact.handles?.website ?? "",
     relationshipContext,
     publicProfile: publicProfileFor({
       contact: input.contact,

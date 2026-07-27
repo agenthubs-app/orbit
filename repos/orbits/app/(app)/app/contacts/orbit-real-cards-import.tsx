@@ -142,10 +142,22 @@ function SourceCard({
   onSelect: () => void;
   t: Translate;
 }) {
+  const available = source.key === "scan";
+
   return (
     <button
+      aria-disabled={!available}
       className={`card card-hover nc-source-card${selected ? " is-selected" : ""}`}
+      disabled={!available}
       onClick={onSelect}
+      title={
+        available
+          ? undefined
+          : t({
+              en: "This source is not connected in the current environment.",
+              zh: "当前环境尚未连接这个来源。",
+            })
+      }
       type="button"
     >
       <span className={`nc-src-tile ${source.tile}`}><Icon name={source.icon} size={20} /></span>
@@ -153,6 +165,7 @@ function SourceCard({
         <span style={{ alignItems: "center", display: "flex", gap: 8 }}>
           <span className="h-section" style={{ fontSize: 15 }}>{t(source.title)}</span>
           {source.badge ? <span className="nc-src nc-src-scan">{t(source.badge)}</span> : null}
+          {!available ? <span className="nc-src nc-src-contact">{t({ en: "Not connected", zh: "未连接" })}</span> : null}
         </span>
         <span className="nc-source-desc">{t(source.desc)}</span>
         <span className="nc-source-hint">
@@ -265,6 +278,7 @@ const LOCAL_STYLE = `
 [data-orbit-real-page] .nc-source-card { display: grid; grid-template-columns: 42px 1fr auto; gap: 13px; padding: 13px 14px; align-items: center; width: 100%; text-align: left; cursor: pointer; font-family: var(--ff); color: inherit; }
 [data-orbit-real-page] .nc-source-card + .nc-source-card { margin-top: 10px; }
 [data-orbit-real-page] .nc-source-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-softer); }
+[data-orbit-real-page] .nc-source-card:disabled { cursor:not-allowed; opacity:.62; }
 [data-orbit-real-page] .nc-src-tile { width: 42px; height: 42px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
 [data-orbit-real-page] .nc-tl-scan { background: var(--accent-soft); color: var(--accent); }
 [data-orbit-real-page] .nc-tl-qr { background: var(--sky-soft); color: var(--sky); }

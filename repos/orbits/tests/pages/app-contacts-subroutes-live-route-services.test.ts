@@ -58,6 +58,23 @@ test("contacts pipeline exposes only source-backed read behavior", () => {
   );
 });
 
+test("contacts introductions use stored actor-scoped records, not contact-derived history", () => {
+  const adapterSource = source(
+    "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-subroute-route-adapter.tsx",
+  );
+  const pageSource = source("app/(app)/app/contacts/intros/page.tsx");
+  const componentSource = source(
+    "app/(app)/app/contacts/orbit-real-contacts.tsx",
+  );
+
+  assert.match(adapterSource, /intros: \[\]/);
+  assert.doesNotMatch(adapterSource, /payload\.contacts\.slice\(0, 6\)/);
+  assert.match(pageSource, /createConfiguredContactIntroductionRepository/);
+  assert.match(pageSource, /introductionRepository\.list\(session\.user\.id\)/);
+  assert.match(componentSource, /\/api\/contacts\/introductions/);
+  assert.match(componentSource, /statusBadge: introduction\.status/);
+});
+
 test("contacts shared interactions do not fabricate actions or email delivery", () => {
   const interactionSource = source(
     "app/(app)/app/contacts/orbit-cards-interactions.tsx",

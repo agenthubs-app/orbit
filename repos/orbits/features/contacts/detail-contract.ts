@@ -131,7 +131,9 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
 export type ContactDetailSourceType = Extract<
   SourceType,
   | "manual"
+  | "business_card_ocr"
   | "event_import"
+  | "external_contacts"
   | "email_signal"
   | "calendar_signal"
   | "referral"
@@ -215,6 +217,11 @@ export interface ContactDetail {
   role: string;
   organization: string;
   location: string;
+  primaryEmail?: string;
+  primaryPhone?: string;
+  wechatId?: string;
+  lineId?: string;
+  website?: string;
   relationshipContext: string;
   publicProfile: ContactDetailPublicProfile;
   source: ContactDetailSourceReference;

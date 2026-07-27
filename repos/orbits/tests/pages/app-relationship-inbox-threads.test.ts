@@ -45,7 +45,7 @@ test("relationship inbox API returns a correspondence workspace envelope", async
   assert.equal(body.data.draftReply.externalSendStatus, "not_requested");
 });
 
-test("relationship inbox fails closed in live mode instead of returning mock threads", async () => {
+test("relationship inbox hides mock history in live mode but allows a local unsent draft", async () => {
   await withRelationshipInboxMode("live", async () => {
     const route = await import("../../app/api/chat/relationship-inbox/route");
     const getResponse = await route.GET(
@@ -77,7 +77,29 @@ test("relationship inbox fails closed in live mode instead of returning mock thr
       }),
     );
 
-    assert.equal(postResponse.status, 503);
+    const postBody = (await postResponse.json()) as {
+      success: boolean;
+      data: {
+        sideEffects: {
+          externalMessageSent: boolean;
+          savedRecordCreated: boolean;
+          networkRequestMade: boolean;
+        };
+        thread: {
+          messages: readonly { occurredAt: string }[];
+        };
+      };
+    };
+
+    assert.equal(postResponse.status, 200);
+    assert.equal(postBody.success, true);
+    assert.equal(postBody.data.sideEffects.externalMessageSent, false);
+    assert.equal(postBody.data.sideEffects.savedRecordCreated, false);
+    assert.equal(postBody.data.sideEffects.networkRequestMade, false);
+    assert.ok(
+      Date.now() - Date.parse(postBody.data.thread.messages[0]?.occurredAt ?? "") <
+        10_000,
+    );
   });
 });
 

@@ -46,26 +46,22 @@ contact persistence run without permission and confirmation.
 
 ## Switch Mechanism
 
-The page now consumes `loadAppContactsNewRouteViewModel()` instead of the legacy
-contacts view model. The route service resolves acquisition and permission child
-services through module mode and awaits async live providers. `mode=live` or
-`ORBIT_MODULE_MODE=live` selects the storage-backed live providers; mock remains
-available through `mode=mock`.
+The page renders the acquisition shell after authentication without preflighting
+every child capability. Loading `/app/contacts/new` must not run OCR, QR,
+attendee import, external contact import, email/calendar reads, referral
+generation, or merge analysis. Each available source invokes its API only after
+an explicit user action and owns its own error state.
 
-The live first screen is read-only. It may list or derive contact acquisition
-context from live records, but it must not create a manual contact draft on page
-load. Manual contact writes require an explicit action with user-provided input.
-The default event-attendee import target is `demo-event-1` in mock mode and
-`event_01` in live/hybrid mode, with `eventId=` available as a route override.
+`loadAppContactsNewRouteViewModel()` remains a capability-composition test
+utility, but it is not used to gate the page shell. Sources without a connected
+and actor-scoped live provider are visibly disabled rather than behaving like
+successful buttons.
 
 Verification:
 
-- `tests/pages/app-contacts-new-live-route-services.test.ts` proves live
-  unconfigured storage fails through a controlled route-state boundary and the
-  page no longer imports `getOrbitContactsViewModel`.
-- Remote smoke for `/app/contacts/new?mode=live` resolved ten successful child
-  states from Postgres live storage and rendered the acquisition workspace
-  without the failure boundary.
+- `tests/pages/app-contacts-new-live-route-services.test.ts` proves the
+  capability-composition utility still fails closed when live storage is
+  missing and the page itself performs no acquisition preflight.
 
 ## Required Env Vars Or Permissions
 

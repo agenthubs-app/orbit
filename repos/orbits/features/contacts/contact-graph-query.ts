@@ -238,6 +238,10 @@ function profileSnippetFor(contact: ContactDTO): string {
 
 // nextAction 保持可复核语气，提醒使用者 agent 执行前仍需要证据检查。
 function nextActionFor(contact: ContactDTO): string {
+  if (contact.nextAction?.text.trim()) {
+    return contact.nextAction.text.trim();
+  }
+
   if (contact.stage === "needs_follow_up") {
     return `Review the next follow-up for ${contact.displayName}.`;
   }

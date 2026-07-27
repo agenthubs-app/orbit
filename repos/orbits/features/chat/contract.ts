@@ -577,6 +577,7 @@ export interface AsyncConversationCreateFromDraftInput {
   subject?: string | null;
   body?: string | null;
   sourceLabel?: string | null;
+  stagedAt?: string | null;
 }
 
 export interface AsyncConversationCreatePayload {

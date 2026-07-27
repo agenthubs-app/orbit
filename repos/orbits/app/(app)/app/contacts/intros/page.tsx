@@ -14,6 +14,7 @@ import {
   type AppContactsSearchParams,
 } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { OrbitRealCardsIntros } from "../orbit-real-contacts";
+import { createConfiguredContactIntroductionRepository } from "../../../../../features/contacts/introduction-records";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 
@@ -33,6 +34,11 @@ export default async function AppContactsIntrosPage({
     await searchParams,
     session.user.id,
   );
+  const introductionRepository =
+    createConfiguredContactIntroductionRepository();
+  const introductions = introductionRepository
+    ? await introductionRepository.list(session.user.id)
+    : [];
 
   return (
     <>
@@ -41,7 +47,16 @@ export default async function AppContactsIntrosPage({
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-contacts-intros-route">
           <OrbitRealCardsIntros
-            viewModel={contactsRouteToOrbitContactsViewModel(routeModel.payload)}
+            viewModel={{
+              ...contactsRouteToOrbitContactsViewModel(routeModel.payload),
+              intros: introductions.map((introduction) => ({
+                blurb: introduction.blurb,
+                id: introduction.id,
+                labelA: introduction.labelA,
+                labelB: introduction.labelB,
+                statusBadge: introduction.status,
+              })),
+            }}
           />
         </div>
       ) : (

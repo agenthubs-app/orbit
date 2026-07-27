@@ -691,6 +691,12 @@ function ThreadsTab({
   const [composing, setComposing] = useState(false);
   const [created, setCreated] = useState<ReturnType<typeof toCreatedThread>[]>([]);
   const [search, setSearch] = useState("");
+  const emptyWorkspace: InboxPanelViewModel = {
+    title: t({ en: "Relationship inbox", zh: "关系收件箱" }),
+    currentUserName: t({ en: "You", zh: "我" }),
+    threads: [],
+    selected: null,
+  };
 
   useEffect(() => {
     let active = true;
@@ -727,25 +733,41 @@ function ThreadsTab({
       .catch(() => undefined);
   };
 
-  if (state === "loading") {
+  if (state === "loading" && !composing) {
     return <EmptyState hint={t({ en: "Loading conversations…", zh: "正在加载对话…" })} icon="message" title={t({ en: "Loading", zh: "加载中" })} />;
   }
 
-  if (state === "error" || !viewModel) {
-    return <EmptyState hint={t({ en: "Could not load conversations. Close and reopen to retry.", zh: "无法加载对话，关闭后重新打开可重试。" })} icon="message" title={t({ en: "Load failed", zh: "加载失败" })} />;
+  if ((state === "error" || !viewModel) && !composing && created.length === 0) {
+    return (
+      <div style={{ display: "grid", justifyItems: "center" }}>
+        <EmptyState
+          hint={t({
+            en: "No live mailbox provider is connected. You can still prepare a local draft without sending it.",
+            zh: "当前未连接在线邮箱，但仍可准备一份不会自动发送的本地草稿。",
+          })}
+          icon="message"
+          title={t({ en: "Mailbox not connected", zh: "邮箱尚未连接" })}
+        />
+        <button className="btn btn-primary btn-sm" onClick={() => setComposing(true)} type="button">
+          <Icon name="plus" size={15} />
+          {t({ en: "Prepare a local draft", zh: "准备本地草稿" })}
+        </button>
+      </div>
+    );
   }
 
+  const workspace = viewModel ?? emptyWorkspace;
   const createdDetail = created.find((entry) => entry.detail.conversationId === openId)?.detail;
   const fetchedDetail =
-    openId && viewModel.selected && viewModel.selected.conversationId === openId
-      ? viewModel.selected
+    openId && workspace.selected && workspace.selected.conversationId === openId
+      ? workspace.selected
       : null;
   const detail =
     createdDetail ??
     fetchedDetail ??
-    (openId === null ? viewModel.selected : null);
+    (openId === null ? workspace.selected : null);
 
-  const allThreads = [...created.map((entry) => entry.item), ...viewModel.threads];
+  const allThreads = [...created.map((entry) => entry.item), ...workspace.threads];
   const query = search.trim().toLocaleLowerCase();
   const visibleThreads = query
     ? allThreads.filter((thread) =>
@@ -841,7 +863,7 @@ function ThreadsTab({
           />
         ) : detail ? (
           <ThreadDetailView
-            currentUserName={viewModel.currentUserName}
+            currentUserName={workspace.currentUserName}
             detail={detail}
             onBack={() => setOpenId(null)}
             t={t}
@@ -1309,6 +1331,7 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
   // 顶栏（含 backdrop-filter）会成为 fixed 定位的包含块，把面板困在 72px 高的导航条内。
   // 用 portal 把面板挂到 document.body，让 slide-over 正确覆盖整个视口。
   const [mounted, setMounted] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -1330,6 +1353,11 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
   // 监听"起草邮件"等外部入口的 compose 事件，打开面板并带上收件人。
   useEffect(() => {
     function onCompose(event: Event) {
+      // 多数页面同时保留 desktop/mobile DOM，再由 CSS 只显示其中一个。
+      // 只有当前可见的 trigger 消费全局 compose 事件，避免两个 portal 同时打开。
+      if (!triggerRef.current || triggerRef.current.offsetParent === null) {
+        return;
+      }
       const detail = (event as CustomEvent<NewThreadSeed>).detail ?? {};
       setSeed({
         body: detail.body,
@@ -1352,6 +1380,7 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
         aria-expanded={open}
         aria-label={t({ en: "Open inbox", zh: "打开收件箱" })}
         className="hit-44 ri-trigger"
+        ref={triggerRef}
         onClick={() => {
           setSeed(null);
           setOpen(true);

@@ -948,7 +948,7 @@ function IntroComposerModal({
   viewModel,
 }: {
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (introduction: OrbitIntroView) => void;
   t: Translate;
   viewModel: OrbitContactsViewModel;
 }) {
@@ -957,6 +957,8 @@ function IntroComposerModal({
   const [blurb, setBlurb] = useState("");
   const [picking, setPicking] = useState("");
   const [query, setQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const selectedA = viewModel.connections.find((contact) => contact.id === aId) || null;
   const selectedB = viewModel.connections.find((contact) => contact.id === bId) || null;
   const keyword = query.trim().toLowerCase();
@@ -971,6 +973,64 @@ function IntroComposerModal({
     if (picking === "b") setBId(id);
     setPicking("");
     setQuery("");
+  }
+
+  async function saveIntroduction() {
+    if (!aId || !bId || !blurb.trim() || saving) return;
+
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/contacts/introductions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contactAId: aId,
+          contactBId: bId,
+          blurb,
+        }),
+      });
+      const envelope = (await response.json()) as {
+        success?: boolean;
+        data?: {
+          introduction?: {
+            id?: string;
+            labelA?: string;
+            labelB?: string;
+            blurb?: string;
+            status?: OrbitIntroStatus;
+          };
+        };
+      };
+      const introduction = envelope.data?.introduction;
+      if (
+        !response.ok ||
+        envelope.success !== true ||
+        !introduction?.id ||
+        !introduction.labelA ||
+        !introduction.labelB ||
+        !introduction.blurb ||
+        introduction.status !== "draft"
+      ) {
+        throw new Error("introduction-save-failed");
+      }
+
+      onCreated({
+        blurb: introduction.blurb,
+        id: introduction.id,
+        labelA: introduction.labelA,
+        labelB: introduction.labelB,
+        statusBadge: introduction.status,
+      });
+    } catch {
+      setError(
+        t({
+          en: "The introduction draft could not be saved. Please retry.",
+          zh: "引荐草稿未能保存，请重试。",
+        }),
+      );
+      setSaving(false);
+    }
   }
 
   if (picking) {
@@ -999,19 +1059,20 @@ function IntroComposerModal({
 
   return (
     <ModalShell maxW={560} onClose={onClose} step={t({ en: "Create introduction", zh: "创建引荐" })}>
-      <form onSubmit={(event) => { event.preventDefault(); if (aId && bId) onCreated(); }}>
+      <form onSubmit={(event) => { event.preventDefault(); void saveIntroduction(); }}>
         <h2 className="h-title" style={{ margin: "4px 0 6px" }}>{t({ en: "Make an introduction", zh: "发起引荐" })}</h2>
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: "0 0 18px" }}>{t({ en: "Pick two contacts from your card holder. Write the intro note yourself, or leave it blank for the current AI to generate.", zh: "从名片夹里选择两位联系人。你填写引荐词，或者留空交给当前 AI 能力生成。" })}</p>
+        <p style={{ color: "var(--text-2)", fontSize: 14, margin: "0 0 18px" }}>{t({ en: "Pick two contacts and write the introduction note. Saving creates an account-scoped draft; it does not send anything.", zh: "选择两位联系人并填写引荐词。保存后会生成仅属于当前账号的草稿，不会自动发送。" })}</p>
         <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
           <PickerSlot label={t({ en: "Contact A", zh: "联系人 A" })} onPick={() => setPicking("a")} person={selectedA} t={t} />
           <div style={{ color: "var(--accent)", marginTop: 18 }}><Icon name="share" size={20} /></div>
           <PickerSlot label={t({ en: "Contact B", zh: "联系人 B" })} onPick={() => setPicking("b")} person={selectedB} t={t} />
         </div>
         <label className="field-label" htmlFor="intro-note" style={{ marginTop: 18 }}>{t({ en: "Intro note", zh: "引荐词" })}</label>
-        <textarea className="field" id="intro-note" onChange={(event) => setBlurb(event.target.value)} placeholder={t({ en: "Leave blank to try AI generation; if no AI is configured, it will error clearly.", zh: "留空则尝试用 AI 生成；如果当前没配 AI，会明确报错。" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={blurb} />
+        <textarea className="field" id="intro-note" onChange={(event) => setBlurb(event.target.value)} placeholder={t({ en: "Write the note both contacts will review.", zh: "填写给双方查看的引荐说明。" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={blurb} />
+        {error ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: "10px 0 0" }}>{error}</p> : null}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
           <button className="btn btn-ghost" onClick={onClose} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
-          <button className="btn btn-primary" disabled={!aId || !bId} type="submit"><Icon name="share" size={16} color="var(--on-dark)" />{t({ en: "Save introduction", zh: "保存引荐" })}</button>
+          <button className="btn btn-primary" disabled={!aId || !bId || !blurb.trim() || saving} type="submit"><Icon name="share" size={16} color="var(--on-dark)" />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save draft", zh: "保存草稿" })}</button>
         </div>
       </form>
     </ModalShell>
@@ -1021,19 +1082,20 @@ function IntroComposerModal({
 export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsViewModel }) {
   const { t } = useOrbitLanguage();
   const [composerOpen, setComposerOpen] = useState(false);
+  const [introductions, setIntroductions] = useState(viewModel.intros);
   const [filter, setFilter] = useState<"all" | OrbitIntroStatus>("all");
   const [query, setQuery] = useState("");
   const stats = {
-    draft: viewModel.intros.filter((intro) => intro.statusBadge === "draft").length,
-    sent: viewModel.intros.filter((intro) => intro.statusBadge === "sent").length,
-    total: viewModel.intros.length,
+    draft: introductions.filter((intro) => intro.statusBadge === "draft").length,
+    sent: introductions.filter((intro) => intro.statusBadge === "sent").length,
+    total: introductions.length,
   };
   const filters: { count: number; key: "all" | OrbitIntroStatus; label: string }[] = [
     { key: "all", label: t({ en: "All", zh: "全部" }), count: stats.total },
     { key: "draft", label: t({ en: "Draft", zh: "草稿" }), count: stats.draft },
     { key: "sent", label: t({ en: "Sent", zh: "已发送" }), count: stats.sent },
   ];
-  const visible = viewModel.intros.filter((intro) => {
+  const visible = introductions.filter((intro) => {
     const matchesFilter = filter === "all" || intro.statusBadge === filter;
     const haystack = [intro.labelA, intro.labelB, intro.blurb].filter(Boolean).join(" ").toLowerCase();
     return matchesFilter && (!query.trim() || haystack.includes(query.trim().toLowerCase()));
@@ -1096,7 +1158,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
           <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} t={t} />)}</section>
         </div>
       </div>
-      {composerOpen ? <IntroComposerModal onClose={() => setComposerOpen(false)} onCreated={() => setComposerOpen(false)} t={t} viewModel={viewModel} /> : null}
+      {composerOpen ? <IntroComposerModal onClose={() => setComposerOpen(false)} onCreated={(introduction) => { setIntroductions((current) => [introduction, ...current]); setComposerOpen(false); }} t={t} viewModel={viewModel} /> : null}
     </main>
   );
 }

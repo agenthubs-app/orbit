@@ -303,7 +303,10 @@ function DashboardBody({
 }) {
   const { t } = useOrbitLanguage();
   const contacts = viewModel.connections;
-  const followups = contacts.filter((contact) => contact.nextAction);
+  const followups = contacts.filter(
+    (contact) =>
+      contact.pipelineStatus === "to_contact" && contact.nextAction,
+  );
   const industries = distribution(contacts, (contact) => [contact.industry]);
   const values = distribution(contacts, (contact) => contact.valueTags);
   const events = new Set(contacts.map((contact) => contact.lastEventId).filter(Boolean));
