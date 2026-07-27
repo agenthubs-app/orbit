@@ -43,7 +43,9 @@ export type LiveProfileSignalProviderResult<TResult> = TResult | Promise<TResult
 export interface LiveProfileSignalProvider {
   source: string;
   sourceLabel: string;
-  readSignalGraph: () => LiveProfileSignalProviderResult<LiveProfileSignalGraph>;
+  readSignalGraph: (
+    actorId: string,
+  ) => LiveProfileSignalProviderResult<LiveProfileSignalGraph>;
 }
 
 export const PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS = {
@@ -367,6 +369,19 @@ function latestTimestamp(
   );
 }
 
+function belongsToActor(
+  record: LiveRecord<Record<string, unknown>>,
+  actorId: string,
+): boolean {
+  return record.userId === actorId || record.payload.accountId === actorId;
+}
+
+function referencedEvidenceIds(
+  records: readonly LiveRecord<Record<string, unknown>>[],
+): ReadonlySet<string> {
+  return new Set(records.flatMap((record) => evidenceIdsFromRecord(record)));
+}
+
 export function createStorageProfileSignalProvider({
   source,
   sourceLabel = "Profile signal shared live storage",
@@ -376,7 +391,7 @@ export function createStorageProfileSignalProvider({
   return {
     source: source ?? `live-record-store:profile-signals:${workspaceId}`,
     sourceLabel,
-    async readSignalGraph(): Promise<LiveProfileSignalGraph> {
+    async readSignalGraph(actorId): Promise<LiveProfileSignalGraph> {
       const [
         profileRecords,
         contactRecords,
@@ -412,37 +427,98 @@ export function createStorageProfileSignalProvider({
         }),
       ]);
 
-      const records = [
-        ...profileRecords,
-        ...contactRecords,
-        ...connectionRecords,
-        ...messageRecords,
-        ...interactionMemoryRecords,
-        ...evidenceRecords,
+      const actorProfileRecords = profileRecords.filter((record) =>
+        belongsToActor(record, actorId),
+      );
+      const actorConnectionRecords = connectionRecords.filter((record) =>
+        belongsToActor(record, actorId),
+      );
+      const actorConnectionIds = new Set(
+        actorConnectionRecords
+          .map((record) => record.payload.id)
+          .filter(nonEmptyString),
+      );
+      const actorContactIds = new Set(
+        actorConnectionRecords
+          .map((record) => record.payload.contactId)
+          .filter(nonEmptyString),
+      );
+      const actorContactRecords = contactRecords.filter(
+        (record) =>
+          belongsToActor(record, actorId) ||
+          (nonEmptyString(record.payload.id) &&
+            actorContactIds.has(record.payload.id)),
+      );
+      const actorInteractionMemoryRecords = interactionMemoryRecords.filter(
+        (record) =>
+          belongsToActor(record, actorId) ||
+          (nonEmptyString(record.payload.contactId) &&
+            actorContactIds.has(record.payload.contactId)) ||
+          (nonEmptyString(record.payload.connectionId) &&
+            actorConnectionIds.has(record.payload.connectionId)),
+      );
+      const actorConversationIds = new Set(
+        actorInteractionMemoryRecords
+          .map((record) => record.payload.conversationId)
+          .filter(nonEmptyString),
+      );
+      const actorMessageIds = new Set(
+        actorInteractionMemoryRecords
+          .map((record) => record.payload.messageId)
+          .filter(nonEmptyString),
+      );
+      const actorMessageRecords = messageRecords.filter(
+        (record) =>
+          belongsToActor(record, actorId) ||
+          (nonEmptyString(record.payload.conversationId) &&
+            actorConversationIds.has(record.payload.conversationId)) ||
+          (nonEmptyString(record.payload.id) &&
+            actorMessageIds.has(record.payload.id)),
+      );
+      const actorEvidenceIds = referencedEvidenceIds([
+        ...actorProfileRecords,
+        ...actorContactRecords,
+        ...actorConnectionRecords,
+        ...actorMessageRecords,
+        ...actorInteractionMemoryRecords,
+      ]);
+      const actorEvidenceRecords = evidenceRecords.filter(
+        (record) =>
+          belongsToActor(record, actorId) ||
+          (nonEmptyString(record.payload.id) &&
+            actorEvidenceIds.has(record.payload.id)),
+      );
+      const actorRecords = [
+        ...actorProfileRecords,
+        ...actorContactRecords,
+        ...actorConnectionRecords,
+        ...actorMessageRecords,
+        ...actorInteractionMemoryRecords,
+        ...actorEvidenceRecords,
       ];
 
       return {
-        connections: connectionRecords
+        connections: actorConnectionRecords
           .map(connectionFromRecord)
           .filter((connection): connection is ConnectionDTO => connection !== null),
-        contacts: contactRecords
+        contacts: actorContactRecords
           .map(contactFromRecord)
           .filter((contact): contact is ContactDTO => contact !== null),
-        evidence: evidenceRecords
+        evidence: actorEvidenceRecords
           .map(evidenceFromRecord)
           .filter(
             (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
           ),
-        generatedAt: latestTimestamp(records),
-        interactionMemories: interactionMemoryRecords
+        generatedAt: latestTimestamp(actorRecords),
+        interactionMemories: actorInteractionMemoryRecords
           .map(interactionMemoryFromRecord)
           .filter(
             (memory): memory is InteractionMemoryDTO => memory !== null,
           ),
-        messages: messageRecords
+        messages: actorMessageRecords
           .map(messageFromRecord)
           .filter((message): message is MessageDTO => message !== null),
-        profiles: profileRecords
+        profiles: actorProfileRecords
           .map(profileFromRecord)
           .filter(
             (profile): profile is LiveProfileSignalProfileRecord =>

@@ -16,6 +16,7 @@ import type {
 // 它是 onboarding/profile 页的主读写模型，不包含外部文档解析或自动信号应用。
 export const PROFILE_ERROR_CODES = [
   "PROFILE_REQUIRED",
+  "PROFILE_ACTOR_REQUIRED",
   "PROFILE_VALIDATION_FAILED",
   "PROFILE_UPDATE_PENDING",
   "PROFILE_LIVE_STORE_UNCONFIGURED",
@@ -44,6 +45,12 @@ export interface ProfileErrorDefinition {
 }
 
 export const PROFILE_ERROR_DEFINITIONS = {
+  PROFILE_ACTOR_REQUIRED: {
+    code: "PROFILE_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated actor is required for live profile access.",
+    recovery: "Sign in before reading or updating a live profile.",
+  },
   PROFILE_REQUIRED: {
     code: "PROFILE_REQUIRED",
     appCode: "NOT_FOUND",
@@ -80,7 +87,7 @@ export interface ProfileProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-profile-only";
+  privacy: "actor-scoped-profile" | "demo-profile-only";
 }
 
 // ManualProfile 是用户可直接编辑的核心资料。

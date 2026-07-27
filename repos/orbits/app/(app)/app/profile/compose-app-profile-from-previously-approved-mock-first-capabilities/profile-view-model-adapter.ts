@@ -17,56 +17,54 @@ export function profileRouteToOrbitProfileViewModel(
   const headlineParts = splitHeadline(profile.headline);
   const company = profile.organization || headlineParts.company;
   const title = profile.role || headlineParts.title;
+  const offering = [...(profile.offering ?? [])];
+  const seeking = [...(profile.seeking ?? [])];
+  const profileTopics = [...(profile.topics ?? [])];
   const offeringTags = Array.from(
     new Set([
+      ...offering,
       ...profile.preferredIntroChannels,
-      routeModel.profile.action.preferredChannels,
-      routeModel.profile.nextProfileFieldLabel,
-      "relationship context",
     ].filter(Boolean)),
   );
   const seekingTags = Array.from(
     new Set([
+      ...seeking,
       profile.relationshipGoal,
       profile.homeMarket,
       ...profile.targetRelationshipTypes,
-      "relevant introductions",
     ].filter(Boolean)),
   );
   const topics = Array.from(
     new Set([
+      ...profileTopics,
       ...profile.targetRelationshipTypes,
       profile.homeMarket,
-      routeModel.profile.reviewSummary,
-      "follow-up",
-      "warm introductions",
     ].filter(Boolean)),
   );
 
   return {
     industries: Array.from(
       new Set([
+        profile.industry ?? "",
         profile.homeMarket,
         ...profile.targetRelationshipTypes,
-        "Relationship operations",
-        "Community",
       ].filter(Boolean)),
     ),
     offeringTags,
     profile: {
-      bio: `${title} working from ${company || profile.homeMarket}.`,
+      bio: profile.bio ?? "",
       company,
-      email: "",
+      email: profile.handles?.email ?? "",
       fullName: profile.displayName,
       headline: profile.headline,
-      industry: profile.homeMarket || profile.targetRelationshipTypes[0] || "Relationship operations",
+      industry: profile.industry ?? profile.homeMarket,
       intro: profile.relationshipGoal,
-      lineId: "",
-      offering: profile.preferredIntroChannels.slice(0, 3),
-      seeking: profile.targetRelationshipTypes.slice(0, 3),
+      lineId: profile.handles?.lineId ?? "",
+      offering,
+      seeking,
       title,
-      topics: topics.slice(0, 5),
-      wechatName: "",
+      topics: profileTopics,
+      wechatName: profile.handles?.wechatId ?? "",
     },
     seekingTags,
     topics,

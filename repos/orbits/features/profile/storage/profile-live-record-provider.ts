@@ -31,9 +31,12 @@ export type LiveProfileProviderResult<TResult> = TResult | Promise<TResult>;
 export interface LiveProfileProvider {
   source: string;
   sourceLabel: string;
-  readProfileGraph: () => LiveProfileProviderResult<LiveProfileGraph>;
+  readProfileGraph: (
+    actorId: string,
+  ) => LiveProfileProviderResult<LiveProfileGraph>;
   upsertProfile: (
     profile: LiveProfileRecord,
+    actorId: string,
   ) => LiveProfileProviderResult<LiveProfileRecord>;
 }
 
@@ -123,6 +126,9 @@ function profileFromRecord(
     role: optionalString(payload.role),
     timezone: optionalString(payload.timezone),
     headline: optionalString(payload.headline),
+    handles: isRecord(payload.handles)
+      ? (payload.handles as UserProfileDTO["handles"])
+      : undefined,
     homeMarket: optionalString(payload.homeMarket),
     organization: optionalString(payload.organization),
     preferredFollowUpWindow: optionalString(payload.preferredFollowUpWindow),
@@ -162,8 +168,17 @@ function searchTextFor(profile: LiveProfileRecord): string {
     profile.homeMarket,
     profile.relationshipGoal,
     profile.preferredFollowUpWindow,
+    profile.handles?.email,
+    profile.handles?.lineId,
+    profile.handles?.wechatId,
+    profile.publicProfile?.bio,
+    profile.publicProfile?.selfIntroduction,
+    profile.publicProfile?.industry,
     ...profile.targetRelationshipTypes,
     ...profile.preferredIntroChannels,
+    ...(profile.publicProfile?.offering ?? []),
+    ...(profile.publicProfile?.seeking ?? []),
+    ...(profile.publicProfile?.topics ?? []),
   ]
     .filter(Boolean)
     .join(" ");
@@ -189,7 +204,7 @@ export function createStorageProfileProvider({
   return {
     source: source ?? `live-record-store:profiles:${workspaceId}`,
     sourceLabel,
-    async readProfileGraph(): Promise<LiveProfileGraph> {
+    async readProfileGraph(actorId): Promise<LiveProfileGraph> {
       const [accountRecords, profileRecords] = await Promise.all([
         store.listRecords({
           workspaceId,
@@ -200,19 +215,40 @@ export function createStorageProfileProvider({
           collectionName: PROFILE_LIVE_RECORD_COLLECTIONS.profiles,
         }),
       ]);
+      const actorProfiles = profileRecords.filter(
+        (record) =>
+          record.userId === actorId ||
+          record.payload.accountId === actorId,
+      );
+      const actorAccounts = accountRecords.filter(
+        (record) =>
+          record.userId === actorId ||
+          record.payload.id === actorId,
+      );
 
       return {
-        accounts: accountRecords
+        accounts: actorAccounts
           .map(accountFromRecord)
           .filter((account): account is AccountDTO => account !== null),
-        profiles: profileRecords
+        profiles: actorProfiles
           .map(profileFromRecord)
           .filter((profile): profile is LiveProfileRecord => profile !== null),
-        generatedAt: latestTimestamp([...accountRecords, ...profileRecords]),
+        generatedAt: latestTimestamp([...actorAccounts, ...actorProfiles]),
       };
     },
-    async upsertProfile(profile): Promise<LiveProfileRecord> {
+    async upsertProfile(profile, actorId): Promise<LiveProfileRecord> {
+      if (profile.accountId !== actorId) {
+        throw new Error("Profile actor does not match the target account.");
+      }
+
       const existing = await existingProfileRecord(profile.id);
+      if (
+        existing &&
+        existing.userId !== actorId &&
+        existing.payload.accountId !== actorId
+      ) {
+        throw new Error("Profile record belongs to a different actor.");
+      }
       const evidenceIds =
         existing && existing.evidenceIds.length > 0
           ? existing.evidenceIds
@@ -221,7 +257,7 @@ export function createStorageProfileProvider({
         workspaceId,
         collectionName: PROFILE_LIVE_RECORD_COLLECTIONS.profiles,
         recordId: profile.id,
-        userId: existing?.userId ?? null,
+        userId: actorId,
         sourceType: existing?.sourceType ?? "manual",
         sourceId: existing?.sourceId ?? `source:profile:${profile.id}`,
         sourceLabel: existing?.sourceLabel ?? sourceLabel,

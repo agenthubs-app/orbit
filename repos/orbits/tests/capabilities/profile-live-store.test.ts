@@ -7,6 +7,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
 test("live profile service reads and upserts generated profile records", async () => {
+  const actorId = "account_orbit_generated";
   const workspaceId = "workspace:profile-live";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
@@ -26,34 +27,37 @@ test("live profile service reads and upserts generated profile records", async (
     provider,
   });
 
-  const profile = await service.getProfile();
+  const profile = await service.getProfile({ actorId });
 
   assert.equal(profile.success, true);
   assert.equal(profile.data.state, "success");
   assert.equal(profile.data.profile?.id, "profile_orbit_generated_operator");
-  assert.equal(profile.data.profile?.displayName, "結城 航太郎");
-  assert.equal(profile.data.profile?.role, "Relationship Operations Lead");
+  assert.equal(profile.data.profile?.displayName, "小雨");
+  assert.equal(profile.data.profile?.role, "AI & Computer Vision Engineer");
   assert.equal(
     profile.data.profile?.organization,
-    "Orbit Generated Relationship Workspace",
+    "OPPO Japan Research",
   );
-  assert.equal(profile.data.profile?.homeMarket, "Tokyo");
+  assert.equal(profile.data.profile?.homeMarket, "");
   assert.equal(profile.data.provenance.source, `live-record-store:profiles:${workspaceId}`);
   assert.equal(profile.data.provenance.sourceLabel, "Profile memory live storage");
-  assert.equal(profile.data.completeness.status, "ready");
+  assert.equal(profile.data.completeness.status, "action-needed");
 
-  const updated = await service.updateProfile({
-    displayName: "結城 航太郎",
-    headline: "Relationship operator building source-backed follow-up systems",
-    homeMarket: "Tokyo",
-    organization: "Orbit",
-    preferredFollowUpWindow: "24 hours",
-    preferredIntroChannels: ["warm intro", "event follow-up"],
-    relationshipGoal:
-      "Use live relationship context to decide which follow-up matters next.",
-    role: "Relationship Operations Lead",
-    targetRelationshipTypes: ["founders", "operators", "community leads"],
-  });
+  const updated = await service.updateProfile(
+    {
+      displayName: "結城 航太郎",
+      headline: "Relationship operator building source-backed follow-up systems",
+      homeMarket: "Tokyo",
+      organization: "Orbit",
+      preferredFollowUpWindow: "24 hours",
+      preferredIntroChannels: ["warm intro", "event follow-up"],
+      relationshipGoal:
+        "Use live relationship context to decide which follow-up matters next.",
+      role: "Relationship Operations Lead",
+      targetRelationshipTypes: ["founders", "operators", "community leads"],
+    },
+    { actorId },
+  );
 
   assert.equal(updated.success, true);
   assert.equal(updated.data.profile?.headline, "Relationship operator building source-backed follow-up systems");
@@ -76,5 +80,23 @@ test("live profile service reads and upserts generated profile records", async (
     "warm intro",
     "event follow-up",
   ]);
+  assert.equal(stored?.userId, actorId);
   assert.match(stored?.searchText ?? "", /source-backed follow-up/);
+});
+
+test("live profile service requires an actor and cannot read another actor's profile", async () => {
+  const workspaceId = "workspace:profile-live-actor-boundary";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
+  const service = createLiveProfileService({
+    provider: createStorageProfileProvider({ store, workspaceId }),
+  });
+
+  const missingActor = await service.getProfile();
+  const otherActor = await service.getProfile({ actorId: "account:other" });
+
+  assert.equal(missingActor.success, false);
+  assert.equal(missingActor.error.code, "PROFILE_ACTOR_REQUIRED");
+  assert.equal(otherActor.success, true);
+  assert.equal(otherActor.data.profile, null);
 });

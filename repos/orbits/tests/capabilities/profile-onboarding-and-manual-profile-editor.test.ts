@@ -21,7 +21,7 @@ import {
 } from "../../features/profile/fixtures";
 import { createMockProfileService } from "../../features/profile/mock-service";
 import * as profileOnboardingDebugViewModule from "../../features/profile/profile-onboarding-and-manual-profile-editor/debug-view";
-import * as profileRoute from "../../app/api/profile/route";
+import { createProfileRouteHandlers } from "../../app/api/profile/handlers";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const profileOnboardingDebugView =
@@ -32,6 +32,9 @@ const {
   ProfileOnboardingCapabilityDemo,
   PROFILE_ONBOARDING_CAPABILITY_SLUG,
 } = profileOnboardingDebugView;
+const profileRoute = createProfileRouteHandlers({
+  resolveActor: async () => ({ id: "account:test-profile-route" }),
+});
 
 test("profile contract exposes onboarding, update, completeness, and controlled error definitions", () => {
   const service = createMockProfileService();
@@ -42,6 +45,7 @@ test("profile contract exposes onboarding, update, completeness, and controlled 
 
   assert.deepEqual(PROFILE_ERROR_CODES, [
     "PROFILE_REQUIRED",
+    "PROFILE_ACTOR_REQUIRED",
     "PROFILE_VALIDATION_FAILED",
     "PROFILE_UPDATE_PENDING",
     "PROFILE_LIVE_STORE_UNCONFIGURED",
@@ -140,6 +144,24 @@ test("profile API routes return stable envelopes for GET and PUT probes", async 
     success: true,
     data: createMockProfileService().updateProfile(mockProfileUpdateInput).data,
   });
+});
+
+test("profile API routes reject unauthenticated reads and writes", async () => {
+  const unauthenticatedRoute = createProfileRouteHandlers({
+    resolveActor: async () => null,
+  });
+  const getResponse = await unauthenticatedRoute.GET(
+    new Request("https://orbit.local/api/profile"),
+  );
+  const putResponse = await unauthenticatedRoute.PUT(
+    new Request("https://orbit.local/api/profile", {
+      method: "PUT",
+      body: JSON.stringify(mockProfileUpdateInput),
+    }),
+  );
+
+  assert.equal(getResponse.status, 401);
+  assert.equal(putResponse.status, 401);
 });
 
 test("profile API routes document empty and controlled failure paths", async () => {

@@ -69,7 +69,7 @@ function failure(
         sourceLabel: input.provider?.sourceLabel ?? "Unconfigured live profile store",
         evidenceIds,
         collectedAt: input.collectedAt,
-        privacy: "demo-profile-only",
+        privacy: "actor-scoped-profile",
       },
       evidenceIds,
     },
@@ -149,12 +149,10 @@ function marketFromTimezone(timezone?: string): string {
 
 function currentProfile(
   graph: LiveProfileGraph,
+  actorId: string,
 ): LiveProfileRecord | null {
   return (
-    graph.profiles.find((profile) =>
-      profile.id.includes("generated_operator"),
-    ) ??
-    [...graph.profiles].sort((left, right) => left.id.localeCompare(right.id))[0] ??
+    graph.profiles.find((profile) => profile.accountId === actorId) ??
     null
   );
 }
@@ -163,38 +161,28 @@ function manualProfileFor(input: {
   accountName?: string;
   profile: LiveProfileRecord;
 }): ManualProfile {
-  const organization = input.profile.organization ?? input.accountName ?? "Orbit";
-  const role = input.profile.role ?? "Relationship operator";
+  const organization = input.profile.organization ?? input.accountName ?? "";
+  const role = input.profile.role ?? "";
   const publicProfile = input.profile.publicProfile;
 
   return {
     id: input.profile.id,
     displayName: input.profile.displayName,
-    headline:
-      input.profile.headline ??
-      `${role} managing source-backed relationship follow-up`,
+    headline: input.profile.headline ?? "",
     organization,
     role,
+    handles: input.profile.handles,
     industry: publicProfile?.industry,
+    seniorityLevel: publicProfile?.seniorityLevel,
     bio: publicProfile?.bio,
     offering: publicProfile?.offering,
     seeking: publicProfile?.seeking,
     topics: publicProfile?.topics,
-    homeMarket:
-      input.profile.homeMarket ?? marketFromTimezone(input.profile.timezone),
-    relationshipGoal:
-      input.profile.relationshipGoal ??
-      "Use live relationship context to decide which follow-up matters next.",
-    targetRelationshipTypes:
-      input.profile.targetRelationshipTypes.length > 0
-        ? input.profile.targetRelationshipTypes
-        : ["founders", "operators", "community leads"],
-    preferredFollowUpWindow:
-      input.profile.preferredFollowUpWindow ?? "48 hours",
-    preferredIntroChannels:
-      input.profile.preferredIntroChannels.length > 0
-        ? input.profile.preferredIntroChannels
-        : ["warm intro", "event follow-up"],
+    homeMarket: input.profile.homeMarket ?? "",
+    relationshipGoal: input.profile.relationshipGoal ?? "",
+    targetRelationshipTypes: input.profile.targetRelationshipTypes,
+    preferredFollowUpWindow: input.profile.preferredFollowUpWindow ?? "",
+    preferredIntroChannels: input.profile.preferredIntroChannels,
     updatedAt: input.profile.updatedAt,
   };
 }
@@ -218,7 +206,7 @@ function emptyPayload(input: {
       sourceLabel: input.provider?.sourceLabel ?? "Empty live profile store",
       evidenceIds: ["evidence:profile-live-empty"],
       collectedAt: input.collectedAt,
-      privacy: "demo-profile-only",
+      privacy: "actor-scoped-profile",
     },
     nextAction:
       "Start with a name, market, and relationship goal before creating relationship actions.",
@@ -256,7 +244,7 @@ function payloadFor(input: {
       sourceLabel: input.provider.sourceLabel,
       evidenceIds: input.profile.evidenceIds,
       collectedAt: input.collectedAt,
-      privacy: "demo-profile-only",
+      privacy: "actor-scoped-profile",
     },
     nextAction:
       completeness.status === "ready"
@@ -266,9 +254,7 @@ function payloadFor(input: {
 }
 
 function normalizeText(value: string | undefined, fallback: string): string {
-  const normalized = value?.trim();
-
-  return normalized && normalized.length > 0 ? normalized : fallback;
+  return value === undefined ? fallback : value.trim();
 }
 
 function normalizeStringList(
@@ -279,10 +265,11 @@ function normalizeStringList(
     ?.map((item) => item.trim())
     .filter((item) => item.length > 0);
 
-  return filtered && filtered.length > 0 ? filtered : fallback;
+  return filtered ?? fallback;
 }
 
 function mergeProfile(input: {
+  actorId: string;
   base: LiveProfileRecord | null;
   graph: LiveProfileGraph;
   update: ManualProfileUpdateInput;
@@ -294,16 +281,16 @@ function mergeProfile(input: {
         profile: input.base,
       })
     : null;
-  const profileId = input.base?.id ?? "profile_live_current_user";
-  const accountId = input.base?.accountId ?? input.graph.accounts[0]?.id ?? "account_live";
+  const profileId = input.base?.id ?? `profile:${input.actorId}`;
+  const accountId = input.actorId;
   const displayName = normalizeText(
     input.update.displayName,
     baseManual?.displayName ?? "",
   );
-  const role = normalizeText(input.update.role, baseManual?.role ?? "Relationship operator");
+  const role = normalizeText(input.update.role, baseManual?.role ?? "");
   const organization = normalizeText(
     input.update.organization,
-    baseManual?.organization ?? accountNameFor(input.graph, accountId) ?? "Orbit",
+    baseManual?.organization ?? accountNameFor(input.graph, accountId) ?? "",
   );
 
   return {
@@ -314,30 +301,48 @@ function mergeProfile(input: {
     timezone: input.base?.timezone ?? "Asia/Tokyo",
     headline: normalizeText(
       input.update.headline,
-      baseManual?.headline ?? `${role} managing source-backed relationship follow-up`,
+      baseManual?.headline ?? "",
     ),
+    handles: input.update.handles ?? input.base?.handles,
     organization,
     homeMarket: normalizeText(
       input.update.homeMarket,
-      baseManual?.homeMarket ?? marketFromTimezone(input.base?.timezone),
+      baseManual?.homeMarket ?? "",
     ),
     relationshipGoal: normalizeText(
       input.update.relationshipGoal,
-      baseManual?.relationshipGoal ??
-        "Use live relationship context to decide which follow-up matters next.",
+      baseManual?.relationshipGoal ?? "",
     ),
     targetRelationshipTypes: normalizeStringList(
       input.update.targetRelationshipTypes,
-      baseManual?.targetRelationshipTypes ?? ["founders", "operators"],
+      baseManual?.targetRelationshipTypes ?? [],
     ),
     preferredFollowUpWindow: normalizeText(
       input.update.preferredFollowUpWindow,
-      baseManual?.preferredFollowUpWindow ?? "48 hours",
+      baseManual?.preferredFollowUpWindow ?? "",
     ),
     preferredIntroChannels: normalizeStringList(
       input.update.preferredIntroChannels,
-      baseManual?.preferredIntroChannels ?? ["warm intro"],
+      baseManual?.preferredIntroChannels ?? [],
     ),
+    publicProfile: {
+      bio: normalizeText(input.update.bio, baseManual?.bio ?? ""),
+      industry: normalizeText(input.update.industry, baseManual?.industry ?? ""),
+      offering: normalizeStringList(
+        input.update.offering,
+        baseManual?.offering ?? [],
+      ),
+      seeking: normalizeStringList(
+        input.update.seeking,
+        baseManual?.seeking ?? [],
+      ),
+      seniorityLevel:
+        input.update.seniorityLevel ?? baseManual?.seniorityLevel,
+      topics: normalizeStringList(
+        input.update.topics,
+        baseManual?.topics ?? [],
+      ),
+    },
     evidenceIds: input.base?.evidenceIds ?? [`evidence:profile:${profileId}`],
     createdAt: input.base?.createdAt ?? input.updatedAt,
     updatedAt: input.updatedAt,
@@ -349,6 +354,7 @@ export function createLiveProfileService({
   provider = null,
 }: LiveProfileServiceOptions = {}): ProfileService {
   async function loadProfile(input: {
+    actorId: string;
     collectedAt: string;
   }): Promise<
     | {
@@ -365,12 +371,12 @@ export function createLiveProfileService({
       });
     }
 
-    const graph = await provider.readProfileGraph();
+    const graph = await provider.readProfileGraph(input.actorId);
 
     return {
       success: true,
       graph,
-      profile: currentProfile(graph),
+      profile: currentProfile(graph, input.actorId),
     };
   }
 
@@ -378,12 +384,20 @@ export function createLiveProfileService({
     async getProfile(options = {}): Promise<ProfileResult> {
       const collectedAt = now();
       const scenario = normalizeScenario(options.scenario);
+      const actorId = options.actorId?.trim();
+
+      if (!actorId) {
+        return failure("PROFILE_ACTOR_REQUIRED", {
+          collectedAt,
+          provider,
+        });
+      }
 
       if (scenario === "empty") {
         return success(emptyPayload({ collectedAt, provider }));
       }
 
-      const loaded = await loadProfile({ collectedAt });
+      const loaded = await loadProfile({ actorId, collectedAt });
 
       if (loaded.success === false) {
         return loaded;
@@ -404,8 +418,11 @@ export function createLiveProfileService({
       );
     },
 
-    async getPendingManualReview(): Promise<ProfileSuccess> {
-      const result = await this.getProfile({ scenario: "pending" });
+    async getPendingManualReview(options = {}): Promise<ProfileSuccess> {
+      const result = await this.getProfile({
+        actorId: options.actorId,
+        scenario: "pending",
+      });
 
       if (result.success) {
         return result;
@@ -416,8 +433,16 @@ export function createLiveProfileService({
 
     scoreCompleteness,
 
-    async updateProfile(input): Promise<ProfileResult> {
+    async updateProfile(input, options = {}): Promise<ProfileResult> {
       const collectedAt = now();
+      const actorId = options.actorId?.trim();
+
+      if (!actorId) {
+        return failure("PROFILE_ACTOR_REQUIRED", {
+          collectedAt,
+          provider,
+        });
+      }
 
       if (!input.displayName?.trim()) {
         return failure("PROFILE_VALIDATION_FAILED", {
@@ -427,7 +452,7 @@ export function createLiveProfileService({
         });
       }
 
-      const loaded = await loadProfile({ collectedAt });
+      const loaded = await loadProfile({ actorId, collectedAt });
 
       if (loaded.success === false) {
         return loaded;
@@ -441,12 +466,13 @@ export function createLiveProfileService({
       }
 
       const mergedProfile = mergeProfile({
+        actorId,
         base: loaded.profile,
         graph: loaded.graph,
         update: input,
         updatedAt: collectedAt,
       });
-      const savedProfile = await provider.upsertProfile(mergedProfile);
+      const savedProfile = await provider.upsertProfile(mergedProfile, actorId);
 
       return success(
         payloadFor({

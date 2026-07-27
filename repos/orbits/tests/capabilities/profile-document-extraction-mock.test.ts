@@ -22,8 +22,8 @@ import {
 } from "../../features/profile/extraction-fixtures";
 import { createMockProfileDocumentExtractionService } from "../../features/profile/mock-extraction-service";
 import * as profileDocumentDebugViewModule from "../../features/profile/profile-document-extraction-mock/debug-view";
-import * as businessCardRoute from "../../app/api/profile/extractions/business-card/route";
-import * as resumeRoute from "../../app/api/profile/extractions/resume/route";
+import { createBusinessCardExtractionPostHandler } from "../../app/api/profile/extractions/business-card/handler";
+import { createResumeExtractionPostHandler } from "../../app/api/profile/extractions/resume/handler";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const profileDocumentDebugView =
@@ -34,6 +34,16 @@ const {
   ProfileDocumentExtractionCapabilityDemo,
   PROFILE_DOCUMENT_EXTRACTION_CAPABILITY_SLUG,
 } = profileDocumentDebugView;
+const businessCardRoute = {
+  POST: createBusinessCardExtractionPostHandler(async () => ({
+    id: "account:test-profile-document",
+  })),
+};
+const resumeRoute = {
+  POST: createResumeExtractionPostHandler(async () => ({
+    id: "account:test-profile-document",
+  })),
+};
 
 test("profile document extraction contract exposes typed resume and business-card draft behavior", () => {
   const service = createMockProfileDocumentExtractionService();
@@ -154,6 +164,27 @@ test("profile document extraction API routes return stable success envelopes", a
     success: true,
     data: mockBusinessCardExtractionFixture,
   });
+});
+
+test("profile document extraction API routes reject unauthenticated requests", async () => {
+  const resumePost = createResumeExtractionPostHandler(async () => null);
+  const businessCardPost = createBusinessCardExtractionPostHandler(
+    async () => null,
+  );
+
+  const resumeResponse = await resumePost(
+    new Request("https://orbit.local/api/profile/extractions/resume", {
+      method: "POST",
+    }),
+  );
+  const businessCardResponse = await businessCardPost(
+    new Request("https://orbit.local/api/profile/extractions/business-card", {
+      method: "POST",
+    }),
+  );
+
+  assert.equal(resumeResponse.status, 401);
+  assert.equal(businessCardResponse.status, 401);
 });
 
 test("profile document extraction API routes document empty, pending, and controlled failure paths", async () => {

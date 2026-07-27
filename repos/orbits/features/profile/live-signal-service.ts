@@ -40,12 +40,10 @@ function isThenable(value: unknown): value is Promise<unknown> {
 
 function stableProfile(
   graph: LiveProfileSignalGraph,
+  actorId: string,
 ): LiveProfileSignalProfileRecord | null {
   return (
-    graph.profiles.find((profile) =>
-      profile.id.includes("generated_operator"),
-    ) ??
-    [...graph.profiles].sort((left, right) => left.id.localeCompare(right.id))[0] ??
+    graph.profiles.find((profile) => profile.accountId === actorId) ??
     null
   );
 }
@@ -99,7 +97,7 @@ function provenance(input: {
       "Profile signal live storage is not configured",
     evidenceIds: input.evidenceIds,
     collectedAt: input.collectedAt,
-    privacy: "demo-profile-signals-only",
+    privacy: "actor-scoped-profile-signals",
     generationMethod: "rule-based-signal-match",
   };
 }
@@ -337,13 +335,14 @@ function buildSuggestions(input: {
 }
 
 function payload(input: {
+  actorId: string;
   forceEmpty?: boolean;
   graph: LiveProfileSignalGraph;
   now: string;
   provider: LiveProfileSignalProvider;
   state?: ProfileSignalReviewQueueState;
 }): ProfileSignalReviewQueuePayload {
-  const profile = stableProfile(input.graph);
+  const profile = stableProfile(input.graph, input.actorId);
   const suggestions = buildSuggestions({
     graph: input.graph,
     now: input.now,
@@ -434,6 +433,7 @@ export function createLiveProfileSignalReviewQueueService({
   provider,
 }: LiveProfileSignalReviewQueueServiceOptions): ProfileSignalReviewQueueService {
   async function readPayload(
+    actorId: string,
     state?: ProfileSignalReviewQueueState,
   ): Promise<ProfileSignalReviewQueueResult> {
     const capturedNow = now();
@@ -446,10 +446,11 @@ export function createLiveProfileSignalReviewQueueService({
       });
     }
 
-    const graph = await provider.readSignalGraph();
+    const graph = await provider.readSignalGraph(actorId);
 
     return success(
       payload({
+        actorId,
         graph,
         forceEmpty: state === "empty",
         now: capturedNow,
@@ -461,11 +462,20 @@ export function createLiveProfileSignalReviewQueueService({
 
   return {
     async listUpdateSuggestions(input = {}) {
+      const actorId = input.actorId?.trim();
+
+      if (!actorId) {
+        return failure("PROFILE_SIGNAL_ACTOR_REQUIRED", {
+          now: now(),
+          provider,
+        });
+      }
+
       switch (input.scenario) {
         case "empty":
-          return readPayload("empty");
+          return readPayload(actorId, "empty");
         case "pending":
-          return readPayload("pending");
+          return readPayload(actorId, "pending");
         case "failure":
           return failure("PROFILE_SIGNAL_REVIEW_QUEUE_FAILED", {
             now: now(),
@@ -473,12 +483,20 @@ export function createLiveProfileSignalReviewQueueService({
           });
         case "success":
         default:
-          return readPayload();
+          return readPayload(actorId);
       }
     },
 
-    async acceptUpdateSuggestion(id) {
+    async acceptUpdateSuggestion(id, options = {}) {
       const capturedNow = now();
+      const actorId = options.actorId?.trim();
+
+      if (!actorId) {
+        return failure("PROFILE_SIGNAL_ACTOR_REQUIRED", {
+          now: capturedNow,
+          provider,
+        });
+      }
 
       if (!provider) {
         return failure("PROFILE_SIGNAL_LIVE_STORE_UNCONFIGURED", {
@@ -488,9 +506,10 @@ export function createLiveProfileSignalReviewQueueService({
         });
       }
 
-      const graphResult = provider.readSignalGraph();
+      const graphResult = provider.readSignalGraph(actorId);
       const graph = isThenable(graphResult) ? await graphResult : graphResult;
       const queuePayload = payload({
+        actorId,
         graph,
         now: capturedNow,
         provider,

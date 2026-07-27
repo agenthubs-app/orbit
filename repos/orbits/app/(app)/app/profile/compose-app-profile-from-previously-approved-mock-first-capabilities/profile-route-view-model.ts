@@ -19,6 +19,11 @@ export type AppProfileSearchParams = Record<
   string,
   string | string[] | undefined
 >;
+export interface AppProfileActor {
+  displayName: string;
+  email?: string | null;
+  id: string;
+}
 export type AppProfileRouteScenario = "empty" | "pending" | "failure";
 
 type EvidenceResult =
@@ -94,6 +99,7 @@ export interface AppProfileSuccessViewModel {
     | "bio"
     | "displayName"
     | "headline"
+    | "handles"
     | "homeMarket"
     | "industry"
     | "offering"
@@ -463,6 +469,31 @@ async function routeStateViewModel(
 
 const suggestedIntroChannels = ["warm intro", "event follow-up"] as const;
 
+function actorOnboardingProfile(
+  actor: AppProfileActor,
+  updatedAt: string,
+): ManualProfile {
+  return {
+    bio: "",
+    displayName: actor.displayName.trim(),
+    handles: actor.email ? { email: actor.email } : undefined,
+    headline: "",
+    homeMarket: "",
+    id: `profile:${actor.id}`,
+    industry: "",
+    offering: [],
+    organization: "",
+    preferredFollowUpWindow: "",
+    preferredIntroChannels: [],
+    relationshipGoal: "",
+    role: "",
+    seeking: [],
+    targetRelationshipTypes: [],
+    topics: [],
+    updatedAt,
+  };
+}
+
 function successViewModel(input: {
   actionRequested: boolean;
   profileState: Extract<ProfileResult, { success: true }>;
@@ -572,6 +603,7 @@ function successViewModel(input: {
 
 export async function loadAppProfileRouteViewModel(
   searchParams?: AppProfileSearchParams,
+  actor?: AppProfileActor | null,
 ): Promise<AppProfileRouteViewModel> {
   const requestedScenario = readRouteScenario(searchParams);
 
@@ -584,9 +616,9 @@ export async function loadAppProfileRouteViewModel(
 
   const services = createAppProfileRouteServices();
   const [profileState, resumeState, suggestionState] = await Promise.all([
-    services.profileService.getProfile(),
+    services.profileService.getProfile({ actorId: actor?.id }),
     services.extractionService.extractResumeDraft(),
-    services.signalService.listUpdateSuggestions(),
+    services.signalService.listUpdateSuggestions({ actorId: actor?.id }),
   ]);
   const serviceFailure = firstRouteFailure([
     profileState,
@@ -615,13 +647,43 @@ export async function loadAppProfileRouteViewModel(
   }
 
   if (!profileState.data.profile) {
+    if (!actor) {
+      return {
+        state: "route-state",
+        routeState: await routeStateViewModel("failure", {
+          code: "PROFILE_ACTOR_REQUIRED",
+          evidenceIds: profileState.data.provenance.evidenceIds,
+          message: "No authenticated actor was available for profile access.",
+          recovery: "Sign in before loading a live profile.",
+        }),
+      };
+    }
+
+    const profile = actorOnboardingProfile(
+      actor,
+      profileState.data.provenance.collectedAt,
+    );
+    const onboardingState: Extract<ProfileResult, { success: true }> = {
+      success: true,
+      data: {
+        ...profileState.data,
+        completeness: services.profileService.scoreCompleteness(profile),
+        editor: {
+          ...profileState.data.editor,
+          canSave: true,
+        },
+        profile,
+      },
+    };
+
     return {
-      state: "route-state",
-      routeState: await routeStateViewModel("failure", {
-        code: "PROFILE_REQUIRED",
-        evidenceIds: profileState.data.provenance.evidenceIds,
-        message: "No profile payload was available for the profile page.",
-        recovery: "Load a profile record before rendering the profile success state.",
+      state: "success",
+      profile: successViewModel({
+        actionRequested: false,
+        profileState: onboardingState,
+        requestedIntroChannels: null,
+        resumeState,
+        suggestionState,
       }),
     };
   }

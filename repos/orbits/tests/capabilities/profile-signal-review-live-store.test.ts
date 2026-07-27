@@ -7,6 +7,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
 test("live profile signal review queue derives sourced suggestions without profile writes", async () => {
+  const actorId = "account_orbit_generated";
   const workspaceId = "workspace:profile-signal-live";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
@@ -31,7 +32,7 @@ test("live profile signal review queue derives sourced suggestions without profi
     provider,
   });
 
-  const queue = await service.listUpdateSuggestions();
+  const queue = await service.listUpdateSuggestions({ actorId });
 
   assert.equal(queue.success, true);
   assert.equal(queue.data.state, "success");
@@ -67,10 +68,12 @@ test("live profile signal review queue derives sourced suggestions without profi
     "Profile signal memory live storage",
   );
   assert.equal(queue.data.provenance.generationMethod, "rule-based-signal-match");
+  assert.equal(queue.data.provenance.privacy, "actor-scoped-profile-signals");
   assert.ok(queue.data.provenance.evidenceIds.length >= 3);
 
   const accepted = await service.acceptUpdateSuggestion(
     queue.data.suggestions[0]?.id ?? "",
+    { actorId },
   );
 
   assert.equal(accepted.success, true);
@@ -84,7 +87,9 @@ test("live profile signal review queue derives sourced suggestions without profi
     "Apply this patch only after the operator confirms the profile save.",
   );
 
-  const missing = await service.acceptUpdateSuggestion("missing-suggestion");
+  const missing = await service.acceptUpdateSuggestion("missing-suggestion", {
+    actorId,
+  });
 
   assert.equal(missing.success, false);
   assert.equal(missing.error.code, "PROFILE_SIGNAL_SUGGESTION_NOT_FOUND");
@@ -99,4 +104,24 @@ test("live profile signal review queue derives sourced suggestions without profi
   });
 
   assert.deepEqual(storedProfile?.payload, originalProfile?.payload);
+});
+
+test("live profile signal review queue requires an actor and isolates unknown actors", async () => {
+  const workspaceId = "workspace:profile-signal-actor-boundary";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
+  const service = createLiveProfileSignalReviewQueueService({
+    provider: createStorageProfileSignalProvider({ store, workspaceId }),
+  });
+
+  const missingActor = await service.listUpdateSuggestions();
+  const otherActor = await service.listUpdateSuggestions({
+    actorId: "account:other",
+  });
+
+  assert.equal(missingActor.success, false);
+  assert.equal(missingActor.error.code, "PROFILE_SIGNAL_ACTOR_REQUIRED");
+  assert.equal(otherActor.success, true);
+  assert.equal(otherActor.data.state, "empty");
+  assert.deepEqual(otherActor.data.suggestions, []);
 });

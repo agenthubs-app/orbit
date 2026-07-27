@@ -14,20 +14,28 @@ import type {
 
 export type ProfileServiceResult<TResult> = TResult | Promise<TResult>;
 
+export interface ProfileActorOptions {
+  actorId?: string | null;
+}
+
 // ProfileService 管理用户手动资料和完整度评分。
 // 当前服务边界用于 onboarding/profile 页面；不会从外部账号自动抓取资料。
 export interface ProfileService {
   // 读取当前用户资料，scenario 用于测试不同状态。
   getProfile: (options?: {
+    actorId?: string | null;
     scenario?: ProfileScenario | string | null;
   }) => ProfileServiceResult<ProfileResult>;
   // 返回“等待人工复核”的资料状态。
-  getPendingManualReview: () => ProfileServiceResult<ProfileSuccess>;
+  getPendingManualReview: (
+    options?: ProfileActorOptions,
+  ) => ProfileServiceResult<ProfileSuccess>;
   // 对手动资料做完整度评分，供 UI 显示待补字段。
   scoreCompleteness: (profile: ManualProfile | null) => ProfileCompleteness;
   // 更新手动资料；真实持久化由具体实现负责。
   updateProfile: (
     input: ManualProfileUpdateInput,
+    options?: ProfileActorOptions,
   ) => ProfileServiceResult<ProfileResult>;
 }
 

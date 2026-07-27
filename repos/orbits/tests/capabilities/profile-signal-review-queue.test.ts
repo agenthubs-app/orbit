@@ -46,6 +46,7 @@ test("profile signal review queue contract exposes typed chat, activity, and con
   const accept = service.acceptUpdateSuggestion("demo-profile-suggestion-1");
 
   assert.deepEqual(contract.PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_CODES, [
+    "PROFILE_SIGNAL_ACTOR_REQUIRED",
     "PROFILE_SIGNAL_SUGGESTION_NOT_FOUND",
     "PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED",
     "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED",
@@ -156,15 +157,22 @@ test("mock profile signal review service is deterministic and has no external pr
 });
 
 test("profile signal review queue API routes return stable envelopes and documented empty or failure paths", async () => {
-  const listRoute = await importProjectModule<
-    typeof import("../../app/api/profile/update-suggestions/route")
-  >("app/api/profile/update-suggestions/route.ts");
-  const acceptRoute = await importProjectModule<
-    typeof import("../../app/api/profile/update-suggestions/[id]/accept/route")
-  >("app/api/profile/update-suggestions/[id]/accept/route.ts");
+  const listHandler = await importProjectModule<
+    typeof import("../../app/api/profile/update-suggestions/handler")
+  >("app/api/profile/update-suggestions/handler.ts");
+  const acceptHandler = await importProjectModule<
+    typeof import("../../app/api/profile/update-suggestions/[id]/accept/handler")
+  >("app/api/profile/update-suggestions/[id]/accept/handler.ts");
   const fixtures = await importProjectModule<
     typeof import("../../features/profile/signal-fixtures")
   >("features/profile/signal-fixtures.ts");
+  const resolveActor = async () => ({ id: "account:test-profile-signal" });
+  const listRoute = {
+    GET: listHandler.createProfileSuggestionGetHandler(resolveActor),
+  };
+  const acceptRoute = {
+    POST: acceptHandler.createProfileSuggestionAcceptPostHandler(resolveActor),
+  };
 
   const listResponse = await listRoute.GET(
     new Request("https://orbit.local/api/profile/update-suggestions", {
@@ -280,6 +288,32 @@ test("profile signal review queue API routes return stable envelopes and documen
       },
     },
   });
+});
+
+test("profile signal review queue API routes reject unauthenticated access", async () => {
+  const listHandler = await importProjectModule<
+    typeof import("../../app/api/profile/update-suggestions/handler")
+  >("app/api/profile/update-suggestions/handler.ts");
+  const acceptHandler = await importProjectModule<
+    typeof import("../../app/api/profile/update-suggestions/[id]/accept/handler")
+  >("app/api/profile/update-suggestions/[id]/accept/handler.ts");
+  const listResponse =
+    await listHandler.createProfileSuggestionGetHandler(async () => null)(
+      new Request("https://orbit.local/api/profile/update-suggestions"),
+    );
+  const acceptResponse =
+    await acceptHandler.createProfileSuggestionAcceptPostHandler(
+      async () => null,
+    )(
+      new Request(
+        "https://orbit.local/api/profile/update-suggestions/test/accept",
+        { method: "POST" },
+      ),
+      { params: Promise.resolve({ id: "test" }) },
+    );
+
+  assert.equal(listResponse.status, 401);
+  assert.equal(acceptResponse.status, 401);
 });
 
 test("profile signal review queue debug route renders success, empty, pending, and failure states", async () => {

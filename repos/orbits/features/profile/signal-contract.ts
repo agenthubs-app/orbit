@@ -3,6 +3,7 @@ import type { AppErrorCode } from "../../shared/errors/app-error";
 // Profile Signal Review contract 描述从聊天、活动、联系人信号中生成的 profile 更新建议。
 // 建议需要用户接受；默认不会自动写入用户资料。
 export const PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_CODES = [
+  "PROFILE_SIGNAL_ACTOR_REQUIRED",
   "PROFILE_SIGNAL_SUGGESTION_NOT_FOUND",
   "PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED",
   "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED",
@@ -43,6 +44,7 @@ export type ProfileSignalProfilePatch = Partial<
 
 // queue 输入只控制场景；具体 suggestion 通过 id 接受。
 export interface ProfileSignalReviewQueueInput {
+  actorId?: string | null;
   scenario?: ProfileSignalReviewQueueScenario | string | null;
 }
 
@@ -55,6 +57,12 @@ export interface ProfileSignalReviewQueueErrorDefinition {
 
 // 信号错误定义确保找不到或已处理时不会修改 profile。
 export const PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_DEFINITIONS = {
+  PROFILE_SIGNAL_ACTOR_REQUIRED: {
+    code: "PROFILE_SIGNAL_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated actor is required for live profile suggestions.",
+    recovery: "Sign in before reading or accepting profile suggestions.",
+  },
   PROFILE_SIGNAL_SUGGESTION_NOT_FOUND: {
     code: "PROFILE_SIGNAL_SUGGESTION_NOT_FOUND",
     appCode: "NOT_FOUND",
@@ -94,7 +102,7 @@ export interface ProfileSignalReviewQueueProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-profile-signals-only";
+  privacy: "actor-scoped-profile-signals" | "demo-profile-signals-only";
   generationMethod: "fixture" | "rule-based-signal-match";
 }
 
@@ -179,5 +187,6 @@ export interface ProfileSignalReviewQueueService {
   ) => ProfileSignalReviewQueueServiceResult<ProfileSignalReviewQueueResult>;
   acceptUpdateSuggestion: (
     id: string,
+    options?: { actorId?: string | null },
   ) => ProfileSignalReviewQueueServiceResult<ProfileSignalSuggestionAcceptResult>;
 }
