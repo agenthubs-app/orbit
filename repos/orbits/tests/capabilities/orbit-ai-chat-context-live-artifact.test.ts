@@ -37,6 +37,21 @@ test("live artifact task service registers chat.context before preview fallback"
   assert.match(liveArtifactSource, /chatContextService/);
 });
 
+test("live Agent artifacts bind contact and Event reads to the server actor", () => {
+  const liveArtifactSource = source("features/orbit-ai/live-artifact-task-service.ts");
+  const conversationRouteSource = source("app/api/ai/conversations/route.ts");
+
+  assert.match(
+    liveArtifactSource,
+    /createConfiguredActorScopedLiveRelationshipNaturalSearchService/,
+  );
+  assert.match(liveArtifactSource, /createEventsRecommendationTool\(\{ actorId \}\)/);
+  assert.match(
+    conversationRouteSource,
+    /createOrbitAgentConversationServiceForActor\(agentContext\.actorId\)/,
+  );
+});
+
 test("chat.context artifact reads source-backed live chat conversations", async () => {
   const workspaceId = "workspace:orbit-ai-chat-context-live-artifact-test";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();

@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createLiveRelationshipNaturalSearchService } from "../../features/search/live-service";
+import {
+  createActorScopedLiveRelationshipNaturalSearchService,
+  createLiveRelationshipNaturalSearchService,
+} from "../../features/search/live-service";
 import {
   createRelationshipNaturalSearchService,
   resolveRelationshipNaturalSearchService,
 } from "../../features/search/service-factory";
 import { createStorageConnectionEvidenceProvider } from "../../features/connections/storage/connection-live-record-provider";
+import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -67,6 +71,29 @@ test("live relationship natural search reads generated relationship graph from s
   assert.equal(sato.semanticSearchExecuted, false);
   assert.match(sato.relationshipContext, /Japan market entry advisor/);
   assert.match(sato.evidence[0]?.excerpt ?? "", /Relationship context for 佐藤 健一/);
+});
+
+test("actor-scoped relationship search never returns another actor's graph", async () => {
+  const workspaceId = "workspace:relationship-search-actor-boundary";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
+  const provider = createStorageContactGraphProvider({ store, workspaceId });
+  const ownerService = createActorScopedLiveRelationshipNaturalSearchService({
+    actorId: "account_orbit_generated",
+    provider,
+  });
+  const otherService = createActorScopedLiveRelationshipNaturalSearchService({
+    actorId: "account:other",
+    provider,
+  });
+
+  const ownerResult = await ownerService.queryRelationships({});
+  const otherResult = await otherService.queryRelationships({});
+
+  assert.equal(ownerResult.success, true);
+  assert.ok(ownerResult.data.results.length > 0);
+  assert.equal(otherResult.success, true);
+  assert.deepEqual(otherResult.data.results, []);
 });
 
 test("relationship natural search factory registers live mode and fails closed without live database config", async () => {

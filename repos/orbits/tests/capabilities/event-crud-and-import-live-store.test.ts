@@ -223,6 +223,31 @@ test("events recommendation tool ranks live events from an async Events service"
   assert.match(result.summary, /live Events data/i);
 });
 
+test("events recommendation tool forwards the server actor to live Events reads", async () => {
+  const requestedActors: (string | undefined)[] = [];
+  const provider = createFakeLiveProvider();
+  const eventService = createLiveEventCrudAndImportService({
+    provider: {
+      ...provider,
+      listEvents(requestedActorId) {
+        requestedActors.push(requestedActorId);
+        return provider.listEvents(requestedActorId);
+      },
+    },
+  });
+  const tool = createEventsRecommendationTool({
+    actorId,
+    eventService,
+  });
+
+  const result = await tool.recommend({
+    query: "operator dinner",
+  });
+
+  assert.equal(result.state, "success");
+  assert.deepEqual(requestedActors, [actorId]);
+});
+
 test("live event list hides legacy fixture and diagnostic records by default", async () => {
   const records: LiveEventStoreRecord[] = [
     {

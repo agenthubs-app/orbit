@@ -63,6 +63,7 @@ export interface EventsRecommendationTool {
 }
 
 export interface EventsRecommendationToolOptions {
+  actorId?: string | null;
   eventService?: EventCrudAndImportService;
   // 可注入的时间源，便于测试固定"未来活动优先"的判定；默认取真实当前时间。
   now?: () => number;
@@ -408,6 +409,7 @@ function isPromiseLike<TResult>(
 export function createEventsRecommendationTool(
   options: EventsRecommendationToolOptions = {},
 ): EventsRecommendationTool {
+  const actorId = options.actorId?.trim() || undefined;
   const eventService = options.eventService ?? createEventCrudAndImportService();
   const now = options.now ?? (() => Date.now());
 
@@ -416,7 +418,10 @@ export function createEventsRecommendationTool(
       const statusFilter = normalizedStatus(input.toolArguments?.statusFilter);
       const nowMs = now();
       const listResult = eventService.listEvents(
-        statusFilter ? { statusFilter } : {},
+        {
+          ...(actorId ? { actorId } : {}),
+          ...(statusFilter ? { statusFilter } : {}),
+        },
       );
 
       if (isPromiseLike(listResult)) {

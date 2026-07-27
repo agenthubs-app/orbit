@@ -42,6 +42,10 @@ import {
   createConfiguredStorageConnectionEvidenceProvider,
 } from "../connections/storage/connection-live-record-provider";
 import type { LiveConnectionEvidenceProvider } from "../connections/live-service";
+import {
+  createConfiguredStorageContactGraphProvider,
+} from "../contacts/storage/contact-live-record-provider";
+import type { LiveContactsGraphProvider } from "../contacts/live-service";
 
 export interface LiveRelationshipNaturalSearchServiceOptions {
   provider?: LiveConnectionEvidenceProvider | null;
@@ -756,6 +760,48 @@ export function createConfiguredLiveRelationshipNaturalSearchService(): Relation
   return createLiveRelationshipNaturalSearchService({
     provider: createConfiguredStorageConnectionEvidenceProvider({
       sourceLabel: "Relationship search Postgres live storage",
+    }),
+  });
+}
+
+export interface ActorScopedLiveRelationshipNaturalSearchServiceOptions {
+  actorId: string;
+  provider?: LiveContactsGraphProvider | null;
+}
+
+/**
+ * Binds relationship search to a server-resolved actor before any graph read.
+ * The generic relationship-search provider remains unchanged for its existing
+ * consumers; Agent requests use this boundary so one account cannot search
+ * another account's contacts, connections, or evidence.
+ */
+export function createActorScopedLiveRelationshipNaturalSearchService({
+  actorId,
+  provider = null,
+}: ActorScopedLiveRelationshipNaturalSearchServiceOptions): RelationshipNaturalSearchService {
+  const normalizedActorId = actorId.trim();
+  const scopedProvider: LiveConnectionEvidenceProvider | null =
+    normalizedActorId && provider
+      ? {
+          source: provider.source,
+          sourceLabel: provider.sourceLabel,
+          readConnectionEvidenceGraph: () =>
+            provider.readContactGraph(normalizedActorId),
+        }
+      : null;
+
+  return createLiveRelationshipNaturalSearchService({
+    provider: scopedProvider,
+  });
+}
+
+export function createConfiguredActorScopedLiveRelationshipNaturalSearchService(
+  actorId: string,
+): RelationshipNaturalSearchService {
+  return createActorScopedLiveRelationshipNaturalSearchService({
+    actorId,
+    provider: createConfiguredStorageContactGraphProvider({
+      sourceLabel: "Actor-scoped relationship search Postgres live storage",
     }),
   });
 }

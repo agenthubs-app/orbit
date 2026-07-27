@@ -13,7 +13,10 @@ import {
   type OrbitAgentConversationResult,
   type OrbitAgentSendMessageInput,
 } from "../../../../features/orbit-ai/conversation-contract";
-import { createOrbitAgentConversationService } from "../../../../features/orbit-ai/service-factory";
+import {
+  createOrbitAgentConversationService,
+  createOrbitAgentConversationServiceForActor,
+} from "../../../../features/orbit-ai/service-factory";
 import { createAgentMemoryService } from "../../../../features/agent/memory/service-factory";
 import { createAgentFeedbackService } from "../../../../features/agent/feedback/service-factory";
 import {
@@ -468,7 +471,9 @@ export async function POST(request: Request): Promise<Response> {
     : input;
   timing.finish("orbit-read-body", readBodyStartedAt);
   const serviceStartedAt = timing.now();
-  const service = createOrbitAgentConversationService();
+  const service = agentContext.actorId
+    ? createOrbitAgentConversationServiceForActor(agentContext.actorId)
+    : createOrbitAgentConversationService();
   let result: OrbitAgentConversationResult;
 
   if (isChatKnownWorkflowInput(trustedInput)) {

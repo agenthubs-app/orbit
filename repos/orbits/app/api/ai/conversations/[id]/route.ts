@@ -13,7 +13,10 @@ import {
   type OrbitAgentConversationResult,
   type OrbitAgentSendMessageInput,
 } from "../../../../../features/orbit-ai/conversation-contract";
-import { createOrbitAgentConversationService } from "../../../../../features/orbit-ai/service-factory";
+import {
+  createOrbitAgentConversationService,
+  createOrbitAgentConversationServiceForActor,
+} from "../../../../../features/orbit-ai/service-factory";
 import { createAgentMemoryService } from "../../../../../features/agent/memory/service-factory";
 import {
   agentRequestUnauthorizedResponse,
@@ -124,7 +127,9 @@ export async function POST(
   const agentContext = await resolveAgentRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const { id } = await context.params;
-  const service = createOrbitAgentConversationService();
+  const service = agentContext.actorId
+    ? createOrbitAgentConversationServiceForActor(agentContext.actorId)
+    : createOrbitAgentConversationService();
   const input = await readSendInput(request, id);
   const result = await service.sendMessage(
     agentContext.actorId === null

@@ -9,12 +9,20 @@ import { createOrbitAgentEventRecommendationArtifactService } from "./event-reco
 import { createOrbitAgentFollowupReviewArtifactService } from "./followup-review-artifact-service";
 import { createOrbitAgentArtifactPreviewService } from "./artifact-task-preview-service";
 import { createOrbitLanguageNormalizationService } from "./language-normalization-service";
+import { createConfiguredActorScopedLiveRelationshipNaturalSearchService } from "../search/live-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
+
+export interface OrbitAgentLiveArtifactTaskServiceOptions {
+  actorId?: string | null;
+}
 
 // Live conversation 和 dev trace 必须共享同一个 artifact 组合逻辑。
 // contact_recommendations / event_recommendations / followup_queue / relationship_chat_context 走真实 feature service；
 // 其它 artifact kind 由组合服务内部回退到 preview。
-export function createOrbitAgentLiveArtifactTaskService(): OrbitAgentArtifactTaskService {
+export function createOrbitAgentLiveArtifactTaskService(
+  options: OrbitAgentLiveArtifactTaskServiceOptions = {},
+): OrbitAgentArtifactTaskService {
+  const actorId = options.actorId?.trim() || null;
   const previewService = createOrbitAgentArtifactPreviewService();
   const chatContextService = createOrbitAgentChatContextArtifactService({
     fallbackService: previewService,
@@ -26,7 +34,7 @@ export function createOrbitAgentLiveArtifactTaskService(): OrbitAgentArtifactTas
     fallbackService: followupService,
     // live 路径用 Events 拥有的 live 推荐工具（读 events live store 并按查询排名），
     // 不注入时该 artifact service 会回退到固定画像的 goal 推荐实现。
-    recommendationTool: createEventsRecommendationTool(),
+    recommendationTool: createEventsRecommendationTool({ actorId }),
   });
 
   // live 路径显式注入关系检索 matcher：所有 contacts.recommend 请求都查真实关系库，
@@ -40,6 +48,11 @@ export function createOrbitAgentLiveArtifactTaskService(): OrbitAgentArtifactTas
       contactMethodResolution.success === true
         ? createContactRecommendationMatcher({
             method: contactMethodResolution.method,
+            relationshipSearchService: actorId
+              ? createConfiguredActorScopedLiveRelationshipNaturalSearchService(
+                  actorId,
+                )
+              : undefined,
           })
         : undefined,
     // live 路径启用"模型抽英文检索词"：任意语言 query → 英文关键词 → 现有子串搜索。

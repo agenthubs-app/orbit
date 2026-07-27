@@ -105,6 +105,30 @@ export function createOrbitAgentConversationService(
   return resolution.service;
 }
 
+/**
+ * Creates the conversation service for an actor already resolved by the
+ * server authentication boundary. Mock behavior stays deterministic; Live
+ * artifact reads receive the actor without trusting request payload identity.
+ */
+export function createOrbitAgentConversationServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): OrbitAgentConversationService {
+  const resolution = resolveOrbitAgentConversationService(mode);
+
+  if (resolution.success === false) {
+    throw new Error(resolution.error.message);
+  }
+
+  if (resolution.mode !== "live") {
+    return resolution.service;
+  }
+
+  return createLiveOrbitAgentConversationService({
+    artifactTaskService: createOrbitAgentLiveArtifactTaskService({ actorId }),
+  });
+}
+
 export function createOrbitAiCalendarActionService(): OrbitAiCalendarActionService {
   return createLocalOrbitAiCalendarActionService();
 }
