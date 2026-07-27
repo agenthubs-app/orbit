@@ -5,26 +5,48 @@ export function productHref(prototypeHref: string) {
     prototypeHref === "/app" ||
     prototypeHref.startsWith("/app/") ||
     prototypeHref.startsWith("/app?")
-  ) return prototypeHref;
+  )
+    return prototypeHref;
   if (prototypeHref === "/") return "/";
   if (prototypeHref === "/explore") return "/app/events";
   if (prototypeHref === "/agent") return "/app/agent";
-  if (prototypeHref.startsWith("/agent?")) return `/app/agent?${prototypeHref.split("?")[1]}`;
+  if (prototypeHref.startsWith("/agent?"))
+    return `/app/agent?${prototypeHref.split("?")[1]}`;
   if (prototypeHref === "/home") return "/app/account/login";
   if (prototypeHref === "/home/events") return "/app/home/events";
   if (prototypeHref === "/home/profile") return "/app/profile";
   if (prototypeHref === "/home/schedule") return "/app/followups";
   if (prototypeHref === "/home/cards") return "/app/contacts";
   if (prototypeHref === "/home/cards/scan") return "/app/contacts/new";
-  if (prototypeHref.startsWith("/home/cards/")) return `/app/contacts/${prototypeHref.split("/").pop()}`;
+  if (prototypeHref.startsWith("/home/cards/"))
+    return `/app/contacts/${prototypeHref.split("/").pop()}`;
   if (prototypeHref === "/party") return "/app/party";
-  if (prototypeHref.startsWith("/events/")) return `/app/events/${prototypeHref.split("/").pop()}`;
-  if (prototypeHref.startsWith("/o/")) return `/app/o/${prototypeHref.split("/").pop()}`;
-  if (prototypeHref.startsWith("/register")) return `/app/register${prototypeHref.includes("?") ? `?${prototypeHref.split("?")[1]}` : ""}`;
+  if (prototypeHref.startsWith("/events/"))
+    return `/app/events/${prototypeHref.split("/").pop()}`;
+  if (prototypeHref.startsWith("/o/"))
+    return `/app/o/${prototypeHref.split("/").pop()}`;
+  if (prototypeHref.startsWith("/register"))
+    return `/app/register${prototypeHref.includes("?") ? `?${prototypeHref.split("?")[1]}` : ""}`;
   return `/app${prototypeHref}`;
 }
 
 export type OrbitPartySubroute = "" | "/checkin" | "/graph";
+
+/**
+ * Builds the canonical Agent entry URL for a user-authored goal.
+ *
+ * Every surface that hands work to Agent should use this helper so the prompt
+ * is encoded once and the Agent's existing `q` hydration flow can execute it.
+ */
+export function agentHrefForPrompt(prompt: string): string {
+  const normalizedPrompt = prompt.trim();
+
+  if (!normalizedPrompt) {
+    return "/app/agent";
+  }
+
+  return `/app/agent?q=${encodeURIComponent(normalizedPrompt)}`;
+}
 
 /**
  * Builds every Party URL from the same source event identity.

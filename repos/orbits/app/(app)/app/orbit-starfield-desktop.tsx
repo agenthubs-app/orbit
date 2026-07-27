@@ -89,7 +89,7 @@ export function OrbitStarfieldDesktop({
               {"活动"}
             </a>
             {' '}
-            <a href="/app/home/events" data-i18n="navSchedule" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
+            <a href="/app/today" data-i18n="navSchedule" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
               {"日程"}
             </a>
             {' '}
@@ -213,25 +213,23 @@ export function OrbitStarfieldDesktop({
                   </path>
                 </svg>
                 {' '}
-                <div style={{"flex":"1","minWidth":"0","textAlign":"left","fontSize":"16px","lineHeight":"1.4","color":"#eeecf7","whiteSpace":"nowrap","overflow":"hidden"}}>
-                  <span id="skTyped">
-                  </span>
-                  <span id="skCaret" style={{"display":"none","color":"#9b8bff","fontWeight":"300","animation":"skCaret 1.05s steps(1) infinite"}}>
-                    {"|"}
-                  </span>
-                  <span id="skPh" data-i18n="placeholder" style={{"color":"#7c7995"}}>
-                    {"向 Orbit 写下你的目标…"}
-                  </span>
-                </div>
+                <input
+                  id="skPromptInput"
+                  aria-label="向 iOrbit 写下你的目标"
+                  autoComplete="off"
+                  placeholder="向 Orbit 写下你的目标…"
+                  style={{"flex":"1","minWidth":"0","border":"0","outline":"none","background":"transparent","padding":"0","textAlign":"left","fontFamily":"inherit","fontSize":"16px","lineHeight":"1.4","color":"#eeecf7"}}
+                  type="text"
+                />
                 {' '}
-                <span id="skEnter" role="button" tabIndex={0} style={{"flex":"0 0 auto","width":"44px","height":"44px","borderRadius":"50%","background":"rgba(139,123,240,0.14)","border":"1px solid rgba(150,140,255,0.4)","color":"#c7c0ff","display":"flex","alignItems":"center","justifyContent":"center","cursor":"pointer","pointerEvents":"auto","transition":"background .2s,border-color .2s,transform .2s"}} style-hover="background:rgba(139,123,240,0.28);border-color:rgba(160,150,255,0.8);color:#fff;transform:scale(1.06);">
+                <button id="skEnter" type="button" aria-label="发送给 iOrbit" style={{"flex":"0 0 auto","width":"44px","height":"44px","padding":"0","borderRadius":"50%","background":"rgba(139,123,240,0.14)","border":"1px solid rgba(150,140,255,0.4)","color":"#c7c0ff","display":"flex","alignItems":"center","justifyContent":"center","cursor":"pointer","pointerEvents":"auto","transition":"background .2s,border-color .2s,transform .2s"}} style-hover="background:rgba(139,123,240,0.28);border-color:rgba(160,150,255,0.8);color:#fff;transform:scale(1.06);">
                   {' '}
                   <svg viewBox="0 0 24 24" fill="none" style={{"width":"18px","height":"18px","display":"block"}}>
                     <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     </path>
                   </svg>
                   {' '}
-                </span>
+                </button>
                 {' '}
               </div>
               {' '}

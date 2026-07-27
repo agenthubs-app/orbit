@@ -4,6 +4,11 @@
 // (x-dc Component.componentDidMount / componentWillUnmount). Do not hand-edit
 // values here; regenerate from the reference. Mechanical adaptations only:
 // this->self, element lookups scoped to host, avatars mapped to local assets.
+import {
+  bindStarfieldAgentPrompt,
+  updateStarfieldPromptPreview,
+} from "./orbit-starfield-agent-prompt";
+
 export function runStarfieldMobile(host: HTMLElement): () => void {
   const self: any = { props: {} };
 
@@ -117,7 +122,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
     }catch(e){}}
     const hero=$('skHero'), kicker=$('skKicker'), sub=$('skSub');
     let words=[].slice.call(host.querySelectorAll('.sk-word'));
-    const fieldWrap=$('skFieldWrap'), chips=$('skChips'), typed=$('skTyped'), caret=$('skCaret'), ph=$('skPh');
+    const fieldWrap=$('skFieldWrap'), chips=$('skChips'), promptInput=$('skPromptInput');
     const demoWrap=$('skDemo'), tip=$('skTip'), cardEl=$('skCard'), cardBeam=$('skCardBeam');
     const corner=$('skCorner'), pain=$('skPain'), painTxt=$('skPainTxt'), painCaret=$('skPainCaret'), org=$('skOrg'), cue=$('skCue');
     const orbitWrap=$('skOrbitCards'), stepsWrap=$('skSteps'), proc=$('skProc'), procTxt=$('skProcTxt');
@@ -333,9 +338,8 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
       // scroll cue: visible only when settled (fades during play); last stop = return to top
       {const last=stopIdx===STOPS.length-1;cue.style.opacity=animating?'0':'1';if(cue._l!==last||cue._lang!==LANG){cue._l=last;cue._lang=LANG;$('skCueTxt').textContent=last?T().cueLast:T().cueNext;$('skCueArrow').textContent=last?'↑':'↓';}}
       canvas.style.opacity=(1-smooth(p,0.93,0.99)).toFixed(3);
-      {const qS=1.55,qD=1.7;const qN=Math.round(clamp((elapsed-qS)/qD,0,1)*QUERY.length);
-       if(p<0.16){typed.textContent=QUERY.slice(0,qN);ph.style.display=qN>0?'none':'inline';caret.style.display=(elapsed>qS&&p<0.14)?'inline':'none';}
-       else{typed.textContent='';ph.style.display='inline';caret.style.display='none';}}
+      {const qS=1.55,qD=1.7;
+       updateStarfieldPromptPreview(promptInput,{defaultPrompt:QUERY,fallbackPlaceholder:T().placeholder,progress:clamp((elapsed-qS)/qD,0,1),visible:p<0.16});}
       setOp(chips,(1-smooth(p,0.04,0.1))*ch1); chips.style.pointerEvents=p<0.05?'auto':'none';
       // processing signature
       let prOp=0,prTxt='',prTop=H*0.5;
@@ -448,14 +452,13 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
     scene.addEventListener('mouseleave',()=>{mx=my=-1;if(hoverStar){hoverStar=null;hideTip();}});
     scene.style.pointerEvents='auto';
     scene.addEventListener('click',e=>{const r=canvas.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;const s=hitTest();if(s){pinned=s;featured=null;hideTip();showCard(s.px,s.py,s.data,s.data._gold);}else if(pinned){pinned=null;hideCard();}});
-    host.querySelectorAll('.sk-chip').forEach((ch)=>{ch.addEventListener('click',()=>goStop(1));});
+    self._promptCleanup=bindStarfieldAgentPrompt(host,()=>QUERY);
     // recommendation carousel — horizontal swipe (does not trigger vertical scene nav) + tap a side card to focus
     {let dsx=0,dsy=0;demoWrap.addEventListener('touchstart',e=>{dsx=e.touches[0].clientX;dsy=e.touches[0].clientY;},{passive:true});
      demoWrap.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-dsx,dy=e.changedTouches[0].clientY-dsy;if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>32){e.stopPropagation();advanceDemo(dx<0?1:-1);resetDemoTimer();}},{passive:true});
      demoEls.forEach((el,j)=>{el.addEventListener('click',()=>{if(self._demoI!==j&&stopIdx===1){self._demoI=j;updateCarousel();resetDemoTimer();}});});}
     {const burger=$('skBurger'),menu=$('skMenu');if(burger&&menu){burger.addEventListener('click',e=>{e.stopPropagation();menu.style.display=(menu.style.display==='flex')?'none':'flex';});const menuDocClick=(e)=>{if(menu.style.display==='flex'&&!menu.contains(e.target)&&!burger.contains(e.target))menu.style.display='none';};document.addEventListener('click',menuDocClick);self._menuDocClick=menuDocClick;menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{menu.style.display='none';}));}}
     cue.addEventListener('click',()=>{if(stopIdx===STOPS.length-1)goStop(0);else onIntent(1);});
-    {const enter=$('skEnter');if(enter){enter.addEventListener('click',()=>onIntent(1));enter.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onIntent(1);}});}}
     // ending mini popout-card carousel (toC visual)
     {const MS=[31,42,53];let mci=0;const setMini=()=>{const a=$('skMiniAva'),n=$('skMiniName'),h=$('skMiniHelp');if(!a)return;const d=card(MS[mci%MS.length]);if(a.dataset.s!==d.av){a.dataset.s=d.av;a.src=d.av;}n.textContent=d.name;h.textContent=d.help;};self._setMini=setMini;setMini();self._miniIv=setInterval(()=>{const w=$('skMiniCard');if(!w)return;w.style.opacity='0';setTimeout(()=>{mci++;setMini();w.style.opacity='1';},280);},2900);}
 
@@ -493,6 +496,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         proc._t=null;cue._lang=null;                                  // force overlay text to refresh next frame
         if(pinned)fillCard(pinned.data,pinned.data._gold);
         if(hoverStar&&hoverStar.data)showTip(hoverStar.px,hoverStar.py,hoverStar.data);
+        updateStarfieldPromptPreview(promptInput,{defaultPrompt:QUERY,fallbackPlaceholder:T().placeholder,progress:0,visible:false});
         updateLangBtns();
       }catch(err){
         try{localStorage.setItem('iorbit_lang',(lng==='en')?'en':'zh');}catch(e){}
@@ -513,5 +517,5 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
 
   // React-only additions to the reference unmount: the reference page never
   // unmounts, so it leaks head styles and a document-level listener; we must not.
-  return () => {if(self._raf)cancelAnimationFrame(self._raf);if(self._miniIv)clearInterval(self._miniIv);if(self._demoIv)clearInterval(self._demoIv);if(self._cleanup)self._cleanup();if(self._gst)self._gst.remove();if(self._grain)self._grain.remove();if(self._langStyle)self._langStyle.remove();if(self._menuDocClick)document.removeEventListener('click',self._menuDocClick);};
+  return () => {if(self._raf)cancelAnimationFrame(self._raf);if(self._miniIv)clearInterval(self._miniIv);if(self._demoIv)clearInterval(self._demoIv);if(self._cleanup)self._cleanup();if(self._promptCleanup)self._promptCleanup();if(self._gst)self._gst.remove();if(self._grain)self._grain.remove();if(self._langStyle)self._langStyle.remove();if(self._menuDocClick)document.removeEventListener('click',self._menuDocClick);};
 }
