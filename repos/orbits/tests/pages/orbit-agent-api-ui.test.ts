@@ -32,26 +32,36 @@ test("Orbit agent UI sends prompts through the Chat Agent API boundary", () => {
   assert.doesNotMatch(source, /setTimeout\(/);
 });
 
-test("Orbit agent submit controls remain hittable while blank prompts are guarded in handlers", () => {
+test("Orbit agent submit controls expose a 44px target and guard blank or concurrent requests", () => {
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /type="submit"/);
-  assert.match(agentSource, /aria-disabled=\{isBlank\}/);
+  assert.match(agentSource, /type="button"/);
+  assert.match(agentSource, /aria-disabled=\{busy \|\| isBlank\}/);
   assert.match(agentSource, /data-orbit-agent-submit="true"/);
-  assert.doesNotMatch(agentSource, /disabled=\{!value\.trim\(\)\}/);
+  assert.match(agentSource, /disabled=\{busy \|\| isBlank\}/);
+  assert.match(agentSource, /if \(thinking \|\| !value\) return/);
+  assert.match(agentSource, /height: 44/);
+  assert.match(agentSource, /width: 44/);
 });
 
-test("Orbit agent gates responsive chat layout and exposes request state", () => {
+test("Orbit agent uses CSS-gated responsive trees and exposes one shared request state", () => {
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /matchMedia\("\(max-width: 760px\)"\)/);
-  assert.match(agentSource, /const chatBox = \(/);
-  assert.equal((agentSource.match(/<ChatBox\b/g) ?? []).length, 1);
-  assert.match(agentSource, /busy=\{thinking\}/);
+  assert.match(agentSource, /className="orbit-desktop-only"/);
+  assert.match(agentSource, /className="orbit-mobile-only"/);
+  assert.equal((agentSource.match(/<ChatBox\b/g) ?? []).length, 2);
+  assert.equal(
+    (agentSource.match(/<ChatBox busy=\{thinking\}/g) ?? []).length,
+    2,
+  );
+  assert.match(agentSource, /surface="desktop"/);
+  assert.match(agentSource, /surface="mobile"/);
   assert.match(agentSource, /data-orbit-agent-request-state/);
-  assert.match(agentSource, /isMobileLayout && histOpen/);
+  assert.match(agentSource, /aria-busy=\{thinking\}/);
+  assert.match(agentSource, /histOpen \?/);
+  assert.doesNotMatch(agentSource, /matchMedia\(/);
 });

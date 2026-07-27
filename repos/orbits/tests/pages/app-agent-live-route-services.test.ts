@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -67,11 +66,23 @@ test("/app/agent page renders the real Orbit AI chat experience", async () => {
 
 test("/app/agent page renders a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveAgent(async () => {
-    const Page = (await import("../../app/(app)/app/agent/page")).default;
-    const html = renderToStaticMarkup(await Page());
+    const { loadAppChatRouteViewModel } = await import(
+      "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
+    );
+    const viewModel = await loadAppChatRouteViewModel();
 
-    assert.match(html, /app-agent-route-state/);
-    assert.match(html, /Chat workspace could not load/);
-    assert.doesNotMatch(html, /data-orbit-real-page="agent"/);
+    assert.equal(viewModel.state, "route-state");
+    if (viewModel.state === "route-state") {
+      assert.equal(viewModel.routeState.scenario, "failure");
+      assert.equal(
+        viewModel.routeState.errorCode,
+        "CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED",
+      );
+      assert.match(viewModel.routeState.copy.title, /could not load/i);
+    }
+
+    const pageSource = source("app/(app)/app/agent/page.tsx");
+    assert.match(pageSource, /AgentRouteStateBoundary/);
+    assert.match(pageSource, /routeModel\.routeState/);
   });
 });

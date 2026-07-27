@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
+import { fileURLToPath } from "node:url";
+
+import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
+import { localizeOrbitAiPanelProactiveContext } from "../../features/orbit-ai/panel-localization";
+import { loadOrbitAiProactiveCalendarMessagesForApp } from "../../features/orbit-ai/proactive-calendar-service";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -14,104 +17,80 @@ function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
-async function importProjectModule<TModule>(
-  relativePath: string,
-): Promise<TModule> {
-  return (await import(pathToFileURL(path.join(projectRoot, relativePath)).href)) as TModule;
-}
-
-async function renderAgent(searchParams: Record<string, string>) {
-  const Page = (await importProjectModule<{
-    default: (input?: {
-      searchParams?: Promise<Record<string, string | string[] | undefined>>;
-    }) => Promise<JSX.Element>;
-  }>("app/(app)/app/agent/page.tsx")).default;
-
-  return renderToStaticMarkup(
-    await Page({
-      searchParams: Promise.resolve(searchParams),
-    }),
-  );
-}
-
-function assertNoMixedEnglishPanelChrome(html: string) {
-  assert.doesNotMatch(
-    html,
-    />\s*(?:Recommended contacts|Recommended events|Follow-up queue|Goal-based contact recommendations|Event matches|Prioritized next actions|Review contact|Review event|Review person|Review source|Preview add to calendar|High confidence|Medium confidence|Evidence snippets|Source context|Data source|Local preview only|Unconfirmed|Confirmation unavailable|Orbit could not reply right now|People context|Preparation prompt)\s*</,
-  );
-  assert.doesNotMatch(html, /Generated contact profile|Relationship graph|Event attendance|Conversation summary|Attendee intent notes|Local calendar fixture/);
-}
-
-test("/app/agent Chinese GET contact tool panels render localized labels and Chinese assistant answer", async () => {
-  const html = await renderAgent({
-    lang: "zh",
-    q: "Find a Japan SMB manufacturing AI workflow PoC buyer with follow-up context.",
+test("/app/agent Chinese contact artifacts carry localized product labels and answers", () => {
+  const result = createMockOrbitAgentConversationService().sendMessage({
+    locale: "zh",
+    message:
+      "Find a Japan SMB manufacturing AI workflow PoC buyer with follow-up context.",
   });
 
-  assert.match(html, /我理解你需要人脉推荐/);
-  assert.match(html, /推荐人脉|可复核人脉路径/);
-  assert.match(html, /联系人/);
-  assert.match(html, /匹配分|分数/);
-  assert.match(html, /高可信|有证据支撑/);
-  assert.match(html, /查看人脉/);
-  assert.match(html, /证据片段/);
-  assertNoMixedEnglishPanelChrome(html);
-});
-
-test("/app/agent Chinese GET event and calendar panels use one localized panel source", async () => {
-  const html = await renderAgent({
-    action: "calendar-preview",
-    lang: "zh",
-    q: "推荐适合见投资人并获得创始人反馈的活动",
+  assert.equal(result.success, true);
+  if (result.success === false) return;
+  const visibleContract = JSON.stringify({
+    artifacts: result.data.artifacts,
+    assistantMessage: result.data.assistantMessage,
   });
 
-  assert.match(html, /我理解你需要活动推荐/);
-  assert.match(html, /推荐活动/);
-  assert.match(html, /活动匹配|活动推荐/);
-  assert.match(html, /查看活动/);
-  assert.match(html, /中等可信|高可信/);
-  assert.match(html, /预览加入日历/);
-  assert.match(html, /仅本地预览/);
-  assert.match(html, /未确认/);
-  assert.match(html, /数据来源/);
-  assert.match(html, /参会者意图记录|活动主题记录/);
-  assert.match(html, /暂不能确认/);
-  assertNoMixedEnglishPanelChrome(html);
+  assert.match(visibleContract, /我理解你需要人脉推荐/);
+  assert.match(visibleContract, /联系人/);
+  assert.match(visibleContract, /匹配分/);
+  assert.match(visibleContract, /高可信/);
+  assert.match(visibleContract, /查看人脉/);
+  assert.match(visibleContract, /证据片段/);
 });
 
-test("/app/agent Chinese proactive page localizes reminder context and keeps technical ids intact", async () => {
-  const proactiveModule = await importProjectModule<{
-    loadOrbitAiProactiveCalendarMessagesForApp: () => {
-      data: {
-        messages: readonly { messageId: string }[];
-      };
-      success: true;
-    };
-  }>("features/orbit-ai/proactive-calendar-service.ts");
-  const messageId =
-    proactiveModule.loadOrbitAiProactiveCalendarMessagesForApp().data.messages[0]
-      ?.messageId ?? "";
-  const html = await renderAgent({
-    lang: "zh",
-    proactive: messageId,
+test("/app/agent Chinese event artifacts use the locale passed through the conversation API", () => {
+  const result = createMockOrbitAgentConversationService().sendMessage({
+    locale: "zh",
+    message: "推荐适合见投资人并获得创始人反馈的活动",
   });
 
-  assert.match(html, /主动日历活动上下文/);
-  assert.match(html, /种子投资人准备电话/);
-  assert.match(html, /人物上下文/);
-  assert.match(html, /本地日历记录/);
-  assert.match(html, new RegExp(messageId));
-  assertNoMixedEnglishPanelChrome(html);
+  assert.equal(result.success, true);
+  if (result.success === false) return;
+  const visibleContract = JSON.stringify({
+    artifacts: result.data.artifacts,
+    assistantMessage: result.data.assistantMessage,
+  });
+
+  assert.match(visibleContract, /我理解你需要活动推荐/);
+  assert.match(visibleContract, /活动推荐/);
+  assert.match(visibleContract, /复核活动/);
+  assert.match(visibleContract, /高可信|证据匹配/);
+  assert.match(visibleContract, /参会者意图记录/);
+  assert.match(visibleContract, /活动主题记录/);
+  assert.match(visibleContract, /任何报名、日历或外部联系动作仍需要你确认/);
 });
 
-test("/app/agent source routes all API panel copy through the feature localization boundary", () => {
+test("/app/agent proactive calendar context remains localizable without changing technical ids", () => {
+  const result = loadOrbitAiProactiveCalendarMessagesForApp();
+  const message = result.data.messages[0];
+  const localized = localizeOrbitAiPanelProactiveContext(message, "zh");
+  const visibleContract = JSON.stringify(localized);
+
+  assert.ok(message);
+  assert.match(visibleContract, /即将开始/);
+  assert.match(visibleContract, /种子投资人准备电话/);
+  assert.match(visibleContract, /人物上下文/);
+  assert.match(visibleContract, /本地日历记录/);
+  assert.match(visibleContract, new RegExp(message?.messageId ?? "$^"));
+  assert.doesNotMatch(visibleContract, /starts at/);
+  assert.doesNotMatch(visibleContract, /人物上下文：人物上下文/);
+});
+
+test("/app/agent localizes server view models and sends locale through the API boundary once", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(pageSource, /localizeOrbitAiPanel/);
-  assert.match(agentSource, /localizeOrbitAiPanel/);
-  assert.doesNotMatch(agentSource, /panelTitle: t\(\{ en: "Orbit result", zh: "Orbit 结果" \}\),\s*source: "api"/);
-  assert.match(agentSource, /panelFromApiData\(\s*data,\s*(?:language|locale),\s*t/);
+  assert.match(pageSource, /requestedLanguage/);
+  assert.match(pageSource, /localizeOrbitTree/);
+  assert.match(agentSource, /const locale = languageRef\.current === "zh" \? "zh" : "en"/);
+  assert.match(
+    agentSource,
+    /JSON\.stringify\(\{ history, locale, message: query \}\)/,
+  );
+  assert.match(agentSource, /artifactMetadataValue\(item, \["分数", "Score"\]\)/);
+  assert.match(agentSource, /locale === "zh"/);
+  assert.doesNotMatch(agentSource, /localizeOrbitAiPanel/);
 });

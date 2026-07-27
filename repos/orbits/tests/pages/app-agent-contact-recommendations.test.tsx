@@ -86,39 +86,37 @@ test("/app/agent consumes GET q prompts and renders linked contact recommendatio
   );
 });
 
-test("/app/agent UI source exposes recommendation reason, snippets, confidence, and detail anchors", () => {
+test("/app/agent maps contact artifacts into reason, confidence, evidence, and detail-card fields", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
   assert.match(pageSource, /searchParams/);
-  assert.match(pageSource, /initialSubmittedGoal/);
-  assert.match(pageSource, /initialConversationData/);
-  assert.match(pageSource, /createOrbitAgentConversationPreviewService/);
+  assert.match(pageSource, /loadAppChatRouteViewModel/);
+  assert.match(pageSource, /chatRouteToOrbitAgentViewModel/);
   assert.match(agentSource, /currentAgentQuery\(\)/);
-  assert.match(agentSource, /data-orbit-agent-submitted-goal/);
-  assert.match(agentSource, /initialAgentMessagesFor/);
-  assert.match(agentSource, /ask\(query\)/);
-  assert.match(agentSource, /data-orbit-contact-recommendation-card/);
-  assert.match(agentSource, /data-orbit-contact-why/);
-  assert.match(agentSource, /data-orbit-contact-evidence-snippet/);
-  assert.match(agentSource, /href=\{preserveHref\(productHref\(action\.href\)\)\}/);
-  assert.match(agentSource, /primaryItems = allItems\.slice\(0, 3\)/);
+  assert.match(agentSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"contact_recommendations"/);
+  assert.match(agentSource, /peopleItemsFromArtifact\(contactArtifact\)/);
+  assert.match(agentSource, /industry: item\.confidenceLabel/);
+  assert.match(agentSource, /opener: item\.body/);
+  assert.match(agentSource, /reason: item\.reason/);
+  assert.match(agentSource, /function AgentPeopleCard/);
+  assert.match(agentSource, /navigate\(`\/home\/cards\/\$\{connection\.id\}`\)/);
+  assert.match(agentSource, /<AgentEvidenceSources/);
 });
 
-test("/app/agent makes contact discovery explicit before a user submits a goal", () => {
+test("/app/agent makes contact and event discovery explicit before submission", () => {
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /data-orbit-contact-discovery-goal/);
-  assert.match(agentSource, /Contact discovery goal/);
-  assert.match(agentSource, /Find a PoC buyer/);
-  assert.match(agentSource, /Find an investor intro/);
-  assert.match(agentSource, /Find an organizer intro/);
-  assert.match(agentSource, /data-orbit-agent-example-prompt/);
-  assert.match(agentSource, /data-orbit-agent-submit-label/);
+  assert.match(agentSource, /viewModel\.suggests\.map/);
+  assert.match(agentSource, /onPick\(suggest\.q\)/);
+  assert.match(agentSource, /find the right people in your network/);
+  assert.match(agentSource, /the right events to join/);
+  assert.match(agentSource, /Ask Orbit about contacts, events, and relationship to-dos/);
+  assert.match(agentSource, /data-orbit-agent-submit="true"/);
 });
 
 test("contact detail mapping translates live source and relationship tokens into labels", async () => {

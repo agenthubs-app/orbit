@@ -381,27 +381,19 @@ test("/app/agent product route keeps technical provenance secondary and prevents
 
   assert.match(agentSource, /data-orbit-agent-screen-title/);
   assert.match(agentSource, /<h1/);
-  assert.match(agentSource, /aria-label=\{t\(\{ en: "Back to Orbit home", zh: "返回 Orbit 首页" \}\)\}/);
-  assert.match(agentSource, /href=\{preserveHref\("\/"\)\}/);
-  assert.match(agentSource, /返回 Orbit 首页/);
-  assert.doesNotMatch(agentSource, /AccountTopNav/);
-  assert.match(agentSource, /function AgentTopNav/);
-  assert.match(agentSource, /className="orbit-brand-link/);
-  assert.match(agentSource, /<Logo size=\{25\}/);
-  assert.doesNotMatch(agentSource, /return panel\.sourceLabel \?\?/);
+  assert.match(agentSource, /<AccountTopNav active="agent"/);
+  assert.doesNotMatch(agentSource, /function AgentTopNav/);
+  assert.match(agentSource, /function AgentEvidenceSources/);
+  assert.match(agentSource, /data-agent-evidence-sources/);
   assert.match(agentSource, /<details/);
-  assert.doesNotMatch(agentSource, /intent\.toolFamily \? <div className="mono"/);
   assert.match(agentSource, /overflowWrap:\s*"anywhere"/);
-  assert.match(agentSource, /wordBreak:\s*"break-word"/);
-  // 结果面板宽度可拖拽调整，但仍由 maxWidth 夹取以防溢出。
-  assert.match(agentSource, /width: panelWidth/);
-  assert.match(agentSource, /maxWidth:\s*"min\(80vw, 760px\)"/);
+  assert.match(agentSource, /minWidth:\s*0/);
+  // 结果面板保持固定产品宽度；聊天历史侧栏独立夹取并可拖拽。
+  assert.match(agentSource, /width:\s*444/);
+  assert.match(agentSource, /HISTORY_SIDEBAR_MAX_WIDTH/);
   assert.match(agentSource, /cursor: "col-resize"/);
-  assert.match(agentSource, /item\.actions\.length > 0/);
-  assert.match(agentSource, /data-orbit-agent-artifact-action/);
-  assert.match(agentSource, /primaryItems/);
-  assert.match(agentSource, /secondaryItems/);
-  assert.match(agentSource, /历史证据/);
-  assert.doesNotMatch(agentSource, /flatMap\(\(section\) => section\.items\)\.slice\(0, 4\)/);
+  assert.match(agentSource, /<AgentOutcomeFeedback/);
+  assert.match(agentSource, /<AgentActionStatusCard/);
+  assert.match(agentSource, /evidenceRefsFromArtifacts/);
   assert.match(pageSource, /data-orbit-route="app-agent-route"/);
 });

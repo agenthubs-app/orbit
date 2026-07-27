@@ -87,24 +87,25 @@ test("/app/agent consumes GET q event-discovery prompts and renders linked event
   assert.equal(first?.actions[0]?.requiresConfirmation, true);
 });
 
-test("/app/agent UI source exposes event recommendation cards, reasons, people, timing, confidence, and detail anchors", () => {
+test("/app/agent maps event artifacts into reason, timing, confidence, and detail-card fields", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
   assert.match(pageSource, /searchParams/);
-  assert.match(pageSource, /initialSubmittedGoal/);
-  assert.match(pageSource, /initialConversationData/);
-  assert.match(agentSource, /data-orbit-event-recommendation-card/);
-  assert.match(agentSource, /data-orbit-event-why/);
-  assert.match(agentSource, /data-orbit-event-people-to-meet/);
-  assert.match(agentSource, /data-orbit-event-timing/);
-  assert.match(agentSource, /confidenceLabel/);
-  assert.match(agentSource, /href=\{preserveHref\(productHref\(action\.href\)\)\}/);
+  assert.match(pageSource, /loadAppChatRouteViewModel/);
+  assert.match(agentSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"event_recommendations"/);
+  assert.match(agentSource, /eventItemsFromArtifact\(eventArtifact\)/);
+  assert.match(agentSource, /artifactMetadataValue\(item, \["开始", "Start"\]\)/);
+  assert.match(agentSource, /score: Number\.isFinite\(score\)/);
+  assert.match(agentSource, /howto: item\.body/);
+  assert.match(agentSource, /reason: item\.reason/);
+  assert.match(agentSource, /function AgentEventCard/);
+  assert.match(agentSource, /navigate\(`\/events\/\$\{event\.code\}`\)/);
 });
 
-test("/app/agent makes event discovery explicit before a user submits a goal", () => {
+test("/app/agent keeps client-side deep-link prompts and contextual discovery suggestions", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
@@ -115,13 +116,11 @@ test("/app/agent makes event discovery explicit before a user submits a goal", (
     pageSource,
     /typeof first === "string" && first\.trim\(\) \? first\.trim\(\) : null/,
   );
-  assert.match(agentSource, /data-orbit-event-discovery-goal/);
-  assert.match(agentSource, /Meet investors/);
-  assert.match(agentSource, /Find China-market partners/);
-  assert.match(agentSource, /Hire AI talent/);
-  assert.match(agentSource, /data-orbit-agent-event-example-prompt/);
-  assert.match(agentSource, /Ask Orbit/);
-  assert.doesNotMatch(agentSource, /Find contacts/);
+  assert.match(agentSource, /function currentAgentQuery/);
+  assert.match(agentSource, /new URLSearchParams\(window\.location\.search\)\.get\("q"\)/);
+  assert.match(agentSource, /viewModel\.suggests\.map/);
+  assert.match(agentSource, /onPick\(suggest\.q\)/);
+  assert.match(agentSource, /what you want to do, who to meet, which event to attend/);
 });
 
 test("recommended event detail links resolve through the app event service", async () => {

@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
+
+import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -101,70 +102,52 @@ test("/app/agent GET q to-do prompts render source-backed upcoming work", async 
   assert.equal(items.every((item) => item.actions[0]?.requiresConfirmation), true);
 });
 
-test("/app/agent page renders submitted to-do prompts through the GET preview path", async () => {
-  const Page = (await importProjectModule<{
-    default: (input?: {
-      searchParams?: Promise<Record<string, string | string[] | undefined>>;
-    }) => Promise<JSX.Element>;
-  }>("app/(app)/app/agent/page.tsx")).default;
-
-  const html = renderToStaticMarkup(
-    await Page({
-      searchParams: Promise.resolve({
-        lang: "en",
-        q: "What should I do today? Summarize my to-do list from conversations and schedule.",
-      }),
-    }),
+test("/app/agent hydrates submitted to-do prompts through the client conversation API", () => {
+  const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
+  const agentSource = readProjectFile(
+    "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(html, /data-orbit-agent-submitted-goal/);
-  assert.match(html, /data-orbit-agent-todo-summary/);
-  assert.match(html, /data-orbit-agent-todo-remaining-work/);
-  assert.match(html, /data-orbit-agent-todo-source-context/);
-  assert.match(html, /Upcoming relationship work|upcoming work|关系待办摘要|关系待办/i);
-  assert.match(html, /More upcoming work|更多关系待办/);
-  assert.match(html, /conversation|对话/i);
-  assert.match(html, /schedule|日程/i);
-  assert.match(html, /\/app\/contacts\//);
-  assert.match(html, /\/app\/events\//);
+  assert.match(pageSource, /loadAppChatRouteViewModel\(resolvedSearchParams\)/);
+  assert.match(agentSource, /function currentAgentQuery/);
+  assert.match(agentSource, /const query = currentAgentQuery\(\)/);
+  assert.match(agentSource, /void ask\(query\)/);
+  assert.match(agentSource, /fetch\("\/api\/ai\/conversations"/);
+  assert.match(agentSource, /"followup_queue"/);
+  assert.match(agentSource, /todoItemsFromArtifact\(followupArtifact\)/);
+  assert.match(agentSource, /function AgentTodoCard/);
 });
 
-test("/app/agent GET q=今日待办 renders the answered to-do state above the launcher", async () => {
-  const Page = (await importProjectModule<{
-    default: (input?: {
-      searchParams?: Promise<Record<string, string | string[] | undefined>>;
-    }) => Promise<JSX.Element>;
-  }>("app/(app)/app/agent/page.tsx")).default;
+test("/app/agent q=今日待办 receives ranked source-backed Chinese follow-ups", () => {
+  const result = createMockOrbitAgentConversationService().sendMessage({
+    locale: "zh",
+    message: "今日待办",
+  });
 
-  const html = renderToStaticMarkup(
-    await Page({
-      searchParams: Promise.resolve({
-        q: "今日待办",
-      }),
-    }),
-  );
+  assert.equal(result.success, true);
+  if (result.success === false) return;
+  const artifact = result.data.artifacts[0];
+  const items = artifact?.result.generatedView?.sections[0]?.items ?? [];
+  const visibleContract = JSON.stringify({
+    assistantMessage: result.data.assistantMessage,
+    items,
+  });
 
-  assert.match(html, /data-orbit-agent-submitted-goal="今日待办"/);
-  assert.match(html, /data-orbit-agent-todo-summary/);
-  assert.match(html, /data-orbit-agent-todo-visible-rank="1"/);
-  assert.match(html, /data-orbit-agent-todo-visible-rank="2"/);
-  assert.match(html, /data-orbit-agent-todo-visible-rank="3"/);
-  assert.match(html, /关系待办摘要/);
-  assert.match(html, /Send the Aoba pilot timeline recap/);
-  assert.match(html, /Storage Operators Breakfast|Ask Maya whether she is comfortable/);
-  assert.match(html, /到期/);
-  assert.match(html, /原因/);
-  assert.match(html, /来源上下文/);
-  assert.match(html, /conversation|对话/);
-  assert.match(html, /schedule|日程/);
-  assert.match(html, /\/app\/contacts\//);
-  assert.match(html, /\/app\/events\//);
-  assert.match(html, /需确认/);
-  assert.doesNotMatch(
-    html.slice(0, html.indexOf("data-orbit-agent-todo-summary")),
-    /data-orbit-agent-todo-example-prompt/,
-    "submitted q state should show the answered summary before launcher prompts",
+  assert.equal(artifact?.task.kind, "followup_queue");
+  assert.ok(items.length >= 4);
+  assert.match(visibleContract, /关系待办/);
+  assert.match(visibleContract, /Send the Aoba pilot timeline recap/);
+  assert.match(
+    visibleContract,
+    /Storage Operators Breakfast|Ask Maya whether she is comfortable/,
   );
+  assert.match(visibleContract, /到期/);
+  assert.match(visibleContract, /原因/);
+  assert.match(visibleContract, /来源上下文/);
+  assert.match(visibleContract, /conversation/);
+  assert.match(visibleContract, /schedule/);
+  assert.match(visibleContract, /\/app\/contacts\//);
+  assert.match(visibleContract, /\/app\/events\//);
 });
 
 test("/app/agent source exposes to-do prompt affordances without owning business logic", () => {
@@ -173,15 +156,13 @@ test("/app/agent source exposes to-do prompt affordances without owning business
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(pageSource, /createOrbitAgentConversationPreviewService/);
-  assert.match(pageSource, /initialSubmittedGoal/);
+  assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.doesNotMatch(pageSource, /mockFollowupTasks|mockEventRecords/);
-  assert.match(agentSource, /data-orbit-agent-todo-goal/);
-  assert.match(agentSource, /data-orbit-agent-todo-example-prompt/);
-  assert.match(agentSource, /Today agenda/);
-  assert.match(agentSource, /Weekend social reminder/);
-  assert.match(agentSource, /Birthday mention/);
-  assert.match(agentSource, /Introduction request/);
+  assert.match(agentSource, /viewModel\.suggests\.map/);
+  assert.match(agentSource, /onPick\(suggest\.q\)/);
+  assert.match(agentSource, /"followup_queue"/);
+  assert.match(agentSource, /function todoItemsFromArtifact/);
+  assert.match(agentSource, /navigate\("\/home\/schedule"\)/);
 });
 
 test("/app/agent input has an explicit to-do capable accessible name", () => {
@@ -189,8 +170,8 @@ test("/app/agent input has an explicit to-do capable accessible name", () => {
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /aria-label=\{t\(\{ en: "Ask Orbit relationship to-dos"/);
-  assert.match(agentSource, /zh: "询问 Orbit 关系待办"/);
-  assert.match(agentSource, /aria-describedby="orbit-agent-input-boundary"/);
-  assert.match(agentSource, /aria-label=\{t\(\{ en: "Submit Ask Orbit relationship to-dos"/);
+  assert.match(agentSource, /en: "Ask Orbit about contacts, events, and relationship to-dos"/);
+  assert.match(agentSource, /zh: "询问 Orbit 人脉、活动与关系待办"/);
+  assert.match(agentSource, /aria-describedby=\{boundaryId\}/);
+  assert.match(agentSource, /en: "Send Ask Orbit message"/);
 });

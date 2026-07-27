@@ -57,15 +57,12 @@ test("/app/agent source clears stale panels only for turns that do not return a 
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /panelFromApiData\(data,\s*locale,\s*t\)/);
-  assert.match(agentSource, /routingDecision/);
-  assert.match(agentSource, /data-orbit-agent-no-tool-turn/);
-  assert.match(agentSource, /reply\.panel \?\? null/);
-  assert.doesNotMatch(
+  assert.match(agentSource, /const items =\s*kind === "events"/);
+  assert.match(
     agentSource,
-    /setPanel\(reply\.panel\);/,
-    "ordinary replies must not leave a previous result panel open",
+    /setPanel\(items\.length > 0 \? \{ items, kind, panelTitle \} : null\)/,
   );
+  assert.doesNotMatch(agentSource, /if \(items\.length > 0\) \{\s*setPanel/);
 });
 
 test("/app/agent source preserves recent conversation context for the next turn", () => {
@@ -73,11 +70,11 @@ test("/app/agent source preserves recent conversation context for the next turn"
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /conversationHistoryForRequest/);
-  assert.match(agentSource, /recentMessages/);
-  assert.match(agentSource, /conversationHistory/);
-  assert.match(agentSource, /sendOrbitAgentMessage\(query, language, t, recentMessages\)/);
-  assert.match(agentSource, /initialAgentMessagesFor/);
+  assert.match(agentSource, /function historyContentFor/);
+  assert.match(agentSource, /const history = messagesRef\.current/);
+  assert.match(agentSource, /\.slice\(-8\)/);
+  assert.match(agentSource, /JSON\.stringify\(\{ history, locale, message: query \}\)/);
+  assert.match(agentSource, /\[本轮推荐明细\]/);
 });
 
 test("/app/agent keeps ordinary assistant bubbles visible without inline API panels", () => {
@@ -85,9 +82,10 @@ test("/app/agent keeps ordinary assistant bubbles visible without inline API pan
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /message\.panel \?/);
-  assert.match(agentSource, /data-orbit-agent-no-tool-turn/);
-  assert.match(agentSource, /panel: reply\.panel \?\? undefined/);
+  assert.match(agentSource, /message\.role === "user" \?/);
+  assert.match(agentSource, /<AgentMarkdown text=\{message\.text\}/);
+  assert.match(agentSource, /inlinePanel && message\.items\.length > 0/);
+  assert.match(agentSource, /items:\s*\[\], kind: "people"/);
 });
 
 test("/app/agent input explains the no-tool privacy boundary before sensitive context is shared", () => {
@@ -96,7 +94,8 @@ test("/app/agent input explains the no-tool privacy boundary before sensitive co
   );
 
   assert.match(agentSource, /data-orbit-agent-privacy-boundary/);
-  assert.match(agentSource, /No external actions from normal chat/);
-  assert.match(agentSource, /普通聊天不会执行外部动作/);
+  assert.match(agentSource, /Normal chat does not send messages or execute external actions/);
+  assert.match(agentSource, /普通聊天不会发送消息或执行外部动作/);
   assert.match(agentSource, /Actions still require confirmation/);
+  assert.match(agentSource, /aria-describedby=\{boundaryId\}/);
 });

@@ -158,6 +158,7 @@ const zhText: LocalizationTable = {
       "Mina 来自创始人沙龙关系，并请求一份简短的运营进展更新。",
     "Mina Park: warm intro from last week's founder salon":
       "人物上下文：Mina Park：来自上周创始人沙龙的暖引荐",
+    "People:": "人物：",
     "People context:": "人物上下文：",
     "Preparation prompt:": "准备重点：",
     "Preparation:": "准备重点：",
@@ -307,6 +308,9 @@ export function localizeOrbitAiPanelText(
 
   return localized
     .replace(/：\s+/g, "：")
+    .replace(/人物上下文：\s*人物上下文：/g, "人物上下文：")
+    .replace(/\bstarts at\b/gi, "于")
+    .replace(/\bat (?=\d{2}:\d{2}\b)/g, "于 ")
     .replace(/\bToday\b/g, "今天")
     .replace(/\bTomorrow\b/g, "明天");
 }

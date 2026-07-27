@@ -99,8 +99,8 @@ function isTodoResult(item: AgentResultItem): item is OrbitAgentTodoResultView {
   return "due" in item;
 }
 
-// /api/ai/conversations 返回的 artifact 载荷里，本页只消费 contact_recommendations
-// 的 generatedView。这里做本页自己的 view-model 映射，不直接把 raw payload 交给卡片。
+// /api/ai/conversations 返回的 artifact 载荷里，本页消费联系人、活动和待办
+// generatedView。这里做本页自己的 view-model 映射，不直接把 raw payload 交给卡片。
 interface AgentArtifactViewItem {
   body?: string;
   confidenceLabel?: string;
@@ -1065,9 +1065,9 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
       <span className="avatar g-indigo orbit-agent-mark" style={{ alignItems: "center", borderRadius: "var(--r-lg)", display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
         <Icon name="sparkle" size={26} color="var(--on-dark)" />
       </span>
-      <h1 className="h-title" style={{ margin: "16px 0 6px" }}>
+      <h2 className="h-title" style={{ margin: "16px 0 6px" }}>
         {t({ en: "I am iOrbit", zh: "我是 iOrbit" })}
-      </h1>
+      </h2>
       <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.65, margin: "0 0 22px", maxWidth: 380 }}>
         {t({
           en: "Tell me what you want to do. I will find the right people in your network, the right events to join, and how to start the conversation.",
@@ -1267,18 +1267,43 @@ const AGENT_COMPOSER_GLOW =
 // a state cue, not decorative elevation, so it stays independent of theme.
 const AGENT_SEND_READY_GLOW = "0 8px 18px rgba(99,76,226,0.28)";
 
-function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (value: string) => void; onSend: () => void; value: string }) {
+function ChatBox({
+  big,
+  busy,
+  onChange,
+  onSend,
+  surface,
+  value,
+}: {
+  big?: boolean;
+  busy: boolean;
+  onChange: (value: string) => void;
+  onSend: () => void;
+  surface: "desktop" | "mobile";
+  value: string;
+}) {
   const { t } = useOrbitLanguage();
+  const isBlank = !value.trim();
+  const boundaryId = `orbit-agent-input-boundary-${surface}`;
 
   return (
-    <div className="orbit-agent-composer" style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-lg)", boxShadow: AGENT_COMPOSER_GLOW, padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}>
+    <div
+      aria-busy={busy}
+      className="orbit-agent-composer"
+      data-orbit-agent-request-state={busy ? "pending" : "idle"}
+      style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-lg)", boxShadow: AGENT_COMPOSER_GLOW, padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}
+    >
       <textarea
         className="orbit-agent-composer-input"
-        aria-label={t({ en: "Ask Orbit", zh: "问问 Orbit" })}
+        aria-describedby={boundaryId}
+        aria-label={t({
+          en: "Ask Orbit about contacts, events, and relationship to-dos",
+          zh: "询问 Orbit 人脉、活动与关系待办",
+        })}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
+          if (event.key === "Enter" && !event.shiftKey && !busy) {
             event.preventDefault();
             onSend();
           }
@@ -1296,16 +1321,28 @@ function ChatBox({ big, onChange, onSend, value }: { big?: boolean; onChange: (v
           <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
         </div>
         <button
+          aria-disabled={busy || isBlank}
+          aria-label={t({ en: "Send Ask Orbit message", zh: "发送给 Orbit" })}
           className="orbit-agent-send"
+          data-orbit-agent-submit="true"
           type="button"
           onClick={onSend}
-          disabled={!value.trim()}
-          aria-label={t({ en: "Send", zh: "发送" })}
-          style={{ alignItems: "center", background: value.trim() ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: "var(--r-sm)", boxShadow: value.trim() ? AGENT_SEND_READY_GLOW : "none", color: value.trim() ? "var(--on-dark)" : "var(--text-4)", cursor: value.trim() ? "pointer" : "default", display: "flex", height: 40, justifyContent: "center", width: 40 }}
+          disabled={busy || isBlank}
+          style={{ alignItems: "center", background: !busy && !isBlank ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: "var(--r-sm)", boxShadow: !busy && !isBlank ? AGENT_SEND_READY_GLOW : "none", color: !busy && !isBlank ? "var(--on-dark)" : "var(--text-4)", cursor: !busy && !isBlank ? "pointer" : "default", display: "flex", height: 44, justifyContent: "center", width: 44 }}
         >
           <Icon name="arrow" size={19} style={{ transform: "rotate(-90deg)" }} />
         </button>
       </div>
+      <p
+        data-orbit-agent-privacy-boundary
+        id={boundaryId}
+        style={{ color: "var(--text-4)", fontSize: 12, lineHeight: 1.5, margin: "6px 4px 0" }}
+      >
+        {t({
+          en: "Normal chat does not send messages or execute external actions. Actions still require confirmation.",
+          zh: "普通聊天不会发送消息或执行外部动作；任何操作仍需确认。",
+        })}
+      </p>
     </div>
   );
 }
@@ -1587,9 +1624,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
         },
       ]);
 
-      if (items.length > 0) {
-        setPanel({ items, kind, panelTitle });
-      }
+      setPanel(items.length > 0 ? { items, kind, panelTitle } : null);
     } catch {
       setMessages((current) => [
         ...current,
@@ -1716,7 +1751,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
   const send = () => {
     const value = text.trim();
-    if (!value) return;
+    if (thinking || !value) return;
     setText("");
     ask(value);
   };
@@ -1936,7 +1971,19 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   );
 
   return (
-    <div className="orbit-agent-workspace" data-orbit-real-page="agent" style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}>
+    <div
+      aria-busy={thinking}
+      className="orbit-agent-workspace"
+      data-orbit-agent-request-state={thinking ? "pending" : "idle"}
+      data-orbit-real-page="agent"
+      style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}
+    >
+      <h1
+        data-orbit-agent-screen-title
+        style={{ clipPath: "inset(50%)", height: 1, margin: -1, overflow: "hidden", position: "absolute", whiteSpace: "nowrap", width: 1 }}
+      >
+        {t({ en: "iOrbit Agent workspace", zh: "iOrbit Agent 工作区" })}
+      </h1>
       <div className="orbit-desktop-only">
         {/* No rightExtra here: the "New chat" action already lives in the
             sidebar below, so the desktop top-nav stays identical to the
@@ -2002,7 +2049,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           </div>
           <div className="orbit-agent-composer-dock" style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "12px 28px 18px" }}>
             <div style={{ margin: "0 auto", maxWidth: 720 }}>
-              <ChatBox value={text} onChange={setText} onSend={send} />
+              <ChatBox busy={thinking} value={text} onChange={setText} onSend={send} surface="desktop" />
             </div>
           </div>
         </div>
@@ -2038,7 +2085,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           ) : renderBubbles(true)}
         </div>
         <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "10px 16px 18px" }}>
-          <ChatBox value={text} onChange={setText} onSend={send} />
+          <ChatBox busy={thinking} value={text} onChange={setText} onSend={send} surface="mobile" />
         </div>
       </div>
 
