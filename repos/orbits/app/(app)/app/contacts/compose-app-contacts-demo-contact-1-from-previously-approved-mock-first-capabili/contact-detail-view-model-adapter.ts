@@ -325,7 +325,7 @@ function noteViews(
   const sourceNotes = model.contact.notes.map((note) => ({
     body: displayText(note.body, language),
     createdAt: note.createdAt,
-    id: note.noteId,
+    id: note.evidenceIds[0] ?? note.noteId,
   }));
 
   if (sourceNotes.length > 0) {

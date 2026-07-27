@@ -209,6 +209,22 @@ function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate })
 
 type TimelineItem = { time: string; body: string; evidenceId?: string; muted?: boolean };
 
+function formatTimelineDate(value: string, t: Translate): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return t({
+    en: new Intl.DateTimeFormat("en", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date),
+    zh: new Intl.DateTimeFormat("zh-CN", {
+      dateStyle: "long",
+      timeStyle: "short",
+    }).format(date),
+  });
+}
+
 function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
   const items: TimelineItem[] = (contact.notes ?? [])
     .filter((note) => note.body?.trim())
@@ -220,7 +236,7 @@ function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate 
       {items.length ? <div className="nc-timeline">
         {items.map((item, index) => (
           <div className={`nc-tl-item${item.muted ? " is-muted" : ""}`} key={`${item.body}-${index}`} style={item.muted ? { paddingBottom: 0 } : undefined}>
-            <div className="nc-tl-time mono">{item.time}</div>
+            <time className="nc-tl-time mono" dateTime={item.time}>{formatTimelineDate(item.time, t)}</time>
             <div className="nc-tl-body" style={item.muted ? { color: "var(--text-3)" } : undefined}>{item.body}</div>
             {item.evidenceId ? (
               <span className="nc-tl-src">

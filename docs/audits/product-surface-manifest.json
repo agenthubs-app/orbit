@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "5e1f64ab357c86b3380ef8a2b4ad7d6c8afdbd88",
-  "generatedAt": "2026-07-27T22:41:36+09:00",
+  "commit": "eb159a3e4c90576563bf2d56161551721c3fff6f",
+  "generatedAt": "2026-07-27T23:04:14+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -29060,6 +29060,7 @@
       ],
       "testCoverage": [
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
+        "repos/orbits/tests/capabilities/account-contact-fixtures-localization.test.ts",
         "repos/orbits/tests/capabilities/account-live-store.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-live-store.test.ts",
@@ -29087,8 +29088,7 @@
         "repos/orbits/tests/capabilities/mobile-auth-service.test.ts",
         "repos/orbits/tests/capabilities/mock-account-session.test.ts",
         "repos/orbits/tests/capabilities/orbit-ai-contact-recommendation-evaluation.test.ts",
-        "repos/orbits/tests/capabilities/orbit-ai-event-recommendation-evaluation.test.ts",
-        "repos/orbits/tests/capabilities/orbit-ai-live-trace-store.test.ts"
+        "repos/orbits/tests/capabilities/orbit-ai-event-recommendation-evaluation.test.ts"
       ],
       "knownRisks": []
     },

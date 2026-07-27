@@ -38,6 +38,19 @@ test("account contact fixtures use detailed Chinese product copy", () => {
   for (const [, action] of source.matchAll(/nextAction: "([^"]+)"/g)) {
     assert.ok(action.length >= 28, `next action is too short: ${action}`);
   }
+  assert.equal([...source.matchAll(/profileBio: "([^"]+)"/g)].length, 12);
+  assert.equal(
+    [...source.matchAll(/selfIntroduction: "([^"]+)"/g)].length,
+    12,
+  );
+  assert.equal(
+    [...source.matchAll(/interactionHistory:\s*\[/g)].length,
+    12,
+  );
+  assert.match(source, /interactionEvidenceUpserted/);
+  assert.match(source, /profileSnippet: fixture\.profileBio/);
+  assert.match(source, /selfIntroduction: fixture\.selfIntroduction/);
+  assert.doesNotMatch(source, /profileSnippet: fixture\.summary/);
   assert.match(
     source,
     /林玫熟悉日本早期投资，佐藤健司正在推进机器人视觉项目/,

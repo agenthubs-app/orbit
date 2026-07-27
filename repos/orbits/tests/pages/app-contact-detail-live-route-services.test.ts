@@ -399,10 +399,16 @@ test("contact detail UI exposes only source-backed relationship data and real na
   const detailSource = source(
     "app/(app)/app/contacts/orbit-real-card-connection.tsx",
   );
+  const adapterSource = source(
+    "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts",
+  );
 
   assert.match(detailSource, /Source-backed · read only/);
   assert.match(detailSource, /No sourced interaction evidence is available/);
   assert.match(detailSource, /No sourced next step is available/);
+  assert.match(detailSource, /function formatTimelineDate/);
+  assert.match(detailSource, /dateTime=\{item\.time\}/);
+  assert.match(adapterSource, /id: note\.evidenceIds\[0\] \?\? note\.noteId/);
   assert.match(detailSource, /href="\/app\/contacts\/pipeline"/);
   assert.doesNotMatch(detailSource, /stageDemo|timelineDemo|valueAToB|valueBToA/);
   assert.doesNotMatch(

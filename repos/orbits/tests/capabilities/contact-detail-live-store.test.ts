@@ -186,6 +186,15 @@ test("live contact detail reads only evidence for the selected contact graph", a
     role: "Founder",
     location: "Tokyo",
     profileSnippet: "Selected profile",
+    publicProfile: {
+      bio: "Public biography from the contact profile",
+      selfIntroduction: "First-person introduction from the contact",
+      industry: "Industrial software",
+      offering: ["Factory operations expertise"],
+      seeking: ["A deployment partner"],
+      topics: ["quality systems", "automation"],
+      conversationPrompts: ["Which production line should be reviewed first?"],
+    },
     stage: "active",
     source,
     evidenceIds: ["evidence:selected-contact"],
@@ -307,6 +316,30 @@ test("live contact detail reads only evidence for the selected contact graph", a
 
   assert.equal(detail.success, true);
   assert.equal(detail.data.contact?.id, selectedContact.id);
+  assert.equal(
+    detail.data.contact?.publicProfile.bio,
+    selectedContact.publicProfile.bio,
+  );
+  assert.equal(
+    detail.data.contact?.publicProfile.selfIntroduction,
+    selectedContact.publicProfile.selfIntroduction,
+  );
+  assert.equal(
+    detail.data.contact?.relationshipContext,
+    selectedConnection.summary,
+  );
+  assert.notEqual(
+    detail.data.contact?.publicProfile.bio,
+    detail.data.contact?.relationshipContext,
+  );
+  assert.deepEqual(
+    detail.data.contact?.notes.map((note) => note.body).sort(),
+    ["Selected connection evidence", "Selected contact evidence"],
+  );
+  assert.equal(
+    detail.data.contact?.lastInteraction.summary,
+    "Selected contact evidence",
+  );
 
   const contactQuery = listQueries.find(
     (query) => query.collectionName === "contacts",

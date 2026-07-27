@@ -299,25 +299,47 @@ function publicProfileFor(input: {
   evidenceIds: readonly string[];
   source: ContactDetailSourceReference;
 }): ContactDetailPublicProfile {
+  const profile = input.contact.publicProfile;
   const sharedTopics = labelRelationshipValues(input.connection?.sharedTopics ?? []);
   const suggestedActions = (input.connection?.suggestedActions ?? []).map(
     (action) => labelRelationshipText(action),
   );
-  const offering = labelRelationshipValues(input.connection?.valueTypes ?? []);
+  const relationshipOffering = labelRelationshipValues(
+    input.connection?.valueTypes ?? [],
+  );
 
   return {
     bio:
+      labelRelationshipText(profile?.bio ?? "") ||
       labelRelationshipText(input.contact.profileSnippet ?? "") ||
       labelRelationshipText(input.connection?.summary ?? "") ||
       "Live contact profile is available from shared relationship records.",
     selfIntroduction:
+      labelRelationshipText(profile?.selfIntroduction ?? "") ||
       labelRelationshipText(input.contact.profileSnippet ?? "") ||
       "Generated from live contact and relationship context.",
-    industry: sharedTopics[0] ?? "relationship context",
-    offering,
-    seeking: suggestedActions,
-    topics: sharedTopics,
-    conversationPrompts: suggestedActions.slice(0, 2),
+    industry:
+      labelRelationshipText(profile?.industry ?? "") ||
+      sharedTopics[0] ||
+      "relationship context",
+    offering:
+      profile?.offering?.length
+        ? profile.offering.map((value) => labelRelationshipText(value))
+        : relationshipOffering,
+    seeking:
+      profile?.seeking?.length
+        ? profile.seeking.map((value) => labelRelationshipText(value))
+        : suggestedActions,
+    topics:
+      profile?.topics?.length
+        ? profile.topics.map((value) => labelRelationshipText(value))
+        : sharedTopics,
+    conversationPrompts:
+      profile?.conversationPrompts?.length
+        ? profile.conversationPrompts.map((value) =>
+            labelRelationshipText(value),
+          )
+        : suggestedActions.slice(0, 2),
     source: input.source,
     evidenceIds: input.evidenceIds,
   };
@@ -358,20 +380,80 @@ function noteFor(input: {
   };
 }
 
+function sourceForEvidence(
+  evidence: RelationshipEvidenceDTO,
+  fallback: ContactDetailSourceReference,
+): ContactDetailSourceReference {
+  const sourceType = contactDetailSourceTypeFor(evidence.sourceType);
+
+  return {
+    type: sourceType,
+    id: evidence.sourceId,
+    label:
+      sourceType === fallback.type
+        ? fallback.label
+        : sourceTypeLabels[sourceType],
+    evidenceId: evidence.id,
+  };
+}
+
+function notesFor(input: {
+  collectedAt: string;
+  contact: ContactDTO;
+  evidence: readonly RelationshipEvidenceDTO[];
+  evidenceIds: readonly string[];
+  relationshipContext: string;
+  source: ContactDetailSourceReference;
+}): ContactDetailNote[] {
+  const notes = [...input.evidence]
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
+    .map((evidence) => ({
+      noteId: `note:relationship-evidence:${input.contact.id}:${evidence.id}`,
+      body: labelRelationshipText(evidence.summary),
+      authorLabel: sourceTypeLabels[
+        contactDetailSourceTypeFor(evidence.sourceType)
+      ],
+      createdAt: evidence.occurredAt,
+      source: sourceForEvidence(evidence, input.source),
+      evidenceIds: [evidence.id],
+      noteWriteExecuted: false as const,
+      productionAuditLogWriteExecuted: false as const,
+    }));
+
+  return notes.length
+    ? notes
+    : [
+        noteFor({
+          collectedAt: input.collectedAt,
+          contact: input.contact,
+          evidenceIds: input.evidenceIds,
+          relationshipContext: input.relationshipContext,
+          source: input.source,
+        }),
+      ];
+}
+
 function lastInteractionFor(input: {
   contact: ContactDTO;
+  evidence?: RelationshipEvidenceDTO;
   evidenceIds: readonly string[];
   occurredAt: string;
   relationshipContext: string;
   source: ContactDetailSourceReference;
 }): ContactDetailLastInteractionMetadata {
+  const evidenceSource = input.evidence
+    ? sourceForEvidence(input.evidence, input.source)
+    : input.source;
+
   return {
     interactionId: `interaction:live-contact-detail:${input.contact.id}`,
-    channel: channelFor(input.source.type),
-    occurredAt: input.occurredAt,
-    summary: input.relationshipContext,
-    source: input.source,
-    evidenceIds: input.evidenceIds,
+    channel: channelFor(evidenceSource.type),
+    occurredAt: input.evidence?.occurredAt ?? input.occurredAt,
+    summary:
+      labelRelationshipText(input.evidence?.summary ?? "") ||
+      input.relationshipContext,
+    source: evidenceSource,
+    evidenceIds: input.evidence ? [input.evidence.id] : input.evidenceIds,
     calendarProviderRequested: false,
     emailProviderRequested: false,
     notificationDelivered: false,
@@ -396,6 +478,9 @@ function detailFor(input: {
     evidenceId: firstEvidenceId,
   });
   const evidenceRecords = evidenceFor(evidenceIds, input.evidence);
+  const latestEvidence = [...evidenceRecords].sort((left, right) =>
+    right.occurredAt.localeCompare(left.occurredAt),
+  )[0];
   const relationshipContext =
     labelRelationshipText(input.connection?.summary ?? "") ||
     labelRelationshipText(input.contact.profileSnippet ?? "") ||
@@ -424,7 +509,7 @@ function detailFor(input: {
     source,
     evidence: evidenceRecords.map((record) => ({
       evidenceId: record.id,
-      source,
+      source: sourceForEvidence(record, source),
       field: "relationship_context",
       excerpt: labelRelationshipText(record.summary),
       capturedAt: record.occurredAt,
@@ -435,17 +520,17 @@ function detailFor(input: {
       connection: input.connection,
     }),
     status: statusFor(input.contact),
-    notes: [
-      noteFor({
-        collectedAt: input.collectedAt,
-        contact: input.contact,
-        evidenceIds,
-        relationshipContext,
-        source,
-      }),
-    ],
+    notes: notesFor({
+      collectedAt: input.collectedAt,
+      contact: input.contact,
+      evidence: evidenceRecords,
+      evidenceIds,
+      relationshipContext,
+      source,
+    }),
     lastInteraction: lastInteractionFor({
       contact: input.contact,
+      evidence: latestEvidence,
       evidenceIds,
       occurredAt: input.connection?.updatedAt ?? input.contact.updatedAt,
       relationshipContext,

@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `5e1f64ab357c86b3380ef8a2b4ad7d6c8afdbd88`
-- Deterministic generated timestamp (commit time): 2026-07-27T22:41:36+09:00
+- Indexed commit: `eb159a3e4c90576563bf2d56161551721c3fff6f`
+- Deterministic generated timestamp (commit time): 2026-07-27T23:04:14+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
