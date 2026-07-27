@@ -24,6 +24,7 @@ const AUTH_ROUTING_FILE = path.join(
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs"];
 const INTERACTION_ATTRIBUTES = new Set([
   "onclick",
+  "onpointerdown",
   "onpointerup",
   "onkeydown",
   "onkeyup",
@@ -380,7 +381,197 @@ function classifyReadWrite(kind, attributes, label, handlerText) {
     : "unknown-requires-runtime-verification";
 }
 
-function collectInteractions(filePath) {
+function staticSelectorFromExpression(node, source, supportsIdHelper) {
+  if (!node) {
+    return null;
+  }
+
+  if (ts.isCallExpression(node)) {
+    if (
+      ts.isPropertyAccessExpression(node.expression) &&
+      (node.expression.name.text === "querySelector" ||
+        node.expression.name.text === "querySelectorAll")
+    ) {
+      const selector = node.arguments[0];
+      if (
+        selector &&
+        (ts.isStringLiteral(selector) ||
+          ts.isNoSubstitutionTemplateLiteral(selector))
+      ) {
+        return selector.text;
+      }
+    }
+
+    if (
+      supportsIdHelper &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "$"
+    ) {
+      const id = node.arguments[0];
+      if (
+        id &&
+        (ts.isStringLiteral(id) || ts.isNoSubstitutionTemplateLiteral(id))
+      ) {
+        return `#${id.text}`;
+      }
+    }
+  }
+
+  let discovered = null;
+  ts.forEachChild(node, (child) => {
+    if (!discovered) {
+      discovered = staticSelectorFromExpression(
+        child,
+        source,
+        supportsIdHelper,
+      );
+    }
+  });
+  return discovered;
+}
+
+function collectImperativeBindings(filePaths) {
+  const bindings = [];
+
+  for (const filePath of filePaths) {
+    const { source, sourceText } = sourceFileFor(filePath);
+    const selectorsByVariable = new Map();
+    const supportsIdHelper =
+      /\bconst\s+\$\s*=\s*\(?\s*id\s*\)?\s*=>\s*host\.querySelector\(\s*["']#["']\s*\+\s*id\s*\)/.test(
+        sourceText,
+      );
+
+    function selectorForExpression(node) {
+      if (ts.isIdentifier(node) && selectorsByVariable.has(node.text)) {
+        return selectorsByVariable.get(node.text);
+      }
+      return staticSelectorFromExpression(node, source, supportsIdHelper);
+    }
+
+    function recordBinding(selector, call) {
+      const event = call.arguments[0];
+      if (
+        !selector ||
+        !event ||
+        (!ts.isStringLiteral(event) &&
+          !ts.isNoSubstitutionTemplateLiteral(event))
+      ) {
+        return;
+      }
+
+      const position = source.getLineAndCharacterOfPosition(call.getStart(source));
+      bindings.push({
+        selector,
+        event: event.text,
+        sourceFile: relativeToWorkspace(filePath),
+        line: position.line + 1,
+      });
+    }
+
+    function discoverVariables(node) {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.initializer
+      ) {
+        const selector = selectorForExpression(node.initializer);
+        if (selector) {
+          selectorsByVariable.set(node.name.text, selector);
+        }
+      }
+      ts.forEachChild(node, discoverVariables);
+    }
+
+    discoverVariables(source);
+
+    function discoverBindings(node) {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.name.text === "addEventListener"
+      ) {
+        recordBinding(selectorForExpression(node.expression.expression), node);
+      }
+
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        (node.expression.name.text === "forEach" ||
+          node.expression.name.text === "map")
+      ) {
+        const selector = selectorForExpression(node.expression.expression);
+        const callback = node.arguments[0];
+        if (
+          selector &&
+          callback &&
+          (ts.isArrowFunction(callback) ||
+            ts.isFunctionExpression(callback)) &&
+          callback.parameters.length > 0 &&
+          ts.isIdentifier(callback.parameters[0].name)
+        ) {
+          const itemName = callback.parameters[0].name.text;
+          function discoverItemBindings(child) {
+            if (
+              ts.isCallExpression(child) &&
+              ts.isPropertyAccessExpression(child.expression) &&
+              child.expression.name.text === "addEventListener" &&
+              ts.isIdentifier(child.expression.expression) &&
+              child.expression.expression.text === itemName
+            ) {
+              recordBinding(selector, child);
+            }
+            ts.forEachChild(child, discoverItemBindings);
+          }
+          discoverItemBindings(callback.body);
+        }
+      }
+
+      ts.forEachChild(node, discoverBindings);
+    }
+
+    discoverBindings(source);
+  }
+
+  return [
+    ...new Map(
+      bindings.map((binding) => [
+        `${binding.selector}:${binding.event}:${binding.sourceFile}:${binding.line}`,
+        binding,
+      ]),
+    ).values(),
+  ];
+}
+
+function imperativeBindingFor(attributes, imperativeBindings) {
+  const selectors = [];
+  const id = attributes.get("id");
+  if (id && !id.includes("{")) {
+    selectors.push(`#${id}`);
+  }
+
+  const className = attributes.get("classname") ?? attributes.get("class");
+  if (className && !className.includes("{")) {
+    selectors.push(
+      ...className
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((name) => `.${name}`),
+    );
+  }
+
+  for (const name of attributes.keys()) {
+    if (name.startsWith("data-")) {
+      selectors.push(`[${name}]`);
+    }
+  }
+
+  const matching = imperativeBindings.filter((binding) =>
+    selectors.includes(binding.selector),
+  );
+  return matching.length > 0 ? matching : null;
+}
+
+function collectInteractions(filePath, imperativeBindings = []) {
   const { source, sourceText } = sourceFileFor(filePath);
   const interactions = [];
 
@@ -407,6 +598,10 @@ function collectInteractions(filePath) {
           .join(" ");
         const href = attributes.get("href") ?? null;
         const delegatesProps = attributes.has("__spread");
+        const imperativeBehavior = imperativeBindingFor(
+          attributes,
+          imperativeBindings,
+        );
         const sourceSlice = sourceText.slice(node.getStart(source), node.getEnd());
         const isSubmitButton =
           parts.tagName.toLowerCase() === "button" &&
@@ -415,7 +610,8 @@ function collectInteractions(filePath) {
         const behaviorEvidence =
           href !== null ||
           handlerNames.length > 0 ||
-          (kind === "button" && isSubmitButton);
+          (kind === "button" && isSubmitButton) ||
+          imperativeBehavior !== null;
         const accessibleName =
           kind === "form-submit" ||
           label.length > 0 ||
@@ -433,7 +629,12 @@ function collectInteractions(filePath) {
             ? "delegated-props"
             : "unresolved-static";
         const behaviorEvidenceStatus = behaviorEvidence
-          ? "present-static"
+          ? imperativeBehavior !== null &&
+            href === null &&
+            handlerNames.length === 0 &&
+            !(kind === "button" && isSubmitButton)
+            ? "present-imperative-static"
+            : "present-static"
           : delegatesProps
             ? "delegated-props"
             : "missing-static";
@@ -446,8 +647,20 @@ function collectInteractions(filePath) {
           label: label || null,
           accessibleName: accessibleNameEvidence,
           href,
-          handlers: handlerNames,
+          handlers:
+            handlerNames.length > 0
+              ? handlerNames
+              : (imperativeBehavior?.map(
+                  (binding) => `addEventListener:${binding.event}`,
+                ) ?? []),
           behaviorEvidence: behaviorEvidenceStatus,
+          imperativeBehaviorEvidence:
+            imperativeBehavior?.map((binding) => ({
+              selector: binding.selector,
+              event: binding.event,
+              sourceFile: binding.sourceFile,
+              line: binding.line,
+            })) ?? [],
           readWrite: classifyReadWrite(kind, attributes, label, handlerText),
           confirmation:
             /confirm|confirmation|dialog/i.test(sourceSlice)
@@ -772,10 +985,14 @@ export function buildProductSurfaceManifest() {
   const surfaces = pageFiles.map((pageFile) => {
     const route = routeFromPage(pageFile);
     const reachableFiles = collectReachableSources(pageFile);
+    const imperativeBindings = collectImperativeBindings(reachableFiles);
     const actionMap = new Map();
 
     for (const filePath of reachableFiles) {
-      for (const interaction of collectInteractions(filePath)) {
+      for (const interaction of collectInteractions(
+        filePath,
+        imperativeBindings,
+      )) {
         const key = `${interaction.sourceFile}:${interaction.line}:${interaction.kind}`;
         actionMap.set(key, interaction);
       }

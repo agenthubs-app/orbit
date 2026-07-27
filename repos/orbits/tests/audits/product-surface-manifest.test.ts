@@ -83,11 +83,60 @@ test("action coverage records source evidence and honest unresolved runtime fiel
     assert.ok(action.line > 0);
     assert.ok(
       action.behaviorEvidence === "present-static" ||
+        action.behaviorEvidence === "present-imperative-static" ||
         action.behaviorEvidence === "delegated-props" ||
         action.behaviorEvidence === "missing-static",
     );
     assert.notEqual(action.confirmation, "verified");
   }
+});
+
+test("imperative starfield controls retain their static runtime evidence", () => {
+  const starfieldActions = manifest.surfaces
+    .filter((surface) => surface.route === "/" || surface.route === "/app")
+    .flatMap((surface) => surface.actions)
+    .filter((action) => action.sourceFile.includes("orbit-starfield-"));
+
+  for (const label of [
+    "切换到中文",
+    "Switch to English",
+    "菜单 / Menu",
+    "发送给 iOrbit",
+    "我要创业",
+    "看看谁能帮我",
+    "找金融 AI 方向的人脉",
+    "推荐 AI / 出海活动",
+  ]) {
+    const matching = starfieldActions.filter((action) => action.label === label);
+    assert.ok(matching.length > 0, `missing starfield action: ${label}`);
+    assert.equal(
+      matching.every(
+        (action) =>
+          action.behaviorEvidence === "present-imperative-static" &&
+          action.imperativeBehaviorEvidence.length > 0,
+      ),
+      true,
+      `missing imperative evidence: ${label}`,
+    );
+  }
+});
+
+test("pointer-down resize controls count as static behavior", () => {
+  const resizeActions = allActions.filter(
+    (action) =>
+      action.sourceFile.endsWith("app/agent/orbit-real-agent.tsx") &&
+      action.label?.includes("Resize chat history"),
+  );
+
+  assert.ok(resizeActions.length > 0);
+  assert.equal(
+    resizeActions.every(
+      (action) =>
+        action.behaviorEvidence === "present-static" &&
+        action.handlers.includes("onpointerdown"),
+    ),
+    true,
+  );
 });
 
 test("manifest generation writes the required repository artifacts", () => {

@@ -60,3 +60,33 @@ Development-runtime note:
 
 - The long-running port 3000 development process served HTML but did not attach client event handlers in either in-app Browser or Chrome.
 - This did not reproduce in the newly built production runtime and is not treated as evidence that production hydration is broken.
+
+## 2026-07-27 — Registration fallback honesty and real-workspace preservation
+
+Production runtime:
+
+- Rebuilt the current worktree with `npm run build`; compilation and TypeScript passed.
+- Started the resulting production build with `next start` on an isolated local port.
+- Opened `/app/events/event_001/register?language=en` in Chrome.
+
+Desktop/default viewport:
+
+| Path / action | Authoritative evidence | Result |
+| --- | --- | --- |
+| Open a confirmed event registration | DOM snapshot and `data-registration-stage` | Rendered the real one-question-at-a-time `EventRegistrationWorkspace` at interview step 1/8, not the read-only mismatch fallback. |
+| Select “A Exploring” | DOM state transition | Advanced to step 2/8 (“Industry”) and rendered “Got it — you're still exploring your focus.”, proving hydrated question handling remained active. |
+
+Mobile viewport (`390 × 844`):
+
+- `innerWidth`, document client width, and document scroll width were all 390; no horizontal overflow was present.
+- The route still rendered `data-registration-stage="interview"` with the first question and reachable option buttons.
+
+Console:
+
+- No application warning or error entries were recorded.
+- Chrome reported extension-owned warnings from `chrome-extension://.../contentscript.js`; these were not emitted by iOrbit.
+
+Fallback scope:
+
+- The data-source mismatch fallback is covered by source regression tests because the canonical confirmed event correctly resolves the real workspace.
+- The fallback now declares itself read-only, makes answer fields read-only, disables skip checkboxes, states that nothing can be saved, and exposes only real navigation links.

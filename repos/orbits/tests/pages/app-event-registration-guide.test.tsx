@@ -128,6 +128,22 @@ test("registerable live events are not gated by the legacy deterministic-guide w
   assert.match(source, /CURRENT_EVENT_REGISTRATION_PROFILE/);
 });
 
+test("registration fallback is transparent and exposes no fake confirmation", () => {
+  const source = readFileSync(
+    join(
+      projectRoot,
+      "app/(app)/app/events/[id]/register/page.tsx",
+    ),
+    "utf8",
+  );
+
+  assert.match(source, /data-registration-guide-state="read-only"/);
+  assert.match(source, /Nothing entered here can be saved/);
+  assert.match(source, /readOnly/);
+  assert.match(source, /<section[\s\S]*Read-only registration profile questions/);
+  assert.doesNotMatch(source, /<button[\s\S]*guide\.confirmationLabel/);
+});
+
 test("registration workspace exposes real register cancel and re-register states", () => {
   const source = readFileSync(
     join(

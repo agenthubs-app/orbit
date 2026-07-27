@@ -89,8 +89,8 @@ function eventHref(
 
 function finalStepCue(language: RegistrationProfileGuideLanguage): string {
   return copy(language, {
-    en: "Final step: answers remain local until you explicitly confirm them; this page does not write profile updates.",
-    zh: "最后一步：明确确认前，回答只保留在本地；这个页面不会写入 Profile。",
+    en: "This read-only fallback cannot save answers. Return to the event and retry after its registration record is confirmed or imported.",
+    zh: "此只读兜底页不会保存回答。请返回活动，待报名记录确认为已发布或已导入后重试。",
   });
 }
 
@@ -229,8 +229,15 @@ function RegistrationGuideForm({
           >
             {guide.event.title}
           </h1>
-          <p style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.55, margin: 0 }}>
-            {guide.stagedNotice}
+          <p
+            data-registration-guide-state="read-only"
+            role="status"
+            style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.55, margin: 0 }}
+          >
+            {copy(language, {
+              en: "Registration is temporarily read-only because the current event record could not be verified as confirmed or imported. Nothing entered here can be saved.",
+              zh: "当前活动记录暂时无法验证为已发布或已导入，因此报名资料仅供只读查看；此处不会保存任何输入。",
+            })}
           </p>
         </header>
 
@@ -259,7 +266,13 @@ function RegistrationGuideForm({
           </div>
         </section>
 
-        <form style={{ display: "grid", gap: 14 }}>
+        <section
+          aria-label={copy(language, {
+            en: "Read-only registration profile questions",
+            zh: "只读报名资料问题",
+          })}
+          style={{ display: "grid", gap: 14 }}
+        >
           {guide.questions.map((question, index) => (
             <fieldset
               key={question.id}
@@ -287,11 +300,16 @@ function RegistrationGuideForm({
                   {question.prompt}
                 </span>
                 <textarea
+                  aria-label={copy(language, {
+                    en: "Answer unavailable in read-only mode",
+                    zh: "只读模式下无法填写回答",
+                  })}
                   name={question.id}
                   placeholder={copy(language, {
-                    en: "Stage an answer for profile-building guidance.",
-                    zh: "先写一个暂存回答，用于资料补全建议。",
+                    en: "Return to the event and retry when registration is available.",
+                    zh: "请返回活动，待报名恢复可用后重试。",
                   })}
+                  readOnly
                   style={{
                     border: "1px solid var(--border-2)",
                     borderRadius: 12,
@@ -339,7 +357,7 @@ function RegistrationGuideForm({
                   gap: 8,
                 }}
               >
-                <input name={`${question.id}:skip`} type="checkbox" />
+                <input disabled name={`${question.id}:skip`} type="checkbox" />
                 {question.skipLabel}
               </label>
               <div style={{ color: "var(--accent)", fontSize: 12.5, fontWeight: 650 }}>
@@ -354,21 +372,26 @@ function RegistrationGuideForm({
               gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
             }}
           >
-            <button
+            <a
+              aria-label={copy(language, { en: "Return to event", zh: "返回活动" })}
+              href={eventHref(guide)}
               style={{
+                alignItems: "center",
                 background: "var(--accent)",
                 border: "1px solid var(--accent)",
                 borderRadius: 12,
                 color: "var(--on-dark)",
                 cursor: "pointer",
+                display: "flex",
                 fontSize: 15,
                 fontWeight: 700,
+                justifyContent: "center",
                 minHeight: 46,
+                textDecoration: "none",
               }}
-              type="button"
             >
-              {guide.confirmationLabel}
-            </button>
+              {copy(language, { en: "Return to event", zh: "返回活动" })}
+            </a>
             <a
               href={eventHref(guide)}
               style={{
@@ -398,7 +421,7 @@ function RegistrationGuideForm({
           >
             {finalStepCue(language)}
           </p>
-        </form>
+        </section>
       </section>
     </main>
   );
