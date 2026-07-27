@@ -79,6 +79,30 @@ test("/app/admin and /app/platform routes use a live-capable admin-platform load
   }
 });
 
+test("admin and platform success surfaces do not expose unbacked write controls", () => {
+  const adminSource = source("app/(app)/app/admin/orbit-real-admin.tsx");
+  const platformSource = source(
+    "app/(app)/app/platform/orbit-real-platform.tsx",
+  );
+  const adminDashboardSource = adminSource.slice(
+    adminSource.indexOf("function AdminDashContent"),
+    adminSource.indexOf("function MemberRow"),
+  );
+
+  assert.match(adminDashboardSource, /Source metrics · read only/);
+  assert.doesNotMatch(
+    adminDashboardSource,
+    /Run AI matching|Export|Invite/,
+  );
+  assert.match(platformSource, /Source review only/);
+  assert.match(platformSource, /authenticated moderation write service/);
+  assert.doesNotMatch(
+    platformSource,
+    /Approve & publish|Rejected and explanation sent|organizer notified/,
+  );
+  assert.doesNotMatch(platformSource, /function decide|More actions/);
+});
+
 test("app admin-platform route loader returns admin and platform models in mock mode", async () => {
   await withMockAdminPlatform(async () => {
     const { loadAppAdminPlatformRouteViewModel } = await import(

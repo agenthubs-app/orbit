@@ -91,6 +91,20 @@ test("/app/party/checkin uses the same live-capable party loader without compone
     assert.doesNotMatch(partyComponentSource, /getOrbitPartyViewModel/);
 });
 
+test("party recommendations expose a route-derived industry filter", () => {
+  const partyComponentSource = source(
+    "app/(app)/app/dashboard/orbit-real-party.tsx",
+  );
+
+  assert.match(partyComponentSource, /Filter by industry/);
+  assert.match(partyComponentSource, /viewModel\.recommendations/);
+  assert.match(partyComponentSource, /person\.industry\.trim\(\) === industry/);
+  assert.doesNotMatch(
+    partyComponentSource,
+    /aria-label=\{t\(\{ en: "Filter", zh: "筛选" \}\)\}/,
+  );
+});
+
 test("app party route loader returns a real party model in mock mode", async () => {
   await withMockParty(async () => {
     const { loadAppPartyRouteViewModel } = await import(

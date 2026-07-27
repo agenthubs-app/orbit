@@ -25,23 +25,12 @@ function PlatformStat({ s }: { s: OrbitPlatformViewModel["platformStats"][number
 export function OrbitRealPlatform({ viewModel }: { viewModel: OrbitPlatformViewModel }) {
   const { language, t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
-  const [queue, setQueue] = useState(viewModel.reviewQueue);
   const [selId, setSelId] = useState(viewModel.reviewQueue[0]?.id ?? "");
-  const [toast, setToast] = useState("");
   const [view, setView] = useState("overview");
+  const queue = viewModel.reviewQueue;
   const sel = queue.find((record) => record.id === selId) || queue[0] || null;
   const nav: Array<[string, string, string, number | null]> = [["overview", "grid", t({ en: "Overview", zh: "平台总览" }), null], ["review", "checkCircle", t({ en: "Event review", zh: "活动审核" }), queue.length], ["accounts", "building", t({ en: "Accounts", zh: "账号管理" }), null]];
   const accounts = viewModel.orgAccounts.filter((account) => !query.trim() || account.name.includes(query) || account.owner.includes(query));
-
-  function decide(id: string, ok: boolean) {
-    setQueue((current) => {
-      const next = current.filter((record) => record.id !== id);
-      if (next.length && !next.find((record) => record.id === selId)) setSelId(next[0].id);
-      return next;
-    });
-    setToast(ok ? t({ en: "Approved and organizer notified", zh: "已批准并通知主办方" }) : t({ en: "Rejected and explanation sent", zh: "已驳回并发送说明" }));
-    window.setTimeout(() => setToast(""), 1800);
-  }
 
   return (
     <div className="orbit-platform-page" data-orbit-real-page>
@@ -54,7 +43,6 @@ export function OrbitRealPlatform({ viewModel }: { viewModel: OrbitPlatformViewM
 
       {view === "review" ? (
         <div className="orbit-platform-main">
-          {toast ? <div className="orbit-platform-error" style={{ background: "var(--live-soft)", color: "var(--live-text)" }}>{toast}</div> : null}
           {queue.length === 0 ? (
             <div className="orbit-platform-empty-detail"><div className="orbit-platform-lock"><Icon name="checkCircle" size={22} /></div><h2>{t({ en: "Review queue cleared", zh: "审核队列已清空" })}</h2><p>{t({ en: "There are no events awaiting review.", zh: "当前没有待审核的活动。" })}</p></div>
           ) : (
@@ -71,8 +59,7 @@ export function OrbitRealPlatform({ viewModel }: { viewModel: OrbitPlatformViewM
                     <h3 className="h-section">{t({ en: "Event description", zh: "活动说明" })}</h3>
                     <p className="orbit-platform-description">{sel.desc}</p>
                     <div className="orbit-platform-flag-list">{sel.flags.map((flag) => <span className="chip orbit-platform-risk" key={flag}>{flag}</span>)}</div>
-                    <div className="card orbit-platform-reject" style={{ marginTop: 18 }}><div className="orbit-platform-reject-head"><Icon color="var(--rose)" name="x" size={16} /><strong>{t({ en: "Rejection reason", zh: "驳回理由" })}</strong><span>{t({ en: "(sent to the organizer when rejected)", zh: "（驳回时发送给主办方）" })}</span></div><textarea className="field" placeholder={t({ en: "Explain what needs to be added or changed…", zh: "说明需要补充或修改的内容…" })} /></div>
-                    <div className="orbit-platform-actions"><button className="btn btn-ghost orbit-platform-danger" onClick={() => decide(sel.id, false)} style={{ border: "none", color: "var(--on-dark)" }} type="button"><Icon color="var(--on-dark)" name="x" size={16} />{t({ en: "Reject", zh: "驳回" })}</button><button className="btn btn-primary" onClick={() => decide(sel.id, true)} type="button"><Icon color="var(--on-dark)" name="check" size={16} />{t({ en: "Approve & publish", zh: "批准并发布" })}</button></div>
+                    <div className="card orbit-platform-reject" style={{ marginTop: 18 }}><div className="orbit-platform-reject-head"><Icon color="var(--accent)" name="eye" size={16} /><strong>{t({ en: "Source review only", zh: "仅查看来源" })}</strong></div><p className="orbit-platform-description">{t({ en: "Approval, rejection, publishing, and organizer notification are unavailable until an authenticated moderation write service is connected.", zh: "在接入具备身份校验的审核写服务前，批准、驳回、发布和主办方通知均不可用。" })}</p></div>
                   </>
                 ) : null}
               </div>
@@ -93,7 +80,7 @@ export function OrbitRealPlatform({ viewModel }: { viewModel: OrbitPlatformViewM
           ) : (
             <>
               <div className="orbit-platform-header"><div className="orbit-platform-header-row"><div><h1 className="h-display">{t({ en: "Accounts", zh: "账号管理" })}</h1><p>{t({ en: `${viewModel.orgAccounts.length} organizer accounts`, zh: `${viewModel.orgAccounts.length} 个主办方账号` })}</p></div><div className="orbit-platform-search"><Icon color="var(--text-3)" name="search" size={17} /><input aria-label={t({ en: "Search organizer / email", zh: "搜索主办方 / 邮箱" })} onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search organizer / email", zh: "搜索主办方 / 邮箱" })} type="search" value={query} /></div></div></div>
-              <div className="card orbit-platform-table"><div className="orbit-platform-table-head"><span>{t({ en: "Organizer", zh: "主办方" })}</span><span>{t({ en: "Owner", zh: "负责人" })}</span><span>{t({ en: "Events", zh: "活动" })}</span><span>{t({ en: "Status", zh: "状态" })}</span><span>{t({ en: "Actions", zh: "操作" })}</span></div>{accounts.map((account) => <div className="orbit-platform-table-row" key={account.name}><div className="orbit-platform-account-cell"><span className={`avatar ${account.g}`} style={{ flexShrink: 0, fontSize: 15, height: 38, width: 38 }}>{account.letter}</span><span><strong>{account.name}</strong></span></div><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.owner}</span><span>{t({ en: `${account.events}`, zh: `${account.events} 场` })}</span><span>{account.status === "已认证" ? <span className="badge badge-live" style={{ height: 22 }}>{t({ en: "Verified", zh: "已认证" })}</span> : <span className="badge badge-soon" style={{ height: 22 }}>{t({ en: "Pending", zh: "待审" })}</span>}</span><span><button aria-label={t({ en: "More actions", zh: "更多操作" })} className="btn btn-ghost btn-sm hit-44" type="button"><Icon name="more" size={16} /></button></span></div>)}</div>
+              <div className="card orbit-platform-table"><div className="orbit-platform-table-head"><span>{t({ en: "Organizer", zh: "主办方" })}</span><span>{t({ en: "Owner", zh: "负责人" })}</span><span>{t({ en: "Events", zh: "活动" })}</span><span>{t({ en: "Status", zh: "状态" })}</span><span>{t({ en: "Access", zh: "权限" })}</span></div>{accounts.map((account) => <div className="orbit-platform-table-row" key={account.name}><div className="orbit-platform-account-cell"><span className={`avatar ${account.g}`} style={{ flexShrink: 0, fontSize: 15, height: 38, width: 38 }}>{account.letter}</span><span><strong>{account.name}</strong></span></div><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.owner}</span><span>{t({ en: `${account.events}`, zh: `${account.events} 场` })}</span><span>{account.status === "已认证" ? <span className="badge badge-live" style={{ height: 22 }}>{t({ en: "Verified", zh: "已认证" })}</span> : <span className="badge badge-soon" style={{ height: 22 }}>{t({ en: "Pending", zh: "待审" })}</span>}</span><span className="orbit-platform-footer-sub">{t({ en: "Read only", zh: "只读" })}</span></div>)}</div>
             </>
           )}
         </div></div></div>

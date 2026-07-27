@@ -145,3 +145,35 @@ Console:
 
 - No application warning or error entries were recorded on desktop or mobile.
 - Temporary Chrome viewport override was reset and the verification tab was finalized.
+
+## 2026-07-27 — Shared recovery, Admin, Party, and Platform P0 closure
+
+Production runtime:
+
+- Rebuilt the current worktree with `npm run build`; compilation and the build's TypeScript check passed across all shared `StateView` consumers.
+- Started the production build on an isolated local port.
+- Used an isolated synthetic account for the authenticated Party verification; no credentials are recorded.
+
+Desktop/default viewport:
+
+| Surface / action | Authoritative evidence | Result |
+| --- | --- | --- |
+| Admin dashboard | DOM and control query | Rendered live-capable source metrics with “Source metrics · read only”; Export, Run AI matching, and Invite controls were absent. |
+| Party → For you → industry filter | Unique combobox state and rendered recommendation list | Route-derived options rendered; selecting “Investor context” reduced three recommendations to the one matching person. |
+| Platform → Event review | DOM and control query | Rendered “Source review only”; no rejection textarea, approve, reject, or More actions controls existed. |
+
+Mobile viewport (`390 × 844`):
+
+- Admin and Platform both measured `innerWidth = clientWidth = scrollWidth = 390`, retained their read-only notices, and exposed none of the removed write controls.
+- Party's route-derived industry combobox remained reachable; selecting “Partner program fit” reduced the visible list to one matching recommendation.
+- Party also measured `innerWidth = clientWidth = scrollWidth = 390`.
+
+Shared route-state boundary:
+
+- `StateView` render tests prove every recovery action is now a named link with a real `href`; the production build's TypeScript check validates all 24 direct callers.
+- The generated surface manifest contains zero `behavior-missing-static` actions after this phase.
+
+Console:
+
+- No application warning or error entries were recorded.
+- The temporary viewport override was reset and the browser tab was finalized.

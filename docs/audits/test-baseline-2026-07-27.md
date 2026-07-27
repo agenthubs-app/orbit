@@ -2,14 +2,14 @@
 
 Command: `npm test` in `repos/orbits`
 
-- Tests: 1,202
-- Passed: 1,133
+- Tests: 1,204
+- Passed: 1,135
 - Failed: 69
 - Skipped/cancelled/todo: 0
-- Duration: 32.9 seconds
+- Duration: 33.1 seconds
 - Production build and TypeScript: passed separately.
 
-The current rerun added the passing contacts-pipeline regression test, retained every other classified failure name, and made the non-`.btn` button-count ratchet pass by removing the prototype controls. No new failure was introduced.
+The current rerun added two passing regressions for the Party industry filter and the Admin/Platform read-only action boundaries. It retained every classified failure name from the preceding 1,202-test baseline, so no new failure was introduced.
 
 Classification totals:
 

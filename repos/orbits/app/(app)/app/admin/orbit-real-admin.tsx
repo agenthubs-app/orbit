@@ -105,7 +105,7 @@ function AdminDashContent({ viewModel }: { viewModel: OrbitAdminViewModel }) {
   const { t } = useOrbitLanguage();
   return (
     <>
-      <div className="orbit-host-page-head"><div><div className="eyebrow">DASHBOARD</div><h1 className="h-display">{t({ en: "Dashboard", zh: "仪表盘" })}</h1></div><div className="orbit-host-actions"><button className="btn btn-ghost" type="button"><Icon name="download" size={16} />{t({ en: "Export", zh: "导出" })}</button><button className="btn btn-primary" type="button"><Icon color="var(--on-dark)" name="sparkle" size={16} />{t({ en: "Run AI matching", zh: "运行 AI 匹配" })}</button></div></div>
+      <div className="orbit-host-page-head"><div><div className="eyebrow">DASHBOARD</div><h1 className="h-display">{t({ en: "Dashboard", zh: "仪表盘" })}</h1></div><span className="badge badge-soon">{t({ en: "Source metrics · read only", zh: "来源指标 · 只读" })}</span></div>
       <div className="orbit-host-stat-grid">{viewModel.adminStats.map((stat) => <StatTile key={stat.label} s={stat} />)}</div>
       <div className="orbit-host-dashboard-grid">
         <div>
@@ -114,7 +114,7 @@ function AdminDashContent({ viewModel }: { viewModel: OrbitAdminViewModel }) {
         </div>
         <div>
           <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Live activity", zh: "实时动态" })}</h2><span className="badge badge-live" style={{ height: 22 }}><span className="dot dot-live" />LIVE</span></div>{viewModel.adminFeed.map((feed) => <FeedRow f={feed} key={feed.id} />)}</div>
-          <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Team members", zh: "团队成员" })}</h2><button className="btn btn-ghost btn-sm" type="button"><Icon name="plus" size={14} />{t({ en: "Invite", zh: "邀请" })}</button></div>{viewModel.adminMembers.map((member) => <MemberRow key={member.email} member={member} />)}</div>
+          <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Team members", zh: "团队成员" })}</h2></div>{viewModel.adminMembers.map((member) => <MemberRow key={member.email} member={member} />)}</div>
         </div>
       </div>
     </>

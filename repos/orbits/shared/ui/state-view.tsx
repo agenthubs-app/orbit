@@ -3,21 +3,13 @@ import { Chip, WorkbenchSurface } from "./primitives";
 
 // StateView 是空态、pending、failure 等页面状态的统一展示组件。
 // 它把“为什么重要 / 当前上下文 / 安全下一步 / 来源证据”固定成一致结构。
-export type StateViewRecoveryAction =
-  | {
-      id: string;
-      label: string;
-      recoveryCopy: string;
-      href: string;
-      ariaLabel?: string;
-    }
-  | {
-      id: string;
-      label: string;
-      recoveryCopy: string;
-      href?: undefined;
-      ariaLabel?: string;
-    };
+export interface StateViewRecoveryAction {
+  id: string;
+  label: string;
+  recoveryCopy: string;
+  href: string;
+  ariaLabel?: string;
+}
 
 export interface StateViewProps {
   eyebrow: string;
@@ -254,25 +246,14 @@ export function StateView({
                   data-state-recovery-copy={recoveryCopy}
                   key={action.id}
                 >
-                  {action.href ? (
-                    <a
-                      aria-label={ariaLabel}
-                      aria-describedby={recoveryCopyId}
-                      className="state-recovery-control"
-                      href={action.href}
-                    >
-                      {label}
-                    </a>
-                  ) : (
-                    <button
-                      aria-label={ariaLabel}
-                      aria-describedby={recoveryCopyId}
-                      className="state-recovery-control"
-                      type="button"
-                    >
-                      {label}
-                    </button>
-                  )}
+                  <a
+                    aria-label={ariaLabel}
+                    aria-describedby={recoveryCopyId}
+                    className="state-recovery-control"
+                    href={action.href}
+                  >
+                    {label}
+                  </a>
                   {recoveryCopy && <p id={recoveryCopyId}>{recoveryCopy}</p>}
                 </div>
               );

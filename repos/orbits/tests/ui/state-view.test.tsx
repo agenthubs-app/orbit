@@ -13,7 +13,7 @@ const projectRoot = path.resolve(
   "../..",
 );
 
-test("state view renders typed recovery links and actions as named controls", () => {
+test("state view renders every recovery action as a real named link", () => {
   const html = renderToStaticMarkup(
     React.createElement(StateView as React.ComponentType<Record<string, unknown>>, {
       description: "Relationship work is waiting for source context.",
@@ -28,6 +28,7 @@ test("state view renders typed recovery links and actions as named controls", ()
         },
         {
           id: "check-again",
+          href: "/app",
           label: "Check workspace again",
           recoveryCopy: "Check workspace again after source review finishes.",
         },
@@ -45,7 +46,7 @@ test("state view renders typed recovery links and actions as named controls", ()
   );
   assert.match(
     html,
-    /<button[^>]*aria-label="Check workspace again"[^>]*type="button"[^>]*>Check workspace again<\/button>/,
+    /<a[^>]*aria-label="Check workspace again"[^>]*href="\/app"[^>]*>Check workspace again<\/a>/,
   );
   assert.match(html, /Add a relationship source to start from reviewed context\./);
   assert.match(html, /Check workspace again after source review finishes\./);
@@ -94,6 +95,7 @@ test("state view binds recovery copy to each visible recovery control", () => {
         },
         {
           id: "check-again",
+          href: "/app",
           label: "Check workspace again",
           recoveryCopy: "Check workspace again after source review finishes.",
         },
@@ -112,7 +114,7 @@ test("state view binds recovery copy to each visible recovery control", () => {
   );
   assert.match(
     html,
-    /aria-label="Check workspace again"[^>]*aria-describedby="state-recovery-copy-check-again-1"[^>]*>Check workspace again<\/button>/,
+    /aria-label="Check workspace again"[^>]*aria-describedby="state-recovery-copy-check-again-1"[^>]*href="\/app"[^>]*>Check workspace again<\/a>/,
   );
   assert.match(
     html,

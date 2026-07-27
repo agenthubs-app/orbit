@@ -479,15 +479,35 @@ function PartyTable({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewM
 
 function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
   const [added, setAdded] = useState<Record<string, boolean>>({});
+  const [industry, setIndustry] = useState("");
   const [query, setQuery] = useState("");
+  const industries = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          viewModel.recommendations
+            .map((person) => person.industry.trim())
+            .filter(Boolean),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+    [viewModel.recommendations],
+  );
   const list = useMemo(
     () =>
       viewModel.recommendations.filter((person) => {
         const trimmed = query.trim().toLowerCase();
-        if (!trimmed) return true;
-        return [person.name, person.company, person.industry].join(" ").toLowerCase().includes(trimmed);
+        const matchesQuery =
+          !trimmed ||
+          [person.name, person.company, person.industry]
+            .join(" ")
+            .toLowerCase()
+            .includes(trimmed);
+        const matchesIndustry =
+          !industry || person.industry.trim() === industry;
+
+        return matchesQuery && matchesIndustry;
       }),
-    [query, viewModel.recommendations],
+    [industry, query, viewModel.recommendations],
   );
 
   return (
@@ -509,9 +529,20 @@ function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: Orbit
           <Icon color="var(--text-3)" name="search" size={17} />
           <input aria-label={t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" })} onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search name / company / industry", zh: "搜索姓名 / 公司 / 行业" })} type="search" value={query} />
         </div>
-        <button aria-label={t({ en: "Filter", zh: "筛选" })} className="btn btn-ghost orbit-party-network-filter hit-44" type="button">
-          <Icon name="filter" size={18} />
-        </button>
+        <select
+          aria-label={t({ en: "Filter by industry", zh: "按行业筛选" })}
+          className="field hit-44"
+          onChange={(event) => setIndustry(event.target.value)}
+          style={{ minWidth: 150, width: "auto" }}
+          value={industry}
+        >
+          <option value="">{t({ en: "All industries", zh: "全部行业" })}</option>
+          {industries.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="orbit-party-network-list">
         {list.map((person) => (
