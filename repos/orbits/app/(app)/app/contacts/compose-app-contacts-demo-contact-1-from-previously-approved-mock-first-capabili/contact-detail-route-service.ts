@@ -174,12 +174,6 @@ const routeBoundaryCopy = {
         recoveryCopy:
           "Go back to the sourced list and pick a relationship that already has evidence.",
       },
-      {
-        href: "/app/contacts/demo-contact-1",
-        label: "Open Kenji detail",
-        recoveryCopy:
-          "Open the one relationship this boundary can already show end to end.",
-      },
     ],
     title: "No contact detail is available",
   },
@@ -253,35 +247,54 @@ function normalizeAction(action?: string | null): AppContactDetailRouteAction | 
 
 function createBoundaryModel(
   routeState: Exclude<AppContactDetailRouteState, "success">,
+  contactId: string,
   evidence: readonly string[] = routeBoundaryCopy[routeState].evidence,
 ): AppContactDetailBoundaryModel {
+  const normalizedContactId = contactId.trim();
+  const retryHref = normalizedContactId
+    ? `/app/contacts/${encodeURIComponent(normalizedContactId)}`
+    : "/app/contacts";
+
   return {
     ...routeBoundaryCopy[routeState],
     evidence,
+    recoveryActions: routeBoundaryCopy[routeState].recoveryActions.map(
+      (action) =>
+        action.href === `/app/contacts/${APP_CONTACT_DETAIL_CONTACT_ID}`
+          ? { ...action, href: retryHref }
+          : action,
+    ),
     routeState,
   };
 }
 
 function resolveRouteServices(
   mode?: ModuleMode | string,
+  contactId = APP_CONTACT_DETAIL_CONTACT_ID,
 ): AppContactDetailRouteServices | AppContactDetailBoundaryModel {
   // 任一 capability factory 无法解析时，整条 route 进入 failure boundary。
   const contactDetail = contactDetailServiceFactory.create(mode);
 
   if (contactDetail.success === false) {
-    return createBoundaryModel("failure", [contactDetail.error.code]);
+    return createBoundaryModel("failure", contactId, [
+      contactDetail.error.code,
+    ]);
   }
 
   const connectionEvidence = connectionEvidenceServiceFactory.create(mode);
 
   if (connectionEvidence.success === false) {
-    return createBoundaryModel("failure", [connectionEvidence.error.code]);
+    return createBoundaryModel("failure", contactId, [
+      connectionEvidence.error.code,
+    ]);
   }
 
   const relationshipValue = relationshipValueServiceFactory.create(mode);
 
   if (relationshipValue.success === false) {
-    return createBoundaryModel("failure", [relationshipValue.error.code]);
+    return createBoundaryModel("failure", contactId, [
+      relationshipValue.error.code,
+    ]);
   }
 
   return {
@@ -518,7 +531,7 @@ async function loadComposedContactDetailRoute(input: {
       ...(valueResult.success === false ? valueResult.error.evidenceIds : []),
     ];
 
-    return createBoundaryModel("failure", evidence);
+    return createBoundaryModel("failure", input.contactId, evidence);
   }
 
   const routeState = routeStateForPayloads(
@@ -530,6 +543,7 @@ async function loadComposedContactDetailRoute(input: {
   if (routeState) {
     return createBoundaryModel(
       routeState,
+      input.contactId,
       collectRouteEvidenceIds(contactResult.data, connectionResult.data, valueResult.data),
     );
   }
@@ -559,14 +573,16 @@ async function loadLiveAppContactDetailRoute(input: {
 }): Promise<AppContactDetailRouteModel> {
   const actorId = input.actorId?.trim();
   if (!actorId) {
-    return createBoundaryModel("failure", ["CONTACT_DETAIL_ACTOR_REQUIRED"]);
+    return createBoundaryModel("failure", input.contactId, [
+      "CONTACT_DETAIL_ACTOR_REQUIRED",
+    ]);
   }
 
   const provider =
     input.liveContactGraphProvider ?? createConfiguredStorageContactGraphProvider();
 
   if (!provider) {
-    return createBoundaryModel("failure", [
+    return createBoundaryModel("failure", input.contactId, [
       "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
     ]);
   }
@@ -606,7 +622,7 @@ export async function loadAppContactDetailRoute({
     });
   }
 
-  const services = resolveRouteServices(mode);
+  const services = resolveRouteServices(mode, contactId);
 
   if (isBoundaryModel(services)) {
     return services;

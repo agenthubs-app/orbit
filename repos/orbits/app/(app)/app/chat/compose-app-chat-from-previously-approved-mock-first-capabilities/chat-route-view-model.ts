@@ -350,6 +350,28 @@ function stateCopy(scenario: AppChatRouteScenario): AppChatRouteStateCopyViewMod
   };
 }
 
+function missingConversationRouteState(
+  evidenceIds: readonly string[],
+): AppChatRouteStateViewModel {
+  return {
+    copy: {
+      description:
+        "The requested conversation is not available in the current source-backed chat list.",
+      emptyState: "No sourced conversation matches this conversation ID.",
+      guardrail:
+        "Orbit will not substitute another person's thread, summary, relationship context, or writing suggestion.",
+      nextStep:
+        "Return to Chat and choose a conversation from the current sourced list.",
+      purpose:
+        "Keep conversation identity exact when a bookmarked or shared link is no longer available.",
+      title: "Conversation not found",
+    },
+    errorCode: "CHAT_CONVERSATION_NOT_FOUND",
+    evidenceIds: publicEvidenceIds(evidenceIds),
+    scenario: "empty",
+  };
+}
+
 // 以下转换函数把 feature contract DTO 收窄成页面组件真正需要的字段。
 function conversationViewModel(
   conversation: ChatConversationListPayload["conversations"][number],
@@ -650,9 +672,27 @@ export async function loadAppChatRouteViewModel(
     };
   }
 
-  const conversation = conversationsResult.data.conversations[0];
+  const requestedConversationId = readAppChatSearchParam(
+    searchParams,
+    "conversation",
+  )?.trim();
+  const conversation = requestedConversationId
+    ? conversationsResult.data.conversations.find(
+        (candidate) =>
+          candidate.conversationId === requestedConversationId,
+      )
+    : conversationsResult.data.conversations[0];
 
   if (!conversation) {
+    if (requestedConversationId) {
+      return {
+        routeState: missingConversationRouteState(
+          conversationsResult.data.provenance.evidenceIds,
+        ),
+        state: "route-state",
+      };
+    }
+
     return {
       routeState: await loadAppChatRouteStateViewModel("empty"),
       state: "route-state",

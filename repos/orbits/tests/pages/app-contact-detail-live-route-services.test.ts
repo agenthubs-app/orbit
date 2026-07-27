@@ -72,6 +72,14 @@ test("app contact detail route reaches live child services instead of failing at
         evidence,
         /CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED|CONNECTION_LIVE_STORE_UNCONFIGURED|RELATIONSHIP_VALUE_LIVE_STORE_UNCONFIGURED|live-store-unconfigured/,
       );
+      assert.deepEqual(
+        routeModel.recoveryActions.map((action) => action.href),
+        ["/app/contacts/contact_078", "/app/contacts"],
+      );
+      assert.doesNotMatch(
+        JSON.stringify(routeModel.recoveryActions),
+        /demo-contact-1|Open Kenji/,
+      );
     }
   });
 });

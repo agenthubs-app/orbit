@@ -53,7 +53,11 @@ test("/app/chat honors a source-backed conversation query", async () => {
     if (initial.state !== "success") return;
 
     const conversationId =
-      initial.workspace.conversations[0]?.conversationId ?? "";
+      initial.workspace.conversations[1]?.conversationId ?? "";
+    assert.notEqual(
+      conversationId,
+      initial.workspace.selectedConversation.conversationId,
+    );
     const selected = await loadAppChatRouteViewModel({
       conversation: conversationId,
     });
@@ -64,6 +68,19 @@ test("/app/chat honors a source-backed conversation query", async () => {
         selected.workspace.selectedConversation.conversationId,
         conversationId,
       );
+    }
+
+    const missing = await loadAppChatRouteViewModel({
+      conversation: "conversation:not-in-source-list",
+    });
+
+    assert.equal(missing.state, "route-state");
+    if (missing.state === "route-state") {
+      assert.equal(
+        missing.routeState.errorCode,
+        "CHAT_CONVERSATION_NOT_FOUND",
+      );
+      assert.match(missing.routeState.copy.guardrail, /not substitute/i);
     }
   });
 });

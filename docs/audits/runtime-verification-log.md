@@ -244,3 +244,32 @@ Browser-tool limitation:
 
 - The in-app browser reloaded the authenticated production page successfully, but its control layer blocks direct `/api/*` navigation with `ERR_BLOCKED_BY_CLIENT`, and the page-evaluation sandbox exposes neither `fetch` nor `XMLHttpRequest`.
 - No claim of browser-executed API POST coverage is made. Production HTTP status evidence, authenticated browser page evidence, and injected authorized-handler tests are recorded separately above.
+
+## 2026-07-27 — Contact Detail recovery, Profile readback, and Chat selection identity
+
+Production runtime:
+
+- Ran `npm run lint`; TypeScript validation completed successfully.
+- Ran 20 focused Chat summary/extraction, Chat page/live composition, Agent consumer, Contact Detail route/page, and visual-asset tests; all passed.
+- Rebuilt the exact worktree with `npm run build`; compilation, TypeScript, 39 static pages, and build traces completed successfully.
+- Started that build on isolated port 3100 and reused the authenticated synthetic account; port 3000 was not touched.
+
+Authenticated desktop browser (`1280 × 720`):
+
+| Surface / action | Authoritative evidence | Result |
+| --- | --- | --- |
+| Contact Detail failure on `/app/contacts/contact_003` | URL and recovery-link DOM | Controlled failure remained honest; “Retry contact detail” resolved to the exact `/app/contacts/contact_003` route and no `demo-contact-1` identity appeared. |
+| Profile save on `/app/profile` | Visible save confirmation, server-backed readback, and reload | Saved the existing actor-scoped profile without changing field values; the UI reported `档案已保存并完成复读核验。`, and the synthetic account name, headline, company, role, and other fields remained present after reload. |
+| Chat selection on `/app/chat?conversation=conversation_004` | URL, `data-selected-conversation`, `aria-current`, thread heading, organization, summary, and relationship-context DOM | Every selected-context signal resolved to `conversation_004`, 松田 翔, and Umeda Partners; the prior 山田 千尋 substitution did not recur. |
+| Unknown Chat selection | Controlled route-state DOM | `conversation:not-in-source-list` rendered “Conversation not found” and explicitly stated that Orbit would not substitute another person's thread, summary, relationship context, or writing suggestion. |
+
+Identity implementation:
+
+- Contact Detail route-state recovery now derives its href from the exact encoded route contact ID through every composed/live loader boundary.
+- Chat resolves the optional conversation query against the source-backed list before loading any thread adjunct. Unknown IDs stop before thread, assist, summary, extraction, privacy, or Agent context composition.
+- The Chat summary/extraction mock recognizes the same conversation inventory as the conversation service. Its original Maya fixture remains unchanged; a second known conversation receives Diego/Northstar identity and evidence with empty derived signals rather than borrowed Maya content.
+
+Verification limitation:
+
+- No browser warning or error entries were recorded during the Contact Detail and Chat verification.
+- The in-app browser remained fixed at `1280 × 720`; this phase does not claim a new mobile-browser pass. Chat and Contact Detail mobile/shared behavior is covered by focused component and route tests.

@@ -233,12 +233,22 @@ test("mock chat summary service is deterministic and never calls live providers"
         data?: {
           state: string;
           conversationId: string;
+          participantName: string;
+          organization: string;
           summary: {
             narrative: string;
             aiProviderRequested: false;
             liveDatabaseWriteExecuted: false;
           } | null;
+          extractedNeeds: readonly Array<{ statement: string }>;
+          extractedTasks: readonly Array<{ title: string }>;
+          relationshipProfileUpdates: readonly Array<{ autoApplied: false }>;
+          confirmationRequiredProfileSuggestions: readonly Array<{
+            confirmationRequired: true;
+            autoApplied: false;
+          }>;
           provenance: {
+            evidenceIds: readonly string[];
             aiProviderRequested: false;
             externalNetworkRequested: false;
           };
@@ -252,6 +262,10 @@ test("mock chat summary service is deterministic and never calls live providers"
         success: boolean;
         data?: {
           state: string;
+          conversationId: string;
+          participantName: string;
+          organization: string;
+          summary: { narrative: string } | null;
           extractedNeeds: readonly Array<{ statement: string }>;
           extractedTasks: readonly Array<{ title: string }>;
           relationshipProfileUpdates: readonly Array<{ autoApplied: false }>;
@@ -272,6 +286,12 @@ test("mock chat summary service is deterministic and never calls live providers"
   const input = { conversationId: "demo-conversation-1" };
   const summary = service.summarizeConversation(input);
   const extractions = service.extractConversationSignals(input);
+  const secondSummary = service.summarizeConversation({
+    conversationId: "demo-conversation-2",
+  });
+  const secondExtractions = service.extractConversationSignals({
+    conversationId: "demo-conversation-2",
+  });
   const empty = service.summarizeConversation({
     conversationId: "demo-conversation-1",
     scenario: "empty",
@@ -322,6 +342,31 @@ test("mock chat summary service is deterministic and never calls live providers"
     false,
   );
   assert.equal(extractions.data?.provenance.liveDatabaseWriteExecuted, false);
+  assert.equal(secondSummary.success, true);
+  assert.equal(secondSummary.data?.conversationId, "demo-conversation-2");
+  assert.equal(secondSummary.data?.participantName, "Diego Rivera");
+  assert.equal(secondSummary.data?.organization, "Northstar SaaS");
+  assert.equal(secondSummary.data?.summary, null);
+  assert.equal(secondSummary.data?.extractedNeeds.length, 0);
+  assert.equal(secondSummary.data?.extractedTasks.length, 0);
+  assert.equal(secondSummary.data?.relationshipProfileUpdates.length, 0);
+  assert.equal(
+    secondSummary.data?.confirmationRequiredProfileSuggestions.length,
+    0,
+  );
+  assert.deepEqual(secondSummary.data?.provenance.evidenceIds, [
+    "evidence:chat:diego:roundtable",
+    "evidence:chat:diego:case-study",
+  ]);
+  assert.equal(secondExtractions.success, true);
+  assert.equal(secondExtractions.data?.conversationId, "demo-conversation-2");
+  assert.equal(secondExtractions.data?.participantName, "Diego Rivera");
+  assert.equal(secondExtractions.data?.organization, "Northstar SaaS");
+  assert.equal(secondExtractions.data?.summary, null);
+  assert.equal(secondExtractions.data?.extractedNeeds.length, 0);
+  assert.equal(secondExtractions.data?.extractedTasks.length, 0);
+  assert.doesNotMatch(JSON.stringify(secondSummary), /Maya|Kumo Grid/);
+  assert.doesNotMatch(JSON.stringify(secondExtractions), /Maya|Kumo Grid/);
   assert.equal(empty.success, true);
   assert.equal(empty.data?.state, "empty");
   assert.equal(empty.data?.summary, null);

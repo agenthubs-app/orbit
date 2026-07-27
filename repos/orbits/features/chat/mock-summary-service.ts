@@ -15,6 +15,7 @@ import {
   mockEmptyChatSummaryFixture,
   mockPendingChatExtractionFixture,
 } from "./summary-fixtures";
+import { mockChatConversations, mockChatMessages } from "./fixtures";
 
 const supportedScenarios = new Set<ChatSummaryExtractionScenario>([
   "success",
@@ -23,7 +24,9 @@ const supportedScenarios = new Set<ChatSummaryExtractionScenario>([
   "failure",
 ]);
 
-const knownConversationIds = new Set(["demo-conversation-1"]);
+const knownConversationIds = new Set(
+  mockChatConversations.map((conversation) => conversation.conversationId),
+);
 
 // Chat summary/extraction mock 模拟从会话中生成摘要和关系信号。
 // 它不调用模型，只根据 conversationId 和 scenario 返回稳定 fixture。
@@ -94,22 +97,80 @@ function validateConversation(
   return null;
 }
 
+function payloadForConversation(
+  payload: ChatSummaryExtractionPayload,
+  conversationId: string,
+): ChatSummaryExtractionPayload | null {
+  if (conversationId === mockChatSummaryFixture.conversationId) {
+    return payload;
+  }
+
+  const conversation = mockChatConversations.find(
+    (candidate) => candidate.conversationId === conversationId,
+  );
+
+  if (!conversation) {
+    return null;
+  }
+
+  const evidenceIds = Array.from(
+    new Set([
+      ...conversation.evidenceIds,
+      ...mockChatMessages
+        .filter((message) => message.conversationId === conversationId)
+        .flatMap((message) => message.evidenceIds),
+    ]),
+  );
+
+  return {
+    ...payload,
+    conversationId,
+    participantName: conversation.participantName,
+    organization: conversation.organization,
+    summary: null,
+    extractedNeeds: [],
+    extractedTasks: [],
+    relationshipProfileUpdates: [],
+    confirmationRequiredProfileSuggestions: [],
+    provenance: {
+      ...payload.provenance,
+      source: conversation.source.id,
+      sourceLabel: conversation.source.label,
+      evidenceIds,
+    },
+    nextAction:
+      "Review the source-backed conversation before confirming any extracted relationship work.",
+  };
+}
+
 function resultForScenario(
   scenario: ChatSummaryExtractionScenario,
   successPayload: ChatSummaryExtractionPayload,
+  conversationId: string,
 ): ChatSummaryExtractionResult {
   // summarize/extract 共用 scenario 分支，只是 success payload 不同。
+  let payload: ChatSummaryExtractionPayload;
+
   switch (scenario) {
     case "empty":
-      return success(mockEmptyChatSummaryFixture);
+      payload = mockEmptyChatSummaryFixture;
+      break;
     case "pending":
-      return success(mockPendingChatExtractionFixture);
+      payload = mockPendingChatExtractionFixture;
+      break;
     case "failure":
       return failure("CHAT_SUMMARY_MOCK_FAILED");
     case "success":
     default:
-      return success(successPayload);
+      payload = successPayload;
+      break;
   }
+
+  const conversationPayload = payloadForConversation(payload, conversationId);
+
+  return conversationPayload
+    ? success(conversationPayload)
+    : failure("CHAT_SUMMARY_CONVERSATION_NOT_FOUND");
 }
 
 export function createMockChatSummaryExtractionService(): ChatSummaryExtractionService {
@@ -127,6 +188,7 @@ export function createMockChatSummaryExtractionService(): ChatSummaryExtractionS
       return resultForScenario(
         normalizeScenario(input.scenario),
         mockChatSummaryFixture,
+        readConversationId(input) as string,
       );
     },
     extractConversationSignals(
@@ -142,6 +204,7 @@ export function createMockChatSummaryExtractionService(): ChatSummaryExtractionS
       return resultForScenario(
         normalizeScenario(input.scenario),
         mockChatExtractionFixture,
+        readConversationId(input) as string,
       );
     },
   };
