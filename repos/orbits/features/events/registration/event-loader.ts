@@ -5,6 +5,7 @@ import {
 import type { EventRecord } from "../event-crud-and-import/contract";
 import { bilingualSegment } from "../../orbit-ai/event-recommendation-artifact-service";
 import { createEventCrudAndImportService } from "../service-factory";
+import { readPublicEventCatalogue } from "../public-catalogue";
 
 const kanaPattern = /[぀-ヿ]/u;
 const hanPattern = /[㐀-鿿]/u;
@@ -54,6 +55,67 @@ const knownRegistrationEvents: readonly EventRecord[] = [
   mockOrbitAiRecommendedEventDetailRecord,
 ];
 
+function publicCatalogueEventRecord(eventId: string): EventRecord | null {
+  const catalogue = readPublicEventCatalogue();
+  const event = catalogue.events.find((item) => item.id === eventId);
+
+  if (!event) {
+    return null;
+  }
+
+  const importedAt = catalogue.generatedAt;
+  const endsAt = event.endsAt ?? event.startsAt;
+  const registrationClosed =
+    Number.isFinite(new Date(endsAt).getTime()) &&
+    new Date(endsAt).getTime() < Date.now();
+  const sourceMetadata = {
+    type: "event_import" as const,
+    id: event.source.id,
+    label: event.source.label ?? event.name,
+    captureMethod: "organizer_feed" as const,
+    provider: "orbit-public-event-catalogue",
+    providerRecordId: event.id,
+    importedAt,
+    calendarSyncRequested: false as const,
+    organizerFeedRequested: false as const,
+    liveDatabaseWriteExecuted: false,
+    externalNetworkRequested: false as const,
+  };
+
+  return {
+    id: event.id,
+    title: event.name,
+    description: event.description ?? "",
+    venue: event.location ?? "",
+    startsAt: event.startsAt,
+    endsAt,
+    status: registrationClosed ? "cancelled" : "imported",
+    sourceMetadata,
+    evidence: event.evidenceIds.map((evidenceId) => ({
+      evidenceId,
+      source: sourceMetadata,
+      excerpt:
+        event.description ??
+        `Published event catalogue record for ${event.name}.`,
+      capturedAt: importedAt,
+      createdBy: "orbit-public-event-catalogue",
+    })),
+    relationshipContext:
+      event.description ?? "Published event catalogue context.",
+    recommendedPreparation:
+      "Review the event details and complete the event-scoped registration profile.",
+    nextAction: "Sign in and register before viewing the attendee list.",
+    calendarSyncRequested: false,
+    calendarProviderRequested: false,
+    organizerFeedRequested: false,
+    liveDatabaseWriteExecuted: false,
+    externalNetworkRequested: false,
+    aiProviderRequested: false,
+    emailProviderRequested: false,
+    notificationDelivered: false,
+  };
+}
+
 export async function loadEventForRegistration(
   eventId: string,
 ): Promise<EventRecord | null> {
@@ -66,6 +128,12 @@ export async function loadEventForRegistration(
     return knownEvent;
   }
 
+  const catalogueEvent = publicCatalogueEventRecord(normalizedEventId);
+
+  if (catalogueEvent) {
+    return catalogueEvent;
+  }
+
   try {
     const result = await createEventCrudAndImportService().getEvent({
       eventId: normalizedEventId,
@@ -76,4 +144,3 @@ export async function loadEventForRegistration(
     return null;
   }
 }
-

@@ -113,15 +113,25 @@ test("empty events route does not offer an action without a target event", async
   }
 });
 
-test("/app/events page renders the live-capable product events UI", async () => {
+test("/app/events renders the public event catalogue without requiring authentication", async () => {
   const pageSource = source("app/(app)/app/events/page.tsx");
 
   assert.match(pageSource, /OrbitRealExploreClient/);
-  assert.match(pageSource, /eventsRouteToOrbitLandingViewModel/);
-  assert.match(pageSource, /await auth\(\)/);
-  assert.match(pageSource, /redirect\("\/app\/account\/login/);
-  assert.match(pageSource, /session\.user\.id/);
+  assert.match(pageSource, /getOrbitLandingViewModel/);
+  assert.match(pageSource, /eventRegistrationRuntimeService\.get/);
+  assert.match(pageSource, /attendees: \[\]/);
+  assert.doesNotMatch(pageSource, /redirect\("\/app\/account\/login/);
   assert.doesNotMatch(pageSource, /AppEventsCommandCenter/);
+});
+
+test("the public event catalogue keeps the full previously approved demo set", async () => {
+  const module = await import(
+    "../../app/(app)/app/orbit-landing-route-view-model"
+  );
+  const catalogue = module.getOrbitLandingViewModel();
+
+  assert.equal(catalogue.events.length, 13);
+  assert.equal(new Set(catalogue.events.map((event) => event.code)).size, 13);
 });
 
 test("priority business events use premium local cover assets", () => {

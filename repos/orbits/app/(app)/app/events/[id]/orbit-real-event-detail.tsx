@@ -184,9 +184,9 @@ const ATTENDEE_PREVIEW_COUNT = 12;
 function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate }) {
   const [showAllAttendees, setShowAllAttendees] = useState(false);
   const [registrationStatus, setRegistrationStatus] =
-    useState<RegistrationStatus>(null);
+    useState<RegistrationStatus>(event.stats.youRsvped ? "rsvped" : null);
   const youRsvped = registrationStatus === "rsvped";
-  const canSeeAttendees = youRsvped || event.status === "ended";
+  const canSeeAttendees = youRsvped;
   const allAttendees = event.stats.attendees;
   const attendees = showAllAttendees ? allAttendees : allAttendees.slice(0, ATTENDEE_PREVIEW_COUNT);
   const hiddenAttendeeCount = allAttendees.length - attendees.length;
@@ -230,7 +230,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
         {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
       </section>
 
-      {event.status === "ended" ? (
+      {event.status === "ended" && canSeeAttendees ? (
         <OrbitPostEventFollowupCapture
           attendeeNames={event.stats.attendees.map(
             (attendee) => attendee.name,
@@ -290,7 +290,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
           {!canSeeAttendees ? (
             <div className="card-flat" style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
               <div style={{ fontSize: 14, color: "var(--text-2)" }}>{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div>
-              {event.stats.count && event.status !== "ended" ? <a className="btn btn-dark btn-sm" href={productHref(`/register?code=${event.code}`)} style={{ textDecoration: "none" }}><Icon name="lock" size={15} />{t({ en: "Register", zh: "报名参加" })}</a> : null}
+              {event.stats.count && event.status !== "ended" ? <a className="btn btn-dark btn-sm" href={`/app/events/${encodeURIComponent(event.id)}/register`} style={{ textDecoration: "none" }}><Icon name="lock" size={15} />{t({ en: "Register", zh: "报名参加" })}</a> : null}
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>

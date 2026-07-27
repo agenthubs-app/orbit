@@ -1,12 +1,12 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `dabb03a61dcdd3be2a6b2611f06ccdddd791a2a8`
-- Deterministic generated timestamp (commit time): 2026-07-27T19:17:35+09:00
+- Indexed commit: `8fd0fcb6d82670c9514962f982dab961e005d988`
+- Deterministic generated timestamp (commit time): 2026-07-27T19:21:40+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
-- Actions/interactions: 1447
+- Actions/interactions: 1415
 - Authenticated routes: 22
 - Public-at-proxy routes: 16
 
@@ -15,9 +15,9 @@
 | Route | Purpose | Access | Data sources | Actions | Tests | Static risks |
 | --- | --- | --- | --- | ---: | ---: | ---: |
 | `/app/account/forgot-password` | Password recovery | public-auth-entry | Live, Mock, User Confirmed | 13 | 1 | 0 |
-| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 13 | 16 | 0 |
+| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 13 | 17 | 0 |
 | `/app/account/mobile-google` | Mobile Google authentication completion | public-auth-entry | Live, Mock, User Confirmed | 2 | 2 | 0 |
-| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 13 | 10 | 0 |
+| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 13 | 11 | 0 |
 | `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 27 | 0 |
 | `/app/admin/events` | Admin event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
 | `/app/admin` | Admin operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
@@ -25,16 +25,16 @@
 | `/app/chat` | Relationship inbox and conversations | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 42 | 30 | 0 |
 | `/app/contacts/[id]` | Contact identity and relationship detail | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 75 | 30 | 0 |
 | `/app/contacts/all-actions` | Cross-contact action ledger | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 50 | 10 | 0 |
-| `/app/contacts/dashboard` | Relationship analytics dashboard | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 75 | 24 | 0 |
+| `/app/contacts/dashboard` | Relationship analytics dashboard | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 45 | 25 | 0 |
 | `/app/contacts/graph` | Relationship graph | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 68 | 30 | 0 |
 | `/app/contacts/intros` | Introduction workflow | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 68 | 4 | 0 |
 | `/app/contacts/new` | Contact acquisition | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 3 | 0 |
 | `/app/contacts` | Contact list and discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 68 | 30 | 0 |
 | `/app/contacts/pipeline` | Relationship pipeline | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 69 | 8 | 0 |
-| `/app/dashboard` | Relationship dashboard | authenticated | Live | 0 | 24 | 0 |
+| `/app/dashboard` | Relationship dashboard | authenticated | Live | 0 | 25 | 0 |
 | `/app/events/[id]` | Event detail and event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 68 | 30 | 0 |
 | `/app/events/[id]/register` | Event registration | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 17 | 30 | 0 |
-| `/app/events` | Event discovery | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 34 | 30 | 0 |
+| `/app/events` | Event discovery | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 32 | 30 | 0 |
 | `/app/followups` | Follow-up workspace | authenticated | Unclassified | 0 | 30 | 0 |
 | `/app/home/events` | Event discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 30 | 0 |
 | `/app/home` | Authenticated home | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 22 | 0 |

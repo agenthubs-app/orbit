@@ -228,6 +228,69 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
   );
 }
 
+function EventsEmptyState({
+  filteredView,
+  onReset,
+}: {
+  filteredView: boolean;
+  onReset: () => void;
+}) {
+  const { t } = useOrbitLanguage();
+
+  return (
+    <section
+      className="card"
+      data-orbit-events-empty
+      style={{
+        alignItems: "center",
+        display: "grid",
+        justifyItems: "center",
+        minHeight: 280,
+        padding: "40px 24px",
+        textAlign: "center",
+      }}
+    >
+      <span
+        style={{
+          alignItems: "center",
+          background: "var(--accent-soft)",
+          borderRadius: "var(--r-pill)",
+          color: "var(--accent)",
+          display: "flex",
+          height: 52,
+          justifyContent: "center",
+          width: 52,
+        }}
+      >
+        <Icon name="calendar" size={24} />
+      </span>
+      <div style={{ marginTop: 16, maxWidth: 460 }}>
+        <h2 className="h-title" style={{ margin: 0 }}>
+          {filteredView
+            ? t({ en: "No events match these filters", zh: "没有符合当前筛选的活动" })
+            : t({ en: "New events are on the way", zh: "新的活动正在筹备中" })}
+        </h2>
+        <p style={{ color: "var(--text-3)", lineHeight: 1.65, margin: "10px 0 0" }}>
+          {filteredView
+            ? t({
+                en: "Clear the search and filters to return to the full event catalogue.",
+                zh: "清除搜索和筛选，即可返回完整活动目录。",
+              })
+            : t({
+                en: "There are no published events right now. Check back soon for the next gathering.",
+                zh: "目前还没有已发布的活动，下一场聚会开放后会出现在这里。",
+              })}
+        </p>
+      </div>
+      {filteredView ? (
+        <button className="btn btn-primary" onClick={onReset} style={{ marginTop: 18 }} type="button">
+          {t({ en: "Clear filters", zh: "清除筛选" })}
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
 export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingViewModel }) {
   const { language, t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
@@ -255,6 +318,12 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
     ended: t({ en: "Ended", zh: "已结束" }),
     upcoming: t({ en: "Upcoming", zh: "即将开始" }),
   };
+  const resetFilters = () => {
+    setQuery("");
+    setStatus("all");
+    setTopic("all");
+  };
+  const filteredView = Boolean(query || status !== "all" || topic !== "all");
 
   return (
     <div className="orbit-shell" data-orbit-real-page="explore">
@@ -301,6 +370,12 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
           </div>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 16, marginTop: 20 }}>{resultLabel}</div>
           {effMode === "modules" && filtered.length > 0 ? <EventModuleGrid events={filtered} /> : null}
+          {filtered.length === 0 ? (
+            <EventsEmptyState
+              filteredView={filteredView}
+              onReset={resetFilters}
+            />
+          ) : null}
           {effMode === "map" && mapItems.length > 0 ? (
             <section className="orbit-map-shell" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-sm)", display: "grid", gridTemplateColumns: "380px 1fr", height: "min(680px, calc(100dvh - 220px))", minHeight: 520, overflow: "hidden" }}>
               <div className="orbit-map-rail scroll" style={{ borderRight: "1px solid var(--border)", overflowY: "auto", padding: "20px 18px" }}>
@@ -350,6 +425,12 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
           <div style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 14px" }}>{resultLabel}</div>
           {effMode === "map" ? <section className="card" style={{ height: 360, marginBottom: 14, overflow: "hidden" }}><div style={{ height: "100%", position: "relative", width: "100%" }}><MapCanvas items={located} onSelect={(item) => setSelectedId(item.id)} selected={selectedItem} /></div></section> : null}
           {filtered.length > 0 ? <EventModuleGrid events={filtered} /> : null}
+          {filtered.length === 0 ? (
+            <EventsEmptyState
+              filteredView={filteredView}
+              onReset={resetFilters}
+            />
+          ) : null}
         </div>
       </div>
     </div>

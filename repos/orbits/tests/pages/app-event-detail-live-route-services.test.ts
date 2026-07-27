@@ -272,14 +272,15 @@ test("app event detail action uses the live match target and allows live storage
   }
 });
 
-test("/app/events/[id] page uses the live route service instead of the legacy event view model", async () => {
+test("/app/events/[id] serves public catalogue detail before private owner fallback", async () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
 
   assert.match(pageSource, /loadAppEventDetailRoute/);
-  assert.match(pageSource, /await auth\(\)/);
-  assert.match(pageSource, /redirect\("\/app\/account\/login/);
+  assert.match(pageSource, /getOrbitLandingViewModel/);
+  assert.match(pageSource, /eventRegistrationRuntimeService\.get/);
+  assert.match(pageSource, /attendees: registered \?/);
+  assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /getEvent\(\{\s*actorId: session\.user\.id/);
-  assert.doesNotMatch(pageSource, /getOrbitEventDetailViewModel/);
 });
 
 test("event detail reads registration state from the registration record API", () => {
@@ -292,4 +293,20 @@ test("event detail reads registration state from the registration record API", (
   assert.match(detailSource, /Manage registration|管理报名/);
   assert.match(detailSource, /Register again|重新报名/);
   assert.match(detailSource, /\/app\/events\/.*\/register/);
+  assert.match(detailSource, /const canSeeAttendees = youRsvped/);
+  assert.doesNotMatch(
+    detailSource,
+    /canSeeAttendees = youRsvped \|\| event\.status === "ended"/,
+  );
+});
+
+test("event matchmaking returns guests to the exact app event after login", () => {
+  const matchmakingSource = source(
+    "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
+  );
+
+  assert.match(
+    matchmakingSource,
+    /encodeURIComponent\(`\/app\/events\/\$\{eventId\}`\)/,
+  );
 });

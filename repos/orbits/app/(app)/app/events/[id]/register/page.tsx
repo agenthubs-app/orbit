@@ -22,6 +22,7 @@ import {
   eventRegistrationRuntimeService,
 } from "../../../../../../features/events/registration/runtime";
 import { EventRegistrationWorkspace } from "./event-registration-workspace";
+import { redirect } from "next/navigation";
 
 type EventRegistrationSearchParams = Record<
   string,
@@ -69,13 +70,18 @@ function copy(
 
 async function currentRegistrationActor() {
   try {
-    return (await auth())?.user ?? null;
+    return {
+      actor: (await auth())?.user ?? null,
+      requestScoped: true,
+    };
   } catch (error) {
     if (
       error instanceof Error &&
       error.message.includes("outside a request scope")
     ) {
-      return null;
+      // Server-render unit tests intentionally call the page without a Next
+      // request. Real HTTP requests always take the requestScoped branch.
+      return { actor: null, requestScoped: false };
     }
     throw error;
   }
@@ -436,6 +442,13 @@ export default async function AppEventRegistrationGuidePage({
 }) {
   const { id } = await params;
   const query = await searchParams;
+  const actorContext = await currentRegistrationActor();
+  if (actorContext.requestScoped && !actorContext.actor?.id) {
+    redirect(
+      `/app/account/login?next=${encodeURIComponent(`/app/events/${id}/register`)}`,
+    );
+  }
+  const actor = actorContext.actor;
   const preferredLanguage = readSearchParam(query, "language");
   const language = await getEventRegistrationPageLanguage(preferredLanguage);
   const result = await loadRegistrationProfileGuideForCurrentTestUser({
@@ -454,7 +467,6 @@ export default async function AppEventRegistrationGuidePage({
       title: localizedEventTitle(event, language === "en" ? "en" : "zh"),
       venue: bilingualSegment(event.venue, language === "en" ? "en" : "zh"),
     };
-    const actor = await currentRegistrationActor();
     const [questionSet, registration] = await Promise.all([
       generateEventRegistrationQuestions({
         event: localizedEvent,

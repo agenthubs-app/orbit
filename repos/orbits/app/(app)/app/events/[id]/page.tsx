@@ -32,6 +32,9 @@ import { eventsRouteToOrbitLandingViewModel } from "../compose-app-events-from-p
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 import { createEventCrudAndImportService } from "../../../../../features/events/service-factory";
+import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
+import { getOrbitLandingViewModel } from "../../orbit-landing-route-view-model";
+import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 
 export type AppEventDetailPageSearchParams = Record<
   string,
@@ -429,13 +432,68 @@ export default async function AppEventDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<AppEventDetailPageSearchParams>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/app/account/login?next=%2Fapp%2Fevents");
+  const [{ id }, query, session] = await Promise.all([
+    params,
+    searchParams,
+    auth(),
+  ]);
+  const language = normalizeRegistrationProfileGuideLanguage(
+    readSearchParam(query, "language") ?? (await getEventDetailPageLanguage()),
+  );
+  const catalogueEvent =
+    getOrbitLandingViewModel().events.find(
+      (event) => event.id === id || event.code === id,
+    ) ?? null;
+
+  if (catalogueEvent) {
+    const registration = session?.user?.id
+      ? await eventRegistrationRuntimeService.get({
+          eventId: catalogueEvent.id,
+          userId: session.user.id,
+        })
+      : null;
+    const registered = registration?.status === "rsvped";
+    const presentedEvent = presentOrbitEvent(catalogueEvent, language);
+    const startsAt = new Date(presentedEvent.startsAt).getTime();
+    const endsAt = new Date(presentedEvent.endsAt).getTime();
+    const now = Date.now();
+    const status: OrbitLandingEventView["status"] =
+      Number.isFinite(endsAt) && endsAt < now
+        ? "ended"
+        : Number.isFinite(startsAt) && startsAt <= now
+          ? "active"
+          : "upcoming";
+    const accessibleEvent = {
+      ...presentedEvent,
+      status,
+      stats: {
+        ...presentedEvent.stats,
+        // Attendee names are omitted from the server payload until the current
+        // account has an active registration for this exact event.
+        attendees: registered ? presentedEvent.stats.attendees : [],
+        authed: Boolean(session?.user?.id),
+        youRsvped: registered,
+      },
+      youRsvped: registered,
+    };
+
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitRealEventDetail
+          event={localizeOrbitTree(accessibleEvent, language)}
+        />
+        <OrbitVisualFreezeRuntime />
+      </>
+    );
   }
 
-  const { id } = await params;
-  const query = await searchParams;
+  if (!session?.user?.id) {
+    redirect(
+      `/app/account/login?next=${encodeURIComponent(`/app/events/${id}`)}`,
+    );
+  }
+
   const ownedEventResult = await createEventCrudAndImportService().getEvent({
     actorId: session.user.id,
     eventId: id,
@@ -468,9 +526,6 @@ export default async function AppEventDetailPage({
   // Production route mode comes from server configuration. Query parameters
   // must not switch an authenticated account onto demo capability fixtures.
   const routeMode = undefined;
-  const language = normalizeRegistrationProfileGuideLanguage(
-    readSearchParam(query, "language") ?? (await getEventDetailPageLanguage()),
-  );
   const routeModel = await loadAppEventDetailRoute({
     actorId: session.user.id,
     eventId: id,

@@ -2,6 +2,13 @@
 
 Sprint 62 composes `/app/events` from approved event CRUD/import, event attendee recommendation, event value recommendation, and event goal readiness boundaries. The app route calls service factories and route handlers; it does not import raw source data into nested UI components.
 
+The customer-facing catalogue is a public discovery surface. `/app/events` reads the
+previously approved catalogue without requiring a session; authentication starts only
+when a visitor chooses to register. A signed-in session may overlay that account's
+registration status, but must never determine whether the catalogue itself exists.
+This prevents an empty account-owned event store from being mistaken for an empty
+public catalogue.
+
 ## Evaluator Evidence Summary
 
 This document covers live service/provider files, switch mechanism, required env vars or permissions, privacy/provenance constraints, replacement tests, route state checks, route recovery actions, and `data-action-evidence`. The `/app/events` page now keeps internal capability terms out of user-visible copy: state scenarios remain accessible through `/app/events?scenario=empty`, `/app/events?scenario=pending`, and `/app/events?scenario=failure`, while the ready page reads as an event briefing rather than a validation console.
@@ -22,6 +29,9 @@ Switch:
 - Live mode must stay unavailable until the live constructors are registered and return controlled `NOT_IMPLEMENTED` failures for missing implementations.
 - The app route must not branch directly on provider env vars.
 - The route state boundary is owned by this app adapter as `data-state-boundary="app-events-route-state-view"` so live readiness, empty, and failure states can keep product-facing labels while still exposing deterministic route state checks.
+- A true zero-catalogue state stays inside the same discovery shell, with the normal
+  navigation, title, filters, and a product-facing empty message. Internal capability
+  state views are not the public empty-event design.
 
 Env and permissions:
 
@@ -36,6 +46,10 @@ Privacy and provenance:
 - Every event, imported record, attendee recommendation, value recommendation, readiness item, and accepted action must preserve source labels, source ids, evidence ids, timestamps, and generation method.
 - Public evidence chips should show readable source labels and preserve raw evidence ids in `data-evidence-id`; raw provider payloads or fixture-oriented labels should not be used as customer-facing copy.
 - The route must not expose raw provider payloads, OAuth tokens, prompts, private notes, or unapproved attendee details.
+- Public list responses never serialize attendee names. Public detail responses keep
+  attendee names server-side and only serialize them after the current account has an
+  active registration for that exact event. Hiding a rendered roster with CSS is not
+  an authorization boundary.
 - Sensitive actions must keep `data-action-evidence`, route state checks, route recovery actions, and `data-side-effects="none"` until a confirmation guard and external action sandbox approve live side effects.
 - Live services must not run calendar writes, database writes, email sends, notification delivery, event discovery calls, or AI calls from the page render path.
 
@@ -47,4 +61,7 @@ Replacement tests:
 - Factory tests proving `mock`, `hybrid`, and `live` resolution selects registered constructors and returns controlled failures for unavailable live services.
 - Mapper tests proving live event, recommendation, readiness, and action payloads preserve provenance and evidence.
 - Privacy tests proving route copy omits raw provider payloads, credentials, prompts, private notes, and unapproved attendee data.
+- Account-boundary tests proving the catalogue and public details are readable without
+  a session, registration redirects to login, catalogue codes are unique, and attendee
+  names are absent until the current account has registered.
 - Confirmation and sandbox tests before enabling live calendar writes, external messages, notifications, database writes, or production audit writes.

@@ -54,17 +54,24 @@ test("/app/events/[id] exposes the event-specific registration profile guide ent
   assert.match(pageSource, /registrationGuideHref\(guide\)/);
 });
 
-test("/app/events/[id] keeps authentication and canonical live mode on the page boundary", () => {
+test("public event detail stays readable while registration itself requires authentication", () => {
   const pageSource = readFileSync(
     join(projectRoot, "app/(app)/app/events/[id]/page.tsx"),
     "utf8",
   );
+  const registerSource = readFileSync(
+    join(projectRoot, "app/(app)/app/events/[id]/register/page.tsx"),
+    "utf8",
+  );
 
-  assert.match(pageSource, /const session = await auth\(\)/);
-  assert.match(pageSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Fevents"\)/);
+  assert.match(pageSource, /getOrbitLandingViewModel/);
+  assert.match(pageSource, /if \(catalogueEvent\)/);
   assert.match(pageSource, /const routeMode = undefined/);
   assert.match(pageSource, /actorId: session\.user\.id/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
+  assert.match(registerSource, /actorContext\.requestScoped/);
+  assert.match(registerSource, /\/app\/account\/login\?next=/);
+  assert.match(registerSource, /\/app\/events\/\$\{id\}\/register/);
 });
 
 test("/app/events/[id]/register renders event-specific optional participant-profile questions", async () => {
@@ -122,6 +129,23 @@ test("registerable live events are not gated by the legacy deterministic-guide w
   assert.doesNotMatch(source, /result\.state === "success" && event/);
   assert.match(source, /isRegisterableEventForWorkspace\(event\)/);
   assert.match(source, /CURRENT_EVENT_REGISTRATION_PROFILE/);
+});
+
+test("the approved public catalogue enters registration with honest time status", async () => {
+  const { loadEventForRegistration } = await import(
+    "../../features/events/registration/event-loader"
+  );
+  const endedEvent = await loadEventForRegistration("event_signup_01");
+  const upcomingEvent = await loadEventForRegistration("event_signup_02");
+
+  assert.equal(endedEvent?.status, "cancelled");
+  assert.equal(upcomingEvent?.status, "imported");
+  assert.equal(
+    upcomingEvent?.sourceMetadata.provider,
+    "orbit-public-event-catalogue",
+  );
+  assert.equal(upcomingEvent?.liveDatabaseWriteExecuted, false);
+  assert.equal(upcomingEvent?.externalNetworkRequested, false);
 });
 
 test("registration fallback is transparent and exposes no fake confirmation", () => {

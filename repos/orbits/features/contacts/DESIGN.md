@@ -43,6 +43,14 @@ Contacts 不应把推荐策略下放到 Search，也不应让 Orbit AI 长期拥
 
 产品入口包括 `/app/contacts`、`/app/contacts/[id]` 和 `/app/contacts/new` 的后续复核。Contacts API 包括 list、detail、search 和状态更新。列表页应优先展示当前需要关注的人，而不是做成通讯录表格。
 
+`/app/contacts/dashboard` 与列表页共享同一个 actor-scoped route model。页面必须
+先取得当前 session 的 user id，再把它显式传给 Contacts loader；表盘中的总数、
+强度、行业分布、关系图和待办都只能由该 view model 派生。演示 fixture、静态姓名、
+静态人数或其他账户的聚合值不得进入已登录产品页面。
+
+没有任何联系人或连接的账户应显示同一产品壳内的零数据状态，并提供添加联系人和
+扫描名片入口。零数据不是错误，也不能用一组“看起来完整”的 demo 指标填充。
+
 ### 名片确认写入
 
 Acquisition 的云端 OCR 只生成待复核草稿；真正创建联系人由 Contacts 的 `BusinessCardContactWriteService` 负责。`POST /api/contacts/business-card/confirm` 必须收到显式确认、纠正后的字段、图片摘要和至少一个 evidence id。服务用 draft id 派生稳定 contact id，先处理同草稿幂等，再按规范化邮箱和姓名/公司组合阻断重复写入。
@@ -56,6 +64,8 @@ Acquisition 的云端 OCR 只生成待复核草稿；真正创建联系人由 Co
 - API envelope 测试确认成功和失败形状稳定。
 - 页面测试确认 raw evidence id 不出现在主用户流程。
 - live 接入测试确认搜索索引结果被 mapper 收敛。
+- dashboard 账户隔离测试确认 loader 收到 session user id，零联系人时显示真实
+  empty state，且源码中不存在 demo 人名或静态业务人数。
 
 ## 团队协作规则
 

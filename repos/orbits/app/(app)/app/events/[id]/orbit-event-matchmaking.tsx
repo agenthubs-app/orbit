@@ -373,7 +373,7 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
       {unauthorized ? (
         <a
           className="btn btn-primary btn-sm"
-          href={`/app/account/login?next=${encodeURIComponent(`/events/${eventId}`)}`}
+          href={`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}`)}`}
           style={{ justifySelf: "start", textDecoration: "none" }}
         >
           {t({ en: "Sign in to use matching", zh: "登录后使用撮合" })}

@@ -1,83 +1,106 @@
+import { auth } from "../../../../auth";
+import { eventRegistrationRuntimeService } from "../../../../features/events/registration/runtime";
+import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
+import { applyOrbitEventPresentation } from "../orbit-event-presentation";
+import {
+  getOrbitLandingViewModel,
+  type OrbitLandingEventView,
+} from "../orbit-landing-route-view-model";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
-import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
-import { StateView } from "../../../../shared/ui/state-view";
-import {
-  loadAppEventsRouteViewModel,
-  type AppEventsRouteStateViewModel,
-  type AppEventsSearchParams,
-} from "./compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
-import { eventsRouteToOrbitLandingViewModel } from "./compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { OrbitRealExploreClient } from "./orbit-real-explore-client";
-import { applyOrbitEventPresentation } from "../orbit-event-presentation";
-import { auth } from "../../../../auth";
-import { redirect } from "next/navigation";
 
 interface AppEventsPageProps {
-  searchParams?: Promise<AppEventsSearchParams>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
-function EventsRouteStateBoundary({
-  routeState,
-}: {
-  routeState: AppEventsRouteStateViewModel;
-}) {
-  return (
-    <div data-orbit-route="app-events-route-state">
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={routeState.evidence.map((item) => item.id)}
-        eyebrow="Events"
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={routeState.recoveryActions.map((action, index) => ({
-          id: `events-recovery-${index}`,
-          label: action.label,
-          recoveryCopy: routeState.copy.nextStep,
-          href: action.href,
-        }))}
-        title={routeState.copy.title}
-      />
-    </div>
-  );
+function readSearchParam(
+  searchParams: Record<string, string | string[] | undefined> | undefined,
+  key: string,
+): string | undefined {
+  const value = searchParams?.[key];
+
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function publicListEvent(
+  event: OrbitLandingEventView,
+  authenticated: boolean,
+  registered: boolean,
+): OrbitLandingEventView {
+  const startsAt = new Date(event.startsAt).getTime();
+  const endsAt = new Date(event.endsAt).getTime();
+  const now = Date.now();
+  const status: OrbitLandingEventView["status"] =
+    Number.isFinite(endsAt) && endsAt < now
+      ? "ended"
+      : Number.isFinite(startsAt) && startsAt <= now
+        ? "active"
+        : "upcoming";
+
+  return {
+    ...event,
+    status,
+    stats: {
+      ...event.stats,
+      // The catalogue may show a truthful aggregate count, but names are not
+      // part of the public list payload.
+      attendees: [],
+      authed: authenticated,
+      youRsvped: registered,
+    },
+    youRsvped: registered,
+  };
 }
 
 export default async function AppEventsPage({
   searchParams,
 }: AppEventsPageProps = {}) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/app/account/login?next=%2Fapp%2Fevents");
-  }
-
-  const routeModel = await loadAppEventsRouteViewModel(
-    await searchParams,
-    session.user.id,
+  const [session, language, query] = await Promise.all([
+    auth(),
+    getOrbitServerLanguage(),
+    searchParams,
+  ]);
+  const catalogue = getOrbitLandingViewModel();
+  const registrations = session?.user?.id
+    ? await Promise.all(
+        catalogue.events.map((event) =>
+          eventRegistrationRuntimeService.get({
+            eventId: event.id,
+            userId: session.user.id,
+          }),
+        ),
+      )
+    : catalogue.events.map(() => null);
+  const presentedCatalogue = applyOrbitEventPresentation(catalogue, language);
+  const events =
+    readSearchParam(query, "scenario") === "empty"
+      ? []
+      : presentedCatalogue.events.map((event, index) =>
+          publicListEvent(
+            event,
+            Boolean(session?.user?.id),
+            registrations[index]?.status === "rsvped",
+          ),
+        );
+  const viewModel = localizeOrbitTree(
+    {
+      account: {
+        fullName: session?.user?.name?.trim() || "Orbit",
+      },
+      connections: [],
+      events,
+    },
+    language,
   );
-  const language =
-    routeModel.state === "success" ? await getOrbitServerLanguage() : null;
 
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      {routeModel.state === "success" ? (
-        <div data-orbit-route="app-events-route">
-          <OrbitRealExploreClient
-            viewModel={localizeOrbitTree(
-              applyOrbitEventPresentation(
-                eventsRouteToOrbitLandingViewModel(routeModel),
-                language ?? "zh",
-              ),
-              language ?? "zh",
-            )}
-          />
-        </div>
-      ) : (
-        <EventsRouteStateBoundary routeState={routeModel.routeState} />
-      )}
+      <div data-orbit-route="app-events-public-catalogue">
+        <OrbitRealExploreClient viewModel={viewModel} />
+      </div>
     </>
   );
 }
