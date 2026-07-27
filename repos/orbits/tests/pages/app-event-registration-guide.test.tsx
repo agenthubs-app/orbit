@@ -46,8 +46,8 @@ test("/app/events/[id] exposes the event-specific registration profile guide ent
   assert.match(html, /href="\/app\/events\/event_001\/register\?language=en"/);
 });
 
-test("/app/events/[id] exposes registration guidance for canonical navigation without query setup", async () => {
-  await withOrbitModuleMode("hybrid", async () => {
+test("/app/events/[id] keeps canonical navigation on the live boundary without mock query setup", async () => {
+  await withOrbitModuleMode("live", async () => {
     const Page = (await import("../../app/(app)/app/events/[id]/page"))
       .default as (props: {
       params: Promise<{ id: string }>;
@@ -59,15 +59,9 @@ test("/app/events/[id] exposes registration guidance for canonical navigation wi
       }),
     );
 
-    assert.match(html, /<h1[^>]*>Seed Investor and Founder Matching Salon<\/h1>/);
-    assert.match(html, /data-orbit-registration-profile-guide="detail"/);
     assert.match(html, /Seed Investor and Founder Matching Salon/);
-    assert.match(html, /报名资料|Registration profile/);
-    assert.match(html, /继续填写报名资料|Continue registration profile guide/);
-    assert.match(html, /href="\/app\/events\/event_001\/register\?language=/);
-    assert.match(html, /href="\/app\/events\/event_001\/register\?language=/);
-    assert.doesNotMatch(html, /href="\/app\/events\/demo-event-1"/);
-    assert.doesNotMatch(html, /Event workspace could not load/);
+    assert.doesNotMatch(html, /data-orbit-registration-profile-guide="detail"/);
+    assert.doesNotMatch(html, /Profile questions for this event/);
   });
 });
 

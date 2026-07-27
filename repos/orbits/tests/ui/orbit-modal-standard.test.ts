@@ -4,10 +4,9 @@
  *
  * (a) ModalShell (orbit-account-shell.tsx) carries role="dialog" and is
  *     built on useOrbitModalA11y, not an inline reimplementation.
- * (b) The three migrated dialogs (account-auth, party PersonDetailOverlay,
- *     admin CreateEventModal) no longer hand-roll their own Esc listener —
- *     that behavior now comes from the shared hook (directly, or via
- *     ModalShell).
+ * (b) The remaining migrated dialogs (account-auth and party
+ *     PersonDetailOverlay) no longer hand-roll their own Esc listener.
+ *     Admin's unpersisted CreateEventModal was retired.
  * (c) The relationship inbox drawer (which keeps its own hand-rolled trap by
  *     design) still exposes aria-modal for assistive tech.
  */
@@ -29,7 +28,7 @@ const PARTY_PATH = "app/(app)/app/dashboard/orbit-real-party.tsx";
 const ADMIN_PATH = "app/(app)/app/admin/orbit-real-admin.tsx";
 const INBOX_PATH = "app/(app)/app/inbox/relationship-inbox-panel.tsx";
 
-const MIGRATED_FILES = [ACCOUNT_AUTH_PATH, PARTY_PATH, ADMIN_PATH];
+const MIGRATED_FILES = [ACCOUNT_AUTH_PATH, PARTY_PATH];
 
 // ---- (a) ModalShell is the single source of dialog a11y behavior ----
 
@@ -65,7 +64,7 @@ test("ModalShell's bottom-sheet variant keeps its geometry: pinned to the bottom
 
 // ---- (b) migrated dialogs no longer hand-roll their own Esc listener ----
 
-test("account-auth, party, and admin no longer own an independent keydown/Esc listener", () => {
+test("account-auth and party no longer own an independent keydown/Esc listener", () => {
   for (const path of MIGRATED_FILES) {
     const text = source(path);
     assert.ok(
@@ -89,14 +88,11 @@ test("party PersonDetailOverlay is migrated onto ModalShell in bottom-sheet vari
   assert.match(text, /variant="bottom-sheet"/);
 });
 
-test("admin CreateEventModal is migrated onto ModalShell", () => {
+test("admin does not retain the unpersisted CreateEventModal", () => {
   const text = source(ADMIN_PATH);
-  assert.match(text, /import\s*\{\s*ModalShell\s*\}\s*from\s*"\.\.\/orbit-account-shell"/);
-  assert.match(text, /<ModalShell\b/);
-  // The hook now lives once inside ModalShell, not duplicated at the call site.
-  assert.ok(
-    !text.includes("useOrbitModalA11y"),
-    "admin CreateEventModal should no longer call useOrbitModalA11y directly — ModalShell owns it now",
+  assert.doesNotMatch(
+    text,
+    /CreateEventModal|<ModalShell\b|useOrbitModalA11y/,
   );
 });
 

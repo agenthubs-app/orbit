@@ -1,12 +1,9 @@
 "use client";
 
-import { useState } from "react";
-
 import type { OrbitAdminEventView, OrbitAdminFeedView, OrbitAdminMemberView, OrbitAdminViewModel } from "../orbit-admin-platform-route-view-model";
 import { eventCoverPhoto } from "../orbit-landing-route-view-model";
-import { ModalShell } from "../orbit-account-shell";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
-import { Cover, FormField, Icon, Logo, StatusBadge } from "../orbit-reference-primitives";
+import { Cover, Icon, Logo, StatusBadge } from "../orbit-reference-primitives";
 
 type OrbitT = (copy: { en: string; zh: string }) => string;
 
@@ -16,9 +13,8 @@ function navigateTo(path: string) {
 
 export function OrbitRealAdminLogin({ kind = "organizer" }: { kind?: "organizer" | "platform" }) {
   const { t, language } = useOrbitLanguage();
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
   const dest = kind === "platform" ? "/app/platform" : "/app/admin";
+  const signInHref = `/app/account/login?next=${encodeURIComponent(dest)}`;
 
   return (
     <main className="orbit-admin-access-page" data-orbit-real-page>
@@ -32,22 +28,14 @@ export function OrbitRealAdminLogin({ kind = "organizer" }: { kind?: "organizer"
         </div>
       </section>
       <section className="orbit-admin-access-panel">
-        <div className="orbit-admin-access-card card">
-          <div className="orbit-admin-access-brand"><Logo size={26} /><div className="orbit-admin-access-brand-sub"><Icon name="lock" size={14} />ADMIN SESSION</div></div>
-          <div className="eyebrow orbit-admin-access-eyebrow">{kind === "platform" ? "PLATFORM ADMIN" : "ORGANIZER ADMIN"} / MAGIC LINK</div>
-          <h1 className="h-display orbit-admin-access-title">{sent ? t({ en: "Login email sent", zh: "登录邮件已发送" }) : t({ en: "Sign in to admin", zh: "登录后台" })}</h1>
-          <p className="orbit-admin-access-copy">{sent ? t({ en: "Click the sign-in link in your inbox. In this demo you can enter the admin directly.", zh: "请到邮箱点击登录链接。演示中可直接进入后台。" }) : t({ en: "Enter your admin email and we'll send you a one-tap sign-in email.", zh: "输入管理员邮箱，我们会发送一封一键登录邮件。" })}</p>
-          <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
-            {!sent ? (
-              <>
-                <div className="orbit-admin-login-field" style={{ position: "relative" }}><Icon color="var(--text-3)" name="mail" size={17} style={{ left: 14, position: "absolute", top: "50%", transform: "translateY(-50%)" }} /><input className="field" onChange={(event) => setEmail(event.target.value)} placeholder="admin@orbit.events" style={{ height: 50, paddingLeft: 44 }} value={email} /></div>
-                <button className="btn btn-primary btn-lg btn-block" onClick={() => setSent(true)} type="button">{t({ en: "Send sign-in email", zh: "发送登录邮件" })}<Icon color="var(--on-dark)" name="arrow" size={17} /></button>
-              </>
-            ) : (
-              <div className="orbit-admin-login-success"><div style={{ color: "var(--ink)", fontWeight: 600 }}>✓ {t({ en: "Sent to", zh: "已发送至" })} {email || "admin@orbit.events"}</div><p>{t({ en: "Didn't get it? Check your spam folder, or resend.", zh: "没收到？检查垃圾邮件，或重新发送。" })}</p></div>
-            )}
-            <button className="btn btn-ghost btn-block" onClick={() => navigateTo(dest)} type="button">{sent ? t({ en: "Enter admin (demo)", zh: "进入后台（演示）" }) : t({ en: "Skip · enter admin directly (demo)", zh: "跳过 · 直接进入后台（演示）" })}<Icon name="arrowUR" size={16} /></button>
-          </div>
+          <div className="orbit-admin-access-card card">
+            <div className="orbit-admin-access-brand"><Logo size={26} /><div className="orbit-admin-access-brand-sub"><Icon name="lock" size={14} />ADMIN SESSION</div></div>
+            <div className="eyebrow orbit-admin-access-eyebrow">{kind === "platform" ? "PLATFORM ADMIN" : "ORGANIZER ADMIN"} / MAGIC LINK</div>
+            <h1 className="h-display orbit-admin-access-title">{t({ en: "Sign in to admin", zh: "登录后台" })}</h1>
+            <p className="orbit-admin-access-copy">{t({ en: "Continue through the secure account sign-in flow. Admin access is granted only after the authenticated session is verified.", zh: "请通过安全账号登录流程继续。只有在验证登录会话后，才能进入后台。" })}</p>
+            <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
+              <a className="btn btn-primary btn-lg btn-block" href={signInHref}>{t({ en: "Continue to secure sign in", zh: "继续安全登录" })}<Icon color="var(--on-dark)" name="arrow" size={17} /></a>
+            </div>
           <div className="orbit-admin-access-chips"><span className="badge badge-soon">Admin</span><span className="chip orbit-lang-inline">{language === "zh" ? "ZH" : "EN"}</span></div>
         </div>
       </section>
@@ -129,52 +117,24 @@ export function OrbitRealAdminWorkspace({ viewModel }: { viewModel: OrbitAdminVi
   return <HostShell active="dash" viewModel={viewModel}><AdminDashContent viewModel={viewModel} /></HostShell>;
 }
 
-function CreateEventModal({ initialEvent, onClose }: { initialEvent?: OrbitAdminEventView; onClose: () => void }) {
-  const { t } = useOrbitLanguage();
-  const [stepN, setStepN] = useState(0);
-  const steps = [t({ en: "Basics", zh: "基本信息" }), t({ en: "Time & place", zh: "时间地点" }), t({ en: "Registration form", zh: "报名表单" }), t({ en: "Automation", zh: "流程自动化" })];
-
-  const formQuestions: Array<[string, string]> = [
-    [t({ en: "The one thing you most want to achieve tonight", zh: "你今晚最想达成的一件事" }), t({ en: "Required", zh: "必填" })],
-    [t({ en: "Industry", zh: "所属行业" }), t({ en: "Optional", zh: "选填" })],
-    [t({ en: "One-line self introduction", zh: "一句话自我介绍" }), t({ en: "Optional", zh: "选填" })],
-  ];
-  const automationRows: Array<[string, string]> = [
-    [t({ en: "Open check-in", zh: "开放签到" }), t({ en: "30 minutes before the event starts", zh: "活动开始前 30 分钟" })],
-    [t({ en: "Run AI grouping", zh: "运行 AI 分组" }), t({ en: "When check-in reaches 60%", zh: "签到达到 60%" })],
-    [t({ en: "Publish match results", zh: "公布匹配结果" }), t({ en: "45 minutes after the event starts", zh: "活动开始后 45 分钟" })],
-  ];
-
-  return (
-    <ModalShell bare className="orbit-host-create-modal" label={t({ en: "Create event", zh: "新建活动" })} maxW={580} onClose={onClose}>
-        <div className="orbit-host-create-head"><span className="avatar g-indigo"><Icon color="var(--on-dark)" name="calendar" size={18} /></span><div><strong>{t({ en: "Create event", zh: "新建活动" })}</strong><span>{t({ en: "Recurring event · custom flow and form", zh: "定期活动 · 自定义流程与表单" })}</span></div><button aria-label={t({ en: "Close", zh: "关闭" })} className="hit-44" onClick={onClose} type="button"><Icon name="x" size={17} /></button></div>
-        <div className="orbit-host-create-dots">{steps.map((step, index) => <span className={index <= stepN ? "is-active" : ""} key={step} />)}</div>
-        <div className="orbit-host-create-body"><div className="eyebrow">STEP 0{stepN + 1} / 0{steps.length} · {steps[stepN]}</div>{stepN === 0 ? <><FormField className="orbit-host-field" id="admin-create-event-name" label={t({ en: "Event name", zh: "活动名称" })}><input className="field" defaultValue={initialEvent?.name ?? ""} id="admin-create-event-name" /></FormField><div className="orbit-host-two-col"><FormField className="orbit-host-field" id="admin-create-event-code" label={t({ en: "Event code", zh: "活动编号" })}><input className="field" defaultValue={initialEvent?.code ?? ""} id="admin-create-event-code" /></FormField><FormField className="orbit-host-field" id="admin-create-event-theme-color" label={t({ en: "Theme color", zh: "主题色" })}><input className="field" defaultValue={initialEvent?.themeColor ?? "#6359E9"} id="admin-create-event-theme-color" /></FormField></div><FormField className="orbit-host-field" id="admin-create-event-summary" label={t({ en: "One-line summary", zh: "一句话简介" })}><input className="field" defaultValue={initialEvent?.summary ?? ""} id="admin-create-event-summary" /></FormField></> : stepN === 1 ? <><div className="orbit-host-two-col"><FormField className="orbit-host-field" id="admin-create-event-starts-at" label={t({ en: "Start time", zh: "开始时间" })}><input className="field" defaultValue={initialEvent?.startsAt ?? ""} id="admin-create-event-starts-at" /></FormField><FormField className="orbit-host-field" id="admin-create-event-ends-at" label={t({ en: "End time", zh: "结束时间" })}><input className="field" defaultValue={initialEvent?.endsAt ?? ""} id="admin-create-event-ends-at" /></FormField></div><FormField className="orbit-host-field" id="admin-create-event-venue" label={t({ en: "Venue", zh: "场地" })}><input className="field" defaultValue={initialEvent?.venue ?? ""} id="admin-create-event-venue" /></FormField><FormField className="orbit-host-field" id="admin-create-event-address" label={t({ en: "Full address", zh: "详细地址" })}><input className="field" defaultValue={initialEvent?.venue ?? ""} id="admin-create-event-address" /></FormField></> : stepN === 2 ? <><div className="orbit-host-automation-note"><Icon color="var(--accent)" name="sparkle" size={17} /><span>{t({ en: "Registration questions apply only to this event; the general profile is reused for matching automatically.", zh: "报名问题只用于本场活动；通用画像会自动复用于匹配。" })}</span></div>{formQuestions.map(([question, required]) => <div className="orbit-host-automation-row" key={question}><span style={{ border: "1.5px solid var(--border-2)", borderRadius: 5, height: 18, width: 18 }} /><div><strong>{question}</strong><span>{required}</span></div><span className="chip">{required}</span></div>)}</> : <><div className="orbit-host-automation-note"><Icon color="var(--accent)" name="zap" size={17} /><span>{t({ en: "Automatically opens check-in and runs AI grouping and recommendations on schedule.", zh: "到点自动开启签到、自动运行 AI 分组与推荐。" })}</span></div>{automationRows.map(([action, time]) => <div className="orbit-host-automation-row" key={action}><Icon color="var(--accent)" name="clock" size={16} /><div><strong>{action}</strong><span>{time}</span></div><span className="chip chip-accent">{t({ en: "Auto", zh: "自动" })}</span></div>)}</>}</div>
-        <div className="orbit-host-create-actions"><button className="btn btn-ghost" onClick={() => (stepN > 0 ? setStepN(stepN - 1) : onClose())} type="button">{stepN > 0 ? t({ en: "Back", zh: "上一步" }) : t({ en: "Cancel", zh: "取消" })}</button><span /><button className="btn btn-primary" onClick={() => (stepN < steps.length - 1 ? setStepN(stepN + 1) : onClose())} type="button">{stepN < steps.length - 1 ? t({ en: "Next", zh: "下一步" }) : t({ en: "Create event", zh: "创建活动" })}</button></div>
-    </ModalShell>
-  );
-}
-
 function HostPortfolioCard({ event, language, t, viewModel }: { event: OrbitAdminEventView; language: OrbitLanguage; t: OrbitT; viewModel: OrbitAdminViewModel }) {
   return <div className="card orbit-host-portfolio-card"><div className="orbit-host-portfolio-card-main"><Cover className="orbit-host-portfolio-cover" g={event.g} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 24 }} /><div className="orbit-host-portfolio-info"><div className="orbit-host-title-row"><strong>{event.name}</strong><StatusBadge language={language} status={event.status} /></div><div className="orbit-host-portfolio-count"><span><b>{event.registered}</b> / {event.cap} {t({ en: "registered", zh: "报名" })}</span><div className="orbit-host-bar"><span style={{ background: "var(--accent)", width: `${(event.registered / event.cap) * 100}%` }} /></div></div></div></div><div className="orbit-host-portfolio-rail"><PhaseRail phase={event.phase} viewModel={viewModel} /></div></div>;
 }
 
 export function OrbitRealAdminEvents({ viewModel }: { viewModel: OrbitAdminViewModel }) {
   const { t, language } = useOrbitLanguage();
-  const [createOpen, setCreateOpen] = useState(false);
   const liveCount = viewModel.adminEvents.filter((event) => event.status === "active").length;
   const upcomingCount = viewModel.adminEvents.filter((event) => event.status === "upcoming").length;
   const endedCount = viewModel.adminEvents.filter((event) => event.status === "ended").length;
   return (
     <HostShell active="events" viewModel={viewModel}>
-      <div className="orbit-host-page-head"><div><div className="eyebrow">EVENTS</div><h1 className="h-display">{t({ en: "Events", zh: "活动管理" })}</h1></div><div className="orbit-host-actions"><button className="btn btn-primary" onClick={() => setCreateOpen(true)} type="button"><Icon color="var(--on-dark)" name="plus" size={16} />{t({ en: "Create event", zh: "新建活动" })}</button></div></div>
+      <div className="orbit-host-page-head"><div><div className="eyebrow">EVENTS</div><h1 className="h-display">{t({ en: "Events", zh: "活动管理" })}</h1></div><span className="badge badge-soon">{t({ en: "Source events · read only", zh: "来源活动 · 只读" })}</span></div>
       <div className="orbit-host-chip-row"><span className="chip is-active">{t({ en: "All", zh: "全部" })} {viewModel.adminEvents.length}</span><span className="chip">{t({ en: "Live", zh: "进行中" })} {liveCount}</span><span className="chip">{t({ en: "Upcoming", zh: "即将" })} {upcomingCount}</span><span className="chip">{t({ en: "Ended", zh: "已结束" })} {endedCount}</span></div>
       <div className="orbit-host-event-grid">{viewModel.adminEvents.map((event) => <HostPortfolioCard event={event} key={event.id} language={language} t={t} viewModel={viewModel} />)}</div>
       <div className="card orbit-host-card" style={{ marginTop: 18 }}>
-        <div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Access · team & roles", zh: "访问管理 · 团队与角色" })}</h2><button className="btn btn-ghost btn-sm" onClick={() => setCreateOpen(false)} type="button"><Icon name="plus" size={14} />{t({ en: "Invite member", zh: "邀请成员" })}</button></div>
+        <div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Access · team & roles", zh: "访问管理 · 团队与角色" })}</h2><span className="orbit-host-muted">{t({ en: "Read only", zh: "只读" })}</span></div>
         <div className="orbit-host-access-notes">{viewModel.adminMembers.map((member) => <div className="card-flat orbit-host-access-note" key={member.email}><span className={`avatar ${member.g}`} style={{ flexShrink: 0, fontSize: 15, height: 38, width: 38 }}>{member.initial}</span><div><strong>{member.name} · {member.role}</strong><span>{member.email}</span></div></div>)}</div>
       </div>
-      {createOpen ? <CreateEventModal initialEvent={viewModel.adminEvents[0]} onClose={() => setCreateOpen(false)} /> : null}
     </HostShell>
   );
 }

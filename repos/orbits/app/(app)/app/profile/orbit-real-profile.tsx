@@ -2,6 +2,14 @@
 
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 
+import type {
+  ProfileDocumentExtractionKind,
+  ProfileDocumentExtractionPayload,
+} from "../../../../features/profile/extraction-contract";
+import type {
+  ManualProfileUpdateInput,
+  ProfilePayload,
+} from "../../../../features/profile/contract";
 import { AccountTopNav, MobileBar, orbitNavigate, StatusBar } from "../orbit-account-shell";
 import { useOrbitLanguage } from "../orbit-language-context";
 import type { OrbitProfileView, OrbitProfileViewModel } from "../orbit-profile-route-view-model";
@@ -12,6 +20,15 @@ type Translate = (copy: { en: string; zh: string }) => string;
 
 type TagField = "offering" | "seeking" | "topics";
 type Method = "ai" | "scan" | "manual";
+type NoticeKind = "error" | "info" | "success";
+
+interface ApiEnvelope<TData> {
+  success?: boolean;
+  data?: TData;
+  error?: {
+    message?: string;
+  };
+}
 
 const PROFILE_FIELD_TOTAL = 10;
 
@@ -19,6 +36,71 @@ const PROFILE_FIELD_TOTAL = 10;
    所以这里用固定色而不是主题 token。 */
 const CARD_BG = "linear-gradient(158deg, #22312d 0%, #17211f 52%, #131b19 100%)";
 const CARD_GLOW = "radial-gradient(420px 260px at 88% -10%, rgba(94, 234, 212, 0.16), transparent 68%)";
+
+function profileUpdateInput(profile: OrbitProfileView): ManualProfileUpdateInput {
+  return {
+    bio: profile.bio,
+    displayName: profile.fullName,
+    handles: {
+      email: profile.email || undefined,
+      lineId: profile.lineId || undefined,
+      wechatId: profile.wechatName || undefined,
+    },
+    headline: profile.headline,
+    homeMarket: profile.industry,
+    industry: profile.industry,
+    offering: profile.offering,
+    organization: profile.company,
+    preferredIntroChannels: profile.offering,
+    relationshipGoal: profile.intro,
+    role: profile.title,
+    seeking: profile.seeking,
+    targetRelationshipTypes: profile.seeking,
+    topics: profile.topics,
+  };
+}
+
+function profileReadbackMatches(
+  expected: ManualProfileUpdateInput,
+  payload: ProfilePayload,
+): boolean {
+  const saved = payload.profile;
+
+  return Boolean(
+    saved &&
+      saved.displayName === expected.displayName?.trim() &&
+      saved.organization === expected.organization?.trim() &&
+      saved.role === expected.role?.trim() &&
+      saved.homeMarket === expected.homeMarket?.trim() &&
+      saved.relationshipGoal === expected.relationshipGoal?.trim(),
+  );
+}
+
+function applyExtractionDraft(
+  profile: OrbitProfileView,
+  payload: ProfileDocumentExtractionPayload,
+): OrbitProfileView {
+  const draft = payload.draft;
+  if (!draft) return profile;
+
+  return {
+    ...profile,
+    company: draft.organization || profile.company,
+    fullName: draft.displayName || profile.fullName,
+    headline: draft.headline || profile.headline,
+    industry: draft.homeMarket || profile.industry,
+    intro: draft.relationshipGoal || profile.intro,
+    offering:
+      draft.preferredIntroChannels.length > 0
+        ? [...draft.preferredIntroChannels]
+        : profile.offering,
+    seeking:
+      draft.targetRelationshipTypes.length > 0
+        ? [...draft.targetRelationshipTypes]
+        : profile.seeking,
+    title: draft.role || profile.title,
+  };
+}
 
 function profileInitial(profile: OrbitProfileView) {
   return (profile.fullName.trim()[0] || "O").toUpperCase();
@@ -165,7 +247,7 @@ function ProfileMethods({
   extractText: string;
   extracting: boolean;
   method: Method;
-  onFilePick: () => void;
+  onFilePick: (file: File) => void;
   onTextExtract: () => void;
   setExtractText: (value: string) => void;
   setMethod: (value: Method) => void;
@@ -228,7 +310,19 @@ function ProfileMethods({
         </div>
       ) : null}
       {method === "scan" ? (
-        <button disabled={extracting} onClick={onFilePick} style={{ alignItems: "center", background: "var(--surface-2)", border: "1.5px dashed var(--border-strong)", borderRadius: "var(--r-md)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, marginTop: 12, padding: "14px 16px", textAlign: "left", width: "100%" }} type="button">
+        <label style={{ alignItems: "center", background: "var(--surface-2)", border: "1.5px dashed var(--border-strong)", borderRadius: "var(--r-md)", cursor: extracting ? "wait" : "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, marginTop: 12, padding: "14px 16px", position: "relative", textAlign: "left", width: "100%" }}>
+          <input
+            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+            aria-label={t({ en: "Choose a business card or resume file", zh: "选择名片或简历文件" })}
+            disabled={extracting}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file) onFilePick(file);
+              event.currentTarget.value = "";
+            }}
+            style={{ height: 1, opacity: 0, position: "absolute", width: 1 }}
+            type="file"
+          />
           <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }}>
             <Icon name="search" size={18} />
           </span>
@@ -238,7 +332,7 @@ function ProfileMethods({
             </span>
             <span style={{ color: "var(--text-3)", display: "block", fontSize: 12.5, marginTop: 2 }}>{t({ en: "JPG / PNG / PDF", zh: "支持 JPG / PNG / PDF" })}</span>
           </span>
-        </button>
+        </label>
       ) : null}
     </div>
   );
@@ -353,7 +447,7 @@ function EditSections({
     extractText: string;
     extracting: boolean;
     method: Method;
-    onFilePick: () => void;
+    onFilePick: (file: File) => void;
     onTextExtract: () => void;
     setExtractText: (value: string) => void;
     setMethod: (value: Method) => void;
@@ -444,6 +538,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageKind, setMessageKind] = useState<NoticeKind>("info");
   const [selectRenderKey, setSelectRenderKey] = useState(0);
   const letter = profileInitial(profile);
   const subText = t({ en: "Fill it once, auto-reused when registering for every event.", zh: "填一次，报名各场活动自动复用。" });
@@ -500,28 +595,170 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
     });
   }
 
-  function fakeExtract() {
+  async function extractProfile(
+    kind: ProfileDocumentExtractionKind,
+    input: { fileName: string; mimeType: string; text?: string },
+  ) {
+    if (extracting) return;
     setExtracting(true);
-    window.setTimeout(() => {
+    setMessage("");
+
+    try {
+      const endpoint =
+        kind === "resume"
+          ? "/api/profile/extractions/resume"
+          : "/api/profile/extractions/business-card";
+      const response = await fetch(endpoint, {
+        body: JSON.stringify(input),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const envelope =
+        (await response.json()) as ApiEnvelope<ProfileDocumentExtractionPayload>;
+
+      if (!response.ok || envelope.success !== true || !envelope.data) {
+        throw new Error(
+          envelope.error?.message ||
+            t({ en: "Profile extraction failed.", zh: "档案提取失败。" }),
+        );
+      }
+
+      if (envelope.data.state !== "success" || !envelope.data.draft) {
+        setMessageKind("info");
+        setMessage(
+          t({
+            en: "No profile fields were extracted. Your profile was not changed.",
+            zh: "未提取到档案字段，你的档案没有发生变化。",
+          }),
+        );
+        return;
+      }
+
+      setProfile((current) => applyExtractionDraft(current, envelope.data!));
+      setMessageKind("info");
+      setMessage(
+        t({
+          en: "Extracted draft fields were filled into the form. Review them before saving.",
+          zh: "提取出的草稿字段已填入表单，请复核后再保存。",
+        }),
+      );
+    } catch (error) {
+      setMessageKind("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : t({ en: "Profile extraction failed.", zh: "档案提取失败。" }),
+      );
+    } finally {
       setExtracting(false);
-      setMessage(t({ en: "Extracted results filled into the form, please confirm and save the profile.", zh: "提取结果已填入表单，请确认后保存档案。" }));
-    }, 700);
+    }
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onTextExtract() {
+    const text = extractText.trim();
+    if (!text) {
+      setMessageKind("error");
+      setMessage(
+        t({
+          en: "Paste profile text before extracting.",
+          zh: "请先粘贴档案文本再提取。",
+        }),
+      );
+      return;
+    }
+
+    await extractProfile("resume", {
+      fileName: "pasted-profile.txt",
+      mimeType: "text/plain",
+      text,
+    });
+  }
+
+  async function onFilePick(file: File) {
+    await extractProfile("business-card", {
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+    });
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+
+    const updateInput = profileUpdateInput(profile);
+    if (!updateInput.displayName?.trim()) {
+      setMessageKind("error");
+      setMessage(
+        t({
+          en: "Add your name before saving the profile.",
+          zh: "请填写姓名后再保存档案。",
+        }),
+      );
+      return;
+    }
+
     setSaving(true);
     setMessage("");
-    window.setTimeout(() => {
+
+    try {
+      const response = await fetch("/api/profile", {
+        body: JSON.stringify(updateInput),
+        headers: { "content-type": "application/json" },
+        method: "PUT",
+      });
+      const envelope = (await response.json()) as ApiEnvelope<ProfilePayload>;
+
+      if (!response.ok || envelope.success !== true || !envelope.data) {
+        throw new Error(
+          envelope.error?.message ||
+            t({ en: "Profile save failed.", zh: "档案保存失败。" }),
+        );
+      }
+
+      const readbackResponse = await fetch("/api/profile", {
+        cache: "no-store",
+        headers: { accept: "application/json" },
+      });
+      const readback =
+        (await readbackResponse.json()) as ApiEnvelope<ProfilePayload>;
+
+      if (
+        !readbackResponse.ok ||
+        readback.success !== true ||
+        !readback.data ||
+        !profileReadbackMatches(updateInput, readback.data)
+      ) {
+        throw new Error(
+          t({
+            en: "The save response could not be verified by reading the profile back.",
+            zh: "保存响应无法通过重新读取档案完成核验。",
+          }),
+        );
+      }
+
+      setMessageKind("success");
+      setMessage(
+        t({
+          en: "Profile saved and verified.",
+          zh: "档案已保存并完成复读核验。",
+        }),
+      );
+    } catch (error) {
+      setMessageKind("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : t({ en: "Profile save failed.", zh: "档案保存失败。" }),
+      );
+    } finally {
       setSaving(false);
-      setMessage(t({ en: "Saved.", zh: "已保存。" }));
-    }, 500);
+    }
   }
 
-  const extractProps = { extractText, extracting, method, onFilePick: fakeExtract, onTextExtract: fakeExtract, setExtractText, setMethod, t };
+  const extractProps = { extractText, extracting, method, onFilePick, onTextExtract, setExtractText, setMethod, t };
   const editProps = { extractProps, profile, selectRenderKey, t, toggleTag, update, viewModel };
   const alert = message ? (
-    <div role="alert" style={{ background: "var(--live-soft)", borderRadius: "var(--r-sm)", color: "var(--live-text)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
+    <div role={messageKind === "error" ? "alert" : "status"} style={{ background: messageKind === "error" ? "var(--danger-soft, #fff1f2)" : messageKind === "success" ? "var(--live-soft)" : "var(--surface-2)", borderRadius: "var(--r-sm)", color: messageKind === "error" ? "var(--danger, #C2410C)" : messageKind === "success" ? "var(--live-text)" : "var(--text-2)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
   ) : null;
 
   return (

@@ -91,6 +91,89 @@ test("action coverage records source evidence and honest unresolved runtime fiel
   }
 });
 
+test("mock imports distinguish factory and type boundaries from direct production use", () => {
+  const directMockImports = manifest.surfaces.flatMap(
+    (surface) => surface.data.directMockImports,
+  );
+  const classifiedMockImports = manifest.surfaces.flatMap(
+    (surface) => surface.data.mockBoundaryImports,
+  );
+  const classifications = new Set(
+    classifiedMockImports.map((item) => item.classification),
+  );
+
+  assert.equal(manifest.schemaVersion, 2);
+  assert.deepEqual(directMockImports, []);
+  assert.ok(classifiedMockImports.length > 0);
+  assert.equal(classifications.has("factory-mode-registration"), true);
+  assert.equal(classifications.has("type-only-contract-reference"), true);
+  assert.equal(
+    classifications.has("explicit-mock-implementation-internal"),
+    true,
+  );
+  assert.equal(
+    classifiedMockImports.every(
+      (item) => item.runtimeResultRisk === "resolved-by-static-boundary",
+    ),
+    true,
+  );
+});
+
+test("translated and variable JSX labels count as accessible-name evidence", () => {
+  const publicShellActions = allActions.filter((action) =>
+    action.sourceFile.endsWith("app/orbit-public-shell.tsx"),
+  );
+
+  assert.ok(
+    publicShellActions.some(
+      (action) =>
+        action.label === "Sign in" &&
+        action.accessibleName === "present-static",
+    ),
+  );
+  assert.equal(
+    publicShellActions
+      .filter((action) => action.label === "Sign in")
+      .some((action) => action.accessibleName === "unresolved-static"),
+    false,
+  );
+  assert.ok(
+    allActions.some(
+      (action) =>
+        action.label === "{label}" &&
+        action.accessibleName === "dynamic-runtime",
+    ),
+  );
+  assert.equal(
+    allActions
+      .filter((action) =>
+        action.sourceFile.endsWith("app/orbit-account-shell.tsx"),
+      )
+      .some(
+        (action) =>
+          action.line === 161 &&
+          action.accessibleName === "unresolved-static",
+      ),
+    false,
+  );
+});
+
+test("redirect aliases do not require route loading and error surfaces", () => {
+  for (const route of ["/app/dashboard", "/app/followups", "/app/schedule"]) {
+    const surface = manifest.surfaces.find((item) => item.route === route);
+
+    assert.equal(surface?.states.sourceSignals.redirect, true);
+    assert.equal(
+      surface?.knownRisks.some(
+        (risk) =>
+          risk.type === "loading-state-unproven" ||
+          risk.type === "error-state-unproven",
+      ),
+      false,
+    );
+  }
+});
+
 test("imperative starfield controls retain their static runtime evidence", () => {
   const starfieldActions = manifest.surfaces
     .filter((surface) => surface.route === "/" || surface.route === "/app")
@@ -142,5 +225,13 @@ test("pointer-down resize controls count as static behavior", () => {
 test("manifest generation writes the required repository artifacts", () => {
   assert.ok(manifest.summary.routes > 30);
   assert.ok(manifest.summary.actions > 100);
-  assert.ok(manifest.summary.risks > 0);
+  assert.equal(
+    manifest.summary.risks,
+    manifest.surfaces.reduce(
+      (total, surface) => total + surface.knownRisks.length,
+      0,
+    ),
+  );
+  assert.equal(manifest.summary.p0Candidates, 0);
+  assert.equal(manifest.summary.p1Candidates, 0);
 });

@@ -87,10 +87,10 @@ function AcquisitionStateBoundary({
         eyebrow="Acquisition"
         recoveryActions={[
           {
-            href: "/app/contacts/new?mode=mock",
-            id: "open-preview-data",
-            label: "Open preview data",
-            recoveryCopy: "Use deterministic preview records while live storage is being configured.",
+            href: "/app/contacts/new",
+            id: "retry-live-workspace",
+            label: "Retry live workspace",
+            recoveryCopy: "Retry the live acquisition boundary without substituting preview records.",
           },
           {
             href: "/app/contacts",

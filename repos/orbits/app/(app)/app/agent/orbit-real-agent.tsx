@@ -2044,7 +2044,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
       {histOpen ? (
         <div className="orbit-mobile-only" style={{ inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}>
-          <div onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
+          <div aria-hidden="true" onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
           <div style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}>
             <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
               <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{t({ en: "Chat history", zh: "对话历史" })}</span>

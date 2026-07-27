@@ -21,10 +21,10 @@ import { createAsyncRelationshipConversationService } from "../../../../features
 // 关系收件箱面板的数据入口：返回 async correspondence workspace（inbox + 选中线程 +
 // 草稿回复 + 上下文）。传 conversationId 选中某条线程。
 //
-// 该服务当前只有 mock 实现，因此显式 pin 到 "mock"（见
-// features/chat/ASYNC_CONVERSATION_MOCK_TO_LIVE.md）：即使 app runtime 用
-// ORBIT_MODULE_MODE=live，也不去解析尚未实现的 live async provider。
-// 所有 side effect 保持 false：不发送、不通知、不写日历、不落库、不联网。
+// 该服务当前只有 mock 实现（见
+// features/chat/ASYNC_CONVERSATION_MOCK_TO_LIVE.md）。只有显式 mock runtime
+// 才能读取预览数据；live/hybrid 必须失败关闭，不能把 fixture 当成真实收件箱。
+// 所有 mock side effect 保持 false：不发送、不通知、不写日历、不落库、不联网。
 export const dynamic = "force-dynamic";
 
 function readInput(request: Request): AsyncConversationInput {
@@ -52,8 +52,8 @@ function responseForResult(
         mode,
         privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
         provenance:
-          "Async relationship conversation failure came from the local correspondence preview boundary.",
-        service: "async-relationship-conversation-mock",
+          "Async relationship conversation failure came from the explicit mock correspondence preview boundary.",
+        service: `async-relationship-conversation-${mode}`,
       }),
       {
         headers: runtimeBoundaryHeaders(mode),
@@ -68,9 +68,38 @@ function responseForResult(
   });
 }
 
+function unavailableResponse(
+  mode: ReturnType<typeof resolveFeatureMode>,
+): Response {
+  const appError = new AppError(
+    "SERVICE_UNAVAILABLE",
+    "Relationship inbox is unavailable because no live asynchronous conversation provider is configured.",
+  );
+
+  return NextResponse.json(
+    failure(appError, {
+      availableModes: "mock",
+      boundary: RUNTIME_BOUNDARY_HEADER_VALUES.runtimeBoundary,
+      capabilityId: "async-relationship-conversation",
+      mode,
+      privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
+      provenance:
+        "No mock correspondence data was returned outside explicit mock runtime.",
+    }),
+    {
+      headers: runtimeBoundaryHeaders(mode),
+      status: getHttpStatusForAppErrorCode(appError.code),
+    },
+  );
+}
+
 export async function GET(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
-  // 显式 mock：async correspondence 尚无 live provider。
+
+  if (mode !== "mock") {
+    return unavailableResponse(mode);
+  }
+
   const service = createAsyncRelationshipConversationService("mock");
   const result = await service.getCorrespondenceWorkspace(readInput(request));
 
@@ -111,8 +140,8 @@ function createResponseForResult(
         mode,
         privacy: RUNTIME_BOUNDARY_HEADER_VALUES.privacy,
         provenance:
-          "Async relationship conversation create-from-draft failure came from the local correspondence preview boundary.",
-        service: "async-relationship-conversation-mock",
+          "Async relationship conversation create-from-draft failure came from the explicit mock correspondence preview boundary.",
+        service: `async-relationship-conversation-${mode}`,
       }),
       {
         headers: runtimeBoundaryHeaders(mode),
@@ -130,6 +159,11 @@ function createResponseForResult(
 // draft→thread 写入入口：从确认后的消息草稿发起一个新的对话线程（本地 staged 预览）。
 export async function POST(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
+
+  if (mode !== "mock") {
+    return unavailableResponse(mode);
+  }
+
   const body = await readJsonBody(request);
   const input: AsyncConversationCreateFromDraftInput = {
     contactId: readString(body.contactId),

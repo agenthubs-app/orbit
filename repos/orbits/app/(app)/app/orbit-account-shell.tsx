@@ -158,7 +158,7 @@ export function ModalShell({
 
   return (
     <div className="orbit-modal-overlay" style={{ alignItems: isSheet ? "flex-end" : "center", display: "flex", inset: 0, justifyContent: "center", position: "fixed", zIndex: ORBIT_Z.modal }}>
-      <div className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
+      <div aria-hidden="true" className="orbit-modal-scrim" onClick={onClose} style={{ backdropFilter: "blur(4px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
       <div
         aria-label={label ?? t({ en: "Dialog", zh: "对话框" })}
         aria-modal="true"

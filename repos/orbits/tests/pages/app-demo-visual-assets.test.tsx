@@ -6,7 +6,8 @@ import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { loadAppContactsRouteViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { contactsRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
-import { OrbitRealCardDetail, OrbitRealCardsList } from "../../app/(app)/app/contacts/orbit-real-contacts";
+import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real-card-connection";
+import { OrbitRealCardsList } from "../../app/(app)/app/contacts/orbit-real-contacts";
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import {
   eventDetailRouteToOrbitLandingEventView,
@@ -94,7 +95,7 @@ async function renderContactDetailPage(): Promise<string> {
   }
 
   return renderToStaticMarkup(
-    <OrbitRealCardDetail
+    <OrbitRealCardConnection
       contactId="demo-contact-1"
       viewModel={contactDetailRouteToOrbitContactsViewModel(routeModel)}
     />,

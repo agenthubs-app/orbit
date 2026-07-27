@@ -14,7 +14,6 @@ import {
   type OrbitAiProactiveAgentSignal,
 } from "../../../../features/orbit-ai/proactive-contract";
 import { createOrbitAiProactiveAgentService } from "../../../../features/orbit-ai/proactive-service-factory";
-import { createFixtureOrbitAiProactiveAgentService } from "../../../../features/orbit-ai/mock-proactive-service";
 
 export const dynamic = "force-dynamic";
 
@@ -82,16 +81,6 @@ export async function POST(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
   const service = createOrbitAiProactiveAgentService();
   const result = service.createProactiveTurn(await readInput(request));
-
-  return responseForResult(result, mode);
-}
-
-// GET 返回一条演示用的主动提示（基于内置 demo 信号），供关系收件箱面板的"提醒" tab
-// 在没有外部信号源接入时展示代表性 nudge。同样不投递、不联网、不调外部 provider。
-export async function GET(): Promise<Response> {
-  const mode = resolveFeatureMode();
-  const service = createFixtureOrbitAiProactiveAgentService();
-  const result = service.createProactiveTurn();
 
   return responseForResult(result, mode);
 }

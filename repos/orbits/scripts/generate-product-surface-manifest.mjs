@@ -278,6 +278,81 @@ function attributeMap(attributes, source) {
   return result;
 }
 
+function staticExpressionText(expression, source) {
+  if (
+    ts.isStringLiteral(expression) ||
+    ts.isNoSubstitutionTemplateLiteral(expression)
+  ) {
+    return expression.text;
+  }
+  if (ts.isTemplateExpression(expression)) {
+    return `{${expression.getText(source)}}`;
+  }
+  if (
+    ts.isIdentifier(expression) ||
+    ts.isPropertyAccessExpression(expression) ||
+    ts.isElementAccessExpression(expression)
+  ) {
+    return `{${expression.getText(source)}}`;
+  }
+  if (ts.isCallExpression(expression) && ts.isIdentifier(expression.expression)) {
+    const functionName = expression.expression.text;
+    const copy =
+      functionName === "t"
+        ? expression.arguments[0]
+        : functionName === "copy"
+          ? expression.arguments[1]
+          : null;
+    if (copy && ts.isObjectLiteralExpression(copy)) {
+      for (const property of copy.properties) {
+        if (
+          ts.isPropertyAssignment(property) &&
+          property.name.getText(source) === "en" &&
+          (ts.isStringLiteral(property.initializer) ||
+            ts.isNoSubstitutionTemplateLiteral(property.initializer))
+        ) {
+          return property.initializer.text;
+        }
+      }
+    }
+    if (
+      functionName === "t" ||
+      functionName === "copy" ||
+      /(?:label|name|text)$/i.test(functionName)
+    ) {
+      return `{${expression.getText(source)}}`;
+    }
+  }
+  if (
+    ts.isCallExpression(expression) &&
+    ts.isPropertyAccessExpression(expression.expression) &&
+    expression.expression.name.text === "format"
+  ) {
+    return `{${expression.getText(source)}}`;
+  }
+  if (ts.isParenthesizedExpression(expression)) {
+    return staticExpressionText(expression.expression, source);
+  }
+  if (ts.isConditionalExpression(expression)) {
+    return [
+      staticExpressionText(expression.whenTrue, source),
+      staticExpressionText(expression.whenFalse, source),
+    ]
+      .filter(Boolean)
+      .join(" / ");
+  }
+  if (ts.isBinaryExpression(expression)) {
+    return [
+      staticExpressionText(expression.left, source),
+      staticExpressionText(expression.right, source),
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  return "";
+}
+
 function staticChildText(node, source) {
   if (!ts.isJsxElement(node)) {
     return "";
@@ -292,19 +367,7 @@ function staticChildText(node, source) {
         ts.isJsxExpression(child) &&
         child.expression
       ) {
-        if (
-          ts.isStringLiteral(child.expression) ||
-          ts.isNoSubstitutionTemplateLiteral(child.expression)
-        ) {
-          return child.expression.text;
-        }
-        if (
-          ts.isIdentifier(child.expression) ||
-          ts.isPropertyAccessExpression(child.expression) ||
-          ts.isElementAccessExpression(child.expression)
-        ) {
-          return `{${child.expression.getText(source)}}`;
-        }
+        return staticExpressionText(child.expression, source);
       }
       if (ts.isJsxElement(child)) {
         return staticChildText(child, source);
@@ -586,6 +649,7 @@ function collectInteractions(filePath, imperativeBindings = []) {
         const childText = staticChildText(node, source);
         const label =
           attributes.get("aria-label") ??
+          attributes.get("arialabel") ??
           attributes.get("title") ??
           childText ??
           "";
@@ -621,6 +685,8 @@ function collectInteractions(filePath, imperativeBindings = []) {
         const accessibleNameEvidence =
           kind === "form-submit"
             ? "not-applicable-container"
+            : attributes.get("aria-hidden") === "true"
+              ? "intentionally-hidden-pointer-target"
             : accessibleName
               ? label.startsWith("{")
                 ? "dynamic-runtime"
@@ -802,21 +868,75 @@ function detectDataAndStates(reachableFiles) {
     sourceKinds.push("Externally Executed");
   }
 
-  const directMockImports = evidence.flatMap(({ filePath, text }) =>
-    text
-      .split("\n")
-      .map((line, index) => ({ line, index }))
-      .filter(
-        ({ line }) =>
-          /^\s*import\b/.test(line) &&
-          /(shared\/mock|mock-service|mock-provider|mock-fixture)/i.test(line),
-      )
-      .map(({ line, index }) => ({
-        sourceFile: relativeToWorkspace(filePath),
-        line: index + 1,
-        import: line.trim().replace(/\s+/g, " "),
-      })),
-  );
+  const mockImports = evidence.flatMap(({ filePath, text }) => {
+    const source = ts.createSourceFile(
+      filePath,
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+      filePath.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    );
+    const relativeFile = relativeToWorkspace(filePath);
+    const isFactoryRegistration =
+      /(?:^|\/)service-factory\.[cm]?[jt]sx?$/.test(relativeFile) &&
+      /\bcreateModuleServiceFactory\b/.test(text) &&
+      /\bimplementations\s*:/.test(text);
+    const isMockImplementation =
+      /(?:^|\/)(?:[^/]*mock[^/]*\/|mock[^/]*\.[cm]?[jt]sx?$)/i.test(
+        relativeFile,
+      );
+    const imports = [];
+
+    source.forEachChild((node) => {
+      if (
+        !ts.isImportDeclaration(node) ||
+        !ts.isStringLiteral(node.moduleSpecifier) ||
+        !/(shared\/mock|mock-service|mock-provider|mock-fixture)/i.test(
+          node.moduleSpecifier.text,
+        )
+      ) {
+        return;
+      }
+
+      const clause = node.importClause;
+      const namedBindings = clause?.namedBindings;
+      const isTypeOnly =
+        clause?.isTypeOnly === true ||
+        (!clause?.name &&
+          namedBindings !== undefined &&
+          ts.isNamedImports(namedBindings) &&
+          namedBindings.elements.length > 0 &&
+          namedBindings.elements.every((element) => element.isTypeOnly));
+      const boundary = isTypeOnly
+        ? "type-only-contract-reference"
+        : isFactoryRegistration
+          ? "factory-mode-registration"
+          : isMockImplementation
+            ? "explicit-mock-implementation-internal"
+            : null;
+      const line =
+        source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+
+      imports.push({
+        sourceFile: relativeFile,
+        line,
+        import: node.getText(source).trim().replace(/\s+/g, " "),
+        boundary,
+      });
+    });
+
+    return imports;
+  });
+  const directMockImports = mockImports
+    .filter((mockImport) => mockImport.boundary === null)
+    .map(({ boundary: _boundary, ...mockImport }) => mockImport);
+  const mockBoundaryImports = mockImports
+    .filter((mockImport) => mockImport.boundary !== null)
+    .map(({ boundary, ...mockImport }) => ({
+      ...mockImport,
+      classification: boundary,
+      runtimeResultRisk: "resolved-by-static-boundary",
+    }));
 
   return {
     sourceKinds: sourceKinds.length > 0 ? sourceKinds : ["Unclassified"],
@@ -829,6 +949,7 @@ function detectDataAndStates(reachableFiles) {
         ),
     },
     stateSignals: {
+      redirect: /\bredirect\s*\(/.test(combined),
       loading: /loading|pending|skeleton/i.test(combined),
       empty: /\bempty\b|no results|not found/i.test(combined),
       partial: /\bpartial\b|degraded/i.test(combined),
@@ -840,6 +961,7 @@ function detectDataAndStates(reachableFiles) {
       desktop: /desktop|@media\s*\([^)]*min-width/i.test(combined),
     },
     directMockImports,
+    mockBoundaryImports,
   };
 }
 
@@ -922,7 +1044,11 @@ function buildRisks(route, interactions, dataAudit, specialStates) {
     });
   }
 
-  if (specialStates.loading.length === 0 && !dataAudit.stateSignals.loading) {
+  if (
+    !dataAudit.stateSignals.redirect &&
+    specialStates.loading.length === 0 &&
+    !dataAudit.stateSignals.loading
+  ) {
     risks.push({
       severity: "P1",
       type: "loading-state-unproven",
@@ -935,7 +1061,11 @@ function buildRisks(route, interactions, dataAudit, specialStates) {
       nextAction: "Verify a throttled load and add a shared loading state if absent.",
     });
   }
-  if (specialStates.error.length === 0 && !dataAudit.stateSignals.error) {
+  if (
+    !dataAudit.stateSignals.redirect &&
+    specialStates.error.length === 0 &&
+    !dataAudit.stateSignals.error
+  ) {
     risks.push({
       severity: "P1",
       type: "error-state-unproven",
@@ -1024,6 +1154,7 @@ export function buildProductSurfaceManifest() {
         sourceKinds: dataAudit.sourceKinds,
         dependencies: dataAudit.dependencies,
         directMockImports: dataAudit.directMockImports,
+        mockBoundaryImports: dataAudit.mockBoundaryImports,
         generatedAt: "build-time-static-scan",
         writesRequireRuntimeReadbackVerification: true,
       },
@@ -1046,7 +1177,7 @@ export function buildProductSurfaceManifest() {
 
   const metadata = stableGitMetadata();
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     scope: "All production Next.js page routes; API and /dev routes excluded",
     evidenceLevel:
       "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",

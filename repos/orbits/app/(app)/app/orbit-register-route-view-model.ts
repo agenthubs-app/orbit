@@ -16,6 +16,7 @@ export function getOrbitRegisterViewModel(code = ""): OrbitRegisterViewModel {
   return {
     event: {
       code: event.code,
+      id: event.id,
       name: event.name,
       theme: event.theme,
     },

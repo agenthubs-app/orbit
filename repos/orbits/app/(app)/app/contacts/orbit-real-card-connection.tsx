@@ -22,69 +22,6 @@ import { agentHrefForContext } from "../orbit-agent-context-href";
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
 
-// —— 连接画像专属静态演示数据（仅 UI，无后端）——
-const rel: Copy = { en: "Partnership", zh: "潜在合作" };
-
-const stageDemo = {
-  current: 5,
-  total: 12,
-  label: { en: "Potential need identified", zh: "已发现潜在需求" } as Copy,
-  rationale: {
-    en: 'Hana expressed interest in an AI quality-inspection solution at the salon. The next stage — "pilot intent" — needs a partnership deck and a deeper meeting.',
-    zh: "对方在沙龙上表达了对 AI 质检方案的兴趣；下一阶段目标为「达成试点意向」，需提供合作资料并安排一次深入会议。",
-  } as Copy,
-};
-
-const valueAToB: Copy[] = [
-  { en: "AI product capability & algorithm team", zh: "AI 产品能力与算法团队" },
-  { en: "Pilot partnership in the China market", zh: "中国市场试点合作机会" },
-];
-
-const valueBToA: Copy[] = [
-  { en: "Robotics hardware channels", zh: "机器人硬件渠道资源" },
-  { en: "Japan manufacturing network", zh: "日本制造业人脉网络" },
-  { en: "Industry tech endorsement", zh: "行业技术背书" },
-];
-
-const timelineDemo: { time: Copy; body: Copy; evidenceId?: string; muted?: boolean }[] = [
-  {
-    time: { en: "2026-06-12 · 14:20", zh: "2026-06-12 · 14:20" },
-    body: {
-      en: "Connection created by scanning her card at the Robotics Investor Salon",
-      zh: "于「机器人投资沙龙」扫描名片建立连接",
-    },
-    evidenceId: "evidence:business-card-review-source-hana",
-  },
-  {
-    time: { en: "2026-06-12 · 14:35", zh: "2026-06-12 · 14:35" },
-    body: {
-      en: "Exchanged contacts on-site, brief chat on AI inspection needs",
-      zh: "现场交换联系方式并简短交流 AI 质检需求",
-    },
-    evidenceId: "evidence:event-exchange-salon-0612",
-  },
-  {
-    time: { en: "2026-06-14 · 09:10", zh: "2026-06-14 · 09:10" },
-    body: { en: "Sent first email: post-event note + intro", zh: "发送首封邮件：会后问候 + 自我介绍" },
-    evidenceId: "evidence:message-draft-greeting-hana",
-  },
-  {
-    time: { en: "2026-07-04 · 16:48", zh: "2026-07-04 · 16:48" },
-    body: { en: "Sent company deck and AI inspection case studies", zh: "发送公司资料与 AI 质检案例集" },
-    evidenceId: "evidence:material-send-deck-0704",
-  },
-  {
-    time: { en: "Pending", zh: "待安排" },
-    body: { en: "Book a 30-min deep-dive meeting (not yet)", zh: "约一次 30 分钟深入会议（未发生）" },
-    muted: true,
-  },
-];
-
-const nextStep: Copy = {
-  en: 'Send the partnership deck and book a 30-min meeting to push toward the "pilot intent" stage. Follow-up needed.',
-  zh: "发送合作资料并预约一次 30 分钟会议，推动关系进入「达成试点意向」阶段。当前需跟进。",
-};
-
 const strengthMeta: Record<OrbitContactView["strength"], { cls: string; label: Copy }> = {
   strong: { cls: "nc-st-strong", label: { en: "Strong", zh: "强关系" } },
   medium: { cls: "nc-st-medium", label: { en: "Medium", zh: "中关系" } },
@@ -110,65 +47,13 @@ function StatusPill({ status, viewModel, t }: { status: OrbitContactPipelineStat
   return <span className={`nc-status nc-ps-${status}`}><span className="nc-dot" />{label}</span>;
 }
 
-// settable relationship stage — lets you advance the pipeline from the profile too
-function StatusPicker({ status, viewModel, onSet, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; onSet: (next: OrbitContactPipelineStatus) => void; t: Translate }) {
+function StatusPicker({ status, viewModel, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate }) {
   return (
     <span className="nc-status-pick">
       <span className="nc-sp-lbl">{t({ en: "Stage", zh: "关系阶段" })}</span>
-      {viewModel.pipelineStatuses.map((item) => (
-        <button
-          aria-pressed={status === item.value}
-          className={status === item.value ? "is-on" : ""}
-          key={item.value}
-          onClick={(event) => { event.preventDefault(); event.stopPropagation(); onSet(item.value); }}
-          type="button"
-        >
-          {status === item.value ? <span className="nc-dot" /> : null}{item.label}
-        </button>
-      ))}
+      <StatusPill status={status} t={t} viewModel={viewModel} />
+      <span className="nc-sp-readonly">{t({ en: "Source-backed · read only", zh: "来源数据 · 只读" })}</span>
     </span>
-  );
-}
-
-// —— sidebar (replicates the prototype `.crm-side`) ——
-function SideLink({ href, icon, label, count }: { href: string; icon: string; label: string; count?: number }) {
-  return (
-    <a
-      href={href}
-      style={{
-        alignItems: "center",
-        background: "transparent",
-        borderRadius: 11,
-        color: "var(--text-2)",
-        display: "flex",
-        fontFamily: "var(--ff)",
-        fontSize: 14,
-        fontWeight: 500,
-        gap: 12,
-        padding: "10px 12px",
-        textDecoration: "none",
-      }}
-    >
-      <Icon name={icon} size={19} stroke={1.7} />
-      <span style={{ flex: 1 }}>{label}</span>
-      {count != null ? <span style={{ fontFamily: "var(--ff-mono)", fontSize: 12, opacity: 0.8 }}>{count}</span> : null}
-    </a>
-  );
-}
-
-function CrmSide({ t }: { t: Translate }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div className="eyebrow" style={{ padding: "0 12px 10px" }}>{t({ en: "Contacts", zh: "名片夹" })}</div>
-      <SideLink href="/app/contacts" icon="wallet" label={t({ en: "All contacts", zh: "全部人脉" })} count={128} />
-      <SideLink href="/app/contacts/pipeline" icon="list" label={t({ en: "Pipeline", zh: "跟进管线" })} count={24} />
-      <SideLink href="/app/contacts/graph" icon="network" label={t({ en: "Network graph", zh: "人脉图谱" })} />
-      <SideLink href="/app/contacts/intros" icon="share" label={t({ en: "Introductions", zh: "引荐记录" })} count={6} />
-      <SideLink href="/app/contacts/dashboard" icon="grid" label={t({ en: "Dashboard", zh: "人脉表盘" })} />
-      <div className="eyebrow" style={{ margin: "18px 0 0", padding: "0 12px 10px" }}>{t({ en: "Capture", zh: "采集" })}</div>
-      <SideLink href="/app/contacts/new" icon="download" label={t({ en: "Import hub", zh: "导入中心" })} />
-      <SideLink href="/app/contacts/new" icon="scan" label={t({ en: "Scan card", zh: "扫名片" })} />
-    </div>
   );
 }
 
@@ -285,23 +170,21 @@ function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate })
   const theyOffer = (profile?.offering ?? []).filter(Boolean);
   const theySeek = (profile?.seeking ?? []).filter(Boolean);
   const hasReal = theyOffer.length > 0 || theySeek.length > 0;
-  const give = hasReal ? theySeek : valueAToB.map((item) => t(item));
-  const get = hasReal ? theyOffer : valueBToA.map((item) => t(item));
+  const give = theySeek;
+  const get = theyOffer;
 
   return (
     <div className="card nc-card-pad">
       <div className="nc-cardtitle">
         <Icon name="share" size={16} />
         <h2 className="h-section">{t({ en: "Two-way value", zh: "双向价值分析" })}</h2>
-        <Basis
-          kind={hasReal ? "evidence" : "ai"}
-          copy={
-            hasReal
-              ? { en: "Basis: both profiles' offering / seeking", zh: "依据：双方画像的 offering / seeking" }
-              : { en: "Basis: inferred from both profiles; editable", zh: "依据：由双方画像 offering/seeking 推断，可编辑" }
-          }
-          t={t}
-        />
+        {hasReal ? (
+          <Basis
+            kind="evidence"
+            copy={{ en: "Basis: contact profile offering / seeking", zh: "依据：联系人画像的 offering / seeking" }}
+            t={t}
+          />
+        ) : null}
       </div>
       <div className="nc-vblock nc-give">
         <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `You → ${name}`, zh: "我能为对方提供" })}</div>
@@ -323,65 +206,33 @@ function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate })
   );
 }
 
-function ProfileCard({ t }: { t: Translate }) {
-  const dots = Array.from({ length: stageDemo.total });
-  return (
-    <div className="card nc-card-pad">
-      <CardTitle icon="target">{t({ en: "Connection profile", zh: "关系画像" })}</CardTitle>
-      <div className="nc-stage-head">
-        <span className="chip chip-accent"><Icon name="network" size={14} />{t(rel)}</span>
-        <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: `Stage ${stageDemo.current} / ${stageDemo.total}`, zh: `阶段 ${stageDemo.current} / ${stageDemo.total}` })}</span>
-      </div>
-      <div className="nc-stage-track" role="img" aria-label={t({ en: `Stage ${stageDemo.current} of ${stageDemo.total}`, zh: `关系阶段进度 ${stageDemo.current}/${stageDemo.total}` })}>
-        {dots.map((_, index) => {
-          const on = index < stageDemo.current;
-          const cur = index === stageDemo.current - 1;
-          return <i className={`${on ? "on" : ""}${cur ? " cur" : ""}`.trim()} key={index} />;
-        })}
-      </div>
-      <div className="nc-stage-meta">
-        <span className="nc-cur-label">{t(stageDemo.label)}</span>
-        <span className="nc-step-n mono">{String(stageDemo.current).padStart(2, "0")}</span>
-        <Basis kind="evidence" copy={{ en: "Stage basis: card exchange + first message", zh: "阶段变更依据：现场交换名片 + 首次消息记录" }} evidenceId="evidence:stage-hana-0614" t={t} />
-      </div>
-      <p className="nc-stage-rationale">{t(stageDemo.rationale)}</p>
-    </div>
-  );
-}
-
 type TimelineItem = { time: string; body: string; evidenceId?: string; muted?: boolean };
 
 function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
-  // 有真实 notes 时用真实互动记录；否则回退到演示时间线。
-  const realItems: TimelineItem[] = (contact.notes ?? [])
+  const items: TimelineItem[] = (contact.notes ?? [])
     .filter((note) => note.body?.trim())
     .map((note) => ({ time: note.createdAt, body: note.body, evidenceId: note.id }));
-  const demoItems: TimelineItem[] = timelineDemo.map((item) => ({
-    time: t(item.time),
-    body: t(item.body),
-    evidenceId: item.evidenceId,
-    muted: item.muted,
-  }));
-  const items = realItems.length ? realItems : demoItems;
 
   return (
     <div className="card nc-card-pad">
       <CardTitle icon="clock">{t({ en: "Timeline", zh: "互动时间线" })}</CardTitle>
-      <div className="nc-timeline">
+      {items.length ? <div className="nc-timeline">
         {items.map((item, index) => (
           <div className={`nc-tl-item${item.muted ? " is-muted" : ""}`} key={`${item.body}-${index}`} style={item.muted ? { paddingBottom: 0 } : undefined}>
             <div className="nc-tl-time mono">{item.time}</div>
             <div className="nc-tl-body" style={item.muted ? { color: "var(--text-3)" } : undefined}>{item.body}</div>
             {item.evidenceId ? (
-              <a className="nc-tl-src" href="#" onClick={(event) => event.preventDefault()}>
+              <span className="nc-tl-src">
                 <Icon name="checkCircle" size={13} />
                 {t({ en: "Evidence", zh: "来源证据" })}
                 <span className="nc-eid mono">{item.evidenceId}</span>
-              </a>
+              </span>
             ) : null}
           </div>
         ))}
-      </div>
+      </div> : (
+        <p className="nc-empty-copy">{t({ en: "No sourced interaction evidence is available for this contact.", zh: "该联系人暂无可核验的互动证据。" })}</p>
+      )}
     </div>
   );
 }
@@ -396,28 +247,25 @@ function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: T
       <CardTitle icon="sparkle">{t({ en: "Next step", zh: "下一步建议" })}</CardTitle>
       <div className="nc-note">
         <Icon name="sparkle" size={16} />
-        <span>{text || t(nextStep)}</span>
-        {!compact ? (
+        <span>{text || t({ en: "No sourced next step is available.", zh: "暂无来源明确的下一步建议。" })}</span>
+        {!compact && real ? (
           <Basis
-            kind={reason ? "evidence" : "ai"}
+            kind="evidence"
             align="right"
             evidenceId={real?.evidenceId}
             copy={
               reason
                 ? { en: `Basis: ${reason}`, zh: `依据：${reason}` }
-                : { en: "Basis: open promise + stage 'needs discovered'", zh: "依据：承诺发资料未兑现 + 关系停在“已发现需求”" }
+                : { en: "Basis: sourced contact record", zh: "依据：联系人来源记录" }
             }
             t={t}
           />
         ) : null}
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-        <a className={`btn btn-primary btn-sm${compact ? " btn-block" : ""}`} href="#" onClick={(event) => event.preventDefault()}>
-          <Icon name="calendar" size={16} />{t({ en: "Book meeting", zh: "预约会议" })}
+        <a className={`btn btn-quiet btn-sm${compact ? " btn-block" : ""}`} href="/app/contacts/pipeline">
+          {t({ en: "View pipeline", zh: "查看跟进管线" })}
         </a>
-        {!compact ? (
-          <a className="btn btn-quiet btn-sm" href="/app/contacts/pipeline">{t({ en: "Add to pipeline", zh: "加入跟进管线" })}</a>
-        ) : null}
       </div>
     </div>
   );
@@ -434,7 +282,6 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
     language: language === "zh" ? "zh" : "en",
   });
   const [toast, setToast] = useState<string | null>(null);
-  const [status, setStatus] = useState<OrbitContactPipelineStatus>(contact.pipelineStatus);
 
   useEffect(() => {
     if (!toast) return;
@@ -450,12 +297,6 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
     });
     setToast(t({ en: "Draft started in inbox", zh: "已在收件箱开始起草" }));
   };
-  const setStage = (next: OrbitContactPipelineStatus) => {
-    setStatus(next);
-    const label = viewModel.pipelineStatuses.find((item) => item.value === next)?.label ?? "";
-    setToast(t({ en: `Stage updated → ${label}`, zh: `已更新关系阶段 → ${label}` }));
-  };
-
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
       <OrbitCardsInteractions />
@@ -476,7 +317,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                 </div>
                 <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 10 }}>{crmRole(contact, t)}</div>
                 <div className="nc-hero-meta">
-                  <StatusPicker status={status} viewModel={viewModel} onSet={setStage} t={t} />
+                  <StatusPicker status={contact.pipelineStatus} viewModel={viewModel} t={t} />
                   <StrengthTag strength={contact.strength} t={t} />
                   {contact.met ? (
                     <span style={{ color: "var(--text-3)", fontSize: 13 }}>· {t({ en: "Met at", zh: "认识于" })} {contact.met}</span>
@@ -484,7 +325,6 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                 </div>
               </div>
               <div className="nc-hero-cta">
-                <a className="btn btn-ghost" href="#" onClick={(event) => event.preventDefault()}><Icon name="edit" size={16} />{t({ en: "Edit", zh: "编辑" })}</a>
                 <a className="btn btn-soft" data-agent-context="contact" href={askAgentHref}><Icon name="sparkle" size={16} />{t({ en: "Ask iOrbit", zh: "问 iOrbit" })}</a>
                 <button className="btn btn-primary" data-inbox-compose onClick={draftEmail} type="button"><Icon name="mail" size={16} />{t({ en: "Draft email", zh: "起草邮件" })}</button>
               </div>
@@ -498,7 +338,6 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                 <TwoWayCard contact={contact} t={t} />
               </div>
               <div className="nc-stack">
-                <ProfileCard t={t} />
                 <TimelineCard contact={contact} t={t} />
                 <NextStepCard contact={contact} t={t} />
               </div>
@@ -528,7 +367,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
               </div>
               <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>{crmRole(contact, t)}</div>
               <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                <StatusPicker status={status} viewModel={viewModel} onSet={setStage} t={t} />
+                <StatusPicker status={contact.pipelineStatus} viewModel={viewModel} t={t} />
                 <StrengthTag strength={contact.strength} t={t} />
               </div>
             </div>
@@ -544,7 +383,6 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             <ContactCard contact={contact} t={t} />
             <TagsCard contact={contact} t={t} />
             <TwoWayCard contact={contact} t={t} />
-            <ProfileCard t={t} />
             <TimelineCard contact={contact} t={t} />
             <NextStepCard compact contact={contact} t={t} />
           </div>
@@ -585,10 +423,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 
 [data-orbit-real-page] .nc-status-pick { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
 [data-orbit-real-page] .nc-status-pick .nc-sp-lbl { font-size:12px; font-weight:600; color:var(--text-3); }
-[data-orbit-real-page] .nc-status-pick button { display:inline-flex; align-items:center; gap:5px; height:26px; padding:0 11px; border-radius:var(--r-pill); border:1px solid var(--border); background:var(--surface-2); color:var(--text-3); font-size:12.5px; font-weight:600; cursor:pointer; transition:background .15s, color .15s, border-color .15s; }
-[data-orbit-real-page] .nc-status-pick button:hover { color:var(--text); border-color:var(--border-2); }
-[data-orbit-real-page] .nc-status-pick button.is-on { background:var(--accent-soft); border-color:var(--accent-ring); color:var(--accent); }
-[data-orbit-real-page] .nc-status-pick button .nc-dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+[data-orbit-real-page] .nc-sp-readonly { color:var(--text-4); font-size:11.5px; }
 
 [data-orbit-real-page] .nc-cols { display:grid; grid-template-columns:1fr 1.25fr; gap:24px; align-items:start; }
 [data-orbit-real-page] .nc-stack { display:flex; flex-direction:column; gap:16px; }
@@ -649,6 +484,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 [data-orbit-real-page] .nc-about-prompt { display:grid; grid-template-columns:16px 1fr; gap:8px; align-items:start; font-size:13px; color:var(--text-2); line-height:1.45; }
 [data-orbit-real-page] .nc-about-prompt svg { color:var(--accent); margin-top:2px; flex-shrink:0; }
 [data-orbit-real-page] .nc-vitem.nc-vitem-empty { display:block; color:var(--text-3); font-size:13px; }
+[data-orbit-real-page] .nc-empty-copy { color:var(--text-3); font-size:13px; line-height:1.55; margin:0; }
 ` }} />
     </main>
   );

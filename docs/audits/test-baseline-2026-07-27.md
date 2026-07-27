@@ -2,21 +2,20 @@
 
 Command: `npm test` in `repos/orbits`
 
-- Tests: 1,204
-- Passed: 1,135
-- Failed: 69
+- Tests: 1,213
+- Passed: 1,156
+- Failed: 57
 - Skipped/cancelled/todo: 0
-- Duration: 33.1 seconds
+- Duration: 33.6 seconds
 - Production build and TypeScript: passed separately.
 
-The current rerun added two passing regressions for the Party industry filter and the Admin/Platform read-only action boundaries. It retained every classified failure name from the preceding 1,202-test baseline, so no new failure was introduced.
+The current rerun adds coverage for source-backed Chat composition, fail-closed Live inbox behavior, canonical registration redirects, contact action honesty, and removed proactive fixtures. Eleven obsolete Chat/Mock/proactive contract failures were resolved and no new failure identity remains.
 
 Classification totals:
 
 | Category | Failures | Current interpretation |
 | --- | ---: | --- |
-| agent-legacy-contract | 25 | Tests lock an older Agent composition/DOM contract and require requirement-by-requirement reconciliation, not bulk deletion. |
-| chat-legacy-contract | 9 | Tests expect an older Chat/Inbox adapter and Mock boundary. |
+| agent-legacy-contract | 24 | Tests lock an older Agent composition/DOM contract and require requirement-by-requirement reconciliation, not bulk deletion. |
 | landing-home-legacy-contract | 8 | Tests expect older root/home composition and responsive layout. |
 | design-scale-ratchet | 4 | Current source exceeds literal design-token ratchets. |
 | reference-css-contract | 4 | Tests expect the extracted stylesheet route while current product composition differs. |
@@ -27,9 +26,7 @@ Classification totals:
 | event-detail-legacy-contract | 2 | Event detail desktop/mobile hierarchy contract drift. |
 | live-provider-contract | 1 | Live AI provider failure boundary differs from the test expectation. |
 | organizer-legacy-contract | 1 | Organizer page loader contract drift. |
-| proactive-legacy-contract | 1 | Proactive route composition contract drift. |
 | sample-data-ratchet | 1 | Legacy route sample-record scan still finds a violation. |
-| mock-boundary-contract | 1 | Production-reachable Mock import/factory rule fails. |
 | scaffold-contract | 1 | App Router scaffold source contract drift. |
 | theme-contract | 1 | Theme control icon contract drift. |
 | prototype-mapping-contract | 1 | Prototype-to-product route mapping contract drift. |
@@ -65,19 +62,11 @@ Every failing test:
 | agent-legacy-contract | /app/agent GET q=今日待办 renders the answered to-do state above the launcher | open-baseline |
 | agent-legacy-contract | /app/agent source exposes to-do prompt affordances without owning business logic | open-baseline |
 | agent-legacy-contract | /app/agent input has an explicit to-do capable accessible name | open-baseline |
-| chat-legacy-contract | /app/chat page renders the real Orbit chat route adapter | open-baseline |
-| chat-legacy-contract | chat route adapter feeds live conversation context into OrbitRealAgent | open-baseline |
-| chat-legacy-contract | /app/chat renders an async relationship inbox and selected correspondence thread | open-baseline |
-| chat-legacy-contract | /app/chat can select the Aoba thread from the conversation query | open-baseline |
-| chat-legacy-contract | /app/chat remains mock-backed when the wider app module mode is live | open-baseline |
-| chat-legacy-contract | /app/chat action preview stages the reply and states no external side effect occurred | open-baseline |
-| chat-legacy-contract | /app/chat shows a local not-found state for an invalid conversation query | open-baseline |
-| chat-legacy-contract | app chat route owns UI composition without importing dev or Orbit Agent chat shells | open-baseline |
 | asset-manifest-contract | root landing activity and event cards render manifest images with alt text | open-baseline |
 | asset-manifest-contract | event list and event detail render manifest scene and avatar images | open-baseline |
 | asset-manifest-contract | contact list and contact detail render manifest avatar images | open-baseline |
-| event-detail-legacy-contract | /app/events/event_001 renders the restored desktop event detail hierarchy | open-baseline |
-| event-detail-legacy-contract | /app/events/event_001 keeps mobile detail content reachable without collapsed defaults | open-baseline |
+| event-detail-legacy-contract | /app/events/event_001 explicit preview renders the restored desktop event detail hierarchy | open-baseline |
+| event-detail-legacy-contract | /app/events/event_001 explicit preview keeps mobile detail content reachable without collapsed defaults | open-baseline |
 | landing-home-legacy-contract | web root owns the integrated Orbit Agent landing route | open-baseline |
 | landing-home-legacy-contract | web root renders Orbit Agent before activity and event context | open-baseline |
 | landing-home-legacy-contract | web root event cards link to distinct event detail ids | open-baseline |
@@ -87,9 +76,6 @@ Every failing test:
 | landing-home-legacy-contract | app home desktop grid preserves web rail beside events on medium-width screens | open-baseline |
 | landing-home-legacy-contract | app home mobile event rows keep long event titles readable | open-baseline |
 | organizer-legacy-contract | /app/o/[slug] page uses a live-capable organizer loader instead of the legacy landing view model | open-baseline |
-| chat-legacy-contract | /app/chat surfaces proactive calendar messages as a local inbox section linked to Orbit Agent | open-baseline |
-| agent-legacy-contract | /app/agent opens the proactive message as a localized context conversation | open-baseline |
-| proactive-legacy-contract | proactive route composition stays out of API routes and presenter-only files | open-baseline |
 | agent-legacy-contract | Orbit agent submit controls remain hittable while blank prompts are guarded in handlers | open-baseline |
 | agent-legacy-contract | Orbit agent gates responsive chat layout and exposes request state | open-baseline |
 | sample-data-ratchet | legacy route files no longer embed old product sample records | open-baseline |
@@ -97,7 +83,6 @@ Every failing test:
 | reference-css-contract | Orbit reference stylesheet route serves extracted prototype CSS | open-baseline |
 | reference-css-contract | Orbit reference stylesheet route short-circuits matching cache validators | open-baseline |
 | reference-css-contract | Orbit reference stylesheet route disables browser caching in development | open-baseline |
-| mock-boundary-contract | production routes and app pages obtain mock implementations only through service factories | open-baseline |
 | scaffold-contract | scaffold exposes the runnable Next.js App Router contract | open-baseline |
 | button-style-ratchet | the five T5 core surfaces have no non-.btn `<button>` outside the documented exemption list | open-baseline |
 | button-style-ratchet | EXEMPTIONS stays in sync with source — every entry still points at a real non-.btn `<button>` | open-baseline |

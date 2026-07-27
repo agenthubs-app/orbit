@@ -1,8 +1,8 @@
 /**
  * Chat 页 route adapter。
  *
- * route 只负责挂载样式/runtime。统一后的视觉里 /app/chat 与 /app/agent 共用
- * OrbitRealAgent；数据仍走 live 的 chat route view model。
+ * route 只负责加载 live-capable chat view model、挂载独立会话工作区和失败边界。
+ * Agent 保持自己的交互壳，两条路由共享数据服务但不再混用页面组件。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -14,8 +14,7 @@ import {
   type AppChatRouteStateViewModel,
   type AppChatSearchParams,
 } from "./compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model";
-import { chatRouteToOrbitAgentViewModel } from "./compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
-import { OrbitRealAgent } from "../agent/orbit-real-agent";
+import { ChatWorkspace } from "./chat-workspace";
 
 async function getChatPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -88,11 +87,9 @@ export default async function AppChatPage({
       <OrbitVisualFreezeRuntime />
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-chat-route">
-          <OrbitRealAgent
-            viewModel={localizeOrbitTree(
-              chatRouteToOrbitAgentViewModel(routeModel),
-              language,
-            )}
+          <ChatWorkspace
+            language={language}
+            workspace={localizeOrbitTree(routeModel.workspace, language)}
           />
         </div>
       ) : (

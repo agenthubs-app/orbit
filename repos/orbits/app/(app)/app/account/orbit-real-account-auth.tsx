@@ -171,7 +171,7 @@ export function OrbitRealAccountAuth({
 
   return (
     <main className="orbit-account-auth-page" data-orbit-real-page>
-      <div className="orbit-account-auth-backdrop" onClick={handleClose} />
+      <div aria-hidden="true" className="orbit-account-auth-backdrop" onClick={handleClose} />
       <section
         aria-label={viewModel.title}
         aria-modal="true"

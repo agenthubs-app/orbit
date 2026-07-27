@@ -1,34 +1,11 @@
-/**
- * 邀请码注册页 route adapter。
- *
- * route 读取 URL 中的 `code` 参数，交给 live-capable 注册 route loader
- * 组合活动和个人资料上下文，再交给注册表单渲染。
- */
+/** Legacy invite-code adapter into the canonical event registration workspace. */
+import { redirect } from "next/navigation";
 import { StateView } from "../../../../shared/ui/state-view";
-import type { OrbitLanguage } from "../orbit-language-core";
-import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
-import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import {
   loadAppRegisterRouteViewModel,
   type AppRegisterRouteStateViewModel,
   type AppRegisterSearchParams,
 } from "./compose-app-register-from-previously-approved-mock-first-capabilities/register-route-view-model";
-import { OrbitRealRegister } from "./orbit-real-register";
-
-async function getRegisterPageLanguage(): Promise<OrbitLanguage> {
-  try {
-    return await getOrbitServerLanguage();
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("outside a request scope")
-    ) {
-      return "zh";
-    }
-
-    throw error;
-  }
-}
 
 function RegisterRouteStateBoundary({
   routeState,
@@ -66,21 +43,22 @@ export default async function AppRegisterPage({
   const routeModel = await loadAppRegisterRouteViewModel({
     searchParams: query,
   });
-  const language =
-    routeModel.state === "success" ? await getRegisterPageLanguage() : "zh";
 
-  return (
-    <>
-      <OrbitReferenceStyles />
-      {routeModel.state === "success" ? (
-        <div data-orbit-route="app-register-route">
-          <OrbitRealRegister
-            viewModel={localizeOrbitTree(routeModel.register, language)}
-          />
-        </div>
-      ) : (
-        <RegisterRouteStateBoundary routeState={routeModel.routeState} />
-      )}
-    </>
-  );
+  if (routeModel.state === "success") {
+    const destination = new URLSearchParams();
+    const language = Array.isArray(query.language)
+      ? query.language[0]
+      : query.language;
+    const mode = Array.isArray(query.mode) ? query.mode[0] : query.mode;
+
+    if (language) destination.set("language", language);
+    if (mode === "mock") destination.set("mode", mode);
+
+    const suffix = destination.size > 0 ? `?${destination.toString()}` : "";
+    redirect(
+      `/app/events/${encodeURIComponent(routeModel.register.event.id)}/register${suffix}`,
+    );
+  }
+
+  return <RegisterRouteStateBoundary routeState={routeModel.routeState} />;
 }

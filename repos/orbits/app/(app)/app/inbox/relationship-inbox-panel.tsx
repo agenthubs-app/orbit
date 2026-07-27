@@ -18,11 +18,9 @@ import { Avatar, Icon } from "../orbit-reference-primitives";
 import {
   toCreatedThread,
   toInboxPanelViewModel,
-  toProactiveAlerts,
   toReminderAlerts,
   unreadThreadCount,
   type InboxPanelViewModel,
-  type InboxProactiveAlert,
   type InboxReminderAlert,
   type InboxThreadDetail,
   type InboxThreadListItem,
@@ -112,54 +110,27 @@ function initialOf(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-// badge 聚合：未读对话数 + 待处理提醒（reminders + proactive）数。fail-closed 返回 0。
+// badge 聚合：未读对话数 + 来源明确的待处理提醒数。fail-closed 返回 0。
 async function fetchBadgeCount(language: OrbitLanguage): Promise<number> {
   try {
-    const [inbox, reminders, proactive] = await Promise.all([
+    const [inbox, reminders] = await Promise.all([
       fetchInboxWorkspace(undefined, language).catch(() => null),
       fetchReminderAlerts(language),
-      fetchProactiveAlerts(language),
     ]);
     const unreadThreads = inbox ? unreadThreadCount(inbox.threads) : 0;
-    return unreadThreads + reminders.length + proactive.length;
+    return unreadThreads + reminders.length;
   } catch {
     return 0;
   }
 }
 
-function chineseDemoMessageDraft(input: {
-  recipientName: string;
-  organization: string;
-}): { subject: string; body: string } {
-  const recipientName = input.recipientName.trim() || "您好";
-  const organization = input.organization.trim() || "相关合作";
-
-  return {
-    subject: `关于${organization}的跟进`,
-    body: [
-      `${recipientName}，您好：`,
-      "",
-      `我想基于目前已经整理好的关系背景，继续跟进与${organization}相关的沟通。`,
-      "",
-      "这边已经整理好可复核的来源线索和下一步确认事项，想先和您确认是否方便继续推进。",
-      "",
-      "在任何消息真正发出前，我会先完成来源证据与确认要求的复核。",
-    ].join("\n"),
-  };
-}
-
-// 用 message-draft-generator 生成首封草稿（subject + body），供发起新对话预填。
-// 中文演示环境使用本地中文模板，避免 live/mock draft service 返回英文 fixture。
-// 只生成可复核草稿，不发送。失败时返回 null。
+// 用 message-draft-generator 生成首封规则草稿（subject + body），供发起新对话预填。
+// 所有语言都走同一个运行时边界；页面不再用本地模板伪装服务成功。
 export async function generateMessageDraft(input: {
   language: OrbitLanguage;
   recipientName: string;
   organization: string;
 }): Promise<{ subject: string; body: string } | null> {
-  if (input.language === "zh") {
-    return chineseDemoMessageDraft(input);
-  }
-
   try {
     const response = await fetch("/api/message-drafts", {
       method: "POST",
@@ -167,6 +138,10 @@ export async function generateMessageDraft(input: {
       body: JSON.stringify({
         draftKind: "follow_up",
         channel: "email",
+        contextNote:
+          input.language === "zh"
+            ? "The operator interface language is Chinese. Review and localize this rule-based draft before use."
+            : "Review this rule-based draft before use.",
         recipientName: input.recipientName,
         organization: input.organization,
       }),
@@ -217,7 +192,7 @@ async function createThreadFromDraft(
   }
 }
 
-// AI 礼貌改写：把当前草稿文本交给 chat writing-assist（确定性，非真实 AI provider）。
+// 规则礼貌改写：把当前草稿文本交给 chat writing-assist 的来源数据规则。
 // 返回改写后的建议文本；失败时返回 null，由调用方保持原文。
 async function rewriteDraft(input: {
   conversationId: string;
@@ -293,42 +268,19 @@ async function fetchReminderAlerts(
   }
 }
 
-async function fetchProactiveAlerts(
-  language: OrbitLanguage,
-): Promise<readonly InboxProactiveAlert[]> {
-  try {
-    // GET 返回演示用的主动 nudge（内置 demo 信号），无需构造 signal。
-    const response = await fetch("/api/ai/proactive-turns", {
-      headers: { accept: "application/json" },
-    });
-    const envelope = (await response.json()) as { success?: boolean; data?: unknown };
-    if (!response.ok || envelope.success !== true || !envelope.data) {
-      return [];
-    }
-    return toProactiveAlerts(
-      envelope.data as Parameters<typeof toProactiveAlerts>[0],
-      language,
-    );
-  } catch {
-    return [];
-  }
-}
-
 function AlertsTab() {
   const { t, language } = useOrbitLanguage();
   const [state, setState] = useState<"loading" | "ready">("loading");
   const [reminders, setReminders] = useState<readonly InboxReminderAlert[]>([]);
-  const [proactive, setProactive] = useState<readonly InboxProactiveAlert[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let active = true;
     setState("loading");
-    Promise.all([fetchReminderAlerts(language), fetchProactiveAlerts(language)])
-      .then(([reminderAlerts, proactiveAlerts]) => {
+    fetchReminderAlerts(language)
+      .then((reminderAlerts) => {
         if (!active) return;
         setReminders(reminderAlerts);
-        setProactive(proactiveAlerts);
         setState("ready");
       })
       .catch(() => {
@@ -351,35 +303,13 @@ function AlertsTab() {
   }
 
   const visibleReminders = reminders.filter((item) => !dismissed.has(item.id));
-  const visibleProactive = proactive.filter((item) => !dismissed.has(item.id));
 
-  if (!visibleReminders.length && !visibleProactive.length) {
-    return <EmptyState hint={t({ en: "Reminders and proactive nudges will appear here.", zh: "提醒和主动提示会显示在这里。" })} icon="bell" title={t({ en: "All clear", zh: "暂无提醒" })} />;
+  if (!visibleReminders.length) {
+    return <EmptyState hint={t({ en: "Source-backed reminders will appear here.", zh: "来源明确的提醒会显示在这里。" })} icon="bell" title={t({ en: "All clear", zh: "暂无提醒" })} />;
   }
 
   return (
     <div className="ri-alerts">
-      {visibleProactive.length ? (
-        <div className="ri-alert-group">
-          <div className="ri-alert-eyebrow">{t({ en: "From Orbit AI", zh: "来自 Orbit AI" })}</div>
-          {visibleProactive.map((alert) => (
-            <div className="ri-alert ri-alert-proactive" key={alert.id}>
-              <div className="ri-alert-main">
-                <div className="ri-alert-title">{alert.title}</div>
-                <div className="ri-alert-body">{alert.body}</div>
-                <a className="ri-alert-link" href={alert.href}>
-                  <Icon name="sparkle" size={13} />
-                  {alert.actionLabel}
-                </a>
-              </div>
-              <button aria-label={t({ en: "Dismiss", zh: "忽略" })} className="ri-alert-dismiss" onClick={() => dismiss(alert.id)} type="button">
-                <Icon name="x" size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
       {visibleReminders.length ? (
         <div className="ri-alert-group">
           <div className="ri-alert-eyebrow">{t({ en: "Reminders", zh: "跟进提醒" })}</div>
@@ -444,9 +374,8 @@ function ThreadRow({
   );
 }
 
-// 回复草稿编辑器：本地编辑 + AI 改写 + 发送（需确认）。
-// 发送只把草稿转成本地暂存预览（staged_local_preview 语义），不发送任何真实消息，
-// 不触发外部副作用。这是页面内"给人脉发信息"的往来回复环节。
+// 回复草稿编辑器：本地编辑 + 规则改写 + 暂存复核。
+// 暂存只在当前界面保留预览，不发送、不持久化，也不触发外部副作用。
 function ReplyComposer({
   detail,
   t,
@@ -513,11 +442,11 @@ function ReplyComposer({
       <div className="ri-composer-actions">
         <button className="btn btn-ghost btn-sm" disabled={rewriting || !body.trim()} onClick={onRewrite} type="button">
           <Icon name="sparkle" size={15} />
-          {rewriting ? t({ en: "Rewriting…", zh: "改写中…" }) : t({ en: "AI rewrite", zh: "AI 改写" })}
+          {rewriting ? t({ en: "Rewriting…", zh: "改写中…" }) : t({ en: "Rule-based rewrite", zh: "规则改写" })}
         </button>
         <button className="btn btn-primary btn-sm" disabled={!body.trim()} onClick={() => setStaged(true)} style={{ flex: 1, justifyContent: "center" }} type="button">
           <Icon name="mail" size={15} />
-          {t({ en: "Send (confirm)", zh: "发送（需确认）" })}
+          {t({ en: "Stage for review", zh: "暂存待复核" })}
         </button>
       </div>
     </div>
@@ -637,7 +566,7 @@ function ThreadContextRail({
   );
 }
 
-// 发起新对话：填写收件人 → AI 生成草稿 → 确认创建 staged 线程。
+// 发起新对话：填写收件人 → 规则生成草稿 → 确认创建 staged 线程。
 // 生成走 message-draft-generator，创建走 async createConversationFromDraft，
 // 全程草稿优先、不发送、无外部副作用。
 function NewThreadForm({
@@ -722,7 +651,7 @@ function NewThreadForm({
 
       <button className="btn btn-ghost btn-sm" disabled={!recipient.trim() || busy !== "idle"} onClick={onGenerate} type="button">
         <Icon name="sparkle" size={15} />
-        {busy === "generating" ? t({ en: "Generating…", zh: "生成中…" }) : t({ en: "Generate draft", zh: "AI 生成草稿" })}
+        {busy === "generating" ? t({ en: "Generating…", zh: "生成中…" }) : t({ en: "Generate rule-based draft", zh: "生成规则草稿" })}
       </button>
 
       <label className="ri-new-label">{t({ en: "Subject", zh: "主题" })}</label>

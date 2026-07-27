@@ -7,6 +7,7 @@ import {
 } from "../../app/(app)/app/inbox/inbox-panel-view-model";
 import type { ReminderScheduleNotificationPayload } from "../../features/notifications/contract";
 import type { OrbitAiProactiveAgentPayload } from "../../features/orbit-ai/proactive-contract";
+import { createFixtureOrbitAiProactiveAgentService } from "../../features/orbit-ai/mock-proactive-service";
 
 test("notifications API returns reminders that never deliver", async () => {
   const route = await import("../../app/api/notifications/route");
@@ -67,31 +68,29 @@ test("reminder alerts show contact names instead of internal contact ids", () =>
   assert.doesNotMatch(alerts[0]?.title ?? "", /contact_\d+/);
 });
 
-test("proactive-turns API returns an in-app nudge with no external side effect", async () => {
+test("proactive-turns API does not expose a fixture-backed production GET", async () => {
   const route = await import("../../app/api/ai/proactive-turns/route");
-  const response = await route.GET();
-  const body = (await response.json()) as {
-    success: boolean;
-    data: OrbitAiProactiveAgentPayload;
-  };
+  const routeSource = await import("node:fs").then((fs) =>
+    fs.readFileSync(
+      new URL("../../app/api/ai/proactive-turns/route.ts", import.meta.url),
+      "utf8",
+    ),
+  );
 
-  assert.equal(response.status, 200);
-  assert.equal(body.success, true);
-  assert.ok(body.data.message.content.length > 0);
-  // 安全账本：主动提示不投递、不联网、不调外部 provider。
-  assert.equal(body.data.provenance.safety.notificationDelivered, false);
-  assert.equal(body.data.provenance.safety.externalNetworkRequested, false);
-  assert.equal(body.data.provenance.safety.externalSideEffectsExecuted, false);
+  assert.equal("GET" in route, false);
+  assert.doesNotMatch(routeSource, /createFixtureOrbitAiProactiveAgentService/);
+  assert.match(routeSource, /export async function POST/);
 });
 
-test("proactive alerts view model maps a turn to a nudge with an action link", async () => {
-  const route = await import("../../app/api/ai/proactive-turns/route");
-  const response = await route.GET();
-  const body = (await response.json()) as {
-    data: OrbitAiProactiveAgentPayload;
-  };
+test("proactive alerts view model maps an explicit test fixture to a nudge with an action link", () => {
+  const result = createFixtureOrbitAiProactiveAgentService().createProactiveTurn();
 
-  const alerts = toProactiveAlerts(body.data);
+  assert.equal(result.success, true);
+  if (result.success === false) return;
+
+  const alerts = toProactiveAlerts(
+    result.data as OrbitAiProactiveAgentPayload,
+  );
 
   assert.equal(alerts.length, 1);
   assert.ok(alerts[0].body.length > 0);

@@ -85,9 +85,9 @@ function assertMobileLayoutContract(html: string): void {
   );
 }
 
-test("/app/events/event_001 renders the restored desktop event detail hierarchy", async () => {
+test("/app/events/event_001 explicit preview renders the restored desktop event detail hierarchy", async () => {
   const html = await withModuleMode("live", () =>
-    renderEventDetailPage("event_001"),
+    renderEventDetailPage("event_001", { language: "en", mode: "mock" }),
   );
 
   assert.match(html, /data-orbit-real-page="event-detail"/);
@@ -116,9 +116,9 @@ test("/app/events/event_001 renders the restored desktop event detail hierarchy"
   assert.doesNotMatch(html, /aria-expanded="false"/);
 });
 
-test("/app/events/event_001 keeps mobile detail content reachable without collapsed defaults", async () => {
+test("/app/events/event_001 explicit preview keeps mobile detail content reachable without collapsed defaults", async () => {
   const html = await withModuleMode("live", () =>
-    renderEventDetailPage("event_001"),
+    renderEventDetailPage("event_001", { language: "en", mode: "mock" }),
   );
 
   assert.match(html, /data-event-detail-mobile="hero"/);

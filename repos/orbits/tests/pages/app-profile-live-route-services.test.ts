@@ -111,6 +111,21 @@ test("/app/profile page renders the real Orbit profile editor", () => {
   assert.match(profileSource, /data-orbit-real-page="profile"/);
 });
 
+test("profile editor uses API extraction and save readback instead of timed success", () => {
+  const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+
+  assert.match(profileSource, /fetch\("\/api\/profile"/);
+  assert.match(profileSource, /method: "PUT"/);
+  assert.match(profileSource, /cache: "no-store"/);
+  assert.match(profileSource, /profileReadbackMatches/);
+  assert.match(profileSource, /\/api\/profile\/extractions\/resume/);
+  assert.match(profileSource, /\/api\/profile\/extractions\/business-card/);
+  assert.match(profileSource, /type="file"/);
+  assert.match(profileSource, /Your profile was not changed/);
+  assert.doesNotMatch(profileSource, /fakeExtract|window\.setTimeout/);
+  assert.doesNotMatch(profileSource, /setMessage\(t\(\{ en: "Saved\."/);
+});
+
 test("/app/profile page applies the founder's Chinese matching profile copy", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
 

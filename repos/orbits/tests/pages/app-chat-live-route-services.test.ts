@@ -146,21 +146,23 @@ test("chat adjunct live storage adapters reuse the configured chat record store"
 test("/app/chat page renders the real Orbit chat route adapter", async () => {
   const pageSource = source("app/(app)/app/chat/page.tsx");
 
-  assert.match(pageSource, /loadAppAsyncChatCommandCenterViewModel/);
-  assert.match(pageSource, /ChatCommandCenter/);
-  assert.doesNotMatch(pageSource, /chatRouteToOrbitAgentViewModel/);
-  assert.doesNotMatch(pageSource, /OrbitRealAgent/);
-  assert.doesNotMatch(pageSource, /StateView/);
+  assert.match(pageSource, /loadAppChatRouteViewModel/);
+  assert.match(pageSource, /ChatWorkspace/);
+  assert.match(pageSource, /StateView/);
+  assert.doesNotMatch(pageSource, /loadAppAsyncChatCommandCenterViewModel/);
+  assert.doesNotMatch(
+    pageSource,
+    /ChatCommandCenter|chatRouteToOrbitAgentViewModel|OrbitRealAgent/,
+  );
   assert.doesNotMatch(pageSource, /getOrbitAgentViewModel/);
 
   await withUnconfiguredLiveChat(async () => {
     const Page = (await import("../../app/(app)/app/chat/page")).default;
     const html = renderToStaticMarkup(await Page());
 
-    assert.match(html, /data-orbit-route="app-chat-route"/);
-    assert.match(html, /class="app-chat-command-center"/);
-    assert.match(html, /data-chat-state="ready"/);
-    assert.doesNotMatch(html, /Chat workspace could not load/);
+    assert.match(html, /data-orbit-route="app-chat-route-state"/);
+    assert.match(html, /Chat workspace could not load/);
+    assert.doesNotMatch(html, /app-chat-command-center|Relationship inbox/);
   });
 });
 
@@ -185,10 +187,7 @@ test("chat route adapter feeds live conversation context into OrbitRealAgent", a
 
     const viewModel = chatRouteToOrbitAgentViewModel(routeModel);
 
-    assert.match(
-      viewModel.history.map((item) => item.title).join(" "),
-      new RegExp(routeModel.workspace.selectedConversation.participantName),
-    );
+    assert.deepEqual(viewModel.history, []);
     assert.match(
       viewModel.suggests.map((item) => item.q).join(" "),
       new RegExp(routeModel.workspace.selectedConversation.participantName),
@@ -200,7 +199,6 @@ test("chat route adapter feeds live conversation context into OrbitRealAgent", a
 
     assert.match(html, /data-orbit-real-page="agent"/);
     assert.match(html, /我是 iOrbit/);
-    assert.match(html, new RegExp(routeModel.workspace.selectedConversation.participantName));
     assert.doesNotMatch(html, /class="app-chat-route"/);
     assert.doesNotMatch(html, /data-state-boundary="app-chat-success"/);
     assert.doesNotMatch(html, /<details(?:\s|>)/i);

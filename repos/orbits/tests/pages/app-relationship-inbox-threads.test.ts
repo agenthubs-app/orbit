@@ -4,6 +4,24 @@ import test from "node:test";
 import { toInboxPanelViewModel } from "../../app/(app)/app/inbox/inbox-panel-view-model";
 import type { AsyncConversationWorkspacePayload } from "../../features/chat/contract";
 
+async function withRelationshipInboxMode<T>(
+  mode: "live" | "mock",
+  run: () => Promise<T>,
+): Promise<T> {
+  const previousMode = process.env.ORBIT_MODULE_MODE;
+
+  try {
+    process.env.ORBIT_MODULE_MODE = mode;
+    return await run();
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.ORBIT_MODULE_MODE;
+    } else {
+      process.env.ORBIT_MODULE_MODE = previousMode;
+    }
+  }
+}
+
 test("relationship inbox API returns a correspondence workspace envelope", async () => {
   const route = await import("../../app/api/chat/relationship-inbox/route");
   const response = await route.GET(
@@ -25,6 +43,42 @@ test("relationship inbox API returns a correspondence workspace envelope", async
   assert.equal(body.data.sideEffects.notificationDelivered, false);
   assert.equal(body.data.sideEffects.networkRequestMade, false);
   assert.equal(body.data.draftReply.externalSendStatus, "not_requested");
+});
+
+test("relationship inbox fails closed in live mode instead of returning mock threads", async () => {
+  await withRelationshipInboxMode("live", async () => {
+    const route = await import("../../app/api/chat/relationship-inbox/route");
+    const getResponse = await route.GET(
+      new Request("https://orbit.local/api/chat/relationship-inbox"),
+    );
+    const getBody = (await getResponse.json()) as {
+      success: boolean;
+      error: {
+        code: string;
+        context?: Record<string, string>;
+      };
+    };
+
+    assert.equal(getResponse.status, 503);
+    assert.equal(getBody.success, false);
+    assert.equal(getBody.error.code, "SERVICE_UNAVAILABLE");
+    assert.equal(getBody.error.context?.availableModes, "mock");
+    assert.equal(getBody.error.context?.mode, "live");
+
+    const postResponse = await route.POST(
+      new Request("https://orbit.local/api/chat/relationship-inbox", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          participantName: "Not a fixture",
+          subject: "Do not stage",
+          body: "Live mode must not create a mock thread.",
+        }),
+      }),
+    );
+
+    assert.equal(postResponse.status, 503);
+  });
 });
 
 test("relationship inbox selects a specific thread when conversationId is supplied", async () => {

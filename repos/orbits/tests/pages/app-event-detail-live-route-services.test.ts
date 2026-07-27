@@ -31,6 +31,14 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
+test("event detail production route does not silently force a canonical id into mock mode", () => {
+  const pageSource = source("app/(app)/app/events/[id]/page.tsx");
+
+  assert.doesNotMatch(pageSource, /canonicalDemoEventDetailIds/);
+  assert.doesNotMatch(pageSource, /has\(input\.eventId\)\s*\?\s*"mock"/);
+  assert.match(pageSource, /return explicitMode \|\| undefined/);
+});
+
 async function withUnconfiguredLiveEvents<T>(
   run: () => Promise<T>,
 ): Promise<T> {

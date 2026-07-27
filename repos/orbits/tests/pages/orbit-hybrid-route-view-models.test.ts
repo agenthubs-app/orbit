@@ -288,7 +288,6 @@ test("legacy route files no longer embed old product sample records", () => {
     "app/(app)/app/orbit-schedule-route-view-model.ts",
     "app/(app)/app/admin/orbit-real-admin.tsx",
     "app/(app)/app/dashboard/orbit-real-party.tsx",
-    "app/(app)/app/register/orbit-real-register.tsx",
   ];
   const legacyTerms = [
     "Tokyo Business Connect",

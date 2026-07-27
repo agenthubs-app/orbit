@@ -2,10 +2,9 @@
  * Gate test for T7 (audit P1-6): form field unification onto the FormField
  * primitive (orbit-reference-primitives.tsx).
  *
- * (a) FormField now has real external adopters: register (email field),
- *     account-auth (all login/signup/forgot fields), and admin's
- *     CreateEventModal (basics + time/place fields) all import and render
- *     it — up from zero before T7.
+ * (a) FormField has real external adopters in account auth and post-event
+ *     follow-up capture. The retired duplicate /app/register prototype no
+ *     longer counts as an adopter.
  * (b) Sitewide `role="alert"` markers must not go down: T7 keeps every
  *     existing announcement (FormField renders its own dynamically) while
  *     standardizing error semantics — it should never remove one.
@@ -27,13 +26,13 @@ const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const APP_DIR = join(projectRoot, "app/(app)/app");
 
 const PRIMITIVES_PATH = "app/(app)/app/orbit-reference-primitives.tsx";
-const REGISTER_PATH = "app/(app)/app/register/orbit-real-register.tsx";
 const ACCOUNT_AUTH_PATH = "app/(app)/app/account/orbit-real-account-auth.tsx";
-const ADMIN_PATH = "app/(app)/app/admin/orbit-real-admin.tsx";
+const POST_EVENT_CAPTURE_PATH =
+  "app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx";
 const EVENT_REGISTRATION_WORKSPACE_PATH =
   "app/(app)/app/events/[id]/register/event-registration-workspace.tsx";
 
-const MIGRATED_FILES = [REGISTER_PATH, ACCOUNT_AUTH_PATH, ADMIN_PATH];
+const MIGRATED_FILES = [ACCOUNT_AUTH_PATH, POST_EVENT_CAPTURE_PATH];
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
@@ -55,7 +54,7 @@ function walk(dir: string, out: string[] = []): string[] {
 
 // ---- (a) FormField has ≥3 real external adopters ----
 
-test("FormField is imported and rendered by at least 3 files outside its own definition", () => {
+test("FormField is imported and rendered by production forms outside its own definition", () => {
   const files = walk(APP_DIR).filter((full) => relative(projectRoot, full) !== PRIMITIVES_PATH);
   const adopters = files.filter((full) => {
     const text = readFileSync(full, "utf8");
@@ -67,8 +66,8 @@ test("FormField is imported and rendered by at least 3 files outside its own def
   });
 
   assert.ok(
-    adopters.length >= 3,
-    `expected >=3 files importing+rendering FormField, found ${adopters.length}: ${adopters.map((f) => relative(projectRoot, f)).join(", ")}`,
+    adopters.length >= 2,
+    `expected >=2 files importing+rendering FormField, found ${adopters.length}: ${adopters.map((f) => relative(projectRoot, f)).join(", ")}`,
   );
 
   for (const path of MIGRATED_FILES) {
@@ -119,7 +118,7 @@ test('role="alert" count in app/(app)/app does not decrease', () => {
 
 // ---- (c) migrated files no longer hand-roll a bare field-error class ----
 
-test("register, account-auth, and admin no longer hand-roll className=\"field-error\"", () => {
+test("migrated forms no longer hand-roll className=\"field-error\"", () => {
   for (const path of MIGRATED_FILES) {
     const text = source(path);
     assert.ok(

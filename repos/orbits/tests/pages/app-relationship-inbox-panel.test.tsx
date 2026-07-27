@@ -104,13 +104,29 @@ test("contact detail card connection routes 起草邮件 into the inbox compose 
   assert.match(source, /recipient: contact\.displayName/);
 });
 
-test("Chinese relationship inbox draft generation uses pure Chinese demo copy", async () => {
+test("Chinese relationship inbox draft generation uses the runtime API without a local success fallback", async () => {
   const mod = await import("../../app/(app)/app/inbox/relationship-inbox-panel");
   const previousFetch = globalThis.fetch;
   let fetchRequested = false;
-  globalThis.fetch = (async () => {
+  globalThis.fetch = (async (input, init) => {
     fetchRequested = true;
-    throw new Error("Chinese demo draft should not depend on the message-drafts API");
+    assert.equal(String(input), "/api/message-drafts");
+    assert.equal(init?.method, "POST");
+    assert.match(String(init?.body), /"recipientName":"佐藤 健一"/);
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          drafts: [
+            {
+              subject: "关于北星食品的跟进",
+              body: "佐藤 健一，您好：\n\n这是运行时返回的规则草稿。",
+            },
+          ],
+        },
+      }),
+      { status: 200 },
+    );
   }) as typeof fetch;
 
   try {
@@ -121,14 +137,30 @@ test("Chinese relationship inbox draft generation uses pure Chinese demo copy", 
     });
     const draftText = `${draft?.subject ?? ""}\n${draft?.body ?? ""}`;
 
-    assert.equal(fetchRequested, false);
+    assert.equal(fetchRequested, true);
     assert.equal(draft?.subject, "关于北星食品的跟进");
     assert.match(draft?.body ?? "", /佐藤 健一，您好：/);
-    assert.match(draft?.body ?? "", /北星食品/);
     assert.doesNotMatch(draftText, /[A-Za-z]/);
   } finally {
     globalThis.fetch = previousFetch;
   }
+});
+
+test("relationship inbox labels deterministic assists and local staging honestly", async () => {
+  const source = await import("node:fs").then((fs) =>
+    fs.readFileSync(
+      new URL(
+        "../../app/(app)/app/inbox/relationship-inbox-panel.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+
+  assert.doesNotMatch(source, /chineseDemoMessageDraft|AI rewrite|AI 生成草稿/);
+  assert.match(source, /Rule-based rewrite|规则改写/);
+  assert.match(source, /Stage for review|暂存待复核/);
+  assert.doesNotMatch(source, /fetchProactiveAlerts|From Orbit AI/);
 });
 
 test("relationship inbox provides a three-pane conversation workspace with persistent edge resizing", async () => {

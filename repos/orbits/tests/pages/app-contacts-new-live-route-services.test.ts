@@ -78,6 +78,8 @@ test("/app/contacts/new page renders the capability-first acquisition route boun
 
   assert.match(pageSource, /loadAppContactsNewRouteViewModel/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
+  assert.doesNotMatch(pageSource, /mode=mock|Open preview data/);
+  assert.match(pageSource, /Retry live workspace/);
   assert.match(importWorkspaceSource, /BusinessCardCaptureWorkspace/);
 
   await withUnconfiguredLiveAcquisition(async () => {

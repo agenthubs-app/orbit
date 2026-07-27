@@ -103,6 +103,25 @@ test("admin and platform success surfaces do not expose unbacked write controls"
   assert.doesNotMatch(platformSource, /function decide|More actions/);
 });
 
+test("admin entry and event management do not claim unexecuted email or writes", () => {
+  const adminSource = source("app/(app)/app/admin/orbit-real-admin.tsx");
+
+  assert.match(adminSource, /Continue to secure sign in/);
+  assert.match(
+    adminSource,
+    /\/app\/account\/login\?next=\$\{encodeURIComponent\(dest\)\}/,
+  );
+  assert.match(adminSource, /Source events · read only/);
+  assert.doesNotMatch(
+    adminSource,
+    /Login email sent|Send sign-in email|Enter admin \(demo\)|Skip · enter admin directly \(demo\)/,
+  );
+  assert.doesNotMatch(
+    adminSource,
+    /function CreateEventModal|Create event|Invite member/,
+  );
+});
+
 test("app admin-platform route loader returns admin and platform models in mock mode", async () => {
   await withMockAdminPlatform(async () => {
     const { loadAppAdminPlatformRouteViewModel } = await import(

@@ -35,27 +35,18 @@ async function firstProactiveMessageId(): Promise<string> {
   return result.data?.messages[0]?.messageId ?? "";
 }
 
-test("/app/chat surfaces proactive calendar messages as a local inbox section linked to Orbit Agent", async () => {
+test("/app/chat does not surface fixture-backed proactive calendar messages", async () => {
   const Page = (await import("../../app/(app)/app/chat/page")).default;
   const html = renderToStaticMarkup(await Page());
 
   assert.match(html, /data-orbit-route="app-chat-route"/);
-  assert.match(html, /data-orbit-proactive-inbox="calendar-one-hour"/);
-  assert.match(html, /Upcoming from Orbit Agent/);
-  assert.match(html, /Seed investor preparation call/);
-  assert.match(html, /09:45/);
-  assert.match(html, /Mina Park/);
-  assert.match(html, /Review the investor&#x27;s climate portfolio/);
-  assert.match(html, /Open in Orbit Agent/);
-  assert.match(html, /href="\/app\/agent\?proactive=[^"]+"/);
-  assert.match(html, /data-side-effects="none"/);
-  assert.doesNotMatch(html, /External email sent/i);
-  assert.doesNotMatch(html, /Push notification delivered/i);
-  assert.doesNotMatch(html, /SMS sent/i);
-  assert.doesNotMatch(html, /Calendar updated/i);
+  assert.doesNotMatch(
+    html,
+    /data-orbit-proactive-inbox|Upcoming from Orbit Agent|Seed investor preparation call/,
+  );
 });
 
-test("/app/agent opens the proactive message as a localized context conversation", async () => {
+test("/app/agent ignores obsolete fixture proactive ids", async () => {
   const proactive = await firstProactiveMessageId();
   const Page = (await importProjectModule<{
     default: (input?: {
@@ -73,19 +64,9 @@ test("/app/agent opens the proactive message as a localized context conversation
 
   assert.match(html, /data-orbit-route="app-agent-route"/);
   assert.match(html, /data-orbit-real-page="agent"/);
-  assert.match(html, /主动提醒/);
-  assert.match(html, /Seed investor preparation call|种子投资人准备电话/);
-  assert.match(html, /09:45/);
-  assert.match(html, /Mina Park/);
-  assert.match(html, /climate portfolio|气候领域组合/);
-  assert.match(html, /不会发送邮件、短信、推送或修改日历/);
-  assert.match(html, /data-orbit-proactive-context="calendar-one-hour"/);
-  assert.match(html, /日历活动上下文/);
-  assert.match(html, /准备重点/);
-  assert.match(html, /本地提醒/);
-  assert.match(
+  assert.doesNotMatch(
     html,
-    /data-orbit-agent-submitted-goal="[^"]*(?:Seed investor preparation call|种子投资人准备电话)/,
+    /主动提醒|Seed investor preparation call|data-orbit-proactive-context/,
   );
 });
 
@@ -94,16 +75,14 @@ test("proactive route composition stays out of API routes and presenter-only fil
   const chatRouteSource = source(
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
   );
-  const chatPresenterSource = source(
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-command-center.tsx",
-  );
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
 
-  assert.match(chatRouteSource, /loadOrbitAiProactiveCalendarMessagesForApp/);
-  assert.match(agentPageSource, /proactive/);
-  assert.match(chatPageSource, /ChatCommandCenter/);
+  assert.match(agentPageSource, /loadAppChatRouteViewModel/);
+  assert.match(chatPageSource, /ChatWorkspace/);
   assert.doesNotMatch(chatPageSource, /app\/api/);
   assert.doesNotMatch(agentPageSource, /app\/api/);
-  assert.doesNotMatch(chatPresenterSource, /features\/orbit-ai/);
-  assert.doesNotMatch(chatPresenterSource, /features\/events/);
+  assert.doesNotMatch(
+    chatRouteSource,
+    /loadOrbitAiProactiveCalendarMessagesForApp|createAsyncRelationshipConversationService/,
+  );
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import type { OrbitPartyPersonView, OrbitPartyViewModel } from "../orbit-party-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
@@ -194,13 +194,9 @@ function PartyDesktopChrome({
 }
 
 function NetworkPerson({
-  added,
-  onAdd,
   p,
   t,
 }: {
-  added?: boolean;
-  onAdd: () => void;
   p: OrbitPartyPersonView;
   t: Translate;
 }) {
@@ -227,10 +223,10 @@ function NetworkPerson({
           ))}
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <button className={added ? "btn btn-soft btn-sm" : "btn btn-primary btn-sm"} disabled={added} onClick={onAdd} type="button">
-            <Icon color={added ? undefined : "var(--on-dark)"} name={added ? "check" : "wallet"} size={15} />
-            {added ? t({ en: "In card wallet", zh: "已加入名片夹" }) : t({ en: "Add to wallet", zh: "加入名片夹" })}
-          </button>
+          <a className="btn btn-primary btn-sm" href={`/app/contacts/${encodeURIComponent(p.id)}`}>
+            <Icon color="var(--on-dark)" name="users" size={15} />
+            {t({ en: "View contact", zh: "查看联系人" })}
+          </a>
         </div>
       </div>
     </div>
@@ -478,7 +474,6 @@ function PartyTable({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewM
 }
 
 function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
-  const [added, setAdded] = useState<Record<string, boolean>>({});
   const [industry, setIndustry] = useState("");
   const [query, setQuery] = useState("");
   const industries = useMemo(
@@ -546,7 +541,7 @@ function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: Orbit
       </div>
       <div className="orbit-party-network-list">
         {list.map((person) => (
-          <NetworkPerson added={added[person.id]} key={person.id} onAdd={() => setAdded((current) => ({ ...current, [person.id]: true }))} p={person} t={t} />
+          <NetworkPerson key={person.id} p={person} t={t} />
         ))}
       </div>
     </div>
@@ -768,132 +763,42 @@ function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; pers
 
 export function OrbitRealPartyCheckin({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const { t } = useOrbitLanguage();
-  const resolved = viewModel;
-  const [checkedIn, setCheckedIn] = useState(false);
-  const [redirectIn, setRedirectIn] = useState(3);
-  const [returnedToParty, setReturnedToParty] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const returnToParty = useCallback(() => {
-    window.history.pushState(
-      null,
-      "",
-      partyHrefForEvent(resolved.eventId),
-    );
-    setReturnedToParty(true);
-  }, [resolved.eventId]);
-
-  useEffect(() => {
-    if (!checkedIn) return undefined;
-
-    setRedirectIn(3);
-
-    const interval = window.setInterval(() => setRedirectIn((value) => (value > 0 ? value - 1 : 0)), 1000);
-    const timeout = window.setTimeout(returnToParty, 3000);
-
-    return () => {
-      window.clearInterval(interval);
-      window.clearTimeout(timeout);
-    };
-  }, [checkedIn, returnToParty]);
-
-  function submit() {
-    setSubmitting(true);
-    window.setTimeout(() => {
-      setSubmitting(false);
-      setCheckedIn(true);
-    }, 700);
-  }
-
-  if (returnedToParty) {
-    return <OrbitRealParty viewModel={resolved} />;
-  }
-
-  if (checkedIn) {
-    return (
-      <div className="orbit-party-page orbit-live-checkin-page">
-        <header className="orbit-party-checkin-top">
-          <Logo size={23} />
-          <span className="mono orbit-lang-inline" style={{ color: "var(--text-3)", fontSize: 12 }}>
-            {t({ en: "ZH / JA", zh: "中 / 日" })}
-          </span>
-        </header>
-        <main className="orbit-party-checkin-shell">
-          <section className="orbit-party-done-card card">
-            <div className="orbit-party-done-mark">
-              <Icon name="check" size={42} stroke={2.2} />
-            </div>
-            <div className="eyebrow">CHECK-IN COMPLETE</div>
-            <h1 className="h-title">{t({ en: "Check-in complete", zh: "签到完毕" })}</h1>
-            <p className="orbit-party-done-event">{viewModel?.eventName ?? ""}</p>
-            <div className="orbit-party-done-meta">
-              <span className="badge badge-live">
-                <Icon name="check" size={13} />
-                {t({ en: "Checked in", zh: "已签到" })}
-              </span>
-              <span className="mono">{t({ en: `Returning to event home in ${redirectIn}s`, zh: `${redirectIn} 秒后返回活动主页` })}</span>
-            </div>
-            <button className="btn btn-primary btn-lg btn-block" onClick={returnToParty} type="button">
-              <Icon color="var(--on-accent)" name="arrow" size={18} />
-              {t({ en: "Return now", zh: "立即返回" })}
-            </button>
-          </section>
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="orbit-party-page orbit-live-checkin-page">
       <header className="orbit-party-checkin-top">
-        <button aria-label={t({ en: "Back", zh: "返回" })} className="orbit-party-icon-button hit-44" onClick={returnToParty} type="button">
+        <a
+          aria-label={t({ en: "Back", zh: "返回" })}
+          className="orbit-party-icon-button hit-44"
+          href={partyHrefForEvent(viewModel.eventId)}
+        >
           <Icon name="chevL" size={20} />
-        </button>
+        </a>
         <div className="orbit-party-checkin-title">
-          <div className="eyebrow">STEP 03 / 03</div>
-          <div>{t({ en: "On-site check-in", zh: "现场签到" })}</div>
+          <div className="eyebrow">ON-SITE CHECK-IN</div>
+          <div>{t({ en: "Check-in status", zh: "签到状态" })}</div>
         </div>
         <span className="mono orbit-lang-inline" style={{ color: "var(--text-3)", fontSize: 12 }}>
           {t({ en: "ZH / JA", zh: "中 / 日" })}
         </span>
       </header>
       <main className="orbit-party-checkin-shell">
-        <section className="orbit-party-checkin-hero card">
-          <div className="orbit-party-checkin-meta">
-            <span className="eyebrow">{t({ en: "On-site check-in", zh: "现场签到" })}</span>
-            <span className="badge badge-live">
-              <span className="dot dot-live" />
-              {t({ en: "Live", zh: "进行中" })}
-            </span>
-          </div>
-          <div className="orbit-party-checkin-icon">
-            <Icon name="ticket" size={30} />
-          </div>
-          <h1 className="h-display">
-            {t({ en: "Tap the button", zh: "点击按钮" })}<span>{t({ en: "to check in", zh: "完成签到" })}</span>
-          </h1>
-          <p>{t({ en: "Once check-in opens, tap the button below to check in. No QR code needed.", zh: "签到开放后，点击下方按钮即可完成签到。无需扫描二维码。" })}</p>
-          <div className="orbit-party-status-strip">
-            <span className="eyebrow">{t({ en: "Current status", zh: "当前状态" })}</span>
-            <strong>{t({ en: "Ready to check in", zh: "可以签到" })}</strong>
-          </div>
-        </section>
         <section className="orbit-party-action-card card">
-          <div className="orbit-party-card-head">
-            <div>
-              <div className="eyebrow">{t({ en: "On-site check-in", zh: "现场签到" })}</div>
-              <h2 className="h-section">{t({ en: "One-tap check-in", zh: "一键签到" })}</h2>
-            </div>
-            <span className="chip chip-accent">{t({ en: "Open", zh: "开放中" })}</span>
+          <div className="orbit-party-checkin-icon">
+            <Icon name="lock" size={30} />
           </div>
-          <button className="btn btn-primary btn-lg btn-block" disabled={submitting} onClick={submit} type="button">
-            <Icon color="var(--on-accent)" name={submitting ? "clock" : "check"} size={18} />
-            {submitting ? t({ en: "Checking in...", zh: "签到中..." }) : t({ en: "One-tap check-in", zh: "一键签到" })}
-          </button>
-          <div className="orbit-party-note">
-            <span className="dot dot-live" />
-            <div>{t({ en: "Your check-in time is recorded when you tap the button.", zh: "点击按钮后会记录你的签到时间。" })}</div>
-          </div>
+          <div className="eyebrow">SOURCE-BACKED STATUS</div>
+          <h1 className="h-title">{t({ en: "Check-in is not available", zh: "暂不支持签到" })}</h1>
+          <p style={{ color: "var(--text-2)", lineHeight: 1.65, margin: "12px 0 0" }}>
+            {t({
+              en: "This event context has no source-backed check-in write service. No attendance or check-in time has been recorded.",
+              zh: "当前活动尚未接入可核验的签到写入服务；没有记录出席状态或签到时间。",
+            })}
+          </p>
+          <a className="btn btn-primary btn-lg btn-block" href={partyHrefForEvent(viewModel.eventId)} style={{ marginTop: 20 }}>
+            <Icon color="var(--on-accent)" name="arrow" size={18} />
+            {t({ en: "Return to event home", zh: "返回活动主页" })}
+          </a>
         </section>
       </main>
     </div>
@@ -902,7 +807,6 @@ export function OrbitRealPartyCheckin({ viewModel }: { viewModel: OrbitPartyView
 
 export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const { t } = useOrbitLanguage();
-  const [bulkMessage, setBulkMessage] = useState("");
   const [scale, setScale] = useState(0.95);
   const [selected, setSelected] = useState<OrbitPartyPersonView | null>(null);
 
@@ -958,13 +862,9 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
               <div style={{ fontWeight: 600, marginTop: 8 }}>{t({ en: "Real recommendation graph", zh: "真实推荐图谱" })}</div>
             </div>
           </div>
-          <div style={{ alignItems: "center", display: "flex", gap: 10, marginTop: 14 }}>
-            <button className="btn btn-primary" onClick={() => setBulkMessage(t({ en: `Added ${viewModel.recommendations.length} people to your wallet`, zh: `已把 ${viewModel.recommendations.length} 位加入名片夹` }))} style={{ flex: 1 }} type="button">
-              <Icon color="var(--on-dark)" name="wallet" size={16} />
-              {t({ en: "Add all current contacts to wallet", zh: "把当前人脉全部加入名片夹" })}
-            </button>
-          </div>
-          {bulkMessage ? <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 12 }}>{bulkMessage}</div> : null}
+          <p style={{ color: "var(--text-3)", fontSize: 12, margin: "14px 0 0" }}>
+            {t({ en: "This graph is source-backed and read only. Open a node to review its contact context.", zh: "该图谱基于来源数据且为只读。打开节点可查看联系人上下文。" })}
+          </p>
         </div>
         <div className="card" style={{ marginTop: 14, padding: 14 }}>
           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginBottom: 8 }}>

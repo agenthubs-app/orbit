@@ -110,3 +110,19 @@ test("contacts pipeline exposes only source-backed read behavior", () => {
     /Organize after-event contacts|One email each|Set reminder|Draft email/,
   );
 });
+
+test("contacts shared interactions do not fabricate actions or email delivery", () => {
+  const interactionSource = source(
+    "app/(app)/app/contacts/orbit-cards-interactions.tsx",
+  );
+
+  assert.match(interactionSource, /\.nc-basis\.is-open/);
+  assert.doesNotMatch(
+    interactionSource,
+    /Email sent \(demo\)|邮件已发送|Done:|已执行：|Draft rewritten by AI|AI 重写|data-sheet="email"|nc-send|nc-rewrite/,
+  );
+  assert.doesNotMatch(
+    interactionSource,
+    /target\.closest<HTMLElement>\("\\.btn, button"\)|href"\) === "#"/,
+  );
+});

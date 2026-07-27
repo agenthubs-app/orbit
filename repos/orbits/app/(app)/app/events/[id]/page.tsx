@@ -35,8 +35,6 @@ export type AppEventDetailPageSearchParams = Record<
   string | string[] | undefined
 >;
 
-const canonicalDemoEventDetailIds = new Set(["event_001"]);
-
 function readSearchParam(
   searchParams: AppEventDetailPageSearchParams | undefined,
   key: string,
@@ -47,16 +45,11 @@ function readSearchParam(
 }
 
 function resolveEventDetailRouteMode(input: {
-  eventId: string;
   explicitMode?: string;
 }): string | undefined {
   const explicitMode = input.explicitMode?.trim();
 
-  if (explicitMode) {
-    return explicitMode;
-  }
-
-  return canonicalDemoEventDetailIds.has(input.eventId) ? "mock" : undefined;
+  return explicitMode || undefined;
 }
 
 async function getEventDetailPageLanguage(): Promise<OrbitLanguage> {
@@ -445,7 +438,6 @@ export default async function AppEventDetailPage({
   const query = await searchParams;
   const explicitMode = readSearchParam(query, "mode");
   const routeMode = resolveEventDetailRouteMode({
-    eventId: id,
     explicitMode,
   });
   const language = normalizeRegistrationProfileGuideLanguage(

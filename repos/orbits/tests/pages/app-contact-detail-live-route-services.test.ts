@@ -398,3 +398,19 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
     assert.match(html, /data-state-boundary="shared-ui-state-view"/);
   });
 });
+
+test("contact detail UI exposes only source-backed relationship data and real navigation", () => {
+  const detailSource = source(
+    "app/(app)/app/contacts/orbit-real-card-connection.tsx",
+  );
+
+  assert.match(detailSource, /Source-backed · read only/);
+  assert.match(detailSource, /No sourced interaction evidence is available/);
+  assert.match(detailSource, /No sourced next step is available/);
+  assert.match(detailSource, /href="\/app\/contacts\/pipeline"/);
+  assert.doesNotMatch(detailSource, /stageDemo|timelineDemo|valueAToB|valueBToA/);
+  assert.doesNotMatch(
+    detailSource,
+    /Stage updated|Book meeting|Add to pipeline|href="#"|event\.preventDefault\(\)/,
+  );
+});

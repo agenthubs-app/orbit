@@ -195,6 +195,7 @@ function profileRouteState(input: {
 function eventView(event: EventRecord): OrbitRegisterViewModel["event"] {
   return {
     code: compactCodeForEventId(event.id),
+    id: event.id,
     name: event.title,
     theme: event.sourceMetadata.captureMethod,
   };

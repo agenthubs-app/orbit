@@ -66,16 +66,15 @@ async function withMockRegister<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-test("/app/register page uses a live-capable route loader instead of the legacy register view model", () => {
+test("/app/register resolves invite codes before redirecting to the canonical registration workspace", () => {
   const pageSource = source("app/(app)/app/register/page.tsx");
-  const realRegisterSource = source("app/(app)/app/register/orbit-real-register.tsx");
 
   assert.match(pageSource, /loadAppRegisterRouteViewModel/);
-  assert.match(pageSource, /OrbitRealRegister/);
+  assert.match(pageSource, /redirect\(/);
+  assert.match(pageSource, /routeModel\.register\.event\.id/);
   assert.match(pageSource, /StateView/);
   assert.doesNotMatch(pageSource, /getOrbitRegisterViewModel/);
-  assert.match(realRegisterSource, /register-view-model-contract/);
-  assert.doesNotMatch(realRegisterSource, /orbit-register-route-view-model/);
+  assert.doesNotMatch(pageSource, /OrbitRealRegister|Registration complete/);
 });
 
 test("app register route loader returns the real registration model in mock mode", async () => {
@@ -91,11 +90,38 @@ test("app register route loader returns the real registration model in mock mode
 
     if (viewModel.state === "success") {
       assert.equal(viewModel.register.event.code, "DEMOEVENT1");
+      assert.equal(viewModel.register.event.id, "demo-event-1");
       assert.equal(viewModel.register.event.name, "Climate founders dinner");
       assert.ok(viewModel.register.industryOptions.length > 0);
       assert.ok(viewModel.register.profilePreview.name);
       assert.ok(viewModel.register.topics.length > 0);
     }
+  });
+});
+
+test("/app/register redirects a resolved mock invite to the canonical event registration route", async () => {
+  await withMockRegister(async () => {
+    const Page = (await import("../../app/(app)/app/register/page"))
+      .default as (props: {
+      searchParams: Promise<Record<string, string | undefined>>;
+    }) => Promise<React.ReactElement>;
+
+    await assert.rejects(
+      () =>
+        Page({
+          searchParams: Promise.resolve({
+            code: "demo-event-1",
+            language: "en",
+            mode: "mock",
+          }),
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        error.message === "NEXT_REDIRECT" &&
+        error.digest.includes(
+          "/app/events/demo-event-1/register?language=en&mode=mock",
+        ),
+    );
   });
 });
 

@@ -17,6 +17,7 @@ export interface OrbitRegisterProfileForm {
 export interface OrbitRegisterViewModel {
   event: {
     code: string;
+    id: string;
     name: string;
     theme: string;
   };

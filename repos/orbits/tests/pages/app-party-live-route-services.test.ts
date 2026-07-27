@@ -89,6 +89,12 @@ test("/app/party/checkin uses the same live-capable party loader without compone
     assert.match(checkinPageSource, /routeModel\.party/);
     assert.doesNotMatch(checkinPageSource, /buildOrbitParty/);
     assert.doesNotMatch(partyComponentSource, /getOrbitPartyViewModel/);
+    assert.match(partyComponentSource, /Check-in is not available/);
+    assert.match(partyComponentSource, /no source-backed check-in write service/);
+    assert.doesNotMatch(
+      partyComponentSource,
+      /Check-in complete|setCheckedIn|Checking in/,
+    );
 });
 
 test("party recommendations expose a route-derived industry filter", () => {
@@ -103,6 +109,23 @@ test("party recommendations expose a route-derived industry filter", () => {
     partyComponentSource,
     /aria-label=\{t\(\{ en: "Filter", zh: "筛选" \}\)\}/,
   );
+});
+
+test("party recommendations and graph do not claim unpersisted wallet writes", () => {
+  const partyComponentSource = source(
+    "app/(app)/app/dashboard/orbit-real-party.tsx",
+  );
+
+  assert.match(
+    partyComponentSource,
+    /href=\{`\/app\/contacts\/\$\{encodeURIComponent\(p\.id\)\}`\}/,
+  );
+  assert.match(partyComponentSource, /source-backed and read only/);
+  assert.doesNotMatch(
+    partyComponentSource,
+    /Add to wallet|In card wallet|Add all current contacts to wallet|Added \$\{viewModel\.recommendations\.length\} people/,
+  );
+  assert.doesNotMatch(partyComponentSource, /setAdded|setBulkMessage/);
 });
 
 test("app party route loader returns a real party model in mock mode", async () => {
