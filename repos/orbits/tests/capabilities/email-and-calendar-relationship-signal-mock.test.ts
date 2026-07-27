@@ -279,14 +279,18 @@ test("mock email calendar signal service is deterministic rule-based code with n
 
 test("email calendar signal API routes return stable envelopes with empty pending and failure paths", async () => {
   const listRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-  }>("app/api/relationship-signals/email-calendar/route.ts");
+    createEmailCalendarSignalsGetHandler: (
+      resolveActor: () => Promise<{ id: string; name: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/relationship-signals/email-calendar/handler.ts");
   const confirmRoute = await importProjectModule<{
-    POST: (
+    createConfirmEmailCalendarSignalPostHandler: (
+      resolveActor: () => Promise<{ id: string; name: string }>,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/relationship-signals/[id]/confirm/route.ts");
+  }>("app/api/relationship-signals/[id]/confirm/handler.ts");
   const fixtures = await importProjectModule<{
     mockEmailCalendarSignalFixture: unknown;
     mockEmptyEmailCalendarSignalFixture: unknown;
@@ -294,44 +298,58 @@ test("email calendar signal API routes return stable envelopes with empty pendin
     mockEmailCalendarSignalConfirmedFixture: unknown;
   }>("features/acquisition/email-calendar-fixtures.ts");
 
-  const listResponse = await listRoute.GET(
+  const resolveActor = async () => ({
+    id: "account:signal-test",
+    name: "Server signal tester",
+  });
+  const listSignals =
+    listRoute.createEmailCalendarSignalsGetHandler(resolveActor);
+  const confirmSignal =
+    confirmRoute.createConfirmEmailCalendarSignalPostHandler(resolveActor);
+  const listResponse = await listSignals(
     new Request("https://orbit.local/api/relationship-signals/email-calendar", {
       method: "GET",
     }),
   );
-  const emptyResponse = await listRoute.GET(
+  const emptyResponse = await listSignals(
     new Request(
       "https://orbit.local/api/relationship-signals/email-calendar?scenario=empty",
       { method: "GET" },
     ),
   );
-  const pendingResponse = await listRoute.GET(
+  const pendingResponse = await listSignals(
     new Request(
       "https://orbit.local/api/relationship-signals/email-calendar?scenario=pending",
       { method: "GET" },
     ),
   );
-  const failureResponse = await listRoute.GET(
+  const failureResponse = await listSignals(
     new Request(
       "https://orbit.local/api/relationship-signals/email-calendar?scenario=failure",
       { method: "GET" },
     ),
   );
-  const confirmResponse = await confirmRoute.POST(
+  const confirmResponse = await confirmSignal(
     new Request(
-      "https://orbit.local/api/relationship-signals/demo-calendar-signal-1/confirm",
-      { method: "POST" },
+      "https://orbit.local/api/relationship-signals/demo-calendar-signal-1/confirm?actorLabel=Spoofed",
+      {
+        body: JSON.stringify({ actorLabel: "Spoofed JSON" }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      },
     ),
     { params: Promise.resolve({ id: "demo-calendar-signal-1" }) },
   );
-  const blockedConfirmResponse = await confirmRoute.POST(
+  const blockedConfirmResponse = await confirmSignal(
     new Request(
       "https://orbit.local/api/relationship-signals/demo-calendar-signal-1/confirm?scenario=blocked",
       { method: "POST" },
     ),
     { params: Promise.resolve({ id: "demo-calendar-signal-1" }) },
   );
-  const missingConfirmResponse = await confirmRoute.POST(
+  const missingConfirmResponse = await confirmSignal(
     new Request(
       "https://orbit.local/api/relationship-signals/missing-signal/confirm",
       { method: "POST" },

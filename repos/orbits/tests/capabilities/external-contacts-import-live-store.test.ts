@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GET as listCandidates } from "../../app/api/contact-drafts/external/candidates/route";
-import { POST as importExternalContacts } from "../../app/api/contact-drafts/external/import/route";
+import { createExternalContactCandidatesGetHandler } from "../../app/api/contact-drafts/external/candidates/handler";
+import { createExternalContactsImportPostHandler } from "../../app/api/contact-drafts/external/import/handler";
 import { createLiveExternalContactsImportService } from "../../features/acquisition/live-external-import-service";
 import { createExternalContactsImportService } from "../../features/acquisition/service-factory";
 import { createStorageExternalContactsImportProvider } from "../../features/acquisition/storage/external-import-live-record-provider";
@@ -216,6 +216,50 @@ test("external contacts live import stages contact drafts without contactDraft o
   assert.equal(contactDrafts.length, 0);
 });
 
+test("external contact candidates are isolated by actor ownership metadata", async () => {
+  const store = createSeedStore();
+
+  for (const collectionName of ["contacts", "evidence", "networkPeople"]) {
+    const records = store.listRecords({
+      workspaceId: WORKSPACE_ID,
+      collectionName,
+    });
+
+    for (const item of records) {
+      await store.upsertRecord({
+        ...item,
+        userId: "account:external-a",
+      });
+    }
+  }
+
+  const actorAService = createLiveExternalContactsImportService({
+    provider: createStorageExternalContactsImportProvider({
+      actorId: "account:external-a",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+  const actorBService = createLiveExternalContactsImportService({
+    provider: createStorageExternalContactsImportProvider({
+      actorId: "account:external-b",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const actorACandidates =
+    await actorAService.listExternalContactCandidates();
+  const actorBCandidates =
+    await actorBService.listExternalContactCandidates();
+
+  assert.equal(actorACandidates.success, true);
+  assert.equal(actorACandidates.data.candidates.length, 2);
+  assert.equal(actorBCandidates.success, true);
+  assert.equal(actorBCandidates.data.state, "empty");
+  assert.equal(actorBCandidates.data.candidates.length, 0);
+});
+
 test("external contacts live service fails closed when storage is unconfigured", async () => {
   const service = createLiveExternalContactsImportService({
     provider: null,
@@ -274,10 +318,18 @@ test("external contacts import API resolves ORBIT_MODULE_MODE=live and fails clo
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const candidatesResponse = await listCandidates(
+    const resolveActor = async () => ({
+      id: "account:external-live-test",
+      name: "External tester",
+    });
+    const candidatesResponse = await createExternalContactCandidatesGetHandler(
+      resolveActor,
+    )(
       new Request("https://orbit.local/api/contact-drafts/external/candidates"),
     );
-    const importResponse = await importExternalContacts(
+    const importResponse = await createExternalContactsImportPostHandler(
+      resolveActor,
+    )(
       new Request("https://orbit.local/api/contact-drafts/external/import", {
         method: "POST",
       }),
@@ -308,5 +360,32 @@ test("external contacts import API resolves ORBIT_MODULE_MODE=live and fails clo
     process.env.ORBIT_EVENT_DATABASE_URL = previousEventDatabaseUrl;
     process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
+  }
+});
+
+test("external contact APIs reject anonymous list and import before provider access", async () => {
+  const resolveActor = async () => null;
+  const candidatesResponse =
+    await createExternalContactCandidatesGetHandler(resolveActor)(
+      new Request("https://orbit.local/api/contact-drafts/external/candidates"),
+    );
+  const importResponse =
+    await createExternalContactsImportPostHandler(resolveActor)(
+      new Request("https://orbit.local/api/contact-drafts/external/import", {
+        body: JSON.stringify({ sourceKind: "phone" }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      }),
+    );
+
+  for (const response of [candidatesResponse, importResponse]) {
+    const body = await response.json();
+
+    assert.equal(response.status, 401);
+    assert.equal(body.success, false);
+    assert.equal(body.error.code, "UNAUTHORIZED");
+    assert.equal(body.error.context.service, "authenticated-api-actor");
   }
 });

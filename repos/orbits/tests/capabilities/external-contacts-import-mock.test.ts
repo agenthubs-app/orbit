@@ -276,11 +276,15 @@ test("mock external contacts import service is deterministic rule-based code wit
 
 test("external contacts import API routes return stable envelopes with empty and failure paths", async () => {
   const importRoute = await importProjectModule<{
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/contact-drafts/external/import/route.ts");
+    createExternalContactsImportPostHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/contact-drafts/external/import/handler.ts");
   const candidatesRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-  }>("app/api/contact-drafts/external/candidates/route.ts");
+    createExternalContactCandidatesGetHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/contact-drafts/external/candidates/handler.ts");
   const fixtures = await importProjectModule<{
     mockExternalContactsCandidatesFixture: unknown;
     mockExternalContactsImportFixture: unknown;
@@ -288,17 +292,22 @@ test("external contacts import API routes return stable envelopes with empty and
     mockEmptyExternalContactsImportFixture: unknown;
   }>("features/acquisition/external-import-fixtures.ts");
 
-  const importResponse = await importRoute.POST(
+  const resolveActor = async () => ({ id: "account:external-test" });
+  const importContacts =
+    importRoute.createExternalContactsImportPostHandler(resolveActor);
+  const listCandidates =
+    candidatesRoute.createExternalContactCandidatesGetHandler(resolveActor);
+  const importResponse = await importContacts(
     new Request("https://orbit.local/api/contact-drafts/external/import", {
       method: "POST",
     }),
   );
-  const candidatesResponse = await candidatesRoute.GET(
+  const candidatesResponse = await listCandidates(
     new Request("https://orbit.local/api/contact-drafts/external/candidates", {
       method: "GET",
     }),
   );
-  const emptyResponse = await importRoute.POST(
+  const emptyResponse = await importContacts(
     new Request(
       "https://orbit.local/api/contact-drafts/external/import?scenario=empty",
       {
@@ -306,7 +315,7 @@ test("external contacts import API routes return stable envelopes with empty and
       },
     ),
   );
-  const failureResponse = await importRoute.POST(
+  const failureResponse = await importContacts(
     new Request(
       "https://orbit.local/api/contact-drafts/external/import?scenario=failure",
       {
@@ -314,7 +323,7 @@ test("external contacts import API routes return stable envelopes with empty and
       },
     ),
   );
-  const emptyCandidatesResponse = await candidatesRoute.GET(
+  const emptyCandidatesResponse = await listCandidates(
     new Request(
       "https://orbit.local/api/contact-drafts/external/candidates?scenario=empty",
       {
@@ -322,7 +331,7 @@ test("external contacts import API routes return stable envelopes with empty and
       },
     ),
   );
-  const failureCandidatesResponse = await candidatesRoute.GET(
+  const failureCandidatesResponse = await listCandidates(
     new Request(
       "https://orbit.local/api/contact-drafts/external/candidates?scenario=failure",
       {
@@ -330,7 +339,7 @@ test("external contacts import API routes return stable envelopes with empty and
       },
     ),
   );
-  const unsupportedResponse = await candidatesRoute.GET(
+  const unsupportedResponse = await listCandidates(
     new Request(
       "https://orbit.local/api/contact-drafts/external/candidates?sourceKind=linkedin",
       {

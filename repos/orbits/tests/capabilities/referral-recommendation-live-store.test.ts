@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { POST as confirmRecommendation } from "../../app/api/contact-drafts/recommended/[id]/confirm/route";
-import { POST as createReferralDrafts } from "../../app/api/contact-drafts/referral/route";
+import { createConfirmRecommendedContactPostHandler } from "../../app/api/contact-drafts/recommended/[id]/confirm/handler";
+import { createReferralRecommendationPostHandler } from "../../app/api/contact-drafts/referral/handler";
 import { createLiveReferralRecommendationService } from "../../features/acquisition/live-referral-service";
 import { createReferralRecommendationService } from "../../features/acquisition/service-factory";
 import { createStorageReferralRecommendationProvider } from "../../features/acquisition/storage/referral-live-record-provider";
@@ -200,6 +200,64 @@ test("referral live confirmation returns a review preview without contact or out
   assert.equal(contacts.length, 0);
 });
 
+test("referral recommendations are isolated by actor ownership metadata", async () => {
+  const store = createSeedStore();
+
+  for (const collectionName of [
+    "contacts",
+    "evidence",
+    "networkPeople",
+    "matchRecommendations",
+  ]) {
+    const records = store.listRecords({
+      workspaceId: WORKSPACE_ID,
+      collectionName,
+    });
+
+    for (const item of records) {
+      await store.upsertRecord({
+        ...item,
+        userId: "account:referral-a",
+      });
+    }
+  }
+
+  const actorAService = createLiveReferralRecommendationService({
+    now: () => NOW,
+    provider: createStorageReferralRecommendationProvider({
+      actorId: "account:referral-a",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+  const actorBService = createLiveReferralRecommendationService({
+    now: () => NOW,
+    provider: createStorageReferralRecommendationProvider({
+      actorId: "account:referral-b",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const actorAResult = await actorAService.createReferralContactDrafts();
+  const actorBResult = await actorBService.createReferralContactDrafts();
+  const actorBConfirmation =
+    await actorBService.confirmRecommendedContact({
+      actorLabel: "Actor B",
+      recommendationId: RECOMMENDATION_ID,
+    });
+
+  assert.equal(actorAResult.success, true);
+  assert.equal(actorAResult.data.recommendations.length, 1);
+  assert.equal(actorBResult.success, true);
+  assert.equal(actorBResult.data.state, "empty");
+  assert.equal(actorBConfirmation.success, false);
+  assert.equal(
+    actorBConfirmation.error.code,
+    "REFERRAL_RECOMMENDATION_NOT_FOUND",
+  );
+});
+
 test("referral live service fails closed when storage is unconfigured", async () => {
   const service = createLiveReferralRecommendationService({
     now: () => NOW,
@@ -259,12 +317,19 @@ test("referral recommendation API resolves ORBIT_MODULE_MODE=live and fails clos
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const referralResponse = await createReferralDrafts(
+    const resolveActor = async () => ({
+      id: "account:referral-live-test",
+      name: "Referral tester",
+    });
+    const referralResponse = await createReferralRecommendationPostHandler(
+      resolveActor,
+    )(
       new Request("https://orbit.local/api/contact-drafts/referral", {
         method: "POST",
       }),
     );
-    const confirmResponse = await confirmRecommendation(
+    const confirmResponse =
+      await createConfirmRecommendedContactPostHandler(resolveActor)(
       new Request(
         `https://orbit.local/api/contact-drafts/recommended/${RECOMMENDATION_ID}/confirm`,
         { method: "POST" },
@@ -299,5 +364,40 @@ test("referral recommendation API resolves ORBIT_MODULE_MODE=live and fails clos
     process.env.ORBIT_EVENT_DATABASE_URL = previousEventDatabaseUrl;
     process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
+  }
+});
+
+test("referral APIs reject anonymous create and confirmation before provider access", async () => {
+  const resolveActor = async () => null;
+  const referralResponse =
+    await createReferralRecommendationPostHandler(resolveActor)(
+      new Request("https://orbit.local/api/contact-drafts/referral", {
+        method: "POST",
+      }),
+    );
+  const confirmResponse =
+    await createConfirmRecommendedContactPostHandler(resolveActor)(
+      new Request(
+        `https://orbit.local/api/contact-drafts/recommended/${RECOMMENDATION_ID}/confirm`,
+        {
+          body: JSON.stringify({ actorLabel: "spoofed reviewer" }),
+          headers: {
+            "content-type": "application/json",
+          },
+          method: "POST",
+        },
+      ),
+      {
+        params: Promise.resolve({ id: RECOMMENDATION_ID }),
+      },
+    );
+
+  for (const response of [referralResponse, confirmResponse]) {
+    const body = await response.json();
+
+    assert.equal(response.status, 401);
+    assert.equal(body.success, false);
+    assert.equal(body.error.code, "UNAUTHORIZED");
+    assert.equal(body.error.context.service, "authenticated-api-actor");
   }
 });

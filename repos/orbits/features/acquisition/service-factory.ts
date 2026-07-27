@@ -148,7 +148,7 @@ export const eventAttendeeImportServiceFactory =
     implementations: {
       live: () =>
         createLiveEventAttendeeImportService({
-          provider: createConfiguredStorageEventAttendeeImportProvider(),
+          provider: null,
         }),
       mock: () => createMockEventAttendeeImportService(),
     },
@@ -160,7 +160,7 @@ export const externalContactsImportServiceFactory =
     implementations: {
       live: () =>
         createLiveExternalContactsImportService({
-          provider: createConfiguredStorageExternalContactsImportProvider(),
+          provider: null,
         }),
       mock: () => createMockExternalContactsImportService(),
     },
@@ -172,7 +172,7 @@ export const emailCalendarSignalServiceFactory =
     implementations: {
       live: () =>
         createLiveEmailCalendarSignalService({
-          provider: createConfiguredStorageEmailCalendarSignalProvider(),
+          provider: null,
         }),
       mock: () => createMockEmailCalendarSignalService(),
     },
@@ -184,7 +184,7 @@ export const referralRecommendationServiceFactory =
     implementations: {
       live: () =>
         createLiveReferralRecommendationService({
-          provider: createConfiguredStorageReferralRecommendationProvider(),
+          provider: null,
         }),
       mock: () => createMockReferralRecommendationService(),
     },
@@ -364,6 +364,23 @@ export function createEventAttendeeImportService(
   return createRequiredService(resolveEventAttendeeImportService(mode));
 }
 
+export function createEventAttendeeImportServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): EventAttendeeImportService {
+  const resolvedMode = resolveModuleMode(mode);
+
+  if (resolvedMode !== "live") {
+    return createEventAttendeeImportService(resolvedMode);
+  }
+
+  return createLiveEventAttendeeImportService({
+    provider: actorId.trim()
+      ? createConfiguredStorageEventAttendeeImportProvider({ actorId })
+      : null,
+  });
+}
+
 export function resolveExternalContactsImportService(
   mode?: ModuleMode | string,
 ) {
@@ -380,6 +397,23 @@ export function createExternalContactsImportService(
   mode?: ModuleMode | string,
 ): ExternalContactsImportService | MockExternalContactsImportService {
   return createRequiredService(resolveExternalContactsImportService(mode));
+}
+
+export function createExternalContactsImportServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): ExternalContactsImportService {
+  const resolvedMode = resolveModuleMode(mode);
+
+  if (resolvedMode !== "live") {
+    return createExternalContactsImportService(resolvedMode);
+  }
+
+  return createLiveExternalContactsImportService({
+    provider: actorId.trim()
+      ? createConfiguredStorageExternalContactsImportProvider({ actorId })
+      : null,
+  });
 }
 
 export function resolveEmailCalendarSignalService(
@@ -400,6 +434,23 @@ export function createEmailCalendarSignalService(
   return createRequiredService(resolveEmailCalendarSignalService(mode));
 }
 
+export function createEmailCalendarSignalServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): EmailCalendarSignalService {
+  const resolvedMode = resolveModuleMode(mode);
+
+  if (resolvedMode !== "live") {
+    return createEmailCalendarSignalService(resolvedMode);
+  }
+
+  return createLiveEmailCalendarSignalService({
+    provider: actorId.trim()
+      ? createConfiguredStorageEmailCalendarSignalProvider({ actorId })
+      : null,
+  });
+}
+
 export function resolveReferralRecommendationService(
   mode?: ModuleMode | string,
 ) {
@@ -416,6 +467,23 @@ export function createReferralRecommendationService(
   mode?: ModuleMode | string,
 ): ReferralRecommendationService | MockReferralRecommendationService {
   return createRequiredService(resolveReferralRecommendationService(mode));
+}
+
+export function createReferralRecommendationServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): ReferralRecommendationService {
+  const resolvedMode = resolveModuleMode(mode);
+
+  if (resolvedMode !== "live") {
+    return createReferralRecommendationService(resolvedMode);
+  }
+
+  return createLiveReferralRecommendationService({
+    provider: actorId.trim()
+      ? createConfiguredStorageReferralRecommendationProvider({ actorId })
+      : null,
+  });
 }
 
 export function resolveDuplicateMergeService(mode?: ModuleMode | string) {

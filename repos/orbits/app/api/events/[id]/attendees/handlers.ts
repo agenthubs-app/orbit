@@ -4,7 +4,7 @@ import {
   eventAttendeeImportFailureContext,
   eventAttendeeImportFailureToAppError,
 } from "../../../../../features/acquisition/event-attendee-contract";
-import { createEventAttendeeImportService } from "../../../../../features/acquisition/service-factory";
+import { createEventAttendeeImportServiceForActor } from "../../../../../features/acquisition/service-factory";
 import {
   eventAttendeeRosterFailureContext,
   eventAttendeeRosterFailureToAppError,
@@ -118,7 +118,10 @@ export function createEventAttendeesGetHandler(
     access,
   ): Promise<Response> {
     const searchParams = new URL(request.url).searchParams;
-    const result = await createEventAttendeeImportService().listEventAttendees({
+    const result = await createEventAttendeeImportServiceForActor(
+      access.actor.id,
+      access.mode,
+    ).listEventAttendees({
       eventId: access.eventId,
       relationshipStatusFilter: searchParams.get("relationshipStatusFilter"),
       scenario: searchParams.get("scenario"),

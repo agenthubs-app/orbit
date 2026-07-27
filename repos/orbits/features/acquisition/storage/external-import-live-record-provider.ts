@@ -37,6 +37,7 @@ export const EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageExternalContactsImportProviderOptions {
+  actorId?: string;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -44,6 +45,7 @@ export interface StorageExternalContactsImportProviderOptions {
 }
 
 export interface ConfiguredStorageExternalContactsImportProviderOptions {
+  actorId?: string;
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
 }
@@ -206,14 +208,29 @@ async function listCollection(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   collectionName: string,
+  actorId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({
+  const records = await store.listRecords({
     workspaceId,
     collectionName,
   });
+  const normalizedActorId = actorId?.trim();
+
+  if (!normalizedActorId) {
+    return records;
+  }
+
+  return records.filter(
+    (record) =>
+      record.userId === normalizedActorId ||
+      record.payload.accountId === normalizedActorId ||
+      record.payload.actorId === normalizedActorId ||
+      record.payload.ownerId === normalizedActorId,
+  );
 }
 
 export function createStorageExternalContactsImportProvider({
+  actorId,
   source,
   sourceLabel = "External contacts import shared live storage",
   store,
@@ -224,9 +241,9 @@ export function createStorageExternalContactsImportProvider({
     sourceLabel,
     async readExternalContactsImportGraph(): Promise<LiveExternalContactsImportGraph> {
       const [contactRecords, evidenceRecords, personRecords] = await Promise.all([
-        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.contacts),
-        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.evidence),
-        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.networkPeople),
+        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.contacts, actorId),
+        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.evidence, actorId),
+        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.networkPeople, actorId),
       ]);
 
       return {
@@ -255,6 +272,7 @@ export function createStorageExternalContactsImportProvider({
 }
 
 export function createConfiguredStorageExternalContactsImportProvider({
+  actorId,
   env,
   sourceLabel = "External contacts import Postgres live storage",
 }: ConfiguredStorageExternalContactsImportProviderOptions = {}): LiveExternalContactsImportProvider | null {
@@ -267,6 +285,7 @@ export function createConfiguredStorageExternalContactsImportProvider({
   }
 
   return createStorageExternalContactsImportProvider({
+    actorId,
     source: `postgres-live-record-store:external-contacts-import:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

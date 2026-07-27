@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { POST as confirmSignal } from "../../app/api/relationship-signals/[id]/confirm/route";
-import { GET as listSignals } from "../../app/api/relationship-signals/email-calendar/route";
+import { createConfirmEmailCalendarSignalPostHandler } from "../../app/api/relationship-signals/[id]/confirm/handler";
+import { createEmailCalendarSignalsGetHandler } from "../../app/api/relationship-signals/email-calendar/handler";
 import { createLiveEmailCalendarSignalService } from "../../features/acquisition/live-email-calendar-service";
 import { createEmailCalendarSignalService } from "../../features/acquisition/service-factory";
 import { createStorageEmailCalendarSignalProvider } from "../../features/acquisition/storage/email-calendar-live-record-provider";
@@ -169,6 +169,64 @@ test("email calendar live confirmation returns a review preview without relation
   assert.equal(contacts.length, 1);
 });
 
+test("email calendar signals are isolated by actor ownership metadata", async () => {
+  const store = createSeedStore();
+
+  for (const collectionName of [
+    "contacts",
+    "conversations",
+    "evidence",
+    "messages",
+  ]) {
+    const records = store.listRecords({
+      workspaceId: WORKSPACE_ID,
+      collectionName,
+    });
+
+    for (const item of records) {
+      await store.upsertRecord({
+        ...item,
+        userId: "account:signal-a",
+      });
+    }
+  }
+
+  const actorAService = createLiveEmailCalendarSignalService({
+    now: () => NOW,
+    provider: createStorageEmailCalendarSignalProvider({
+      actorId: "account:signal-a",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+  const actorBService = createLiveEmailCalendarSignalService({
+    now: () => NOW,
+    provider: createStorageEmailCalendarSignalProvider({
+      actorId: "account:signal-b",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const actorAResult = await actorAService.listEmailCalendarSignals();
+  const actorBResult = await actorBService.listEmailCalendarSignals();
+  const actorBConfirmation =
+    await actorBService.confirmEmailCalendarSignal({
+      actorLabel: "Actor B",
+      signalId: SIGNAL_ID,
+    });
+
+  assert.equal(actorAResult.success, true);
+  assert.equal(actorAResult.data.signals.length, 1);
+  assert.equal(actorBResult.success, true);
+  assert.equal(actorBResult.data.state, "empty");
+  assert.equal(actorBConfirmation.success, false);
+  assert.equal(
+    actorBConfirmation.error.code,
+    "EMAIL_CALENDAR_SIGNAL_NOT_FOUND",
+  );
+});
+
 test("email calendar live service fails closed when storage is unconfigured", async () => {
   const service = createLiveEmailCalendarSignalService({
     provider: null,
@@ -227,10 +285,17 @@ test("email calendar signal API resolves ORBIT_MODULE_MODE=live and fails closed
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const listResponse = await listSignals(
+    const resolveActor = async () => ({
+      id: "account:signal-live-test",
+      name: "Signal tester",
+    });
+    const listResponse = await createEmailCalendarSignalsGetHandler(
+      resolveActor,
+    )(
       new Request("https://orbit.local/api/relationship-signals/email-calendar"),
     );
-    const confirmResponse = await confirmSignal(
+    const confirmResponse =
+      await createConfirmEmailCalendarSignalPostHandler(resolveActor)(
       new Request(`https://orbit.local/api/relationship-signals/${SIGNAL_ID}/confirm`, {
         method: "POST",
       }),
@@ -264,5 +329,37 @@ test("email calendar signal API resolves ORBIT_MODULE_MODE=live and fails closed
     process.env.ORBIT_EVENT_DATABASE_URL = previousEventDatabaseUrl;
     process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
+  }
+});
+
+test("email calendar signal APIs reject anonymous list and confirmation", async () => {
+  const resolveActor = async () => null;
+  const listResponse = await createEmailCalendarSignalsGetHandler(resolveActor)(
+    new Request("https://orbit.local/api/relationship-signals/email-calendar"),
+  );
+  const confirmResponse =
+    await createConfirmEmailCalendarSignalPostHandler(resolveActor)(
+      new Request(
+        `https://orbit.local/api/relationship-signals/${SIGNAL_ID}/confirm`,
+        {
+          body: JSON.stringify({ actorLabel: "spoofed reviewer" }),
+          headers: {
+            "content-type": "application/json",
+          },
+          method: "POST",
+        },
+      ),
+      {
+        params: Promise.resolve({ id: SIGNAL_ID }),
+      },
+    );
+
+  for (const response of [listResponse, confirmResponse]) {
+    const body = await response.json();
+
+    assert.equal(response.status, 401);
+    assert.equal(body.success, false);
+    assert.equal(body.error.code, "UNAUTHORIZED");
+    assert.equal(body.error.context.service, "authenticated-api-actor");
   }
 });

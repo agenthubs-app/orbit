@@ -348,3 +348,29 @@ Implementation boundary:
 - Live QR contact and evidence reads filter by the server actor using record ownership metadata.
 - The shared draft confirmation handler sends the same actor into the Live QR service and uses the server-derived actor label for confirmation evidence.
 - Unscoped QR Live factory use fails closed. `ACQUISITION-CAPABILITY-AUTH-001` remains open for external import, referral/recommended confirmation, and email/calendar signal APIs.
+
+## 2026-07-27 — Complete acquisition capability actor boundary
+
+Production and regression verification:
+
+- Ran 49 focused Event owner-guard, event-attendee, external-import, referral/recommended, email/calendar, and core-factory tests; all passed.
+- Ran `pnpm lint`; TypeScript validation completed successfully.
+- Rebuilt the exact worktree with `pnpm build`, generated a fresh production build, and restored `next-env.d.ts` to the development route-types path.
+- Started that build on isolated port 3100; port 3000 was not touched.
+- Ran the full test suite: 1,252 tests, 1,199 passed, 53 open-baseline failures, zero skipped/cancelled/todo. Fourteen new actor-bound tests passed and three prior acquisition failures were removed.
+
+Complete anonymous production inventory:
+
+| Inventory | Authoritative evidence | Result |
+| --- | --- | --- |
+| 16 contact-draft / relationship-signal operations | Real GET, POST, and PATCH requests against the exact production build | Every operation returned `401 UNAUTHORIZED` from `authenticated-api-actor`, including central list/detail/update/confirm, business-card scan, event-attendee import, external candidates/import, manual, merge list/apply, QR scan, referral/recommended confirm, and email/calendar list/confirm. |
+| Static route inventory | All `route.ts` files under `app/api/contact-drafts` and `app/api/relationship-signals` | Every production method is a thin handler export; every handler resolves the shared authenticated actor. |
+| Cross-actor Live providers | Isolated memory-store tests | Central/manual, QR, event attendee, external, referral, email/calendar, and duplicate-merge graphs return only the owning actor's records; non-owners receive honest empty/not-found results. |
+| Confirmation identity | Handler and Mock regression tests | Query/form/JSON `actorLabel` values are ignored; Live confirmation evidence uses the server actor while deterministic Mock fixtures remain unchanged. |
+
+Implementation boundary:
+
+- Actor-bound factories cover contact drafts, manual creation, QR, event attendees, external candidates/import, referral/recommended confirmation, email/calendar signals, and duplicate merge.
+- Event attendee records are scoped at the event, attendee, intent, person, contact, and evidence layers. The already owner-guarded Event attendee GET now passes the verified actor into the acquisition provider.
+- These capabilities still stage or return review previews only where their contracts say no write exists; authentication does not upgrade a preview into a persisted contact, relationship, outreach, notification, email, or calendar action.
+- `ACQUISITION-CAPABILITY-AUTH-001` is closed.

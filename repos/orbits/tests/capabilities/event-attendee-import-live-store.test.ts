@@ -6,7 +6,10 @@ import { join } from "node:path";
 
 import { createLiveEventAttendeeImportService } from "../../features/acquisition/live-event-attendee-import-service";
 import { resolveEventAttendeeImportService } from "../../features/acquisition/service-factory";
-import { createStorageEventAttendeeImportProvider } from "../../features/acquisition/storage/event-attendee-live-record-provider";
+import {
+  EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS,
+  createStorageEventAttendeeImportProvider,
+} from "../../features/acquisition/storage/event-attendee-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -74,7 +77,7 @@ async function withoutLiveDatabaseEnv(run: () => Promise<void>): Promise<void> {
   }
 }
 
-async function seededProvider() {
+async function seededStore() {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "workspace:event-attendee-live";
 
@@ -83,6 +86,12 @@ async function seededProvider() {
     store,
     workspaceId,
   });
+
+  return { store, workspaceId };
+}
+
+async function seededProvider() {
+  const { store, workspaceId } = await seededStore();
 
   return createStorageEventAttendeeImportProvider({
     store,
@@ -148,6 +157,53 @@ test("live event attendee import stages review drafts without creating contacts"
   );
 });
 
+test("event attendee import graph is isolated by actor ownership metadata", async () => {
+  const { store, workspaceId } = await seededStore();
+
+  for (const collectionName of Object.values(
+    EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS,
+  )) {
+    const records = store.listRecords({
+      workspaceId,
+      collectionName,
+    });
+
+    for (const item of records) {
+      await store.upsertRecord({
+        ...item,
+        userId: "account:event-attendee-a",
+      });
+    }
+  }
+
+  const actorAService = createLiveEventAttendeeImportService({
+    provider: createStorageEventAttendeeImportProvider({
+      actorId: "account:event-attendee-a",
+      store,
+      workspaceId,
+    }),
+  });
+  const actorBService = createLiveEventAttendeeImportService({
+    provider: createStorageEventAttendeeImportProvider({
+      actorId: "account:event-attendee-b",
+      store,
+      workspaceId,
+    }),
+  });
+
+  const actorAResult = await actorAService.listEventAttendees({
+    eventId: "event_01",
+  });
+  const actorBResult = await actorBService.listEventAttendees({
+    eventId: "event_01",
+  });
+
+  assert.equal(actorAResult.success, true);
+  assert.equal(actorAResult.data.attendees.length, 50);
+  assert.equal(actorBResult.success, false);
+  assert.equal(actorBResult.error.code, "EVENT_ATTENDEE_EVENT_NOT_FOUND");
+});
+
 test("event attendee import live factory and routes fail closed without live database config", async () => {
   await withoutLiveDatabaseEnv(async () => {
     const resolution = resolveEventAttendeeImportService("live");
@@ -167,9 +223,14 @@ test("event attendee import live factory and routes fail closed without live dat
     }
 
     const importRoute = await importProjectModule<{
-      POST: (request: Request) => Promise<Response>;
-    }>("app/api/contact-drafts/event-attendees/import/route.ts");
-    const response = await importRoute.POST(
+      createEventAttendeeDraftImportPostHandler: (
+        resolveActor: () => Promise<{ id: string }>,
+      ) => (request: Request) => Promise<Response>;
+    }>("app/api/contact-drafts/event-attendees/import/handler.ts");
+    const response =
+      await importRoute.createEventAttendeeDraftImportPostHandler(
+        async () => ({ id: "account:event-attendee-live-test" }),
+      )(
       new Request(
         "https://orbit.local/api/contact-drafts/event-attendees/import?eventId=event_01",
         { method: "POST" },
@@ -196,4 +257,33 @@ test("event attendee import live factory and routes fail closed without live dat
       },
     });
   });
+});
+
+test("event attendee draft import rejects anonymous requests before parsing event identity", async () => {
+  const importRoute = await importProjectModule<{
+    createEventAttendeeDraftImportPostHandler: (
+      resolveActor: () => Promise<null>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/contact-drafts/event-attendees/import/handler.ts");
+  const response =
+    await importRoute.createEventAttendeeDraftImportPostHandler(
+      async () => null,
+    )(
+      new Request(
+        "https://orbit.local/api/contact-drafts/event-attendees/import",
+        {
+          body: JSON.stringify({ eventId: "event_01" }),
+          headers: {
+            "content-type": "application/json",
+          },
+          method: "POST",
+        },
+      ),
+    );
+  const body = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(body.success, false);
+  assert.equal(body.error.code, "UNAUTHORIZED");
+  assert.equal(body.error.context.service, "authenticated-api-actor");
 });

@@ -31,6 +31,7 @@ export const EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageEventAttendeeImportProviderOptions {
+  actorId?: string;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -38,6 +39,7 @@ export interface StorageEventAttendeeImportProviderOptions {
 }
 
 export interface ConfiguredStorageEventAttendeeImportProviderOptions {
+  actorId?: string;
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
 }
@@ -316,7 +318,33 @@ function recordIdsFrom(
   return [...new Set(records.flatMap((record) => record.evidenceIds))];
 }
 
+function recordBelongsToActor(
+  record: LiveRecord<Record<string, unknown>>,
+  actorId?: string,
+): boolean {
+  const normalizedActorId = actorId?.trim();
+
+  if (!normalizedActorId) {
+    return true;
+  }
+
+  return (
+    record.userId === normalizedActorId ||
+    record.payload.accountId === normalizedActorId ||
+    record.payload.actorId === normalizedActorId ||
+    record.payload.ownerId === normalizedActorId
+  );
+}
+
+function recordsForActor(
+  records: readonly LiveRecord<Record<string, unknown>>[],
+  actorId?: string,
+): readonly LiveRecord<Record<string, unknown>>[] {
+  return records.filter((record) => recordBelongsToActor(record, actorId));
+}
+
 export function createStorageEventAttendeeImportProvider({
+  actorId,
   source,
   sourceLabel = "Event attendee shared live storage",
   store,
@@ -331,13 +359,22 @@ export function createStorageEventAttendeeImportProvider({
         collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.events,
         recordId: eventId,
       });
-      const event = eventFromRecord(eventRecord);
+      const ownedEventRecord =
+        eventRecord && recordBelongsToActor(eventRecord, actorId)
+          ? eventRecord
+          : null;
+      const event = eventFromRecord(ownedEventRecord);
 
       if (!event) {
         return null;
       }
 
-      const [attendeeRecords, intentRecords, personRecords, contactRecords] =
+      const [
+        allAttendeeRecords,
+        allIntentRecords,
+        allPersonRecords,
+        allContactRecords,
+      ] =
         await Promise.all([
           store.listRecords({
             workspaceId,
@@ -358,6 +395,10 @@ export function createStorageEventAttendeeImportProvider({
             collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contacts,
           }),
         ]);
+      const attendeeRecords = recordsForActor(allAttendeeRecords, actorId);
+      const intentRecords = recordsForActor(allIntentRecords, actorId);
+      const personRecords = recordsForActor(allPersonRecords, actorId);
+      const contactRecords = recordsForActor(allContactRecords, actorId);
       const attendees = attendeeRecords
         .map(attendeeFromRecord)
         .filter(
@@ -422,13 +463,18 @@ export function createStorageEventAttendeeImportProvider({
         ...contacts,
         ...networkPeople,
       ]);
-      const evidenceRecords = evidenceIds.length > 0
-        ? await store.listRecords({
-            workspaceId,
-            collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.evidence,
-            recordIds: evidenceIds,
-          })
-        : [];
+      const evidenceRecords =
+        evidenceIds.length > 0
+          ? recordsForActor(
+              await store.listRecords({
+                workspaceId,
+                collectionName:
+                  EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.evidence,
+                recordIds: evidenceIds,
+              }),
+              actorId,
+            )
+          : [];
 
       return {
         attendees,
@@ -440,7 +486,7 @@ export function createStorageEventAttendeeImportProvider({
             (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
           ),
         generatedAt: latestTimestamp([
-          eventRecord,
+          ownedEventRecord,
           ...attendeeRecords,
           ...intentRecords,
           ...personRecords,
@@ -455,6 +501,7 @@ export function createStorageEventAttendeeImportProvider({
 }
 
 export function createConfiguredStorageEventAttendeeImportProvider({
+  actorId,
   env,
   sourceLabel = "Event attendee Postgres live storage",
 }: ConfiguredStorageEventAttendeeImportProviderOptions = {}): LiveEventAttendeeImportProvider | null {
@@ -466,7 +513,7 @@ export function createConfiguredStorageEventAttendeeImportProvider({
 
   const canUseDefaultCache =
     env === undefined && sourceLabel === "Event attendee Postgres live storage";
-  const cacheKey = `${config.connectionString}\u0000${config.workspaceId}`;
+  const cacheKey = `${config.connectionString}\u0000${config.workspaceId}\u0000${actorId?.trim() ?? ""}`;
 
   if (canUseDefaultCache && cachedDefaultProvider?.key === cacheKey) {
     return cachedDefaultProvider.provider;
@@ -481,6 +528,7 @@ export function createConfiguredStorageEventAttendeeImportProvider({
   }
 
   const provider = createStorageEventAttendeeImportProvider({
+    actorId,
     source: `postgres-live-record-store:event-attendee-import:${config.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

@@ -377,14 +377,18 @@ test("mock referral recommendation service is deterministic rule-based code with
 
 test("referral recommendation API routes return stable envelopes with empty pending and failure paths", async () => {
   const referralRoute = await importProjectModule<{
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/contact-drafts/referral/route.ts");
+    createReferralRecommendationPostHandler: (
+      resolveActor: () => Promise<{ id: string; name: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/contact-drafts/referral/handler.ts");
   const confirmRoute = await importProjectModule<{
-    POST: (
+    createConfirmRecommendedContactPostHandler: (
+      resolveActor: () => Promise<{ id: string; name: string }>,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/contact-drafts/recommended/[id]/confirm/route.ts");
+  }>("app/api/contact-drafts/recommended/[id]/confirm/handler.ts");
   const fixtures = await importProjectModule<{
     mockReferralRecommendationFixture: unknown;
     mockEmptyReferralRecommendationFixture: unknown;
@@ -392,44 +396,58 @@ test("referral recommendation API routes return stable envelopes with empty pend
     mockConfirmedRecommendedContactFixture: unknown;
   }>("features/acquisition/referral-fixtures.ts");
 
-  const referralResponse = await referralRoute.POST(
+  const resolveActor = async () => ({
+    id: "account:referral-test",
+    name: "Server referral tester",
+  });
+  const createReferrals =
+    referralRoute.createReferralRecommendationPostHandler(resolveActor);
+  const confirmRecommendation =
+    confirmRoute.createConfirmRecommendedContactPostHandler(resolveActor);
+  const referralResponse = await createReferrals(
     new Request("https://orbit.local/api/contact-drafts/referral", {
       method: "POST",
     }),
   );
-  const emptyResponse = await referralRoute.POST(
+  const emptyResponse = await createReferrals(
     new Request(
       "https://orbit.local/api/contact-drafts/referral?scenario=empty",
       { method: "POST" },
     ),
   );
-  const pendingResponse = await referralRoute.POST(
+  const pendingResponse = await createReferrals(
     new Request(
       "https://orbit.local/api/contact-drafts/referral?scenario=pending",
       { method: "POST" },
     ),
   );
-  const failureResponse = await referralRoute.POST(
+  const failureResponse = await createReferrals(
     new Request(
       "https://orbit.local/api/contact-drafts/referral?scenario=failure",
       { method: "POST" },
     ),
   );
-  const confirmResponse = await confirmRoute.POST(
+  const confirmResponse = await confirmRecommendation(
     new Request(
-      "https://orbit.local/api/contact-drafts/recommended/demo-recommendation-1/confirm",
-      { method: "POST" },
+      "https://orbit.local/api/contact-drafts/recommended/demo-recommendation-1/confirm?actorLabel=Spoofed",
+      {
+        body: JSON.stringify({ actorLabel: "Spoofed JSON" }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      },
     ),
     { params: Promise.resolve({ id: "demo-recommendation-1" }) },
   );
-  const blockedConfirmResponse = await confirmRoute.POST(
+  const blockedConfirmResponse = await confirmRecommendation(
     new Request(
       "https://orbit.local/api/contact-drafts/recommended/demo-recommendation-1/confirm?scenario=blocked",
       { method: "POST" },
     ),
     { params: Promise.resolve({ id: "demo-recommendation-1" }) },
   );
-  const missingConfirmResponse = await confirmRoute.POST(
+  const missingConfirmResponse = await confirmRecommendation(
     new Request(
       "https://orbit.local/api/contact-drafts/recommended/missing-recommendation/confirm",
       { method: "POST" },

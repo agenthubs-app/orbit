@@ -10,7 +10,9 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { createEventAttendeesGetHandler } from "../../app/api/events/[id]/attendees/handlers";
 import * as acquisitionEventAttendeeFixtures from "../../features/acquisition/event-attendee-fixtures";
+import { createMockEventCrudAndImportService } from "../../features/events/event-crud-and-import/mock-service";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -250,21 +252,25 @@ test("mock event attendee import service is deterministic rule-based code with n
 
 test("event attendee import API routes return stable envelopes with empty and failure paths", async () => {
   const importRoute = await importProjectModule<{
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/contact-drafts/event-attendees/import/route.ts");
-  const attendeesRoute = await importProjectModule<{
-    GET: (
-      request: Request,
-      context: { params: Promise<{ id: string }> },
-    ) => Promise<Response>;
-  }>("app/api/events/[id]/attendees/route.ts");
+    createEventAttendeeDraftImportPostHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/contact-drafts/event-attendees/import/handler.ts");
   const fixtures = await importProjectModule<{
     mockEventAttendeeImportFixture: unknown;
     mockEventAttendeeRosterFixture: unknown;
     mockEmptyEventAttendeeImportFixture: unknown;
   }>("features/acquisition/event-attendee-fixtures.ts");
 
-  const importResponse = await importRoute.POST(
+  const importAttendees =
+    importRoute.createEventAttendeeDraftImportPostHandler(
+      async () => ({ id: "account:event-attendee-test" }),
+    );
+  const listAttendees = createEventAttendeesGetHandler({
+    createEventService: () => createMockEventCrudAndImportService(),
+    resolveActor: async () => ({ id: "account:event-attendee-test" }),
+  });
+  const importResponse = await importAttendees(
     new Request(
       "https://orbit.local/api/contact-drafts/event-attendees/import",
       {
@@ -272,7 +278,7 @@ test("event attendee import API routes return stable envelopes with empty and fa
       },
     ),
   );
-  const attendeesResponse = await attendeesRoute.GET(
+  const attendeesResponse = await listAttendees(
     new Request("https://orbit.local/api/events/demo-event-1/attendees", {
       method: "GET",
     }),
@@ -280,7 +286,7 @@ test("event attendee import API routes return stable envelopes with empty and fa
       params: Promise.resolve({ id: "demo-event-1" }),
     },
   );
-  const emptyResponse = await importRoute.POST(
+  const emptyResponse = await importAttendees(
     new Request(
       "https://orbit.local/api/contact-drafts/event-attendees/import?scenario=empty",
       {
@@ -288,7 +294,7 @@ test("event attendee import API routes return stable envelopes with empty and fa
       },
     ),
   );
-  const failureResponse = await importRoute.POST(
+  const failureResponse = await importAttendees(
     new Request(
       "https://orbit.local/api/contact-drafts/event-attendees/import?scenario=failure",
       {
@@ -296,7 +302,7 @@ test("event attendee import API routes return stable envelopes with empty and fa
       },
     ),
   );
-  const missingRosterResponse = await attendeesRoute.GET(
+  const missingRosterResponse = await listAttendees(
     new Request("https://orbit.local/api/events/missing-event/attendees", {
       method: "GET",
     }),
@@ -346,22 +352,13 @@ test("event attendee import API routes return stable envelopes with empty and fa
   });
 
   assert.equal(missingRosterResponse.status, 404);
-  assert.deepEqual(await missingRosterResponse.json(), {
-    success: false,
-    error: {
-      code: "NOT_FOUND",
-      message: "No mock event attendee roster matches that event id.",
-      context: {
-        boundary: "developer-admin",
-        eventAttendeeImportErrorCode: "EVENT_ATTENDEE_EVENT_NOT_FOUND",
-        mode: "mock",
-        privacy: "no-relationship-data",
-        provenance:
-          "Mock event attendee import failure came from deterministic fixture rules.",
-        service: "event-attendee-import-mock",
-      },
-    },
-  });
+  const missingRosterBody = await missingRosterResponse.json();
+  assert.equal(missingRosterBody.success, false);
+  assert.equal(missingRosterBody.error.code, "NOT_FOUND");
+  assert.equal(
+    missingRosterBody.error.context.eventCrudImportErrorCode,
+    "EVENTS_EVENT_NOT_FOUND",
+  );
 });
 
 test("event attendee import debug route renders all states and the live replacement handoff", async () => {

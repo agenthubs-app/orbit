@@ -40,6 +40,7 @@ export const EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageEmailCalendarSignalProviderOptions {
+  actorId?: string;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -47,6 +48,7 @@ export interface StorageEmailCalendarSignalProviderOptions {
 }
 
 export interface ConfiguredStorageEmailCalendarSignalProviderOptions {
+  actorId?: string;
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
 }
@@ -238,14 +240,29 @@ async function listCollection(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   collectionName: string,
+  actorId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({
+  const records = await store.listRecords({
     workspaceId,
     collectionName,
   });
+  const normalizedActorId = actorId?.trim();
+
+  if (!normalizedActorId) {
+    return records;
+  }
+
+  return records.filter(
+    (record) =>
+      record.userId === normalizedActorId ||
+      record.payload.accountId === normalizedActorId ||
+      record.payload.actorId === normalizedActorId ||
+      record.payload.ownerId === normalizedActorId,
+  );
 }
 
 export function createStorageEmailCalendarSignalProvider({
+  actorId,
   source,
   sourceLabel = "Email calendar signal shared live storage",
   store,
@@ -257,10 +274,10 @@ export function createStorageEmailCalendarSignalProvider({
     async readEmailCalendarSignalGraph(): Promise<LiveEmailCalendarSignalGraph> {
       const [contactRecords, conversationRecords, evidenceRecords, messageRecords] =
         await Promise.all([
-          listCollection(store, workspaceId, EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS.contacts),
-          listCollection(store, workspaceId, EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS.conversations),
-          listCollection(store, workspaceId, EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS.evidence),
-          listCollection(store, workspaceId, EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS.messages),
+          listCollection(store, workspaceId, EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS.contacts, actorId),
+          listCollection(store, workspaceId, EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS.conversations, actorId),
+          listCollection(store, workspaceId, EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS.evidence, actorId),
+          listCollection(store, workspaceId, EMAIL_CALENDAR_LIVE_RECORD_COLLECTIONS.messages, actorId),
         ]);
 
       return {
@@ -294,6 +311,7 @@ export function createStorageEmailCalendarSignalProvider({
 }
 
 export function createConfiguredStorageEmailCalendarSignalProvider({
+  actorId,
   env,
   sourceLabel = "Email calendar signal Postgres live storage",
 }: ConfiguredStorageEmailCalendarSignalProviderOptions = {}): LiveEmailCalendarSignalProvider | null {
@@ -306,6 +324,7 @@ export function createConfiguredStorageEmailCalendarSignalProvider({
   }
 
   return createStorageEmailCalendarSignalProvider({
+    actorId,
     source: `postgres-live-record-store:email-calendar-signals:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

@@ -43,6 +43,7 @@ export const REFERRAL_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageReferralRecommendationProviderOptions {
+  actorId?: string;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -50,6 +51,7 @@ export interface StorageReferralRecommendationProviderOptions {
 }
 
 export interface ConfiguredStorageReferralRecommendationProviderOptions {
+  actorId?: string;
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
 }
@@ -255,14 +257,29 @@ async function listCollection(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   collectionName: string,
+  actorId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({
+  const records = await store.listRecords({
     workspaceId,
     collectionName,
   });
+  const normalizedActorId = actorId?.trim();
+
+  if (!normalizedActorId) {
+    return records;
+  }
+
+  return records.filter(
+    (record) =>
+      record.userId === normalizedActorId ||
+      record.payload.accountId === normalizedActorId ||
+      record.payload.actorId === normalizedActorId ||
+      record.payload.ownerId === normalizedActorId,
+  );
 }
 
 export function createStorageReferralRecommendationProvider({
+  actorId,
   source,
   sourceLabel = "Referral recommendation shared live storage",
   store,
@@ -278,10 +295,10 @@ export function createStorageReferralRecommendationProvider({
         personRecords,
         recommendationRecords,
       ] = await Promise.all([
-        listCollection(store, workspaceId, REFERRAL_LIVE_RECORD_COLLECTIONS.contacts),
-        listCollection(store, workspaceId, REFERRAL_LIVE_RECORD_COLLECTIONS.evidence),
-        listCollection(store, workspaceId, REFERRAL_LIVE_RECORD_COLLECTIONS.networkPeople),
-        listCollection(store, workspaceId, REFERRAL_LIVE_RECORD_COLLECTIONS.matchRecommendations),
+        listCollection(store, workspaceId, REFERRAL_LIVE_RECORD_COLLECTIONS.contacts, actorId),
+        listCollection(store, workspaceId, REFERRAL_LIVE_RECORD_COLLECTIONS.evidence, actorId),
+        listCollection(store, workspaceId, REFERRAL_LIVE_RECORD_COLLECTIONS.networkPeople, actorId),
+        listCollection(store, workspaceId, REFERRAL_LIVE_RECORD_COLLECTIONS.matchRecommendations, actorId),
       ]);
 
       return {
@@ -317,6 +334,7 @@ export function createStorageReferralRecommendationProvider({
 }
 
 export function createConfiguredStorageReferralRecommendationProvider({
+  actorId,
   env,
   sourceLabel = "Referral recommendation Postgres live storage",
 }: ConfiguredStorageReferralRecommendationProviderOptions = {}): LiveReferralRecommendationProvider | null {
@@ -329,6 +347,7 @@ export function createConfiguredStorageReferralRecommendationProvider({
   }
 
   return createStorageReferralRecommendationProvider({
+    actorId,
     source: `postgres-live-record-store:referral-recommendations:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,
