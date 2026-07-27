@@ -210,3 +210,37 @@ Integrity checks:
 - The Event Detail loader no longer contains any want-to-connect write branch.
 - Production anonymous `POST /api/events/demo-event-1/want-to-connect` with a spoofed actor and Priya target returned `401 UNAUTHORIZED` with `authenticated-actor-required`.
 - The POST handler derives actor identity from the server session, checks event ownership, and rejects missing or non-match targets before the intent service runs.
+
+## 2026-07-27 — Event child API authorization boundary
+
+Production runtime:
+
+- Ran `npm run lint`; the TypeScript validation completed successfully.
+- Ran 28 focused owner-guard, attendee, goal/readiness, match, encounter, post-event, and Agent follow-up route tests; all passed.
+- Ran two adaptive registration authentication tests; anonymous interview/persona generation was rejected and authenticated participant behavior remained available.
+- Rebuilt the exact worktree with `npm run build`; compilation, TypeScript, 39 static pages, and route collection completed successfully.
+- Started that build on isolated port 3100; port 3000 was not touched.
+- Regenerated the manifest from 38 production routes and 1,447 interactions; all 9 manifest tests passed.
+
+Authorization results:
+
+| Boundary | Authoritative evidence | Result |
+| --- | --- | --- |
+| Anonymous Event API inventory | Real HTTP requests against the exact production build | All 18 list/detail/child/matchmaking/registration/want-connect requests returned `401 UNAUTHORIZED`. This includes the previously anonymous evidence write, post-event confirmation, and adaptive interview/persona endpoints. |
+| Owner-only child capability | Injected server-actor handler tests | Anonymous access stopped before event storage; an actor-scoped missing event returned 404 before the child handler; client body/header actor spoofing was ignored. |
+| Authorized route behavior | 28 focused route/service tests | Attendee, goal/readiness, match, encounter/evidence, post-event review/confirm/follow-up, and Agent trigger behavior remained green behind the shared guard. |
+| Participant registration generation | Two focused handler tests | Interview and persona generation now require a server-authenticated participant without incorrectly requiring event ownership. |
+| Authenticated Event Detail | Browser URL and rendered DOM on `/app/events/event_001?mode=mock` | The page remained on the exact event ID, reported that the event is unavailable to the authenticated account, and stated that no child capability or provider work ran. |
+
+Implementation boundary:
+
+- `withOwnedEventAccess` derives identity only from the server session and uses the actor-scoped Event Detail service before any owner-only child capability reads or writes.
+- Route files are thin exports; injectable handler factories preserve authorized-path testing without a test header, mock-mode bypass, or client identity backdoor.
+- Encounter and post-event Agent runtime creation reuse the already verified actor. Post-event follow-up uses the server event title rather than a caller-supplied title.
+- Encounter-note input no longer defaults a missing contact/note to a named demo person and sentence.
+- Adaptive registration interview/persona use the authenticated-participant boundary because registrants should not be required to own the event.
+
+Browser-tool limitation:
+
+- The in-app browser reloaded the authenticated production page successfully, but its control layer blocks direct `/api/*` navigation with `ERR_BLOCKED_BY_CLIENT`, and the page-evaluation sandbox exposes neither `fetch` nor `XMLHttpRequest`.
+- No claim of browser-executed API POST coverage is made. Production HTTP status evidence, authenticated browser page evidence, and injected authorized-handler tests are recorded separately above.

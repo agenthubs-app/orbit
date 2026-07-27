@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as eventsPostEventFixtures from "../../features/events/post-event-review/fixtures";
+import { eventOwnerTestDependencies } from "../api/event-owner-test-dependencies";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -177,13 +178,19 @@ test("post-event review contract exposes review contacts summaries tags follow-u
   assert.equal(success.data?.event.liveDatabaseReadExecuted, false);
   assert.equal(success.data?.contacts.length, 2);
   assert.match(success.data?.contacts[0]?.summary.headline ?? "", /Priya/i);
-  assert.equal(success.data?.contacts[0]?.summary.generatedBy, "mock-post-event-rules");
+  assert.equal(
+    success.data?.contacts[0]?.summary.generatedBy,
+    "mock-post-event-rules",
+  );
   assert.equal(success.data?.contacts[0]?.summary.aiProviderRequested, false);
   assert.deepEqual(
     success.data?.contacts[0]?.tags.map((tag) => tag.label),
     ["storage pilot", "founder intro"],
   );
-  assert.equal(success.data?.contacts[0]?.tags[0]?.generatedBy, "mock-post-event-rules");
+  assert.equal(
+    success.data?.contacts[0]?.tags[0]?.generatedBy,
+    "mock-post-event-rules",
+  );
   assert.equal(success.data?.contacts[0]?.tags[0]?.aiProviderRequested, false);
   assert.match(
     success.data?.contacts[0]?.followUpSuggestion.messageDraft ?? "",
@@ -212,20 +219,35 @@ test("post-event review contract exposes review contacts summaries tags follow-u
   assert.equal(confirmation.data?.state, "confirmed");
   assert.equal(confirmation.data?.eventId, "demo-event-1");
   assert.equal(confirmation.data?.confirmedContacts.length, 2);
-  assert.equal(confirmation.data?.confirmedContacts[0]?.contactId, "contact:priya-shah");
-  assert.equal(confirmation.data?.confirmedContacts[0]?.batchPersistenceExecuted, false);
-  assert.equal(confirmation.data?.confirmedContacts[0]?.liveDatabaseWriteExecuted, false);
+  assert.equal(
+    confirmation.data?.confirmedContacts[0]?.contactId,
+    "contact:priya-shah",
+  );
+  assert.equal(
+    confirmation.data?.confirmedContacts[0]?.batchPersistenceExecuted,
+    false,
+  );
+  assert.equal(
+    confirmation.data?.confirmedContacts[0]?.liveDatabaseWriteExecuted,
+    false,
+  );
   assert.equal(confirmation.data?.provenance.batchPersistenceExecuted, false);
   assert.equal(confirmation.data?.provenance.liveDatabaseWriteExecuted, false);
 
   assert.equal(empty.success, true);
   assert.equal(empty.data?.state, "empty");
   assert.equal(empty.data?.contacts.length, 0);
-  assert.match(eventsPostEventFixtures.mockEmptyPostEventReviewFixture.nextAction, /Import/i);
+  assert.match(
+    eventsPostEventFixtures.mockEmptyPostEventReviewFixture.nextAction,
+    /Import/i,
+  );
   assert.equal(pending.success, true);
   assert.equal(pending.data?.state, "pending");
   assert.equal(pending.data?.contacts.length, 0);
-  assert.match(eventsPostEventFixtures.mockPendingPostEventReviewFixture.nextAction, /Wait/i);
+  assert.match(
+    eventsPostEventFixtures.mockPendingPostEventReviewFixture.nextAction,
+    /Wait/i,
+  );
   assert.equal(failure.success, false);
   assert.equal(failure.error?.code, "POST_EVENT_REVIEW_MOCK_FAILED");
   assert.equal(failure.error?.appCode, "SERVICE_UNAVAILABLE");
@@ -284,7 +306,10 @@ test("mock post-event contact review service is deterministic and never calls li
     assert.doesNotMatch(source, /\bfetch\s*\(/);
     assert.doesNotMatch(source, /Supabase|createClient|OAuth/i);
     assert.doesNotMatch(source, /XMLHttpRequest|WebSocket|EventSource/);
-    assert.doesNotMatch(source, /navigator|mediaDevices|localStorage|indexedDB/);
+    assert.doesNotMatch(
+      source,
+      /navigator|mediaDevices|localStorage|indexedDB/,
+    );
     assert.doesNotMatch(
       source,
       /from ["']node:(net|http|https)["']|require\(["']node:(net|http|https)["']\)/,
@@ -294,18 +319,32 @@ test("mock post-event contact review service is deterministic and never calls li
 });
 
 test("post-event contact review API routes return stable envelopes with empty and failure paths", async () => {
-  const reviewRoute = await importProjectModule<{
-    GET: (
+  const reviewHandler = await importProjectModule<{
+    createPostEventReviewGetHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/post-event/route.ts");
-  const confirmRoute = await importProjectModule<{
-    POST: (
+  }>("app/api/events/[id]/post-event/handler.ts");
+  const confirmHandler = await importProjectModule<{
+    createPostEventConfirmPostHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/post-event/confirm/route.ts");
+  }>("app/api/events/[id]/post-event/confirm/handler.ts");
+  const reviewRoute = {
+    GET: reviewHandler.createPostEventReviewGetHandler(
+      eventOwnerTestDependencies,
+    ),
+  };
+  const confirmRoute = {
+    POST: confirmHandler.createPostEventConfirmPostHandler(
+      eventOwnerTestDependencies,
+    ),
+  };
   const fixtures = await importProjectModule<{
     mockEmptyPostEventReviewFixture: unknown;
     mockPostEventReviewConfirmFixture: unknown;
@@ -325,7 +364,10 @@ test("post-event contact review API routes return stable envelopes with empty an
       "https://orbit.local/api/events/demo-event-1/post-event/confirm",
       {
         body: JSON.stringify({
-          contactDraftIds: ["draft:post-event:priya", "draft:post-event:marcus"],
+          contactDraftIds: [
+            "draft:post-event:priya",
+            "draft:post-event:marcus",
+          ],
         }),
         headers: { "content-type": "application/json" },
         method: "POST",
@@ -435,10 +477,7 @@ test("post-event contact review debug route renders all states and the live repl
     PostEventContactReviewMockDemo: () => React.ReactElement;
   }>("features/events/post-event-review/debug-view.tsx");
 
-  assert.equal(
-    module.POST_EVENT_CONTACT_REVIEW_MOCK_SLUG,
-    "post-event-review",
-  );
+  assert.equal(module.POST_EVENT_CONTACT_REVIEW_MOCK_SLUG, "post-event-review");
 
   const html = renderToStaticMarkup(
     React.createElement(module.PostEventContactReviewMockDemo),
@@ -500,6 +539,9 @@ test("post-event contact review live handoff covers replacement requirements", (
   assert.match(doc, /batch persistence/i);
   assert.match(doc, /explicit user permission/i);
   assert.match(doc, /privacy review is pending/i);
-  assert.match(doc, /provider failure, privacy review, and confirmation paths/i);
+  assert.match(
+    doc,
+    /provider failure, privacy review, and confirmation paths/i,
+  );
   assert.match(doc, /Live handoff evidence excerpts/i);
 });

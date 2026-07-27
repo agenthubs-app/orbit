@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as eventsEncounterFixtures from "../../features/events/encounter-note/fixtures";
+import { eventOwnerTestDependencies } from "../api/event-owner-test-dependencies";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -185,8 +186,8 @@ test("event encounter note contract exposes note voice summary seed evidence fix
     "SERVICE_UNAVAILABLE",
   );
   assert.match(
-    contract.EVENT_ENCOUNTER_NOTE_ERROR_DEFINITIONS
-      .EVENT_ENCOUNTER_NOTE_PENDING.recovery,
+    contract.EVENT_ENCOUNTER_NOTE_ERROR_DEFINITIONS.EVENT_ENCOUNTER_NOTE_PENDING
+      .recovery,
     /speech-to-text|audio upload|live note storage/i,
   );
 
@@ -209,8 +210,14 @@ test("event encounter note contract exposes note voice summary seed evidence fix
     success.data?.conversationSummarySeed.generatedBy,
     "mock-encounter-note-rules",
   );
-  assert.equal(success.data?.conversationSummarySeed.aiProviderRequested, false);
-  assert.equal(success.data?.evidenceDraft.createdBy, "mock-encounter-note-service");
+  assert.equal(
+    success.data?.conversationSummarySeed.aiProviderRequested,
+    false,
+  );
+  assert.equal(
+    success.data?.evidenceDraft.createdBy,
+    "mock-encounter-note-service",
+  );
   assert.equal(success.data?.evidenceDraft.liveDatabaseWriteExecuted, false);
   assert.equal(
     success.data?.provenance.source,
@@ -227,7 +234,10 @@ test("event encounter note contract exposes note voice summary seed evidence fix
   assert.equal(evidence.data?.eventId, "demo-event-1");
   assert.equal(evidence.data?.encounterId, "demo-encounter-1");
   assert.equal(evidence.data?.evidence.kind, "encounter_note");
-  assert.equal(evidence.data?.evidence.createdBy, "mock-encounter-note-service");
+  assert.equal(
+    evidence.data?.evidence.createdBy,
+    "mock-encounter-note-service",
+  );
   assert.equal(evidence.data?.evidence.liveDatabaseWriteExecuted, false);
   assert.equal(evidence.data?.provenance.liveDatabaseWriteExecuted, false);
 
@@ -235,7 +245,10 @@ test("event encounter note contract exposes note voice summary seed evidence fix
   assert.equal(empty.data?.state, "empty");
   assert.equal(empty.data?.encounter, null);
   assert.equal(empty.data?.evidenceDraft, null);
-  assert.match(eventsEncounterFixtures.mockEmptyEventEncounterNoteFixture.nextAction, /Capture/i);
+  assert.match(
+    eventsEncounterFixtures.mockEmptyEventEncounterNoteFixture.nextAction,
+    /Capture/i,
+  );
   assert.equal(pending.success, true);
   assert.equal(pending.data?.state, "pending");
   assert.equal(pending.data?.voiceNote.status, "placeholder");
@@ -244,7 +257,10 @@ test("event encounter note contract exposes note voice summary seed evidence fix
   assert.equal(failure.error?.code, "EVENT_ENCOUNTER_NOTE_MOCK_FAILED");
   assert.equal(failure.error?.appCode, "SERVICE_UNAVAILABLE");
   assert.equal(missingEvent.success, false);
-  assert.equal(missingEvent.error?.code, "EVENT_ENCOUNTER_NOTE_EVENT_NOT_FOUND");
+  assert.equal(
+    missingEvent.error?.code,
+    "EVENT_ENCOUNTER_NOTE_EVENT_NOT_FOUND",
+  );
   assert.equal(missingEncounter.success, false);
   assert.equal(
     missingEncounter.error?.code,
@@ -307,7 +323,10 @@ test("mock event encounter note service is deterministic and never calls live pr
     assert.doesNotMatch(source, /\bfetch\s*\(/);
     assert.doesNotMatch(source, /Supabase|createClient|OAuth/i);
     assert.doesNotMatch(source, /XMLHttpRequest|WebSocket|EventSource/);
-    assert.doesNotMatch(source, /navigator|mediaDevices|localStorage|indexedDB/);
+    assert.doesNotMatch(
+      source,
+      /navigator|mediaDevices|localStorage|indexedDB/,
+    );
     assert.doesNotMatch(
       source,
       /from ["']node:(net|http|https)["']|require\(["']node:(net|http|https)["']\)/,
@@ -317,18 +336,28 @@ test("mock event encounter note service is deterministic and never calls live pr
 });
 
 test("event encounter note API routes return stable envelopes with empty and failure paths", async () => {
-  const encounterRoute = await importProjectModule<{
-    POST: (
+  const handlers = await importProjectModule<{
+    createEventEncounterPostHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/encounters/route.ts");
-  const evidenceRoute = await importProjectModule<{
-    POST: (
+    createEventEncounterEvidencePostHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string; encounterId: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/encounters/[encounterId]/evidence/route.ts");
+  }>("app/api/events/[id]/encounters/handlers.ts");
+  const encounterRoute = {
+    POST: handlers.createEventEncounterPostHandler(eventOwnerTestDependencies),
+  };
+  const evidenceRoute = {
+    POST: handlers.createEventEncounterEvidencePostHandler(
+      eventOwnerTestDependencies,
+    ),
+  };
   const fixtures = await importProjectModule<{
     mockEventEncounterNoteFixture: unknown;
     mockEmptyEventEncounterNoteFixture: unknown;
@@ -537,8 +566,7 @@ test("event encounter note debug route renders all states and the live replaceme
     join(projectRoot, "app/dev/capabilities/[slug]/page.tsx"),
     "utf8",
   );
-  const liveDocPath =
-    "features/events/encounter-note/LIVE_IMPLEMENTATION.md";
+  const liveDocPath = "features/events/encounter-note/LIVE_IMPLEMENTATION.md";
   const liveDoc = readFileSync(join(projectRoot, liveDocPath), "utf8");
 
   assert.equal(
@@ -596,14 +624,8 @@ test("event encounter note debug route renders all states and the live replaceme
     /\.event-encounter-note-workbench\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
   );
 
-  assert.match(
-    liveDoc,
-    /features\/events\/encounter-note\/live-service\.ts/,
-  );
-  assert.match(
-    liveDoc,
-    /features\/events\/encounter-note\/providers\//,
-  );
+  assert.match(liveDoc, /features\/events\/encounter-note\/live-service\.ts/);
+  assert.match(liveDoc, /features\/events\/encounter-note\/providers\//);
   assert.match(liveDoc, /ORBIT_EVENT_ENCOUNTER_NOTE_PROVIDER/);
   assert.match(liveDoc, /speech-to-text/i);
   assert.match(liveDoc, /audio upload/i);

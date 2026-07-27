@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "da459c39762049377b041b9471bc78e83aa8b7ae",
-  "generatedAt": "2026-07-27T16:08:52+09:00",
+  "commit": "a70d50ccfc7a59a463375136fbc1b4c6407c280a",
+  "generatedAt": "2026-07-27T16:41:03+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -1287,6 +1287,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/api/event-child-owner-access.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/agent-integrations-security.test.ts",
         "repos/orbits/tests/capabilities/agent-natural-language-actions.test.ts",
@@ -1603,6 +1604,8 @@
       "testCoverage": [
         "repos/orbits/tests/api/agent-encounter-note-trigger.test.ts",
         "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+        "repos/orbits/tests/api/event-child-owner-access.test.ts",
+        "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/agent-action-ledger-fixtures.test.ts",
@@ -1628,9 +1631,7 @@
         "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts",
         "repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts",
         "repos/orbits/tests/capabilities/event-adaptive-interview.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-import-mock.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-roster-live-generated-store.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-roster.test.ts"
+        "repos/orbits/tests/capabilities/event-attendee-import-mock.test.ts"
       ],
       "knownRisks": []
     },
@@ -6430,6 +6431,8 @@
         "repos/orbits/tests/api/agent-action-ledger-routes.test.ts",
         "repos/orbits/tests/api/agent-encounter-note-trigger.test.ts",
         "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+        "repos/orbits/tests/api/event-child-owner-access.test.ts",
+        "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/api/knowledge-document-content.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
@@ -6454,9 +6457,7 @@
         "repos/orbits/tests/capabilities/event-attendee-roster.test.ts",
         "repos/orbits/tests/capabilities/event-crud-and-import.test.ts",
         "repos/orbits/tests/capabilities/event-encounter-note-capture.test.ts",
-        "repos/orbits/tests/capabilities/event-goal-and-readiness.test.ts",
-        "repos/orbits/tests/capabilities/event-recommendation-and-opening-line-mock.test.ts",
-        "repos/orbits/tests/capabilities/event-recommendation-live-store.test.ts"
+        "repos/orbits/tests/capabilities/event-goal-and-readiness.test.ts"
       ],
       "knownRisks": []
     },
@@ -17823,6 +17824,8 @@
         "repos/orbits/tests/api/agent-action-ledger-routes.test.ts",
         "repos/orbits/tests/api/agent-encounter-note-trigger.test.ts",
         "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+        "repos/orbits/tests/api/event-child-owner-access.test.ts",
+        "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/api/knowledge-document-content.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
@@ -17847,9 +17850,7 @@
         "repos/orbits/tests/capabilities/event-attendee-roster.test.ts",
         "repos/orbits/tests/capabilities/event-crud-and-import.test.ts",
         "repos/orbits/tests/capabilities/event-encounter-note-capture.test.ts",
-        "repos/orbits/tests/capabilities/event-goal-and-readiness.test.ts",
-        "repos/orbits/tests/capabilities/event-recommendation-and-opening-line-mock.test.ts",
-        "repos/orbits/tests/capabilities/event-recommendation-live-store.test.ts"
+        "repos/orbits/tests/capabilities/event-goal-and-readiness.test.ts"
       ],
       "knownRisks": []
     },
@@ -19135,6 +19136,8 @@
       "testCoverage": [
         "repos/orbits/tests/api/agent-encounter-note-trigger.test.ts",
         "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+        "repos/orbits/tests/api/event-child-owner-access.test.ts",
+        "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/agent-action-ledger-fixtures.test.ts",
@@ -19160,9 +19163,7 @@
         "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts",
         "repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts",
         "repos/orbits/tests/capabilities/event-adaptive-interview.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-import-mock.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-roster-live-generated-store.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-roster.test.ts"
+        "repos/orbits/tests/capabilities/event-attendee-import-mock.test.ts"
       ],
       "knownRisks": []
     },
@@ -20491,6 +20492,8 @@
       "testCoverage": [
         "repos/orbits/tests/api/agent-encounter-note-trigger.test.ts",
         "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+        "repos/orbits/tests/api/event-child-owner-access.test.ts",
+        "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/agent-action-ledger-fixtures.test.ts",
@@ -20516,9 +20519,7 @@
         "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts",
         "repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts",
         "repos/orbits/tests/capabilities/event-adaptive-interview.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-import-mock.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-roster-live-generated-store.test.ts",
-        "repos/orbits/tests/capabilities/event-attendee-roster.test.ts"
+        "repos/orbits/tests/capabilities/event-attendee-import-mock.test.ts"
       ],
       "knownRisks": []
     },
@@ -23649,6 +23650,8 @@
         "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
         "repos/orbits/tests/api/agent-preferences-routes.test.ts",
         "repos/orbits/tests/api/envelope.test.ts",
+        "repos/orbits/tests/api/event-child-owner-access.test.ts",
+        "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/account-live-store.test.ts",
@@ -23671,9 +23674,7 @@
         "repos/orbits/tests/capabilities/contact-acquisition-draft-pipeline.test.ts",
         "repos/orbits/tests/capabilities/contact-invitation-staged.test.ts",
         "repos/orbits/tests/capabilities/contacts-list-search-and-filter-mock.test.ts",
-        "repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts",
-        "repos/orbits/tests/capabilities/duplicate-detection-and-merge-mock.test.ts",
-        "repos/orbits/tests/capabilities/duplicate-detection-merge-live-store.test.ts"
+        "repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts"
       ],
       "knownRisks": []
     },
@@ -30305,6 +30306,8 @@
         "repos/orbits/tests/api/agent-action-ledger-routes.test.ts",
         "repos/orbits/tests/api/agent-encounter-note-trigger.test.ts",
         "repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+        "repos/orbits/tests/api/event-child-owner-access.test.ts",
+        "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/api/knowledge-document-content.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
@@ -30329,9 +30332,7 @@
         "repos/orbits/tests/capabilities/event-encounter-note-capture.test.ts",
         "repos/orbits/tests/capabilities/event-goal-and-readiness.test.ts",
         "repos/orbits/tests/capabilities/event-recommendation-and-opening-line-mock.test.ts",
-        "repos/orbits/tests/capabilities/event-recommendation-live-store.test.ts",
-        "repos/orbits/tests/capabilities/event-value-recommendation-mock.test.ts",
-        "repos/orbits/tests/capabilities/manual-contact-creation-live-store.test.ts"
+        "repos/orbits/tests/capabilities/event-recommendation-live-store.test.ts"
       ],
       "knownRisks": []
     },

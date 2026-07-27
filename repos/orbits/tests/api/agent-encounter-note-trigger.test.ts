@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { POST as createEncounterNote } from "../../app/api/events/[id]/encounters/route";
+import { createEventEncounterPostHandler } from "../../app/api/events/[id]/encounters/handlers";
 import { resetSharedMockAgentLedgerServiceForTests } from "../../features/agent/ledger/mock-runtime-service";
 import {
   createOrbitAgentRuntimeService,
   resetOrbitAgentRuntimeServicesForTests,
 } from "../../features/agent/runtime/service-factory";
+import { eventOwnerTestDependencies } from "./event-owner-test-dependencies";
+
+const createEncounterNote = createEventEncounterPostHandler(
+  eventOwnerTestDependencies,
+);
 
 test.beforeEach(() => {
   resetSharedMockAgentLedgerServiceForTests();

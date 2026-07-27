@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as eventsWantConnectFixtures from "../../features/events/want-connect/fixtures";
+import { eventOwnerTestDependencies } from "../api/event-owner-test-dependencies";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -266,7 +267,10 @@ test("mock want-to-connect service is deterministic rule-based code with no live
     assert.doesNotMatch(source, /\bfetch\s*\(/);
     assert.doesNotMatch(source, /Supabase|createClient|OAuth/i);
     assert.doesNotMatch(source, /XMLHttpRequest|WebSocket|EventSource/);
-    assert.doesNotMatch(source, /navigator|mediaDevices|localStorage|indexedDB/);
+    assert.doesNotMatch(
+      source,
+      /navigator|mediaDevices|localStorage|indexedDB/,
+    );
     assert.doesNotMatch(source, /from ["']node:net["']|from ["']node:http/);
     assert.doesNotMatch(source, /openai|anthropic|ai provider/i);
   }
@@ -284,12 +288,19 @@ test("on-site want-to-connect API routes return stable envelopes with empty and 
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
   }>("app/api/events/[id]/want-to-connect/handler.ts");
-  const matchesRoute = await importProjectModule<{
-    GET: (
+  const matchesHandler = await importProjectModule<{
+    createEventMatchesGetHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/matches/route.ts");
+  }>("app/api/events/[id]/matches/handler.ts");
+  const matchesRoute = {
+    GET: matchesHandler.createEventMatchesGetHandler(
+      eventOwnerTestDependencies,
+    ),
+  };
   const fixtures = await importProjectModule<{
     mockWantConnectFixture: unknown;
     mockEmptyWantConnectMatchesFixture: unknown;
@@ -299,25 +310,23 @@ test("on-site want-to-connect API routes return stable envelopes with empty and 
       return { id: "account:test-operator", name: "Test operator" };
     },
   });
-  const unauthenticatedIntentHandler =
-    intentRoute.createWantConnectPostHandler({
+  const unauthenticatedIntentHandler = intentRoute.createWantConnectPostHandler(
+    {
       async resolveActor() {
         return null;
       },
-    });
+    },
+  );
 
   const intentResponse = await intentHandler(
-    new Request(
-      "https://orbit.local/api/events/demo-event-1/want-to-connect",
-      {
-        body: JSON.stringify({
-          actorContactId: "spoofed-account",
-          targetContactId: "contact:priya-shah",
-        }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      },
-    ),
+    new Request("https://orbit.local/api/events/demo-event-1/want-to-connect", {
+      body: JSON.stringify({
+        actorContactId: "spoofed-account",
+        targetContactId: "contact:priya-shah",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
     {
       params: Promise.resolve({ id: "demo-event-1" }),
     },
@@ -355,27 +364,21 @@ test("on-site want-to-connect API routes return stable envelopes with empty and 
     },
   );
   const invalidTargetResponse = await intentHandler(
-    new Request(
-      "https://orbit.local/api/events/demo-event-1/want-to-connect",
-      {
-        body: JSON.stringify({ targetContactId: "contact:not-in-event" }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      },
-    ),
+    new Request("https://orbit.local/api/events/demo-event-1/want-to-connect", {
+      body: JSON.stringify({ targetContactId: "contact:not-in-event" }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
     {
       params: Promise.resolve({ id: "demo-event-1" }),
     },
   );
   const unauthenticatedResponse = await unauthenticatedIntentHandler(
-    new Request(
-      "https://orbit.local/api/events/demo-event-1/want-to-connect",
-      {
-        body: JSON.stringify({ targetContactId: "contact:priya-shah" }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      },
-    ),
+    new Request("https://orbit.local/api/events/demo-event-1/want-to-connect", {
+      body: JSON.stringify({ targetContactId: "contact:priya-shah" }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
     {
       params: Promise.resolve({ id: "demo-event-1" }),
     },
@@ -458,19 +461,18 @@ test("on-site want-to-connect debug route renders all states and the live replac
     join(projectRoot, "app/dev/capabilities/[slug]/page.tsx"),
     "utf8",
   );
-  const liveDocPath =
-    "features/events/want-connect/LIVE_IMPLEMENTATION.md";
+  const liveDocPath = "features/events/want-connect/LIVE_IMPLEMENTATION.md";
   const liveDoc = readFileSync(join(projectRoot, liveDocPath), "utf8");
 
-  assert.equal(
-    debugView.ON_SITE_WANT_TO_CONNECT_MOCK_SLUG,
-    "want-connect",
-  );
+  assert.equal(debugView.ON_SITE_WANT_TO_CONNECT_MOCK_SLUG, "want-connect");
   assert.match(pageSource, /ON_SITE_WANT_TO_CONNECT_MOCK_SLUG/);
   assert.match(pageSource, /OnSiteWantToConnectMockDemo/);
 
   assert.match(html, /On-site want-to-connect mock/);
-  assert.match(html, /aria-label="On-site want-to-connect operator checkpoint"/);
+  assert.match(
+    html,
+    /aria-label="On-site want-to-connect operator checkpoint"/,
+  );
   assert.match(html, /Ready for verifier review/);
   assert.match(html, /aria-label="On-site want-to-connect state comparison"/);
   assert.match(html, /Compare success, empty, pending, and failure outcomes/);
@@ -501,14 +503,8 @@ test("on-site want-to-connect debug route renders all states and the live replac
     /\.on-site-want-connect-workbench\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
   );
 
-  assert.match(
-    liveDoc,
-    /features\/events\/want-connect\/live-service\.ts/,
-  );
-  assert.match(
-    liveDoc,
-    /features\/events\/want-connect\/providers\//,
-  );
+  assert.match(liveDoc, /features\/events\/want-connect\/live-service\.ts/);
+  assert.match(liveDoc, /features\/events\/want-connect\/providers\//);
   assert.match(liveDoc, /ORBIT_WANT_CONNECT_PROVIDER/);
   assert.match(liveDoc, /real-time presence/i);
   assert.match(liveDoc, /peer notification/i);

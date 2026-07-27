@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as eventsGoalFixtures from "../../features/events/goal-readiness/fixtures";
+import { eventOwnerTestDependencies } from "../api/event-owner-test-dependencies";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -144,13 +145,22 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
     /AI|calendar|email|notification|database/i,
   );
 
-  assert.equal(eventsGoalFixtures.mockEventGoalReadinessFixture.state, "success");
-  assert.equal(eventsGoalFixtures.mockEventGoalReadinessFixture.event.id, "demo-event-1");
+  assert.equal(
+    eventsGoalFixtures.mockEventGoalReadinessFixture.state,
+    "success",
+  );
+  assert.equal(
+    eventsGoalFixtures.mockEventGoalReadinessFixture.event.id,
+    "demo-event-1",
+  );
   assert.equal(
     eventsGoalFixtures.mockEventGoalReadinessFixture.event.title,
     "Climate founders dinner",
   );
-  assert.equal(eventsGoalFixtures.mockEventGoalReadinessFixture.suggestedGoals.length, 3);
+  assert.equal(
+    eventsGoalFixtures.mockEventGoalReadinessFixture.suggestedGoals.length,
+    3,
+  );
   assert.deepEqual(
     eventsGoalFixtures.mockEventGoalReadinessFixture.suggestedGoals.map(
       (goal) => goal.goalId,
@@ -177,20 +187,31 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
     eventsGoalFixtures.EVENT_GOAL_READINESS_FIXTURE_SOURCE,
   );
   assert.equal(
-    eventsGoalFixtures.mockEventGoalReadinessFixture.provenance.aiProviderRequested,
+    eventsGoalFixtures.mockEventGoalReadinessFixture.provenance
+      .aiProviderRequested,
     false,
   );
   assert.equal(
-    eventsGoalFixtures.mockEventGoalReadinessFixture.provenance.calendarProviderRequested,
+    eventsGoalFixtures.mockEventGoalReadinessFixture.provenance
+      .calendarProviderRequested,
     false,
   );
-  assert.equal(eventsGoalFixtures.mockEmptyEventGoalReadinessFixture.state, "empty");
-  assert.equal(eventsGoalFixtures.mockEmptyEventGoalReadinessFixture.goal, null);
+  assert.equal(
+    eventsGoalFixtures.mockEmptyEventGoalReadinessFixture.state,
+    "empty",
+  );
+  assert.equal(
+    eventsGoalFixtures.mockEmptyEventGoalReadinessFixture.goal,
+    null,
+  );
   assert.equal(
     eventsGoalFixtures.mockEmptyEventGoalReadinessFixture.nextAction,
     "Set a local mock goal before composing pre-event preparation.",
   );
-  assert.equal(eventsGoalFixtures.mockPendingEventGoalReadinessFixture.state, "pending");
+  assert.equal(
+    eventsGoalFixtures.mockPendingEventGoalReadinessFixture.state,
+    "pending",
+  );
   assert.equal(
     eventsGoalFixtures.mockPendingEventGoalReadinessFixture.preparationState
       .preEventBriefReady,
@@ -256,7 +277,10 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
   assert.equal(failure.error?.code, "EVENT_GOAL_READINESS_MOCK_FAILED");
   assert.equal(failure.error?.appCode, "SERVICE_UNAVAILABLE");
   assert.equal(missingEvent.success, false);
-  assert.equal(missingEvent.error?.code, "EVENT_GOAL_READINESS_EVENT_NOT_FOUND");
+  assert.equal(
+    missingEvent.error?.code,
+    "EVENT_GOAL_READINESS_EVENT_NOT_FOUND",
+  );
   assert.equal(blankGoal.success, false);
   assert.equal(blankGoal.error?.code, "EVENT_GOAL_READINESS_GOAL_REQUIRED");
 });
@@ -325,25 +349,36 @@ test("mock event goal and readiness service is deterministic rule-based code wit
     assert.doesNotMatch(source, /\bfetch\s*\(/);
     assert.doesNotMatch(source, /Supabase|createClient|OAuth/i);
     assert.doesNotMatch(source, /XMLHttpRequest|WebSocket|EventSource/);
-    assert.doesNotMatch(source, /navigator|mediaDevices|localStorage|indexedDB/);
+    assert.doesNotMatch(
+      source,
+      /navigator|mediaDevices|localStorage|indexedDB/,
+    );
     assert.doesNotMatch(source, /from ["']node:net["']|from ["']node:http/);
     assert.doesNotMatch(source, /openai|anthropic|ai provider/i);
   }
 });
 
 test("event goal and readiness API routes return stable envelopes with empty and failure paths", async () => {
-  const goalRoute = await importProjectModule<{
-    PUT: (
+  const handlers = await importProjectModule<{
+    createEventGoalPutHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/goal/route.ts");
-  const readinessRoute = await importProjectModule<{
-    GET: (
+    createEventReadinessGetHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/readiness/route.ts");
+  }>("app/api/events/[id]/goal-readiness-handlers.ts");
+  const goalRoute = {
+    PUT: handlers.createEventGoalPutHandler(eventOwnerTestDependencies),
+  };
+  const readinessRoute = {
+    GET: handlers.createEventReadinessGetHandler(eventOwnerTestDependencies),
+  };
   const contract = await importProjectModule<{
     mockEventGoalReadinessFixture: unknown;
     mockEmptyEventGoalReadinessFixture: unknown;
@@ -456,7 +491,10 @@ test("event goal and readiness API routes return stable envelopes with empty and
     {
       success: true,
       data: {
-        ...(eventsGoalFixtures.mockEventGoalReadinessFixture as Record<string, unknown>),
+        ...(eventsGoalFixtures.mockEventGoalReadinessFixture as Record<
+          string,
+          unknown
+        >),
         goal: undefined,
       },
     },
@@ -494,14 +532,10 @@ test("event goal and readiness debug route renders all states and the live repla
     join(projectRoot, "app/dev/capabilities/[slug]/page.tsx"),
     "utf8",
   );
-  const liveDocPath =
-    "features/events/goal-readiness/LIVE_IMPLEMENTATION.md";
+  const liveDocPath = "features/events/goal-readiness/LIVE_IMPLEMENTATION.md";
   const liveDoc = readFileSync(join(projectRoot, liveDocPath), "utf8");
 
-  assert.equal(
-    debugView.EVENT_GOAL_AND_READINESS_MOCK_SLUG,
-    "goal-readiness",
-  );
+  assert.equal(debugView.EVENT_GOAL_AND_READINESS_MOCK_SLUG, "goal-readiness");
   assert.match(pageSource, /EVENT_GOAL_AND_READINESS_MOCK_SLUG/);
   assert.match(pageSource, /EventGoalAndReadinessMockDemo/);
 
@@ -536,14 +570,8 @@ test("event goal and readiness debug route renders all states and the live repla
     /\.event-goal-readiness-workbench\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
   );
 
-  assert.match(
-    liveDoc,
-    /features\/events\/goal-readiness\/live-service\.ts/,
-  );
-  assert.match(
-    liveDoc,
-    /features\/events\/goal-readiness\/providers\//,
-  );
+  assert.match(liveDoc, /features\/events\/goal-readiness\/live-service\.ts/);
+  assert.match(liveDoc, /features\/events\/goal-readiness\/providers\//);
   assert.match(liveDoc, /ORBIT_EVENT_GOAL_READINESS_PROVIDER/);
   assert.match(liveDoc, /AI goal generation provider/);
   assert.match(liveDoc, /live calendar conflict provider/);

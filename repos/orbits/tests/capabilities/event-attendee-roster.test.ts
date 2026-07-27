@@ -12,6 +12,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as acquisitionEventAttendeeFixtures from "../../features/acquisition/event-attendee-fixtures";
 import * as eventsAttendeeFixtures from "../../features/events/attendee-roster/fixtures";
+import { eventOwnerTestDependencies } from "../api/event-owner-test-dependencies";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -226,7 +227,10 @@ test("event attendee roster contract exposes tags known-contact markers recommen
   assert.equal(failure.error?.code, "EVENT_ATTENDEE_ROSTER_MOCK_FAILED");
   assert.equal(failure.error?.appCode, "SERVICE_UNAVAILABLE");
   assert.equal(missingEvent.success, false);
-  assert.equal(missingEvent.error?.code, "EVENT_ATTENDEE_ROSTER_EVENT_NOT_FOUND");
+  assert.equal(
+    missingEvent.error?.code,
+    "EVENT_ATTENDEE_ROSTER_EVENT_NOT_FOUND",
+  );
 });
 
 test("mock event attendee roster service is deterministic rule-based code with no live provider calls", async () => {
@@ -282,25 +286,40 @@ test("mock event attendee roster service is deterministic rule-based code with n
     assert.doesNotMatch(source, /\bfetch\s*\(/);
     assert.doesNotMatch(source, /Supabase|createClient|OAuth/i);
     assert.doesNotMatch(source, /XMLHttpRequest|WebSocket|EventSource/);
-    assert.doesNotMatch(source, /navigator|mediaDevices|localStorage|indexedDB/);
+    assert.doesNotMatch(
+      source,
+      /navigator|mediaDevices|localStorage|indexedDB/,
+    );
     assert.doesNotMatch(source, /from ["']node:net["']|from ["']node:http/);
     assert.doesNotMatch(source, /openai|anthropic|ai provider/i);
   }
 });
 
 test("event attendee roster API routes return stable envelopes with empty and failure paths", async () => {
-  const attendeesRoute = await importProjectModule<{
-    GET: (
+  const attendeeHandlers = await importProjectModule<{
+    createEventAttendeesGetHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/attendees/route.ts");
-  const importRoute = await importProjectModule<{
-    POST: (
+    createEventAttendeeImportPostHandler: (
+      dependencies: typeof eventOwnerTestDependencies,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/events/[id]/attendees/import/route.ts");
+  }>("app/api/events/[id]/attendees/handlers.ts");
+  const attendeesRoute = {
+    GET: attendeeHandlers.createEventAttendeesGetHandler(
+      eventOwnerTestDependencies,
+    ),
+  };
+  const importRoute = {
+    POST: attendeeHandlers.createEventAttendeeImportPostHandler(
+      eventOwnerTestDependencies,
+    ),
+  };
   const fixtures = await importProjectModule<{
     mockEventAttendeeRosterImportFixture: unknown;
     mockEmptyEventAttendeeRosterImportFixture: unknown;
@@ -315,9 +334,12 @@ test("event attendee roster API routes return stable envelopes with empty and fa
     },
   );
   const importResponse = await importRoute.POST(
-    new Request("https://orbit.local/api/events/demo-event-1/attendees/import", {
-      method: "POST",
-    }),
+    new Request(
+      "https://orbit.local/api/events/demo-event-1/attendees/import",
+      {
+        method: "POST",
+      },
+    ),
     {
       params: Promise.resolve({ id: "demo-event-1" }),
     },
@@ -473,14 +495,10 @@ test("event attendee roster debug route renders all states and the live replacem
     join(projectRoot, "app/dev/capabilities/[slug]/page.tsx"),
     "utf8",
   );
-  const liveDocPath =
-    "features/events/attendee-roster/LIVE_IMPLEMENTATION.md";
+  const liveDocPath = "features/events/attendee-roster/LIVE_IMPLEMENTATION.md";
   const liveDoc = readFileSync(join(projectRoot, liveDocPath), "utf8");
 
-  assert.equal(
-    debugView.EVENT_ATTENDEE_ROSTER_MOCK_SLUG,
-    "attendee-roster",
-  );
+  assert.equal(debugView.EVENT_ATTENDEE_ROSTER_MOCK_SLUG, "attendee-roster");
   assert.match(pageSource, /EVENT_ATTENDEE_ROSTER_MOCK_SLUG/);
   assert.match(pageSource, /EventAttendeeRosterMockDemo/);
 
@@ -511,14 +529,8 @@ test("event attendee roster debug route renders all states and the live replacem
     /\.event-attendee-roster-workbench\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
   );
 
-  assert.match(
-    liveDoc,
-    /features\/events\/attendee-roster\/live-service\.ts/,
-  );
-  assert.match(
-    liveDoc,
-    /features\/events\/attendee-roster\/providers\//,
-  );
+  assert.match(liveDoc, /features\/events\/attendee-roster\/live-service\.ts/);
+  assert.match(liveDoc, /features\/events\/attendee-roster\/providers\//);
   assert.match(liveDoc, /ORBIT_EVENT_ATTENDEE_ROSTER_PROVIDER/);
   assert.match(liveDoc, /organizer attendee API/);
   assert.match(liveDoc, /privacy-gated roster access/);
