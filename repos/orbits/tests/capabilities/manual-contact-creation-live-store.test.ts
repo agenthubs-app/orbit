@@ -184,6 +184,55 @@ test("manual contact live confirmation updates only the contactDrafts collection
   assert.equal(contacts.length, 0);
 });
 
+test("manual contact live drafts are persisted and read within one actor boundary", async () => {
+  const store = createStore();
+  const actorAProvider = createStorageContactAcquisitionDraftProvider({
+    actorId: "account:manual-a",
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const actorBProvider = createStorageContactAcquisitionDraftProvider({
+    actorId: "account:manual-b",
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const actorAService = createLiveManualContactCreationService({
+    now: () => NOW,
+    provider: actorAProvider,
+  });
+  const actorBService = createLiveManualContactCreationService({
+    now: () => NOW,
+    provider: actorBProvider,
+  });
+
+  const created = await actorAService.createManualContactDraft(manualInput());
+  assert.equal(created.success, true);
+  const draftId = created.data.draft?.id ?? "";
+  const saved = store.getRecord({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+    recordId: draftId,
+  });
+  const actorAList = await createLiveContactAcquisitionDraftService({
+    provider: actorAProvider,
+  }).listContactDrafts();
+  const actorBList = await createLiveContactAcquisitionDraftService({
+    provider: actorBProvider,
+  }).listContactDrafts();
+  const actorBConfirmation = await actorBService.confirmManualContactDraft({
+    actorLabel: "Actor B",
+    draftId,
+  });
+
+  assert.equal(saved?.userId, "account:manual-a");
+  assert.equal(actorAList.success, true);
+  assert.equal(actorAList.data.drafts.length, 1);
+  assert.equal(actorBList.success, true);
+  assert.equal(actorBList.data.drafts.length, 0);
+  assert.equal(actorBConfirmation.success, false);
+  assert.equal(actorBConfirmation.error.code, "MANUAL_CONTACT_DRAFT_NOT_FOUND");
+});
+
 test("manual contact live service fails closed when storage is unconfigured", async () => {
   const service = createLiveManualContactCreationService({
     now: () => NOW,
@@ -245,12 +294,15 @@ test("manual contact API resolves ORBIT_MODULE_MODE=live and fails closed withou
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const createRoute = await import("../../app/api/contact-drafts/manual/route");
+    const createRoute = await import("../../app/api/contact-drafts/manual/handler");
     const confirmRoute = await import("../../app/api/contact-drafts/[id]/confirm/handler");
     const confirmDraft = confirmRoute.createConfirmContactDraftHandler(
       async () => ({ id: "account:manual-live-test", name: "Manual tester" }),
     );
-    const createResponse = await createRoute.POST(
+    const createDraft = createRoute.createManualContactDraftPostHandler(
+      async () => ({ id: "account:manual-live-test", name: "Manual tester" }),
+    );
+    const createResponse = await createDraft(
       new Request("https://orbit.local/api/contact-drafts/manual", {
         body: JSON.stringify(manualInput()),
         headers: {
@@ -297,4 +349,26 @@ test("manual contact API resolves ORBIT_MODULE_MODE=live and fails closed withou
     process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
   }
+});
+
+test("manual contact API rejects anonymous writes before resolving live storage", async () => {
+  const route = await import("../../app/api/contact-drafts/manual/handler");
+  const response = await route.createManualContactDraftPostHandler(
+    async () => null,
+  )(
+    new Request("https://orbit.local/api/contact-drafts/manual", {
+      body: JSON.stringify(manualInput()),
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "POST",
+    }),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(body.success, false);
+  assert.equal(body.error.code, "UNAUTHORIZED");
+  assert.equal(body.error.context.service, "authenticated-api-actor");
+  assert.equal(listCollection(createStore(), "contactDrafts").length, 0);
 });

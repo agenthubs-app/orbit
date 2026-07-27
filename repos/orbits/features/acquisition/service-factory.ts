@@ -79,7 +79,10 @@ export const contactAcquisitionDraftServiceFactory =
     implementations: {
       live: () =>
         createLiveContactAcquisitionDraftService({
-          provider: createConfiguredStorageContactAcquisitionDraftProvider(),
+          // Live contact drafts contain private relationship evidence. A caller
+          // without a server-authenticated actor must fail closed instead of
+          // falling back to an unscoped workspace read.
+          provider: null,
         }),
       mock: () => createMockContactAcquisitionDraftService(),
     },
@@ -91,7 +94,9 @@ export const manualContactCreationServiceFactory =
     implementations: {
       live: () =>
         createLiveManualContactCreationService({
-          provider: createConfiguredStorageContactAcquisitionDraftProvider(),
+          // Live writes must be actor-bound so the persisted record receives a
+          // userId and later reads cannot cross account boundaries.
+          provider: null,
           // translate-on-ingest：手动录入的中文/日文 note 翻成英文合成双语可搜索文本。
           // 缺 provider key 时抽词/翻译均返回未处理，自动回退到只存原文。
           normalizationService: createOrbitLanguageNormalizationService(),
@@ -225,6 +230,23 @@ export function createContactAcquisitionDraftService(
   return createRequiredService(resolveContactAcquisitionDraftService(mode));
 }
 
+export function createContactAcquisitionDraftServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): ContactAcquisitionDraftService {
+  const resolvedMode = resolveModuleMode(mode);
+
+  if (resolvedMode !== "live") {
+    return createContactAcquisitionDraftService(resolvedMode);
+  }
+
+  return createLiveContactAcquisitionDraftService({
+    provider: actorId.trim()
+      ? createConfiguredStorageContactAcquisitionDraftProvider({ actorId })
+      : null,
+  });
+}
+
 export function resolveManualContactCreationService(
   mode?: ModuleMode | string,
 ) {
@@ -241,6 +263,24 @@ export function createManualContactCreationService(
   mode?: ModuleMode | string,
 ): ManualContactCreationService | MockManualContactCreationService {
   return createRequiredService(resolveManualContactCreationService(mode));
+}
+
+export function createManualContactCreationServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): ManualContactCreationService {
+  const resolvedMode = resolveModuleMode(mode);
+
+  if (resolvedMode !== "live") {
+    return createManualContactCreationService(resolvedMode);
+  }
+
+  return createLiveManualContactCreationService({
+    provider: actorId.trim()
+      ? createConfiguredStorageContactAcquisitionDraftProvider({ actorId })
+      : null,
+    normalizationService: createOrbitLanguageNormalizationService(),
+  });
 }
 
 export function resolveBusinessCardScanOcrService(

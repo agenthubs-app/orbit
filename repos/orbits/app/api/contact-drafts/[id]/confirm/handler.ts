@@ -23,8 +23,8 @@ import {
 } from "../../../../../features/acquisition/business-card-review-contract";
 import {
   createBusinessCardReviewService,
-  createContactAcquisitionDraftService,
-  createManualContactCreationService,
+  createContactAcquisitionDraftServiceForActor,
+  createManualContactCreationServiceForActor,
   createQrScanConnectService,
 } from "../../../../../features/acquisition/service-factory";
 import {
@@ -133,11 +133,12 @@ export function createConfirmContactDraftHandler(
     }
 
     if (id === "demo-manual-draft" || id.startsWith("manual-draft:live:")) {
-      const manualService = createManualContactCreationService(mode);
+      const manualService = createManualContactCreationServiceForActor(
+        actor.id,
+        mode,
+      );
       const result = await manualService.confirmManualContactDraft({
-        ...(id.startsWith("manual-draft:live:")
-          ? { actorLabel: actorLabel(actor) }
-          : {}),
+        ...(mode === "live" ? { actorLabel: actorLabel(actor) } : {}),
         draftId: id,
         scenario,
       });
@@ -160,8 +161,12 @@ export function createConfirmContactDraftHandler(
       });
     }
 
-    const draftService = createContactAcquisitionDraftService(mode);
+    const draftService = createContactAcquisitionDraftServiceForActor(
+      actor.id,
+      mode,
+    );
     const result = await draftService.confirmContactDraft({
+      ...(mode === "live" ? { actorLabel: actorLabel(actor) } : {}),
       draftId: id,
       scenario,
     });

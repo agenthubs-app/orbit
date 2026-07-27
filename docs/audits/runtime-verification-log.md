@@ -297,3 +297,29 @@ Implementation boundary:
 - `route.ts` files remain valid thin App Router exports; injectable authentication and parsing live in adjacent `handler.ts` modules.
 - The actor-scoped duplicate provider passes one server actor to both the contact-draft provider and contact graph.
 - Actor-scoped contact-draft providers persist `userId` on new records and filter reads by server actor metadata; unscoped legacy factory use now fails closed in Live rather than reading relationship records.
+
+## 2026-07-27 — Central contact-draft and manual creation actor boundary
+
+Production runtime:
+
+- Ran 33 focused central draft, manual creation, QR confirmation, and business-card confirmation tests; all passed.
+- Ran `pnpm lint`; TypeScript validation completed successfully.
+- Rebuilt the exact worktree with `pnpm build`; a fresh `.next/BUILD_ID` was generated, then `next-env.d.ts` was restored to the development route-types path.
+- Started that build on isolated port 3100; port 3000 was not touched.
+
+Authorization and identity results:
+
+| Boundary | Authoritative evidence | Result |
+| --- | --- | --- |
+| Anonymous central draft list | Real `GET /api/contact-drafts` against the production build | Returned `401 UNAUTHORIZED` from `authenticated-api-actor` before the draft service/provider ran. |
+| Anonymous manual creation | Real JSON `POST /api/contact-drafts/manual` against the production build | Returned `401 UNAUTHORIZED` before request parsing or storage writes. |
+| Anonymous manual confirmation | Real `POST /api/contact-drafts/manual-draft:live:missing/confirm` against the production build | Returned `401 UNAUTHORIZED` before draft lookup. |
+| Actor-scoped persistence and readback | Isolated memory-store test | Actor A's manual draft persisted with `userId=account:manual-a`; Actor A read one draft, Actor B read zero, and Actor B confirmation returned `MANUAL_CONTACT_DRAFT_NOT_FOUND`. |
+| Existing capability behavior | 33 focused tests | Mock envelopes stayed deterministic; Live unconfigured behavior stayed fail-closed; QR and business-card confirmation branches remained green. |
+
+Implementation boundary:
+
+- Central list and manual creation route files are thin App Router exports; injectable handlers derive the actor only from the server session.
+- Actor-bound Live service factories pass the same actor into the shared contact-draft provider for create, list, and confirmation.
+- Unscoped public Live factories now fail closed rather than reading or writing workspace-wide relationship drafts.
+- `ACQUISITION-CAPABILITY-AUTH-001` remains open until QR, external import, referral/recommended confirmation, and email/calendar signal APIs receive the same boundary.

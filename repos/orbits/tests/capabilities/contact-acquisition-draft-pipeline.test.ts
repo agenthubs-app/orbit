@@ -154,8 +154,8 @@ test("mock contact acquisition draft service is deterministic and has no externa
 
 test("contact draft API routes return stable envelopes and documented empty or failure paths", async () => {
   const listRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/route")
-  >("app/api/contact-drafts/route.ts");
+    typeof import("../../app/api/contact-drafts/handler")
+  >("app/api/contact-drafts/handler.ts");
   const confirmRoute = await importProjectModule<
     typeof import("../../app/api/contact-drafts/[id]/confirm/handler")
   >("app/api/contact-drafts/[id]/confirm/handler.ts");
@@ -163,7 +163,10 @@ test("contact draft API routes return stable envelopes and documented empty or f
     typeof import("../../features/acquisition/fixtures")
   >("features/acquisition/fixtures.ts");
 
-  const listResponse = await listRoute.GET(
+  const listDrafts = listRoute.createContactDraftsGetHandler(
+    async () => ({ id: "account:draft-test", name: "Draft tester" }),
+  );
+  const listResponse = await listDrafts(
     new Request("https://orbit.local/api/contact-drafts", {
       method: "GET",
     }),
@@ -182,22 +185,22 @@ test("contact draft API routes return stable envelopes and documented empty or f
       params: Promise.resolve({ id: "demo-draft-1" }),
     },
   );
-  const reloadAfterConfirmResponse = await listRoute.GET(
+  const reloadAfterConfirmResponse = await listDrafts(
     new Request("https://orbit.local/api/contact-drafts", {
       method: "GET",
     }),
   );
-  const emptyResponse = await listRoute.GET(
+  const emptyResponse = await listDrafts(
     new Request("https://orbit.local/api/contact-drafts?scenario=empty", {
       method: "GET",
     }),
   );
-  const pendingResponse = await listRoute.GET(
+  const pendingResponse = await listDrafts(
     new Request("https://orbit.local/api/contact-drafts?scenario=pending", {
       method: "GET",
     }),
   );
-  const failureResponse = await listRoute.GET(
+  const failureResponse = await listDrafts(
     new Request("https://orbit.local/api/contact-drafts?scenario=failure", {
       method: "GET",
     }),

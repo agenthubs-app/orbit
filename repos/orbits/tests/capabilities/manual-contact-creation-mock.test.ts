@@ -168,8 +168,8 @@ test("mock manual contact creation service is deterministic and has no external 
 
 test("manual contact creation API routes return stable envelopes with empty and failure paths", async () => {
   const createRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/manual/route")
-  >("app/api/contact-drafts/manual/route.ts");
+    typeof import("../../app/api/contact-drafts/manual/handler")
+  >("app/api/contact-drafts/manual/handler.ts");
   const confirmRoute = await importProjectModule<
     typeof import("../../app/api/contact-drafts/[id]/confirm/handler")
   >("app/api/contact-drafts/[id]/confirm/handler.ts");
@@ -177,7 +177,10 @@ test("manual contact creation API routes return stable envelopes with empty and 
     typeof import("../../features/acquisition/manual-fixtures")
   >("features/acquisition/manual-fixtures.ts");
 
-  const createResponse = await createRoute.POST(
+  const createDraft = createRoute.createManualContactDraftPostHandler(
+    async () => ({ id: "account:manual-test", name: "Manual tester" }),
+  );
+  const createResponse = await createDraft(
     new Request("https://orbit.local/api/contact-drafts/manual", {
       method: "POST",
     }),
@@ -196,7 +199,7 @@ test("manual contact creation API routes return stable envelopes with empty and 
       params: Promise.resolve({ id: "demo-manual-draft" }),
     },
   );
-  const emptyResponse = await createRoute.POST(
+  const emptyResponse = await createDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/manual?scenario=empty",
       {
@@ -204,7 +207,7 @@ test("manual contact creation API routes return stable envelopes with empty and 
       },
     ),
   );
-  const failureResponse = await createRoute.POST(
+  const failureResponse = await createDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/manual?scenario=failure",
       {
@@ -223,7 +226,7 @@ test("manual contact creation API routes return stable envelopes with empty and 
       params: Promise.resolve({ id: "demo-manual-draft" }),
     },
   );
-  const validationResponse = await createRoute.POST(
+  const validationResponse = await createDraft(
     new Request("https://orbit.local/api/contact-drafts/manual", {
       body: JSON.stringify({ note: "" }),
       headers: {
@@ -232,7 +235,7 @@ test("manual contact creation API routes return stable envelopes with empty and 
       method: "POST",
     }),
   );
-  const formValidationResponse = await createRoute.POST(
+  const formValidationResponse = await createDraft(
     new Request("https://orbit.local/api/contact-drafts/manual", {
       body: new URLSearchParams({ note: "" }),
       headers: {

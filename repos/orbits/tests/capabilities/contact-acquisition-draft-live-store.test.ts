@@ -242,8 +242,11 @@ test("contact draft API resolves ORBIT_MODULE_MODE=live and returns a live envel
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const route = await import("../../app/api/contact-drafts/route");
-    const response = await route.GET(
+    const route = await import("../../app/api/contact-drafts/handler");
+    const listDrafts = route.createContactDraftsGetHandler(
+      async () => ({ id: "account:contact-draft-live-test" }),
+    );
+    const response = await listDrafts(
       new Request("https://orbit.local/api/contact-drafts"),
     );
     const body = await response.json();
@@ -263,4 +266,17 @@ test("contact draft API resolves ORBIT_MODULE_MODE=live and returns a live envel
     process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
   }
+});
+
+test("contact draft API rejects anonymous requests before resolving live storage", async () => {
+  const route = await import("../../app/api/contact-drafts/handler");
+  const response = await route.createContactDraftsGetHandler(
+    async () => null,
+  )(new Request("https://orbit.local/api/contact-drafts"));
+  const body = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(body.success, false);
+  assert.equal(body.error.code, "UNAUTHORIZED");
+  assert.equal(body.error.context.service, "authenticated-api-actor");
 });
