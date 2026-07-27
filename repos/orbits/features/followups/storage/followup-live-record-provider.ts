@@ -92,6 +92,18 @@ function sourceReference(
   };
 }
 
+function nextActionFromRecord(value: unknown): ContactDTO["nextAction"] {
+  if (!isRecord(value) || !nonEmptyString(value.text)) {
+    return undefined;
+  }
+
+  return {
+    text: value.text,
+    reason: optionalString(value.reason),
+    evidenceId: optionalString(value.evidenceId),
+  };
+}
+
 function contactFromRecord(
   record: LiveRecord<Record<string, unknown>>,
 ): ContactDTO | null {
@@ -122,6 +134,7 @@ function contactFromRecord(
     primaryPhone: optionalString(payload.primaryPhone),
     profileSnippet: optionalString(payload.profileSnippet),
     stage: payload.stage,
+    nextAction: nextActionFromRecord(payload.nextAction),
     source,
     evidenceIds: ids,
     createdAt: payload.createdAt,

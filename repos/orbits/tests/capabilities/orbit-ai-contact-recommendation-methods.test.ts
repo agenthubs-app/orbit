@@ -257,6 +257,88 @@ test("contacts recommendation search rewrites Chinese domain queries to searchab
   assert.equal(searchQueryFor("有没有做旅游文旅的人").searchQuery, "tourism");
 });
 
+test("model keyword mismatch falls back to the strongest evidence-backed Chinese relationship", async () => {
+  const contactsModule = await importProjectModule<{
+    createContactsRecommendationSearchTool: (input: {
+      relationshipSearchService: {
+        queryRelationships: () => unknown;
+      };
+    }) => {
+      recommend: (input: {
+        query: string;
+        toolArguments: Record<string, unknown>;
+      }) => {
+        candidates: readonly {
+          displayName: string;
+          matchReasons: readonly string[];
+          matchScore: number;
+        }[];
+        state: string;
+        summary: string;
+      };
+    };
+  }>("features/contacts/contact-recommendation-search.ts");
+  const evidenceId = "evidence:chinese-relationship";
+  const tool = contactsModule.createContactsRecommendationSearchTool({
+    relationshipSearchService: {
+      queryRelationships: () => ({
+        success: true,
+        data: {
+          results: [
+            {
+              contactId: "contact:lin-mei",
+              databaseQueryExecuted: true,
+              displayName: "林玫",
+              evidence: [
+                {
+                  evidenceId,
+                  excerpt: "长期关注日本人工智能早期项目。",
+                },
+              ],
+              industry: "风险投资",
+              location: "东京",
+              matchScore: {
+                rationale: "关系强度和商业相关性较高。",
+                value: 95,
+              },
+              organization: "港湾创投",
+              recommendedAction: "发送人工智能合作项目清单。",
+              relationshipContext: "双方已有多次有效交流。",
+              role: "投资合伙人",
+              source: {
+                evidenceId,
+                label: "东京人工智能合作伙伴交流会",
+              },
+              value: {
+                evidenceIds: [evidenceId],
+                rationale: "可信的投资与日本市场关系路径。",
+                score: 95,
+              },
+            },
+          ],
+          provenance: { databaseQueryExecuted: true },
+        },
+      }),
+    },
+  });
+
+  const result = tool.recommend({
+    query: "推荐两位可以帮我拓展日本市场的人脉",
+    toolArguments: {
+      domains: ["marketing"],
+      limit: 1,
+      searchTerms: "japan expansion localization",
+    },
+  });
+
+  assert.equal(result.state, "success");
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0]?.displayName, "林玫");
+  assert.equal(result.candidates[0]?.matchScore, 69);
+  assert.match(result.summary, /No exact search-term match/);
+  assert.match(result.candidates[0]?.matchReasons[0] ?? "", /ranked by existing/);
+});
+
 test("contacts recommendation search adapter awaits async relationship search services", async () => {
   const contactsModule = await importProjectModule<{
     createContactsRecommendationSearchTool: (input: {
@@ -616,7 +698,10 @@ test("contact recommendation artifact service does not deep-clone fresh generate
             contactId: "contact:test",
             displayName: "Test Contact",
             evidenceIds: ["evidence:test"],
-            matchReasons: ["Test evidence matched."],
+            matchReasons: [
+              "No exact search term matched; ranked by existing relationship evidence.",
+              "Test evidence matched.",
+            ],
             matchScore: 91,
             organization: "Orbit",
             recommendedAction: "Review the relationship path.",
@@ -648,6 +733,10 @@ test("contact recommendation artifact service does not deep-clone fresh generate
 
   assert.equal(result.success, true);
   assert.match(result.data?.result.generatedView?.summary ?? "", /1/);
+  assert.doesNotMatch(
+    JSON.stringify(result.data?.result.generatedView),
+    /No exact search term matched/,
+  );
   assert.equal(count, 0);
 });
 

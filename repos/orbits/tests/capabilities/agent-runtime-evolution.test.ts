@@ -416,16 +416,19 @@ test("executable tool registry validates inputs and redacts observations", async
       provenance: { evidenceIds: ["evidence:test"] },
     },
   } as unknown as OrbitAgentArtifactPayload;
+  let validatedLimit: number | undefined;
   const executed = await executeOrbitAgentTool({
     toolName: "events.recommend",
-    arguments: { query: "明天的活动" },
+    arguments: { query: "明天的活动", limit: 2 },
     context: {
       mode: "live",
-      async executeArtifactTool() {
+      async executeArtifactTool(_toolName, input) {
+        validatedLimit = input.limit;
         return output;
       },
     },
   });
+  assert.equal(validatedLimit, 2);
   assert.equal(executed.output, output);
   assert.deepEqual(executed.observation, {
     artifactId: "artifact:test",

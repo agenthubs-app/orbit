@@ -269,6 +269,12 @@ function extractRuleCriteria(input: {
 // 关系上下文命中；同一联系人可能有多条 connection，只保留得分最高的一条。
 const rankedCandidateLimit = 8;
 
+function requestedCandidateLimit(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(10, Math.max(1, Math.floor(value)))
+    : rankedCandidateLimit;
+}
+
 // 泛词不参与相关度排名：它们在几乎所有关系记录里都会命中，会把领域词的信号淹没。
 const rankingStopwords = new Set([
   "and",
@@ -460,6 +466,7 @@ function resultForRankedSearch(
   criteria: ContactRecommendationCriteria,
   searchResult: RelationshipNaturalSearchResult,
   domains: readonly string[],
+  limit = rankedCandidateLimit,
 ): ContactRecommendationResult {
   if (searchResult.success !== true) {
     return resultForSearch(criteria, searchResult);
@@ -482,9 +489,27 @@ function resultForRankedSearch(
     }
   }
 
+  const usedClosestEvidenceFallback =
+    bestByContact.size === 0 && searchResult.data.results.length > 0;
+  if (usedClosestEvidenceFallback) {
+    for (const item of searchResult.data.results) {
+      const ranked: RankedSearchItem = {
+        item,
+        matchedTokens: [],
+        strongHits: 0,
+        weakHits: 0,
+      };
+      const current = bestByContact.get(item.contactId);
+
+      if (!current || betterRankedItem(ranked, current)) {
+        bestByContact.set(item.contactId, ranked);
+      }
+    }
+  }
+
   const topRanked = Array.from(bestByContact.values())
     .sort((left, right) => (betterRankedItem(left, right) ? -1 : 1))
-    .slice(0, rankedCandidateLimit);
+    .slice(0, limit);
   const candidates = topRanked
     .map((ranked): ContactRecommendationCandidate | null => {
       const candidate = candidateFor(ranked.item);
@@ -493,10 +518,15 @@ function resultForRankedSearch(
         ? {
             ...candidate,
             matchReasons: [
-              `Matched search terms: ${ranked.matchedTokens.join(", ")}.`,
+              ranked.matchedTokens.length > 0
+                ? `Matched search terms: ${ranked.matchedTokens.join(", ")}.`
+                : "No exact search term matched; ranked by existing relationship evidence.",
               ...candidate.matchReasons,
             ],
-            matchScore: rankedMatchScore(ranked),
+            matchScore:
+              ranked.matchedTokens.length > 0
+                ? rankedMatchScore(ranked)
+                : Math.min(69, Math.max(45, ranked.item.matchScore.value)),
           }
         : null;
     })
@@ -514,7 +544,9 @@ function resultForRankedSearch(
     state: candidates.length > 0 ? "success" : "empty",
     summary:
       candidates.length > 0
-        ? `${candidates.length} existing relationship candidate(s) ranked by model search terms for the rules_v1 contact recommendation method.`
+        ? usedClosestEvidenceFallback
+          ? `No exact search-term match was found; showing ${candidates.length} closest evidence-backed relationship candidate(s) for review.`
+          : `${candidates.length} existing relationship candidate(s) ranked by model search terms for the rules_v1 contact recommendation method.`
         : "No existing relationship candidate matched the model search terms for the rules_v1 contact recommendation method.",
   };
 }
@@ -612,6 +644,7 @@ export function createContactsRecommendationSearchTool(
       const criteria = extractRuleCriteria(request);
       const modelSearchTerms = readText(request.toolArguments?.searchTerms);
       const modelDomains = readDomains(request.toolArguments?.domains);
+      const limit = requestedCandidateLimit(request.toolArguments?.limit);
 
       // 有模型判断（检索词或领域分类）时，取全量关系池并按 token 相关度排名，
       // 避免后端 AND 子串匹配对多词查询过严、对元数据标签循环命中的问题。
@@ -620,11 +653,11 @@ export function createContactsRecommendationSearchTool(
 
         if (isPromiseLike(poolResult)) {
           return poolResult.then((resolved) =>
-            resultForRankedSearch(criteria, resolved, modelDomains),
+            resultForRankedSearch(criteria, resolved, modelDomains, limit),
           );
         }
 
-        return resultForRankedSearch(criteria, poolResult, modelDomains);
+        return resultForRankedSearch(criteria, poolResult, modelDomains, limit);
       }
 
       const searchResult =

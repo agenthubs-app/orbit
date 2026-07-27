@@ -9,6 +9,7 @@ import type {
   EventCrudAndImportServiceResult,
 } from "./event-crud-and-import/service";
 import { createEventCrudAndImportService } from "./service-factory";
+import { readPublicEventCatalogueRecords } from "./public-catalogue";
 
 export interface EventsRecommendationToolInput {
   query: string;
@@ -65,6 +66,7 @@ export interface EventsRecommendationTool {
 export interface EventsRecommendationToolOptions {
   actorId?: string | null;
   eventService?: EventCrudAndImportService;
+  publicCatalogueRecords?: readonly EventRecord[];
   // 可注入的时间源，便于测试固定"未来活动优先"的判定；默认取真实当前时间。
   now?: () => number;
 }
@@ -365,7 +367,7 @@ function resultForList(
   // 没有时（纯正则/测试路径）保持可用性列表行为，不做整体过滤。
   const requireTokenMatch = modelGuided && tokens.length > 0;
   const databaseQueryExecuted = databaseReadExecuted(listResult.data.provenance);
-  const candidates = listResult.data.events
+  const rankedCandidates = listResult.data.events
     .filter((event) => event.status !== "cancelled")
     .map((event) =>
       candidateFor({
@@ -377,9 +379,20 @@ function resultForList(
         tokens,
       }),
     )
-    .filter((candidate) => !requireTokenMatch || candidate.matchedTokens.length > 0)
-    .sort(compareCandidates)
-    .slice(0, limit);
+    .sort(compareCandidates);
+  const exactCandidates = requireTokenMatch
+    ? rankedCandidates.filter((candidate) => candidate.matchedTokens.length > 0)
+    : rankedCandidates;
+  // 模型给出的宽泛搜索词可能和真实活动文本没有字面重合。此时不能把
+  // “没有精确词命中”误报成“账号没有活动”；保留按时间、状态和关系上下文
+  // 排好序的真实活动作为可复核候选，并在 summary 中明确这是近似结果。
+  const usedClosestAvailableFallback =
+    requireTokenMatch &&
+    exactCandidates.length === 0 &&
+    rankedCandidates.length > 0;
+  const candidates = (
+    usedClosestAvailableFallback ? rankedCandidates : exactCandidates
+  ).slice(0, limit);
   const evidenceIds = candidates.flatMap((candidate) => candidate.evidenceIds);
 
   return {
@@ -393,7 +406,9 @@ function resultForList(
     state: candidates.length > 0 ? "success" : "empty",
     summary:
       candidates.length > 0
-        ? `${candidates.length} event(s) matched the request from live Events data.`
+        ? usedClosestAvailableFallback
+          ? `No exact search-term match was found; showing ${candidates.length} closest available event(s) from live Events data for review.`
+          : `${candidates.length} event(s) matched the request from live Events data.`
         : "No live Events records matched this request.",
   };
 }
@@ -404,6 +419,66 @@ function isPromiseLike<TResult>(
   const maybePromise = result as { then?: unknown };
 
   return typeof maybePromise.then === "function";
+}
+
+function catalogueBackedListResult(
+  listResult: EventListResult,
+  catalogueRecords: readonly EventRecord[],
+  nowMs: number,
+  statusFilter: EventStatus | null,
+): EventListResult {
+  const publicEvents = catalogueRecords.filter(
+    (event) => !statusFilter || event.status === statusFilter,
+  );
+  const ownedEvents = listResult.success ? listResult.data.events : [];
+  const eventsById = new Map(
+    publicEvents.map((event) => [event.id, event] as const),
+  );
+
+  for (const event of ownedEvents) {
+    eventsById.set(event.id, event);
+  }
+
+  const events = [...eventsById.values()];
+  if (events.length === 0) {
+    return listResult;
+  }
+
+  const ownedProvenance =
+    "error" in listResult
+      ? listResult.error.provenance
+      : listResult.data.provenance;
+  const evidenceIds = events.flatMap((event) =>
+    event.evidence.map((evidence) => evidence.evidenceId),
+  );
+
+  return {
+    success: true,
+    data: {
+      state: "success",
+      events,
+      importedRecords: listResult.success
+        ? listResult.data.importedRecords
+        : [],
+      summary: `${events.length} event(s) are available from the public catalogue and actor-owned Events records.`,
+      provenance: {
+        ...ownedProvenance,
+        source: "orbit-public-event-catalogue+actor-events",
+        sourceLabel: "Orbit public event catalogue and account events",
+        evidenceIds:
+          evidenceIds.length > 0
+            ? [...new Set(evidenceIds)]
+            : ["evidence:orbit-public-event-catalogue:empty"],
+        collectedAt: new Date(nowMs).toISOString(),
+        generationMethod: listResult.success
+          ? ownedProvenance.generationMethod
+          : "local-remote-store-query",
+        liveDatabaseWriteExecuted: false,
+      },
+      nextAction:
+        "Review the event evidence before registration or any calendar action.",
+    },
+  };
 }
 
 export function createEventsRecommendationTool(
@@ -417,6 +492,9 @@ export function createEventsRecommendationTool(
     recommend(input): EventsRecommendationToolResultValue {
       const statusFilter = normalizedStatus(input.toolArguments?.statusFilter);
       const nowMs = now();
+      const publicCatalogueRecords =
+        options.publicCatalogueRecords ??
+        readPublicEventCatalogueRecords(nowMs);
       const listResult = eventService.listEvents(
         {
           ...(actorId ? { actorId } : {}),
@@ -425,10 +503,30 @@ export function createEventsRecommendationTool(
       );
 
       if (isPromiseLike(listResult)) {
-        return listResult.then((resolved) => resultForList(resolved, input, nowMs));
+        return listResult.then((resolved) =>
+          resultForList(
+            catalogueBackedListResult(
+              resolved,
+              publicCatalogueRecords,
+              nowMs,
+              statusFilter,
+            ),
+            input,
+            nowMs,
+          ),
+        );
       }
 
-      return resultForList(listResult, input, nowMs);
+      return resultForList(
+        catalogueBackedListResult(
+          listResult,
+          publicCatalogueRecords,
+          nowMs,
+          statusFilter,
+        ),
+        input,
+        nowMs,
+      );
     },
   };
 }

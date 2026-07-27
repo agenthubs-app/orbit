@@ -229,6 +229,10 @@ const sourceLabels: Record<string, Record<ArtifactLocale, string>> = {
     en: "Follow-up live store",
     zh: "跟进任务库",
   },
+  "Derived from saved relationship evidence": {
+    en: "Derived from saved relationship evidence",
+    zh: "根据已保存的关系证据推导",
+  },
   "Generated recommendation": { en: "Generated recommendation", zh: "关系记录建议" },
 };
 
@@ -479,9 +483,11 @@ function success(payload: OrbitAgentArtifactPayload): OrbitAgentArtifactResultEn
 }
 
 export function createOrbitAgentFollowupReviewArtifactService(input: {
+  actorId?: string | null;
   fallbackService?: OrbitAgentArtifactTaskService;
   followupService?: FollowupTaskGenerationService;
 } = {}): OrbitAgentArtifactTaskService {
+  const actorId = input.actorId?.trim() || null;
   const fallbackService =
     input.fallbackService ?? createOrbitAgentArtifactPreviewService();
   const followupService =
@@ -500,6 +506,7 @@ export function createOrbitAgentFollowupReviewArtifactService(input: {
       }
 
       const followupResult = followupService.listTasks({
+        actorId,
         limit: normalizedLimit(request.toolArguments?.limit) ?? 5,
       });
 

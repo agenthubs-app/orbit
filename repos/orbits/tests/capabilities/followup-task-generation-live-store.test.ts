@@ -115,6 +115,40 @@ test("live followup task generation reads generated tasks from shared live stora
       /Other actor private follow-up/,
     );
   }
+
+  const taskRecords = await store.listRecords({
+    collectionName: "tasks",
+    workspaceId,
+  });
+  for (const record of taskRecords) {
+    await store.deleteRecord({
+      collectionName: "tasks",
+      deletedAt: "2026-07-01T20:00:00.000Z",
+      recordId: record.recordId,
+      workspaceId,
+    });
+  }
+
+  const relationshipSuggestions = await service.listTasks({
+    actorId,
+    limit: 1,
+  });
+
+  assert.equal(relationshipSuggestions.success, true);
+  if (relationshipSuggestions.success) {
+    const suggestion = relationshipSuggestions.data.tasks[0];
+
+    assert.equal(relationshipSuggestions.data.state, "success");
+    assert.equal(relationshipSuggestions.data.tasks.length, 1);
+    assert.match(suggestion?.taskId ?? "", /^relationship-suggestion:/);
+    assert.equal(suggestion?.source.type, "system");
+    assert.equal(
+      suggestion?.source.label,
+      "Derived from saved relationship evidence",
+    );
+    assert.equal(suggestion?.liveTaskPersistenceRequested, false);
+    assert.ok((suggestion?.evidenceIds.length ?? 0) > 0);
+  }
 });
 
 test("followup task generation factory registers live mode and fails closed without live database config", async () => {

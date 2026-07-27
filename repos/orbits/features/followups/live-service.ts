@@ -249,6 +249,112 @@ function toTask(task: TaskDTO, graph: LiveFollowupGraph): FollowupTask {
   };
 }
 
+function relationshipDueInDays(connection: ConnectionDTO): number {
+  switch (connection.stage) {
+    case "needs_follow_up":
+      return 1;
+    case "reviewing":
+      return 3;
+    case "active":
+    case "captured":
+      return 7;
+    case "nurture":
+      return 14;
+    case "archived":
+    default:
+      return 30;
+  }
+}
+
+function relationshipTriggerKind(
+  connection: ConnectionDTO,
+): FollowupTaskTriggerKind {
+  if (connection.stage === "nurture") {
+    return "dormant_relationship";
+  }
+
+  return connection.suggestedActions?.length
+    ? "promised_action"
+    : "new_connection";
+}
+
+function relationshipSuggestions(
+  graph: LiveFollowupGraph,
+  storedTasks: readonly FollowupTask[],
+): readonly FollowupTask[] {
+  const storedConnectionIds = new Set(
+    storedTasks.map((task) => task.connectionId).filter(Boolean),
+  );
+  const contactsById = new Map(
+    graph.contacts.map((contact) => [contact.id, contact]),
+  );
+
+  return graph.connections
+    .filter(
+      (connection) =>
+        connection.stage !== "archived" &&
+        !storedConnectionIds.has(connection.id),
+    )
+    .flatMap((connection) => {
+      const contact = contactsById.get(connection.contactId);
+      const recommendedAction =
+        contact?.nextAction?.text ?? connection.suggestedActions?.[0]?.trim();
+
+      if (!contact || !recommendedAction) {
+        return [];
+      }
+
+      const dueInDays = relationshipDueInDays(connection);
+      const evidenceIds = [
+        ...new Set([
+          ...(contact.nextAction?.evidenceId
+            ? [contact.nextAction.evidenceId]
+            : []),
+          ...connection.evidenceIds,
+        ]),
+      ];
+      const source: FollowupTaskGenerationSourceReference = {
+        type: "system",
+        id: `relationship-suggestion:${connection.id}`,
+        label: "Derived from saved relationship evidence",
+        providerRecordId: connection.id,
+        generatedBy: "live-store-query",
+      };
+
+      return [
+        {
+          taskId: `relationship-suggestion:${connection.id}`,
+          title: recommendedAction,
+          triggerKind: relationshipTriggerKind(connection),
+          priority: priorityFor(dueInDays),
+          dueInDays,
+          connectionId: connection.id,
+          contactName: contact.displayName,
+          organization: contact.organization ?? "",
+          recommendedAction,
+          rationale: contact.nextAction?.reason ?? connection.summary,
+          source,
+          evidenceIds,
+          generatedBy: "live-store-query",
+          audit: {
+            sourceLabel: source.label,
+            providerBoundary: "scheduler false, AI false, persistence false",
+            verificationAction: "Verify evidence",
+          },
+          backgroundSchedulerRequested: false,
+          liveTaskPersistenceRequested: false,
+          liveDatabaseWriteExecuted: false,
+          productionAuditLogWriteExecuted: false,
+          aiProviderRequested: false,
+          calendarProviderRequested: false,
+          emailProviderRequested: false,
+          notificationDelivered: false,
+          externalNetworkRequested: false,
+        },
+      ];
+    });
+}
+
 function toTrigger(
   task: FollowupTask,
   graph: LiveFollowupGraph,
@@ -345,9 +451,11 @@ function payloadFor(input: {
   request: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput;
   sourceLabel: string;
 }): FollowupTaskGenerationPayload {
-  const allTasks = input.graph.tasks
-    .map((task) => toTask(task, input.graph))
-    .sort(compareTasks);
+  const storedTasks = input.graph.tasks.map((task) => toTask(task, input.graph));
+  const allTasks = [
+    ...storedTasks,
+    ...relationshipSuggestions(input.graph, storedTasks),
+  ].sort(compareTasks);
   const tasks = filterTasks(allTasks, input.request);
   const triggers = tasks.map((task) => toTrigger(task, input.graph));
 
@@ -357,8 +465,8 @@ function payloadFor(input: {
     tasks,
     summary:
       tasks.length > 0
-        ? `${tasks.length} followup tasks were loaded from the live task store.`
-        : "No followup tasks matched the live task store query.",
+        ? `${tasks.length} source-backed followup suggestions were loaded from live relationship data.`
+        : "No source-backed followup suggestions matched the live relationship query.",
     provenance: provenanceFor({
       collectedAt: input.graph.generatedAt,
       databaseReadExecuted: true,
@@ -368,7 +476,7 @@ function payloadFor(input: {
     nextAction:
       tasks.length > 0
         ? "Review task evidence before any reminder, message, or external action."
-        : "Add source-backed live tasks or clear task filters.",
+        : "Add a relationship next action, a suggested action, or a source-backed task.",
   };
 }
 

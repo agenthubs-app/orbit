@@ -672,6 +672,7 @@ function systemInstruction(): string {
     "Clarification budget: ask the user to narrow a vague request at most ONCE per conversation. If conversationHistory shows a clarifying question was already asked, or the user just supplied extra detail, run the closest matching tool with the accumulated context instead of asking again.",
     "When history states a concrete goal (e.g. launching a fintech product) and the current message asks who can help, which friends/contacts to talk to, or for introductions -> contact_recommendations with contacts.recommend, carrying the goal from history into arguments.searchTerms as english keywords.",
     "For contacts.recommend and events.recommend, include arguments.searchTerms: space-separated lowercase english keywords for the domain/topic and the kinds of people or events wanted (e.g. \"ai artificial intelligence founder product meetup\").",
+    "For contacts.recommend, events.recommend, and followups.reviewQueue, include arguments.limit as an integer from 1 to 10 when the user requests a specific number; otherwise omit it.",
     `For contacts.recommend and events.recommend, also include arguments.domains: an array (multi-select, up to 5) of tags chosen ONLY from [${ORBIT_AGENT_RECOMMENDATION_DOMAINS.join(", ")}]. Pick ALL tags that apply to the request: the industry of the request itself AND the kinds of helpers wanted. Examples: 开川菜馆 -> ["restaurant", "food_beverage"]; 金融产品进入市场 -> ["fintech", "investor", "marketing"]; AI 活动认识做产品的人 -> ["ai", "community"].`,
     "Do not claim privacy settings, storage, deletion, or analysis opt-out state changed unless an explicit Orbit privacy tool result says so.",
     "Do not describe storage guarantees; direct users to privacy controls for durable changes.",
@@ -728,6 +729,7 @@ function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
         {
           arguments: {
             domains: ORBIT_AGENT_RECOMMENDATION_DOMAINS,
+            limit: "integer 1-10 when the user requests a count",
             searchTerms: "string",
           },
           requiresUserConfirmation: true,

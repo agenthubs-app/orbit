@@ -205,6 +205,7 @@ test("events recommendation tool ranks live events from an async Events service"
         return eventService.getEvent({ ...input, actorId });
       },
     },
+    publicCatalogueRecords: [],
   });
 
   const result = await tool.recommend({
@@ -238,6 +239,7 @@ test("events recommendation tool forwards the server actor to live Events reads"
   const tool = createEventsRecommendationTool({
     actorId,
     eventService,
+    publicCatalogueRecords: [],
   });
 
   const result = await tool.recommend({
@@ -246,6 +248,67 @@ test("events recommendation tool forwards the server actor to live Events reads"
 
   assert.equal(result.state, "success");
   assert.deepEqual(requestedActors, [actorId]);
+});
+
+test("events recommendation tool shows closest real events when model hints have no exact match", async () => {
+  const eventService = createLiveEventCrudAndImportService({
+    provider: createFakeLiveProvider(),
+  });
+  const tool = createEventsRecommendationTool({
+    actorId,
+    eventService,
+    now: () => Date.parse("2026-07-01T00:00:00.000Z"),
+    publicCatalogueRecords: [],
+  });
+
+  const result = await tool.recommend({
+    query: "推荐适合我参加的近期活动",
+    toolArguments: {
+      searchTerms: "quantum agriculture",
+      domains: ["agritech"],
+      limit: 3,
+    },
+  });
+
+  assert.equal(result.state, "success");
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0]?.title, "Operator dinner");
+  assert.equal(result.candidates[0]?.matchedTokens.length, 0);
+  assert.match(result.summary, /No exact search-term match/);
+  assert.match(result.summary, /closest available event/);
+});
+
+test("events recommendation tool includes the approved public catalogue when actor-owned events are empty", async () => {
+  const tool = createEventsRecommendationTool({
+    actorId,
+    eventService: createLiveEventCrudAndImportService({
+      provider: {
+        source: "live-store:empty-actor-events",
+        sourceLabel: "Empty actor event store",
+        listEvents: () => [],
+        getEvent: () => null,
+        createManualEvent: () => {
+          throw new Error("Recommendation reads must not create events.");
+        },
+      },
+    }),
+    now: () => Date.parse("2026-07-28T00:00:00.000Z"),
+  });
+
+  const result = await tool.recommend({
+    query: "推荐近期活动",
+    toolArguments: { limit: 5 },
+  });
+
+  assert.equal(result.state, "success");
+  assert.ok(result.candidates.length >= 2);
+  assert.equal(result.candidates[0]?.upcoming, true);
+  assert.equal(result.candidates[1]?.upcoming, true);
+  assert.match(result.sourceLabel, /public event catalogue/i);
+  assert.match(
+    result.candidates.map((candidate) => candidate.title).join(" "),
+    /東京AI実装パートナー申込会|日中投資家・創業者申込サロン/,
+  );
 });
 
 test("live event list hides legacy fixture and diagnostic records by default", async () => {

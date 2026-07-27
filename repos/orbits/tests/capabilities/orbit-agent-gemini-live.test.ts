@@ -54,6 +54,7 @@ test("Gemini Orbit Agent provider validates the planner schema", async () => {
       assistantMessage: string;
       intent: string;
       toolRequests: readonly {
+        arguments: Record<string, unknown>;
         requiresUserConfirmation: true;
         toolName: string;
       }[];
@@ -66,13 +67,14 @@ test("Gemini Orbit Agent provider validates the planner schema", async () => {
       intent: "event_recommendations",
       toolRequests: [
         {
-          arguments: { contactName: "Maya" },
+          arguments: { contactName: "Maya", limit: 2 },
           requiresUserConfirmation: true,
           toolName: "events.recommend",
         },
       ],
     }),
   );
+  assert.equal(valid?.toolRequests[0]?.arguments.limit, 2);
   const invalidTool = provider.parseGeminiOrbitAgentPlannerOutput(
     JSON.stringify({
       assistantMessage: "I sent the email.",

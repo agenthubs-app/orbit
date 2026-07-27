@@ -229,6 +229,7 @@ function localizeMatchReason(
     .filter((reason) => reason !== RELATIONSHIP_SEARCH_DIAGNOSTIC)
     // 排名路径附带的检索词诊断句只服务于 trace/评估，不进入用户可读推荐理由。
     .filter((reason) => !/^matched search terms:/i.test(reason))
+    .filter((reason) => !/^no exact search term matched;/i.test(reason))
     .join(" ")
     .trim();
   const pattern = raw.match(/^(.+?)\s+matches\s+(.+?)\s+through\s+(.+?)\.?$/i);

@@ -958,6 +958,7 @@ export async function artifactForRequest(input: {
               locale: validatedInput.locale,
               searchTerms: validatedInput.searchTerms,
               domains: validatedInput.domains,
+              limit: validatedInput.limit,
             },
           };
           const result =

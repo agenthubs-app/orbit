@@ -28,6 +28,7 @@ export function createOrbitAgentLiveArtifactTaskService(
     fallbackService: previewService,
   });
   const followupService = createOrbitAgentFollowupReviewArtifactService({
+    actorId,
     fallbackService: chatContextService,
   });
   const eventService = createOrbitAgentEventRecommendationArtifactService({

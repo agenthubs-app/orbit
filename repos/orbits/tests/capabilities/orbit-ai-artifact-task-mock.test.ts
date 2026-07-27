@@ -84,8 +84,12 @@ test("Orbit Agent artifact task service is registered behind the module factory"
 test("live artifact task renders follow-up queue from the followups service", async () => {
   const serviceModule = await importProjectModule<{
     createOrbitAgentFollowupReviewArtifactService: (input: {
+      actorId?: string | null;
       followupService: {
-        listTasks: (input?: { limit?: number | null }) => Promise<{
+        listTasks: (input?: {
+          actorId?: string | null;
+          limit?: number | null;
+        }) => Promise<{
           success: true;
           data: {
             tasks: readonly {
@@ -161,8 +165,9 @@ test("live artifact task renders follow-up queue from the followups service", as
     };
   }>("features/orbit-ai/followup-review-artifact-service.ts");
 
-  const listInputs: { limit?: number | null }[] = [];
+  const listInputs: { actorId?: string | null; limit?: number | null }[] = [];
   const service = serviceModule.createOrbitAgentFollowupReviewArtifactService({
+    actorId: "user:agent-artifact-audit",
     followupService: {
       async listTasks(input) {
         listInputs.push(input ?? {});
@@ -172,7 +177,9 @@ test("live artifact task renders follow-up queue from the followups service", as
           data: {
             tasks: [
               {
-                audit: { sourceLabel: "Followup Postgres live storage" },
+                audit: {
+                  sourceLabel: "Derived from saved relationship evidence",
+                },
                 connectionId: "connection_0012",
                 contactName: "佐藤 健一",
                 dueInDays: 2,
@@ -181,7 +188,9 @@ test("live artifact task renders follow-up queue from the followups service", as
                 priority: "this_week",
                 rationale: "Shared Japan market entry evidence supports a timely review.",
                 recommendedAction: "Review the Japan market entry thread.",
-                source: { label: "Live task source" },
+                source: {
+                  label: "Derived from saved relationship evidence",
+                },
                 taskId: "task_001",
                 title: "Follow up on Japan market entry",
                 triggerKind: "promised_action",
@@ -214,6 +223,7 @@ test("live artifact task renders follow-up queue from the followups service", as
 
   assert.equal(result.success, true);
   assert.equal(listInputs[0]?.limit, 1);
+  assert.equal(listInputs[0]?.actorId, "user:agent-artifact-audit");
   assert.equal(result.data?.task.kind, "followup_queue");
   assert.equal(result.data?.task.artifactProducer, "followup_review_producer");
   assert.equal(result.data?.result.kind, "followup_queue");
@@ -242,6 +252,14 @@ test("live artifact task renders follow-up queue from the followups service", as
   assert.match(
     JSON.stringify(result.data?.result.generatedView),
     /North Star Foods/,
+  );
+  assert.match(
+    JSON.stringify(result.data?.result.generatedView),
+    /根据已保存的关系证据推导/,
+  );
+  assert.doesNotMatch(
+    JSON.stringify(result.data?.result.generatedView),
+    /Derived from saved relationship evidence/,
   );
   assert.doesNotMatch(
     JSON.stringify(result.data?.result.generatedView),

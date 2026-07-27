@@ -32,6 +32,7 @@ export interface OrbitAgentToolInput {
   locale?: "zh" | "en";
   searchTerms?: string;
   domains?: readonly string[];
+  limit?: number;
 }
 
 export interface OrbitAgentToolExecutionContext {
@@ -90,6 +91,7 @@ const toolInputSchema: Validator<OrbitAgentToolInput> = {
         maxItems: 5,
         items: { type: "string", maxLength: 64 },
       },
+      limit: { type: "integer", minimum: 1, maximum: 10 },
     },
   },
   parse(value) {
@@ -115,10 +117,14 @@ const toolInputSchema: Validator<OrbitAgentToolInput> = {
           .filter(Boolean)
           .slice(0, 5)
       : undefined;
+    const limit =
+      typeof value.limit === "number" && Number.isFinite(value.limit)
+        ? Math.min(10, Math.max(1, Math.floor(value.limit)))
+        : undefined;
 
     return {
       success: true,
-      data: { query, locale, searchTerms, domains },
+      data: { query, locale, searchTerms, domains, limit },
     };
   },
 };

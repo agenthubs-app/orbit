@@ -47,6 +47,10 @@ test("live Agent artifacts bind contact and Event reads to the server actor", ()
   );
   assert.match(liveArtifactSource, /createEventsRecommendationTool\(\{ actorId \}\)/);
   assert.match(
+    liveArtifactSource,
+    /createOrbitAgentFollowupReviewArtifactService\(\{\s*actorId,/,
+  );
+  assert.match(
     conversationRouteSource,
     /createOrbitAgentConversationServiceForActor\(agentContext\.actorId\)/,
   );
