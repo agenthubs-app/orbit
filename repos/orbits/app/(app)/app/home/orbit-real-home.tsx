@@ -204,14 +204,14 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
   const content = (
     <>
       <Cover g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <h3 className="h-section" style={{ color: "var(--ink)", display: "block", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h3>
+      <span className="orbit-home-event-row-copy" style={{ flex: 1, minWidth: 0 }}>
+        <h3 className="h-section orbit-home-event-row-title" style={{ color: "var(--ink)", display: "block", margin: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</h3>
         <span style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: 8, marginTop: 3 }}>
           <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="clock" size={13} />{date.time}</span>
           {place ? <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="pin" size={13} />{place}</span> : null}
         </span>
       </span>
-      <span style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 10 }}>
+      <span className="orbit-home-event-row-action" style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 10 }}>
         {canEnter ? <span className="btn btn-soft btn-sm" style={{ height: 32, pointerEvents: "none" }}>{enterLabel}<Icon name="arrowUR" size={14} /></span> : <StatusBadge language={language} status={event.status} />}
         <Icon color="var(--text-4)" name="chevR" size={17} />
       </span>
@@ -220,10 +220,10 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
   const rowStyle = { alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", display: "flex", gap: 14, padding: "12px 14px", textAlign: "left" as const, textDecoration: "none", width: "100%" };
 
   if (!canEnter) {
-    return <a className="card-hover" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={rowStyle}>{content}</a>;
+    return <a className="card-hover orbit-home-event-row" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={rowStyle}>{content}</a>;
   }
 
-  return <button className="card-hover" onClick={enterEvent} style={rowStyle} type="button">{content}</button>;
+  return <button className="card-hover orbit-home-event-row" onClick={enterEvent} style={rowStyle} type="button">{content}</button>;
 }
 
 function MyEventsBlock({ events, language, t }: { events: OrbitLandingEventView[]; language: OrbitLanguage; t: Translate }) {
@@ -477,6 +477,13 @@ export function OrbitRealHome({ mode, viewModel }: { mode: HomeMode; viewModel: 
 [data-orbit-real-page="home"] .orbit-hub-group-head svg { color:var(--accent); }
 [data-orbit-real-page="home"] .orbit-hub-group-k { font-size:12px; font-weight:600; color:var(--text-3); }
 [data-orbit-real-page="home"] .orbit-hub-chip-row { display:flex; flex-wrap:wrap; gap:6px; }
+[data-orbit-real-page="home"] .orbit-home-event-row-title { white-space:nowrap; }
+@media (max-width:640px) {
+  [data-orbit-real-page="home"] .orbit-home-event-row { align-items:flex-start !important; flex-wrap:wrap; }
+  [data-orbit-real-page="home"] .orbit-home-event-row-copy { flex-basis:calc(100% - 70px) !important; }
+  [data-orbit-real-page="home"] .orbit-home-event-row-title { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-height:1.35; white-space:normal; }
+  [data-orbit-real-page="home"] .orbit-home-event-row-action { flex-basis:100%; justify-content:flex-end; }
+}
 @media (max-width:720px) { [data-orbit-real-page="home"] .orbit-hub-grid { grid-template-columns:1fr; } }
 ` }} />
     </main>

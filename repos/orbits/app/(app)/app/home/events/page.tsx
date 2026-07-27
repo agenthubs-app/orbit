@@ -5,6 +5,8 @@
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { presentOrbitEvents } from "../../orbit-event-presentation";
+import { auth } from "../../../../../auth";
+import { redirect } from "next/navigation";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import {
@@ -21,7 +23,19 @@ interface AppPersonalHomeEventsPageProps {
 export default async function AppPersonalHomeEventsPage({
   searchParams,
 }: AppPersonalHomeEventsPageProps = {}) {
-  const routeModel = await loadAppHomeRouteViewModel(await searchParams);
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fhome%2Fevents");
+  }
+
+  const routeModel = await loadAppHomeRouteViewModel(await searchParams, {
+    displayName:
+      session.user.name?.trim() ||
+      session.user.email?.trim() ||
+      "Orbit member",
+    email: session.user.email,
+    id: session.user.id,
+  });
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;
 

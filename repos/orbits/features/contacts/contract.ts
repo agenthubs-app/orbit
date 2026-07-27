@@ -84,6 +84,7 @@ export type ContactStatusFilterMatchesContract = ContractMatches<
 >;
 
 export const CONTACTS_LIST_SEARCH_FILTER_ERROR_CODES = [
+  "CONTACTS_ACTOR_REQUIRED",
   "CONTACTS_FILTER_NOT_SUPPORTED",
   "CONTACTS_SEARCH_PENDING",
   "CONTACTS_LIST_SEARCH_FILTER_MOCK_FAILED",
@@ -102,6 +103,7 @@ export type ContactsListSearchFilterScenario =
 export type ContactsListSearchFilterState = ContactsListStateCode;
 
 export interface ContactsListSearchFilterInput {
+  actorId?: string | null;
   query?: string | null;
   scenario?: ContactsListSearchFilterScenario | string | null;
   sourceFilters?: readonly (ContactSourceFilter | string)[] | null;
@@ -118,6 +120,12 @@ export interface ContactsListSearchFilterErrorDefinition {
 }
 
 export const CONTACTS_LIST_SEARCH_FILTER_ERROR_DEFINITIONS = {
+  CONTACTS_ACTOR_REQUIRED: {
+    code: "CONTACTS_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated actor is required for live contacts access.",
+    recovery: "Sign in before reading or searching live contacts.",
+  },
   CONTACTS_FILTER_NOT_SUPPORTED: {
     code: "CONTACTS_FILTER_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",

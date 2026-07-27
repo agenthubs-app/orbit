@@ -11,6 +11,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
 test("live reminder notification service reads generated notifications without delivery side effects", async () => {
+  const actorId = "actor:reminder-owner";
   const workspaceId = "workspace:reminder-notification-live-store-test";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
@@ -18,6 +19,18 @@ test("live reminder notification service reads generated notifications without d
     store,
     workspaceId,
   });
+  for (const collectionName of [
+    "notifications",
+    "tasks",
+    "contacts",
+    "connections",
+    "evidence",
+  ]) {
+    const records = await store.listRecords({ collectionName, workspaceId });
+    for (const record of records) {
+      await store.upsertRecord({ ...record, userId: actorId });
+    }
+  }
 
   const service = createLiveReminderScheduleNotificationService({
     provider: createStorageReminderScheduleNotificationProvider({
@@ -27,7 +40,7 @@ test("live reminder notification service reads generated notifications without d
     }),
   });
 
-  const listed = await service.listNotifications();
+  const listed = await service.listNotifications({ actorId });
 
   assert.equal(listed.success, true);
   assert.equal(listed.data.state, "success");
@@ -85,6 +98,7 @@ test("live reminder notification service reads generated notifications without d
   assert.equal(firstQueueEntry?.liveDatabaseWriteExecuted, false);
 
   const highPriority = await service.listNotifications({
+    actorId,
     priority: "high",
   });
 
@@ -103,6 +117,7 @@ test("live reminder notification service reads generated notifications without d
   );
 
   const dueSoon = await service.generateReminders({
+    actorId,
     dueWithinDays: 2,
     includeGroupedLowPriority: true,
   });
@@ -126,6 +141,7 @@ test("live reminder notification service reads generated notifications without d
   assert.equal(dueSoon.data.groupedLowPriorityReminders.length, 0);
 
   const monthlyWithoutGrouped = await service.generateReminders({
+    actorId,
     frequencies: ["monthly"],
     includeGroupedLowPriority: false,
   });
@@ -134,9 +150,24 @@ test("live reminder notification service reads generated notifications without d
   assert.equal(monthlyWithoutGrouped.data.state, "empty");
   assert.equal(monthlyWithoutGrouped.data.reminders.length, 0);
 
+  const otherActor = await service.listNotifications({
+    actorId: "actor:other",
+  });
+  assert.equal(otherActor.success, true);
+  assert.equal(otherActor.data.state, "empty");
+  assert.equal(otherActor.data.reminders.length, 0);
+
+  const missingActor = await service.listNotifications();
+  assert.equal(missingActor.success, false);
+  assert.equal(
+    missingActor.error.code,
+    "REMINDER_SCHEDULE_NOTIFICATION_ACTOR_REQUIRED",
+  );
+  assert.equal(missingActor.error.provenance.liveDatabaseReadExecuted, false);
+
   const unconfigured = await createLiveReminderScheduleNotificationService({
     provider: null,
-  }).listNotifications();
+  }).listNotifications({ actorId });
 
   assert.equal(unconfigured.success, false);
   assert.equal(
@@ -161,7 +192,9 @@ test("reminder notification factory registers live mode and fails closed without
 
     const resolution = resolveReminderScheduleNotificationService("live");
     const service = createReminderScheduleNotificationService("live");
-    const result = await service.listNotifications();
+    const result = await service.listNotifications({
+      actorId: "actor:factory-test",
+    });
 
     assert.equal(resolution.success, true);
     assert.equal(result.success, false);

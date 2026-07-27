@@ -8,6 +8,7 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const REMINDER_SCHEDULE_NOTIFICATION_ERROR_CODES = [
+  "REMINDER_SCHEDULE_NOTIFICATION_ACTOR_REQUIRED",
   "REMINDER_SCHEDULE_NOTIFICATION_REMINDER_ID_REQUIRED",
   "REMINDER_SCHEDULE_NOTIFICATION_REMINDER_NOT_FOUND",
   "REMINDER_SCHEDULE_NOTIFICATION_EMPTY",
@@ -44,6 +45,7 @@ export type NotificationQueueStatus =
 
 // list 输入用于过滤已有提醒；generate 输入用于按频率和时间窗口生成建议。
 export interface ReminderScheduleNotificationListInput {
+  actorId?: string | null;
   scenario?: ReminderScheduleNotificationScenario | string | null;
   frequency?: ReminderFrequency | string | null;
   priority?: ReminderPriority | string | null;
@@ -51,6 +53,7 @@ export interface ReminderScheduleNotificationListInput {
 }
 
 export interface ReminderScheduleNotificationGenerateInput {
+  actorId?: string | null;
   scenario?: ReminderScheduleNotificationScenario | string | null;
   frequencies?: readonly (ReminderFrequency | string)[] | null;
   includeGroupedLowPriority?: boolean | null;
@@ -67,6 +70,14 @@ export interface ReminderScheduleNotificationErrorDefinition {
 
 // 通知失败定义明确不会回退调用真实投递、cron、数据库或设备。
 export const REMINDER_SCHEDULE_NOTIFICATION_ERROR_DEFINITIONS = {
+  REMINDER_SCHEDULE_NOTIFICATION_ACTOR_REQUIRED: {
+    code: "REMINDER_SCHEDULE_NOTIFICATION_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message:
+      "An authenticated actor is required before reading live reminder notifications.",
+    recovery:
+      "Sign in and retry; do not read workspace-wide reminders without an actor boundary.",
+  },
   REMINDER_SCHEDULE_NOTIFICATION_REMINDER_ID_REQUIRED: {
     code: "REMINDER_SCHEDULE_NOTIFICATION_REMINDER_ID_REQUIRED",
     appCode: "VALIDATION_ERROR",

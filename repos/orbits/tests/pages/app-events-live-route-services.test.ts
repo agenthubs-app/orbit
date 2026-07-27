@@ -3,8 +3,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
-
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { resolveAppEventsRouteServices } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory";
 import { EVENT_CONTENT } from "../../app/(app)/app/orbit-event-content";
@@ -67,7 +65,10 @@ test("app events route service bundle resolves all child services in live mode",
 
 test("app events route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveEvents(async () => {
-    const viewModel = await loadAppEventsRouteViewModel();
+    const viewModel = await loadAppEventsRouteViewModel(
+      undefined,
+      "actor:events-page-test",
+    );
 
     assert.equal(viewModel.state, "route-state");
 
@@ -85,21 +86,42 @@ test("app events route loader returns a controlled live failure when storage is 
   });
 });
 
+test("empty events route does not offer an action without a target event", async () => {
+  const previousMode = process.env.ORBIT_MODULE_MODE;
+
+  try {
+    process.env.ORBIT_MODULE_MODE = "mock";
+    const viewModel = await loadAppEventsRouteViewModel(
+      { scenario: "empty" },
+      "actor:events-empty-test",
+    );
+
+    assert.equal(viewModel.state, "route-state");
+    if (viewModel.state === "route-state") {
+      assert.equal(viewModel.routeState.scenario, "empty");
+      assert.deepEqual(
+        viewModel.routeState.recoveryActions.map((action) => action.href),
+        ["/app/events"],
+      );
+    }
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.ORBIT_MODULE_MODE;
+    } else {
+      process.env.ORBIT_MODULE_MODE = previousMode;
+    }
+  }
+});
+
 test("/app/events page renders the live-capable product events UI", async () => {
   const pageSource = source("app/(app)/app/events/page.tsx");
 
   assert.match(pageSource, /OrbitRealExploreClient/);
   assert.match(pageSource, /eventsRouteToOrbitLandingViewModel/);
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(pageSource, /redirect\("\/app\/account\/login/);
+  assert.match(pageSource, /session\.user\.id/);
   assert.doesNotMatch(pageSource, /AppEventsCommandCenter/);
-
-  await withUnconfiguredLiveEvents(async () => {
-    const pageModule = await import("../../app/(app)/app/events/page");
-    const Page = pageModule.default;
-    const html = renderToStaticMarkup(await Page());
-
-    assert.match(html, /shared-ui-state-view/);
-    assert.match(html, /Events could not load/);
-  });
 });
 
 test("priority business events use premium local cover assets", () => {

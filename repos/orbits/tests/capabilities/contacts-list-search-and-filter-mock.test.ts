@@ -61,6 +61,7 @@ test("contacts list search and filter contract exposes typed filters fixtures an
   });
 
   assert.deepEqual(contract.CONTACTS_LIST_SEARCH_FILTER_ERROR_CODES, [
+    "CONTACTS_ACTOR_REQUIRED",
     "CONTACTS_FILTER_NOT_SUPPORTED",
     "CONTACTS_SEARCH_PENDING",
     "CONTACTS_LIST_SEARCH_FILTER_MOCK_FAILED",
@@ -254,12 +255,17 @@ test("mock contacts list search and filter service is deterministic with no exte
 });
 
 test("contacts list search and filter API routes return stable envelopes with empty and failure paths", async () => {
-  const listRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-  }>("app/api/contacts/route.ts");
-  const searchRoute = await importProjectModule<{
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/contacts/search/route.ts");
+  const listHandler = await importProjectModule<
+    typeof import("../../app/api/contacts/handler")
+  >("app/api/contacts/handler.ts");
+  const searchHandler = await importProjectModule<
+    typeof import("../../app/api/contacts/search/handler")
+  >("app/api/contacts/search/handler.ts");
+  const resolveActor = async () => ({ id: "account:test-contacts" });
+  const listRoute = { GET: listHandler.createContactsGetHandler(resolveActor) };
+  const searchRoute = {
+    POST: searchHandler.createContactsSearchPostHandler(resolveActor),
+  };
   const fixtures = await importProjectModule<
     typeof import("../../features/contacts/fixtures")
   >("features/contacts/fixtures.ts");
@@ -379,6 +385,29 @@ test("contacts list search and filter API routes return stable envelopes with em
       },
     },
   });
+});
+
+test("contacts list and search APIs reject unauthenticated access", async () => {
+  const listHandler = await importProjectModule<
+    typeof import("../../app/api/contacts/handler")
+  >("app/api/contacts/handler.ts");
+  const searchHandler = await importProjectModule<
+    typeof import("../../app/api/contacts/search/handler")
+  >("app/api/contacts/search/handler.ts");
+
+  const listResponse = await listHandler.createContactsGetHandler(
+    async () => null,
+  )(new Request("https://orbit.local/api/contacts"));
+  const searchResponse = await searchHandler.createContactsSearchPostHandler(
+    async () => null,
+  )(
+    new Request("https://orbit.local/api/contacts/search", {
+      method: "POST",
+    }),
+  );
+
+  assert.equal(listResponse.status, 401);
+  assert.equal(searchResponse.status, 401);
 });
 
 test("contacts list search and filter debug route renders all states and the live replacement handoff", async () => {

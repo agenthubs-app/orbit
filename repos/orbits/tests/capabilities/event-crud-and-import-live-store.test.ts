@@ -53,6 +53,7 @@ const liveRecord: LiveEventStoreRecord = {
   recommendedPreparation: "Review the invite list before the dinner.",
   nextAction: "Open the event detail and prepare attendee context.",
 };
+const actorId = "account:event-live-test";
 
 function createFakeLiveProvider(): LiveEventStoreProvider {
   const records: LiveEventStoreRecord[] = [liveRecord];
@@ -112,14 +113,14 @@ function createAsyncFakeLiveProvider(): LiveEventStoreProvider {
   return {
     source: "live-store:async-fake-events",
     sourceLabel: "Async fake live events store",
-    async listEvents() {
-      return provider.listEvents();
+    async listEvents(requestedActorId) {
+      return provider.listEvents(requestedActorId);
     },
-    async getEvent(eventId) {
-      return provider.getEvent(eventId);
+    async getEvent(eventId, requestedActorId) {
+      return provider.getEvent(eventId, requestedActorId);
     },
-    async createManualEvent(input) {
-      return provider.createManualEvent(input);
+    async createManualEvent(input, requestedActorId) {
+      return provider.createManualEvent(input, requestedActorId);
     },
   };
 }
@@ -134,7 +135,7 @@ test("event CRUD and child event factories register explicit live mode", async (
 
   assert.equal(liveResolution.success, true);
   if (liveResolution.success) {
-    const result = await liveResolution.service.listEvents();
+    const result = await liveResolution.service.listEvents({ actorId });
 
     assert.equal(result.success, false);
     assert.equal(result.error.code, "EVENTS_LIVE_STORE_UNCONFIGURED");
@@ -156,9 +157,13 @@ test("live event CRUD awaits asynchronous store providers", async () => {
     provider: createAsyncFakeLiveProvider(),
   });
 
-  const listed = await service.listEvents({ statusFilter: "confirmed" });
-  const detail = await service.getEvent({ eventId: "event:live:operator-dinner" });
+  const listed = await service.listEvents({ actorId, statusFilter: "confirmed" });
+  const detail = await service.getEvent({
+    actorId,
+    eventId: "event:live:operator-dinner",
+  });
   const created = await service.createEvent({
+    actorId,
     title: "Async live investor dinner",
     sourceNote: "Operator added the dinner through an async live events store.",
     venue: "Marunouchi",
@@ -177,15 +182,30 @@ test("live event CRUD awaits asynchronous store providers", async () => {
 
 test("events recommendation tool ranks live events from an async Events service", async () => {
   const provider = createAsyncFakeLiveProvider();
-  await provider.createManualEvent({
-    description: "Japan market entry operator dinner for China SaaS founders.",
-    sourceNote: "Operator added a Japan market entry event.",
-    startsAt: "2026-07-22T10:00:00.000Z",
-    title: "Japan market entry operator dinner",
-    venue: "Shibuya",
-  });
+  await provider.createManualEvent(
+    {
+      description: "Japan market entry operator dinner for China SaaS founders.",
+      sourceNote: "Operator added a Japan market entry event.",
+      startsAt: "2026-07-22T10:00:00.000Z",
+      title: "Japan market entry operator dinner",
+      venue: "Shibuya",
+    },
+    actorId,
+  );
   const eventService = createLiveEventCrudAndImportService({ provider });
-  const tool = createEventsRecommendationTool({ eventService });
+  const tool = createEventsRecommendationTool({
+    eventService: {
+      listEvents(input = {}) {
+        return eventService.listEvents({ ...input, actorId });
+      },
+      createEvent(input = {}) {
+        return eventService.createEvent({ ...input, actorId });
+      },
+      getEvent(input) {
+        return eventService.getEvent({ ...input, actorId });
+      },
+    },
+  });
 
   const result = await tool.recommend({
     query: "Japan market entry for China SaaS founders",
@@ -263,8 +283,9 @@ test("live event list hides legacy fixture and diagnostic records by default", a
     },
   });
 
-  const listed = await service.listEvents();
+  const listed = await service.listEvents({ actorId });
   const diagnosticDetail = await service.getEvent({
+    actorId,
     eventId: "event:live-record:remote-storage-smoke-test",
   });
 
@@ -326,10 +347,17 @@ test("live event CRUD store maps provider records without calendar provider side
     provider: createFakeLiveProvider(),
   });
 
-  const listed = await service.listEvents({ statusFilter: "confirmed" });
-  const detail = await service.getEvent({ eventId: "event:live:operator-dinner" });
-  const missing = await service.getEvent({ eventId: "missing-live-event" });
+  const listed = await service.listEvents({ actorId, statusFilter: "confirmed" });
+  const detail = await service.getEvent({
+    actorId,
+    eventId: "event:live:operator-dinner",
+  });
+  const missing = await service.getEvent({
+    actorId,
+    eventId: "missing-live-event",
+  });
   const created = await service.createEvent({
+    actorId,
     title: "Live investor dinner",
     sourceNote: "Operator added the dinner directly to the live events store.",
     venue: "Marunouchi",
@@ -377,9 +405,13 @@ test("live event CRUD store maps provider records without calendar provider side
 test("unconfigured live event store fails closed for every operation", async () => {
   const service = createLiveEventCrudAndImportService();
 
-  const listed = await service.listEvents();
-  const detail = await service.getEvent({ eventId: "event:live:missing-provider" });
+  const listed = await service.listEvents({ actorId });
+  const detail = await service.getEvent({
+    actorId,
+    eventId: "event:live:missing-provider",
+  });
   const created = await service.createEvent({
+    actorId,
     title: "Live dinner",
     sourceNote: "Operator attempted live creation without provider config.",
   });
@@ -428,6 +460,7 @@ test("live event CRUD can read and create events through the shared storage prov
     createdAt: "2026-07-01T00:00:00.000Z",
     updatedAt: "2026-07-01T00:00:00.000Z",
     lifecycleState: "active",
+    userId: actorId,
     searchText: "operator breakfast shared storage",
     payload: {
       title: "Operator breakfast",
@@ -458,9 +491,16 @@ test("live event CRUD can read and create events through the shared storage prov
   });
   const service = createLiveEventCrudAndImportService({ provider });
 
-  const listed = await service.listEvents({ sourceCaptureMethod: "manual_form" });
-  const detail = await service.getEvent({ eventId: "event:storage:operator-breakfast" });
+  const listed = await service.listEvents({
+    actorId,
+    sourceCaptureMethod: "manual_form",
+  });
+  const detail = await service.getEvent({
+    actorId,
+    eventId: "event:storage:operator-breakfast",
+  });
   const created = await service.createEvent({
+    actorId,
     title: "Storage investor dinner",
     sourceNote: "Operator added a storage-backed dinner.",
     venue: "Marunouchi",
@@ -492,6 +532,22 @@ test("live event CRUD can read and create events through the shared storage prov
     })?.payload.title,
     "Storage investor dinner",
   );
+  assert.equal(
+    store.getRecord({
+      workspaceId: "workspace:events",
+      collectionName: "events",
+      recordId: "event:live-record:storage-investor-dinner",
+    })?.userId,
+    actorId,
+  );
+
+  const missingActor = await service.listEvents();
+  const otherActor = await service.listEvents({ actorId: "account:other" });
+
+  assert.equal(missingActor.success, false);
+  assert.equal(missingActor.error.code, "EVENTS_ACTOR_REQUIRED");
+  assert.equal(otherActor.success, true);
+  assert.deepEqual(otherActor.data.events, []);
 });
 
 test("storage event provider maps shared EventDTO-shaped name and location fields", async () => {
@@ -513,6 +569,7 @@ test("storage event provider maps shared EventDTO-shaped name and location field
     createdAt: "2026-07-01T00:00:00.000Z",
     updatedAt: "2026-07-01T00:00:00.000Z",
     lifecycleState: "active",
+    userId: actorId,
     searchText: "shared event dto meetup tokyo",
     payload: {
       endsAt: "2026-08-02T12:00:00.000Z",
@@ -526,7 +583,7 @@ test("storage event provider maps shared EventDTO-shaped name and location field
     store: store as Parameters<typeof createStorageEventStoreProvider>[0]["store"],
     workspaceId: "workspace:event-dto",
   });
-  const events = await provider.listEvents();
+  const events = await provider.listEvents(actorId);
 
   assert.equal(events[0]?.title, "Shared EventDTO meetup");
   assert.equal(events[0]?.venue, "Tokyo");

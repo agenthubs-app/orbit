@@ -4,6 +4,8 @@
  * route 只负责挂载样式/runtime，并把 live-capable route payload 转成真实联系人 UI。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
+import { redirect } from "next/navigation";
+import { auth } from "../../../../auth";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { StateView } from "../../../../shared/ui/state-view";
@@ -58,7 +60,15 @@ export default async function AppContactsPage({
 }: {
   searchParams?: Promise<AppContactsSearchParams>;
 } = {}) {
-  const routeModel = await loadAppContactsRouteViewModel(await searchParams);
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fcontacts");
+  }
+
+  const routeModel = await loadAppContactsRouteViewModel(
+    await searchParams,
+    session.user.id,
+  );
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;
 

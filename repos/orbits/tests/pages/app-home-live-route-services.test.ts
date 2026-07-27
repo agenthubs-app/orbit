@@ -3,182 +3,81 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
 
-const liveDatabaseEnvKeys = [
-  "ORBIT_EVENT_DATABASE_URL",
-  "ORBIT_LIVE_DATABASE_URL",
-  "ORBIT_DATABASE_URL",
-] as const;
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-type RoutePage = (props: {
-  searchParams: Promise<Record<string, string>>;
-}) =>
-  | Parameters<typeof renderToStaticMarkup>[0]
-  | Promise<Parameters<typeof renderToStaticMarkup>[0]>;
-
-async function renderLiveModePage(importPath: string): Promise<string> {
-  const pageModule = (await import(importPath)) as { default: RoutePage };
-
-  return renderToStaticMarkup(
-    await pageModule.default({
-      searchParams: Promise.resolve({ mode: "live" }),
-    }),
-  );
-}
-
-async function withUnconfiguredLiveStorage<T>(
-  run: () => Promise<T>,
-): Promise<T> {
-  const previousMode = process.env.ORBIT_MODULE_MODE;
-  const previousDatabaseEnv = new Map<string, string | undefined>(
-    liveDatabaseEnvKeys.map((key) => [key, process.env[key]]),
-  );
-
-  try {
-    process.env.ORBIT_MODULE_MODE = "live";
-    for (const key of liveDatabaseEnvKeys) {
-      delete process.env[key];
-    }
-
-    return await run();
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.ORBIT_MODULE_MODE;
-    } else {
-      process.env.ORBIT_MODULE_MODE = previousMode;
-    }
-
-    for (const key of liveDatabaseEnvKeys) {
-      const previousValue = previousDatabaseEnv.get(key);
-
-      if (previousValue === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = previousValue;
-      }
-    }
-  }
-}
-
-const homeRoutes = [
+const personalHomeRoutes = [
   {
-    importPath: "../../app/(app)/app/page",
-    marker: "app-root-home-route",
-    sourcePath: "app/(app)/app/page.tsx",
-  },
-  {
-    importPath: "../../app/(app)/app/home/page",
     marker: "app-home-route",
     sourcePath: "app/(app)/app/home/page.tsx",
   },
   {
-    importPath: "../../app/(app)/app/home/events/page",
     marker: "app-home-events-route",
     sourcePath: "app/(app)/app/home/events/page.tsx",
   },
 ] as const;
 
-test("web root owns the integrated Orbit Agent landing route", () => {
+test("web root owns the responsive starfield journey", () => {
   const pageSource = source("app/page.tsx");
 
-  assert.match(pageSource, /OrbitRealLandingPage/);
-  assert.match(pageSource, /getOrbitLandingViewModel/);
-  assert.doesNotMatch(pageSource, /\.\/\(app\)\/app\/page/);
+  assert.match(pageSource, /OrbitStarfieldHome/);
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(pageSource, /authenticated=\{Boolean\(session\?\.user\?\.id\)\}/);
+  assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
   assert.doesNotMatch(pageSource, /OrbitRealHome/);
 });
 
-test("web root renders Orbit Agent before activity and event context", async () => {
-  const pageModule = (await import("../../app/page")) as { default: RoutePage };
+test("starfield journey mounts dedicated desktop and mobile trees", () => {
+  const shellSource = source("app/(app)/app/orbit-starfield-home.tsx");
 
-  await withUnconfiguredLiveStorage(async () => {
-    const html = renderToStaticMarkup(
-      await pageModule.default({
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
-    );
-
-    const heroIndex = html.indexOf('data-orbit-agent-hero="root"');
-    const activityIndex = html.indexOf('data-orbit-activity-overview="root"');
-    const eventsIndex = html.indexOf('data-orbit-event-context="root"');
-
-    assert.notEqual(heroIndex, -1);
-    assert.notEqual(activityIndex, -1);
-    assert.notEqual(eventsIndex, -1);
-    assert.ok(heroIndex < activityIndex);
-    assert.ok(activityIndex < eventsIndex);
-    assert.match(html, /href="\/app\/events/);
-    assert.match(html, /href="\/app\/contacts/);
-    assert.doesNotMatch(html, /app-root-home-route/);
-    assert.doesNotMatch(html, /Home could not load/);
-    assert.doesNotMatch(html, /data-orbit-real-page="home-events"/);
-  });
+  assert.match(shellSource, /MOBILE_QUERY = "\(max-width: 767px\)"/);
+  assert.match(shellSource, /OrbitStarfieldDesktop/);
+  assert.match(shellSource, /OrbitStarfieldMobile/);
+  assert.match(shellSource, /data-orbit-real-page="starfield-home"/);
+  assert.match(shellSource, /mq\.addEventListener\("change", apply\)/);
 });
 
-test("web root event cards link to distinct event detail ids", async () => {
-  const pageModule = (await import("../../app/page")) as { default: RoutePage };
-  const viewModelModule = await import("../../app/(app)/app/orbit-landing-route-view-model");
+test("starfield navigation links to concrete product routes", () => {
+  for (const filePath of [
+    "app/(app)/app/orbit-starfield-desktop.tsx",
+    "app/(app)/app/orbit-starfield-mobile.tsx",
+  ]) {
+    const starfieldSource = source(filePath);
 
-  await withUnconfiguredLiveStorage(async () => {
-    const html = renderToStaticMarkup(
-      await pageModule.default({
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
-    );
-    const expectedHrefs = viewModelModule
-      .getOrbitLandingViewModel()
-      .events.slice(0, 3)
-      .map((event) => `/app/events/${event.id}`);
-    const cardHrefs = Array.from(
-      html.matchAll(/<a(?=[^>]*class="orbit-root-event-card")[^>]*href="([^"]+)"/g),
-      (match) => match[1],
-    );
-
-    assert.equal(cardHrefs.length, expectedHrefs.length);
-    assert.deepEqual(cardHrefs, expectedHrefs);
-    assert.equal(new Set(cardHrefs).size, cardHrefs.length);
-  });
+    assert.match(starfieldSource, /href="\/app\/agent"/);
+    assert.match(starfieldSource, /href="\/app\/events"/);
+    assert.match(starfieldSource, /href="\/app\/today"/);
+    assert.match(starfieldSource, /href="\/app\/contacts"/);
+  }
 });
 
-test("web root contact links name the relationship context action", async () => {
-  const pageModule = (await import("../../app/page")) as { default: RoutePage };
-  const viewModelModule = await import("../../app/(app)/app/orbit-landing-route-view-model");
+test("starfield account actions branch only on server-owned authentication", () => {
+  const desktopSource = source(
+    "app/(app)/app/orbit-starfield-desktop.tsx",
+  );
+  const mobileSource = source(
+    "app/(app)/app/orbit-starfield-mobile.tsx",
+  );
 
-  await withUnconfiguredLiveStorage(async () => {
-    const html = renderToStaticMarkup(
-      await pageModule.default({
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
-    );
-    const [primaryConnection] = viewModelModule.getOrbitLandingViewModel().connections;
-
-    assert.ok(primaryConnection);
-    assert.match(
-      html,
-      new RegExp(`aria-label="查看${primaryConnection.displayName}的人脉上下文"`),
-    );
-  });
+  for (const starfieldSource of [desktopSource, mobileSource]) {
+    assert.match(starfieldSource, /authenticated \? \(/);
+    assert.match(starfieldSource, /href="\/app\/profile"/);
+    assert.match(starfieldSource, /href="\/app\/account\/login\?next=%2Fapp%2Fhome"/);
+    assert.match(starfieldSource, /href="\/app\/account\/signup\?next=%2Fapp%2Fhome"/);
+  }
 });
 
-test("web root event summaries render only the active language copy", async () => {
-  const pageModule = (await import("../../app/page")) as { default: RoutePage };
+test("/app mirrors the authenticated starfield entry", () => {
+  const appPageSource = source("app/(app)/app/page.tsx");
 
-  await withUnconfiguredLiveStorage(async () => {
-    const html = renderToStaticMarkup(
-      await pageModule.default({
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
-    );
-
-    assert.doesNotMatch(html, /JA:/);
-    assert.doesNotMatch(html, /ZH:/);
-    assert.doesNotMatch(html, /EN:/);
-  });
+  assert.match(appPageSource, /OrbitStarfieldHome/);
+  assert.match(appPageSource, /await auth\(\)/);
+  assert.match(appPageSource, /authenticated=\{Boolean\(session\?\.user\?\.id\)\}/);
+  assert.doesNotMatch(appPageSource, /loadAppHomeRouteViewModel/);
 });
 
 test("root home routing documentation records the public and personal route boundary", () => {
@@ -191,59 +90,40 @@ test("root home routing documentation records the public and personal route boun
   assert.match(docSource, /no-write live safety/);
 });
 
-for (const route of homeRoutes) {
-  test(`${route.marker} composes home from live route payloads`, async () => {
+for (const route of personalHomeRoutes) {
+  test(`${route.marker} composes actor-scoped home payloads`, () => {
     const pageSource = source(route.sourcePath);
 
     assert.match(pageSource, /loadAppHomeRouteViewModel/);
     assert.match(pageSource, /HomeRouteStateBoundary/);
     assert.match(pageSource, /OrbitRealHome/);
+    assert.match(pageSource, /await auth\(\)/);
+    assert.match(pageSource, /redirect\("\/app\/account\/login/);
+    assert.match(pageSource, /id: session\.user\.id/);
     assert.doesNotMatch(pageSource, /getOrbitHomeViewModel/);
     assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
-
-    await withUnconfiguredLiveStorage(async () => {
-      const html = await renderLiveModePage(route.importPath);
-
-      assert.match(html, new RegExp(route.marker));
-      assert.match(html, /Home could not load/);
-    });
   });
 }
 
-test("app home desktop grid preserves web rail beside events on medium-width screens", () => {
+test("app home keeps separate desktop and mobile hub layouts", () => {
   const homeUiSource = source("app/(app)/app/home/orbit-real-home.tsx");
-  const styleSource = source("app/(app)/app/orbit-reference-styles.tsx");
 
-  assert.match(homeUiSource, /className="orbit-home-main-grid"/);
-  assert.match(homeUiSource, /className="orbit-home-events-pane"/);
-  assert.match(homeUiSource, /className="orbit-home-hub-rail"/);
-  assert.doesNotMatch(homeUiSource, /gridTemplateColumns: "minmax\(0, 1fr\) 320px"/);
-  assert.match(styleSource, /\.orbit-home-main-grid/);
-  assert.match(styleSource, /grid-template-areas: "events rail"/);
-  assert.match(styleSource, /grid-template-columns: minmax\(0, 1fr\) clamp\(220px, 30vw, 320px\)/);
-  assert.match(styleSource, /@media \(min-width: 641px\) and \(max-width: 820px\)/);
-  assert.match(styleSource, /grid-template-columns: minmax\(0, 1fr\) clamp\(180px, 28vw, 220px\)/);
-  assert.doesNotMatch(styleSource, /"rail"\s+"events"/);
-  assert.doesNotMatch(styleSource, /repeat\(auto-fit, minmax\(180px, 1fr\)\)/);
-  assert.doesNotMatch(styleSource, /@media \(max-width: 880px\)/);
+  assert.match(homeUiSource, /function HubDesktop/);
+  assert.match(homeUiSource, /function HubMobile/);
+  assert.match(homeUiSource, /className="orbit-desktop-only"/);
+  assert.match(homeUiSource, /className="orbit-mobile-only"/);
+  assert.match(homeUiSource, /gridTemplateColumns: "1fr 320px"/);
 });
 
 test("app home mobile event rows keep long event titles readable", () => {
   const homeUiSource = source("app/(app)/app/home/orbit-real-home.tsx");
-  const styleSource = source("app/(app)/app/orbit-reference-styles.tsx");
 
   assert.match(homeUiSource, /className="card-hover orbit-home-event-row"/);
   assert.match(homeUiSource, /className="orbit-home-event-row-copy"/);
   assert.match(homeUiSource, /className="h-section orbit-home-event-row-title"/);
   assert.match(homeUiSource, /className="orbit-home-event-row-action"/);
-  assert.match(
-    styleSource,
-    /@media \(max-width: 640px\)[\s\S]*\.orbit-home-event-row-title[\s\S]*-webkit-line-clamp: 2[\s\S]*white-space: normal/,
-  );
-  assert.match(
-    styleSource,
-    /@media \(max-width: 640px\)[\s\S]*\.orbit-home-event-row-action[\s\S]*flex-basis: 100%/,
-  );
+  assert.match(homeUiSource, /\.orbit-home-event-row-title[\s\S]*-webkit-line-clamp:2/);
+  assert.match(homeUiSource, /\.orbit-home-event-row-action[\s\S]*flex-basis:100%/);
 });
 
 test("app home hub entry cards link to live app routes", () => {

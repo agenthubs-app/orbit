@@ -463,6 +463,7 @@ async function routeStateViewModel(
 
 export async function loadAppContactsRouteViewModel(
   searchParams?: AppContactsSearchParams,
+  actorId?: string | null,
 ): Promise<AppContactsRouteViewModel> {
   const requestedScenario = readRouteScenario(searchParams);
 
@@ -474,7 +475,10 @@ export async function loadAppContactsRouteViewModel(
   }
 
   const contactsService = createAppContactsListSearchAndFilterService();
-  const input = readContactsInput(searchParams);
+  const input = {
+    ...readContactsInput(searchParams),
+    actorId,
+  };
   const reviewActionRequested =
     readSearchParam(searchParams, "action") === "review-filtered-contact";
   const result = reviewActionRequested

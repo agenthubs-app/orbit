@@ -303,8 +303,12 @@ test("inbox demo content defaults to Chinese and preserves English when language
 });
 
 test("inbox reminder + proactive alerts default to Chinese", async () => {
-  const notifRoute = await import("../../app/api/notifications/route");
-  const notifResponse = await notifRoute.GET(
+  const { createNotificationsGetHandler } = await import(
+    "../../app/api/notifications/handler"
+  );
+  const notifResponse = await createNotificationsGetHandler(async () => ({
+    id: "actor:inbox-thread-test",
+  }))(
     new Request("https://orbit.local/api/notifications"),
   );
   const notif = (await notifResponse.json()) as {

@@ -316,6 +316,7 @@ async function listCollection(
 async function readGraph(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
+  actorId: string,
 ): Promise<LiveReminderNotificationGraph> {
   const [
     notificationRecords,
@@ -351,35 +352,77 @@ async function readGraph(
     ),
   ]);
 
+  const belongsToActor = (
+    record: LiveRecord<Record<string, unknown>>,
+  ): boolean =>
+    record.userId === actorId || record.payload.accountId === actorId;
+  const actorNotificationRecords = notificationRecords.filter(belongsToActor);
+  const actorConnectionRecords = connectionRecords.filter(belongsToActor);
+  const notificationTargetIds = new Set(
+    actorNotificationRecords.flatMap((record) =>
+      nonEmptyString(record.targetId) ? [record.targetId] : [],
+    ),
+  );
+  const actorTaskRecords = taskRecords.filter(
+    (record) => belongsToActor(record) || notificationTargetIds.has(record.recordId),
+  );
+  const actorContactIds = new Set([
+    ...actorConnectionRecords.flatMap((record) =>
+      nonEmptyString(record.payload.contactId) ? [record.payload.contactId] : [],
+    ),
+    ...actorTaskRecords.flatMap((record) =>
+      nonEmptyString(record.payload.contactId) ? [record.payload.contactId] : [],
+    ),
+    ...actorNotificationRecords.flatMap((record) =>
+      record.targetType === "contact" && nonEmptyString(record.targetId)
+        ? [record.targetId]
+        : [],
+    ),
+  ]);
+  const actorContactRecords = contactRecords.filter(
+    (record) => belongsToActor(record) || actorContactIds.has(record.recordId),
+  );
+  const actorEvidenceIds = new Set(
+    [
+      ...actorNotificationRecords,
+      ...actorTaskRecords,
+      ...actorContactRecords,
+      ...actorConnectionRecords,
+    ].flatMap((record) => record.evidenceIds),
+  );
+  const actorEvidenceRecords = evidenceRecords.filter(
+    (record) => belongsToActor(record) || actorEvidenceIds.has(record.recordId),
+  );
+
   return {
-    connections: connectionRecords.flatMap((record) => {
+    connections: actorConnectionRecords.flatMap((record) => {
       const connection = connectionFromRecord(record);
 
       return connection ? [connection] : [];
     }),
-    contacts: contactRecords.flatMap((record) => {
+    contacts: actorContactRecords.flatMap((record) => {
       const contact = contactFromRecord(record);
 
       return contact ? [contact] : [];
     }),
-    evidence: evidenceRecords.flatMap((record) => {
+    evidence: actorEvidenceRecords.flatMap((record) => {
       const evidence = evidenceFromRecord(record);
 
       return evidence ? [evidence] : [];
     }),
     generatedAt: latestTimestamp([
-      ...notificationRecords,
-      ...taskRecords,
-      ...contactRecords,
-      ...connectionRecords,
-      ...evidenceRecords,
+      ...actorNotificationRecords,
+      ...actorTaskRecords,
+      ...actorContactRecords,
+      ...actorConnectionRecords,
+      ...actorEvidenceRecords,
     ]),
-    notifications: notificationRecords.flatMap((record) => {
+    notifications: actorNotificationRecords.flatMap((record) => {
       const notification = notificationFromRecord(record);
 
       return notification ? [notification] : [];
     }),
-    tasks: taskRecords.flatMap((record) => {
+    tasks: actorTaskRecords.flatMap((record) => {
       const task = taskFromRecord(record);
 
       return task ? [task] : [];
@@ -397,7 +440,8 @@ export function createStorageReminderScheduleNotificationProvider({
     source:
       source ?? `live-record-store:reminder-schedule-notification:${workspaceId}`,
     sourceLabel,
-    readReminderNotificationGraph: () => readGraph(store, workspaceId),
+    readReminderNotificationGraph: (actorId) =>
+      readGraph(store, workspaceId, actorId),
   };
 }
 

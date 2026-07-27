@@ -72,6 +72,7 @@ export type AppEventDetailRouteState =
 
 export interface AppEventDetailRouteInput {
   action?: string | null;
+  actorId?: string | null;
   eventId: string;
   mode?: ModuleMode | string;
   scenario?: string | null;
@@ -673,6 +674,7 @@ function buildSourceConsistency(input: {
 
 export async function loadAppEventDetailRoute({
   action,
+  actorId,
   eventId,
   mode,
   scenario,
@@ -689,6 +691,7 @@ export async function loadAppEventDetailRoute({
   const routeScenario = normalizeScenario(scenario);
   const relationshipContextEventId = relationshipContextEventIdFor(eventId);
   const eventResult = await services.events.getEvent({
+    actorId,
     eventId,
     scenario: routeScenario,
   });

@@ -16,6 +16,12 @@ export type AppHomeSearchParams = Record<
   string | string[] | undefined
 >;
 
+export interface AppHomeActor {
+  displayName: string;
+  email?: string | null;
+  id: string;
+}
+
 export interface AppHomeRouteStateViewModel {
   copy: {
     description: string;
@@ -171,14 +177,15 @@ function inProgressCount(contacts: AppContactsRouteViewModel): number {
 
 function homeViewModel(input: {
   contacts: Extract<AppContactsRouteViewModel, { state: "success" }>;
-  events: Extract<AppEventsRouteViewModel, { state: "success" }>;
+  events: AppEventsRouteViewModel;
   profile: Extract<AppProfileRouteViewModel, { state: "success" }>;
 }): OrbitHomeViewModel {
   const profile = input.profile.profile.profile;
   const fullName = profile.displayName || "Orbit operator";
-  const events = input.events.workspace.eventChoices.map(
-    eventChoiceToLandingEvent,
-  );
+  const events =
+    input.events.state === "success"
+      ? input.events.workspace.eventChoices.map(eventChoiceToLandingEvent)
+      : [];
 
   return {
     account: {
@@ -231,6 +238,14 @@ function childRouteState(input: {
   model: ChildRouteModel;
   source: AppHomeRouteStateViewModel["source"];
 }): AppHomeRouteStateViewModel | null {
+  if (
+    input.source === "events" &&
+    input.model.state === "route-state" &&
+    input.model.routeState.scenario === "empty"
+  ) {
+    return null;
+  }
+
   if (input.model.state === "success") {
     return null;
   }
@@ -280,11 +295,12 @@ function firstRouteState(input: {
 
 export async function loadAppHomeRouteViewModel(
   searchParams?: AppHomeSearchParams,
+  actor?: AppHomeActor | null,
 ): Promise<AppHomeRouteViewModel> {
   const [events, contacts, profile] = await Promise.all([
-    loadAppEventsRouteViewModel(searchParams),
-    loadAppContactsRouteViewModel(searchParams),
-    loadAppProfileRouteViewModel(searchParams),
+    loadAppEventsRouteViewModel(searchParams, actor?.id),
+    loadAppContactsRouteViewModel(searchParams, actor?.id),
+    loadAppProfileRouteViewModel(searchParams, actor),
   ]);
   const routeState = firstRouteState({ contacts, events, profile });
 
@@ -293,7 +309,11 @@ export async function loadAppHomeRouteViewModel(
   }
 
   if (
-    events.state !== "success" ||
+    (events.state !== "success" &&
+      !(
+        events.state === "route-state" &&
+        events.routeState.scenario === "empty"
+      )) ||
     contacts.state !== "success" ||
     profile.state !== "success"
   ) {

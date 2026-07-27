@@ -14,6 +14,8 @@ import {
   type AppContactsSearchParams,
 } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { OrbitRealCardsIntros } from "../orbit-real-contacts";
+import { auth } from "../../../../../auth";
+import { redirect } from "next/navigation";
 
 interface AppContactsIntrosPageProps {
   searchParams?: Promise<AppContactsSearchParams>;
@@ -22,7 +24,15 @@ interface AppContactsIntrosPageProps {
 export default async function AppContactsIntrosPage({
   searchParams,
 }: AppContactsIntrosPageProps = {}) {
-  const routeModel = await loadAppContactsRouteViewModel(await searchParams);
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fcontacts%2Fintros");
+  }
+
+  const routeModel = await loadAppContactsRouteViewModel(
+    await searchParams,
+    session.user.id,
+  );
 
   return (
     <>

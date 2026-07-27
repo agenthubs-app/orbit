@@ -264,28 +264,10 @@ test("/app/events/[id] page uses the live route service instead of the legacy ev
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
 
   assert.match(pageSource, /loadAppEventDetailRoute/);
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(pageSource, /redirect\("\/app\/account\/login/);
+  assert.match(pageSource, /getEvent\(\{\s*actorId: session\.user\.id/);
   assert.doesNotMatch(pageSource, /getOrbitEventDetailViewModel/);
-
-  await withUnconfiguredLiveEvents(async () => {
-    const Page = (await import("../../app/(app)/app/events/[id]/page"))
-      .default as (props: {
-      params: Promise<{ id: string }>;
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        params: Promise.resolve({ id: "event_01" }),
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
-    );
-
-    assert.match(html, /Event workspace could not load/);
-    assert.match(
-      html,
-      /EVENTS_LIVE_STORE_UNCONFIGURED|events-live-store-unconfigured/,
-    );
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-  });
 });
 
 test("event detail reads registration state from the registration record API", () => {

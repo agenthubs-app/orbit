@@ -50,6 +50,7 @@ export type EventCaptureMethodMatchesContract = ContractMatches<
 >;
 
 export const EVENT_CRUD_AND_IMPORT_ERROR_CODES = [
+  "EVENTS_ACTOR_REQUIRED",
   "EVENTS_EVENT_ID_REQUIRED",
   "EVENTS_EVENT_NOT_FOUND",
   "EVENTS_REQUEST_BODY_INVALID",
@@ -73,6 +74,7 @@ export type EventCrudImportState = "success" | "empty" | "pending";
 
 // 列表输入支持按活动状态和来源方式过滤。
 export interface EventCrudImportInput {
+  actorId?: string | null;
   scenario?: EventCrudImportScenario | string | null;
   statusFilter?: EventStatus | string | null;
   sourceCaptureMethod?: EventCaptureMethod | string | null;
@@ -80,6 +82,7 @@ export interface EventCrudImportInput {
 
 // 手动创建输入只用于 staged/mock event 生成；sourceNote 记录为什么纳入 Orbit。
 export interface ManualEventCreationInput {
+  actorId?: string | null;
   title?: string | null;
   description?: string | null;
   venue?: string | null;
@@ -91,6 +94,7 @@ export interface ManualEventCreationInput {
 
 // 详情输入要求 eventId；scenario 仍允许测试固定状态。
 export interface EventDetailInput {
+  actorId?: string | null;
   eventId?: string | null;
   scenario?: EventCrudImportScenario | string | null;
 }
@@ -104,6 +108,12 @@ export interface EventCrudImportErrorDefinition {
 }
 
 export const EVENT_CRUD_AND_IMPORT_ERROR_DEFINITIONS = {
+  EVENTS_ACTOR_REQUIRED: {
+    code: "EVENTS_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated actor is required for live events access.",
+    recovery: "Sign in before reading or creating live events.",
+  },
   EVENTS_EVENT_ID_REQUIRED: {
     code: "EVENTS_EVENT_ID_REQUIRED",
     appCode: "VALIDATION_ERROR",
@@ -197,7 +207,7 @@ export interface EventCrudImportProvenance {
   sourceLabel: string;
   evidenceIds: readonly string[];
   collectedAt: string;
-  privacy: "demo-event-crud-import-only";
+  privacy: "actor-scoped-events" | "demo-event-crud-import-only";
   generationMethod:
     | "fixture"
     | "rule-based-event-filter"

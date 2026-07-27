@@ -72,14 +72,16 @@ export interface LiveEventStoreManualEventInput {
 export interface LiveEventStoreProvider {
   source: string;
   sourceLabel: string;
-  listEvents: () => LiveEventStoreProviderResult<
+  listEvents: (actorId?: string) => LiveEventStoreProviderResult<
     readonly LiveEventStoreRecord[]
   >;
   getEvent: (
     eventId: string,
+    actorId?: string,
   ) => LiveEventStoreProviderResult<LiveEventStoreRecord | null>;
   createManualEvent: (
     input: LiveEventStoreManualEventInput,
+    actorId: string,
   ) => LiveEventStoreProviderResult<LiveEventStoreRecord>;
 }
 
@@ -278,7 +280,7 @@ function provenanceFor(input: {
     sourceLabel: input.sourceLabel,
     evidenceIds: evidenceIdsFor(input.events),
     collectedAt: input.collectedAt,
-    privacy: "demo-event-crud-import-only",
+    privacy: "actor-scoped-events",
     generationMethod: input.generationMethod,
     calendarSyncRequested: false,
     organizerFeedRequested: false,
@@ -296,7 +298,7 @@ function unconfiguredProvenance(collectedAt: string): EventCrudImportProvenance 
     sourceLabel: "Unconfigured Events live store",
     evidenceIds: ["evidence:events-live-store-unconfigured"],
     collectedAt,
-    privacy: "demo-event-crud-import-only",
+    privacy: "actor-scoped-events",
     generationMethod: "live-store-query",
     calendarSyncRequested: false,
     organizerFeedRequested: false,
@@ -335,6 +337,13 @@ function success<TData>(data: TData): { success: true; data: TData } {
 function unconfiguredFailure(collectedAt: string): EventCrudImportFailure {
   return failure(
     "EVENTS_LIVE_STORE_UNCONFIGURED",
+    unconfiguredProvenance(collectedAt),
+  );
+}
+
+function actorRequiredFailure(collectedAt: string): EventCrudImportFailure {
+  return failure(
+    "EVENTS_ACTOR_REQUIRED",
     unconfiguredProvenance(collectedAt),
   );
 }
@@ -476,18 +485,33 @@ export function createLiveEventCrudAndImportService(
   return {
     async listEvents(input = {}): Promise<EventListResult> {
       const currentTime = now();
+      const actorId = input.actorId?.trim();
+
+      if (!actorId) {
+        return actorRequiredFailure(currentTime);
+      }
 
       if (!provider) {
         return unconfiguredFailure(currentTime);
       }
 
       return success(
-        listPayload(provider, await provider.listEvents(), input, currentTime),
+        listPayload(
+          provider,
+          await provider.listEvents(actorId),
+          input,
+          currentTime,
+        ),
       );
     },
 
     async createEvent(input = {}): Promise<ManualEventCreationResult> {
       const currentTime = now();
+      const actorId = input.actorId?.trim();
+
+      if (!actorId) {
+        return actorRequiredFailure(currentTime);
+      }
 
       if (!provider) {
         return unconfiguredFailure(currentTime);
@@ -500,7 +524,7 @@ export function createLiveEventCrudAndImportService(
       }
 
       const event = toEventRecord(
-        await provider.createManualEvent(manualInput),
+        await provider.createManualEvent(manualInput, actorId),
         true,
       );
 
@@ -515,6 +539,11 @@ export function createLiveEventCrudAndImportService(
 
     async getEvent(input: EventDetailInput): Promise<EventDetailResult> {
       const currentTime = now();
+      const actorId = input.actorId?.trim();
+
+      if (!actorId) {
+        return actorRequiredFailure(currentTime);
+      }
 
       if (!provider) {
         return unconfiguredFailure(currentTime);
@@ -536,7 +565,7 @@ export function createLiveEventCrudAndImportService(
         );
       }
 
-      const record = await provider.getEvent(eventId);
+      const record = await provider.getEvent(eventId, actorId);
 
       if (!record) {
         return failure(

@@ -3,8 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
-
 import { loadAppContactsRouteViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { resolveAppContactsListSearchAndFilterService } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-service-factory";
 
@@ -66,7 +64,10 @@ test("app contacts route service resolves live contacts search", () => {
 
 test("app contacts route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveContacts(async () => {
-    const viewModel = await loadAppContactsRouteViewModel();
+    const viewModel = await loadAppContactsRouteViewModel(
+      undefined,
+      "actor:contacts-page-test",
+    );
 
     assert.equal(viewModel.state, "failure");
     if (viewModel.state === "failure") {
@@ -83,14 +84,8 @@ test("/app/contacts page renders the live-capable product contacts UI", async ()
 
   assert.match(pageSource, /OrbitRealCardsList/);
   assert.match(pageSource, /contactsRouteToOrbitContactsViewModel/);
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(pageSource, /redirect\("\/app\/account\/login/);
+  assert.match(pageSource, /session\.user\.id/);
   assert.doesNotMatch(pageSource, /AppContactsCommandCenter/);
-
-  await withUnconfiguredLiveContacts(async () => {
-    const pageModule = await import("../../app/(app)/app/contacts/page");
-    const Page = pageModule.default;
-    const html = renderToStaticMarkup(await Page());
-
-    assert.match(html, /shared-ui-state-view/);
-    assert.match(html, /Contacts relationship console could not load/);
-  });
 });

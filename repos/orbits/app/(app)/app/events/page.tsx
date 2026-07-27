@@ -10,6 +10,8 @@ import {
 import { eventsRouteToOrbitLandingViewModel } from "./compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { OrbitRealExploreClient } from "./orbit-real-explore-client";
 import { applyOrbitEventPresentation } from "../orbit-event-presentation";
+import { auth } from "../../../../auth";
+import { redirect } from "next/navigation";
 
 interface AppEventsPageProps {
   searchParams?: Promise<AppEventsSearchParams>;
@@ -45,7 +47,15 @@ function EventsRouteStateBoundary({
 export default async function AppEventsPage({
   searchParams,
 }: AppEventsPageProps = {}) {
-  const routeModel = await loadAppEventsRouteViewModel(await searchParams);
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fevents");
+  }
+
+  const routeModel = await loadAppEventsRouteViewModel(
+    await searchParams,
+    session.user.id,
+  );
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;
 

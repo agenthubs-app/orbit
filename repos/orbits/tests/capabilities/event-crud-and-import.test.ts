@@ -124,6 +124,7 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
     "organizer_feed",
   ]);
   assert.deepEqual(contract.EVENT_CRUD_AND_IMPORT_ERROR_CODES, [
+    "EVENTS_ACTOR_REQUIRED",
     "EVENTS_EVENT_ID_REQUIRED",
     "EVENTS_EVENT_NOT_FOUND",
     "EVENTS_REQUEST_BODY_INVALID",
@@ -335,16 +336,17 @@ test("mock event CRUD and import service is deterministic rule-based code with n
 });
 
 test("event CRUD and import API routes return stable envelopes with empty and failure paths", async () => {
-  const eventsRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/events/route.ts");
-  const eventDetailRoute = await importProjectModule<{
-    GET: (
-      request: Request,
-      context: { params: Promise<{ id: string }> },
-    ) => Promise<Response>;
-  }>("app/api/events/[id]/route.ts");
+  const eventsHandler = await importProjectModule<
+    typeof import("../../app/api/events/handler")
+  >("app/api/events/handler.ts");
+  const eventDetailHandler = await importProjectModule<
+    typeof import("../../app/api/events/[id]/handler")
+  >("app/api/events/[id]/handler.ts");
+  const resolveActor = async () => ({ id: "account:test-events" });
+  const eventsRoute = eventsHandler.createEventsRouteHandlers(resolveActor);
+  const eventDetailRoute = {
+    GET: eventDetailHandler.createEventDetailGetHandler(resolveActor),
+  };
   const fixtures = await importProjectModule<{
     mockEventListFixture: unknown;
     mockManualEventCreationFixture: unknown;
@@ -563,6 +565,34 @@ test("event CRUD and import API routes return stable envelopes with empty and fa
     success: true,
     data: fixtures.mockEventListFixture,
   });
+});
+
+test("event list, creation, and detail APIs reject unauthenticated access", async () => {
+  const eventsHandler = await importProjectModule<
+    typeof import("../../app/api/events/handler")
+  >("app/api/events/handler.ts");
+  const eventDetailHandler = await importProjectModule<
+    typeof import("../../app/api/events/[id]/handler")
+  >("app/api/events/[id]/handler.ts");
+  const eventsRoute = eventsHandler.createEventsRouteHandlers(async () => null);
+  const detailGet = eventDetailHandler.createEventDetailGetHandler(
+    async () => null,
+  );
+
+  const listResponse = await eventsRoute.GET(
+    new Request("https://orbit.local/api/events"),
+  );
+  const createResponse = await eventsRoute.POST(
+    new Request("https://orbit.local/api/events", { method: "POST" }),
+  );
+  const detailResponse = await detailGet(
+    new Request("https://orbit.local/api/events/test"),
+    { params: Promise.resolve({ id: "test" }) },
+  );
+
+  assert.equal(listResponse.status, 401);
+  assert.equal(createResponse.status, 401);
+  assert.equal(detailResponse.status, 401);
 });
 
 test("event CRUD and import debug route renders all states and the live replacement handoff", async () => {

@@ -176,6 +176,7 @@ function toLiveEventStoreRecord(
 }
 
 function manualRecord(input: {
+  actorId: string;
   createdBy: string;
   input: LiveEventStoreManualEventInput;
   now: string;
@@ -203,6 +204,7 @@ function manualRecord(input: {
     createdAt: input.now,
     updatedAt: input.now,
     lifecycleState: "active",
+    userId: input.actorId,
     searchText: [
       input.input.title,
       input.input.description,
@@ -245,27 +247,48 @@ export function createStorageEventStoreProvider({
   return {
     source: source ?? `live-record-store:events:${workspaceId}`,
     sourceLabel,
-    async listEvents() {
+    async listEvents(actorId) {
+      const normalizedActorId = actorId?.trim();
+      if (!normalizedActorId) {
+        return [];
+      }
+
       const records = await store.listRecords({
           workspaceId,
           collectionName: EVENTS_LIVE_RECORD_COLLECTION,
         });
 
-      return records.map(toLiveEventStoreRecord);
+      return records
+        .filter(
+          (record) =>
+            record.userId === normalizedActorId ||
+            record.payload.accountId === normalizedActorId,
+        )
+        .map(toLiveEventStoreRecord);
     },
-    async getEvent(eventId) {
+    async getEvent(eventId, actorId) {
+      const normalizedActorId = actorId?.trim();
+      if (!normalizedActorId) {
+        return null;
+      }
+
       const record = await store.getRecord({
         workspaceId,
         collectionName: EVENTS_LIVE_RECORD_COLLECTION,
         recordId: eventId,
       });
 
-      return record ? toLiveEventStoreRecord(record) : null;
+      return record &&
+        (record.userId === normalizedActorId ||
+          record.payload.accountId === normalizedActorId)
+        ? toLiveEventStoreRecord(record)
+        : null;
     },
-    async createManualEvent(input) {
+    async createManualEvent(input, actorId) {
       return toLiveEventStoreRecord(
         await store.upsertRecord(
           manualRecord({
+            actorId,
             createdBy,
             input,
             now: now(),

@@ -17,12 +17,16 @@ type LiveContactsProviderResult<TResult> = TResult | Promise<TResult>;
 export interface LiveContactsGraphProvider {
   source: string;
   sourceLabel: string;
-  readContactGraph: () => LiveContactsProviderResult<LocalRemoteContactGraph>;
+  readContactGraph: (
+    actorId?: string,
+  ) => LiveContactsProviderResult<LocalRemoteContactGraph>;
   readContactGraphForList?: (
-    input?: ContactsListSearchFilterInput,
+    input: ContactsListSearchFilterInput,
+    actorId?: string,
   ) => LiveContactsProviderResult<LocalRemoteContactGraph>;
   readContactGraphForContact?: (
     contactId: string,
+    actorId?: string,
   ) => LiveContactsProviderResult<LocalRemoteContactGraph>;
 }
 
@@ -69,6 +73,22 @@ function unconfiguredFailure(): ContactsListSearchFailure {
   };
 }
 
+function actorRequiredFailure(): ContactsListSearchFailure {
+  const definition =
+    CONTACTS_LIST_SEARCH_FILTER_ERROR_DEFINITIONS.CONTACTS_ACTOR_REQUIRED;
+  const provenance = unconfiguredProvenance();
+
+  return {
+    success: false,
+    error: {
+      ...definition,
+      state: "failure",
+      provenance,
+      evidenceIds: ["evidence:contacts-actor-required"],
+    },
+  };
+}
+
 function graphQueryContext(
   provider: LiveContactsGraphProvider,
 ): ContactsGraphQueryContext {
@@ -90,9 +110,14 @@ async function runLiveContactsQuery(
     return unconfiguredFailure();
   }
 
+  const actorId = input.actorId?.trim();
+  if (!actorId) {
+    return actorRequiredFailure();
+  }
+
   const graph = provider.readContactGraphForList
-    ? await provider.readContactGraphForList(input)
-    : await provider.readContactGraph();
+    ? await provider.readContactGraphForList(input, actorId)
+    : await provider.readContactGraph(actorId);
 
   return clonePayload(
     runContactsGraphQuery(

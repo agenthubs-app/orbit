@@ -15,6 +15,7 @@ export interface ReminderActionWriter {
 
 export function createStorageReminderActionWriter(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
+  userId?: string | null;
   workspaceId: string;
 }): ReminderActionWriter {
   return {
@@ -23,6 +24,7 @@ export function createStorageReminderActionWriter(input: {
         workspaceId: input.workspaceId,
         collectionName: "notifications",
         recordId: reminder.reminderId,
+        userId: input.userId,
         sourceType: "agent_action",
         sourceId: reminder.reminderId,
         sourceLabel: "Orbit Agent confirmed reminder",

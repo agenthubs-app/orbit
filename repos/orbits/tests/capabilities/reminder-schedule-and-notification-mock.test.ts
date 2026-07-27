@@ -110,6 +110,7 @@ test("reminder notification contract exports typed fixtures errors and mock-only
   assert.match(serviceInterface, /listNotifications/);
   assert.match(serviceInterface, /generateReminders/);
   assert.deepEqual(contract.REMINDER_SCHEDULE_NOTIFICATION_ERROR_CODES, [
+    "REMINDER_SCHEDULE_NOTIFICATION_ACTOR_REQUIRED",
     "REMINDER_SCHEDULE_NOTIFICATION_REMINDER_ID_REQUIRED",
     "REMINDER_SCHEDULE_NOTIFICATION_REMINDER_NOT_FOUND",
     "REMINDER_SCHEDULE_NOTIFICATION_EMPTY",
@@ -355,22 +356,30 @@ test("mock reminder notification service is deterministic and never calls live p
 });
 
 test("reminder notification API routes return stable envelopes with empty and failure paths", async () => {
-  const notificationsRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-  }>("app/api/notifications/route.ts");
-  const generateRoute = await importProjectModule<{
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/notifications/reminders/generate/route.ts");
+  const notificationsHandlerModule = await importProjectModule<
+    typeof import("../../app/api/notifications/handler")
+  >("app/api/notifications/handler.ts");
+  const generateHandlerModule = await importProjectModule<
+    typeof import("../../app/api/notifications/reminders/generate/handler")
+  >("app/api/notifications/reminders/generate/handler.ts");
+  const notificationsGET =
+    notificationsHandlerModule.createNotificationsGetHandler(async () => ({
+      id: "actor:notification-api-test",
+    }));
+  const generatePOST =
+    generateHandlerModule.createNotificationsGeneratePostHandler(async () => ({
+      id: "actor:notification-api-test",
+    }));
   const fixtures = await importProjectModule<{
     mockEmptyReminderScheduleNotificationFixture: unknown;
   }>("features/notifications/fixtures.ts");
 
-  const notificationsResponse = await notificationsRoute.GET(
+  const notificationsResponse = await notificationsGET(
     new Request("https://orbit.local/api/notifications", {
       method: "GET",
     }),
   );
-  const generateResponse = await generateRoute.POST(
+  const generateResponse = await generatePOST(
     new Request("https://orbit.local/api/notifications/reminders/generate", {
       body: JSON.stringify({
         frequencies: ["once", "weekly"],
@@ -379,12 +388,12 @@ test("reminder notification API routes return stable envelopes with empty and fa
       method: "POST",
     }),
   );
-  const emptyResponse = await notificationsRoute.GET(
+  const emptyResponse = await notificationsGET(
     new Request("https://orbit.local/api/notifications?scenario=empty", {
       method: "GET",
     }),
   );
-  const failureResponse = await notificationsRoute.GET(
+  const failureResponse = await notificationsGET(
     new Request("https://orbit.local/api/notifications?scenario=failure", {
       method: "GET",
     }),
@@ -429,6 +438,21 @@ test("reminder notification API routes return stable envelopes with empty and fa
       }>;
     };
   };
+  const unauthenticatedResponse =
+    await notificationsHandlerModule.createNotificationsGetHandler(
+      async () => null,
+    )(new Request("https://orbit.local/api/notifications"));
+  const unauthenticatedGenerateResponse =
+    await generateHandlerModule.createNotificationsGeneratePostHandler(
+      async () => null,
+    )(
+      new Request(
+        "https://orbit.local/api/notifications/reminders/generate",
+        { method: "POST" },
+      ),
+    );
+  assert.equal(unauthenticatedResponse.status, 401);
+  assert.equal(unauthenticatedGenerateResponse.status, 401);
 
   assert.equal(notificationsEnvelope.success, true);
   assert.equal(notificationsEnvelope.data.state, "success");
@@ -506,12 +530,20 @@ test("reminder notification dev probe manifest exercises declared API paths", as
   }>(
     "features/notifications/reminder-schedule-and-notification-mock/debug-view.tsx",
   );
-  const notificationsRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-  }>("app/api/notifications/route.ts");
-  const generateRoute = await importProjectModule<{
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/notifications/reminders/generate/route.ts");
+  const notificationsHandlerModule = await importProjectModule<
+    typeof import("../../app/api/notifications/handler")
+  >("app/api/notifications/handler.ts");
+  const generateHandlerModule = await importProjectModule<
+    typeof import("../../app/api/notifications/reminders/generate/handler")
+  >("app/api/notifications/reminders/generate/handler.ts");
+  const notificationsGET =
+    notificationsHandlerModule.createNotificationsGetHandler(async () => ({
+      id: "actor:notification-probe-test",
+    }));
+  const generatePOST =
+    generateHandlerModule.createNotificationsGeneratePostHandler(async () => ({
+      id: "actor:notification-probe-test",
+    }));
 
   assert.deepEqual(
     debugView.REMINDER_SCHEDULE_NOTIFICATION_API_PROBES.map((probe) => [
@@ -531,12 +563,12 @@ test("reminder notification dev probe manifest exercises declared API paths", as
   for (const probe of debugView.REMINDER_SCHEDULE_NOTIFICATION_API_PROBES) {
     const response =
       probe.method === "GET"
-        ? await notificationsRoute.GET(
+        ? await notificationsGET(
             new Request(`https://orbit.local${probe.path}`, {
               method: probe.method,
             }),
           )
-        : await generateRoute.POST(
+        : await generatePOST(
             new Request(`https://orbit.local${probe.path}`, {
               body: JSON.stringify({ frequencies: ["once"] }),
               method: probe.method,

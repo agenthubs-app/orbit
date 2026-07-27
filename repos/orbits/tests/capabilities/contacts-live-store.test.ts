@@ -70,6 +70,7 @@ function activeRecord(input: {
 }
 
 test("live contacts service reads generated contacts from shared live storage", async () => {
+  const actorId = "account_orbit_generated";
   const workspaceId = "workspace:contacts-live-store-test";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
@@ -88,7 +89,7 @@ test("live contacts service reads generated contacts from shared live storage", 
     provider,
   });
 
-  const listResult = await service.listContacts();
+  const listResult = await service.listContacts({ actorId });
 
   assert.equal(listResult.success, true);
   assert.equal(listResult.data.contacts.length, defaultMockFixtures.contacts.length);
@@ -116,6 +117,7 @@ test("live contacts service reads generated contacts from shared live storage", 
   assert.match(sato.relationshipContext, /佐藤 健一 matches/);
 
   const searchResult = await service.searchContacts({
+    actorId,
     query: "North Star Foods",
     sourceFilters: ["qr_scan"],
     valueFilters: ["knowledge_exchange"],
@@ -129,6 +131,7 @@ test("live contacts service reads generated contacts from shared live storage", 
 });
 
 test("live contacts search reads only evidence needed for listed contacts", async () => {
+  const actorId = "account-focused-list";
   const workspaceId = "workspace:contacts-live-focused-list";
   const rawStore = createMemoryLiveRecordStore<Record<string, unknown>>();
   const listQueries: LiveRecordListQuery[] = [];
@@ -270,6 +273,7 @@ test("live contacts search reads only evidence needed for listed contacts", asyn
   });
 
   const result = await service.searchContacts({
+    actorId,
     query: "Visible Person",
   });
 
@@ -288,6 +292,23 @@ test("live contacts search reads only evidence needed for listed contacts", asyn
     "evidence:visible-connection",
     "evidence:visible-contact",
   ]);
+});
+
+test("live contacts service requires an actor and hides another actor's graph", async () => {
+  const workspaceId = "workspace:contacts-actor-boundary";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
+  const service = createLiveContactsListSearchAndFilterService({
+    provider: createStorageContactGraphProvider({ store, workspaceId }),
+  });
+
+  const missingActor = await service.listContacts();
+  const otherActor = await service.listContacts({ actorId: "account:other" });
+
+  assert.equal(missingActor.success, false);
+  assert.equal(missingActor.error.code, "CONTACTS_ACTOR_REQUIRED");
+  assert.equal(otherActor.success, true);
+  assert.deepEqual(otherActor.data.contacts, []);
 });
 
 test("contacts factory registers live mode and fails closed without live database config", async () => {

@@ -389,10 +389,6 @@ function routeRecoveryActions(
         href: "/app/events",
         label: bilingualText("显示有来源活动", "Show sourced events"),
       },
-      {
-        href: "/app/events?action=accept-top-event",
-        label: bilingualText("预览首选活动动作", "Preview top event action"),
-      },
     ];
   }
 
@@ -621,10 +617,11 @@ function successViewModel(input: {
 
 export async function loadAppEventsRouteViewModel(
   searchParams?: AppEventsSearchParams,
+  actorId?: string | null,
 ): Promise<AppEventsRouteViewModel> {
   const scenario = readRouteScenario(searchParams);
   const services = createAppEventsRouteServices();
-  const eventResult = await services.events.listEvents({ scenario });
+  const eventResult = await services.events.listEvents({ actorId, scenario });
   const eventFailure = firstFailure([eventResult]);
 
   if (eventFailure || scenario === "failure") {

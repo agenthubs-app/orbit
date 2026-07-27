@@ -41,7 +41,9 @@ type LiveReminderScheduleNotificationProviderResult<TResult> =
 export interface LiveReminderScheduleNotificationProvider {
   source: string;
   sourceLabel: string;
-  readReminderNotificationGraph: () => LiveReminderScheduleNotificationProviderResult<LiveReminderNotificationGraph>;
+  readReminderNotificationGraph: (
+    actorId: string,
+  ) => LiveReminderScheduleNotificationProviderResult<LiveReminderNotificationGraph>;
 }
 
 export interface LiveReminderScheduleNotificationServiceOptions {
@@ -660,7 +662,17 @@ function scenarioResult(
 
 async function graphOrFailure(
   provider: LiveReminderScheduleNotificationProvider | null,
+  actorId?: string | null,
 ): Promise<LiveReminderNotificationGraph | ReminderScheduleNotificationFailure> {
+  const normalizedActorId = actorId?.trim();
+  if (!normalizedActorId) {
+    return failure("REMINDER_SCHEDULE_NOTIFICATION_ACTOR_REQUIRED", {
+      provider,
+      readExecuted: false,
+      sourceLabel: "Authenticated reminder notification actor is required",
+    });
+  }
+
   if (!provider) {
     return failure("REMINDER_SCHEDULE_NOTIFICATION_LIVE_STORE_UNCONFIGURED", {
       provider,
@@ -669,7 +681,7 @@ async function graphOrFailure(
     });
   }
 
-  return provider.readReminderNotificationGraph();
+  return provider.readReminderNotificationGraph(normalizedActorId);
 }
 
 function isFailure(
@@ -685,7 +697,7 @@ export function createLiveReminderScheduleNotificationService({
     async listNotifications(
       input: ReminderScheduleNotificationListInput = {},
     ): Promise<ReminderScheduleNotificationResult> {
-      const graph = await graphOrFailure(provider);
+      const graph = await graphOrFailure(provider, input.actorId);
 
       if (isFailure(graph)) {
         return graph;
@@ -717,7 +729,7 @@ export function createLiveReminderScheduleNotificationService({
     async generateReminders(
       input: ReminderScheduleNotificationGenerateInput = {},
     ): Promise<ReminderScheduleNotificationResult> {
-      const graph = await graphOrFailure(provider);
+      const graph = await graphOrFailure(provider, input.actorId);
 
       if (isFailure(graph)) {
         return graph;

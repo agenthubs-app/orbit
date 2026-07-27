@@ -29,6 +29,9 @@ import { OrbitRealEventDetail } from "./orbit-real-event-detail";
 import { presentOrbitEvent } from "../../orbit-event-presentation";
 import { loadAppEventsRouteViewModel } from "../compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { eventsRouteToOrbitLandingViewModel } from "../compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
+import { auth } from "../../../../../auth";
+import { redirect } from "next/navigation";
+import { createEventCrudAndImportService } from "../../../../../features/events/service-factory";
 
 export type AppEventDetailPageSearchParams = Record<
   string,
@@ -434,8 +437,42 @@ export default async function AppEventDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<AppEventDetailPageSearchParams>;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fevents");
+  }
+
   const { id } = await params;
   const query = await searchParams;
+  const ownedEventResult = await createEventCrudAndImportService().getEvent({
+    actorId: session.user.id,
+    eventId: id,
+  });
+
+  if (ownedEventResult.success === false) {
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <EventDetailRouteStateView
+          eventId={id}
+          registrationGuide={null}
+          routeModel={{
+            description:
+              "This event is not available to the authenticated account.",
+            evidence: ownedEventResult.error.evidenceIds,
+            nextStep: "Return to Events and choose an event owned by this account.",
+            recoveryActions: [
+              { href: "/app/events", label: "Return to events" },
+            ],
+            routeState: "empty",
+            title: "Event not found",
+          }}
+        />
+        <OrbitVisualFreezeRuntime />
+      </>
+    );
+  }
+
   const explicitMode = readSearchParam(query, "mode");
   const routeMode = resolveEventDetailRouteMode({
     explicitMode,
@@ -445,6 +482,7 @@ export default async function AppEventDetailPage({
   );
   const routeModel = await loadAppEventDetailRoute({
     action: readSearchParam(query, "action"),
+    actorId: session.user.id,
     eventId: id,
     mode: routeMode,
     scenario: readSearchParam(query, "scenario"),
@@ -469,7 +507,7 @@ export default async function AppEventDetailPage({
   const detailSuccess = routeModel.routeState === "success";
   const eventsListModel = detailSuccess
     ? null
-    : await loadAppEventsRouteViewModel();
+    : await loadAppEventsRouteViewModel(undefined, session.user.id);
   const fallbackEvent =
     eventsListModel && eventsListModel.state === "success"
       ? eventsRouteToOrbitLandingViewModel(eventsListModel).events.find(

@@ -10,8 +10,12 @@ import type { OrbitAiProactiveAgentPayload } from "../../features/orbit-ai/proac
 import { createFixtureOrbitAiProactiveAgentService } from "../../features/orbit-ai/mock-proactive-service";
 
 test("notifications API returns reminders that never deliver", async () => {
-  const route = await import("../../app/api/notifications/route");
-  const response = await route.GET(
+  const { createNotificationsGetHandler } = await import(
+    "../../app/api/notifications/handler"
+  );
+  const response = await createNotificationsGetHandler(async () => ({
+    id: "actor:inbox-alert-test",
+  }))(
     new Request("https://orbit.local/api/notifications"),
   );
   const body = (await response.json()) as {
@@ -31,8 +35,12 @@ test("notifications API returns reminders that never deliver", async () => {
 });
 
 test("reminder alerts view model maps reminders to navigable alert rows", async () => {
-  const route = await import("../../app/api/notifications/route");
-  const response = await route.GET(
+  const { createNotificationsGetHandler } = await import(
+    "../../app/api/notifications/handler"
+  );
+  const response = await createNotificationsGetHandler(async () => ({
+    id: "actor:inbox-alert-test",
+  }))(
     new Request("https://orbit.local/api/notifications"),
   );
   const body = (await response.json()) as {

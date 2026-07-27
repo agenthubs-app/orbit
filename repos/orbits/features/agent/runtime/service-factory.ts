@@ -95,6 +95,7 @@ export function createOrbitAgentRuntimeService(
       followups: createStorageFollowupActionWriter({ store, workspaceId }),
       notifications: createStorageReminderActionWriter({
         store,
+        userId: actorId || null,
         workspaceId,
       }),
       matchmaking: createEventMatchmakingService({ store, workspaceId }),

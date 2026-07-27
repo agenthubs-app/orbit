@@ -243,11 +243,21 @@ function graphFromRecords(input: {
 }
 
 async function readFocusedContactGraph(input: {
+  actorId?: string;
   contactId?: string;
   listInput?: ContactsListSearchFilterInput;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }): Promise<LocalRemoteContactGraph> {
+  const actorId = input.actorId?.trim();
+  if (!actorId) {
+    return graphFromRecords({
+      contactRecords: [],
+      connectionRecords: [],
+      evidenceRecords: [],
+    });
+  }
+
   const query = input.listInput?.query?.trim();
   const [contactRecords, allConnectionRecords] = await Promise.all([
     input.store.listRecords({
@@ -261,11 +271,27 @@ async function readFocusedContactGraph(input: {
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
     }),
   ]);
-  const contacts = contactRecords
+  const actorConnectionRecords = allConnectionRecords.filter(
+    (record) =>
+      record.userId === actorId ||
+      record.payload.accountId === actorId,
+  );
+  const actorContactIds = new Set(
+    actorConnectionRecords
+      .map((record) => record.payload.contactId)
+      .filter(nonEmptyString),
+  );
+  const actorContactRecords = contactRecords.filter(
+    (record) =>
+      record.userId === actorId ||
+      (nonEmptyString(record.payload.id) &&
+        actorContactIds.has(record.payload.id)),
+  );
+  const contacts = actorContactRecords
     .map(contactFromRecord)
     .filter((contact): contact is ContactDTO => contact !== null);
   const contactIds = new Set(contacts.map((contact) => contact.id));
-  const connectionRecords = allConnectionRecords.filter((record) => {
+  const connectionRecords = actorConnectionRecords.filter((record) => {
     const connection = connectionFromRecord(record);
 
     return connection ? contactIds.has(connection.contactId) : false;
@@ -284,7 +310,7 @@ async function readFocusedContactGraph(input: {
       : [];
 
   return graphFromRecords({
-    contactRecords,
+    contactRecords: actorContactRecords,
     connectionRecords,
     evidenceRecords,
   });
@@ -299,38 +325,24 @@ export function createStorageContactGraphProvider({
   return {
     source: source ?? `live-record-store:contacts:${workspaceId}`,
     sourceLabel,
-    async readContactGraph(): Promise<LocalRemoteContactGraph> {
-      const [contactRecords, connectionRecords, evidenceRecords] =
-        await Promise.all([
-          store.listRecords({
-            workspaceId,
-            collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
-          }),
-          store.listRecords({
-            workspaceId,
-            collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
-          }),
-          store.listRecords({
-            workspaceId,
-            collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
-          }),
-        ]);
-
-      return graphFromRecords({
-        contactRecords,
-        connectionRecords,
-        evidenceRecords,
+    readContactGraph(actorId): Promise<LocalRemoteContactGraph> {
+      return readFocusedContactGraph({
+        actorId,
+        store,
+        workspaceId,
       });
     },
-    readContactGraphForList(input = {}) {
+    readContactGraphForList(input, actorId) {
       return readFocusedContactGraph({
+        actorId,
         listInput: input,
         store,
         workspaceId,
       });
     },
-    readContactGraphForContact(contactId: string) {
+    readContactGraphForContact(contactId: string, actorId?: string) {
       return readFocusedContactGraph({
+        actorId,
         contactId: contactId.trim(),
         store,
         workspaceId,
