@@ -14,6 +14,7 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // Followups contract 描述关系跟进任务的生成和展示模型。
 // 当前只生成可复核任务建议，不调用调度器、不写任务库、不发送通知。
 export const FOLLOWUP_TASK_GENERATION_ERROR_CODES = [
+  "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED",
   "FOLLOWUP_TASK_GENERATION_TASK_ID_REQUIRED",
   "FOLLOWUP_TASK_GENERATION_TASK_NOT_FOUND",
   "FOLLOWUP_TASK_GENERATION_EMPTY",
@@ -45,6 +46,7 @@ export type {
 
 // list 输入用于读取队列；triggerKind/limit 只影响本地 fixture 过滤。
 export interface FollowupTaskGenerationListInput {
+  actorId?: string | null;
   scenario?: FollowupTaskGenerationScenario | string | null;
   triggerKind?: FollowupTriggerKindCode | string | null;
   limit?: number | null;
@@ -52,6 +54,7 @@ export interface FollowupTaskGenerationListInput {
 
 // generate 输入用于从特定触发器或 connection 生成建议任务。
 export interface FollowupTaskGenerationGenerateInput {
+  actorId?: string | null;
   scenario?: FollowupTaskGenerationScenario | string | null;
   triggerKinds?: readonly (FollowupTriggerKindCode | string)[] | null;
   connectionId?: string | null;
@@ -67,6 +70,14 @@ export interface FollowupTaskGenerationErrorDefinition {
 }
 
 export const FOLLOWUP_TASK_GENERATION_ERROR_DEFINITIONS = {
+  FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED: {
+    code: "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message:
+      "An authenticated actor is required before reading live followup tasks.",
+    recovery:
+      "Sign in and retry; do not read workspace-wide followup tasks without an actor boundary.",
+  },
   FOLLOWUP_TASK_GENERATION_TASK_ID_REQUIRED: {
     code: "FOLLOWUP_TASK_GENERATION_TASK_ID_REQUIRED",
     appCode: "VALIDATION_ERROR",

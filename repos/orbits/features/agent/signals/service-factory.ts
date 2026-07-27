@@ -48,6 +48,7 @@ export function createAgentSignalService({
   const cached = cachedServices.get(cacheKey);
   if (cached) return cached;
   const collector = createAgentSignalSourceCollector({
+    actorId: normalizedActorId,
     eventProvider:
       mode === "live" ? createConfiguredStorageEventStoreProvider() : null,
     followupProvider:

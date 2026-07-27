@@ -12,6 +12,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
 test("live followup task generation reads generated tasks from shared live storage", async () => {
+  const actorId = "actor:followup-live-store-test";
   const workspaceId = "workspace:followup-live-store-test";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
@@ -19,6 +20,32 @@ test("live followup task generation reads generated tasks from shared live stora
     now: () => "2026-07-01T19:00:00.000Z",
     store,
     workspaceId,
+  });
+  for (const collectionName of ["tasks", "contacts", "connections", "evidence"]) {
+    const records = await store.listRecords({ collectionName, workspaceId });
+    for (const record of records) {
+      await store.upsertRecord({
+        ...record,
+        userId: actorId,
+        payload: { ...record.payload, accountId: actorId },
+      });
+    }
+  }
+  const firstTaskRecord = (
+    await store.listRecords({ collectionName: "tasks", workspaceId })
+  )[0];
+  assert.ok(firstTaskRecord);
+  await store.upsertRecord({
+    ...firstTaskRecord,
+    recordId: "task:other-actor",
+    sourceId: "task:other-actor",
+    userId: "actor:other",
+    payload: {
+      ...firstTaskRecord.payload,
+      accountId: "actor:other",
+      id: "task:other-actor",
+      title: "Other actor private follow-up",
+    },
   });
 
   const provider = createStorageFollowupTaskProvider({
@@ -30,7 +57,7 @@ test("live followup task generation reads generated tasks from shared live stora
     provider,
   });
 
-  const listResult = await service.listTasks({ limit: 1 });
+  const listResult = await service.listTasks({ actorId, limit: 1 });
 
   assert.equal(listResult.success, true);
   assert.equal(listResult.data.tasks.length, 1);
@@ -57,6 +84,7 @@ test("live followup task generation reads generated tasks from shared live stora
   assert.equal(trigger?.liveDatabaseReadExecuted, true);
 
   const generatedResult = await service.generateTasks({
+    actorId,
     connectionId: "connection_for_contact_021",
     limit: 1,
   });
@@ -78,6 +106,15 @@ test("live followup task generation reads generated tasks from shared live stora
     "evidence:task:001",
   ]);
   assert.match(generatedResult.data.tasks[0]?.rationale ?? "", /山崎 美穂/);
+
+  const allActorTasks = await service.listTasks({ actorId });
+  assert.equal(allActorTasks.success, true);
+  if (allActorTasks.success) {
+    assert.doesNotMatch(
+      allActorTasks.data.tasks.map((item) => item.title).join(" "),
+      /Other actor private follow-up/,
+    );
+  }
 });
 
 test("followup task generation factory registers live mode and fails closed without live database config", async () => {
@@ -92,7 +129,9 @@ test("followup task generation factory registers live mode and fails closed with
 
     const liveResolution = resolveFollowupTaskGenerationService("live");
     const liveService = createFollowupTaskGenerationService("live");
-    const result = await liveService.listTasks();
+    const result = await liveService.listTasks({
+      actorId: "actor:unconfigured-live-store",
+    });
 
     assert.equal(liveResolution.success, true);
     assert.equal(result.success, false);
@@ -123,5 +162,28 @@ test("followup task generation factory registers live mode and fails closed with
     } else {
       process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     }
+  }
+});
+
+test("live followup task generation requires an actor before provider access", async () => {
+  let providerRead = false;
+  const service = createLiveFollowupTaskGenerationService({
+    provider: {
+      source: "test:followups",
+      sourceLabel: "Test followups",
+      readFollowupGraph: () => {
+        providerRead = true;
+        throw new Error("provider must not run without an actor");
+      },
+    },
+  });
+
+  const result = await service.listTasks();
+
+  assert.equal(result.success, false);
+  assert.equal(providerRead, false);
+  if (!result.success) {
+    assert.equal(result.error.code, "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED");
+    assert.equal(result.error.provenance.liveDatabaseReadExecuted, false);
   }
 });

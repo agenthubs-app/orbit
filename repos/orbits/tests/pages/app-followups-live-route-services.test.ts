@@ -196,7 +196,11 @@ test("app followups route service bundle resolves all child services in live mod
 
 test("app followups route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveFollowups(async () => {
-    const viewModel = await loadAppFollowupsRouteViewModel();
+    const viewModel = await loadAppFollowupsRouteViewModel(
+      undefined,
+      undefined,
+      "actor:followups-unconfigured-live-store",
+    );
 
     assert.equal(viewModel.state, "route-state");
 
@@ -218,6 +222,8 @@ test("app followups route loader starts task and notification reads in parallel"
   const delayMs = 80;
   let taskStartedAt: number | null = null;
   let notificationStartedAt: number | null = null;
+  let taskActorId: string | null | undefined;
+  let notificationActorId: string | null | undefined;
   const services: AppFollowupsRouteServices = {
     draftService: {
       createDraft: () => ({
@@ -257,7 +263,8 @@ test("app followups route loader starts task and notification reads in parallel"
           "generateReminders should not be called by the route loader",
         );
       },
-      listNotifications: async () => {
+      listNotifications: async (input) => {
+        notificationActorId = input?.actorId;
         notificationStartedAt = performance.now();
         await delay(delayMs);
 
@@ -296,7 +303,8 @@ test("app followups route loader starts task and notification reads in parallel"
       generateTasks: () => {
         throw new Error("generateTasks should not be called by the route loader");
       },
-      listTasks: async () => {
+      listTasks: async (input) => {
+        taskActorId = input?.actorId;
         taskStartedAt = performance.now();
         await delay(delayMs);
 
@@ -333,9 +341,15 @@ test("app followups route loader starts task and notification reads in parallel"
     },
   };
 
-  const viewModel = await loadAppFollowupsRouteViewModel(undefined, services);
+  const viewModel = await loadAppFollowupsRouteViewModel(
+    undefined,
+    services,
+    "actor:followups-route-loader",
+  );
 
   assert.equal(viewModel.state, "success");
+  assert.equal(taskActorId, "actor:followups-route-loader");
+  assert.equal(notificationActorId, "actor:followups-route-loader");
 
   if (taskStartedAt === null || notificationStartedAt === null) {
     throw new Error("Injected task and notification services must both run");

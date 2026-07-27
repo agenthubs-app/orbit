@@ -13,6 +13,7 @@ import type {
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
 export interface AgentSignalSourceCollectorOptions {
+  actorId: string;
   eventProvider?: LiveEventStoreProvider | null;
   followupProvider?: LiveFollowupTaskProvider | null;
   now?: () => string;
@@ -91,6 +92,7 @@ function relationshipSource(
 }
 
 export function createAgentSignalSourceCollector({
+  actorId,
   eventProvider,
   followupProvider,
   now = () => new Date().toISOString(),
@@ -100,7 +102,7 @@ export function createAgentSignalSourceCollector({
       const currentIso = now();
       const current = timestamp(currentIso) ?? Date.now();
       const [graph, events] = await Promise.all([
-        followupProvider?.readFollowupGraph() ?? null,
+        followupProvider?.readFollowupGraph(actorId) ?? null,
         eventProvider?.listEvents() ?? [],
       ]);
       const candidates: AgentSignalCandidate[] = [];

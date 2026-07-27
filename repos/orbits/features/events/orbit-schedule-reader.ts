@@ -10,9 +10,14 @@ export interface OrbitScheduleItem {
   evidenceIds: readonly string[];
 }
 
-export async function listConfiguredOrbitScheduleItems(): Promise<
+export async function listConfiguredOrbitScheduleItems(
+  actorId?: string | null,
+): Promise<
   readonly OrbitScheduleItem[]
 > {
+  const normalizedActorId = actorId?.trim();
+  if (!normalizedActorId) return [];
+
   const configured =
     createConfiguredPostgresLiveRecordStore<Record<string, unknown>>();
   if (!configured) return [];
@@ -22,6 +27,12 @@ export async function listConfiguredOrbitScheduleItems(): Promise<
   });
   return records.flatMap((record) => {
     const payload = record.payload;
+    if (
+      record.userId !== normalizedActorId &&
+      payload.accountId !== normalizedActorId
+    ) {
+      return [];
+    }
     if (
       typeof payload.id !== "string" ||
       typeof payload.eventId !== "string" ||

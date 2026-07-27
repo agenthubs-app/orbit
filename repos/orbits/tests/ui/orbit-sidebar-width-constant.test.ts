@@ -63,7 +63,7 @@ test("no contacts surface hardcodes the sidebar column width", () => {
 
 test("the two ledger pages collapse to one column on mobile", () => {
   for (const file of [
-    "app/(app)/app/today/page.tsx",
+    "app/(app)/app/today/today-page-content.tsx",
     "app/(app)/app/contacts/all-actions/page.tsx",
   ]) {
     const pageSource = readFileSync(join(projectRoot, file), "utf8");

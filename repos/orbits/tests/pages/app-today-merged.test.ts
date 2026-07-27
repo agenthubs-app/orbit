@@ -30,11 +30,44 @@ import { loadAppTodayRouteViewModel } from "../../app/(app)/app/today/compose-ap
 import { OrbitTodayTimeSpine } from "../../app/(app)/app/today/orbit-today-time-spine";
 import { mockOrbitAiRecommendedEventDetailRecord } from "../../features/events/event-crud-and-import/fixtures";
 
+const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+
 const realLoaders: AppTodayMergedLoaders = {
   loadFollowups: loadAppFollowupsRouteViewModel,
   loadSchedule: loadAppScheduleRouteViewModel,
   loadToday: loadAppTodayRouteViewModel,
 };
+
+test("Today server route authenticates once and passes that actor through every merged loader", () => {
+  const routeSource = readFileSync(
+    join(projectRoot, "app/(app)/app/today/page.tsx"),
+    "utf8",
+  );
+  const contentSource = readFileSync(
+    join(projectRoot, "app/(app)/app/today/today-page-content.tsx"),
+    "utf8",
+  );
+  const mergedSource = readFileSync(
+    join(
+      projectRoot,
+      "app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts",
+    ),
+    "utf8",
+  );
+
+  assert.match(routeSource, /const session = await auth\(\)/);
+  assert.match(routeSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Ftoday"\)/);
+  assert.match(routeSource, /actorId,/);
+  assert.match(contentSource, /createAppTodayMergedLoaders\(resolvedLedgerService, actorId\)/);
+  assert.match(
+    mergedSource,
+    /loadAppFollowupsRouteViewModel\(searchParams, undefined, actorId\)/,
+  );
+  assert.match(
+    mergedSource,
+    /loadAppScheduleRouteViewModel\(searchParams, undefined, actorId\)/,
+  );
+});
 
 // ---- timeline-merge parser contract: `eventArrangementDateTime` parses the
 // human-formatted string `formatScheduleEventWindow` produces. Nothing else
@@ -178,7 +211,7 @@ test("with ?date= set to an unrelated date, dimmedArrangementIds is non-empty", 
 // fallback copy that doesn't exercise this path. ----
 
 test("a degraded arrangements card shows the guardrail and a recovery link", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
@@ -194,7 +227,7 @@ test("a degraded arrangements card shows the guardrail and a recovery link", asy
 });
 
 test("a degraded time-spine card shows the guardrail and a recovery link", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
@@ -213,7 +246,7 @@ test("a degraded time-spine card shows the guardrail and a recovery link", async
 // calendar day happens to be selected ----
 
 test("/app/today renders the merged workspace shell", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default;
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default;
   const html = renderToStaticMarkup(await Page());
 
   // 月历标记 + 翻月/今天控件
@@ -248,7 +281,7 @@ test("/app/today renders the merged workspace shell", async () => {
 // disclosure means it only appears once a card is actually open, so this
 // check needs an ?entry= render instead of the bare-page one above.
 test("/app/today shows the draft-only guardrail once a decision card is expanded", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
@@ -259,7 +292,7 @@ test("/app/today shows the draft-only guardrail once a decision card is expanded
 });
 
 test("/app/today keeps working when a ?date= without any meetings is requested", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
@@ -346,7 +379,7 @@ test("meeting cards expose a real compose action without repeating their topic",
 // ---- T2: decision cards become inline accordions (design doc §2, §5) ----
 
 test("without ?entry= no decision card is expanded", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default;
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default;
   const html = renderToStaticMarkup(await Page());
 
   assert.doesNotMatch(html, /data-orbit-today-entry-expanded="true"/);
@@ -357,7 +390,7 @@ test("without ?entry= no decision card is expanded", async () => {
 });
 
 test("?entry= expands exactly that card, with exactly one 确认执行 in it and none elsewhere", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
@@ -392,7 +425,7 @@ test("?entry= expands exactly that card, with exactly one 确认执行 in it and
 });
 
 test("entry links preserve ?date=/?view= (T1 review: EntryRow used to strip them)", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
@@ -410,7 +443,7 @@ test("entry links preserve ?date=/?view= (T1 review: EntryRow used to strip them
 });
 
 test("the expanded card's header link collapses back to a plain ?date=/?view= URL", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
@@ -446,7 +479,7 @@ function sourceForEscapeGate(path: string): string {
 // ---- T3 (today-schedule 合并 P3): nav consolidation, redirects, mobile ----
 
 test("the arrangements section container carries id=\"arrangements\" (schedule/page.tsx now redirects to /app/today#arrangements)", async () => {
-  const Page = (await import("../../app/(app)/app/today/page")).default;
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default;
   const html = renderToStaticMarkup(await Page());
 
   assert.match(html, /id="arrangements"/);

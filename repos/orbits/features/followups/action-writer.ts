@@ -23,12 +23,14 @@ export interface FollowupActionWriter {
 
 export function createStorageFollowupActionWriter(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
+  userId?: string | null;
   workspaceId: string;
 }): FollowupActionWriter {
   return {
     async createTask(task) {
       await input.store.upsertRecord({
         workspaceId: input.workspaceId,
+        userId: input.userId,
         collectionName: "tasks",
         recordId: task.taskId,
         sourceType: "agent_action",
@@ -41,6 +43,7 @@ export function createStorageFollowupActionWriter(input: {
         lifecycleState: "active",
         searchText: task.title,
         payload: {
+          accountId: input.userId,
           id: task.taskId,
           title: task.title,
           status: "open",
@@ -64,6 +67,7 @@ export function createStorageFollowupActionWriter(input: {
     async saveDraft(draft) {
       await input.store.upsertRecord({
         workspaceId: input.workspaceId,
+        userId: input.userId,
         collectionName: "messageDrafts",
         recordId: draft.draftId,
         sourceType: "agent_action",
@@ -76,6 +80,7 @@ export function createStorageFollowupActionWriter(input: {
         lifecycleState: "active",
         searchText: draft.text,
         payload: {
+          accountId: input.userId,
           id: draft.draftId,
           contactId: draft.contactId,
           text: draft.text,

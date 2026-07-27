@@ -48,6 +48,7 @@ export interface EventActionWriter {
 
 export function createStorageEventActionWriter(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
+  userId?: string | null;
   workspaceId: string;
 }): EventActionWriter {
   async function save(
@@ -61,6 +62,7 @@ export function createStorageEventActionWriter(input: {
   ): Promise<{ recordId: string }> {
     await input.store.upsertRecord({
       workspaceId: input.workspaceId,
+      userId: input.userId,
       collectionName,
       recordId,
       sourceType: "agent_action",
@@ -72,7 +74,10 @@ export function createStorageEventActionWriter(input: {
       occurredAt: now,
       lifecycleState: "active",
       searchText,
-      payload,
+      payload: {
+        accountId: input.userId,
+        ...payload,
+      },
       createdAt: now,
       updatedAt: now,
     });

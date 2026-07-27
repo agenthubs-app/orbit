@@ -260,7 +260,7 @@ export function createStorageFollowupTaskProvider({
   return {
     source: source ?? `live-record-store:followups:${workspaceId}`,
     sourceLabel,
-    async readFollowupGraph(): Promise<LiveFollowupGraph> {
+    async readFollowupGraph(actorId: string): Promise<LiveFollowupGraph> {
       const [taskRecords, contactRecords, connectionRecords, evidenceRecords] =
         await Promise.all([
           store.listRecords({
@@ -281,25 +281,61 @@ export function createStorageFollowupTaskProvider({
           }),
         ]);
 
+      const belongsToActor = (
+        record: LiveRecord<Record<string, unknown>>,
+      ): boolean =>
+        record.userId === actorId || record.payload.accountId === actorId;
+      const actorTaskRecords = taskRecords.filter(belongsToActor);
+      const actorConnectionRecords = connectionRecords.filter(belongsToActor);
+      const actorContactIds = new Set([
+        ...actorTaskRecords.flatMap((record) =>
+          nonEmptyString(record.payload.contactId)
+            ? [record.payload.contactId]
+            : [],
+        ),
+        ...actorConnectionRecords.flatMap((record) =>
+          nonEmptyString(record.payload.contactId)
+            ? [record.payload.contactId]
+            : [],
+        ),
+      ]);
+      const actorContactRecords = contactRecords.filter(
+        (record) =>
+          belongsToActor(record) ||
+          (nonEmptyString(record.payload.id) &&
+            actorContactIds.has(record.payload.id)),
+      );
+      const actorEvidenceIds = new Set(
+        [
+          ...actorTaskRecords,
+          ...actorContactRecords,
+          ...actorConnectionRecords,
+        ].flatMap((record) => record.evidenceIds),
+      );
+      const actorEvidenceRecords = evidenceRecords.filter(
+        (record) =>
+          belongsToActor(record) || actorEvidenceIds.has(record.recordId),
+      );
+
       return {
-        connections: connectionRecords
+        connections: actorConnectionRecords
           .map(connectionFromRecord)
           .filter((connection): connection is ConnectionDTO => connection !== null),
-        contacts: contactRecords
+        contacts: actorContactRecords
           .map(contactFromRecord)
           .filter((contact): contact is ContactDTO => contact !== null),
-        evidence: evidenceRecords
+        evidence: actorEvidenceRecords
           .map(evidenceFromRecord)
           .filter(
             (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
           ),
         generatedAt: latestTimestamp([
-          ...taskRecords,
-          ...contactRecords,
-          ...connectionRecords,
-          ...evidenceRecords,
+          ...actorTaskRecords,
+          ...actorContactRecords,
+          ...actorConnectionRecords,
+          ...actorEvidenceRecords,
         ]),
-        tasks: taskRecords
+        tasks: actorTaskRecords
           .map(taskFromRecord)
           .filter((task): task is TaskDTO => task !== null),
       };

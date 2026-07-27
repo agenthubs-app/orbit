@@ -235,17 +235,21 @@ function routeStateViewModel(input: {
 }
 
 async function loadScheduleSourceResults(input: {
+  actorId?: string | null;
   scenario?: AppScheduleRouteScenario;
   services: AppScheduleRouteServices;
 }): Promise<ScheduleSourceResults> {
   const [contactResult, eventResult, followupResult] = await Promise.all([
     input.services.contacts.listContacts({
+      actorId: input.actorId,
       scenario: input.scenario,
     }),
     input.services.events.listEvents({
+      actorId: input.actorId,
       scenario: input.scenario,
     }),
     input.services.followups.listTasks({
+      actorId: input.actorId,
       limit: 4,
       scenario: input.scenario,
     }),
@@ -536,11 +540,13 @@ export function createAppScheduleRouteServices(
 export async function loadAppScheduleRouteViewModel(
   searchParams?: AppScheduleSearchParams,
   services?: AppScheduleRouteServices,
+  actorId?: string | null,
 ): Promise<AppScheduleRouteViewModel> {
   const requestedScenario = readRouteScenario(searchParams);
   const scenario = requestedScenario ?? undefined;
   const servicesWereProvided = services !== undefined;
   const sourceResults = await loadScheduleSourceResults({
+    actorId,
     scenario,
     services: services ?? createAppScheduleRouteServices(),
   });
@@ -549,7 +555,7 @@ export async function loadAppScheduleRouteViewModel(
   const agentScheduleItems =
     requestedScenario || servicesWereProvided
       ? []
-      : await listConfiguredOrbitScheduleItems();
+      : await listConfiguredOrbitScheduleItems(actorId);
 
   if (requestedScenario) {
     return {

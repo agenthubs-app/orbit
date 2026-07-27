@@ -135,6 +135,7 @@ test("Agent signals are actor scoped and snoozed items reopen at the requested t
 
 test("Agent signal collector derives source-backed follow-up, event and stale relationship signals", async () => {
   const collector = createAgentSignalSourceCollector({
+    actorId: "actor:agent-signal-source-collector",
     eventProvider: {
       source: "events",
       sourceLabel: "Events",

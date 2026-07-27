@@ -79,9 +79,14 @@ const defaultLoaders: AppTodayMergedLoaders = {
 
 export function createAppTodayMergedLoaders(
   ledgerService: AgentLedgerService | null,
+  actorId: string,
 ): AppTodayMergedLoaders {
   return {
     ...defaultLoaders,
+    loadFollowups: (searchParams) =>
+      loadAppFollowupsRouteViewModel(searchParams, undefined, actorId),
+    loadSchedule: (searchParams) =>
+      loadAppScheduleRouteViewModel(searchParams, undefined, actorId),
     loadToday: (searchParams) =>
       loadAppTodayRouteViewModel(searchParams, { ledgerService }),
   };

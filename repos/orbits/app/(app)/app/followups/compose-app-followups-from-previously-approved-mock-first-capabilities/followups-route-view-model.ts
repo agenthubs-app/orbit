@@ -652,16 +652,21 @@ function successViewModel(input: {
 export async function loadAppFollowupsRouteViewModel(
   searchParams?: AppFollowupsSearchParams,
   services: AppFollowupsRouteServices = createAppFollowupsRouteServices(),
+  actorId?: string | null,
 ): Promise<AppFollowupsRouteViewModel> {
   const requestedScenario = readRouteScenario(searchParams);
 
   if (requestedScenario) {
     const [taskResult, notificationResult] = await Promise.all([
       resolveFollowupTaskGenerationResult(
-        services.taskService.listTasks({ scenario: requestedScenario }),
+        services.taskService.listTasks({
+          actorId,
+          scenario: requestedScenario,
+        }),
       ),
       resolveReminderScheduleNotificationResult(
         services.notificationService.listNotifications({
+          actorId,
           scenario: requestedScenario,
         }),
       ),
@@ -680,9 +685,12 @@ export async function loadAppFollowupsRouteViewModel(
   }
 
   const [taskResult, notificationResult] = await Promise.all([
-    resolveFollowupTaskGenerationResult(services.taskService.listTasks()),
+    resolveFollowupTaskGenerationResult(
+      services.taskService.listTasks({ actorId }),
+    ),
     resolveReminderScheduleNotificationResult(
       services.notificationService.listNotifications({
+        actorId,
         limit: 4,
       }),
     ),

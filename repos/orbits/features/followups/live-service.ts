@@ -28,7 +28,9 @@ type LiveFollowupTaskProviderResult<TResult> = Promise<TResult> | TResult;
 export interface LiveFollowupTaskProvider {
   source: string;
   sourceLabel: string;
-  readFollowupGraph: () => LiveFollowupTaskProviderResult<LiveFollowupGraph>;
+  readFollowupGraph: (
+    actorId: string,
+  ) => LiveFollowupTaskProviderResult<LiveFollowupGraph>;
 }
 
 export interface LiveFollowupTaskGenerationServiceOptions {
@@ -457,12 +459,26 @@ function scenarioResult(
 
 async function graphOrFailure(
   provider: LiveFollowupTaskProvider | null,
+  actorId?: string | null,
 ): Promise<FollowupTaskGenerationFailure | LiveFollowupGraph> {
+  const normalizedActorId = actorId?.trim();
+  if (!normalizedActorId) {
+    return failure(
+      "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED",
+      provenanceFor({
+        collectedAt: new Date(0).toISOString(),
+        databaseReadExecuted: false,
+        provider,
+        tasks: [],
+      }),
+    );
+  }
+
   if (!provider) {
     return unconfiguredFailure();
   }
 
-  return provider.readFollowupGraph();
+  return provider.readFollowupGraph(normalizedActorId);
 }
 
 function isFailure(
@@ -478,7 +494,7 @@ export function createLiveFollowupTaskGenerationService({
     async generateTasks(
       input: FollowupTaskGenerationGenerateInput = {},
     ): Promise<FollowupTaskGenerationResult> {
-      const graph = await graphOrFailure(provider);
+      const graph = await graphOrFailure(provider, input.actorId);
 
       if (isFailure(graph)) {
         return graph;
@@ -507,7 +523,7 @@ export function createLiveFollowupTaskGenerationService({
     async listTasks(
       input: FollowupTaskGenerationListInput = {},
     ): Promise<FollowupTaskGenerationResult> {
-      const graph = await graphOrFailure(provider);
+      const graph = await graphOrFailure(provider, input.actorId);
 
       if (isFailure(graph)) {
         return graph;

@@ -253,6 +253,10 @@ test("Today and All actions server pages use the authenticated ledger entry poin
     const source = readFileSync(join(process.cwd(), page), "utf8");
     assert.match(source, /resolveAgentLedgerForServerPage/);
     assert.match(source, /ledgerService/);
+    if (page.includes("/today/")) {
+      assert.match(source, /auth\(\)/);
+      assert.match(source, /redirect\("\/app\/account\/login/);
+    }
   }
 });
 

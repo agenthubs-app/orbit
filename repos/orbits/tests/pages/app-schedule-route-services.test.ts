@@ -6,10 +6,51 @@ import { fileURLToPath } from "node:url";
 
 import { createMockEventCrudAndImportService } from "../../features/events/event-crud-and-import/mock-service";
 import {
+  createAppScheduleRouteServices,
   loadAppScheduleRouteViewModel,
   type AppScheduleArrangementViewModel,
   type AppScheduleRouteScenario,
 } from "../../app/(app)/app/schedule/schedule-route-view-model";
+
+test("schedule route passes one authenticated actor to every relationship source", async () => {
+  const actorId = "actor:schedule-route-loader";
+  const observed = new Map<string, string | null | undefined>();
+  const base = createAppScheduleRouteServices("mock");
+  const model = await loadAppScheduleRouteViewModel(
+    undefined,
+    {
+      contacts: {
+        ...base.contacts,
+        listContacts: (input) => {
+          observed.set("contacts", input?.actorId);
+          return base.contacts.listContacts(input);
+        },
+      },
+      events: {
+        ...base.events,
+        listEvents: (input) => {
+          observed.set("events", input?.actorId);
+          return base.events.listEvents(input);
+        },
+      },
+      followups: {
+        ...base.followups,
+        listTasks: (input) => {
+          observed.set("followups", input?.actorId);
+          return base.followups.listTasks(input);
+        },
+      },
+    },
+    actorId,
+  );
+
+  assert.equal(model.state, "success");
+  assert.deepEqual(Object.fromEntries(observed), {
+    contacts: actorId,
+    events: actorId,
+    followups: actorId,
+  });
+});
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 

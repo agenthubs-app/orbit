@@ -125,6 +125,7 @@ test("followup task generation contract exports typed fixtures errors and mock-o
   assert.match(serviceInterface, /listTasks/);
   assert.match(serviceInterface, /generateTasks/);
   assert.deepEqual(contract.FOLLOWUP_TASK_GENERATION_ERROR_CODES, [
+    "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED",
     "FOLLOWUP_TASK_GENERATION_TASK_ID_REQUIRED",
     "FOLLOWUP_TASK_GENERATION_TASK_NOT_FOUND",
     "FOLLOWUP_TASK_GENERATION_EMPTY",
@@ -290,22 +291,32 @@ test("mock followup task generation service is deterministic and never calls liv
 });
 
 test("followup task API routes return stable envelopes with empty and failure paths", async () => {
-  const tasksRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-  }>("app/api/tasks/route.ts");
-  const generateRoute = await importProjectModule<{
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/tasks/generate/route.ts");
+  const tasksHandler = await importProjectModule<{
+    createTasksGetHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/tasks/handler.ts");
+  const generateHandler = await importProjectModule<{
+    createTasksGeneratePostHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/tasks/generate/handler.ts");
+  const GET = tasksHandler.createTasksGetHandler(async () => ({
+    id: "actor:tasks-api-test",
+  }));
+  const POST = generateHandler.createTasksGeneratePostHandler(async () => ({
+    id: "actor:tasks-api-test",
+  }));
   const fixtures = await importProjectModule<{
     mockEmptyFollowupTaskGenerationFixture: unknown;
   }>("features/followups/fixtures.ts");
 
-  const tasksResponse = await tasksRoute.GET(
+  const tasksResponse = await GET(
     new Request("https://orbit.local/api/tasks", {
       method: "GET",
     }),
   );
-  const generateResponse = await generateRoute.POST(
+  const generateResponse = await POST(
     new Request("https://orbit.local/api/tasks/generate", {
       body: JSON.stringify({
         triggerKinds: ["new_connection", "event_encounter"],
@@ -313,12 +324,12 @@ test("followup task API routes return stable envelopes with empty and failure pa
       method: "POST",
     }),
   );
-  const emptyResponse = await tasksRoute.GET(
+  const emptyResponse = await GET(
     new Request("https://orbit.local/api/tasks?scenario=empty", {
       method: "GET",
     }),
   );
-  const failureResponse = await tasksRoute.GET(
+  const failureResponse = await GET(
     new Request("https://orbit.local/api/tasks?scenario=failure", {
       method: "GET",
     }),
@@ -397,6 +408,45 @@ test("followup task API routes return stable envelopes with empty and failure pa
   });
 });
 
+test("followup task API handlers reject unauthenticated reads and generation", async () => {
+  const tasksHandler = await importProjectModule<{
+    createTasksGetHandler: (
+      resolveActor: () => Promise<null>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/tasks/handler.ts");
+  const generateHandler = await importProjectModule<{
+    createTasksGeneratePostHandler: (
+      resolveActor: () => Promise<null>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/tasks/generate/handler.ts");
+
+  const responses = await Promise.all([
+    tasksHandler.createTasksGetHandler(async () => null)(
+      new Request("https://orbit.local/api/tasks"),
+    ),
+    generateHandler.createTasksGeneratePostHandler(async () => null)(
+      new Request("https://orbit.local/api/tasks/generate", {
+        body: "{}",
+        method: "POST",
+      }),
+    ),
+  ]);
+
+  for (const response of responses) {
+    assert.equal(response.status, 401);
+    const envelope = (await response.json()) as {
+      error?: { code?: string; context?: { privacy?: string } };
+      success: boolean;
+    };
+    assert.equal(envelope.success, false);
+    assert.equal(envelope.error?.code, "UNAUTHORIZED");
+    assert.equal(
+      envelope.error?.context?.privacy,
+      "authenticated-actor-required",
+    );
+  }
+});
+
 test("followup task generation dev probe manifest exercises declared API paths", async () => {
   const debugView = await importProjectModule<{
     FOLLOWUP_TASK_GENERATION_API_PROBES: readonly Array<{
@@ -406,12 +456,22 @@ test("followup task generation dev probe manifest exercises declared API paths",
       expectedStatus: number;
     }>;
   }>("features/followups/followup-task-generation-mock/debug-view.tsx");
-  const tasksRoute = await importProjectModule<{
-    GET: (request: Request) => Promise<Response>;
-  }>("app/api/tasks/route.ts");
-  const generateRoute = await importProjectModule<{
-    POST: (request: Request) => Promise<Response>;
-  }>("app/api/tasks/generate/route.ts");
+  const tasksHandler = await importProjectModule<{
+    createTasksGetHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/tasks/handler.ts");
+  const generateHandler = await importProjectModule<{
+    createTasksGeneratePostHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (request: Request) => Promise<Response>;
+  }>("app/api/tasks/generate/handler.ts");
+  const GET = tasksHandler.createTasksGetHandler(async () => ({
+    id: "actor:tasks-probe-test",
+  }));
+  const POST = generateHandler.createTasksGeneratePostHandler(async () => ({
+    id: "actor:tasks-probe-test",
+  }));
 
   assert.deepEqual(
     debugView.FOLLOWUP_TASK_GENERATION_API_PROBES.map((probe) => [
@@ -431,12 +491,12 @@ test("followup task generation dev probe manifest exercises declared API paths",
   for (const probe of debugView.FOLLOWUP_TASK_GENERATION_API_PROBES) {
     const response =
       probe.method === "GET"
-        ? await tasksRoute.GET(
+        ? await GET(
             new Request(`https://orbit.local${probe.path}`, {
               method: probe.method,
             }),
           )
-        : await generateRoute.POST(
+        : await POST(
             new Request(`https://orbit.local${probe.path}`, {
               body: JSON.stringify({ triggerKinds: ["new_connection"] }),
               method: probe.method,

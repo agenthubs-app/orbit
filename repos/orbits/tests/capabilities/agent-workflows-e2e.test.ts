@@ -27,6 +27,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 function createWorkflowHarness() {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "agent-workflow-e2e";
+  const actorId = "user:agent-workflow-e2e";
   const matchmaking = createEventMatchmakingService({ store, workspaceId });
   const runtime = createAgentRuntimeService({
     repository: createStorageAgentRuntimeRepository({
@@ -39,10 +40,19 @@ function createWorkflowHarness() {
           store,
           workspaceId,
         }),
-        events: createStorageEventActionWriter({ store, workspaceId }),
-        followups: createStorageFollowupActionWriter({ store, workspaceId }),
+        events: createStorageEventActionWriter({
+          store,
+          userId: actorId,
+          workspaceId,
+        }),
+        followups: createStorageFollowupActionWriter({
+          store,
+          userId: actorId,
+          workspaceId,
+        }),
         notifications: createStorageReminderActionWriter({
           store,
+          userId: actorId,
           workspaceId,
         }),
         matchmaking,
@@ -54,7 +64,7 @@ function createWorkflowHarness() {
       return () => `e2e-${++value}`;
     })(),
   });
-  return { matchmaking, runtime, store, workspaceId };
+  return { actorId, matchmaking, runtime, store, workspaceId };
 }
 
 async function records(
@@ -175,6 +185,10 @@ test("post-event workflow persists only a confirmed transcript, draft, task, and
   assert.equal(drafts.length, 1);
   assert.equal(tasks.length, 1);
   assert.equal(reminders.length, 1);
+  assert.equal(encounterNotes[0].userId, harness.actorId);
+  assert.equal(drafts[0].userId, harness.actorId);
+  assert.equal(tasks[0].userId, harness.actorId);
+  assert.equal(reminders[0].userId, harness.actorId);
   assert.equal(tasks[0].payload.title, "与 Maya 确认日本发布伙伴");
   assert.equal(tasks[0].payload.dueAt, "2026-07-30T09:30:00.000Z");
   assert.equal(reminders[0].payload.title, "提醒我联系 Maya");
@@ -301,7 +315,10 @@ test("pre-event workflow ranks three explainable people and keeps internal/exter
     actorLabel: "Orbit user",
   });
   await harness.runtime.processOutbox({ actionId: schedule!.actionId });
-  assert.equal((await records(harness, "orbitScheduleItems")).length, 1);
+  const scheduleItems = await records(harness, "orbitScheduleItems");
+  assert.equal(scheduleItems.length, 1);
+  assert.equal(scheduleItems[0].userId, harness.actorId);
+  assert.equal(scheduleItems[0].payload.accountId, harness.actorId);
   assert.equal(external?.status, "awaiting_confirmation");
 });
 
