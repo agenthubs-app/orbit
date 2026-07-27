@@ -203,7 +203,9 @@ test("schedule event preview route preserves unavailable event context", async (
   const { loadAppScheduleEventPreviewRouteViewModel } =
     await import("../../app/(app)/app/schedule/events/[id]/event-preview-route-view-model");
   const model = await loadAppScheduleEventPreviewRouteViewModel({
+    actorId: "actor:schedule-preview-mock",
     eventId: "event_001",
+    mode: "mock",
   });
 
   assert.equal(model.state, "success");
@@ -231,6 +233,50 @@ test("schedule event preview route preserves unavailable event context", async (
     visibleText,
     /Orbit AI event recommendation evidence|calendar holds|messages|notifications|Seed Investor and Founder Matching Salon|Orbit Relationship Room/i,
   );
+});
+
+test("schedule event preview passes actor identity and never falls back to mock in live mode", async () => {
+  const actorId = "actor:schedule-preview";
+  const base = createMockEventCrudAndImportService();
+  let observedActorId: string | null | undefined;
+  const mockModel = await (
+    await import("../../app/(app)/app/schedule/events/[id]/event-preview-route-view-model")
+  ).loadAppScheduleEventPreviewRouteViewModel({
+    actorId,
+    eventId: "event_001",
+    services: {
+      events: {
+        ...base,
+        getEvent: (input) => {
+          observedActorId = input.actorId;
+          return base.getEvent(input);
+        },
+      },
+    },
+  });
+
+  assert.equal(mockModel.state, "success");
+  assert.equal(observedActorId, actorId);
+
+  const liveModel = await withOrbitModuleMode("live", async () =>
+    (
+      await import("../../app/(app)/app/schedule/events/[id]/event-preview-route-view-model")
+    ).loadAppScheduleEventPreviewRouteViewModel({
+      actorId,
+      eventId: "event_001",
+    }),
+  );
+
+  assert.equal(liveModel.state, "failure");
+  assert.doesNotMatch(
+    JSON.stringify(liveModel),
+    /种子轮投资人与创始人匹配沙龙|Orbit 关系室/,
+  );
+
+  const pageSource = source("app/(app)/app/schedule/events/[id]/page.tsx");
+  assert.match(pageSource, /const session = await auth\(\)/);
+  assert.match(pageSource, /actorId,/);
+  assert.match(pageSource, /redirect\(/);
 });
 
 test("schedule route states keep Chinese recovery copy for empty, pending, and failure", async () => {

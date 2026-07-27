@@ -20,6 +20,8 @@ import {
   type AppContactDetailBoundaryModel,
 } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { OrbitRealCardConnection } from "../orbit-real-card-connection";
+import { auth } from "../../../../../auth";
+import { redirect } from "next/navigation";
 
 export type AppContactDetailPageSearchParams = Record<
   string,
@@ -86,10 +88,19 @@ export default async function AppContactDetailPage({
   searchParams?: Promise<AppContactDetailPageSearchParams>;
 }) {
   const { id } = await params;
+  const session = await auth();
+  const actorId = session?.user?.id;
+  if (!actorId) {
+    redirect(
+      `/app/account/login?next=${encodeURIComponent(`/app/contacts/${id}`)}`,
+    );
+  }
+
   const query = await searchParams;
   const language = await getContactDetailPageLanguage();
   const routeModel = await loadAppContactDetailRoute({
     action: readSearchParam(query, "action"),
+    actorId,
     contactId: id,
     mode: readSearchParam(query, "mode"),
     scenario: readSearchParam(query, "scenario"),

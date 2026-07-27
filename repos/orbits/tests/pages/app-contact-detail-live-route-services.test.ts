@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
 
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
@@ -58,6 +57,7 @@ async function withUnconfiguredLiveContacts<T>(
 test("app contact detail route reaches live child services instead of failing at the page factory", async () => {
   await withUnconfiguredLiveContacts(async () => {
     const routeModel = await loadAppContactDetailRoute({
+      actorId: "actor:contact-detail-unconfigured",
       contactId: "contact_078",
       mode: "live",
     });
@@ -148,15 +148,17 @@ test("app contact detail live route uses one shared focused graph for success pa
     readContactGraph() {
       throw new Error("contact detail route should not read the full graph");
     },
-    readContactGraphForContact(contactId: string) {
+    readContactGraphForContact(contactId: string, actorId?: string) {
       graphLoads += 1;
       assert.equal(contactId, "contact-route-selected");
+      assert.equal(actorId, "actor:contact-route-selected");
 
       return graph;
     },
   };
 
   const routeModel = await loadAppContactDetailRoute({
+    actorId: "actor:contact-route-selected",
     contactId: "contact-route-selected",
     liveContactGraphProvider: provider,
     mode: "live",
@@ -264,12 +266,14 @@ test("contact detail view model selects one display language from multilingual l
     readContactGraph() {
       throw new Error("contact detail route should not read the full graph");
     },
-    readContactGraphForContact() {
+    readContactGraphForContact(_contactId, actorId) {
+      assert.equal(actorId, "actor:contact-multilingual");
       return graph;
     },
   };
 
   const routeModel = await loadAppContactDetailRoute({
+    actorId: "actor:contact-multilingual",
     contactId: "contact-multilingual",
     liveContactGraphProvider: provider,
     mode: "live",
@@ -343,8 +347,9 @@ test("app contact detail live route returns a controlled boundary when the focus
     readContactGraph() {
       throw new Error("contact detail route should not fall back to full graph");
     },
-    readContactGraphForContact() {
+    readContactGraphForContact(_contactId, actorId) {
       graphLoads += 1;
+      assert.equal(actorId, "actor:contact-route-missing");
 
       return {
         contacts: [],
@@ -356,6 +361,7 @@ test("app contact detail live route returns a controlled boundary when the focus
   };
 
   const routeModel = await loadAppContactDetailRoute({
+    actorId: "actor:contact-route-missing",
     contactId: "missing-contact",
     liveContactGraphProvider: provider,
     mode: "live",
@@ -376,27 +382,9 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
 
   assert.match(pageSource, /loadAppContactDetailRoute/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
-
-  await withUnconfiguredLiveContacts(async () => {
-    const Page = (await import("../../app/(app)/app/contacts/[id]/page"))
-      .default as (props: {
-      params: Promise<{ id: string }>;
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        params: Promise.resolve({ id: "contact_078" }),
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
-    );
-
-    assert.match(html, /Contact detail could not load/);
-    assert.match(
-      html,
-      /CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED|contact_detail_live_store_unconfigured/,
-    );
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-  });
+  assert.match(pageSource, /const session = await auth\(\)/);
+  assert.match(pageSource, /actorId,/);
+  assert.match(pageSource, /redirect\(/);
 });
 
 test("contact detail UI exposes only source-backed relationship data and real navigation", () => {

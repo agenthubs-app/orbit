@@ -60,6 +60,7 @@ export type AppContactDetailRouteState =
 
 export interface AppContactDetailRouteInput {
   action?: string | null;
+  actorId?: string | null;
   contactId: string;
   liveContactGraphProvider?: LiveContactsGraphProvider | null;
   mode?: ModuleMode | string;
@@ -433,12 +434,16 @@ function relationshipValueProviderForGraph(input: {
 }
 
 async function resolveLiveRouteServicesFromGraph(input: {
+  actorId: string;
   contactId: string;
   provider: LiveContactsGraphProvider;
 }): Promise<AppContactDetailRouteServices> {
   const graph = input.provider.readContactGraphForContact
-    ? await input.provider.readContactGraphForContact(input.contactId.trim())
-    : await input.provider.readContactGraph();
+    ? await input.provider.readContactGraphForContact(
+        input.contactId.trim(),
+        input.actorId,
+      )
+    : await input.provider.readContactGraph(input.actorId);
   const contactProvider = contactProviderForGraph({
     graph,
     provider: input.provider,
@@ -467,12 +472,14 @@ async function resolveLiveRouteServicesFromGraph(input: {
 
 async function loadComposedContactDetailRoute(input: {
   action?: string | null;
+  actorId?: string | null;
   contactId: string;
   scenario?: string | null;
   services: AppContactDetailRouteServices;
 }): Promise<AppContactDetailRouteModel> {
   const routeScenario = normalizeScenario(input.scenario);
   const contactResult = await input.services.contactDetail.getContactDetail({
+    actorId: input.actorId,
     contactId: input.contactId,
     scenario: routeScenario,
   });
@@ -545,10 +552,16 @@ async function loadComposedContactDetailRoute(input: {
 
 async function loadLiveAppContactDetailRoute(input: {
   action?: string | null;
+  actorId?: string | null;
   contactId: string;
   liveContactGraphProvider?: LiveContactsGraphProvider | null;
   scenario?: string | null;
 }): Promise<AppContactDetailRouteModel> {
+  const actorId = input.actorId?.trim();
+  if (!actorId) {
+    return createBoundaryModel("failure", ["CONTACT_DETAIL_ACTOR_REQUIRED"]);
+  }
+
   const provider =
     input.liveContactGraphProvider ?? createConfiguredStorageContactGraphProvider();
 
@@ -559,12 +572,14 @@ async function loadLiveAppContactDetailRoute(input: {
   }
 
   const services = await resolveLiveRouteServicesFromGraph({
+    actorId,
     contactId: input.contactId,
     provider,
   });
 
   return loadComposedContactDetailRoute({
     action: input.action,
+    actorId,
     contactId: input.contactId,
     scenario: input.scenario,
     services,
@@ -573,6 +588,7 @@ async function loadLiveAppContactDetailRoute(input: {
 
 export async function loadAppContactDetailRoute({
   action,
+  actorId,
   contactId,
   liveContactGraphProvider,
   mode,
@@ -583,6 +599,7 @@ export async function loadAppContactDetailRoute({
   if (resolveModuleMode(mode) === "live") {
     return loadLiveAppContactDetailRoute({
       action,
+      actorId,
       contactId,
       liveContactGraphProvider,
       scenario,
@@ -597,6 +614,7 @@ export async function loadAppContactDetailRoute({
 
   return loadComposedContactDetailRoute({
     action,
+    actorId,
     contactId,
     scenario,
     services,

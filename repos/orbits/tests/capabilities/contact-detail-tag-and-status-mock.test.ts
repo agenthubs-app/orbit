@@ -81,6 +81,7 @@ test("contact detail tag and status contract exposes detail tags status notes la
   const missing = service.getContactDetail({ contactId: "missing-contact" });
 
   assert.deepEqual(contract.CONTACT_DETAIL_TAG_STATUS_ERROR_CODES, [
+    "CONTACT_DETAIL_ACTOR_REQUIRED",
     "CONTACT_DETAIL_NOT_FOUND",
     "CONTACT_DETAIL_INVALID_PATCH_BODY",
     "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
@@ -285,26 +286,36 @@ test("mock contact detail tag and status service is deterministic with no extern
 });
 
 test("contact detail tag and status API route returns stable envelopes with empty and failure paths", async () => {
-  const detailRoute = await importProjectModule<{
-    GET: (
+  const detailHandler = await importProjectModule<{
+    createContactDetailGetHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-    PATCH: (
+    createContactDetailPatchHandler: (
+      resolveActor: () => Promise<{ id: string }>,
+    ) => (
       request: Request,
       context: { params: Promise<{ id: string }> },
     ) => Promise<Response>;
-  }>("app/api/contacts/[id]/route.ts");
+  }>("app/api/contacts/[id]/handler.ts");
+  const GET = detailHandler.createContactDetailGetHandler(async () => ({
+    id: "actor:contact-detail-api",
+  }));
+  const PATCH = detailHandler.createContactDetailPatchHandler(async () => ({
+    id: "actor:contact-detail-api",
+  }));
   const contract = await importProjectModule<
     typeof import("../../features/contacts/detail-contract")
   >("features/contacts/detail-contract.ts");
 
   const routeContext = { params: Promise.resolve({ id: "demo-contact-1" }) };
-  const getResponse = await detailRoute.GET(
+  const getResponse = await GET(
     new Request("https://orbit.local/api/contacts/demo-contact-1"),
     routeContext,
   );
-  const patchResponse = await detailRoute.PATCH(
+  const patchResponse = await PATCH(
     new Request("https://orbit.local/api/contacts/demo-contact-1", {
       body: JSON.stringify({
         addTags: ["topic:venture-ecosystem"],
@@ -327,19 +338,19 @@ test("contact detail tag and status API route returns stable envelopes with empt
     }),
     routeContext,
   );
-  const emptyResponse = await detailRoute.GET(
+  const emptyResponse = await GET(
     new Request(
       "https://orbit.local/api/contacts/demo-contact-1?scenario=empty",
     ),
     routeContext,
   );
-  const failureResponse = await detailRoute.GET(
+  const failureResponse = await GET(
     new Request(
       "https://orbit.local/api/contacts/demo-contact-1?scenario=failure",
     ),
     routeContext,
   );
-  const unsupportedResponse = await detailRoute.PATCH(
+  const unsupportedResponse = await PATCH(
     new Request("https://orbit.local/api/contacts/demo-contact-1", {
       body: JSON.stringify({ status: "blocked" }),
       headers: {
@@ -349,7 +360,7 @@ test("contact detail tag and status API route returns stable envelopes with empt
     }),
     routeContext,
   );
-  const pendingPatchResponse = await detailRoute.PATCH(
+  const pendingPatchResponse = await PATCH(
     new Request(
       "https://orbit.local/api/contacts/demo-contact-1?scenario=pending",
       {
@@ -362,7 +373,7 @@ test("contact detail tag and status API route returns stable envelopes with empt
     ),
     routeContext,
   );
-  const malformedPatchResponse = await detailRoute.PATCH(
+  const malformedPatchResponse = await PATCH(
     new Request("https://orbit.local/api/contacts/demo-contact-1", {
       body: "{",
       headers: {
@@ -469,6 +480,51 @@ test("contact detail tag and status API route returns stable envelopes with empt
       },
     },
   });
+});
+
+test("contact detail API handlers reject unauthenticated reads and previews", async () => {
+  const detailHandler = await importProjectModule<{
+    createContactDetailGetHandler: (
+      resolveActor: () => Promise<null>,
+    ) => (
+      request: Request,
+      context: { params: Promise<{ id: string }> },
+    ) => Promise<Response>;
+    createContactDetailPatchHandler: (
+      resolveActor: () => Promise<null>,
+    ) => (
+      request: Request,
+      context: { params: Promise<{ id: string }> },
+    ) => Promise<Response>;
+  }>("app/api/contacts/[id]/handler.ts");
+  const context = { params: Promise.resolve({ id: "demo-contact-1" }) };
+  const responses = await Promise.all([
+    detailHandler.createContactDetailGetHandler(async () => null)(
+      new Request("https://orbit.local/api/contacts/demo-contact-1"),
+      context,
+    ),
+    detailHandler.createContactDetailPatchHandler(async () => null)(
+      new Request("https://orbit.local/api/contacts/demo-contact-1", {
+        body: "{}",
+        method: "PATCH",
+      }),
+      context,
+    ),
+  ]);
+
+  for (const response of responses) {
+    assert.equal(response.status, 401);
+    const envelope = (await response.json()) as {
+      error?: { code?: string; context?: { privacy?: string } };
+      success: boolean;
+    };
+    assert.equal(envelope.success, false);
+    assert.equal(envelope.error?.code, "UNAUTHORIZED");
+    assert.equal(
+      envelope.error?.context?.privacy,
+      "authenticated-actor-required",
+    );
+  }
 });
 
 test("contact detail tag and status debug route renders all states and the live replacement handoff", async () => {

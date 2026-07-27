@@ -239,6 +239,7 @@ test("contact detail mapping translates live source and relationship tokens into
   };
 
   const routeModel = await routeModule.loadAppContactDetailRoute({
+    actorId: "actor:contact-recommendations",
     contactId: "contact_001",
     liveContactGraphProvider: {
       source: "live-record-store:contacts:test",
@@ -246,8 +247,9 @@ test("contact detail mapping translates live source and relationship tokens into
       readContactGraph() {
         throw new Error("contact detail route should read the focused graph");
       },
-      readContactGraphForContact(contactId: string) {
+      readContactGraphForContact(contactId: string, actorId?: string) {
         assert.equal(contactId, "contact_001");
+        assert.equal(actorId, "actor:contact-recommendations");
         return graph;
       },
     },

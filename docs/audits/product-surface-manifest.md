@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `5af862e24d7837519a4cfb931ebc699416beb6ec`
-- Deterministic generated timestamp (commit time): 2026-07-27T13:11:09+09:00
+- Indexed commit: `6dc82e752d673b849f89ed8aa9270e4e36bd11a9`
+- Deterministic generated timestamp (commit time): 2026-07-27T15:36:25+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
@@ -15,10 +15,10 @@
 | Route | Purpose | Access | Data sources | Actions | Tests | Static risks |
 | --- | --- | --- | --- | ---: | ---: | ---: |
 | `/app/account/forgot-password` | Password recovery | public-auth-entry | Live, Mock, User Confirmed | 13 | 1 | 0 |
-| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 13 | 6 | 0 |
+| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 13 | 13 | 0 |
 | `/app/account/mobile-google` | Mobile Google authentication completion | public-auth-entry | Live, Mock, User Confirmed | 2 | 2 | 0 |
-| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 13 | 9 | 0 |
-| `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 14 | 0 |
+| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 13 | 10 | 0 |
+| `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 19 | 0 |
 | `/app/admin/events` | Admin event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
 | `/app/admin` | Admin operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
 | `/app/agent` | Relationship operations Agent | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 76 | 30 | 0 |

@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "5af862e24d7837519a4cfb931ebc699416beb6ec",
-  "generatedAt": "2026-07-27T13:11:09+09:00",
+  "commit": "6dc82e752d673b849f89ed8aa9270e4e36bd11a9",
+  "generatedAt": "2026-07-27T15:36:25+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -674,10 +674,17 @@
       ],
       "testCoverage": [
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
+        "repos/orbits/tests/capabilities/agent-actor-brief-boundaries.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/capabilities/auth-user-service.test.ts",
         "repos/orbits/tests/pages/app-account-auth-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-contacts-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-events-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-home-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-today-merged.test.ts",
         "repos/orbits/tests/ui/auth-state-consistency.test.ts"
       ],
       "knownRisks": []
@@ -1103,6 +1110,7 @@
         "repos/orbits/tests/capabilities/event-live-seed.test.ts",
         "repos/orbits/tests/pages/app-account-auth-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-events-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-home-live-route-services.test.ts",
         "repos/orbits/tests/services/live-generated-fixture-seed.test.ts",
         "repos/orbits/tests/services/local-remote-relationship-schema.test.ts",
         "repos/orbits/tests/ui/auth-state-consistency.test.ts",
@@ -1282,12 +1290,17 @@
         "repos/orbits/tests/capabilities/agent-natural-language-actions.test.ts",
         "repos/orbits/tests/capabilities/agent-workflows-e2e.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
+        "repos/orbits/tests/capabilities/contact-detail-live-store.test.ts",
         "repos/orbits/tests/capabilities/contact-detail-tag-and-status-mock.test.ts",
+        "repos/orbits/tests/capabilities/contacts-list-search-and-filter-mock.test.ts",
         "repos/orbits/tests/capabilities/event-attendee-roster.test.ts",
+        "repos/orbits/tests/capabilities/event-crud-and-import.test.ts",
+        "repos/orbits/tests/capabilities/followup-task-generation-live-store.test.ts",
         "repos/orbits/tests/capabilities/network-distribution-analytics-mock.test.ts",
         "repos/orbits/tests/capabilities/network-distribution-live-store.test.ts",
         "repos/orbits/tests/capabilities/opportunity-reminder-analytics-mock.test.ts",
         "repos/orbits/tests/capabilities/permission-state-and-staged-authorization-mock.test.ts",
+        "repos/orbits/tests/capabilities/profile-signal-review-queue.test.ts",
         "repos/orbits/tests/pages/app-agent-todo-summary.test.tsx",
         "repos/orbits/tests/pages/app-contacts-list-filtering.test.ts",
         "repos/orbits/tests/pages/app-relationship-inbox-panel.test.tsx"
@@ -4872,7 +4885,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -9203,7 +9216,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -10612,6 +10625,7 @@
         "repos/orbits/tests/capabilities/connection-live-store.test.ts",
         "repos/orbits/tests/capabilities/contact-detail-live-store.test.ts",
         "repos/orbits/tests/capabilities/contacts-hybrid-local-remote-store.test.ts",
+        "repos/orbits/tests/capabilities/contacts-live-store.test.ts",
         "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts",
         "repos/orbits/tests/capabilities/email-and-calendar-relationship-signal-mock.test.ts",
         "repos/orbits/tests/capabilities/network-distribution-analytics-mock.test.ts",
@@ -10631,8 +10645,7 @@
         "repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx",
         "repos/orbits/tests/pages/app-agent-localization.test.tsx",
         "repos/orbits/tests/pages/app-contact-detail-live-route-services.test.ts",
-        "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts",
-        "repos/orbits/tests/pages/app-party-live-route-services.test.ts"
+        "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts"
       ],
       "knownRisks": []
     },
@@ -10682,7 +10695,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -13316,7 +13329,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -14795,7 +14808,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -16405,7 +16418,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -16956,7 +16969,7 @@
         {
           "actionId": "/app/events/[id]#27",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 286,
+          "line": 289,
           "kind": "link",
           "tag": "a",
           "label": "Continue registration profile guide / 继续填写报名资料",
@@ -16975,7 +16988,7 @@
         {
           "actionId": "/app/events/[id]#28",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 402,
+          "line": 405,
           "kind": "link",
           "tag": "a",
           "label": "Continue registration profile guide / 继续填写报名资料",
@@ -18417,7 +18430,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -19348,7 +19361,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -20620,7 +20633,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -23652,10 +23665,10 @@
         "repos/orbits/tests/capabilities/contact-acquisition-draft-live-store.test.ts",
         "repos/orbits/tests/capabilities/contact-acquisition-draft-pipeline.test.ts",
         "repos/orbits/tests/capabilities/contact-invitation-staged.test.ts",
+        "repos/orbits/tests/capabilities/contacts-list-search-and-filter-mock.test.ts",
         "repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts",
         "repos/orbits/tests/capabilities/duplicate-detection-and-merge-mock.test.ts",
-        "repos/orbits/tests/capabilities/duplicate-detection-merge-live-store.test.ts",
-        "repos/orbits/tests/capabilities/email-calendar-signal-live-store.test.ts"
+        "repos/orbits/tests/capabilities/duplicate-detection-merge-live-store.test.ts"
       ],
       "knownRisks": []
     },
@@ -26383,6 +26396,7 @@
         "repos/orbits/tests/capabilities/connection-live-store.test.ts",
         "repos/orbits/tests/capabilities/contact-detail-live-store.test.ts",
         "repos/orbits/tests/capabilities/contacts-hybrid-local-remote-store.test.ts",
+        "repos/orbits/tests/capabilities/contacts-live-store.test.ts",
         "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts",
         "repos/orbits/tests/capabilities/email-and-calendar-relationship-signal-mock.test.ts",
         "repos/orbits/tests/capabilities/network-distribution-analytics-mock.test.ts",
@@ -26402,8 +26416,7 @@
         "repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx",
         "repos/orbits/tests/pages/app-agent-localization.test.tsx",
         "repos/orbits/tests/pages/app-contact-detail-live-route-services.test.ts",
-        "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts",
-        "repos/orbits/tests/pages/app-party-live-route-services.test.ts"
+        "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts"
       ],
       "knownRisks": []
     },
@@ -29493,7 +29506,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -31880,7 +31893,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -33190,8 +33203,8 @@
         },
         {
           "actionId": "/app/today#64",
-          "sourceFile": "repos/orbits/app/(app)/app/today/page.tsx",
-          "line": 62,
+          "sourceFile": "repos/orbits/app/(app)/app/today/today-page-content.tsx",
+          "line": 64,
           "kind": "link",
           "tag": "a",
           "label": "{action.label}",

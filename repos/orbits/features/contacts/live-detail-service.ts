@@ -716,9 +716,18 @@ export function createLiveContactDetailTagStatusService({
   provider = null,
 }: LiveContactDetailTagStatusServiceOptions = {}): ContactDetailTagStatusService {
   async function loadPayload(input: {
+    actorId?: string | null;
     contactId: string;
     collectedAt: string;
   }): Promise<ContactDetailTagStatusResult> {
+    const actorId = input.actorId?.trim();
+    if (!actorId) {
+      return failure("CONTACT_DETAIL_ACTOR_REQUIRED", {
+        collectedAt: input.collectedAt,
+        provider,
+      });
+    }
+
     if (!provider) {
       return failure("CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED", {
         collectedAt: input.collectedAt,
@@ -727,8 +736,11 @@ export function createLiveContactDetailTagStatusService({
     }
 
     const graph = provider.readContactGraphForContact
-      ? await provider.readContactGraphForContact(input.contactId.trim())
-      : await provider.readContactGraph();
+      ? await provider.readContactGraphForContact(
+          input.contactId.trim(),
+          actorId,
+        )
+      : await provider.readContactGraph(actorId);
     const contact =
       graph.contacts.find((item) => item.id === input.contactId.trim()) ?? null;
 
@@ -757,6 +769,7 @@ export function createLiveContactDetailTagStatusService({
   return {
     async getContactDetail(input): Promise<ContactDetailTagStatusResult> {
       return loadPayload({
+        actorId: input.actorId,
         contactId: input.contactId,
         collectedAt: now(),
       });
@@ -791,6 +804,7 @@ export function createLiveContactDetailTagStatusService({
       }
 
       const loaded = await loadPayload({
+        actorId: input.actorId,
         contactId: input.contactId,
         collectedAt,
       });

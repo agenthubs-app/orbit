@@ -65,6 +65,7 @@ function activeRecord(input: {
 }
 
 test("live contact detail reads generated contact graph and previews tag status updates", async () => {
+  const actorId = "actor:contact-detail-live";
   const workspaceId = "workspace:contact-detail-live";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
@@ -73,6 +74,16 @@ test("live contact detail reads generated contact graph and previews tag status 
     store,
     workspaceId,
   });
+  for (const collectionName of ["contacts", "connections", "evidence"]) {
+    const records = await store.listRecords({ collectionName, workspaceId });
+    for (const record of records) {
+      await store.upsertRecord({
+        ...record,
+        userId: actorId,
+        payload: { ...record.payload, accountId: actorId },
+      });
+    }
+  }
 
   const provider = createStorageContactGraphProvider({
     sourceLabel: "Contact detail memory live storage",
@@ -84,7 +95,10 @@ test("live contact detail reads generated contact graph and previews tag status 
     provider,
   });
 
-  const detail = await service.getContactDetail({ contactId: "contact_078" });
+  const detail = await service.getContactDetail({
+    actorId,
+    contactId: "contact_078",
+  });
 
   assert.equal(detail.success, true);
   assert.equal(detail.data.contact?.id, "contact_078");
@@ -109,6 +123,7 @@ test("live contact detail reads generated contact graph and previews tag status 
   assert.equal(detail.data.provenance.externalNetworkRequested, false);
 
   const updated = await service.updateContactDetail({
+    actorId,
     addTags: ["topic:venture-ecosystem"],
     contactId: "contact_078",
     lastInteraction: {
@@ -286,6 +301,7 @@ test("live contact detail reads only evidence for the selected contact graph", a
   });
 
   const detail = await service.getContactDetail({
+    actorId: selectedConnection.accountId,
     contactId: selectedContact.id,
   });
 
@@ -306,4 +322,27 @@ test("live contact detail reads only evidence for the selected contact graph", a
     "evidence:selected-connection",
     "evidence:selected-contact",
   ]);
+});
+
+test("live contact detail requires an actor before provider access", async () => {
+  let providerRead = false;
+  const service = createLiveContactDetailTagStatusService({
+    provider: {
+      source: "test:contact-detail",
+      sourceLabel: "Test contact detail",
+      readContactGraph() {
+        providerRead = true;
+        throw new Error("provider must not run without an actor");
+      },
+    },
+  });
+
+  const result = await service.getContactDetail({ contactId: "contact:any" });
+
+  assert.equal(result.success, false);
+  assert.equal(providerRead, false);
+  if (!result.success) {
+    assert.equal(result.error.code, "CONTACT_DETAIL_ACTOR_REQUIRED");
+    assert.equal(result.error.provenance.databaseReadExecuted, false);
+  }
 });

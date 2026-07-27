@@ -6,6 +6,8 @@
  */
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../orbit-visual-freeze-runtime";
+import { auth } from "../../../../../../auth";
+import { redirect } from "next/navigation";
 import { loadAppScheduleEventPreviewRouteViewModel } from "./event-preview-route-view-model";
 import { OrbitRealScheduleEvent } from "./orbit-real-schedule-event";
 
@@ -15,7 +17,18 @@ export default async function AppScheduleEventPreviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const model = await loadAppScheduleEventPreviewRouteViewModel({ eventId: id });
+  const session = await auth();
+  const actorId = session?.user?.id;
+  if (!actorId) {
+    redirect(
+      `/app/account/login?next=${encodeURIComponent(`/app/schedule/events/${id}`)}`,
+    );
+  }
+
+  const model = await loadAppScheduleEventPreviewRouteViewModel({
+    actorId,
+    eventId: id,
+  });
 
   return (
     <>

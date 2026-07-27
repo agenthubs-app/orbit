@@ -14,8 +14,6 @@ import {
   scheduleEventVenue,
 } from "../../schedule-event-display";
 
-const schedulePreviewProbeMode: ModuleMode = "mock";
-
 export interface AppScheduleEventPreviewRouteServices {
   events: EventCrudAndImportService;
 }
@@ -55,10 +53,14 @@ function normalizeEventId(eventId: string): string {
 }
 
 async function loadEventResult(input: {
+  actorId?: string | null;
   eventId: string;
   services: AppScheduleEventPreviewRouteServices;
 }): Promise<EventDetailResult> {
-  return input.services.events.getEvent({ eventId: input.eventId });
+  return input.services.events.getEvent({
+    actorId: input.actorId,
+    eventId: input.eventId,
+  });
 }
 
 function createPreviewServices(
@@ -104,20 +106,18 @@ function failureViewModel(
 }
 
 export async function loadAppScheduleEventPreviewRouteViewModel(input: {
+  actorId?: string | null;
   eventId: string;
   mode?: ModuleMode | string;
   services?: AppScheduleEventPreviewRouteServices;
 }): Promise<AppScheduleEventPreviewRouteViewModel> {
   const eventId = normalizeEventId(input.eventId);
   const services = input.services ?? createPreviewServices(input.mode);
-  let result = await loadEventResult({ eventId, services });
-
-  if (result.success === false && !input.services && input.mode === undefined) {
-    result = await loadEventResult({
-      eventId,
-      services: createPreviewServices(schedulePreviewProbeMode),
-    });
-  }
+  const result = await loadEventResult({
+    actorId: input.actorId,
+    eventId,
+    services,
+  });
 
   if (result.success === false) {
     return failureViewModel(result);

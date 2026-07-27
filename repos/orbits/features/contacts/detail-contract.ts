@@ -35,6 +35,7 @@ export type ContactDetailStatusOption =
   (typeof CONTACT_DETAIL_STATUS_OPTIONS)[number];
 
 export const CONTACT_DETAIL_TAG_STATUS_ERROR_CODES = [
+  "CONTACT_DETAIL_ACTOR_REQUIRED",
   "CONTACT_DETAIL_NOT_FOUND",
   "CONTACT_DETAIL_INVALID_PATCH_BODY",
   "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
@@ -63,6 +64,14 @@ export interface ContactDetailTagStatusErrorDefinition {
 }
 
 export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
+  CONTACT_DETAIL_ACTOR_REQUIRED: {
+    code: "CONTACT_DETAIL_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message:
+      "An authenticated actor is required before reading live contact details.",
+    recovery:
+      "Sign in and retry; do not read workspace-wide contact details without an actor boundary.",
+  },
   CONTACT_DETAIL_NOT_FOUND: {
     code: "CONTACT_DETAIL_NOT_FOUND",
     appCode: "NOT_FOUND",
@@ -265,6 +274,7 @@ export interface ContactDetailTagStatusPayload {
 }
 
 export interface ContactDetailLookupInput {
+  actorId?: string | null;
   contactId: string;
   scenario?: ContactDetailTagStatusScenario | string | null;
 }
