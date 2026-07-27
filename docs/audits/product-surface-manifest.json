@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "c599360f0e3a3763ade1a94cb08c878816e5fff3",
-  "generatedAt": "2026-07-27T18:40:54+09:00",
+  "commit": "dabb03a61dcdd3be2a6b2611f06ccdddd791a2a8",
+  "generatedAt": "2026-07-27T19:17:35+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -2589,10 +2589,10 @@
         {
           "actionId": "/app/agent#21",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1275,
+          "line": 1296,
           "kind": "keyboard-handler",
           "tag": "textarea",
-          "label": "t({ en: \"Ask Orbit\", zh: \"问问 Orbit\" })",
+          "label": "t({\n          en: \"Ask Orbit about contacts, events, and relationship to-dos\",\n          zh: \"询问 Orbit 人脉、活动与关系待办\",\n        })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -2610,10 +2610,10 @@
         {
           "actionId": "/app/agent#22",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1298,
+          "line": 1323,
           "kind": "button",
           "tag": "button",
-          "label": "t({ en: \"Send\", zh: \"发送\" })",
+          "label": "t({ en: \"Send Ask Orbit message\", zh: \"发送给 Orbit\" })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -2631,7 +2631,7 @@
         {
           "actionId": "/app/agent#23",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1950,
+          "line": 1997,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Chat history\", zh: \"对话历史\" })",
@@ -2652,7 +2652,7 @@
         {
           "actionId": "/app/agent#24",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1960,
+          "line": 2007,
           "kind": "button",
           "tag": "button",
           "label": "New chat",
@@ -2673,7 +2673,7 @@
         {
           "actionId": "/app/agent#25",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1972,
+          "line": 2019,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })",
@@ -2694,7 +2694,7 @@
         {
           "actionId": "/app/agent#26",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2047,
+          "line": 2094,
           "kind": "click-handler",
           "tag": "div",
           "label": null,
@@ -2715,7 +2715,7 @@
         {
           "actionId": "/app/agent#27",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2052,
+          "line": 2099,
           "kind": "click-handler",
           "tag": "IconButton",
           "label": "t({ en: \"Close\", zh: \"关闭\" })",
@@ -2736,7 +2736,7 @@
         {
           "actionId": "/app/agent#28",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2055,
+          "line": 2102,
           "kind": "button",
           "tag": "button",
           "label": "New chat",
@@ -2757,7 +2757,7 @@
         {
           "actionId": "/app/agent#29",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2068,
+          "line": 2115,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -21769,13 +21769,14 @@
       "testCoverage": [
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-live-store.test.ts",
-        "repos/orbits/tests/capabilities/orbit-ai-chat-context-live-artifact.test.ts",
         "repos/orbits/tests/capabilities/orbit-ai-live-command-and-proactive.test.ts",
         "repos/orbits/tests/capabilities/orbit-ai-service-scope.test.ts",
         "repos/orbits/tests/capabilities/profile-document-extraction-mock.test.ts",
         "repos/orbits/tests/capabilities/profile-live-store.test.ts",
         "repos/orbits/tests/pages/app-account-auth-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-agent-chat-history.test.ts",
+        "repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx",
+        "repos/orbits/tests/pages/app-agent-todo-summary.test.tsx",
         "repos/orbits/tests/pages/app-demo-visual-assets.test.tsx",
         "repos/orbits/tests/pages/app-home-demo-localization.test.ts",
         "repos/orbits/tests/pages/app-home-events-source.test.ts",

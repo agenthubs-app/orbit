@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `c599360f0e3a3763ade1a94cb08c878816e5fff3`
-- Deterministic generated timestamp (commit time): 2026-07-27T18:40:54+09:00
+- Indexed commit: `dabb03a61dcdd3be2a6b2611f06ccdddd791a2a8`
+- Deterministic generated timestamp (commit time): 2026-07-27T19:17:35+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
@@ -37,7 +37,7 @@
 | `/app/events` | Event discovery | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 34 | 30 | 0 |
 | `/app/followups` | Follow-up workspace | authenticated | Unclassified | 0 | 30 | 0 |
 | `/app/home/events` | Event discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 30 | 0 |
-| `/app/home` | Authenticated home | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 21 | 0 |
+| `/app/home` | Authenticated home | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 22 | 0 |
 | `/app/login-admin` | Legacy admin sign in entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 1 | 0 |
 | `/app/o/[slug]` | Organizer public profile | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 23 | 30 | 0 |
 | `/app` | Public product entry | public-at-proxy | Live, Mock, Derived, User Confirmed | 40 | 30 | 0 |
