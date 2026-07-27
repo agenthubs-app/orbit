@@ -19,7 +19,7 @@ function PreviewActions({
       style={{
         display: "flex",
         flexWrap: "wrap",
-        gap: 10,
+        gap: 8,
       }}
     >
       {actions.map((action, index) => (
@@ -64,7 +64,7 @@ function ScheduleEventPreviewSuccess({
             className="card"
             style={{
               display: "grid",
-              gap: 18,
+              gap: 16,
               padding: "clamp(18px, 4vw, 28px)",
             }}
           >
@@ -138,14 +138,14 @@ function ScheduleEventPreviewSuccess({
                   {model.event.statusLabel}
                 </span>
               </div>
-              <div style={{ display: "grid", gap: 9 }}>
+              <div style={{ display: "grid", gap: 8 }}>
                 <span
                   style={{
                     alignItems: "center",
                     color: "var(--text-3)",
                     display: "inline-flex",
                     fontSize: 13,
-                    gap: 7,
+                    gap: 8,
                     minWidth: 0,
                     overflowWrap: "anywhere",
                   }}
@@ -159,7 +159,7 @@ function ScheduleEventPreviewSuccess({
                     color: "var(--text-3)",
                     display: "inline-flex",
                     fontSize: 13,
-                    gap: 7,
+                    gap: 8,
                     minWidth: 0,
                     overflowWrap: "anywhere",
                   }}

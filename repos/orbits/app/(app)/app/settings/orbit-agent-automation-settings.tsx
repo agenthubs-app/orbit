@@ -549,7 +549,7 @@ export function OrbitAgentAutomationSettings() {
           <h2 id="orbit-agent-automation-title" style={{ color: "var(--ink)", fontSize: 18, margin: 0 }}>
             {t({ en: "Agent Playbooks", zh: "Agent Playbook" })}
           </h2>
-          <p style={{ color: "var(--text-3)", fontSize: 13.5, lineHeight: 1.6, margin: "6px 0 18px" }}>
+          <p style={{ color: "var(--text-3)", fontSize: 14, lineHeight: 1.6, margin: "6px 0 18px" }}>
             {t({
               en: "Describe a recurring relationship review, inspect the compiled trigger, and trial it before enabling. Playbooks stay read-only.",
               zh: "用自然语言描述关系工作，复核生成的触发条件，并可先试运行再启用。Playbook 始终只读。",
@@ -563,7 +563,7 @@ export function OrbitAgentAutomationSettings() {
               border: "1px solid var(--border)",
               borderRadius: 12,
               display: "grid",
-              gap: 10,
+              gap: 8,
               marginBottom: 16,
               padding: 14,
             }}
@@ -596,7 +596,7 @@ export function OrbitAgentAutomationSettings() {
               </button>
             </div>
             {draft ? (
-              <div data-agent-playbook-draft style={{ color: "var(--text)", fontSize: 12.5, lineHeight: 1.55 }}>
+              <div data-agent-playbook-draft style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.55 }}>
                 <strong>{t({ en: "Why this draft", zh: "草案说明" })}: </strong>
                 {draft.explanation}
                 {draft.assumptions.length > 0 ? (
@@ -611,7 +611,7 @@ export function OrbitAgentAutomationSettings() {
           </div>
 
           <div style={{ display: "grid", gap: 12 }}>
-            <label style={{ display: "grid", fontSize: 13, gap: 6 }}>
+            <label style={{ display: "grid", fontSize: 13, gap: 8 }}>
               {t({ en: "Review type", zh: "复核类型" })}
               <select aria-label={t({ en: "Review type", zh: "复核类型" })} onChange={(event) => setCapabilityId(event.target.value)} style={controlStyle} value={capabilityId}>
                 {capabilityOptions.map((option) => (
@@ -619,15 +619,15 @@ export function OrbitAgentAutomationSettings() {
                 ))}
               </select>
             </label>
-            <label style={{ display: "grid", fontSize: 13, gap: 6 }}>
+            <label style={{ display: "grid", fontSize: 13, gap: 8 }}>
               {t({ en: "Name", zh: "名称" })}
               <input aria-label={t({ en: "Playbook name", zh: "Playbook 名称" })} maxLength={120} onChange={(event) => setTitle(event.target.value)} style={controlStyle} value={title} />
             </label>
-            <label style={{ display: "grid", fontSize: 13, gap: 6 }}>
+            <label style={{ display: "grid", fontSize: 13, gap: 8 }}>
               {t({ en: "What should Orbit review?", zh: "希望 Orbit 复核什么？" })}
               <textarea aria-label={t({ en: "Playbook instruction", zh: "Playbook 指令" })} maxLength={4000} onChange={(event) => setInstruction(event.target.value)} rows={3} style={{ ...controlStyle, resize: "vertical" }} value={instruction} />
             </label>
-            <label style={{ display: "grid", fontSize: 13, gap: 6 }}>
+            <label style={{ display: "grid", fontSize: 13, gap: 8 }}>
               {t({ en: "Trigger", zh: "触发方式" })}
               <select aria-label={t({ en: "Trigger", zh: "触发方式" })} onChange={(event) => setTriggerKind(event.target.value as TriggerKind)} style={controlStyle} value={triggerKind}>
                 <option value="schedule">{t({ en: "Schedule", zh: "按时间" })}</option>
@@ -637,8 +637,8 @@ export function OrbitAgentAutomationSettings() {
 
             {triggerKind === "schedule" ? (
               <>
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-                  <label style={{ display: "grid", fontSize: 13, gap: 6 }}>
+                <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                  <label style={{ display: "grid", fontSize: 13, gap: 8 }}>
                     {t({ en: "Frequency", zh: "运行频率" })}
                     <select aria-label={t({ en: "Frequency", zh: "运行频率" })} onChange={(event) => setScheduleKind(event.target.value as ScheduleKind)} style={controlStyle} value={scheduleKind}>
                       <option value="once">{t({ en: "One time", zh: "一次" })}</option>
@@ -647,19 +647,19 @@ export function OrbitAgentAutomationSettings() {
                     </select>
                   </label>
                   {scheduleKind === "once" ? (
-                    <label style={{ display: "grid", fontSize: 13, gap: 6 }}>
+                    <label style={{ display: "grid", fontSize: 13, gap: 8 }}>
                       {t({ en: "Run at", zh: "运行时间" })}
                       <input aria-label={t({ en: "Run at", zh: "运行时间" })} onChange={(event) => setOnceAt(event.target.value)} style={controlStyle} type="datetime-local" value={onceAt} />
                     </label>
                   ) : (
-                    <label style={{ display: "grid", fontSize: 13, gap: 6 }}>
+                    <label style={{ display: "grid", fontSize: 13, gap: 8 }}>
                       {t({ en: "Local time", zh: "本地时间" })}
                       <input aria-label={t({ en: "Local time", zh: "本地时间" })} onChange={(event) => setTime(event.target.value)} style={controlStyle} type="time" value={time} />
                     </label>
                   )}
                 </div>
                 {scheduleKind === "weekly" ? (
-                  <div aria-label={t({ en: "Weekdays", zh: "星期" })} role="group" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  <div aria-label={t({ en: "Weekdays", zh: "星期" })} role="group" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {weekdayOptions.map((option) => (
                       <button aria-pressed={daysOfWeek.includes(option.value)} className={`btn btn-sm ${daysOfWeek.includes(option.value) ? "btn-primary" : "btn-ghost"}`} key={option.value} onClick={() => toggleWeekday(option.value)} type="button">
                         {option[language]}
@@ -669,15 +669,15 @@ export function OrbitAgentAutomationSettings() {
                 ) : null}
               </>
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                <div aria-label={t({ en: "Signal types", zh: "信号类型" })} role="group" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+              <div style={{ display: "grid", gap: 8 }}>
+                <div aria-label={t({ en: "Signal types", zh: "信号类型" })} role="group" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {signalOptions.map((option) => (
                     <button aria-pressed={signalTypes.includes(option.value)} className={`btn btn-sm ${signalTypes.includes(option.value) ? "btn-primary" : "btn-ghost"}`} key={option.value} onClick={() => toggleSignal(option.value)} type="button">
                       {option[language]}
                     </button>
                   ))}
                 </div>
-                <label style={{ display: "grid", fontSize: 13, gap: 6 }}>
+                <label style={{ display: "grid", fontSize: 13, gap: 8 }}>
                   {t({ en: "Minimum importance", zh: "最低重要性" })}
                   <input aria-label={t({ en: "Minimum importance", zh: "最低重要性" })} max={100} min={0} onChange={(event) => setMinimumImportance(Number(event.target.value))} style={controlStyle} type="number" value={minimumImportance} />
                 </label>
@@ -711,7 +711,7 @@ export function OrbitAgentAutomationSettings() {
             <div data-agent-playbook-trial style={{ background: "var(--bg-soft)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 13, lineHeight: 1.6, marginTop: 14, padding: 14 }}>
               <strong>{t({ en: "Trial result — no side effects", zh: "试运行结果 · 无副作用" })}</strong>
               <p style={{ margin: "7px 0" }}>{trial.summary}</p>
-              <span style={{ color: "var(--text-3)", fontSize: 11.5 }}>
+              <span style={{ color: "var(--text-3)", fontSize: 12 }}>
                 {trial.sourceModules.join(" · ") || "orbit-ai"} · {trial.evidenceIds.length} {t({ en: "evidence records", zh: "条依据" })}
               </span>
             </div>
@@ -719,7 +719,7 @@ export function OrbitAgentAutomationSettings() {
           {error ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{error}</p> : null}
           {notice ? <p role="status" style={{ color: "var(--accent)", fontSize: 13 }}>{notice}</p> : null}
 
-          <div style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 10, marginTop: 20, paddingTop: 18 }}>
+          <div style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 8, marginTop: 20, paddingTop: 18 }}>
             <strong style={{ fontSize: 14 }}>{t({ en: "Your Playbooks", zh: "你的 Playbook" })}</strong>
             {loading ? (
               <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{t({ en: "Loading…", zh: "正在加载…" })}</p>
@@ -729,10 +729,10 @@ export function OrbitAgentAutomationSettings() {
               automations.map((automation) => {
                 const pending = pendingId === automation.automationId;
                 return (
-                  <article data-agent-automation-id={automation.automationId} key={automation.automationId} style={{ background: "var(--bg-soft)", border: "1px solid var(--border)", borderRadius: 12, display: "grid", gap: 9, padding: 14 }}>
-                    <div style={{ alignItems: "flex-start", display: "flex", gap: 10, justifyContent: "space-between" }}>
+                  <article data-agent-automation-id={automation.automationId} key={automation.automationId} style={{ background: "var(--bg-soft)", border: "1px solid var(--border)", borderRadius: 12, display: "grid", gap: 8, padding: 14 }}>
+                    <div style={{ alignItems: "flex-start", display: "flex", gap: 8, justifyContent: "space-between" }}>
                       <div>
-                        <div style={{ color: "var(--ink)", fontWeight: 650 }}>{automation.title}</div>
+                        <div style={{ color: "var(--ink)", fontWeight: 600 }}>{automation.title}</div>
                         <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>
                           {capabilityLabel[automation.capabilityId] ?? automation.capabilityId} · v{automation.version}
                         </div>
@@ -754,10 +754,10 @@ export function OrbitAgentAutomationSettings() {
                       {formatTrigger(automation.trigger, displayLanguage)} · {formatNextRun(automation.nextRunAt, displayLanguage, automation.trigger)} · {t({ en: `${automation.runCount} runs`, zh: `已运行 ${automation.runCount} 次` })}
                     </div>
                     {automation.lastRun ? (
-                      <div data-agent-automation-last-result style={{ background: "var(--bg)", borderRadius: 9, color: "var(--text)", fontSize: 12.5, lineHeight: 1.55, padding: "9px 10px" }}>
+                      <div data-agent-automation-last-result style={{ background: "var(--bg)", borderRadius: 9, color: "var(--text)", fontSize: 13, lineHeight: 1.55, padding: "9px 10px" }}>
                         <strong>{t({ en: "Latest result", zh: "最近结果" })}: </strong>
                         {automation.lastRun.summary}
-                        <div style={{ color: "var(--text-3)", fontSize: 11.5, marginTop: 5 }}>
+                        <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 5 }}>
                           {(automation.lastRun.sourceModules ?? []).join(" · ") || "orbit-ai"} · {(automation.lastRun.evidenceIds ?? []).length} {t({ en: "evidence records", zh: "条依据" })}
                         </div>
                       </div>
@@ -766,7 +766,7 @@ export function OrbitAgentAutomationSettings() {
                       <summary style={{ color: "var(--text-3)", cursor: "pointer", fontSize: 12 }}>
                         {t({ en: "Version history", zh: "版本记录" })} ({automation.revisions.length})
                       </summary>
-                      <ol style={{ color: "var(--text-3)", fontSize: 11.5, margin: "7px 0 0", paddingLeft: 18 }}>
+                      <ol style={{ color: "var(--text-3)", fontSize: 12, margin: "7px 0 0", paddingLeft: 18 }}>
                         {[...automation.revisions].reverse().map((revision) => (
                           <li key={`${revision.version}:${revision.createdAt}`}>
                             v{revision.version} · {revision.changeNote}
@@ -774,7 +774,7 @@ export function OrbitAgentAutomationSettings() {
                         ))}
                       </ol>
                     </details>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       <button className="btn btn-sm btn-primary" disabled={pending || automation.status === "running"} onClick={() => void runNow(automation)} type="button">{t({ en: "Run now", zh: "立即运行" })}</button>
                       <button className="btn btn-sm btn-ghost" disabled={pending || automation.status === "running"} onClick={() => edit(automation)} type="button">{t({ en: "Edit", zh: "编辑" })}</button>
                       <button className="btn btn-sm btn-ghost" disabled={pending || automation.status === "running"} onClick={() => void updateStatus(automation, automation.status === "paused" ? "active" : "paused")} type="button">

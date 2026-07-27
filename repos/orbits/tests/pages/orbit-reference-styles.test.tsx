@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import { renderToStaticMarkup } from "react-dom/server";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -20,88 +21,74 @@ async function importProjectModule<TModule>(
   return (await import(pathToFileURL(absolutePath).href)) as TModule;
 }
 
-test("Orbit reference styles render as an external stylesheet link", async () => {
+test("Orbit reference styles link the generated asset and keep only product overrides inline", async () => {
   const referenceStyles = await importProjectModule<{
-    OrbitReferenceStyles: () => {
-      props: {
-        dangerouslySetInnerHTML?: unknown;
-        href?: string;
-        rel?: string;
-      };
-      type: string;
-    };
+    OrbitReferenceStyles: () => React.ReactNode;
   }>("app/(app)/app/orbit-reference-styles.tsx");
 
-  const element = referenceStyles.OrbitReferenceStyles();
+  const html = renderToStaticMarkup(referenceStyles.OrbitReferenceStyles());
 
-  assert.equal(element.type, "link");
-  assert.equal(element.props.rel, "stylesheet");
-  assert.equal(element.props.href, "/api/orbit-reference/styles");
-  assert.equal(element.props.dangerouslySetInnerHTML, undefined);
+  assert.match(
+    html,
+    /<link[^>]+href="\/orbit-reference\/orbit-reference\.generated\.css"[^>]+rel="stylesheet"/,
+  );
+  assert.match(html, /<style>/);
+  assert.match(html, /reactReferenceIsolationStyles|data-orbit-real-page/);
+  assert.ok(
+    html.length < 250_000,
+    "rendered product overrides must not inline the multi-megabyte prototype base",
+  );
 });
 
-test("Orbit reference stylesheet route serves extracted prototype CSS", async () => {
-  const route = await importProjectModule<{
-    GET: (request?: Request) => Response;
-  }>("app/api/orbit-reference/styles/route.ts");
+test("generated Orbit reference stylesheet contains the extracted prototype CSS", () => {
+  const generatedPath = join(
+    projectRoot,
+    "public/orbit-reference/orbit-reference.generated.css",
+  );
+  assert.equal(existsSync(generatedPath), true);
+  const css = readFileSync(generatedPath, "utf8");
 
-  const response = route.GET();
-  const css = await response.text();
-
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /text\/css/);
-  assert.match(response.headers.get("cache-control") ?? "", /max-age/);
-  assert.match(response.headers.get("etag") ?? "", /^"orbit-reference-styles-/);
-  assert.match(css, /data-orbit-real-page/);
-  assert.match(css, /orbit-home-main-grid/);
+  assert.match(css, /:root\s*\{/);
+  assert.match(css, /orbit-home-hero/);
   assert.match(css, /orbit-top-nav/);
   assert.ok(
-    css.length > 1_000_000,
-    "external stylesheet should still contain the extracted prototype CSS",
+    css.length > 100_000,
+    "generated asset should retain the extracted prototype CSS",
+  );
+  assert.ok(
+    css.length < 500_000,
+    "unused embedded font families must stay stripped from the static asset",
   );
 });
 
-test("Orbit reference stylesheet route short-circuits matching cache validators", async () => {
-  const route = await importProjectModule<{
-    GET: (request?: Request) => Response;
-  }>("app/api/orbit-reference/styles/route.ts");
-
-  const initialResponse = route.GET();
-  const etag = initialResponse.headers.get("etag");
-
-  assert.ok(etag);
-
-  const cachedResponse = route.GET(
-    new Request("https://orbit.local/api/orbit-reference/styles", {
-      headers: {
-        "if-none-match": etag,
-      },
-    }),
+test("reference CSS build writes the same static path used by the product component", () => {
+  const buildSource = readFileSync(
+    join(projectRoot, "scripts/build-reference-css.mjs"),
+    "utf8",
   );
-  const css = await cachedResponse.text();
+  const componentSource = readFileSync(
+    join(projectRoot, "app/(app)/app/orbit-reference-styles.tsx"),
+    "utf8",
+  );
 
-  assert.equal(cachedResponse.status, 304);
-  assert.equal(cachedResponse.headers.get("etag"), etag);
-  assert.equal(css, "");
+  assert.match(
+    buildSource,
+    /public\/orbit-reference\/orbit-reference\.generated\.css/,
+  );
+  assert.match(
+    componentSource,
+    /\/orbit-reference\/orbit-reference\.generated\.css/,
+  );
+  assert.doesNotMatch(componentSource, /\/api\/orbit-reference\/styles/);
 });
 
-test("Orbit reference stylesheet route disables browser caching in development", async () => {
-  const route = await importProjectModule<{
-    GET: (request?: Request) => Response;
-  }>("app/api/orbit-reference/styles/route.ts");
-  const previousNodeEnv = process.env.NODE_ENV;
+test("reference CSS build strips only the unused embedded font families", () => {
+  const buildSource = readFileSync(
+    join(projectRoot, "scripts/build-reference-css.mjs"),
+    "utf8",
+  );
 
-  try {
-    process.env.NODE_ENV = "development";
-
-    const response = route.GET();
-
-    assert.equal(response.headers.get("cache-control"), "no-store");
-  } finally {
-    if (previousNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = previousNodeEnv;
-    }
-  }
+  assert.match(buildSource, /UNUSED_FONT_FAMILIES = \["Inter", "Inter Tight", "Geist Mono"\]/);
+  assert.match(buildSource, /stripUnusedFontFaces\(raw\)/);
+  assert.match(buildSource, /fs\.writeFileSync\(outputPath, stripped, "utf8"\)/);
 });

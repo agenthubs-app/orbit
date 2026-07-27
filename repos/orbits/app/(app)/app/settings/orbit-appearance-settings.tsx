@@ -44,7 +44,7 @@ export function OrbitAppearanceSettings() {
           <h2 id="orbit-appearance-title" style={{ color: "var(--ink)", fontSize: 18, margin: 0 }}>
             {t({ en: "Appearance", zh: "外观" })}
           </h2>
-          <p style={{ color: "var(--text-3)", fontSize: 13.5, lineHeight: 1.6, margin: "6px 0 18px" }}>
+          <p style={{ color: "var(--text-3)", fontSize: 14, lineHeight: 1.6, margin: "6px 0 18px" }}>
             {t({
               en: "Choose the color mode used across Orbit on this device.",
               zh: "选择此设备上 Orbit 全站使用的明暗配色。",
@@ -53,7 +53,7 @@ export function OrbitAppearanceSettings() {
           <div
             aria-label={t({ en: "Color mode", zh: "颜色模式" })}
             role="group"
-            style={{ display: "flex", flexWrap: "wrap", gap: 10 }}
+            style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
           >
             <button
               aria-pressed={theme === "light"}

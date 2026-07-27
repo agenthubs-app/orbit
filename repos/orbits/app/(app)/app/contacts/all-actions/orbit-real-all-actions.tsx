@@ -201,7 +201,7 @@ function EntryRow({
           </section>
           <section>
             <h3>证据与追踪</h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {entry.evidenceChips.map((chip) => (
                 <span className="chip" key={chip.evidenceId}>
                   {chip.label} · {chip.evidenceId}

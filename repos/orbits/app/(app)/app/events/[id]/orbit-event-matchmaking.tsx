@@ -74,18 +74,18 @@ function RequestCard({
       data-matchmaking-request={request.requestId}
       style={{ display: "grid", gap: 12, padding: 14 }}
     >
-      <div style={{ display: "flex", gap: 10, justifyContent: "space-between" }}>
+      <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
         <div>
-          <strong style={{ color: "var(--ink)", fontSize: 14.5 }}>
+          <strong style={{ color: "var(--ink)", fontSize: 15 }}>
             {other.displayName}
           </strong>
           {other.organization ? (
-            <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 2 }}>
+            <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>
               {other.organization}
             </div>
           ) : null}
         </div>
-        <span className="chip" style={{ fontSize: 11.5 }}>
+        <span className="chip" style={{ fontSize: 12 }}>
           {isIncoming
             ? t({ en: "Incoming", zh: "对方申请" })
             : t({ en: "Your request", zh: "我的申请" })}
@@ -124,7 +124,7 @@ function RequestCard({
       ) : null}
 
       {request.status === "awaiting_target_consent" && !isIncoming ? (
-        <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: 0 }}>
+        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
           {t({
             en: "Waiting for the other participant. No contact details have been shared.",
             zh: "等待对方决定，联系方式尚未披露。",
@@ -136,7 +136,7 @@ function RequestCard({
         <div style={{ display: "grid", gap: 8 }}>
           <label
             htmlFor={`match-slot-${request.requestId}`}
-            style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 650 }}
+            style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600 }}
           >
             {t({
               en: "Calendar is not connected. Propose a time manually",
@@ -175,7 +175,7 @@ function RequestCard({
       ) : null}
 
       {request.status === "accepted" && isIncoming ? (
-        <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: 0 }}>
+        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
           {t({
             en: "You both agreed. Waiting for the requester to propose a time.",
             zh: "双方已经同意，等待对方提议时间。",
@@ -216,7 +216,7 @@ function RequestCard({
       ) : null}
 
       {request.status === "scheduling" && !isIncoming ? (
-        <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: 0 }}>
+        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
           {t({
             en: "Time proposed. Waiting for the other participant to choose.",
             zh: "时间已经提议，等待对方选择。",
@@ -225,7 +225,7 @@ function RequestCard({
       ) : null}
 
       {request.status === "scheduled" ? (
-        <p style={{ color: "var(--success)", fontSize: 13.5, margin: 0 }}>
+        <p style={{ color: "var(--success)", fontSize: 14, margin: 0 }}>
           {t({ en: "Confirmed for", zh: "已确认时间" })}{" "}
           {request.selectedSlot
             ? new Intl.DateTimeFormat(undefined, {
@@ -237,7 +237,7 @@ function RequestCard({
       ) : null}
 
       {request.status === "declined" ? (
-        <p style={{ color: "var(--text-3)", fontSize: 13.5, margin: 0 }}>
+        <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>
           {t({
             en: "This introduction was declined. No contact details were shared.",
             zh: "本次介绍未达成，联系方式没有披露。",
@@ -251,7 +251,7 @@ function RequestCard({
           color: "var(--text-3)",
           display: "flex",
           fontSize: 12,
-          gap: 6,
+          gap: 8,
         }}
       >
         <Icon name={request.contactDetailsDisclosed ? "check" : "lock"} size={13} />
@@ -348,14 +348,14 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
       aria-labelledby="event-matchmaking-title"
       className="card"
       data-event-matchmaking
-      style={{ display: "grid", gap: 14, padding: 16 }}
+      style={{ display: "grid", gap: 16, padding: 16 }}
     >
-      <div style={{ display: "grid", gap: 5 }}>
+      <div style={{ display: "grid", gap: 4 }}>
         <span className="eyebrow">ORBIT MATCH</span>
         <h3 className="h-section" id="event-matchmaking-title" style={{ margin: 0 }}>
           {t({ en: "People worth meeting", zh: "值得认识的人" })}
         </h3>
-        <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: 0 }}>
+        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
           {workspace?.privacyNotice ??
             t({
               en: "A small, explainable shortlist. No automatic messages.",
@@ -365,7 +365,7 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
       </div>
 
       {loading ? (
-        <p style={{ color: "var(--text-3)", fontSize: 13.5, margin: 0 }}>
+        <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>
           {t({ en: "Loading matches…", zh: "正在读取撮合信息…" })}
         </p>
       ) : null}
@@ -381,8 +381,8 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
       ) : null}
 
       {workspace?.state === "registration_required" ? (
-        <div className="card-flat" style={{ display: "grid", gap: 10, padding: 14 }}>
-          <p style={{ color: "var(--text-2)", fontSize: 13.5, margin: 0 }}>
+        <div className="card-flat" style={{ display: "grid", gap: 8, padding: 14 }}>
+          <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
             {t({
               en: "Only confirmed event participants can appear in matching.",
               zh: "只有已确认报名的活动参与者才能进入撮合。",
@@ -403,20 +403,20 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
           className="card-flat"
           data-matchmaking-candidate={candidate.participantId}
           key={candidate.participantId}
-          style={{ display: "grid", gap: 10, padding: 14 }}
+          style={{ display: "grid", gap: 8, padding: 14 }}
         >
-          <div style={{ display: "flex", gap: 10, justifyContent: "space-between" }}>
+          <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
             <div>
-              <strong style={{ color: "var(--ink)", fontSize: 14.5 }}>
+              <strong style={{ color: "var(--ink)", fontSize: 15 }}>
                 {candidate.displayName}
               </strong>
               {candidate.organization ? (
-                <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 2 }}>
+                <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>
                   {candidate.organization}
                 </div>
               ) : null}
             </div>
-            <span className="chip" style={{ fontSize: 11.5 }}>
+            <span className="chip" style={{ fontSize: 12 }}>
               {candidate.score}
             </span>
           </div>
@@ -449,7 +449,7 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
       ))}
 
       {workspace?.state === "no_matches" ? (
-        <p style={{ color: "var(--text-3)", fontSize: 13.5, margin: 0 }}>
+        <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>
           {t({
             en: "No high-confidence match is available yet. Orbit will not pad the list.",
             zh: "暂时没有高置信候选，Orbit 不会为了凑数展示名单。",
@@ -458,7 +458,7 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
       ) : null}
 
       {workspace?.requests.length ? (
-        <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "grid", gap: 8 }}>
           <h4 style={{ color: "var(--ink)", fontSize: 14, margin: 0 }}>
             {t({ en: "Introduction requests", zh: "撮合进度" })}
           </h4>

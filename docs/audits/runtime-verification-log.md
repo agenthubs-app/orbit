@@ -408,3 +408,25 @@ Verification boundary:
 
 - The browser evidence establishes that the exact production build serves the current root and protected Contacts compositions.
 - Because the authenticated actor had no contact records, live portrait rendering was not observable in that session; the asset HTTP response and source-backed rendered-markup tests are recorded separately rather than presented as equivalent evidence.
+
+## 2026-07-27 — Non-Agent contract and design-ratchet closure
+
+Production and regression verification:
+
+- Reconciled the build-time reference CSS contract, request-scoped root route test boundary, Settings theme controls, canonical Today mapping, legacy event-code scan, button exemptions, and T6 type/spacing scale against current source.
+- The design-scale comparison used the original T6 commit as the baseline. Current off-scale totals fell from 86 font-size / 24 font-weight / 285 gap literals to 56 / 21 / 243, below the unchanged 63 / 22 / 250 ceilings. The fully snapped file set returned to zero violations.
+- The button audit now classifies non-standard controls by stable opening-tag markers and exact occurrence counts; it also rejects ambiguous matches. It no longer uses source lines as control identity.
+- All 27 focused non-Agent contract and ratchet tests passed. `pnpm lint` passed. `pnpm build` compiled, type-checked, and generated all 39 static pages; `next-env.d.ts` was restored to the development route-types path.
+- Full suite: 1,253 tests, 1,229 passed, 24 open-baseline failures, zero skipped/cancelled/todo, 42.7 seconds. Fourteen prior non-Agent failure identities were removed and no new identity appeared.
+
+Exact production runtime on isolated port 3100:
+
+| Surface / boundary | Authoritative evidence | Result |
+| --- | --- | --- |
+| Settings appearance and automation | Authenticated browser URL and rendered DOM on `/app/settings` | Appearance exposed separate accessible Light/Dark buttons with pressed state; Agent Playbook and execution settings loaded with real disabled/available action states and no rendered error boundary. |
+| Today / Schedule | Authenticated browser URL and rendered DOM on `/app/today` | Canonical navigation linked Schedule to `/app/today`; the calendar, decision, source recovery, and source-backed empty-state boundaries rendered without a route error. |
+| Static reference CSS | Real HTTP request to `/orbit-reference/orbit-reference.generated.css` | Returned `200 OK`, `Content-Type: text/css`, and 118,681 bytes from the exact production build. |
+
+Verification boundary:
+
+- The authenticated actor had no current Today arrangements, so the browser confirms the exact shell, canonical route, controls, and honest empty states; arrangement-card density is covered by the unchanged scale gate and component source rather than claimed as populated runtime evidence.

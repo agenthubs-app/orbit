@@ -777,11 +777,11 @@ function AgentEvidenceSources({
           zh: `查看依据 · ${totalItems} 条真实记录`,
         })}
       </summary>
-      <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
         {references.map((reference, index) => (
           <div
             key={`${reference.label}:${reference.generatedAt}:${index}`}
-            style={{ display: "grid", gap: 2 }}
+            style={{ display: "grid", gap: 4 }}
           >
             <span style={{ color: "var(--text-2)" }}>
               {reference.label} · {reference.itemCount}
@@ -894,7 +894,7 @@ function AgentHistoryList({
                       background: active ? "var(--accent-softer)" : "transparent",
                       borderRadius: "var(--r-sm)",
                       display: "flex",
-                      gap: 2,
+                      gap: 4,
                       padding: "2px 4px",
                       position: "relative",
                       width: "100%",

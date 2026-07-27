@@ -3,26 +3,19 @@
 Command: `pnpm test` in `repos/orbits`
 
 - Tests: 1,253
-- Passed: 1,215
-- Failed: 38
+- Passed: 1,229
+- Failed: 24
 - Skipped/cancelled/todo: 0
-- Duration: 35.7 seconds
+- Duration: 42.7 seconds
 - Production build and TypeScript: passed separately.
 
-The current rerun keeps the complete actor-bound acquisition suite and removes eight more stale surface-contract failures without adding a new failure identity. Contact list/detail now resolve local manifest portraits through one shared component with an honest fallback; root and Event visual assertions follow the current rendered composition and accessible navigation; Event registration coverage uses the service and authenticated page boundary instead of invoking an Auth.js page outside request context; and Organizer coverage follows the live-capable presenter and current public page.
+The current rerun removes all 14 remaining non-Agent baseline failures without adding a new failure identity. The reference stylesheet contract now follows the build-time static asset; request-scoped root authentication is no longer invoked as a plain test function; theme and prototype-route assertions follow their current settings and canonical Today boundaries; the legacy event-code-only visual mapping is gone; button exemptions use stable opening-tag markers instead of line numbers; and post-T6 product surfaces were snapped back to the established type and spacing scale. The 24 remaining failures are all isolated to the Agent legacy-contract group.
 
 Classification totals:
 
 | Category | Failures | Current interpretation |
 | --- | ---: | --- |
 | agent-legacy-contract | 24 | Tests lock an older Agent composition/DOM/source-boundary contract and require requirement-by-requirement reconciliation, not bulk deletion. |
-| design-scale-ratchet | 4 | Current source exceeds literal design-token ratchets. |
-| reference-css-contract | 4 | Tests expect the extracted stylesheet route while current product composition differs. |
-| button-style-ratchet | 2 | Shared button-class exemptions are out of sync with the remaining source controls. |
-| sample-data-ratchet | 1 | Legacy route sample-record scan still finds a violation. |
-| scaffold-contract | 1 | App Router scaffold source contract drift. |
-| theme-contract | 1 | Theme control icon contract drift. |
-| prototype-mapping-contract | 1 | Prototype-to-product route mapping contract drift. |
 
 Every failing test:
 
@@ -52,17 +45,3 @@ Every failing test:
 | agent-legacy-contract | /app/agent input has an explicit to-do capable accessible name | open-baseline |
 | agent-legacy-contract | Orbit agent submit controls remain hittable while blank prompts are guarded in handlers | open-baseline |
 | agent-legacy-contract | Orbit agent gates responsive chat layout and exposes request state | open-baseline |
-| sample-data-ratchet | legacy route files no longer embed old product sample records | open-baseline |
-| reference-css-contract | Orbit reference styles render as an external stylesheet link | open-baseline |
-| reference-css-contract | Orbit reference stylesheet route serves extracted prototype CSS | open-baseline |
-| reference-css-contract | Orbit reference stylesheet route short-circuits matching cache validators | open-baseline |
-| reference-css-contract | Orbit reference stylesheet route disables browser caching in development | open-baseline |
-| scaffold-contract | scaffold exposes the runnable Next.js App Router contract | open-baseline |
-| button-style-ratchet | the five T5 core surfaces have no non-.btn `<button>` outside the documented exemption list | open-baseline |
-| button-style-ratchet | EXEMPTIONS stays in sync with source — every entry still points at a real non-.btn `<button>` | open-baseline |
-| theme-contract | P2-2: theme toggle renders icons, not emoji glyphs | open-baseline |
-| prototype-mapping-contract | prototype mappings survive the unification | open-baseline |
-| design-scale-ratchet | fontSize literals outside the scale in `app/(app)/app` do not increase | open-baseline |
-| design-scale-ratchet | fontWeight literals outside `{400,500,600,700,800}` in `app/(app)/app` do not increase | open-baseline |
-| design-scale-ratchet | gap literals outside the scale in `app/(app)/app` do not increase | open-baseline |
-| design-scale-ratchet | the eight T6-snapped files have zero off-scale fontSize/fontWeight/gap literals | open-baseline |

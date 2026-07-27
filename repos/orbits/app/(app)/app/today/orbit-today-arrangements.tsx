@@ -78,7 +78,7 @@ export function ScheduleArrangementCard({
             style={{
               color: "var(--ink)",
               fontSize: 15,
-              fontWeight: 720,
+              fontWeight: 700,
               lineHeight: 1.3,
             }}
           >
@@ -88,7 +88,7 @@ export function ScheduleArrangementCard({
             className="orbit-schedule-arrangement-subtitle"
             style={{
               color: "var(--text-3)",
-              fontSize: 12.5,
+              fontSize: 13,
               lineHeight: 1.45,
               marginTop: 3,
             }}
@@ -122,8 +122,8 @@ export function ScheduleArrangementCard({
             alignItems: "center",
             color: "var(--text-3)",
             display: "inline-flex",
-            fontSize: 12.5,
-            gap: 6,
+            fontSize: 13,
+            gap: 8,
           }}
         >
           <Icon name="clock" size={13} />
@@ -135,8 +135,8 @@ export function ScheduleArrangementCard({
             alignItems: "center",
             color: "var(--text-3)",
             display: "inline-flex",
-            fontSize: 12.5,
-            gap: 6,
+            fontSize: 13,
+            gap: 8,
           }}
         >
           <Icon name="doc" size={13} />
@@ -149,7 +149,7 @@ export function ScheduleArrangementCard({
           data-orbit-schedule-target-note
           style={{
             color: "var(--text-2)",
-            fontSize: 12.5,
+            fontSize: 13,
             lineHeight: 1.55,
             margin: 0,
             padding: 12,
@@ -166,7 +166,7 @@ export function ScheduleArrangementCard({
           display: "inline-flex",
           fontSize: 13,
           fontWeight: 700,
-          gap: 5,
+          gap: 4,
         }}
       >
         {arrangement.actionLabel}

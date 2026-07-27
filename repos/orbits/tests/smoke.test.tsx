@@ -4,8 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
-import RootLayout from "../app/layout";
-import Page from "../app/page";
+import { OrbitStarfieldHome } from "../app/(app)/app/orbit-starfield-home";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -114,18 +113,26 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
     );
   }
 
-  // The root route (`app/page.tsx`) renders `OrbitStarfieldHome`, marked with
-  // `data-orbit-real-page="starfield-home"`. `app/page.tsx` takes no props and
-  // `app/layout.tsx` is an async Server Component, so both are invoked
-  // directly (not via `React.createElement`) and their async layout output is
-  // awaited before being handed to `renderToStaticMarkup`.
+  const pageSource = fs.readFileSync(
+    path.join(projectRoot, "app/page.tsx"),
+    "utf8",
+  );
+  assert.match(pageSource, /const session = await auth\(\)/);
+  assert.match(
+    pageSource,
+    /<OrbitStarfieldHome authenticated=\{Boolean\(session\?\.user\?\.id\)\} \/>/,
+  );
+
+  // `app/page.tsx` now authenticates through Auth.js, so invoking the route
+  // outside a Next request is not a valid unit-test boundary. Render the pure
+  // starfield component directly; the production build covers the route and
+  // request-scoped layout composition.
   let html = "";
   await withUnconfiguredLiveStorage(async () => {
     await assert.doesNotReject(async () => {
-      const rootPage = Page();
-      const layoutElement = await RootLayout({ children: rootPage });
-
-      html = renderToStaticMarkup(layoutElement);
+      html = renderToStaticMarkup(
+        <OrbitStarfieldHome authenticated={false} />,
+      );
     });
   });
 

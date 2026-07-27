@@ -74,6 +74,7 @@ interface ButtonHit {
   file: string;
   line: number;
   isBtn: boolean;
+  tag: string;
 }
 
 function findButtons(file: string): ButtonHit[] {
@@ -85,7 +86,7 @@ function findButtons(file: string): ButtonHit[] {
   while ((m = BUTTON_OPEN.exec(text))) {
     const tag = extractOpeningTag(text, m.index);
     const line = text.slice(0, m.index).split("\n").length;
-    hits.push({ file: rel, line, isBtn: BTN_TOKEN.test(tag) });
+    hits.push({ file: rel, line, isBtn: BTN_TOKEN.test(tag), tag });
   }
   return hits;
 }
@@ -124,60 +125,133 @@ const CORE_FILES = [
   "app/(app)/app/events/orbit-real-explore-client.tsx",
 ];
 
-// Every non-.btn <button> left in the five core surfaces after T5, with why
-// it wasn't converted to a `.btn` variant or `IconButton`. Line numbers are
-// best-effort (source moves); the count is what the assertion actually
-// checks — if a line drifts, update it here rather than loosening the gate.
-const EXEMPTIONS: { file: string; line: number; reason: string }[] = [
-  // -- contacts/orbit-real-contacts.tsx --
-  // Line numbers shifted +5 by the mobile-audit PersonCard name fix (2-line
-  // clamp instead of single-line ellipsis, tests/ui/orbit-scale-ratchet
-  // covers the same file's fontSize/gap scale — this file only tracks
-  // <button> lines).
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 405, reason: "filter chip (suggested-query chip, className=\"chip\") — chips are a distinct pattern from .btn, not migrated per audit guidance" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 410, reason: "filter chip (pipeline-stage filter)" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 416, reason: "filter chip (value-type filter)" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 814, reason: "PickerSlot (filled) — card-style contact picker with a stacked avatar+label column layout; .btn's fixed 44px row height would clip it" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 819, reason: "PickerSlot (empty/dashed) — same card-style picker as above" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 870, reason: "className=\"card-hover\" — established sitewide clickable-card pattern (also used in home/agent/events), not part of the .btn system" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 950, reason: "filter chip (intro status filter, desktop)" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 974, reason: "filter chip (intro status filter, mobile)" },
-  { file: "app/(app)/app/contacts/orbit-real-contacts.tsx", line: 1390, reason: "ScanContent dropzone — large card-style upload control (52px/36px padding, icon + heading + subtext); not a compact action button" },
-  // -- agent/orbit-real-agent.tsx --
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 658, reason: "AgentMessageCopyButton — pre-existing bespoke .orbit-agent-message-copy component with its own hover/focus-visible CSS and a required data-orbit-agent-message-copy test hook (tests/pages/app-agent-message-copy.test.ts)" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 953, reason: "welcome-screen suggestion card — pre-existing bespoke .orbit-agent-suggestion component with its own hover/focus-visible CSS" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 977, reason: "className=\"card card-hover\" — established sitewide clickable-card pattern" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1028, reason: "className=\"card card-hover\" — established sitewide clickable-card pattern" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1076, reason: "className=\"card card-hover\" — established sitewide clickable-card pattern" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1172, reason: "composer send button — pre-existing bespoke .orbit-agent-send component (gradient background, own focus-visible CSS); no .btn variant supports a gradient fill" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1807, reason: "className=\"orbit-top-icon-btn\" — a distinct CSS-classed primitive (single current usage) excluded because it is not inline-styled" },
-  { file: "app/(app)/app/agent/orbit-real-agent.tsx", line: 1829, reason: "history-sidebar resize handle (role=\"separator\", cursor: col-resize) — a drag handle, not button semantics" },
-  // -- events/orbit-real-explore-client.tsx --
-  { file: "app/(app)/app/events/orbit-real-explore-client.tsx", line: 162, reason: "map-pin marker — bespoke absolutely-positioned SVG teardrop marker; .btn's box model would break the marker geometry" },
-  { file: "app/(app)/app/events/orbit-real-explore-client.tsx", line: 277, reason: "filter chip (status filter, desktop)" },
-  { file: "app/(app)/app/events/orbit-real-explore-client.tsx", line: 278, reason: "filter chip (topic filter, desktop)" },
-  { file: "app/(app)/app/events/orbit-real-explore-client.tsx", line: 290, reason: "className=\"card-hover\" — established sitewide clickable-card pattern (map sidebar list item)" },
-  { file: "app/(app)/app/events/orbit-real-explore-client.tsx", line: 322, reason: "filter chip (status filter, mobile)" },
-  { file: "app/(app)/app/events/orbit-real-explore-client.tsx", line: 324, reason: "filter chip (topic filter, mobile)" },
+// Every non-.btn <button> left in the core surfaces after T5, identified by a
+// stable opening-tag marker rather than a source line. Line-number exemptions
+// made unrelated imports and markup insertions invalidate the whole table.
+const EXEMPTIONS: {
+  count: number;
+  file: string;
+  marker: string;
+  reason: string;
+}[] = [
+  {
+    count: 1,
+    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
+    marker: "setQuery(suggestion.query)",
+    reason: "suggested-query chip",
+  },
+  {
+    count: 2,
+    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
+    marker: "setStage(key)",
+    reason: "desktop/mobile pipeline-stage filter chips",
+  },
+  {
+    count: 2,
+    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
+    marker: "setValueTag",
+    reason: "desktop/mobile value-type filter chips",
+  },
+  {
+    count: 2,
+    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
+    marker: "onClick={onPick}",
+    reason: "filled/empty card-style contact picker slots",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
+    marker: "className=\"card-hover\"",
+    reason: "established clickable contact-card pattern",
+  },
+  {
+    count: 2,
+    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
+    marker: "setFilter(item.key)",
+    reason: "desktop/mobile introduction-status filter chips",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"orbit-agent-message-copy\"",
+    reason: "message-copy control with dedicated focus and status behavior",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"orbit-agent-suggestion\"",
+    reason: "welcome suggestion card",
+  },
+  {
+    count: 3,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"card card-hover\"",
+    reason: "people, event, and task result cards",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"orbit-agent-send\"",
+    reason: "composer control with a dedicated gradient state",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"orbit-top-icon-btn orbit-agent-history-btn\"",
+    reason: "dedicated history icon control",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "data-orbit-agent-history-resize-handle",
+    reason: "history-sidebar separator and drag handle",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/events/orbit-real-explore-client.tsx",
+    marker: "onClick={() => onSelect(item)}",
+    reason: "map-pin marker whose geometry is not a standard button",
+  },
+  {
+    count: 2,
+    file: "app/(app)/app/events/orbit-real-explore-client.tsx",
+    marker: "setStatus(key)",
+    reason: "desktop/mobile event-status filter chips",
+  },
+  {
+    count: 2,
+    file: "app/(app)/app/events/orbit-real-explore-client.tsx",
+    marker: "setTopic(topic === item",
+    reason: "desktop/mobile topic filter chips",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/events/orbit-real-explore-client.tsx",
+    marker: "setSelectedId(item.id)",
+    reason: "clickable map sidebar card",
+  },
 ];
 
 test("the five T5 core surfaces have no non-.btn <button> outside the documented exemption list", () => {
-  const exemptionsByFile = new Map<string, Set<number>>();
   for (const exemption of EXEMPTIONS) {
     if (!CORE_FILES.includes(exemption.file)) {
       throw new Error(`EXEMPTIONS references a file outside CORE_FILES: ${exemption.file}`);
     }
-    const set = exemptionsByFile.get(exemption.file) ?? new Set<number>();
-    set.add(exemption.line);
-    exemptionsByFile.set(exemption.file, set);
   }
 
   const unexplained: ButtonHit[] = [];
   for (const relPath of CORE_FILES) {
     const hits = findButtons(join(projectRoot, relPath));
-    const exemptLines = exemptionsByFile.get(relPath) ?? new Set<number>();
     for (const hit of hits) {
-      if (!hit.isBtn && !exemptLines.has(hit.line)) unexplained.push(hit);
+      const matched = EXEMPTIONS.filter(
+        (exemption) =>
+          exemption.file === hit.file && hit.tag.includes(exemption.marker),
+      );
+      if (!hit.isBtn && matched.length === 0) unexplained.push(hit);
+      assert.ok(
+        hit.isBtn || matched.length <= 1,
+        `non-.btn <button> matched multiple exemptions at ${hit.file}:${hit.line}`,
+      );
     }
   }
 
@@ -191,17 +265,23 @@ test("the five T5 core surfaces have no non-.btn <button> outside the documented
 });
 
 test("EXEMPTIONS stays in sync with source — every entry still points at a real non-.btn <button>", () => {
-  const stale: { file: string; line: number }[] = [];
+  const stale: string[] = [];
   for (const exemption of EXEMPTIONS) {
     const hits = findButtons(join(projectRoot, exemption.file));
-    const stillThere = hits.some((hit) => hit.line === exemption.line && !hit.isBtn);
-    if (!stillThere) stale.push(exemption);
+    const matching = hits.filter(
+      (hit) => !hit.isBtn && hit.tag.includes(exemption.marker),
+    );
+    if (matching.length !== exemption.count) {
+      stale.push(
+        `${exemption.file} marker=${JSON.stringify(exemption.marker)} expected=${exemption.count} actual=${matching.length}`,
+      );
+    }
   }
 
   assert.equal(
     stale.length,
     0,
-    `EXEMPTIONS entries no longer match a non-.btn <button> (line drifted, or it was migrated — remove the entry):\n` +
-      stale.map((s) => `  ${s.file}:${s.line}`).join("\n"),
+    `EXEMPTIONS markers no longer match their documented non-.btn controls:\n` +
+      stale.map((entry) => `  ${entry}`).join("\n"),
   );
 });

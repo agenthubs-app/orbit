@@ -129,7 +129,7 @@ function AppScheduleSuccessView({
               <div
                 style={{
                   color: "var(--text-3)",
-                  fontSize: 13.5,
+                  fontSize: 14,
                   marginTop: 4,
                 }}
               >
@@ -149,14 +149,14 @@ function AppScheduleSuccessView({
             style={{
               alignItems: "start",
               display: "grid",
-              gap: 26,
+              gap: 24,
               gridTemplateColumns: "minmax(0,1fr) minmax(320px,420px)",
             }}
           >
             <section
               className="card"
               data-orbit-schedule-context="source-backed"
-              style={{ display: "grid", gap: 18, padding: 22 }}
+              style={{ display: "grid", gap: 16, padding: 22 }}
             >
               <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
                 <span
@@ -198,7 +198,7 @@ function AppScheduleSuccessView({
                 }}
               >
                 <div className="card-flat" style={{ padding: 14 }}>
-                  <div className="mono" style={{ color: "var(--ink)", fontSize: 24 }}>
+                  <div className="mono" style={{ color: "var(--ink)", fontSize: 22 }}>
                     {arrangements.length}
                   </div>
                   <div style={{ color: "var(--text-3)", fontSize: 12 }}>
@@ -206,7 +206,7 @@ function AppScheduleSuccessView({
                   </div>
                 </div>
                 <div className="card-flat" style={{ padding: 14 }}>
-                  <div className="mono" style={{ color: "var(--ink)", fontSize: 24 }}>
+                  <div className="mono" style={{ color: "var(--ink)", fontSize: 22 }}>
                     {evidenceIds.length}
                   </div>
                   <div style={{ color: "var(--text-3)", fontSize: 12 }}>
@@ -298,7 +298,7 @@ function ScheduleRouteStateView({
           aria-label="恢复操作"
           style={{
             display: "grid",
-            gap: 10,
+            gap: 8,
             gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))",
           }}
         >
@@ -312,7 +312,7 @@ function ScheduleRouteStateView({
             </a>
           ))}
         </div>
-        <p style={{ color: "var(--text-3)", fontSize: 12.5, margin: 0 }}>
+        <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>
           {routeState.copy.nextStep}
         </p>
       </section>

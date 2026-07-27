@@ -535,7 +535,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
             ))}
           </div>
           {!filtered.length ? (
-            <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 10, padding: 16 }}>
+            <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 8, padding: 16 }}>
               <span>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</span>
               <button className="btn btn-ghost btn-sm" onClick={clearFilters} type="button">
                 {t({ en: "Clear filters", zh: "清除筛选" })}

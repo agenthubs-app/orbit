@@ -31,10 +31,15 @@ test("P2-2: Icon registry defines sun and moon stroke paths", () => {
 });
 
 test("P2-2: theme toggle renders icons, not emoji glyphs", () => {
-  const themeSource = source("app/(app)/app/orbit-theme.tsx");
+  const appearanceSource = source(
+    "app/(app)/app/settings/orbit-appearance-settings.tsx",
+  );
 
-  assert.doesNotMatch(themeSource, /[☀\u{1F31C}☾\u{1F319}]/u);
-  assert.match(themeSource, /<Icon name=\{isLight \? "moon" : "sun"\}/);
+  assert.doesNotMatch(appearanceSource, /[☀\u{1F31C}☾\u{1F319}]/u);
+  assert.match(appearanceSource, /<Icon name="sun" size=\{16\} \/>/);
+  assert.match(appearanceSource, /<Icon name="moon" size=\{16\} \/>/);
+  assert.match(appearanceSource, /aria-pressed=\{theme === "light"\}/);
+  assert.match(appearanceSource, /aria-pressed=\{theme === "dark"\}/);
 });
 
 test("P2-3: --ff-serif token is defined", () => {

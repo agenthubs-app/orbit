@@ -109,7 +109,6 @@ const themeGlyphs: Record<string, string> = {
 };
 
 const themeByCode: Record<string, string> = {
-  TBC26S: "ai",
   SAAS04: "cloud",
   SEMI26: "chip",
   FINTK8: "finance",
