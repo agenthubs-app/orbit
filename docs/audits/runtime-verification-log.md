@@ -32,4 +32,31 @@ Console:
 Scope:
 
 - This evidence closes only the auth return-path P0 described in `confirmed-risk-register.md`.
-- It does not claim that the remaining production routes, authenticated data flows, DeepSeek call, or all 1,812 route-action pairs have completed browser verification.
+- It does not claim that the remaining production routes, authenticated data flows, DeepSeek call, or all 1,809 route-action pairs have completed browser verification.
+
+## 2026-07-27 — Password-reset fake-success removal
+
+Production runtime:
+
+- Rebuilt the current worktree with `npm run build`.
+- Started the resulting production build with `next start` on an isolated local port.
+- Verified in Chrome because the pre-existing port 3000 development process did not hydrate client events; the freshly built production runtime did.
+
+Desktop/default viewport:
+
+| Path / action | Authoritative evidence | Result |
+| --- | --- | --- |
+| Open Login and click “Show password” | Input `type` and rendered button state | Production client hydration was active: input changed from `password` to `text` and “Hide password” rendered. |
+| Open `/app/account/forgot-password?next=%2Fapp%2Fagent` | DOM snapshot | Page states that reset availability must be checked before expecting email/code; button label is “Check reset availability”. |
+| Submit synthetic `surface-audit@example.invalid` | URL, alert DOM, field existence | URL and `next=/app/agent` stayed unchanged; alert explicitly states reset is unconfigured and no email/code was sent; verification-code and new-password fields did not exist. |
+
+Mobile viewport (`390 × 844`):
+
+- Viewport/client/scroll widths were all 390, so no horizontal overflow was present.
+- Honest unavailable description and canonical `next=/app/agent` remained visible.
+- No application warning/error entries were recorded for the isolated production runtime.
+
+Development-runtime note:
+
+- The long-running port 3000 development process served HTML but did not attach client event handlers in either in-app Browser or Chrome.
+- This did not reproduce in the newly built production runtime and is not treated as evidence that production hydration is broken.

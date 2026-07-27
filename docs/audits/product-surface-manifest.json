@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "331583ef8b6dd750690a2ca63ed2d513959e4c82",
-  "generatedAt": "2026-07-27T11:44:36+09:00",
+  "commit": "4f61fda44bd0128dcb17601f60b331a7faccd656",
+  "generatedAt": "2026-07-27T12:08:18+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -23,7 +23,7 @@
   },
   "summary": {
     "routes": 38,
-    "actions": 1812,
+    "actions": 1809,
     "authenticatedRoutes": 22,
     "publicRoutes": 16,
     "risks": 1020,
@@ -84,7 +84,7 @@
         {
           "actionId": "/app/account/forgot-password#1",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 169,
+          "line": 174,
           "kind": "click-handler",
           "tag": "div",
           "label": null,
@@ -104,7 +104,7 @@
         {
           "actionId": "/app/account/forgot-password#2",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 182,
+          "line": 187,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Close\", zh: \"关闭\" })",
@@ -124,7 +124,7 @@
         {
           "actionId": "/app/account/forgot-password#3",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 200,
+          "line": 212,
           "kind": "form-submit",
           "tag": "form",
           "label": null,
@@ -144,27 +144,7 @@
         {
           "actionId": "/app/account/forgot-password#4",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 241,
-          "kind": "button",
-          "tag": "button",
-          "label": "showPassword ? t({ en: \"Hide password\", zh: \"隐藏密码\" }) : t({ en: \"Show password\", zh: \"显示密码\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/account/forgot-password#5",
-          "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 259,
+          "line": 233,
           "kind": "link",
           "tag": "a",
           "label": null,
@@ -182,9 +162,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#6",
+          "actionId": "/app/account/forgot-password#5",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 288,
+          "line": 262,
           "kind": "button",
           "tag": "button",
           "label": "showPassword ? t({ en: \"Hide password\", zh: \"隐藏密码\" }) : t({ en: \"Show password\", zh: \"显示密码\" })",
@@ -202,9 +182,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#7",
+          "actionId": "/app/account/forgot-password#6",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 304,
+          "line": 278,
           "kind": "button",
           "tag": "button",
           "label": null,
@@ -220,9 +200,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#8",
+          "actionId": "/app/account/forgot-password#7",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 312,
+          "line": 286,
           "kind": "button",
           "tag": "button",
           "label": null,
@@ -240,9 +220,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#9",
+          "actionId": "/app/account/forgot-password#8",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 328,
+          "line": 302,
           "kind": "link",
           "tag": "a",
           "label": "{viewModel.switchLabel}",
@@ -260,9 +240,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#10",
+          "actionId": "/app/account/forgot-password#9",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 339,
+          "line": 313,
           "kind": "link",
           "tag": "a",
           "label": "{viewModel.switchLabel}",
@@ -280,7 +260,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#11",
+          "actionId": "/app/account/forgot-password#10",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -300,7 +280,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#12",
+          "actionId": "/app/account/forgot-password#11",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -318,7 +298,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#13",
+          "actionId": "/app/account/forgot-password#12",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -336,7 +316,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#14",
+          "actionId": "/app/account/forgot-password#13",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 258,
           "kind": "link",
@@ -354,7 +334,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/forgot-password#15",
+          "actionId": "/app/account/forgot-password#14",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 267,
           "kind": "button",
@@ -381,7 +361,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/forgot-password",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 169,
+          "line": 174,
           "trigger": "div click-handler",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -392,7 +372,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/forgot-password",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 259,
+          "line": 233,
           "trigger": "a link",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -403,7 +383,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/forgot-password",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 304,
+          "line": 278,
           "trigger": "button button",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -414,7 +394,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/forgot-password",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 312,
+          "line": 286,
           "trigger": "button button",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -486,7 +466,7 @@
         {
           "actionId": "/app/account/login#1",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 169,
+          "line": 174,
           "kind": "click-handler",
           "tag": "div",
           "label": null,
@@ -506,7 +486,7 @@
         {
           "actionId": "/app/account/login#2",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 182,
+          "line": 187,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Close\", zh: \"关闭\" })",
@@ -526,7 +506,7 @@
         {
           "actionId": "/app/account/login#3",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 200,
+          "line": 212,
           "kind": "form-submit",
           "tag": "form",
           "label": null,
@@ -546,27 +526,7 @@
         {
           "actionId": "/app/account/login#4",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 241,
-          "kind": "button",
-          "tag": "button",
-          "label": "showPassword ? t({ en: \"Hide password\", zh: \"隐藏密码\" }) : t({ en: \"Show password\", zh: \"显示密码\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/account/login#5",
-          "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 259,
+          "line": 233,
           "kind": "link",
           "tag": "a",
           "label": null,
@@ -584,9 +544,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#6",
+          "actionId": "/app/account/login#5",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 288,
+          "line": 262,
           "kind": "button",
           "tag": "button",
           "label": "showPassword ? t({ en: \"Hide password\", zh: \"隐藏密码\" }) : t({ en: \"Show password\", zh: \"显示密码\" })",
@@ -604,9 +564,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#7",
+          "actionId": "/app/account/login#6",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 304,
+          "line": 278,
           "kind": "button",
           "tag": "button",
           "label": null,
@@ -622,9 +582,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#8",
+          "actionId": "/app/account/login#7",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 312,
+          "line": 286,
           "kind": "button",
           "tag": "button",
           "label": null,
@@ -642,9 +602,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#9",
+          "actionId": "/app/account/login#8",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 328,
+          "line": 302,
           "kind": "link",
           "tag": "a",
           "label": "{viewModel.switchLabel}",
@@ -662,9 +622,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#10",
+          "actionId": "/app/account/login#9",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 339,
+          "line": 313,
           "kind": "link",
           "tag": "a",
           "label": "{viewModel.switchLabel}",
@@ -682,7 +642,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#11",
+          "actionId": "/app/account/login#10",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -702,7 +662,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#12",
+          "actionId": "/app/account/login#11",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -720,7 +680,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#13",
+          "actionId": "/app/account/login#12",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -738,7 +698,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#14",
+          "actionId": "/app/account/login#13",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 258,
           "kind": "link",
@@ -756,7 +716,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/login#15",
+          "actionId": "/app/account/login#14",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 267,
           "kind": "button",
@@ -788,7 +748,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/login",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 169,
+          "line": 174,
           "trigger": "div click-handler",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -799,7 +759,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/login",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 259,
+          "line": 233,
           "trigger": "a link",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -810,7 +770,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/login",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 304,
+          "line": 278,
           "trigger": "button button",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -821,7 +781,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/login",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 312,
+          "line": 286,
           "trigger": "button button",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -986,7 +946,7 @@
         {
           "actionId": "/app/account/signup#1",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 169,
+          "line": 174,
           "kind": "click-handler",
           "tag": "div",
           "label": null,
@@ -1006,7 +966,7 @@
         {
           "actionId": "/app/account/signup#2",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 182,
+          "line": 187,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Close\", zh: \"关闭\" })",
@@ -1026,7 +986,7 @@
         {
           "actionId": "/app/account/signup#3",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 200,
+          "line": 212,
           "kind": "form-submit",
           "tag": "form",
           "label": null,
@@ -1046,27 +1006,7 @@
         {
           "actionId": "/app/account/signup#4",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 241,
-          "kind": "button",
-          "tag": "button",
-          "label": "showPassword ? t({ en: \"Hide password\", zh: \"隐藏密码\" }) : t({ en: \"Show password\", zh: \"显示密码\" })",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/account/signup#5",
-          "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 259,
+          "line": 233,
           "kind": "link",
           "tag": "a",
           "label": null,
@@ -1084,9 +1024,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#6",
+          "actionId": "/app/account/signup#5",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 288,
+          "line": 262,
           "kind": "button",
           "tag": "button",
           "label": "showPassword ? t({ en: \"Hide password\", zh: \"隐藏密码\" }) : t({ en: \"Show password\", zh: \"显示密码\" })",
@@ -1104,9 +1044,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#7",
+          "actionId": "/app/account/signup#6",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 304,
+          "line": 278,
           "kind": "button",
           "tag": "button",
           "label": null,
@@ -1122,9 +1062,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#8",
+          "actionId": "/app/account/signup#7",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 312,
+          "line": 286,
           "kind": "button",
           "tag": "button",
           "label": null,
@@ -1142,9 +1082,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#9",
+          "actionId": "/app/account/signup#8",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 328,
+          "line": 302,
           "kind": "link",
           "tag": "a",
           "label": "{viewModel.switchLabel}",
@@ -1162,9 +1102,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#10",
+          "actionId": "/app/account/signup#9",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 339,
+          "line": 313,
           "kind": "link",
           "tag": "a",
           "label": "{viewModel.switchLabel}",
@@ -1182,7 +1122,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#11",
+          "actionId": "/app/account/signup#10",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -1202,7 +1142,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#12",
+          "actionId": "/app/account/signup#11",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -1220,7 +1160,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#13",
+          "actionId": "/app/account/signup#12",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -1238,7 +1178,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#14",
+          "actionId": "/app/account/signup#13",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 258,
           "kind": "link",
@@ -1256,7 +1196,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/account/signup#15",
+          "actionId": "/app/account/signup#14",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 267,
           "kind": "button",
@@ -1292,7 +1232,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/signup",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 169,
+          "line": 174,
           "trigger": "div click-handler",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -1303,7 +1243,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/signup",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 259,
+          "line": 233,
           "trigger": "a link",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -1314,7 +1254,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/signup",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 304,
+          "line": 278,
           "trigger": "button button",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",
@@ -1325,7 +1265,7 @@
           "type": "accessible-name-unresolved",
           "route": "/app/account/signup",
           "sourceFile": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
-          "line": 312,
+          "line": 286,
           "trigger": "button button",
           "userImpact": "Assistive technology may not expose a meaningful action name.",
           "status": "open-needs-runtime-verification",

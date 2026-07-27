@@ -63,8 +63,6 @@ export function OrbitRealAccountAuth({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1);
-  const [code, setCode] = useState("");
 
   // Post-hydration update (legal — it runs after the first paint matches
   // SSR): now that we're definitely on the client, read the real ?next=/
@@ -91,13 +89,19 @@ export function OrbitRealAccountAuth({
   const isSignup = viewModel.mode === "signup";
   const isForgot = viewModel.mode === "forgot";
   const message = query.created ? t({ en: "Account created. Please sign in and complete your general profile first.", zh: "账号已创建。请登录后先完成通用档案。" }) : "";
-  const primary = isForgot && forgotStep === 2 ? t({ en: "Reset and sign in", zh: "重置并登录" }) : viewModel.primaryLabel;
+  const primary = isForgot
+    ? t({
+        en: "Check reset availability",
+        zh: "检查重置可用性",
+      })
+    : viewModel.primaryLabel;
   const switchHref = isSignup
     ? `/account/login?next=${encodeURIComponent(query.next)}`
     : `/account/signup?next=${encodeURIComponent(query.next)}`;
 
-  // 注册走 /api/auth/register,登录走 NextAuth credentials(auth.ts →
-  // features/auth 校验)。忘记密码后端尚未接入,保持原型的两步视觉流程。
+  // 注册走 /api/auth/register，登录走 NextAuth credentials（auth.ts →
+  // features/auth 校验）。当前部署没有密码重置 provider；必须显式失败，
+  // 不能进入没有邮件、验证码或持久化支撑的假第二步。
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -132,11 +136,12 @@ export function OrbitRealAccountAuth({
       }
 
       if (isForgot) {
-        if (forgotStep === 1) {
-          setForgotStep(2);
-        } else {
-          navigate(`/account/login?next=${encodeURIComponent(query.next)}`);
-        }
+        setError(
+          t({
+            en: "Password reset is not configured in this deployment. No reset email or code was sent. Return to sign-in or contact the organizer who provided your account.",
+            zh: "当前部署尚未配置密码重置服务，系统没有发送邮件或验证码。请返回登录，或联系为你提供账号的活动主办方。",
+          }),
+        );
         return;
       }
 
@@ -195,7 +200,14 @@ export function OrbitRealAccountAuth({
           <div className="orbit-account-auth-head">
             <span className="eyebrow">ACCOUNT</span>
             <h1 className="h-title">{viewModel.title}</h1>
-            <p>{viewModel.description}</p>
+            <p>
+              {isForgot
+                ? t({
+                    en: "Check whether password reset is available before expecting an email or code.",
+                    zh: "请先检查当前部署是否支持密码重置；在确认可用前，不会发送邮件或验证码。",
+                  })
+                : viewModel.description}
+            </p>
           </div>
           <form className="orbit-account-auth-form" onSubmit={onSubmit}>
             <FormField className="orbit-account-auth-field" id="orbit-auth-email" label={t({ en: "Email", zh: "邮箱" })}>
@@ -212,45 +224,7 @@ export function OrbitRealAccountAuth({
               />
             </FormField>
 
-            {isForgot && forgotStep === 2 ? (
-              <>
-                <FormField className="orbit-account-auth-field" id="orbit-auth-code" label={t({ en: "Verification code", zh: "验证码" })}>
-                  <input
-                    className="field mono"
-                    id="orbit-auth-code"
-                    inputMode="numeric"
-                    maxLength={6}
-                    onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-                    placeholder={t({ en: "6-digit code", zh: "6 位验证码" })}
-                    value={code}
-                  />
-                </FormField>
-                <FormField className="orbit-account-auth-field" id="orbit-auth-new-password" label={t({ en: "New password", zh: "新密码" })}>
-                  <span className="orbit-field-with-affordance">
-                    <input
-                      autoComplete="new-password"
-                      className="field"
-                      id="orbit-auth-new-password"
-                      minLength={6}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder={t({ en: "Set a password of at least 6 characters", zh: "设置至少 6 位密码" })}
-                      required
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                    />
-                    <button
-                      aria-label={showPassword ? t({ en: "Hide password", zh: "隐藏密码" }) : t({ en: "Show password", zh: "显示密码" })}
-                      className="btn btn-icon orbit-field-affordance"
-                      aria-pressed={showPassword}
-                      onClick={() => setShowPassword((current) => !current)}
-                      type="button"
-                    >
-                      <Icon name="eye" size={17} />
-                    </button>
-                  </span>
-                </FormField>
-              </>
-            ) : !isForgot ? (
+            {!isForgot ? (
               <FormField
                 className="orbit-account-auth-field"
                 id="orbit-auth-password"

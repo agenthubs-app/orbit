@@ -2,14 +2,14 @@
 
 Command: `npm test` in `repos/orbits`
 
-- Tests: 1,195
-- Passed: 1,125
+- Tests: 1,196
+- Passed: 1,126
 - Failed: 70
 - Skipped/cancelled/todo: 0
-- Duration: 34.8 seconds
+- Duration: 35.4 seconds
 - Production build and TypeScript: passed separately.
 
-The post-fix rerun added six passing audit/auth tests and retained the exact same 70 classified failures; no new failure was introduced.
+The post-fix reruns added seven passing audit/auth tests and retained the exact same 70 classified failures; normalized failure-name hashes match, so no new failure was introduced.
 
 Classification totals:
 

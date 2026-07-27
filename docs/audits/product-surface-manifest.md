@@ -1,12 +1,12 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 1
-- Indexed commit: `331583ef8b6dd750690a2ca63ed2d513959e4c82`
-- Deterministic generated timestamp (commit time): 2026-07-27T11:44:36+09:00
+- Indexed commit: `4f61fda44bd0128dcb17601f60b331a7faccd656`
+- Deterministic generated timestamp (commit time): 2026-07-27T12:08:18+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
-- Actions/interactions: 1812
+- Actions/interactions: 1809
 - Authenticated routes: 22
 - Public-at-proxy routes: 16
 
@@ -14,10 +14,10 @@
 
 | Route | Purpose | Access | Data sources | Actions | Tests | Static risks |
 | --- | --- | --- | --- | ---: | ---: | ---: |
-| `/app/account/forgot-password` | Password recovery | public-auth-entry | Live, Mock, User Confirmed | 15 | 1 | 5 |
-| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 15 | 6 | 5 |
+| `/app/account/forgot-password` | Password recovery | public-auth-entry | Live, Mock, User Confirmed | 14 | 1 | 5 |
+| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, User Confirmed | 14 | 6 | 5 |
 | `/app/account/mobile-google` | Mobile Google authentication completion | public-auth-entry | Live, Mock, User Confirmed | 2 | 2 | 0 |
-| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 15 | 10 | 5 |
+| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, User Confirmed | 14 | 10 | 5 |
 | `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 50 | 13 | 26 |
 | `/app/admin/events` | Admin event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 30 | 36 |
 | `/app/admin` | Admin operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 54 | 30 | 36 |
