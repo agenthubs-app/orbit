@@ -76,10 +76,14 @@ export interface OrbitContactEventView {
 
 export interface OrbitIntroView {
   blurb: string;
+  contactAId?: string;
+  contactBId?: string;
+  createdAt?: string;
   id: string;
   labelA: string;
   labelB: string;
   statusBadge: OrbitIntroStatus;
+  updatedAt?: string;
 }
 
 export interface OrbitContactsViewModel {

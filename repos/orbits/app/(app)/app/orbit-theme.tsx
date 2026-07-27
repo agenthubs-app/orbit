@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 // Light theme for the product UI.
 //
 // The new-UI product surface is dark by default: its entire palette is a token
@@ -231,6 +233,37 @@ export function OrbitThemeStyles() {
 }
 
 export type OrbitTheme = "light" | "dark";
+
+/**
+ * Re-applies the saved theme after React hydrates the app shell.
+ *
+ * The inline head script still prevents the first-paint flash. This runtime is
+ * the second half of the contract: some streamed subroutes can hydrate the
+ * server-rendered <html> attributes after that script ran, so relying on the
+ * one-shot head mutation alone can leave a page without data-theme and expose
+ * the dark fallback palette.
+ */
+export function OrbitThemeRuntime() {
+  useEffect(() => {
+    let theme: OrbitTheme = "light";
+
+    try {
+      const saved = localStorage.getItem("orbit-theme");
+      theme =
+        saved === "light" || saved === "dark"
+          ? saved
+          : window.matchMedia?.("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark";
+    } catch {
+      theme = "light";
+    }
+
+    document.documentElement.setAttribute("data-theme", theme);
+  }, []);
+
+  return null;
+}
 
 export function getOrbitTheme(): OrbitTheme {
   if (typeof document === "undefined") return "dark";

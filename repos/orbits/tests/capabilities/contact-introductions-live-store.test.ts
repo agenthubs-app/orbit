@@ -86,6 +86,33 @@ test("contact introductions persist as actor-scoped drafts", async () => {
   assert.deepEqual(await repository.list("actor-b"), []);
 });
 
+test("contact introduction lists use the contacts' current display names", async () => {
+  const store = createMemoryLiveRecordStore([
+    contactRecord("actor-a", "contact-a", "Old name A"),
+    contactRecord("actor-a", "contact-b", "Old name B"),
+  ]);
+  const repository = createContactIntroductionRepository({
+    store,
+    workspaceId: "test-workspace",
+  });
+
+  await repository.create("actor-a", {
+    contactAId: "contact-a",
+    contactBId: "contact-b",
+    blurb: "A saved introduction remains linked to both contact records.",
+  });
+  await store.upsertRecord(
+    contactRecord("actor-a", "contact-a", "联系人甲"),
+  );
+  await store.upsertRecord(
+    contactRecord("actor-a", "contact-b", "联系人乙"),
+  );
+
+  const [introduction] = await repository.list("actor-a");
+  assert.equal(introduction.labelA, "联系人甲");
+  assert.equal(introduction.labelB, "联系人乙");
+});
+
 test("contact introductions reject cross-account contacts and blank notes", async () => {
   const store = createMemoryLiveRecordStore([
     contactRecord("actor-a", "contact-a", "Aiko Tanaka"),

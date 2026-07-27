@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "db9d63f381e941c605b781c9b001143e09923f68",
-  "generatedAt": "2026-07-27T21:52:19+09:00",
+  "commit": "5e1f64ab357c86b3380ef8a2b4ad7d6c8afdbd88",
+  "generatedAt": "2026-07-27T22:41:36+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -23,7 +23,7 @@
   },
   "summary": {
     "routes": 38,
-    "actions": 1432,
+    "actions": 1447,
     "authenticatedRoutes": 22,
     "publicRoutes": 16,
     "risks": 0,
@@ -4961,7 +4961,7 @@
         {
           "actionId": "/app/contacts/[id]#1",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-          "line": 70,
+          "line": 68,
           "kind": "link",
           "tag": "a",
           "label": "{t(item.label)}",
@@ -5117,7 +5117,70 @@
         {
           "actionId": "/app/contacts/[id]#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1046,
+          "line": 1024,
+          "kind": "button",
+          "tag": "button",
+          "label": "Done",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/[id]#10",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1048,
+          "kind": "button",
+          "tag": "button",
+          "label": "{person.displayName}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/[id]#11",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1053,
+          "kind": "button",
+          "tag": "button",
+          "label": "Pick a contact",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/[id]#12",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1172,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -5136,9 +5199,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#10",
+          "actionId": "/app/contacts/[id]#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1062,
+          "line": 1188,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts and write the introduction note. Saving creates an account-scoped draft; it does not send anything. Intro note Cancel Saving… / Save draft",
@@ -5157,9 +5220,28 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/[id]#11",
+          "actionId": "/app/contacts/[id]#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1074,
+          "line": 120,
+          "kind": "link",
+          "tag": "a",
+          "label": "{item.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "crmHref(item.href)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/[id]#15",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1200,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -5178,9 +5260,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#12",
+          "actionId": "/app/contacts/[id]#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1075,
+          "line": 1201,
           "kind": "button",
           "tag": "button",
           "label": "Saving… / Save draft",
@@ -5197,9 +5279,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#13",
+          "actionId": "/app/contacts/[id]#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1123,
+          "line": 1250,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -5218,9 +5300,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#14",
+          "actionId": "/app/contacts/[id]#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1128,
+          "line": 1255,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -5239,9 +5321,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#15",
+          "actionId": "/app/contacts/[id]#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1152,
+          "line": 1279,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -5260,28 +5342,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#16",
+          "actionId": "/app/contacts/[id]#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 121,
-          "kind": "link",
-          "tag": "a",
-          "label": "{item.label}",
-          "accessibleName": "dynamic-runtime",
-          "href": "crmHref(item.href)",
-          "handlers": [],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "read/navigation",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/[id]#17",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 171,
+          "line": 170,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -5298,9 +5361,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#18",
+          "actionId": "/app/contacts/[id]#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 205,
+          "line": 204,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -5317,9 +5380,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#19",
+          "actionId": "/app/contacts/[id]#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 293,
+          "line": 292,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -5339,9 +5402,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#20",
+          "actionId": "/app/contacts/[id]#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 327,
+          "line": 326,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -5358,9 +5421,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/[id]#21",
+          "actionId": "/app/contacts/[id]#24",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 451,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -5377,9 +5440,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#22",
+          "actionId": "/app/contacts/[id]#25",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 453,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -5396,9 +5459,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#23",
+          "actionId": "/app/contacts/[id]#26",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 465,
+          "line": 464,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -5417,9 +5480,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#24",
+          "actionId": "/app/contacts/[id]#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 470,
+          "line": 469,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -5438,9 +5501,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#25",
+          "actionId": "/app/contacts/[id]#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 476,
+          "line": 475,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -5459,72 +5522,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#26",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 493,
-          "kind": "button",
-          "tag": "button",
-          "label": "Clear filters",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/[id]#27",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 513,
-          "kind": "button",
-          "tag": "button",
-          "label": "{label}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/[id]#28",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 525,
-          "kind": "button",
-          "tag": "button",
-          "label": "{tag}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
           "actionId": "/app/contacts/[id]#29",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 540,
+          "line": 492,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -5545,7 +5545,70 @@
         {
           "actionId": "/app/contacts/[id]#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 554,
+          "line": 512,
+          "kind": "button",
+          "tag": "button",
+          "label": "{label}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/[id]#31",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 524,
+          "kind": "button",
+          "tag": "button",
+          "label": "{tag}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/[id]#32",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 539,
+          "kind": "button",
+          "tag": "button",
+          "label": "Clear filters",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/[id]#33",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 553,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -5562,9 +5625,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#31",
+          "actionId": "/app/contacts/[id]#34",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 625,
+          "line": 624,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -5583,9 +5646,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/[id]#32",
+          "actionId": "/app/contacts/[id]#35",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 852,
+          "line": 851,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -5604,9 +5667,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#33",
+          "actionId": "/app/contacts/[id]#36",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 854,
+          "line": 853,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -5625,33 +5688,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#34",
+          "actionId": "/app/contacts/[id]#37",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 930,
+          "line": 908,
           "kind": "button",
           "tag": "button",
-          "label": "{person.displayName}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/[id]#35",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 935,
-          "kind": "button",
-          "tag": "button",
-          "label": "Pick a contact",
+          "label": "t({\n        en: `View introduction between ${intro.labelA} and ${intro.labelB}`,\n        zh: `查看${intro.labelA}与${intro.labelB}的引荐记录`,\n      })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -5664,10 +5706,29 @@
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/[id]#38",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 996,
+          "kind": "link",
+          "tag": "a",
+          "label": "{contact.role} {contact.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "contact.id ? `/app/contacts/${encodeURIComponent(contact.id)}` : \"/app/contacts\"",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#36",
+          "actionId": "/app/contacts/[id]#39",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1063,
           "kind": "click-handler",
@@ -5688,7 +5749,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#37",
+          "actionId": "/app/contacts/[id]#40",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1099,
           "kind": "button",
@@ -5709,7 +5770,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#38",
+          "actionId": "/app/contacts/[id]#41",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1110,
           "kind": "button",
@@ -5731,7 +5792,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#39",
+          "actionId": "/app/contacts/[id]#42",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1140,
           "kind": "button",
@@ -5752,7 +5813,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#40",
+          "actionId": "/app/contacts/[id]#43",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1378,
           "kind": "button",
@@ -5773,7 +5834,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#41",
+          "actionId": "/app/contacts/[id]#44",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 318,
           "kind": "link",
@@ -5792,7 +5853,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#42",
+          "actionId": "/app/contacts/[id]#45",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 325,
           "kind": "button",
@@ -5813,7 +5874,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#43",
+          "actionId": "/app/contacts/[id]#46",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 353,
           "kind": "button",
@@ -5834,7 +5895,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#44",
+          "actionId": "/app/contacts/[id]#47",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 422,
           "kind": "button",
@@ -5855,7 +5916,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#45",
+          "actionId": "/app/contacts/[id]#48",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 443,
           "kind": "button",
@@ -5876,7 +5937,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#46",
+          "actionId": "/app/contacts/[id]#49",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
           "kind": "button",
@@ -5897,7 +5958,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#47",
+          "actionId": "/app/contacts/[id]#50",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 472,
           "kind": "button",
@@ -5918,7 +5979,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#48",
+          "actionId": "/app/contacts/[id]#51",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 640,
           "kind": "button",
@@ -5939,7 +6000,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#49",
+          "actionId": "/app/contacts/[id]#52",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 652,
           "kind": "button",
@@ -5960,7 +6021,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#50",
+          "actionId": "/app/contacts/[id]#53",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 672,
           "kind": "button",
@@ -5981,7 +6042,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#51",
+          "actionId": "/app/contacts/[id]#54",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 751,
           "kind": "button",
@@ -6002,7 +6063,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#52",
+          "actionId": "/app/contacts/[id]#55",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 800,
           "kind": "button",
@@ -6023,7 +6084,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#53",
+          "actionId": "/app/contacts/[id]#56",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 161,
           "kind": "click-handler",
@@ -6044,7 +6105,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#54",
+          "actionId": "/app/contacts/[id]#57",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 193,
           "kind": "button",
@@ -6065,7 +6126,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#55",
+          "actionId": "/app/contacts/[id]#58",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 98,
           "kind": "button",
@@ -6086,7 +6147,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#56",
+          "actionId": "/app/contacts/[id]#59",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 100,
           "kind": "link",
@@ -6105,7 +6166,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#57",
+          "actionId": "/app/contacts/[id]#60",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 106,
           "kind": "link",
@@ -6124,7 +6185,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#58",
+          "actionId": "/app/contacts/[id]#61",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 127,
           "kind": "button",
@@ -6145,7 +6206,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#59",
+          "actionId": "/app/contacts/[id]#62",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
           "kind": "link",
@@ -6164,7 +6225,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#60",
+          "actionId": "/app/contacts/[id]#63",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
           "kind": "link",
@@ -6183,7 +6244,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#61",
+          "actionId": "/app/contacts/[id]#64",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
           "kind": "button",
@@ -6204,7 +6265,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#62",
+          "actionId": "/app/contacts/[id]#65",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 221,
           "kind": "button",
@@ -6225,7 +6286,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#63",
+          "actionId": "/app/contacts/[id]#66",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 258,
           "kind": "link",
@@ -6244,7 +6305,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#64",
+          "actionId": "/app/contacts/[id]#67",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 265,
           "kind": "link",
@@ -6263,7 +6324,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#65",
+          "actionId": "/app/contacts/[id]#68",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 280,
           "kind": "link",
@@ -6282,7 +6343,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#66",
+          "actionId": "/app/contacts/[id]#69",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 286,
           "kind": "link",
@@ -6301,7 +6362,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#67",
+          "actionId": "/app/contacts/[id]#70",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 353,
           "kind": "link",
@@ -6320,7 +6381,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#68",
+          "actionId": "/app/contacts/[id]#71",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 364,
           "kind": "link",
@@ -6339,7 +6400,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#69",
+          "actionId": "/app/contacts/[id]#72",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 366,
           "kind": "link",
@@ -6358,7 +6419,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#70",
+          "actionId": "/app/contacts/[id]#73",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 381,
           "kind": "button",
@@ -6379,7 +6440,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#71",
+          "actionId": "/app/contacts/[id]#74",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 394,
           "kind": "button",
@@ -6400,7 +6461,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#72",
+          "actionId": "/app/contacts/[id]#75",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 397,
           "kind": "link",
@@ -6419,7 +6480,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#73",
+          "actionId": "/app/contacts/[id]#76",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -6440,7 +6501,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#74",
+          "actionId": "/app/contacts/[id]#77",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -6459,7 +6520,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#75",
+          "actionId": "/app/contacts/[id]#78",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -6478,7 +6539,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/[id]#76",
+          "actionId": "/app/contacts/[id]#79",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 249,
           "kind": "link",
@@ -6850,7 +6911,7 @@
         {
           "actionId": "/app/contacts/all-actions#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-          "line": 70,
+          "line": 68,
           "kind": "link",
           "tag": "a",
           "label": "{t(item.label)}",
@@ -7721,7 +7782,7 @@
         {
           "actionId": "/app/contacts/dashboard#1",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-          "line": 70,
+          "line": 68,
           "kind": "link",
           "tag": "a",
           "label": "{t(item.label)}",
@@ -8740,7 +8801,7 @@
         {
           "actionId": "/app/contacts/graph#1",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-          "line": 70,
+          "line": 68,
           "kind": "link",
           "tag": "a",
           "label": "{t(item.label)}",
@@ -8759,7 +8820,70 @@
         {
           "actionId": "/app/contacts/graph#2",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1046,
+          "line": 1024,
+          "kind": "button",
+          "tag": "button",
+          "label": "Done",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/graph#3",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1048,
+          "kind": "button",
+          "tag": "button",
+          "label": "{person.displayName}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/graph#4",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1053,
+          "kind": "button",
+          "tag": "button",
+          "label": "Pick a contact",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/graph#5",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1172,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -8778,9 +8902,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#3",
+          "actionId": "/app/contacts/graph#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1062,
+          "line": 1188,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts and write the introduction note. Saving creates an account-scoped draft; it does not send anything. Intro note Cancel Saving… / Save draft",
@@ -8799,9 +8923,28 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/graph#4",
+          "actionId": "/app/contacts/graph#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1074,
+          "line": 120,
+          "kind": "link",
+          "tag": "a",
+          "label": "{item.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "crmHref(item.href)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/graph#8",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1200,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -8820,9 +8963,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#5",
+          "actionId": "/app/contacts/graph#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1075,
+          "line": 1201,
           "kind": "button",
           "tag": "button",
           "label": "Saving… / Save draft",
@@ -8839,9 +8982,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#6",
+          "actionId": "/app/contacts/graph#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1123,
+          "line": 1250,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -8860,9 +9003,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#7",
+          "actionId": "/app/contacts/graph#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1128,
+          "line": 1255,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -8881,9 +9024,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#8",
+          "actionId": "/app/contacts/graph#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1152,
+          "line": 1279,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -8902,28 +9045,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#9",
+          "actionId": "/app/contacts/graph#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 121,
-          "kind": "link",
-          "tag": "a",
-          "label": "{item.label}",
-          "accessibleName": "dynamic-runtime",
-          "href": "crmHref(item.href)",
-          "handlers": [],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "read/navigation",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/graph#10",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 171,
+          "line": 170,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -8940,9 +9064,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#11",
+          "actionId": "/app/contacts/graph#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 205,
+          "line": 204,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -8959,9 +9083,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#12",
+          "actionId": "/app/contacts/graph#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 293,
+          "line": 292,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -8981,9 +9105,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#13",
+          "actionId": "/app/contacts/graph#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 327,
+          "line": 326,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -9000,9 +9124,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/graph#14",
+          "actionId": "/app/contacts/graph#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 451,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -9019,9 +9143,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#15",
+          "actionId": "/app/contacts/graph#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 453,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -9038,9 +9162,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#16",
+          "actionId": "/app/contacts/graph#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 465,
+          "line": 464,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -9059,9 +9183,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#17",
+          "actionId": "/app/contacts/graph#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 470,
+          "line": 469,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -9080,9 +9204,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#18",
+          "actionId": "/app/contacts/graph#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 476,
+          "line": 475,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -9101,72 +9225,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#19",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 493,
-          "kind": "button",
-          "tag": "button",
-          "label": "Clear filters",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/graph#20",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 513,
-          "kind": "button",
-          "tag": "button",
-          "label": "{label}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/graph#21",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 525,
-          "kind": "button",
-          "tag": "button",
-          "label": "{tag}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
           "actionId": "/app/contacts/graph#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 540,
+          "line": 492,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -9187,7 +9248,70 @@
         {
           "actionId": "/app/contacts/graph#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 554,
+          "line": 512,
+          "kind": "button",
+          "tag": "button",
+          "label": "{label}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/graph#24",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 524,
+          "kind": "button",
+          "tag": "button",
+          "label": "{tag}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/graph#25",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 539,
+          "kind": "button",
+          "tag": "button",
+          "label": "Clear filters",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/graph#26",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 553,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -9204,9 +9328,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#24",
+          "actionId": "/app/contacts/graph#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 625,
+          "line": 624,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -9225,9 +9349,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/graph#25",
+          "actionId": "/app/contacts/graph#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 852,
+          "line": 851,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -9246,9 +9370,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#26",
+          "actionId": "/app/contacts/graph#29",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 854,
+          "line": 853,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -9267,33 +9391,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#27",
+          "actionId": "/app/contacts/graph#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 930,
+          "line": 908,
           "kind": "button",
           "tag": "button",
-          "label": "{person.displayName}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/graph#28",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 935,
-          "kind": "button",
-          "tag": "button",
-          "label": "Pick a contact",
+          "label": "t({\n        en: `View introduction between ${intro.labelA} and ${intro.labelB}`,\n        zh: `查看${intro.labelA}与${intro.labelB}的引荐记录`,\n      })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -9306,10 +9409,29 @@
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/graph#31",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 996,
+          "kind": "link",
+          "tag": "a",
+          "label": "{contact.role} {contact.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "contact.id ? `/app/contacts/${encodeURIComponent(contact.id)}` : \"/app/contacts\"",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#29",
+          "actionId": "/app/contacts/graph#32",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1063,
           "kind": "click-handler",
@@ -9330,7 +9452,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#30",
+          "actionId": "/app/contacts/graph#33",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1099,
           "kind": "button",
@@ -9351,7 +9473,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#31",
+          "actionId": "/app/contacts/graph#34",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1110,
           "kind": "button",
@@ -9373,7 +9495,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#32",
+          "actionId": "/app/contacts/graph#35",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1140,
           "kind": "button",
@@ -9394,7 +9516,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#33",
+          "actionId": "/app/contacts/graph#36",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1378,
           "kind": "button",
@@ -9415,7 +9537,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#34",
+          "actionId": "/app/contacts/graph#37",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 318,
           "kind": "link",
@@ -9434,7 +9556,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#35",
+          "actionId": "/app/contacts/graph#38",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 325,
           "kind": "button",
@@ -9455,7 +9577,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#36",
+          "actionId": "/app/contacts/graph#39",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 353,
           "kind": "button",
@@ -9476,7 +9598,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#37",
+          "actionId": "/app/contacts/graph#40",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 422,
           "kind": "button",
@@ -9497,7 +9619,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#38",
+          "actionId": "/app/contacts/graph#41",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 443,
           "kind": "button",
@@ -9518,7 +9640,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#39",
+          "actionId": "/app/contacts/graph#42",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
           "kind": "button",
@@ -9539,7 +9661,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#40",
+          "actionId": "/app/contacts/graph#43",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 472,
           "kind": "button",
@@ -9560,7 +9682,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#41",
+          "actionId": "/app/contacts/graph#44",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 640,
           "kind": "button",
@@ -9581,7 +9703,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#42",
+          "actionId": "/app/contacts/graph#45",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 652,
           "kind": "button",
@@ -9602,7 +9724,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#43",
+          "actionId": "/app/contacts/graph#46",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 672,
           "kind": "button",
@@ -9623,7 +9745,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#44",
+          "actionId": "/app/contacts/graph#47",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 751,
           "kind": "button",
@@ -9644,7 +9766,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#45",
+          "actionId": "/app/contacts/graph#48",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 800,
           "kind": "button",
@@ -9665,7 +9787,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#46",
+          "actionId": "/app/contacts/graph#49",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 161,
           "kind": "click-handler",
@@ -9686,7 +9808,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#47",
+          "actionId": "/app/contacts/graph#50",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 193,
           "kind": "button",
@@ -9707,7 +9829,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#48",
+          "actionId": "/app/contacts/graph#51",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 98,
           "kind": "button",
@@ -9728,7 +9850,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#49",
+          "actionId": "/app/contacts/graph#52",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 100,
           "kind": "link",
@@ -9747,7 +9869,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#50",
+          "actionId": "/app/contacts/graph#53",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 106,
           "kind": "link",
@@ -9766,7 +9888,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#51",
+          "actionId": "/app/contacts/graph#54",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 127,
           "kind": "button",
@@ -9787,7 +9909,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#52",
+          "actionId": "/app/contacts/graph#55",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
           "kind": "link",
@@ -9806,7 +9928,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#53",
+          "actionId": "/app/contacts/graph#56",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
           "kind": "link",
@@ -9825,7 +9947,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#54",
+          "actionId": "/app/contacts/graph#57",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
           "kind": "button",
@@ -9846,7 +9968,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#55",
+          "actionId": "/app/contacts/graph#58",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 221,
           "kind": "button",
@@ -9867,7 +9989,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#56",
+          "actionId": "/app/contacts/graph#59",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 258,
           "kind": "link",
@@ -9886,7 +10008,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#57",
+          "actionId": "/app/contacts/graph#60",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 265,
           "kind": "link",
@@ -9905,7 +10027,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#58",
+          "actionId": "/app/contacts/graph#61",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 280,
           "kind": "link",
@@ -9924,7 +10046,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#59",
+          "actionId": "/app/contacts/graph#62",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 286,
           "kind": "link",
@@ -9943,7 +10065,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#60",
+          "actionId": "/app/contacts/graph#63",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 353,
           "kind": "link",
@@ -9962,7 +10084,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#61",
+          "actionId": "/app/contacts/graph#64",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 364,
           "kind": "link",
@@ -9981,7 +10103,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#62",
+          "actionId": "/app/contacts/graph#65",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 366,
           "kind": "link",
@@ -10000,7 +10122,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#63",
+          "actionId": "/app/contacts/graph#66",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 381,
           "kind": "button",
@@ -10021,7 +10143,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#64",
+          "actionId": "/app/contacts/graph#67",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 394,
           "kind": "button",
@@ -10042,7 +10164,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#65",
+          "actionId": "/app/contacts/graph#68",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 397,
           "kind": "link",
@@ -10061,7 +10183,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#66",
+          "actionId": "/app/contacts/graph#69",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -10082,7 +10204,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#67",
+          "actionId": "/app/contacts/graph#70",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -10101,7 +10223,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#68",
+          "actionId": "/app/contacts/graph#71",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -10120,7 +10242,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/graph#69",
+          "actionId": "/app/contacts/graph#72",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 249,
           "kind": "link",
@@ -10150,6 +10272,7 @@
         "repos/orbits/tests/capabilities/chat-writing-assist-live-store.test.ts",
         "repos/orbits/tests/capabilities/connection-live-store.test.ts",
         "repos/orbits/tests/capabilities/contact-detail-live-store.test.ts",
+        "repos/orbits/tests/capabilities/contact-introductions-live-store.test.ts",
         "repos/orbits/tests/capabilities/contacts-hybrid-local-remote-store.test.ts",
         "repos/orbits/tests/capabilities/contacts-live-store.test.ts",
         "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts",
@@ -10168,8 +10291,7 @@
         "repos/orbits/tests/capabilities/relationship-natural-search-live-store.test.ts",
         "repos/orbits/tests/capabilities/relationship-stage-profile-live-store.test.ts",
         "repos/orbits/tests/capabilities/relationship-value-live-store.test.ts",
-        "repos/orbits/tests/mock/registry.test.ts",
-        "repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx"
+        "repos/orbits/tests/mock/registry.test.ts"
       ],
       "knownRisks": []
     },
@@ -10240,7 +10362,7 @@
         {
           "actionId": "/app/contacts/intros#1",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-          "line": 70,
+          "line": 68,
           "kind": "link",
           "tag": "a",
           "label": "{t(item.label)}",
@@ -10259,7 +10381,70 @@
         {
           "actionId": "/app/contacts/intros#2",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1046,
+          "line": 1024,
+          "kind": "button",
+          "tag": "button",
+          "label": "Done",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/intros#3",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1048,
+          "kind": "button",
+          "tag": "button",
+          "label": "{person.displayName}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/intros#4",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1053,
+          "kind": "button",
+          "tag": "button",
+          "label": "Pick a contact",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/intros#5",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1172,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -10278,9 +10463,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#3",
+          "actionId": "/app/contacts/intros#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1062,
+          "line": 1188,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts and write the introduction note. Saving creates an account-scoped draft; it does not send anything. Intro note Cancel Saving… / Save draft",
@@ -10299,9 +10484,28 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/intros#4",
+          "actionId": "/app/contacts/intros#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1074,
+          "line": 120,
+          "kind": "link",
+          "tag": "a",
+          "label": "{item.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "crmHref(item.href)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/intros#8",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1200,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -10320,9 +10524,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#5",
+          "actionId": "/app/contacts/intros#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1075,
+          "line": 1201,
           "kind": "button",
           "tag": "button",
           "label": "Saving… / Save draft",
@@ -10339,9 +10543,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#6",
+          "actionId": "/app/contacts/intros#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1123,
+          "line": 1250,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -10360,9 +10564,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#7",
+          "actionId": "/app/contacts/intros#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1128,
+          "line": 1255,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -10381,9 +10585,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#8",
+          "actionId": "/app/contacts/intros#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1152,
+          "line": 1279,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -10402,28 +10606,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#9",
+          "actionId": "/app/contacts/intros#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 121,
-          "kind": "link",
-          "tag": "a",
-          "label": "{item.label}",
-          "accessibleName": "dynamic-runtime",
-          "href": "crmHref(item.href)",
-          "handlers": [],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "read/navigation",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/intros#10",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 171,
+          "line": 170,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -10440,9 +10625,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#11",
+          "actionId": "/app/contacts/intros#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 205,
+          "line": 204,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -10459,9 +10644,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#12",
+          "actionId": "/app/contacts/intros#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 293,
+          "line": 292,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -10481,9 +10666,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#13",
+          "actionId": "/app/contacts/intros#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 327,
+          "line": 326,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -10500,9 +10685,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/intros#14",
+          "actionId": "/app/contacts/intros#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 451,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -10519,9 +10704,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#15",
+          "actionId": "/app/contacts/intros#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 453,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -10538,9 +10723,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#16",
+          "actionId": "/app/contacts/intros#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 465,
+          "line": 464,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -10559,9 +10744,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#17",
+          "actionId": "/app/contacts/intros#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 470,
+          "line": 469,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -10580,9 +10765,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#18",
+          "actionId": "/app/contacts/intros#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 476,
+          "line": 475,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -10601,72 +10786,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#19",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 493,
-          "kind": "button",
-          "tag": "button",
-          "label": "Clear filters",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/intros#20",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 513,
-          "kind": "button",
-          "tag": "button",
-          "label": "{label}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/intros#21",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 525,
-          "kind": "button",
-          "tag": "button",
-          "label": "{tag}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
           "actionId": "/app/contacts/intros#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 540,
+          "line": 492,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -10687,7 +10809,70 @@
         {
           "actionId": "/app/contacts/intros#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 554,
+          "line": 512,
+          "kind": "button",
+          "tag": "button",
+          "label": "{label}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/intros#24",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 524,
+          "kind": "button",
+          "tag": "button",
+          "label": "{tag}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/intros#25",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 539,
+          "kind": "button",
+          "tag": "button",
+          "label": "Clear filters",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/intros#26",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 553,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -10704,9 +10889,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#24",
+          "actionId": "/app/contacts/intros#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 625,
+          "line": 624,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -10725,9 +10910,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/intros#25",
+          "actionId": "/app/contacts/intros#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 852,
+          "line": 851,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -10746,9 +10931,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#26",
+          "actionId": "/app/contacts/intros#29",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 854,
+          "line": 853,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -10767,33 +10952,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#27",
+          "actionId": "/app/contacts/intros#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 930,
+          "line": 908,
           "kind": "button",
           "tag": "button",
-          "label": "{person.displayName}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/intros#28",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 935,
-          "kind": "button",
-          "tag": "button",
-          "label": "Pick a contact",
+          "label": "t({\n        en: `View introduction between ${intro.labelA} and ${intro.labelB}`,\n        zh: `查看${intro.labelA}与${intro.labelB}的引荐记录`,\n      })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -10806,10 +10970,29 @@
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/intros#31",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 996,
+          "kind": "link",
+          "tag": "a",
+          "label": "{contact.role} {contact.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "contact.id ? `/app/contacts/${encodeURIComponent(contact.id)}` : \"/app/contacts\"",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#29",
+          "actionId": "/app/contacts/intros#32",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1063,
           "kind": "click-handler",
@@ -10830,7 +11013,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#30",
+          "actionId": "/app/contacts/intros#33",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1099,
           "kind": "button",
@@ -10851,7 +11034,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#31",
+          "actionId": "/app/contacts/intros#34",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1110,
           "kind": "button",
@@ -10873,7 +11056,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#32",
+          "actionId": "/app/contacts/intros#35",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1140,
           "kind": "button",
@@ -10894,7 +11077,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#33",
+          "actionId": "/app/contacts/intros#36",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1378,
           "kind": "button",
@@ -10915,7 +11098,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#34",
+          "actionId": "/app/contacts/intros#37",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 318,
           "kind": "link",
@@ -10934,7 +11117,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#35",
+          "actionId": "/app/contacts/intros#38",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 325,
           "kind": "button",
@@ -10955,7 +11138,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#36",
+          "actionId": "/app/contacts/intros#39",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 353,
           "kind": "button",
@@ -10976,7 +11159,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#37",
+          "actionId": "/app/contacts/intros#40",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 422,
           "kind": "button",
@@ -10997,7 +11180,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#38",
+          "actionId": "/app/contacts/intros#41",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 443,
           "kind": "button",
@@ -11018,7 +11201,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#39",
+          "actionId": "/app/contacts/intros#42",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
           "kind": "button",
@@ -11039,7 +11222,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#40",
+          "actionId": "/app/contacts/intros#43",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 472,
           "kind": "button",
@@ -11060,7 +11243,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#41",
+          "actionId": "/app/contacts/intros#44",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 640,
           "kind": "button",
@@ -11081,7 +11264,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#42",
+          "actionId": "/app/contacts/intros#45",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 652,
           "kind": "button",
@@ -11102,7 +11285,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#43",
+          "actionId": "/app/contacts/intros#46",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 672,
           "kind": "button",
@@ -11123,7 +11306,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#44",
+          "actionId": "/app/contacts/intros#47",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 751,
           "kind": "button",
@@ -11144,7 +11327,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#45",
+          "actionId": "/app/contacts/intros#48",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 800,
           "kind": "button",
@@ -11165,7 +11348,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#46",
+          "actionId": "/app/contacts/intros#49",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 161,
           "kind": "click-handler",
@@ -11186,7 +11369,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#47",
+          "actionId": "/app/contacts/intros#50",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 193,
           "kind": "button",
@@ -11207,7 +11390,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#48",
+          "actionId": "/app/contacts/intros#51",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 98,
           "kind": "button",
@@ -11228,7 +11411,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#49",
+          "actionId": "/app/contacts/intros#52",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 100,
           "kind": "link",
@@ -11247,7 +11430,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#50",
+          "actionId": "/app/contacts/intros#53",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 106,
           "kind": "link",
@@ -11266,7 +11449,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#51",
+          "actionId": "/app/contacts/intros#54",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 127,
           "kind": "button",
@@ -11287,7 +11470,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#52",
+          "actionId": "/app/contacts/intros#55",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
           "kind": "link",
@@ -11306,7 +11489,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#53",
+          "actionId": "/app/contacts/intros#56",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
           "kind": "link",
@@ -11325,7 +11508,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#54",
+          "actionId": "/app/contacts/intros#57",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
           "kind": "button",
@@ -11346,7 +11529,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#55",
+          "actionId": "/app/contacts/intros#58",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 221,
           "kind": "button",
@@ -11367,7 +11550,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#56",
+          "actionId": "/app/contacts/intros#59",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 258,
           "kind": "link",
@@ -11386,7 +11569,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#57",
+          "actionId": "/app/contacts/intros#60",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 265,
           "kind": "link",
@@ -11405,7 +11588,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#58",
+          "actionId": "/app/contacts/intros#61",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 280,
           "kind": "link",
@@ -11424,7 +11607,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#59",
+          "actionId": "/app/contacts/intros#62",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 286,
           "kind": "link",
@@ -11443,7 +11626,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#60",
+          "actionId": "/app/contacts/intros#63",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 353,
           "kind": "link",
@@ -11462,7 +11645,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#61",
+          "actionId": "/app/contacts/intros#64",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 364,
           "kind": "link",
@@ -11481,7 +11664,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#62",
+          "actionId": "/app/contacts/intros#65",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 366,
           "kind": "link",
@@ -11500,7 +11683,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#63",
+          "actionId": "/app/contacts/intros#66",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 381,
           "kind": "button",
@@ -11521,7 +11704,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#64",
+          "actionId": "/app/contacts/intros#67",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 394,
           "kind": "button",
@@ -11542,7 +11725,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#65",
+          "actionId": "/app/contacts/intros#68",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 397,
           "kind": "link",
@@ -11561,7 +11744,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#66",
+          "actionId": "/app/contacts/intros#69",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -11582,7 +11765,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#67",
+          "actionId": "/app/contacts/intros#70",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -11601,7 +11784,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#68",
+          "actionId": "/app/contacts/intros#71",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -11620,7 +11803,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/intros#69",
+          "actionId": "/app/contacts/intros#72",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 249,
           "kind": "link",
@@ -11893,7 +12076,7 @@
         {
           "actionId": "/app/contacts/new#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-          "line": 70,
+          "line": 68,
           "kind": "link",
           "tag": "a",
           "label": "{t(item.label)}",
@@ -12835,7 +13018,7 @@
         {
           "actionId": "/app/contacts#1",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-          "line": 70,
+          "line": 68,
           "kind": "link",
           "tag": "a",
           "label": "{t(item.label)}",
@@ -12854,7 +13037,70 @@
         {
           "actionId": "/app/contacts#2",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1046,
+          "line": 1024,
+          "kind": "button",
+          "tag": "button",
+          "label": "Done",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts#3",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1048,
+          "kind": "button",
+          "tag": "button",
+          "label": "{person.displayName}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts#4",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1053,
+          "kind": "button",
+          "tag": "button",
+          "label": "Pick a contact",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts#5",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1172,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -12873,9 +13119,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#3",
+          "actionId": "/app/contacts#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1062,
+          "line": 1188,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts and write the introduction note. Saving creates an account-scoped draft; it does not send anything. Intro note Cancel Saving… / Save draft",
@@ -12894,9 +13140,28 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts#4",
+          "actionId": "/app/contacts#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1074,
+          "line": 120,
+          "kind": "link",
+          "tag": "a",
+          "label": "{item.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "crmHref(item.href)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts#8",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1200,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -12915,9 +13180,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#5",
+          "actionId": "/app/contacts#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1075,
+          "line": 1201,
           "kind": "button",
           "tag": "button",
           "label": "Saving… / Save draft",
@@ -12934,9 +13199,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#6",
+          "actionId": "/app/contacts#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1123,
+          "line": 1250,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -12955,9 +13220,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#7",
+          "actionId": "/app/contacts#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1128,
+          "line": 1255,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -12976,9 +13241,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#8",
+          "actionId": "/app/contacts#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1152,
+          "line": 1279,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -12997,28 +13262,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#9",
+          "actionId": "/app/contacts#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 121,
-          "kind": "link",
-          "tag": "a",
-          "label": "{item.label}",
-          "accessibleName": "dynamic-runtime",
-          "href": "crmHref(item.href)",
-          "handlers": [],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "read/navigation",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts#10",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 171,
+          "line": 170,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -13035,9 +13281,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#11",
+          "actionId": "/app/contacts#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 205,
+          "line": 204,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -13054,9 +13300,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#12",
+          "actionId": "/app/contacts#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 293,
+          "line": 292,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -13076,9 +13322,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#13",
+          "actionId": "/app/contacts#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 327,
+          "line": 326,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -13095,9 +13341,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts#14",
+          "actionId": "/app/contacts#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 451,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -13114,9 +13360,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#15",
+          "actionId": "/app/contacts#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 453,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -13133,9 +13379,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#16",
+          "actionId": "/app/contacts#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 465,
+          "line": 464,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -13154,9 +13400,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#17",
+          "actionId": "/app/contacts#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 470,
+          "line": 469,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -13175,9 +13421,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#18",
+          "actionId": "/app/contacts#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 476,
+          "line": 475,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -13196,72 +13442,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#19",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 493,
-          "kind": "button",
-          "tag": "button",
-          "label": "Clear filters",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts#20",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 513,
-          "kind": "button",
-          "tag": "button",
-          "label": "{label}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts#21",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 525,
-          "kind": "button",
-          "tag": "button",
-          "label": "{tag}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
           "actionId": "/app/contacts#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 540,
+          "line": 492,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -13282,7 +13465,70 @@
         {
           "actionId": "/app/contacts#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 554,
+          "line": 512,
+          "kind": "button",
+          "tag": "button",
+          "label": "{label}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts#24",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 524,
+          "kind": "button",
+          "tag": "button",
+          "label": "{tag}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts#25",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 539,
+          "kind": "button",
+          "tag": "button",
+          "label": "Clear filters",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts#26",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 553,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -13299,9 +13545,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#24",
+          "actionId": "/app/contacts#27",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 625,
+          "line": 624,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -13320,9 +13566,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts#25",
+          "actionId": "/app/contacts#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 852,
+          "line": 851,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -13341,9 +13587,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#26",
+          "actionId": "/app/contacts#29",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 854,
+          "line": 853,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -13362,33 +13608,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#27",
+          "actionId": "/app/contacts#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 930,
+          "line": 908,
           "kind": "button",
           "tag": "button",
-          "label": "{person.displayName}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts#28",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 935,
-          "kind": "button",
-          "tag": "button",
-          "label": "Pick a contact",
+          "label": "t({\n        en: `View introduction between ${intro.labelA} and ${intro.labelB}`,\n        zh: `查看${intro.labelA}与${intro.labelB}的引荐记录`,\n      })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -13401,10 +13626,29 @@
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts#31",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 996,
+          "kind": "link",
+          "tag": "a",
+          "label": "{contact.role} {contact.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "contact.id ? `/app/contacts/${encodeURIComponent(contact.id)}` : \"/app/contacts\"",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#29",
+          "actionId": "/app/contacts#32",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1063,
           "kind": "click-handler",
@@ -13425,7 +13669,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#30",
+          "actionId": "/app/contacts#33",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1099,
           "kind": "button",
@@ -13446,7 +13690,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#31",
+          "actionId": "/app/contacts#34",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1110,
           "kind": "button",
@@ -13468,7 +13712,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#32",
+          "actionId": "/app/contacts#35",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1140,
           "kind": "button",
@@ -13489,7 +13733,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#33",
+          "actionId": "/app/contacts#36",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1378,
           "kind": "button",
@@ -13510,7 +13754,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#34",
+          "actionId": "/app/contacts#37",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 318,
           "kind": "link",
@@ -13529,7 +13773,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#35",
+          "actionId": "/app/contacts#38",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 325,
           "kind": "button",
@@ -13550,7 +13794,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#36",
+          "actionId": "/app/contacts#39",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 353,
           "kind": "button",
@@ -13571,7 +13815,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#37",
+          "actionId": "/app/contacts#40",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 422,
           "kind": "button",
@@ -13592,7 +13836,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#38",
+          "actionId": "/app/contacts#41",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 443,
           "kind": "button",
@@ -13613,7 +13857,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#39",
+          "actionId": "/app/contacts#42",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
           "kind": "button",
@@ -13634,7 +13878,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#40",
+          "actionId": "/app/contacts#43",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 472,
           "kind": "button",
@@ -13655,7 +13899,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#41",
+          "actionId": "/app/contacts#44",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 640,
           "kind": "button",
@@ -13676,7 +13920,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#42",
+          "actionId": "/app/contacts#45",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 652,
           "kind": "button",
@@ -13697,7 +13941,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#43",
+          "actionId": "/app/contacts#46",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 672,
           "kind": "button",
@@ -13718,7 +13962,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#44",
+          "actionId": "/app/contacts#47",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 751,
           "kind": "button",
@@ -13739,7 +13983,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#45",
+          "actionId": "/app/contacts#48",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 800,
           "kind": "button",
@@ -13760,7 +14004,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#46",
+          "actionId": "/app/contacts#49",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 161,
           "kind": "click-handler",
@@ -13781,7 +14025,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#47",
+          "actionId": "/app/contacts#50",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 193,
           "kind": "button",
@@ -13802,7 +14046,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#48",
+          "actionId": "/app/contacts#51",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 98,
           "kind": "button",
@@ -13823,7 +14067,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#49",
+          "actionId": "/app/contacts#52",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 100,
           "kind": "link",
@@ -13842,7 +14086,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#50",
+          "actionId": "/app/contacts#53",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 106,
           "kind": "link",
@@ -13861,7 +14105,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#51",
+          "actionId": "/app/contacts#54",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 127,
           "kind": "button",
@@ -13882,7 +14126,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#52",
+          "actionId": "/app/contacts#55",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
           "kind": "link",
@@ -13901,7 +14145,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#53",
+          "actionId": "/app/contacts#56",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
           "kind": "link",
@@ -13920,7 +14164,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#54",
+          "actionId": "/app/contacts#57",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
           "kind": "button",
@@ -13941,7 +14185,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#55",
+          "actionId": "/app/contacts#58",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 221,
           "kind": "button",
@@ -13962,7 +14206,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#56",
+          "actionId": "/app/contacts#59",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 258,
           "kind": "link",
@@ -13981,7 +14225,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#57",
+          "actionId": "/app/contacts#60",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 265,
           "kind": "link",
@@ -14000,7 +14244,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#58",
+          "actionId": "/app/contacts#61",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 280,
           "kind": "link",
@@ -14019,7 +14263,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#59",
+          "actionId": "/app/contacts#62",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 286,
           "kind": "link",
@@ -14038,7 +14282,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#60",
+          "actionId": "/app/contacts#63",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 353,
           "kind": "link",
@@ -14057,7 +14301,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#61",
+          "actionId": "/app/contacts#64",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 364,
           "kind": "link",
@@ -14076,7 +14320,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#62",
+          "actionId": "/app/contacts#65",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 366,
           "kind": "link",
@@ -14095,7 +14339,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#63",
+          "actionId": "/app/contacts#66",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 381,
           "kind": "button",
@@ -14116,7 +14360,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#64",
+          "actionId": "/app/contacts#67",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 394,
           "kind": "button",
@@ -14137,7 +14381,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#65",
+          "actionId": "/app/contacts#68",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 397,
           "kind": "link",
@@ -14156,7 +14400,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#66",
+          "actionId": "/app/contacts#69",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -14177,7 +14421,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#67",
+          "actionId": "/app/contacts#70",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -14196,7 +14440,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#68",
+          "actionId": "/app/contacts#71",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -14215,7 +14459,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts#69",
+          "actionId": "/app/contacts#72",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 249,
           "kind": "link",
@@ -14335,7 +14579,7 @@
         {
           "actionId": "/app/contacts/pipeline#1",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-          "line": 70,
+          "line": 68,
           "kind": "link",
           "tag": "a",
           "label": "{t(item.label)}",
@@ -14373,7 +14617,70 @@
         {
           "actionId": "/app/contacts/pipeline#3",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1046,
+          "line": 1024,
+          "kind": "button",
+          "tag": "button",
+          "label": "Done",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/pipeline#4",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1048,
+          "kind": "button",
+          "tag": "button",
+          "label": "{person.displayName}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/pipeline#5",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1053,
+          "kind": "button",
+          "tag": "button",
+          "label": "Pick a contact",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/pipeline#6",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1172,
           "kind": "button",
           "tag": "button",
           "label": "{item.displayName}",
@@ -14392,9 +14699,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#4",
+          "actionId": "/app/contacts/pipeline#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1062,
+          "line": 1188,
           "kind": "form-submit",
           "tag": "form",
           "label": "Make an introduction Pick two contacts and write the introduction note. Saving creates an account-scoped draft; it does not send anything. Intro note Cancel Saving… / Save draft",
@@ -14413,9 +14720,28 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/pipeline#5",
+          "actionId": "/app/contacts/pipeline#8",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1074,
+          "line": 120,
+          "kind": "link",
+          "tag": "a",
+          "label": "{item.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "crmHref(item.href)",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/pipeline#9",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 1200,
           "kind": "button",
           "tag": "button",
           "label": "Cancel",
@@ -14434,9 +14760,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#6",
+          "actionId": "/app/contacts/pipeline#10",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1075,
+          "line": 1201,
           "kind": "button",
           "tag": "button",
           "label": "Saving… / Save draft",
@@ -14453,9 +14779,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#7",
+          "actionId": "/app/contacts/pipeline#11",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1123,
+          "line": 1250,
           "kind": "button",
           "tag": "button",
           "label": "Make introduction",
@@ -14474,9 +14800,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#8",
+          "actionId": "/app/contacts/pipeline#12",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1128,
+          "line": 1255,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -14495,9 +14821,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#9",
+          "actionId": "/app/contacts/pipeline#13",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 1152,
+          "line": 1279,
           "kind": "button",
           "tag": "button",
           "label": "{item.label} {item.count}",
@@ -14516,28 +14842,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#10",
+          "actionId": "/app/contacts/pipeline#14",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 121,
-          "kind": "link",
-          "tag": "a",
-          "label": "{item.label}",
-          "accessibleName": "dynamic-runtime",
-          "href": "crmHref(item.href)",
-          "handlers": [],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "read/navigation",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/pipeline#11",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 171,
+          "line": 170,
           "kind": "link",
           "tag": "a",
           "label": "t({ en: \"Scan card\", zh: \"扫名片\" })",
@@ -14554,9 +14861,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#12",
+          "actionId": "/app/contacts/pipeline#15",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 205,
+          "line": 204,
           "kind": "link",
           "tag": "a",
           "label": "{item.label}",
@@ -14573,9 +14880,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#13",
+          "actionId": "/app/contacts/pipeline#16",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 293,
+          "line": 292,
           "kind": "role-button",
           "tag": "span",
           "label": "t({ en: \"Show basis\", zh: \"查看依据\" })",
@@ -14595,9 +14902,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#14",
+          "actionId": "/app/contacts/pipeline#17",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 327,
+          "line": 326,
           "kind": "link",
           "tag": "a",
           "label": "{item.displayName} Unnamed contact {` · ${item.industry}`}",
@@ -14614,9 +14921,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/pipeline#15",
+          "actionId": "/app/contacts/pipeline#18",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 452,
+          "line": 451,
           "kind": "link",
           "tag": "a",
           "label": "Scan",
@@ -14633,9 +14940,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#16",
+          "actionId": "/app/contacts/pipeline#19",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 453,
+          "line": 452,
           "kind": "link",
           "tag": "a",
           "label": "Import",
@@ -14652,9 +14959,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#17",
+          "actionId": "/app/contacts/pipeline#20",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 465,
+          "line": 464,
           "kind": "button",
           "tag": "button",
           "label": "{suggestion.label}",
@@ -14673,9 +14980,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#18",
+          "actionId": "/app/contacts/pipeline#21",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 470,
+          "line": 469,
           "kind": "button",
           "tag": "button",
           "label": "{label} {counts[key]}",
@@ -14694,9 +15001,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#19",
+          "actionId": "/app/contacts/pipeline#22",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 476,
+          "line": 475,
           "kind": "button",
           "tag": "button",
           "label": "{tag} {items.filter((item) => item.valueTags.includes(tag)).length}",
@@ -14715,72 +15022,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#20",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 493,
-          "kind": "button",
-          "tag": "button",
-          "label": "Clear filters",
-          "accessibleName": "present-static",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/pipeline#21",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 513,
-          "kind": "button",
-          "tag": "button",
-          "label": "{label}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/pipeline#22",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 525,
-          "kind": "button",
-          "tag": "button",
-          "label": "{tag}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
           "actionId": "/app/contacts/pipeline#23",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 540,
+          "line": 492,
           "kind": "button",
           "tag": "button",
           "label": "Clear filters",
@@ -14801,7 +15045,70 @@
         {
           "actionId": "/app/contacts/pipeline#24",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 554,
+          "line": 512,
+          "kind": "button",
+          "tag": "button",
+          "label": "{label}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/pipeline#25",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 524,
+          "kind": "button",
+          "tag": "button",
+          "label": "{tag}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/pipeline#26",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 539,
+          "kind": "button",
+          "tag": "button",
+          "label": "Clear filters",
+          "accessibleName": "present-static",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/contacts/pipeline#27",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 553,
           "kind": "link",
           "tag": "a",
           "label": "{connection.displayName} Unnamed contact",
@@ -14818,9 +15125,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#25",
+          "actionId": "/app/contacts/pipeline#28",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 625,
+          "line": 624,
           "kind": "role-button",
           "tag": "div",
           "label": "isCollapsed ? t({ en: \"Expand stage\", zh: \"展开阶段\" }) : t({ en: \"Collapse stage\", zh: \"收起阶段\" })",
@@ -14839,9 +15146,9 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/contacts/pipeline#26",
+          "actionId": "/app/contacts/pipeline#29",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 852,
+          "line": 851,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom out\", zh: \"缩小\" })",
@@ -14860,9 +15167,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#27",
+          "actionId": "/app/contacts/pipeline#30",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 854,
+          "line": 853,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Zoom in\", zh: \"放大\" })",
@@ -14881,33 +15188,12 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#28",
+          "actionId": "/app/contacts/pipeline#31",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 930,
+          "line": 908,
           "kind": "button",
           "tag": "button",
-          "label": "{person.displayName}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [
-            "onclick"
-          ],
-          "behaviorEvidence": "present-static",
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "unknown-requires-runtime-verification",
-          "feedback": "unknown-requires-runtime-verification"
-        },
-        {
-          "actionId": "/app/contacts/pipeline#29",
-          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
-          "line": 935,
-          "kind": "button",
-          "tag": "button",
-          "label": "Pick a contact",
+          "label": "t({\n        en: `View introduction between ${intro.labelA} and ${intro.labelB}`,\n        zh: `查看${intro.labelA}与${intro.labelB}的引荐记录`,\n      })",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -14920,10 +15206,29 @@
           "retry": "unknown-requires-runtime-verification",
           "undoCompensation": "unknown-requires-runtime-verification",
           "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "present-static"
+        },
+        {
+          "actionId": "/app/contacts/pipeline#32",
+          "sourceFile": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+          "line": 996,
+          "kind": "link",
+          "tag": "a",
+          "label": "{contact.role} {contact.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": "contact.id ? `/app/contacts/${encodeURIComponent(contact.id)}` : \"/app/contacts\"",
+          "handlers": [],
+          "behaviorEvidence": "present-static",
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "read/navigation",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#30",
+          "actionId": "/app/contacts/pipeline#33",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1063,
           "kind": "click-handler",
@@ -14944,7 +15249,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#31",
+          "actionId": "/app/contacts/pipeline#34",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1099,
           "kind": "button",
@@ -14965,7 +15270,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#32",
+          "actionId": "/app/contacts/pipeline#35",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1110,
           "kind": "button",
@@ -14987,7 +15292,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#33",
+          "actionId": "/app/contacts/pipeline#36",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1140,
           "kind": "button",
@@ -15008,7 +15313,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#34",
+          "actionId": "/app/contacts/pipeline#37",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1378,
           "kind": "button",
@@ -15029,7 +15334,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#35",
+          "actionId": "/app/contacts/pipeline#38",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 318,
           "kind": "link",
@@ -15048,7 +15353,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#36",
+          "actionId": "/app/contacts/pipeline#39",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 325,
           "kind": "button",
@@ -15069,7 +15374,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#37",
+          "actionId": "/app/contacts/pipeline#40",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 353,
           "kind": "button",
@@ -15090,7 +15395,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#38",
+          "actionId": "/app/contacts/pipeline#41",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 422,
           "kind": "button",
@@ -15111,7 +15416,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#39",
+          "actionId": "/app/contacts/pipeline#42",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 443,
           "kind": "button",
@@ -15132,7 +15437,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#40",
+          "actionId": "/app/contacts/pipeline#43",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
           "kind": "button",
@@ -15153,7 +15458,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#41",
+          "actionId": "/app/contacts/pipeline#44",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 472,
           "kind": "button",
@@ -15174,7 +15479,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#42",
+          "actionId": "/app/contacts/pipeline#45",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 640,
           "kind": "button",
@@ -15195,7 +15500,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#43",
+          "actionId": "/app/contacts/pipeline#46",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 652,
           "kind": "button",
@@ -15216,7 +15521,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#44",
+          "actionId": "/app/contacts/pipeline#47",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 672,
           "kind": "button",
@@ -15237,7 +15542,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#45",
+          "actionId": "/app/contacts/pipeline#48",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 751,
           "kind": "button",
@@ -15258,7 +15563,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#46",
+          "actionId": "/app/contacts/pipeline#49",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 800,
           "kind": "button",
@@ -15279,7 +15584,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#47",
+          "actionId": "/app/contacts/pipeline#50",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 161,
           "kind": "click-handler",
@@ -15300,7 +15605,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#48",
+          "actionId": "/app/contacts/pipeline#51",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 193,
           "kind": "button",
@@ -15321,7 +15626,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#49",
+          "actionId": "/app/contacts/pipeline#52",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 98,
           "kind": "button",
@@ -15342,7 +15647,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#50",
+          "actionId": "/app/contacts/pipeline#53",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 100,
           "kind": "link",
@@ -15361,7 +15666,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#51",
+          "actionId": "/app/contacts/pipeline#54",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 106,
           "kind": "link",
@@ -15380,7 +15685,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#52",
+          "actionId": "/app/contacts/pipeline#55",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 127,
           "kind": "button",
@@ -15401,7 +15706,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#53",
+          "actionId": "/app/contacts/pipeline#56",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
           "kind": "link",
@@ -15420,7 +15725,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#54",
+          "actionId": "/app/contacts/pipeline#57",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
           "kind": "link",
@@ -15439,7 +15744,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#55",
+          "actionId": "/app/contacts/pipeline#58",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
           "kind": "button",
@@ -15460,7 +15765,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#56",
+          "actionId": "/app/contacts/pipeline#59",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 221,
           "kind": "button",
@@ -15481,7 +15786,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#57",
+          "actionId": "/app/contacts/pipeline#60",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 258,
           "kind": "link",
@@ -15500,7 +15805,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#58",
+          "actionId": "/app/contacts/pipeline#61",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 265,
           "kind": "link",
@@ -15519,7 +15824,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#59",
+          "actionId": "/app/contacts/pipeline#62",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 280,
           "kind": "link",
@@ -15538,7 +15843,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#60",
+          "actionId": "/app/contacts/pipeline#63",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 286,
           "kind": "link",
@@ -15557,7 +15862,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#61",
+          "actionId": "/app/contacts/pipeline#64",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 353,
           "kind": "link",
@@ -15576,7 +15881,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#62",
+          "actionId": "/app/contacts/pipeline#65",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 364,
           "kind": "link",
@@ -15595,7 +15900,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#63",
+          "actionId": "/app/contacts/pipeline#66",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 366,
           "kind": "link",
@@ -15614,7 +15919,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#64",
+          "actionId": "/app/contacts/pipeline#67",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 381,
           "kind": "button",
@@ -15635,7 +15940,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#65",
+          "actionId": "/app/contacts/pipeline#68",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 394,
           "kind": "button",
@@ -15656,7 +15961,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#66",
+          "actionId": "/app/contacts/pipeline#69",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 397,
           "kind": "link",
@@ -15675,7 +15980,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#67",
+          "actionId": "/app/contacts/pipeline#70",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -15696,7 +16001,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#68",
+          "actionId": "/app/contacts/pipeline#71",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -15715,7 +16020,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#69",
+          "actionId": "/app/contacts/pipeline#72",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -15734,7 +16039,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/contacts/pipeline#70",
+          "actionId": "/app/contacts/pipeline#73",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 249,
           "kind": "link",
@@ -25936,6 +26241,7 @@
         "repos/orbits/tests/capabilities/chat-writing-assist-live-store.test.ts",
         "repos/orbits/tests/capabilities/connection-live-store.test.ts",
         "repos/orbits/tests/capabilities/contact-detail-live-store.test.ts",
+        "repos/orbits/tests/capabilities/contact-introductions-live-store.test.ts",
         "repos/orbits/tests/capabilities/contacts-hybrid-local-remote-store.test.ts",
         "repos/orbits/tests/capabilities/contacts-live-store.test.ts",
         "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts",
@@ -25954,8 +26260,7 @@
         "repos/orbits/tests/capabilities/relationship-natural-search-live-store.test.ts",
         "repos/orbits/tests/capabilities/relationship-stage-profile-live-store.test.ts",
         "repos/orbits/tests/capabilities/relationship-value-live-store.test.ts",
-        "repos/orbits/tests/mock/registry.test.ts",
-        "repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx"
+        "repos/orbits/tests/mock/registry.test.ts"
       ],
       "knownRisks": []
     },

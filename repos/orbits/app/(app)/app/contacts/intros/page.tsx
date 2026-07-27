@@ -51,10 +51,14 @@ export default async function AppContactsIntrosPage({
               ...contactsRouteToOrbitContactsViewModel(routeModel.payload),
               intros: introductions.map((introduction) => ({
                 blurb: introduction.blurb,
+                contactAId: introduction.contactAId,
+                contactBId: introduction.contactBId,
+                createdAt: introduction.createdAt,
                 id: introduction.id,
                 labelA: introduction.labelA,
                 labelB: introduction.labelB,
                 statusBadge: introduction.status,
+                updatedAt: introduction.updatedAt,
               })),
             }}
           />

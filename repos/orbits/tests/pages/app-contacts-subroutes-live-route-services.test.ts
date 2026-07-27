@@ -73,6 +73,27 @@ test("contacts introductions use stored actor-scoped records, not contact-derive
   assert.match(pageSource, /introductionRepository\.list\(session\.user\.id\)/);
   assert.match(componentSource, /\/api\/contacts\/introductions/);
   assert.match(componentSource, /statusBadge: introduction\.status/);
+  assert.match(componentSource, /function IntroDetailModal/);
+  assert.match(componentSource, /setSelectedIntroduction\(intro\)/);
+  assert.match(componentSource, /查看详情/);
+  assert.match(pageSource, /contactAId: introduction\.contactAId/);
+  assert.match(pageSource, /createdAt: introduction\.createdAt/);
+});
+
+test("contacts sidebars expose one import hub entry without a duplicate scan-card destination", () => {
+  const sharedSidebarSource = source(
+    "app/(app)/app/contacts/orbit-crm-sidebar.tsx",
+  );
+  const contactsSource = source(
+    "app/(app)/app/contacts/orbit-real-contacts.tsx",
+  );
+
+  assert.match(sharedSidebarSource, /Import hub/);
+  assert.doesNotMatch(sharedSidebarSource, /Scan card/);
+  assert.doesNotMatch(
+    contactsSource.match(/function crmNavItems[\s\S]*?\n\}/)?.[0] ?? "",
+    /Scan card/,
+  );
 });
 
 test("contacts shared interactions do not fabricate actions or email delivery", () => {

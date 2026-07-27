@@ -10,8 +10,7 @@ export type CrmSidebarActive =
   | "intros"
   | "dashboard"
   | "allActions"
-  | "import"
-  | "scan";
+  | "import";
 
 type Item = {
   key: CrmSidebarActive;
@@ -44,7 +43,6 @@ const WALLET_ITEMS: Item[] = [
 
 const CAPTURE_ITEMS: Item[] = [
   { key: "import", icon: "download", href: "/app/contacts/new", label: { en: "Import hub", zh: "导入中心" } },
-  { key: "scan", icon: "scan", href: "/app/contacts/new", label: { en: "Scan card", zh: "扫名片" } },
 ];
 
 function NavGroup({

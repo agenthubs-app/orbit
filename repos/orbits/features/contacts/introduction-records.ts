@@ -159,16 +159,31 @@ export function createContactIntroductionRepository(input: {
         );
       }
 
-      const records = await input.store.listRecords({
-        collectionName: INTRODUCTION_COLLECTION,
-        workspaceId: input.workspaceId,
-      });
+      const [records, contacts] = await Promise.all([
+        input.store.listRecords({
+          collectionName: INTRODUCTION_COLLECTION,
+          workspaceId: input.workspaceId,
+        }),
+        actorContacts(input.store, input.workspaceId, normalizedActorId),
+      ]);
 
       return records
         .filter((record) => belongsToActor(record, normalizedActorId))
         .flatMap((record) => {
           const introduction = introductionFromRecord(record);
-          return introduction ? [introduction] : [];
+          return introduction
+            ? [
+                {
+                  ...introduction,
+                  labelA:
+                    contacts.get(introduction.contactAId) ??
+                    introduction.labelA,
+                  labelB:
+                    contacts.get(introduction.contactBId) ??
+                    introduction.labelB,
+                },
+              ]
+            : [];
         })
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
     },

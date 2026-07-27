@@ -31,7 +31,6 @@ function crmNavItems(t: Translate): { href: string; icon: string; key: CrmMode; 
     { key: "graph", href: "/home/cards/graph", icon: "users", label: t({ en: "Network graph", zh: "人脉图谱" }) },
     { key: "intros", href: "/home/cards/intros", icon: "share", label: t({ en: "Introductions", zh: "引荐记录" }) },
     { key: "dashboard", href: "/home/cards/dashboard", icon: "grid", label: t({ en: "Dashboard", zh: "人脉表盘" }) },
-    { key: "scan", href: "/home/cards/scan", icon: "ticket", label: t({ en: "Scan card", zh: "扫名片" }) },
   ];
 }
 
@@ -896,9 +895,32 @@ function introStatusClass(status: OrbitIntroStatus) {
   return status === "sent" ? "badge-live" : "badge-soon";
 }
 
-function IntroRow({ intro, t }: { intro: OrbitIntroView; t: Translate }) {
+function IntroRow({
+  intro,
+  onOpen,
+  t,
+}: {
+  intro: OrbitIntroView;
+  onOpen: () => void;
+  t: Translate;
+}) {
   return (
-    <article className="card orbit-intro-row">
+    <button
+      aria-label={t({
+        en: `View introduction between ${intro.labelA} and ${intro.labelB}`,
+        zh: `查看${intro.labelA}与${intro.labelB}的引荐记录`,
+      })}
+      className="btn card orbit-intro-row"
+      onClick={onOpen}
+      style={{
+        color: "inherit",
+        cursor: "pointer",
+        fontFamily: "var(--ff)",
+        textAlign: "left",
+        width: "100%",
+      }}
+      type="button"
+    >
       <div className="orbit-intro-route">
         <Avatar letter={crmInitial(intro.labelA)} g="g-sky" size={42} />
         <div className="orbit-intro-name"><span>{t({ en: "Contact A", zh: "联系人 A" })}</span><strong>{intro.labelA}</strong></div>
@@ -908,7 +930,103 @@ function IntroRow({ intro, t }: { intro: OrbitIntroView; t: Translate }) {
       </div>
       <span className={`badge ${introStatusClass(intro.statusBadge)}`}>{introStatusLabel(intro.statusBadge, t)}</span>
       {intro.blurb ? <p className="orbit-intro-blurb">{intro.blurb}</p> : null}
-    </article>
+      <span style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 12, gap: 4, gridColumn: "1 / -1" }}>
+        {t({ en: "View details", zh: "查看详情" })}
+        <Icon name="chevR" size={14} />
+      </span>
+    </button>
+  );
+}
+
+function formatIntroDate(value: string | undefined, t: Translate): string {
+  if (!value) return t({ en: "Not recorded", zh: "未记录" });
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return t({
+    en: new Intl.DateTimeFormat("en", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date),
+    zh: new Intl.DateTimeFormat("zh-CN", {
+      dateStyle: "long",
+      timeStyle: "short",
+    }).format(date),
+  });
+}
+
+function IntroDetailModal({
+  intro,
+  onClose,
+  t,
+}: {
+  intro: OrbitIntroView;
+  onClose: () => void;
+  t: Translate;
+}) {
+  return (
+    <ModalShell
+      maxW={620}
+      onClose={onClose}
+      step={t({ en: "Introduction details", zh: "引荐详情" })}
+    >
+      <div style={{ display: "grid", gap: 20 }}>
+        <div>
+          <h2 className="h-title" style={{ margin: "4px 0 6px" }}>
+            {intro.labelA} <span style={{ color: "var(--accent)" }}>→</span> {intro.labelB}
+          </h2>
+          <span className={`badge ${introStatusClass(intro.statusBadge)}`}>
+            {introStatusLabel(intro.statusBadge, t)}
+          </span>
+        </div>
+
+        <section className="card-flat" style={{ padding: 16 }}>
+          <div className="field-label">{t({ en: "Introduction note", zh: "引荐说明" })}</div>
+          <p style={{ color: "var(--text)", fontSize: 15, lineHeight: 1.75, margin: "8px 0 0", whiteSpace: "pre-wrap" }}>
+            {intro.blurb}
+          </p>
+        </section>
+
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(2,minmax(0,1fr))" }}>
+          {[
+            { id: intro.contactAId, label: intro.labelA, role: t({ en: "Contact A", zh: "联系人 A" }) },
+            { id: intro.contactBId, label: intro.labelB, role: t({ en: "Contact B", zh: "联系人 B" }) },
+          ].map((contact) => (
+            <a
+              className="card-flat"
+              href={contact.id ? `/app/contacts/${encodeURIComponent(contact.id)}` : "/app/contacts"}
+              key={contact.role}
+              style={{ alignItems: "center", color: "inherit", display: "flex", gap: 12, padding: 12, textDecoration: "none" }}
+            >
+              <Avatar g="g-violet" letter={crmInitial(contact.label)} size={38} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ color: "var(--text-3)", display: "block", fontSize: 11 }}>{contact.role}</span>
+                <strong style={{ color: "var(--ink)", display: "block", fontSize: 14, marginTop: 2 }}>{contact.label}</strong>
+              </span>
+              <Icon color="var(--text-4)" name="chevR" size={15} />
+            </a>
+          ))}
+        </div>
+
+        <dl style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(2,minmax(0,1fr))", margin: 0 }}>
+          <div>
+            <dt className="field-label">{t({ en: "Created", zh: "创建时间" })}</dt>
+            <dd style={{ color: "var(--text-2)", fontSize: 13, margin: "5px 0 0" }}>{formatIntroDate(intro.createdAt, t)}</dd>
+          </div>
+          <div>
+            <dt className="field-label">{t({ en: "Last updated", zh: "最近更新" })}</dt>
+            <dd style={{ color: "var(--text-2)", fontSize: 13, margin: "5px 0 0" }}>{formatIntroDate(intro.updatedAt, t)}</dd>
+          </div>
+        </dl>
+
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button className="btn btn-primary" onClick={onClose} type="button">
+            {t({ en: "Done", zh: "完成" })}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
   );
 }
 
@@ -994,11 +1112,15 @@ function IntroComposerModal({
         success?: boolean;
         data?: {
           introduction?: {
+            contactAId?: string;
+            contactBId?: string;
+            createdAt?: string;
             id?: string;
             labelA?: string;
             labelB?: string;
             blurb?: string;
             status?: OrbitIntroStatus;
+            updatedAt?: string;
           };
         };
       };
@@ -1017,10 +1139,14 @@ function IntroComposerModal({
 
       onCreated({
         blurb: introduction.blurb,
+        contactAId: introduction.contactAId,
+        contactBId: introduction.contactBId,
+        createdAt: introduction.createdAt,
         id: introduction.id,
         labelA: introduction.labelA,
         labelB: introduction.labelB,
         statusBadge: introduction.status,
+        updatedAt: introduction.updatedAt,
       });
     } catch {
       setError(
@@ -1083,6 +1209,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
   const { t } = useOrbitLanguage();
   const [composerOpen, setComposerOpen] = useState(false);
   const [introductions, setIntroductions] = useState(viewModel.intros);
+  const [selectedIntroduction, setSelectedIntroduction] = useState<OrbitIntroView | null>(null);
   const [filter, setFilter] = useState<"all" | OrbitIntroStatus>("all");
   const [query, setQuery] = useState("");
   const stats = {
@@ -1131,7 +1258,7 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
               ))}
             </div>
             {!visible.length ? <div className="card-flat orbit-empty">{t({ en: "No introductions match these filters yet.", zh: "还没有符合筛选条件的引荐记录。" })}</div> : null}
-            <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} t={t} />)}</section>
+            <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} onOpen={() => setSelectedIntroduction(intro)} t={t} />)}</section>
           </div>
         </div>
       </div>
@@ -1155,10 +1282,11 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
             ))}
           </div>
           {!visible.length ? <div className="card-flat orbit-empty">{t({ en: "No introductions match these filters yet.", zh: "还没有符合筛选条件的引荐记录。" })}</div> : null}
-          <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} t={t} />)}</section>
+          <section className="orbit-intro-list">{visible.map((intro) => <IntroRow intro={intro} key={intro.id} onOpen={() => setSelectedIntroduction(intro)} t={t} />)}</section>
         </div>
       </div>
       {composerOpen ? <IntroComposerModal onClose={() => setComposerOpen(false)} onCreated={(introduction) => { setIntroductions((current) => [introduction, ...current]); setComposerOpen(false); }} t={t} viewModel={viewModel} /> : null}
+      {selectedIntroduction ? <IntroDetailModal intro={selectedIntroduction} onClose={() => setSelectedIntroduction(null)} t={t} /> : null}
     </main>
   );
 }
