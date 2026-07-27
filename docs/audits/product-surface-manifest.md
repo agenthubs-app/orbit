@@ -1,12 +1,12 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 1
-- Indexed commit: `19072882570d4cb32b2d2e52284632ff2942dbf7`
-- Deterministic generated timestamp (commit time): 2026-07-27T12:37:44+09:00
+- Indexed commit: `1680e864849331872e787c094306abb46cdf9ffa`
+- Deterministic generated timestamp (commit time): 2026-07-27T12:46:45+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
-- Actions/interactions: 1826
+- Actions/interactions: 1812
 - Authenticated routes: 22
 - Public-at-proxy routes: 16
 
@@ -30,7 +30,7 @@
 | `/app/contacts/intros` | Introduction workflow | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 80 | 4 | 35 |
 | `/app/contacts/new` | Contact acquisition | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 57 | 3 | 32 |
 | `/app/contacts` | Contact list and discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 80 | 30 | 35 |
-| `/app/contacts/pipeline` | Relationship pipeline | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 95 | 7 | 50 |
+| `/app/contacts/pipeline` | Relationship pipeline | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 81 | 7 | 35 |
 | `/app/dashboard` | Relationship dashboard | authenticated | Live | 0 | 24 | 2 |
 | `/app/events/[id]` | Event detail and event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 71 | 30 | 41 |
 | `/app/events/[id]/register` | Event registration | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 18 | 30 | 16 |

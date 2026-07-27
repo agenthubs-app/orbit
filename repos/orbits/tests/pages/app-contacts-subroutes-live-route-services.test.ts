@@ -89,3 +89,24 @@ for (const subroute of subroutes) {
     });
   });
 }
+
+test("contacts pipeline exposes only source-backed read behavior", () => {
+  const pipelineSource = source(
+    "app/(app)/app/contacts/orbit-real-cards-pipeline-view.tsx",
+  );
+
+  assert.match(pipelineSource, /Read-only grouping from follow-up signals/);
+  assert.ok(
+    pipelineSource.includes('href={`/app/contacts/${contact.id}`}'),
+  );
+  assert.doesNotMatch(pipelineSource, /AI Summit 2026/);
+  assert.doesNotMatch(pipelineSource, /triageQueue|reminders|statusMap/);
+  assert.doesNotMatch(
+    pipelineSource,
+    /Stage updated|Saved to their connection profile timeline/,
+  );
+  assert.doesNotMatch(
+    pipelineSource,
+    /Organize after-event contacts|One email each|Set reminder|Draft email/,
+  );
+});

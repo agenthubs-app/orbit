@@ -2,14 +2,14 @@
 
 Command: `npm test` in `repos/orbits`
 
-- Tests: 1,201
-- Passed: 1,131
-- Failed: 70
+- Tests: 1,202
+- Passed: 1,133
+- Failed: 69
 - Skipped/cancelled/todo: 0
 - Duration: 32.9 seconds
 - Production build and TypeScript: passed separately.
 
-The current rerun added two passing contacts-filter tests over the prior stage and retained the same 70 classified failure names, so no new failure was introduced.
+The current rerun added the passing contacts-pipeline regression test, retained every other classified failure name, and made the non-`.btn` button-count ratchet pass by removing the prototype controls. No new failure was introduced.
 
 Classification totals:
 
@@ -21,7 +21,7 @@ Classification totals:
 | design-scale-ratchet | 4 | Current source exceeds literal design-token ratchets. |
 | reference-css-contract | 4 | Tests expect the extracted stylesheet route while current product composition differs. |
 | asset-manifest-contract | 3 | Image-manifest and alt-text contract drift. |
-| button-style-ratchet | 3 | Shared button-class exemptions and counts are out of sync. |
+| button-style-ratchet | 2 | Shared button-class exemptions are out of sync with the remaining source controls. |
 | live-storage-environment | 2 | Live-store tests fail against current shared storage/runtime state; must be isolated and re-run. |
 | contact-detail-legacy-contract | 2 | Presenter/mapping expectations differ from current contact-detail implementation. |
 | event-detail-legacy-contract | 2 | Event detail desktop/mobile hierarchy contract drift. |
@@ -99,7 +99,6 @@ Every failing test:
 | reference-css-contract | Orbit reference stylesheet route disables browser caching in development | open-baseline |
 | mock-boundary-contract | production routes and app pages obtain mock implementations only through service factories | open-baseline |
 | scaffold-contract | scaffold exposes the runnable Next.js App Router contract | open-baseline |
-| button-style-ratchet | non-.btn `<button>` count in `app/(app)/app` does not increase | open-baseline |
 | button-style-ratchet | the five T5 core surfaces have no non-.btn `<button>` outside the documented exemption list | open-baseline |
 | button-style-ratchet | EXEMPTIONS stays in sync with source — every entry still points at a real non-.btn `<button>` | open-baseline |
 | theme-contract | P2-2: theme toggle renders icons, not emoji glyphs | open-baseline |

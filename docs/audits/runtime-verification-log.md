@@ -118,3 +118,30 @@ Console:
 
 - No application warning or error entries were recorded.
 - Browser-extension-owned warnings were excluded by source URL and were not emitted by iOrbit.
+
+## 2026-07-27 — Source-backed contacts pipeline
+
+Production runtime:
+
+- Rebuilt the current worktree with `npm run build`; compilation and the build's TypeScript check passed.
+- Started the resulting production build with `next start` on an isolated local port.
+- Reused the isolated authenticated audit session; no credentials were read or recorded.
+
+Desktop/default viewport:
+
+| Action | Authoritative evidence | Result |
+| --- | --- | --- |
+| Open `/app/contacts/pipeline` | URL, DOM snapshot, rendered counts | Loaded 66 source-backed contacts across the three route-derived review groups and displayed the explicit read-only classification notice. |
+| Inspect available controls and copy | DOM query and rendered text | Rendered 0 stage buttons and none of the removed hard-coded event, draft, reminder, fake-save, or fake-success copy. |
+| Open the first visible contact card | Unique desktop `href`, navigation URL, detail DOM | Navigated to `/app/contacts/contact_003`; the destination rendered source/evidence detail content. |
+
+Mobile viewport (`390 × 844`):
+
+- The mobile pipeline rendered all 66 source-backed cards and the read-only classification notice.
+- `innerWidth`, document client width, and document scroll width were all 390; no horizontal overflow was present.
+- The mobile surface rendered 0 stage buttons and none of the removed prototype actions or hard-coded event copy.
+
+Console:
+
+- No application warning or error entries were recorded on desktop or mobile.
+- Temporary Chrome viewport override was reset and the verification tab was finalized.
