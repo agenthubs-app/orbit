@@ -323,3 +323,28 @@ Implementation boundary:
 - Actor-bound Live service factories pass the same actor into the shared contact-draft provider for create, list, and confirmation.
 - Unscoped public Live factories now fail closed rather than reading or writing workspace-wide relationship drafts.
 - `ACQUISITION-CAPABILITY-AUTH-001` remains open until QR, external import, referral/recommended confirmation, and email/calendar signal APIs receive the same boundary.
+
+## 2026-07-27 — QR acquisition actor boundary
+
+Production runtime:
+
+- Ran 25 focused QR Mock/Live/API and shared confirmation regression tests; all passed.
+- Ran `pnpm lint`; TypeScript validation completed successfully.
+- Rebuilt the exact worktree with `pnpm build`, generated a fresh production build, and restored `next-env.d.ts` to the development route-types path.
+- Started that build on isolated port 3100; port 3000 was not touched.
+
+Authorization and identity results:
+
+| Boundary | Authoritative evidence | Result |
+| --- | --- | --- |
+| Anonymous QR scan | Real JSON `POST /api/contact-drafts/qr/scan` against the production build | Returned `401 UNAUTHORIZED` from `authenticated-api-actor` before QR input parsing/provider access. |
+| Anonymous QR confirmation | Real `POST /api/contact-drafts/qr-draft:live:contact_001/confirm` against the production build | Returned `401 UNAUTHORIZED` before contact/evidence lookup. |
+| Cross-actor QR graph | Isolated memory-store test | Actor A received the QR candidate; Actor B received an honest empty scan result and `QR_SCAN_DRAFT_NOT_FOUND` for Actor A's draft ID. |
+| Existing confirmation branches | Focused business-card, central-draft, manual, and QR tests | All shared handler branches remained green; deterministic Mock confirmation payloads were unchanged. |
+
+Implementation boundary:
+
+- The QR scan route is now a thin export backed by an injectable authenticated handler.
+- Live QR contact and evidence reads filter by the server actor using record ownership metadata.
+- The shared draft confirmation handler sends the same actor into the Live QR service and uses the server-derived actor label for confirmation evidence.
+- Unscoped QR Live factory use fails closed. `ACQUISITION-CAPABILITY-AUTH-001` remains open for external import, referral/recommended confirmation, and email/calendar signal APIs.

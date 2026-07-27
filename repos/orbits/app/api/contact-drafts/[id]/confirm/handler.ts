@@ -25,7 +25,7 @@ import {
   createBusinessCardReviewService,
   createContactAcquisitionDraftServiceForActor,
   createManualContactCreationServiceForActor,
-  createQrScanConnectService,
+  createQrScanConnectServiceForActor,
 } from "../../../../../features/acquisition/service-factory";
 import {
   contactAcquisitionDraftFailureContext,
@@ -71,10 +71,12 @@ export function createConfirmContactDraftHandler(
       id === "demo-qr-draft" ||
       id.startsWith(QR_SCAN_CONNECT_LIVE_DRAFT_ID_PREFIX)
     ) {
-      const qrService = createQrScanConnectService(
+      const qrService = createQrScanConnectServiceForActor(
+        actor.id,
         id.startsWith(QR_SCAN_CONNECT_LIVE_DRAFT_ID_PREFIX) ? mode : "mock",
       );
       const result = await qrService.confirmQrConnectionDraft({
+        ...(mode === "live" ? { actorLabel: actorLabel(actor) } : {}),
         draftId: id,
         scenario,
       });

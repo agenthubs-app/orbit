@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { POST as scanQr } from "../../app/api/contact-drafts/qr/scan/route";
+import { createQrScanPostHandler } from "../../app/api/contact-drafts/qr/scan/handler";
 import { createConfirmContactDraftHandler } from "../../app/api/contact-drafts/[id]/confirm/handler";
 import { createLiveQrScanConnectService } from "../../features/acquisition/live-qr-service";
 import { createQrScanConnectService } from "../../features/acquisition/service-factory";
@@ -90,6 +90,55 @@ test("QR scan live service derives connection drafts from qr_scan contacts witho
   assert.equal(draftsAfter, draftsBefore);
 });
 
+test("QR scan live provider keeps contacts and evidence inside one actor boundary", async () => {
+  const store = await createSeedStore();
+
+  for (const collectionName of ["contacts", "evidence"]) {
+    const records = store.listRecords({
+      workspaceId: WORKSPACE_ID,
+      collectionName,
+    });
+
+    for (const record of records) {
+      await store.upsertRecord({
+        ...record,
+        userId: "account:qr-a",
+      });
+    }
+  }
+
+  const actorAService = createLiveQrScanConnectService({
+    now: () => NOW,
+    provider: createStorageQrScanConnectProvider({
+      actorId: "account:qr-a",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+  const actorBService = createLiveQrScanConnectService({
+    now: () => NOW,
+    provider: createStorageQrScanConnectProvider({
+      actorId: "account:qr-b",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const actorAScan = await actorAService.scanQrCode();
+  const actorBScan = await actorBService.scanQrCode();
+  const actorBConfirmation = await actorBService.confirmQrConnectionDraft({
+    actorLabel: "Actor B",
+    draftId: LIVE_DRAFT_ID,
+  });
+
+  assert.equal(actorAScan.success, true);
+  assert.equal(actorAScan.data.state, "success");
+  assert.equal(actorBScan.success, true);
+  assert.equal(actorBScan.data.state, "empty");
+  assert.equal(actorBConfirmation.success, false);
+  assert.equal(actorBConfirmation.error.code, "QR_SCAN_DRAFT_NOT_FOUND");
+});
+
 test("QR scan live service fails closed when storage is unconfigured", async () => {
   const service = createLiveQrScanConnectService({
     provider: null,
@@ -148,7 +197,9 @@ test("QR scan connect API resolves ORBIT_MODULE_MODE=live for live draft ids", a
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const scanResponse = await scanQr(
+    const scanResponse = await createQrScanPostHandler(
+      async () => ({ id: "account:qr-live-test", name: "QR tester" }),
+    )(
       new Request("https://orbit.local/api/contact-drafts/qr/scan", {
         method: "POST",
       }),
@@ -190,4 +241,24 @@ test("QR scan connect API resolves ORBIT_MODULE_MODE=live for live draft ids", a
     process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
   }
+});
+
+test("QR scan API rejects anonymous requests before parsing scan content", async () => {
+  const response = await createQrScanPostHandler(async () => null)(
+    new Request("https://orbit.local/api/contact-drafts/qr/scan", {
+      body: JSON.stringify({
+        qrText: "anonymous QR data must not reach the provider",
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "POST",
+    }),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(body.success, false);
+  assert.equal(body.error.code, "UNAUTHORIZED");
+  assert.equal(body.error.context.service, "authenticated-api-actor");
 });

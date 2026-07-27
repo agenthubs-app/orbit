@@ -34,6 +34,7 @@ export const QR_SCAN_CONNECT_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageQrScanConnectProviderOptions {
+  actorId?: string;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -41,6 +42,7 @@ export interface StorageQrScanConnectProviderOptions {
 }
 
 export interface ConfiguredStorageQrScanConnectProviderOptions {
+  actorId?: string;
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
 }
@@ -162,14 +164,29 @@ async function listCollection(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   collectionName: string,
+  actorId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({
+  const records = await store.listRecords({
     workspaceId,
     collectionName,
   });
+  const normalizedActorId = actorId?.trim();
+
+  if (!normalizedActorId) {
+    return records;
+  }
+
+  return records.filter(
+    (record) =>
+      record.userId === normalizedActorId ||
+      record.payload.accountId === normalizedActorId ||
+      record.payload.actorId === normalizedActorId ||
+      record.payload.ownerId === normalizedActorId,
+  );
 }
 
 export function createStorageQrScanConnectProvider({
+  actorId,
   source,
   sourceLabel = "QR scan connect shared live storage",
   store,
@@ -184,11 +201,13 @@ export function createStorageQrScanConnectProvider({
           store,
           workspaceId,
           QR_SCAN_CONNECT_LIVE_RECORD_COLLECTIONS.contacts,
+          actorId,
         ),
         listCollection(
           store,
           workspaceId,
           QR_SCAN_CONNECT_LIVE_RECORD_COLLECTIONS.evidence,
+          actorId,
         ),
       ]);
 
@@ -209,6 +228,7 @@ export function createStorageQrScanConnectProvider({
 }
 
 export function createConfiguredStorageQrScanConnectProvider({
+  actorId,
   env,
   sourceLabel = "QR scan connect Postgres live storage",
 }: ConfiguredStorageQrScanConnectProviderOptions = {}): LiveQrScanConnectProvider | null {
@@ -221,6 +241,7 @@ export function createConfiguredStorageQrScanConnectProvider({
   }
 
   return createStorageQrScanConnectProvider({
+    actorId,
     source: `postgres-live-record-store:qr-scan-connect:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

@@ -136,7 +136,7 @@ export const qrScanConnectServiceFactory =
     implementations: {
       live: () =>
         createLiveQrScanConnectService({
-          provider: createConfiguredStorageQrScanConnectProvider(),
+          provider: null,
         }),
       mock: () => createMockQrScanConnectService(),
     },
@@ -333,6 +333,23 @@ export function createQrScanConnectService(
   mode?: ModuleMode | string,
 ): QrScanConnectService | MockQrScanConnectService {
   return createRequiredService(resolveQrScanConnectService(mode));
+}
+
+export function createQrScanConnectServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): QrScanConnectService {
+  const resolvedMode = resolveModuleMode(mode);
+
+  if (resolvedMode !== "live") {
+    return createQrScanConnectService(resolvedMode);
+  }
+
+  return createLiveQrScanConnectService({
+    provider: actorId.trim()
+      ? createConfiguredStorageQrScanConnectProvider({ actorId })
+      : null,
+  });
 }
 
 export function resolveEventAttendeeImportService(

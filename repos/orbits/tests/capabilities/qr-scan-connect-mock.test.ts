@@ -182,8 +182,8 @@ test("mock QR scan connect service is deterministic rule-based code with no exte
 
 test("QR scan connect API routes return stable envelopes with empty and failure paths", async () => {
   const scanRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/qr/scan/route")
-  >("app/api/contact-drafts/qr/scan/route.ts");
+    typeof import("../../app/api/contact-drafts/qr/scan/handler")
+  >("app/api/contact-drafts/qr/scan/handler.ts");
   const confirmRoute = await importProjectModule<
     typeof import("../../app/api/contact-drafts/[id]/confirm/handler")
   >("app/api/contact-drafts/[id]/confirm/handler.ts");
@@ -191,7 +191,10 @@ test("QR scan connect API routes return stable envelopes with empty and failure 
     typeof import("../../features/acquisition/qr-fixtures")
   >("features/acquisition/qr-fixtures.ts");
 
-  const scanResponse = await scanRoute.POST(
+  const scanQr = scanRoute.createQrScanPostHandler(
+    async () => ({ id: "account:qr-test", name: "QR tester" }),
+  );
+  const scanResponse = await scanQr(
     new Request("https://orbit.local/api/contact-drafts/qr/scan", {
       method: "POST",
     }),
@@ -207,12 +210,12 @@ test("QR scan connect API routes return stable envelopes with empty and failure 
       params: Promise.resolve({ id: "demo-qr-draft" }),
     },
   );
-  const emptyResponse = await scanRoute.POST(
+  const emptyResponse = await scanQr(
     new Request("https://orbit.local/api/contact-drafts/qr/scan?scenario=empty", {
       method: "POST",
     }),
   );
-  const failureResponse = await scanRoute.POST(
+  const failureResponse = await scanQr(
     new Request(
       "https://orbit.local/api/contact-drafts/qr/scan?scenario=failure",
       {
