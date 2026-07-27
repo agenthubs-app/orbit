@@ -25,7 +25,9 @@ export type LiveBusinessCardScanOcrProviderResult<TResult> =
 export interface LiveBusinessCardScanOcrProvider {
   source: string;
   sourceLabel: string;
-  readBusinessCardScanOcrGraph: () => LiveBusinessCardScanOcrProviderResult<LiveBusinessCardScanOcrGraph>;
+  readBusinessCardScanOcrGraph: (
+    actorId: string,
+  ) => LiveBusinessCardScanOcrProviderResult<LiveBusinessCardScanOcrGraph>;
 }
 
 export const BUSINESS_CARD_SCAN_OCR_LIVE_RECORD_COLLECTIONS = {
@@ -178,19 +180,40 @@ export function createStorageBusinessCardScanOcrProvider({
   return {
     source: source ?? `live-record-store:business-card-scan-ocr:${workspaceId}`,
     sourceLabel,
-    async readBusinessCardScanOcrGraph(): Promise<LiveBusinessCardScanOcrGraph> {
-      const [contactRecords, evidenceRecords] = await Promise.all([
-        listCollection(
-          store,
-          workspaceId,
-          BUSINESS_CARD_SCAN_OCR_LIVE_RECORD_COLLECTIONS.contacts,
+    async readBusinessCardScanOcrGraph(
+      actorId,
+    ): Promise<LiveBusinessCardScanOcrGraph> {
+      const normalizedActorId = actorId.trim();
+      const allContactRecords = normalizedActorId
+        ? await listCollection(
+            store,
+            workspaceId,
+            BUSINESS_CARD_SCAN_OCR_LIVE_RECORD_COLLECTIONS.contacts,
+          )
+        : [];
+      const contactRecords = allContactRecords.filter(
+        (record) =>
+          record.userId === normalizedActorId ||
+          record.payload.accountId === normalizedActorId,
+      );
+      const actorEvidenceIds = Array.from(
+        new Set(
+          contactRecords.flatMap((record) =>
+            Array.isArray(record.payload.evidenceIds)
+              ? record.payload.evidenceIds.filter(nonEmptyString)
+              : [],
+          ),
         ),
-        listCollection(
-          store,
-          workspaceId,
-          BUSINESS_CARD_SCAN_OCR_LIVE_RECORD_COLLECTIONS.evidence,
-        ),
-      ]);
+      );
+      const evidenceRecords =
+        actorEvidenceIds.length > 0
+          ? await store.listRecords({
+              collectionName:
+                BUSINESS_CARD_SCAN_OCR_LIVE_RECORD_COLLECTIONS.evidence,
+              recordIds: actorEvidenceIds,
+              workspaceId,
+            })
+          : [];
 
       return {
         contacts: contactRecords

@@ -5,6 +5,7 @@ import type { ContactDTO } from "../../shared/domain/contracts";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const BUSINESS_CARD_CONTACT_WRITE_ERROR_CODES = [
+  "BUSINESS_CARD_CONTACT_ACTOR_REQUIRED",
   "BUSINESS_CARD_CONTACT_CONFIRMATION_REQUIRED",
   "BUSINESS_CARD_CONTACT_INPUT_INVALID",
   "BUSINESS_CARD_CONTACT_WRITE_UNCONFIGURED",
@@ -15,6 +16,7 @@ export type BusinessCardContactWriteErrorCode =
   (typeof BUSINESS_CARD_CONTACT_WRITE_ERROR_CODES)[number];
 
 export interface ConfirmBusinessCardContactInput {
+  actorId: string;
   actorLabel: string;
   confirmed: boolean;
   displayName: string;
@@ -55,6 +57,13 @@ export interface BusinessCardContactWriteErrorDefinition {
 }
 
 export const BUSINESS_CARD_CONTACT_WRITE_ERROR_DEFINITIONS = {
+  BUSINESS_CARD_CONTACT_ACTOR_REQUIRED: {
+    appCode: "UNAUTHORIZED",
+    code: "BUSINESS_CARD_CONTACT_ACTOR_REQUIRED",
+    message: "An authenticated actor is required before creating this contact.",
+    recovery:
+      "Sign in before confirming the reviewed business card contact.",
+  },
   BUSINESS_CARD_CONTACT_CONFIRMATION_REQUIRED: {
     appCode: "VALIDATION_ERROR",
     code: "BUSINESS_CARD_CONTACT_CONFIRMATION_REQUIRED",
@@ -106,9 +115,9 @@ export interface BusinessCardContactWriteService {
 }
 
 export interface BusinessCardContactWriteProvider {
-  getContact(contactId: string): Promise<ContactDTO | null>;
-  listContacts(): Promise<readonly ContactDTO[]>;
-  saveContact(contact: ContactDTO): Promise<ContactDTO>;
+  getContact(contactId: string, actorId: string): Promise<ContactDTO | null>;
+  listContacts(actorId: string): Promise<readonly ContactDTO[]>;
+  saveContact(contact: ContactDTO, actorId: string): Promise<ContactDTO>;
 }
 
 export function businessCardContactWriteFailureToAppError(

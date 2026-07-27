@@ -246,7 +246,10 @@ test("manual contact API resolves ORBIT_MODULE_MODE=live and fails closed withou
     delete process.env.ORBIT_DATABASE_URL;
 
     const createRoute = await import("../../app/api/contact-drafts/manual/route");
-    const confirmRoute = await import("../../app/api/contact-drafts/[id]/confirm/route");
+    const confirmRoute = await import("../../app/api/contact-drafts/[id]/confirm/handler");
+    const confirmDraft = confirmRoute.createConfirmContactDraftHandler(
+      async () => ({ id: "account:manual-live-test", name: "Manual tester" }),
+    );
     const createResponse = await createRoute.POST(
       new Request("https://orbit.local/api/contact-drafts/manual", {
         body: JSON.stringify(manualInput()),
@@ -256,7 +259,7 @@ test("manual contact API resolves ORBIT_MODULE_MODE=live and fails closed withou
         method: "POST",
       }),
     );
-    const confirmResponse = await confirmRoute.POST(
+    const confirmResponse = await confirmDraft(
       new Request(
         "https://orbit.local/api/contact-drafts/manual-draft:live:missing/confirm",
         {

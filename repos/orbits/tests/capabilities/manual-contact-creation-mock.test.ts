@@ -171,8 +171,8 @@ test("manual contact creation API routes return stable envelopes with empty and 
     typeof import("../../app/api/contact-drafts/manual/route")
   >("app/api/contact-drafts/manual/route.ts");
   const confirmRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/[id]/confirm/route")
-  >("app/api/contact-drafts/[id]/confirm/route.ts");
+    typeof import("../../app/api/contact-drafts/[id]/confirm/handler")
+  >("app/api/contact-drafts/[id]/confirm/handler.ts");
   const fixtures = await importProjectModule<
     typeof import("../../features/acquisition/manual-fixtures")
   >("features/acquisition/manual-fixtures.ts");
@@ -182,7 +182,10 @@ test("manual contact creation API routes return stable envelopes with empty and 
       method: "POST",
     }),
   );
-  const confirmResponse = await confirmRoute.POST(
+  const confirmDraft = confirmRoute.createConfirmContactDraftHandler(
+    async () => ({ id: "account:manual-test", name: "Manual tester" }),
+  );
+  const confirmResponse = await confirmDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-manual-draft/confirm",
       {
@@ -209,7 +212,7 @@ test("manual contact creation API routes return stable envelopes with empty and 
       },
     ),
   );
-  const blockedConfirmationResponse = await confirmRoute.POST(
+  const blockedConfirmationResponse = await confirmDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-manual-draft/confirm?scenario=blocked",
       {

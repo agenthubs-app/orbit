@@ -81,22 +81,34 @@ function contactFromRecord(
   };
 }
 
+function belongsToActor(
+  record: LiveRecord<Record<string, unknown>>,
+  actorId: string,
+): boolean {
+  return (
+    record.userId === actorId ||
+    record.payload.accountId === actorId
+  );
+}
+
 export function createStorageBusinessCardContactWriteProvider({
   store,
   workspaceId,
 }: StorageBusinessCardContactWriteProviderOptions): BusinessCardContactWriteProvider {
   return {
-    async getContact(contactId) {
-      return contactFromRecord(
-        await store.getRecord({
+    async getContact(contactId, actorId) {
+      const record = await store.getRecord({
           collectionName: "contacts",
           recordId: contactId,
           workspaceId,
-        }),
-      );
+        });
+
+      return record && belongsToActor(record, actorId)
+        ? contactFromRecord(record)
+        : null;
     },
 
-    async listContacts() {
+    async listContacts(actorId) {
       const records = await store.listRecords({
         collectionName: "contacts",
         lifecycleState: "active",
@@ -104,11 +116,12 @@ export function createStorageBusinessCardContactWriteProvider({
       });
 
       return records
+        .filter((record) => belongsToActor(record, actorId))
         .map((record) => contactFromRecord(record))
         .filter((contact): contact is ContactDTO => contact !== null);
     },
 
-    async saveContact(contact) {
+    async saveContact(contact, actorId) {
       const record: LiveRecord<Record<string, unknown>> = {
         collectionName: "contacts",
         createdAt: contact.createdAt,
@@ -135,7 +148,7 @@ export function createStorageBusinessCardContactWriteProvider({
         targetId: contact.id,
         targetType: "contact",
         updatedAt: contact.updatedAt,
-        userId: null,
+        userId: actorId,
         workspaceId,
       };
       const saved = await store.upsertRecord(record);

@@ -157,8 +157,8 @@ test("contact draft API routes return stable envelopes and documented empty or f
     typeof import("../../app/api/contact-drafts/route")
   >("app/api/contact-drafts/route.ts");
   const confirmRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/[id]/confirm/route")
-  >("app/api/contact-drafts/[id]/confirm/route.ts");
+    typeof import("../../app/api/contact-drafts/[id]/confirm/handler")
+  >("app/api/contact-drafts/[id]/confirm/handler.ts");
   const fixtures = await importProjectModule<
     typeof import("../../features/acquisition/fixtures")
   >("features/acquisition/fixtures.ts");
@@ -168,7 +168,10 @@ test("contact draft API routes return stable envelopes and documented empty or f
       method: "GET",
     }),
   );
-  const confirmResponse = await confirmRoute.POST(
+  const confirmDraft = confirmRoute.createConfirmContactDraftHandler(
+    async () => ({ id: "account:draft-test", name: "Draft tester" }),
+  );
+  const confirmResponse = await confirmDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-draft-1/confirm",
       {
@@ -199,7 +202,7 @@ test("contact draft API routes return stable envelopes and documented empty or f
       method: "GET",
     }),
   );
-  const missingResponse = await confirmRoute.POST(
+  const missingResponse = await confirmDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/missing-draft/confirm",
       {

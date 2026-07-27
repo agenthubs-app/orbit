@@ -144,6 +144,15 @@ function unconfiguredProvenance(now: string): BusinessCardReviewProvenance {
   };
 }
 
+function actorRequiredProvenance(now: string): BusinessCardReviewProvenance {
+  return {
+    ...unconfiguredProvenance(now),
+    source: "authenticated-actor:business-card-review-required",
+    sourceLabel: "Authenticated actor required before business card review",
+    evidenceIds: ["evidence:business-card-review-actor-required"],
+  };
+}
+
 function provenanceFor(input: {
   evidenceIds: readonly string[];
   generatedAt: string;
@@ -572,6 +581,7 @@ function emptyPayload(input: {
 }
 
 async function readGraph(input: {
+  actorId: string;
   now: string;
   provider?: LiveBusinessCardReviewProvider | null;
 }): Promise<ReadBusinessCardGraphResult> {
@@ -584,7 +594,7 @@ async function readGraph(input: {
 
   try {
     return {
-      graph: await input.provider.readBusinessCardReviewGraph(),
+      graph: await input.provider.readBusinessCardReviewGraph(input.actorId),
       provider: input.provider,
     };
   } catch {
@@ -656,8 +666,18 @@ export function createLiveBusinessCardReviewService({
 }: LiveBusinessCardReviewServiceOptions = {}): BusinessCardReviewService {
   return {
     async getReviewDraft(input): Promise<BusinessCardReviewResult> {
+      const actorId = nonEmpty(input.actorId);
+
+      if (!actorId) {
+        return failure(
+          "BUSINESS_CARD_REVIEW_ACTOR_REQUIRED",
+          actorRequiredProvenance(now()),
+        );
+      }
+
       const scenario = normalizeReviewScenario(input.scenario);
       const readResult = await readGraph({
+        actorId,
         now: now(),
         provider,
       });
@@ -716,8 +736,18 @@ export function createLiveBusinessCardReviewService({
     },
 
     async updateReviewDraft(input): Promise<BusinessCardReviewResult> {
+      const actorId = nonEmpty(input.actorId);
+
+      if (!actorId) {
+        return failure(
+          "BUSINESS_CARD_REVIEW_ACTOR_REQUIRED",
+          actorRequiredProvenance(now()),
+        );
+      }
+
       const scenario = normalizeReviewScenario(input.scenario);
       const readResult = await readGraph({
+        actorId,
         now: now(),
         provider,
       });
@@ -819,8 +849,18 @@ export function createLiveBusinessCardReviewService({
     async confirmReviewedDraft(
       input: BusinessCardReviewConfirmInput,
     ): Promise<BusinessCardReviewConfirmationResult> {
+      const actorId = nonEmpty(input.actorId);
+
+      if (!actorId) {
+        return failure(
+          "BUSINESS_CARD_REVIEW_ACTOR_REQUIRED",
+          actorRequiredProvenance(now()),
+        );
+      }
+
       const scenario = normalizeConfirmationScenario(input.scenario);
       const readResult = await readGraph({
+        actorId,
         now: now(),
         provider,
       });

@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PATCH as updateDraft } from "../../app/api/contact-drafts/[id]/route";
-import { POST as confirmDraft } from "../../app/api/contact-drafts/[id]/confirm/route";
+import {
+  createContactDraftGetHandler,
+  createContactDraftPatchHandler,
+} from "../../app/api/contact-drafts/[id]/handler";
+import { createConfirmContactDraftHandler } from "../../app/api/contact-drafts/[id]/confirm/handler";
 import { createLiveBusinessCardReviewService } from "../../features/acquisition/live-business-card-review-service";
 import { createBusinessCardReviewService } from "../../features/acquisition/service-factory";
 import { createStorageBusinessCardReviewProvider } from "../../features/acquisition/storage/business-card-review-live-record-provider";
@@ -11,6 +14,7 @@ import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/sto
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 const WORKSPACE_ID = "workspace:business-card-review-live-test";
+const ACTOR_ID = "account:business-card-review-owner";
 const NOW = "2026-07-02T14:10:00.000Z";
 const LIVE_DRAFT_ID = "business-card-review:live:contact_012";
 
@@ -22,6 +26,22 @@ async function createSeedStore() {
     store,
     workspaceId: WORKSPACE_ID,
   });
+  const actorRecords = store
+    .listRecords({ workspaceId: WORKSPACE_ID })
+    .filter(
+      (record) =>
+        record.collectionName === "contacts" ||
+        record.collectionName === "evidence",
+    );
+
+  await Promise.all(
+    actorRecords.map((record) =>
+      store.upsertRecord({
+        ...record,
+        userId: ACTOR_ID,
+      }),
+    ),
+  );
 
   return store;
 }
@@ -46,9 +66,11 @@ test("business card review live service derives review drafts from business-card
   }).length;
 
   const lookup = await service.getReviewDraft({
+    actorId: ACTOR_ID,
     draftId: LIVE_DRAFT_ID,
   });
   const update = await service.updateReviewDraft({
+    actorId: ACTOR_ID,
     draftId: LIVE_DRAFT_ID,
     reviewedFields: {
       email: "chihiro.yamada@example.test",
@@ -57,7 +79,12 @@ test("business card review live service derives review drafts from business-card
     reviewerLabel: "Live reviewer",
   });
   const confirm = await service.confirmReviewedDraft({
+    actorId: ACTOR_ID,
     actorLabel: "Live operator",
+    draftId: LIVE_DRAFT_ID,
+  });
+  const foreignLookup = await service.getReviewDraft({
+    actorId: "account:other-business-card-review-owner",
     draftId: LIVE_DRAFT_ID,
   });
   const contactsAfter = store.listRecords({
@@ -103,6 +130,9 @@ test("business card review live service derives review drafts from business-card
   assert.equal(confirm.data.contactCandidate.readyForContactWrite, true);
   assert.equal(confirm.data.contactCandidate.contactWriteExecuted, false);
   assert.equal(confirm.data.provenance.databaseWriteExecuted, false);
+  assert.equal(foreignLookup.success, true);
+  assert.equal(foreignLookup.data.state, "empty");
+  assert.equal(foreignLookup.data.reviewDraft, null);
 
   assert.equal(contactsBefore, defaultMockFixtures.contacts.length);
   assert.equal(contactsAfter, contactsBefore);
@@ -115,6 +145,7 @@ test("business card review live service fails closed when storage is unconfigure
   });
 
   const result = await service.getReviewDraft({
+    actorId: ACTOR_ID,
     draftId: LIVE_DRAFT_ID,
   });
 
@@ -144,6 +175,7 @@ test("business card review factory exposes live mode without breaking default mo
       draftId: "demo-business-card-draft",
     });
     const live = await createBusinessCardReviewService("live").getReviewDraft({
+      actorId: ACTOR_ID,
       draftId: LIVE_DRAFT_ID,
     });
 
@@ -173,7 +205,10 @@ test("business card review API resolves ORBIT_MODULE_MODE=live for live draft id
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const updateResponse = await updateDraft(
+    const updateResponse = await createContactDraftPatchHandler(async () => ({
+      id: ACTOR_ID,
+      name: "Live reviewer",
+    }))(
       new Request(`https://orbit.local/api/contact-drafts/${LIVE_DRAFT_ID}`, {
         method: "PATCH",
       }),
@@ -181,7 +216,10 @@ test("business card review API resolves ORBIT_MODULE_MODE=live for live draft id
         params: Promise.resolve({ id: LIVE_DRAFT_ID }),
       },
     );
-    const confirmResponse = await confirmDraft(
+    const confirmResponse = await createConfirmContactDraftHandler(async () => ({
+      id: ACTOR_ID,
+      name: "Live operator",
+    }))(
       new Request(
         `https://orbit.local/api/contact-drafts/${LIVE_DRAFT_ID}/confirm`,
         {
@@ -219,4 +257,55 @@ test("business card review API resolves ORBIT_MODULE_MODE=live for live draft id
     process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
     process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
   }
+});
+
+test("business card review requires an actor and draft APIs reject unauthenticated access", async () => {
+  let graphRead = false;
+  const service = createLiveBusinessCardReviewService({
+    provider: {
+      source: "test",
+      sourceLabel: "test",
+      readBusinessCardReviewGraph() {
+        graphRead = true;
+        return {
+          contacts: [],
+          evidence: [],
+          generatedAt: NOW,
+        };
+      },
+    },
+  });
+  const serviceResult = await service.getReviewDraft({
+    actorId: "",
+    draftId: LIVE_DRAFT_ID,
+  });
+  const context = {
+    params: Promise.resolve({ id: LIVE_DRAFT_ID }),
+  };
+  const getResponse = await createContactDraftGetHandler(async () => null)(
+    new Request(`https://orbit.local/api/contact-drafts/${LIVE_DRAFT_ID}`),
+    context,
+  );
+  const patchResponse = await createContactDraftPatchHandler(async () => null)(
+    new Request(`https://orbit.local/api/contact-drafts/${LIVE_DRAFT_ID}`, {
+      method: "PATCH",
+    }),
+    context,
+  );
+  const confirmResponse = await createConfirmContactDraftHandler(
+    async () => null,
+  )(
+    new Request(
+      `https://orbit.local/api/contact-drafts/${LIVE_DRAFT_ID}/confirm`,
+      { method: "POST" },
+    ),
+    context,
+  );
+
+  assert.equal(serviceResult.success, false);
+  assert.equal(serviceResult.error.code, "BUSINESS_CARD_REVIEW_ACTOR_REQUIRED");
+  assert.equal(graphRead, false);
+  assert.equal(getResponse.status, 401);
+  assert.equal(patchResponse.status, 401);
+  assert.equal(confirmResponse.status, 401);
 });

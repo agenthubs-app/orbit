@@ -185,8 +185,8 @@ test("QR scan connect API routes return stable envelopes with empty and failure 
     typeof import("../../app/api/contact-drafts/qr/scan/route")
   >("app/api/contact-drafts/qr/scan/route.ts");
   const confirmRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/[id]/confirm/route")
-  >("app/api/contact-drafts/[id]/confirm/route.ts");
+    typeof import("../../app/api/contact-drafts/[id]/confirm/handler")
+  >("app/api/contact-drafts/[id]/confirm/handler.ts");
   const fixtures = await importProjectModule<
     typeof import("../../features/acquisition/qr-fixtures")
   >("features/acquisition/qr-fixtures.ts");
@@ -196,7 +196,10 @@ test("QR scan connect API routes return stable envelopes with empty and failure 
       method: "POST",
     }),
   );
-  const confirmResponse = await confirmRoute.POST(
+  const confirmDraft = confirmRoute.createConfirmContactDraftHandler(
+    async () => ({ id: "account:qr-test", name: "QR tester" }),
+  );
+  const confirmResponse = await confirmDraft(
     new Request("https://orbit.local/api/contact-drafts/demo-qr-draft/confirm", {
       method: "POST",
     }),
@@ -217,7 +220,7 @@ test("QR scan connect API routes return stable envelopes with empty and failure 
       },
     ),
   );
-  const blockedConfirmationResponse = await confirmRoute.POST(
+  const blockedConfirmationResponse = await confirmDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-qr-draft/confirm?scenario=pending",
       {

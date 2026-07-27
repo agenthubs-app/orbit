@@ -25,7 +25,9 @@ export type LiveBusinessCardReviewProviderResult<TResult> =
 export interface LiveBusinessCardReviewProvider {
   source: string;
   sourceLabel: string;
-  readBusinessCardReviewGraph: () => LiveBusinessCardReviewProviderResult<LiveBusinessCardReviewGraph>;
+  readBusinessCardReviewGraph: (
+    actorId: string,
+  ) => LiveBusinessCardReviewProviderResult<LiveBusinessCardReviewGraph>;
 }
 
 export const BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS = {
@@ -178,19 +180,40 @@ export function createStorageBusinessCardReviewProvider({
   return {
     source: source ?? `live-record-store:business-card-review:${workspaceId}`,
     sourceLabel,
-    async readBusinessCardReviewGraph(): Promise<LiveBusinessCardReviewGraph> {
-      const [contactRecords, evidenceRecords] = await Promise.all([
-        listCollection(
-          store,
-          workspaceId,
-          BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.contacts,
+    async readBusinessCardReviewGraph(
+      actorId,
+    ): Promise<LiveBusinessCardReviewGraph> {
+      const normalizedActorId = actorId.trim();
+      const allContactRecords = normalizedActorId
+        ? await listCollection(
+            store,
+            workspaceId,
+            BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.contacts,
+          )
+        : [];
+      const contactRecords = allContactRecords.filter(
+        (record) =>
+          record.userId === normalizedActorId ||
+          record.payload.accountId === normalizedActorId,
+      );
+      const actorEvidenceIds = Array.from(
+        new Set(
+          contactRecords.flatMap((record) =>
+            Array.isArray(record.payload.evidenceIds)
+              ? record.payload.evidenceIds.filter(nonEmptyString)
+              : [],
+          ),
         ),
-        listCollection(
-          store,
-          workspaceId,
-          BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.evidence,
-        ),
-      ]);
+      );
+      const evidenceRecords =
+        actorEvidenceIds.length > 0
+          ? await store.listRecords({
+              collectionName:
+                BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.evidence,
+              recordIds: actorEvidenceIds,
+              workspaceId,
+            })
+          : [];
 
       return {
         contacts: contactRecords

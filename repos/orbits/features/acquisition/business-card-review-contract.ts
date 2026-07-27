@@ -7,6 +7,7 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // Business Card Review contract 描述名片 OCR 结果的人工复核流程。
 // 它负责字段接受/编辑/确认，不直接写联系人库或重跑真实 OCR。
 export const BUSINESS_CARD_REVIEW_ERROR_CODES = [
+  "BUSINESS_CARD_REVIEW_ACTOR_REQUIRED",
   "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
   "BUSINESS_CARD_REVIEW_FIELDS_REQUIRED",
   "BUSINESS_CARD_REVIEW_PENDING",
@@ -51,6 +52,13 @@ export interface BusinessCardReviewErrorDefinition {
 }
 
 export const BUSINESS_CARD_REVIEW_ERROR_DEFINITIONS = {
+  BUSINESS_CARD_REVIEW_ACTOR_REQUIRED: {
+    code: "BUSINESS_CARD_REVIEW_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated actor is required before reviewing a business card.",
+    recovery:
+      "Sign in before reading, updating, or confirming a business card review draft.",
+  },
   BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND: {
     code: "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
     appCode: "NOT_FOUND",
@@ -112,11 +120,13 @@ export const BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX =
   "business-card-review:live:" as const;
 
 export interface BusinessCardReviewLookupInput {
+  actorId?: string | null;
   draftId: string;
   scenario?: BusinessCardReviewScenario | string | null;
 }
 
 export interface BusinessCardReviewUpdateInput {
+  actorId?: string | null;
   draftId: string;
   reviewedFields?: Partial<BusinessCardReviewedFields> | null;
   reviewerLabel?: string | null;
@@ -124,6 +134,7 @@ export interface BusinessCardReviewUpdateInput {
 }
 
 export interface BusinessCardReviewConfirmInput {
+  actorId?: string | null;
   draftId: string;
   actorLabel?: string | null;
   scenario?: BusinessCardReviewConfirmationScenario | string | null;

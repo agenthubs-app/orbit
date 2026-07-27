@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { POST as confirmBusinessCardContact } from "../../app/api/contacts/business-card/confirm/route";
+import { createBusinessCardContactConfirmHandler } from "../../app/api/contacts/business-card/confirm/handler";
 import { createLiveBusinessCardContactWriteService } from "../../features/contacts/live-contact-write-service";
 import { createStorageBusinessCardContactWriteProvider } from "../../features/contacts/storage/contact-write-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 const WORKSPACE_ID = "workspace:business-card-contact-write";
+const ACTOR_ID = "account:business-card-owner";
 const NOW = "2026-07-24T14:00:00.000Z";
 const INPUT = {
+  actorId: ACTOR_ID,
   actorLabel: "Orbit operator",
   confirmed: true,
   displayName: "青空 太郎",
@@ -59,6 +61,7 @@ test("confirmed business card contact writes once and is idempotent by draft", a
   assert.equal(contactRecords[0]?.payload.stage, "captured");
   assert.equal(contactRecords[0]?.payload.displayName, "青空 太郎");
   assert.deepEqual(contactRecords[0]?.payload.evidenceIds, INPUT.evidenceIds);
+  assert.equal(contactRecords[0]?.userId, ACTOR_ID);
 });
 
 test("confirmed business card contact stops for duplicate normalized email without writes", async () => {
@@ -89,6 +92,7 @@ test("confirmed business card contact stops for duplicate normalized email witho
       targetId: "contact:existing",
       targetType: "contact",
       updatedAt: NOW,
+      userId: ACTOR_ID,
       workspaceId: WORKSPACE_ID,
     },
   ]);
@@ -111,6 +115,37 @@ test("confirmed business card contact stops for duplicate normalized email witho
   assert.equal(result.data.duplicateContactId, "contact:existing");
   assert.equal(result.data.contactWriteExecuted, false);
   assert.equal(contactRecords.length, 1);
+});
+
+test("business card contact ids and duplicate checks are isolated by actor", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const service = createLiveBusinessCardContactWriteService({
+    now: () => NOW,
+    provider: createStorageBusinessCardContactWriteProvider({
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const first = await service.confirmBusinessCardContact(INPUT);
+  const second = await service.confirmBusinessCardContact({
+    ...INPUT,
+    actorId: "account:other-owner",
+    actorLabel: "Other operator",
+  });
+  const records = store.listRecords({
+    collectionName: "contacts",
+    workspaceId: WORKSPACE_ID,
+  });
+
+  assert.equal(first.success, true);
+  assert.equal(second.success, true);
+  assert.equal(second.data.state, "created");
+  assert.notEqual(second.data.contactId, first.data.contactId);
+  assert.deepEqual(
+    records.map((record) => record.userId).sort(),
+    [ACTOR_ID, "account:other-owner"].sort(),
+  );
 });
 
 test("business card contact confirmation requires an explicit confirmation and configured storage", async () => {
@@ -142,6 +177,15 @@ test("business card contact confirmation requires an explicit confirmation and c
   );
   assert.equal(unconfigured.success, false);
   assert.equal(unconfigured.error.code, "BUSINESS_CARD_CONTACT_WRITE_UNCONFIGURED");
+
+  const missingActor =
+    await unconfirmedService.confirmBusinessCardContact({
+      ...INPUT,
+      actorId: "",
+    });
+
+  assert.equal(missingActor.success, false);
+  assert.equal(missingActor.error.code, "BUSINESS_CARD_CONTACT_ACTOR_REQUIRED");
 });
 
 test("business card contact confirmation API fails closed without live storage", async () => {
@@ -161,7 +205,10 @@ test("business card contact confirmation API fails closed without live storage",
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const response = await confirmBusinessCardContact(
+    const response = await createBusinessCardContactConfirmHandler(async () => ({
+      id: ACTOR_ID,
+      name: "Orbit operator",
+    }))(
       new Request("https://orbit.local/api/contacts/business-card/confirm", {
         body: JSON.stringify(INPUT),
         headers: { "content-type": "application/json" },
@@ -182,4 +229,22 @@ test("business card contact confirmation API fails closed without live storage",
       restoreEnv(key, value);
     }
   }
+});
+
+test("business card contact confirmation API rejects unauthenticated writes before validation", async () => {
+  const response = await createBusinessCardContactConfirmHandler(
+    async () => null,
+  )(
+    new Request("https://orbit.local/api/contacts/business-card/confirm", {
+      body: JSON.stringify({}),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(body.success, false);
+  assert.equal(body.error.code, "UNAUTHORIZED");
+  assert.equal(body.error.context.service, "authenticated-api-actor");
 });

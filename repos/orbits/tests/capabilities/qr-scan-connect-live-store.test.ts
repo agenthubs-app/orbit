@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { POST as scanQr } from "../../app/api/contact-drafts/qr/scan/route";
-import { POST as confirmDraft } from "../../app/api/contact-drafts/[id]/confirm/route";
+import { createConfirmContactDraftHandler } from "../../app/api/contact-drafts/[id]/confirm/handler";
 import { createLiveQrScanConnectService } from "../../features/acquisition/live-qr-service";
 import { createQrScanConnectService } from "../../features/acquisition/service-factory";
 import { createStorageQrScanConnectProvider } from "../../features/acquisition/storage/qr-live-record-provider";
@@ -153,7 +153,9 @@ test("QR scan connect API resolves ORBIT_MODULE_MODE=live for live draft ids", a
         method: "POST",
       }),
     );
-    const confirmResponse = await confirmDraft(
+    const confirmResponse = await createConfirmContactDraftHandler(
+      async () => ({ id: "account:qr-live-test", name: "QR tester" }),
+    )(
       new Request(`https://orbit.local/api/contact-drafts/${LIVE_DRAFT_ID}/confirm`, {
         method: "POST",
       }),

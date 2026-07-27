@@ -5,6 +5,9 @@
  */
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
+import { redirect } from "next/navigation";
+
+import { auth } from "../../../../../auth";
 import { StateView } from "../../../../../shared/ui/state-view";
 import {
   loadAppContactsNewRouteViewModel,
@@ -180,7 +183,16 @@ function AcquisitionWorkspace({
 export default async function AppContactScanPage({
   searchParams,
 }: AppContactsNewPageProps = {}) {
-  const viewModel = await loadAppContactsNewRouteViewModel(await searchParams);
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fcontacts%2Fnew");
+  }
+
+  const viewModel = await loadAppContactsNewRouteViewModel(
+    await searchParams,
+    session.user.id,
+  );
 
   return (
     <>

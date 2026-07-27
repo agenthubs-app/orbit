@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { POST as scanCard } from "../../app/api/contact-drafts/business-card/scan/route";
+import { createBusinessCardScanHandler } from "../../app/api/contact-drafts/business-card/scan/handler";
 import { createLiveBusinessCardScanOcrService } from "../../features/acquisition/live-business-card-scan-service";
 import { createBusinessCardScanOcrService } from "../../features/acquisition/service-factory";
 import { createStorageBusinessCardScanOcrProvider } from "../../features/acquisition/storage/business-card-scan-live-record-provider";
@@ -10,6 +10,7 @@ import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/sto
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 const WORKSPACE_ID = "workspace:business-card-scan-live-test";
+const ACTOR_ID = "account:business-card-scan-owner";
 const NOW = "2026-07-02T16:10:00.000Z";
 const LIVE_DRAFT_ID = "business-card-review:live:contact_012";
 const TEST_IMAGE_BASE64 = "aW1hZ2U=";
@@ -22,6 +23,22 @@ async function createSeedStore() {
     store,
     workspaceId: WORKSPACE_ID,
   });
+  const actorRecords = store
+    .listRecords({ workspaceId: WORKSPACE_ID })
+    .filter(
+      (record) =>
+        record.collectionName === "contacts" ||
+        record.collectionName === "evidence",
+    );
+
+  await Promise.all(
+    actorRecords.map((record) =>
+      store.upsertRecord({
+        ...record,
+        userId: ACTOR_ID,
+      }),
+    ),
+  );
 
   return store;
 }
@@ -45,8 +62,16 @@ test("business card scan live service derives OCR drafts from business-card cont
     collectionName: "contactDrafts",
   }).length;
 
-  const scan = await service.scanBusinessCard();
+  const scan = await service.scanBusinessCard({ actorId: ACTOR_ID });
   const lookup = await service.getBusinessCardDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+  });
+  const foreignScan = await service.scanBusinessCard({
+    actorId: "account:other-business-card-owner",
+  });
+  const foreignLookup = await service.getBusinessCardDraft({
+    actorId: "account:other-business-card-owner",
     draftId: LIVE_DRAFT_ID,
   });
   const contactsAfter = store.listRecords({
@@ -84,6 +109,11 @@ test("business card scan live service derives OCR drafts from business-card cont
   assert.equal(lookup.data.id, LIVE_DRAFT_ID);
   assert.equal(lookup.data.displayName, "山田 千尋");
   assert.equal(lookup.data.contactWriteExecuted, false);
+  assert.equal(foreignScan.success, true);
+  assert.equal(foreignScan.data.state, "empty");
+  assert.equal(foreignScan.data.draft, null);
+  assert.equal(foreignLookup.success, false);
+  assert.equal(foreignLookup.error.code, "BUSINESS_CARD_DRAFT_NOT_FOUND");
 
   assert.equal(contactsBefore, defaultMockFixtures.contacts.length);
   assert.equal(contactsAfter, contactsBefore);
@@ -95,7 +125,7 @@ test("business card scan live service fails closed when storage is unconfigured"
     provider: null,
   });
 
-  const result = await service.scanBusinessCard();
+  const result = await service.scanBusinessCard({ actorId: ACTOR_ID });
 
   assert.equal(result.success, false);
   assert.equal(result.error.code, "BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED");
@@ -146,6 +176,7 @@ test("business card scan live service extracts an uploaded image without reading
   });
 
   const result = await service.scanBusinessCard({
+    actorId: ACTOR_ID,
     imageBase64: TEST_IMAGE_BASE64,
     imageName: "card.jpg",
     imageSizeBytes: 5,
@@ -177,6 +208,7 @@ test("uploaded business card scan fails visibly when cloud OCR is unconfigured",
   });
 
   const result = await service.scanBusinessCard({
+    actorId: ACTOR_ID,
     imageBase64: TEST_IMAGE_BASE64,
     imageName: "card.jpg",
     imageSizeBytes: 5,
@@ -203,6 +235,7 @@ test("uploaded business card scan rejects unsupported images before calling OCR"
   });
 
   const result = await service.scanBusinessCard({
+    actorId: ACTOR_ID,
     imageBase64: TEST_IMAGE_BASE64,
     imageName: "card.gif",
     imageSizeBytes: 5,
@@ -226,6 +259,7 @@ test("uploaded business card scan rejects images larger than ten MiB", async () 
   });
 
   const result = await service.scanBusinessCard({
+    actorId: ACTOR_ID,
     imageBase64: TEST_IMAGE_BASE64,
     imageName: "card.jpg",
     imageSizeBytes: 10 * 1024 * 1024 + 1,
@@ -248,6 +282,7 @@ test("uploaded business card scan redacts cloud OCR failures", async () => {
   });
 
   const result = await service.scanBusinessCard({
+    actorId: ACTOR_ID,
     imageBase64: TEST_IMAGE_BASE64,
     imageName: "card.jpg",
     imageSizeBytes: 5,
@@ -275,7 +310,9 @@ test("business card scan OCR factory exposes live mode without breaking default 
     delete process.env.ORBIT_DATABASE_URL;
 
     const mock = createBusinessCardScanOcrService("mock").scanBusinessCard();
-    const live = await createBusinessCardScanOcrService("live").scanBusinessCard();
+    const live = await createBusinessCardScanOcrService("live").scanBusinessCard({
+      actorId: ACTOR_ID,
+    });
 
     assert.equal(mock.success, true);
     assert.equal(live.success, false);
@@ -303,7 +340,9 @@ test("business card scan API resolves ORBIT_MODULE_MODE=live", async () => {
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const response = await scanCard(
+    const response = await createBusinessCardScanHandler(async () => ({
+      id: ACTOR_ID,
+    }))(
       new Request("https://orbit.local/api/contact-drafts/business-card/scan", {
         method: "POST",
       }),
@@ -337,7 +376,9 @@ test("business card scan API accepts JSON image uploads and reaches the cloud OC
     delete process.env.GEMINI_API_KEY;
     delete process.env.GOOGLE_API_KEY;
 
-    const response = await scanCard(
+    const response = await createBusinessCardScanHandler(async () => ({
+      id: ACTOR_ID,
+    }))(
       new Request("https://orbit.local/api/contact-drafts/business-card/scan", {
         body: JSON.stringify({
           imageBase64: TEST_IMAGE_BASE64,
@@ -379,7 +420,9 @@ test("business card scan API accepts multipart image uploads and reaches the clo
       new Blob(["image"], { type: "image/png" }),
       "card.png",
     );
-    const response = await scanCard(
+    const response = await createBusinessCardScanHandler(async () => ({
+      id: ACTOR_ID,
+    }))(
       new Request("https://orbit.local/api/contact-drafts/business-card/scan", {
         body: formData,
         method: "POST",
@@ -397,4 +440,60 @@ test("business card scan API accepts multipart image uploads and reaches the clo
     process.env.GEMINI_API_KEY = previousGeminiApiKey;
     process.env.GOOGLE_API_KEY = previousGoogleApiKey;
   }
+});
+
+test("business card scan rejects a missing actor before provider or OCR access", async () => {
+  let graphRead = false;
+  let ocrCalled = false;
+  const service = createLiveBusinessCardScanOcrService({
+    cloudOcrProvider: {
+      model: "test-model",
+      providerName: "test-provider",
+      async extract() {
+        ocrCalled = true;
+        throw new Error("must not run");
+      },
+    },
+    provider: {
+      source: "test",
+      sourceLabel: "test",
+      readBusinessCardScanOcrGraph() {
+        graphRead = true;
+        return {
+          contacts: [],
+          evidence: [],
+          generatedAt: NOW,
+        };
+      },
+    },
+  });
+
+  const result = await service.scanBusinessCard({
+    actorId: "",
+    imageBase64: TEST_IMAGE_BASE64,
+    imageName: "card.jpg",
+    imageSizeBytes: 5,
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "BUSINESS_CARD_SCAN_ACTOR_REQUIRED");
+  assert.equal(graphRead, false);
+  assert.equal(ocrCalled, false);
+});
+
+test("business card scan API rejects unauthenticated reads before parsing input", async () => {
+  const response = await createBusinessCardScanHandler(async () => null)(
+    new Request("https://orbit.local/api/contact-drafts/business-card/scan", {
+      body: JSON.stringify({}),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(body.success, false);
+  assert.equal(body.error.code, "UNAUTHORIZED");
+  assert.equal(body.error.context.service, "authenticated-api-actor");
 });

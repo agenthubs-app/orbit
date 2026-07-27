@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
 
 import { loadAppContactsNewRouteViewModel } from "../../app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities/contacts-new-route-services";
 
@@ -56,7 +55,7 @@ test("app contacts new route loader returns a controlled live failure when stora
   await withUnconfiguredLiveAcquisition(async () => {
     const viewModel = await loadAppContactsNewRouteViewModel({
       mode: "live",
-    });
+    }, "account:contacts-new-test");
 
     assert.equal(viewModel.state, "route-state");
 
@@ -77,20 +76,14 @@ test("/app/contacts/new page renders the capability-first acquisition route boun
   );
 
   assert.match(pageSource, /loadAppContactsNewRouteViewModel/);
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(pageSource, /session\.user\.id/);
+  assert.match(pageSource, /redirect\("\/app\/account\/login\?next=/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
   assert.doesNotMatch(pageSource, /mode=mock|Open preview data/);
   assert.match(pageSource, /Retry live workspace/);
   assert.match(importWorkspaceSource, /BusinessCardCaptureWorkspace/);
 
-  await withUnconfiguredLiveAcquisition(async () => {
-    const Page = (await import("../../app/(app)/app/contacts/new/page")).default;
-    const html = renderToStaticMarkup(
-      await Page({
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
-    );
-
-    assert.match(html, /app-contacts-new-route/);
-    assert.match(html, /Contact acquisition workspace could not load/);
-  });
+  assert.match(pageSource, /app-contacts-new-route/);
+  assert.match(pageSource, /Contact acquisition workspace could not load/);
 });

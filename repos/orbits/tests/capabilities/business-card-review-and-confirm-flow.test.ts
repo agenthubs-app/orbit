@@ -64,6 +64,7 @@ test("business card review contract exposes human field review before contact co
   });
 
   assert.deepEqual(contract.BUSINESS_CARD_REVIEW_ERROR_CODES, [
+    "BUSINESS_CARD_REVIEW_ACTOR_REQUIRED",
     "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
     "BUSINESS_CARD_REVIEW_FIELDS_REQUIRED",
     "BUSINESS_CARD_REVIEW_PENDING",
@@ -207,16 +208,26 @@ test("mock business card review service is deterministic and has no external pro
 
 test("business card review API routes return stable envelopes with empty and failure paths", async () => {
   const draftRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/[id]/route")
-  >("app/api/contact-drafts/[id]/route.ts");
+    typeof import("../../app/api/contact-drafts/[id]/handler")
+  >("app/api/contact-drafts/[id]/handler.ts");
   const confirmRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/[id]/confirm/route")
-  >("app/api/contact-drafts/[id]/confirm/route.ts");
+    typeof import("../../app/api/contact-drafts/[id]/confirm/handler")
+  >("app/api/contact-drafts/[id]/confirm/handler.ts");
   const contract = await importProjectModule<
     typeof import("../../features/acquisition/business-card-review-contract")
   >("features/acquisition/business-card-review-contract.ts");
 
-  const patchResponse = await draftRoute.PATCH(
+  const patchDraft = draftRoute.createContactDraftPatchHandler(async () => ({
+    id: "account:review-test",
+    name: "Operations reviewer",
+  }));
+  const confirmDraft = confirmRoute.createConfirmContactDraftHandler(
+    async () => ({
+      id: "account:review-test",
+      name: "Operations reviewer",
+    }),
+  );
+  const patchResponse = await patchDraft(
     new Request("https://orbit.local/api/contact-drafts/demo-business-card-draft", {
       method: "PATCH",
     }),
@@ -224,7 +235,7 @@ test("business card review API routes return stable envelopes with empty and fai
       params: Promise.resolve({ id: "demo-business-card-draft" }),
     },
   );
-  const confirmResponse = await confirmRoute.POST(
+  const confirmResponse = await confirmDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-business-card-draft/confirm",
       {
@@ -235,7 +246,7 @@ test("business card review API routes return stable envelopes with empty and fai
       params: Promise.resolve({ id: "demo-business-card-draft" }),
     },
   );
-  const emptyResponse = await draftRoute.PATCH(
+  const emptyResponse = await patchDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-business-card-draft?scenario=empty",
       {
@@ -246,7 +257,7 @@ test("business card review API routes return stable envelopes with empty and fai
       params: Promise.resolve({ id: "demo-business-card-draft" }),
     },
   );
-  const failureResponse = await draftRoute.PATCH(
+  const failureResponse = await patchDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-business-card-draft?scenario=failure",
       {
@@ -257,7 +268,7 @@ test("business card review API routes return stable envelopes with empty and fai
       params: Promise.resolve({ id: "demo-business-card-draft" }),
     },
   );
-  const pendingConfirmResponse = await confirmRoute.POST(
+  const pendingConfirmResponse = await confirmDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-business-card-draft/confirm?scenario=pending",
       {
@@ -268,7 +279,7 @@ test("business card review API routes return stable envelopes with empty and fai
       params: Promise.resolve({ id: "demo-business-card-draft" }),
     },
   );
-  const editedFieldResponse = await draftRoute.PATCH(
+  const editedFieldResponse = await patchDraft(
     new Request("https://orbit.local/api/contact-drafts/demo-business-card-draft", {
       body: JSON.stringify({
         reviewedFields: {

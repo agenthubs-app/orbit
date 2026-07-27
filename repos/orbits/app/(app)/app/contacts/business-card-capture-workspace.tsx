@@ -390,7 +390,6 @@ export function BusinessCardCaptureWorkspace() {
     try {
       const response = await fetch("/api/contacts/business-card/confirm", {
         body: JSON.stringify({
-          actorLabel: "Orbit operator",
           confirmed: true,
           displayName: state.fields.displayName,
           draftId: draft.id,

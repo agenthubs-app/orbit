@@ -31,8 +31,13 @@ function normalizedEmail(value: string | undefined): string {
   return normalizedComparisonValue(value);
 }
 
-function stableContactId(draftId: string): string {
-  const digest = createHash("sha256").update(draftId).digest("hex").slice(0, 24);
+function stableContactId(actorId: string, draftId: string): string {
+  const digest = createHash("sha256")
+    .update(actorId)
+    .update("\u0000")
+    .update(draftId)
+    .digest("hex")
+    .slice(0, 24);
 
   return `contact:business-card:${digest}`;
 }
@@ -60,7 +65,8 @@ function success(
 
 function isValidInput(input: ConfirmBusinessCardContactInput): boolean {
   return Boolean(
-    nonEmpty(input.actorLabel) &&
+    nonEmpty(input.actorId) &&
+      nonEmpty(input.actorLabel) &&
       nonEmpty(input.displayName) &&
       nonEmpty(input.draftId) &&
       nonEmpty(input.imageDigest) &&
@@ -142,6 +148,12 @@ export function createLiveBusinessCardContactWriteService({
     async confirmBusinessCardContact(
       input,
     ): Promise<BusinessCardContactWriteResult> {
+      const actorId = nonEmpty(input.actorId);
+
+      if (!actorId) {
+        return failure("BUSINESS_CARD_CONTACT_ACTOR_REQUIRED");
+      }
+
       if (!input.confirmed) {
         return failure("BUSINESS_CARD_CONTACT_CONFIRMATION_REQUIRED");
       }
@@ -154,11 +166,14 @@ export function createLiveBusinessCardContactWriteService({
         return failure("BUSINESS_CARD_CONTACT_WRITE_UNCONFIGURED");
       }
 
-      const contactId = stableContactId(input.draftId.trim());
+      const contactId = stableContactId(actorId, input.draftId.trim());
       const confirmedAt = now();
 
       try {
-        const existingConfirmation = await provider.getContact(contactId);
+        const existingConfirmation = await provider.getContact(
+          contactId,
+          actorId,
+        );
 
         if (existingConfirmation) {
           return success({
@@ -171,7 +186,10 @@ export function createLiveBusinessCardContactWriteService({
           });
         }
 
-        const duplicate = findDuplicate(await provider.listContacts(), input);
+        const duplicate = findDuplicate(
+          await provider.listContacts(actorId),
+          input,
+        );
 
         if (duplicate) {
           return success({
@@ -190,6 +208,7 @@ export function createLiveBusinessCardContactWriteService({
             contactId,
             request: input,
           }),
+          actorId,
         );
 
         return success({

@@ -394,6 +394,15 @@ function unconfiguredProvenance(now: string): BusinessCardScanOcrProvenance {
   };
 }
 
+function actorRequiredProvenance(now: string): BusinessCardScanOcrProvenance {
+  return {
+    ...unconfiguredProvenance(now),
+    source: "authenticated-actor:business-card-scan-required",
+    sourceLabel: "Authenticated actor required before business card scan",
+    evidenceIds: ["evidence:business-card-scan-actor-required"],
+  };
+}
+
 function provenanceFor(input: {
   evidenceIds: readonly string[];
   generatedAt: string;
@@ -731,6 +740,7 @@ function pendingPayload(input: {
 }
 
 async function readGraph(input: {
+  actorId: string;
   now: string;
   provider?: LiveBusinessCardScanOcrProvider | null;
 }): Promise<ReadBusinessCardScanGraphResult> {
@@ -743,7 +753,7 @@ async function readGraph(input: {
 
   try {
     return {
-      graph: await input.provider.readBusinessCardScanOcrGraph(),
+      graph: await input.provider.readBusinessCardScanOcrGraph(input.actorId),
       provider: input.provider,
     };
   } catch {
@@ -779,6 +789,15 @@ export function createLiveBusinessCardScanOcrService({
 }: LiveBusinessCardScanOcrServiceOptions = {}): BusinessCardScanOcrService {
   return {
     async scanBusinessCard(input = {}): Promise<BusinessCardScanOcrResult> {
+      const actorId = nonEmpty(input.actorId);
+
+      if (!actorId) {
+        return failure(
+          "BUSINESS_CARD_SCAN_ACTOR_REQUIRED",
+          actorRequiredProvenance(now()),
+        );
+      }
+
       if (typeof input.imageBase64 === "string") {
         return scanUploadedBusinessCard({
           cloudOcrProvider,
@@ -789,6 +808,7 @@ export function createLiveBusinessCardScanOcrService({
 
       const scenario = normalizeScanScenario(input.scenario);
       const readResult = await readGraph({
+        actorId,
         now: now(),
         provider,
       });
@@ -845,7 +865,17 @@ export function createLiveBusinessCardScanOcrService({
     async getBusinessCardDraft(
       input: BusinessCardDraftLookupInput,
     ): Promise<BusinessCardDraftLookupResult> {
+      const actorId = nonEmpty(input.actorId);
+
+      if (!actorId) {
+        return failure(
+          "BUSINESS_CARD_SCAN_ACTOR_REQUIRED",
+          actorRequiredProvenance(now()),
+        );
+      }
+
       const readResult = await readGraph({
+        actorId,
         now: now(),
         provider,
       });

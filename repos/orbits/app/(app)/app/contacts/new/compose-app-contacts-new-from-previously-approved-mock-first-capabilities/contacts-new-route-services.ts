@@ -180,6 +180,7 @@ function draftIdForConfirmation(result: ServiceResult): string | null {
 
 export async function loadAppContactsNewRouteViewModel(
   searchParams?: AppContactsNewSearchParams,
+  actorId?: string,
 ) {
   const requestedMode = readRequestedMode(searchParams);
   const resolvedMode = resolveModuleMode(requestedMode);
@@ -207,6 +208,7 @@ export async function loadAppContactsNewRouteViewModel(
         scenario: requestedScenario,
       }),
       services.businessCards.scanBusinessCard({
+        actorId,
         scenario: requestedScenario,
       }),
       services.qrConnections.scanQrCode({
@@ -266,7 +268,7 @@ export async function loadAppContactsNewRouteViewModel(
   ] = await Promise.all([
     services.contactDrafts.listContactDrafts(),
     manualStateRequest,
-    services.businessCards.scanBusinessCard(),
+    services.businessCards.scanBusinessCard({ actorId }),
     services.qrConnections.scanQrCode(),
     services.eventAttendees.importEventAttendees({
       eventId,

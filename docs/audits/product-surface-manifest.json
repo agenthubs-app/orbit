@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "6dc82e752d673b849f89ed8aa9270e4e36bd11a9",
-  "generatedAt": "2026-07-27T15:36:25+09:00",
+  "commit": "af8fb177f0d7a86d2c49dd9f334f8847e8f8f04a",
+  "generatedAt": "2026-07-27T15:50:12+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -680,6 +680,7 @@
         "repos/orbits/tests/pages/app-account-auth-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-contacts-live-route-services.test.ts",
+        "repos/orbits/tests/pages/app-contacts-new-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
         "repos/orbits/tests/pages/app-events-live-route-services.test.ts",
@@ -1290,6 +1291,8 @@
         "repos/orbits/tests/capabilities/agent-natural-language-actions.test.ts",
         "repos/orbits/tests/capabilities/agent-workflows-e2e.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
+        "repos/orbits/tests/capabilities/business-card-review-live-store.test.ts",
+        "repos/orbits/tests/capabilities/business-card-scan-ocr-live-store.test.ts",
         "repos/orbits/tests/capabilities/contact-detail-live-store.test.ts",
         "repos/orbits/tests/capabilities/contact-detail-tag-and-status-mock.test.ts",
         "repos/orbits/tests/capabilities/contacts-list-search-and-filter-mock.test.ts",
@@ -10620,6 +10623,8 @@
         "repos/orbits/tests/capabilities/agent-integrations-security.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-live-store.test.ts",
+        "repos/orbits/tests/capabilities/business-card-review-live-store.test.ts",
+        "repos/orbits/tests/capabilities/business-card-scan-ocr-live-store.test.ts",
         "repos/orbits/tests/capabilities/chat-summary-extraction-live-store.test.ts",
         "repos/orbits/tests/capabilities/chat-writing-assist-live-store.test.ts",
         "repos/orbits/tests/capabilities/connection-live-store.test.ts",
@@ -10643,9 +10648,7 @@
         "repos/orbits/tests/capabilities/relationship-value-live-store.test.ts",
         "repos/orbits/tests/mock/registry.test.ts",
         "repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx",
-        "repos/orbits/tests/pages/app-agent-localization.test.tsx",
-        "repos/orbits/tests/pages/app-contact-detail-live-route-services.test.ts",
-        "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts"
+        "repos/orbits/tests/pages/app-agent-localization.test.tsx"
       ],
       "knownRisks": []
     },
@@ -12162,7 +12165,7 @@
           "notFound": []
         },
         "sourceSignals": {
-          "redirect": false,
+          "redirect": true,
           "loading": true,
           "empty": true,
           "partial": true,
@@ -12183,7 +12186,7 @@
         {
           "actionId": "/app/contacts/new#1",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 560,
+          "line": 559,
           "kind": "button",
           "tag": "button",
           "label": "Photograph card",
@@ -12204,7 +12207,7 @@
         {
           "actionId": "/app/contacts/new#2",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 568,
+          "line": 567,
           "kind": "button",
           "tag": "button",
           "label": "Upload image",
@@ -12225,7 +12228,7 @@
         {
           "actionId": "/app/contacts/new#3",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 608,
+          "line": 607,
           "kind": "button",
           "tag": "button",
           "label": "Replace image",
@@ -12246,7 +12249,7 @@
         {
           "actionId": "/app/contacts/new#4",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 616,
+          "line": 615,
           "kind": "button",
           "tag": "button",
           "label": "Start recognition",
@@ -12267,7 +12270,7 @@
         {
           "actionId": "/app/contacts/new#5",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 730,
+          "line": 729,
           "kind": "button",
           "tag": "button",
           "label": "{issue.message} 已处理 / 确认",
@@ -12288,7 +12291,7 @@
         {
           "actionId": "/app/contacts/new#6",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 777,
+          "line": 776,
           "kind": "button",
           "tag": "button",
           "label": "Confirm and save",
@@ -12309,7 +12312,7 @@
         {
           "actionId": "/app/contacts/new#7",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 860,
+          "line": 859,
           "kind": "button",
           "tag": "button",
           "label": "Not now",
@@ -12330,7 +12333,7 @@
         {
           "actionId": "/app/contacts/new#8",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 867,
+          "line": 866,
           "kind": "button",
           "tag": "button",
           "label": "Confirm invitation",
@@ -12351,7 +12354,7 @@
         {
           "actionId": "/app/contacts/new#9",
           "sourceFile": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
-          "line": 893,
+          "line": 892,
           "kind": "button",
           "tag": "button",
           "label": "Try another image / Start again",
@@ -26391,6 +26394,8 @@
         "repos/orbits/tests/capabilities/agent-integrations-security.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-live-store.test.ts",
+        "repos/orbits/tests/capabilities/business-card-review-live-store.test.ts",
+        "repos/orbits/tests/capabilities/business-card-scan-ocr-live-store.test.ts",
         "repos/orbits/tests/capabilities/chat-summary-extraction-live-store.test.ts",
         "repos/orbits/tests/capabilities/chat-writing-assist-live-store.test.ts",
         "repos/orbits/tests/capabilities/connection-live-store.test.ts",
@@ -26414,9 +26419,7 @@
         "repos/orbits/tests/capabilities/relationship-value-live-store.test.ts",
         "repos/orbits/tests/mock/registry.test.ts",
         "repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx",
-        "repos/orbits/tests/pages/app-agent-localization.test.tsx",
-        "repos/orbits/tests/pages/app-contact-detail-live-route-services.test.ts",
-        "repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts"
+        "repos/orbits/tests/pages/app-agent-localization.test.tsx"
       ],
       "knownRisks": []
     },

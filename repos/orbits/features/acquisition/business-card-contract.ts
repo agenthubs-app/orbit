@@ -13,6 +13,7 @@ import type {
 // mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const BUSINESS_CARD_SCAN_OCR_ERROR_CODES = [
+  "BUSINESS_CARD_SCAN_ACTOR_REQUIRED",
   "BUSINESS_CARD_IMAGE_REQUIRED",
   "BUSINESS_CARD_IMAGE_UNSUPPORTED",
   "BUSINESS_CARD_IMAGE_TOO_LARGE",
@@ -41,6 +42,7 @@ export type BusinessCardConfirmationState = "pending";
 
 // imageText 允许测试用纯文本模拟名片图像内容；imageName 只用于展示来源。
 export interface BusinessCardScanOcrInput {
+  actorId?: string | null;
   scenario?: BusinessCardScanOcrScenario | string | null;
   imageBase64?: string | null;
   imageText?: string | null;
@@ -50,6 +52,7 @@ export interface BusinessCardScanOcrInput {
 }
 
 export interface BusinessCardDraftLookupInput {
+  actorId?: string | null;
   draftId: string;
   scenario?: string | null;
 }
@@ -63,6 +66,13 @@ export interface BusinessCardScanOcrErrorDefinition {
 
 // OCR 失败定义覆盖缺图、草稿不存在、pending 和受控失败。
 export const BUSINESS_CARD_SCAN_OCR_ERROR_DEFINITIONS = {
+  BUSINESS_CARD_SCAN_ACTOR_REQUIRED: {
+    code: "BUSINESS_CARD_SCAN_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated actor is required before scanning a business card.",
+    recovery:
+      "Sign in before uploading or reading a business card contact draft.",
+  },
   BUSINESS_CARD_IMAGE_REQUIRED: {
     code: "BUSINESS_CARD_IMAGE_REQUIRED",
     appCode: "VALIDATION_ERROR",

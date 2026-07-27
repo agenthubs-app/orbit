@@ -48,6 +48,7 @@ test("business card scan OCR contract exposes capture upload OCR and extracted c
   });
 
   assert.deepEqual(contract.BUSINESS_CARD_SCAN_OCR_ERROR_CODES, [
+    "BUSINESS_CARD_SCAN_ACTOR_REQUIRED",
     "BUSINESS_CARD_IMAGE_REQUIRED",
     "BUSINESS_CARD_IMAGE_UNSUPPORTED",
     "BUSINESS_CARD_IMAGE_TOO_LARGE",
@@ -175,21 +176,27 @@ test("mock business card scan OCR service is deterministic rule-based code with 
 
 test("business card scan OCR API routes return stable envelopes with empty and failure paths", async () => {
   const scanRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/business-card/scan/route")
-  >("app/api/contact-drafts/business-card/scan/route.ts");
+    typeof import("../../app/api/contact-drafts/business-card/scan/handler")
+  >("app/api/contact-drafts/business-card/scan/handler.ts");
   const draftRoute = await importProjectModule<
-    typeof import("../../app/api/contact-drafts/[id]/route")
-  >("app/api/contact-drafts/[id]/route.ts");
+    typeof import("../../app/api/contact-drafts/[id]/handler")
+  >("app/api/contact-drafts/[id]/handler.ts");
   const fixtures = await importProjectModule<
     typeof import("../../features/acquisition/business-card-fixtures")
   >("features/acquisition/business-card-fixtures.ts");
 
-  const scanResponse = await scanRoute.POST(
+  const resolveActor = async () => ({
+    id: "account:scan-test",
+    name: "Scan tester",
+  });
+  const scanCard = scanRoute.createBusinessCardScanHandler(resolveActor);
+  const getDraft = draftRoute.createContactDraftGetHandler(resolveActor);
+  const scanResponse = await scanCard(
     new Request("https://orbit.local/api/contact-drafts/business-card/scan", {
       method: "POST",
     }),
   );
-  const draftResponse = await draftRoute.GET(
+  const draftResponse = await getDraft(
     new Request(
       "https://orbit.local/api/contact-drafts/demo-business-card-draft",
       {
@@ -200,7 +207,7 @@ test("business card scan OCR API routes return stable envelopes with empty and f
       params: Promise.resolve({ id: "demo-business-card-draft" }),
     },
   );
-  const emptyResponse = await scanRoute.POST(
+  const emptyResponse = await scanCard(
     new Request(
       "https://orbit.local/api/contact-drafts/business-card/scan?scenario=empty",
       {
@@ -208,7 +215,7 @@ test("business card scan OCR API routes return stable envelopes with empty and f
       },
     ),
   );
-  const failureResponse = await scanRoute.POST(
+  const failureResponse = await scanCard(
     new Request(
       "https://orbit.local/api/contact-drafts/business-card/scan?scenario=failure",
       {
@@ -216,7 +223,7 @@ test("business card scan OCR API routes return stable envelopes with empty and f
       },
     ),
   );
-  const missingResponse = await draftRoute.GET(
+  const missingResponse = await getDraft(
     new Request("https://orbit.local/api/contact-drafts/missing-card-draft", {
       method: "GET",
     }),
