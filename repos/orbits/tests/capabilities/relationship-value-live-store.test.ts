@@ -79,6 +79,14 @@ test("live relationship value scoring reads generated graph and recomputes witho
     recordId: "connection_0007",
     workspaceId,
   });
+  const connectionSummary = originalConnection?.payload.summary;
+  const suggestedAction = Array.isArray(
+    originalConnection?.payload.suggestedActions,
+  )
+    ? originalConnection.payload.suggestedActions[0]
+    : undefined;
+  assert.equal(typeof connectionSummary, "string");
+  assert.equal(typeof suggestedAction, "string");
   const provider = createStorageRelationshipValueProvider({
     sourceLabel: "Relationship value memory live storage",
     store,
@@ -101,13 +109,13 @@ test("live relationship value scoring reads generated graph and recomputes witho
   assert.equal(value.data.assessment?.relationshipValueType, "community_bridge");
   assert.equal(value.data.assessment?.priorityScore.value, 62);
   assert.equal(value.data.assessment?.priorityScore.band, "medium");
-  assert.match(
+  assert.equal(
     value.data.assessment?.rationale.summary ?? "",
-    /duplicate contact cleanup and provenance review/,
+    `曾伟 has relationship value because ${connectionSummary}`,
   );
   assert.equal(
     value.data.assessment?.suggestedNextAction.label,
-    "Follow up about privacy-safe contact provenance audit",
+    `Follow up about ${suggestedAction}`,
   );
   assert.deepEqual(value.data.assessment?.sourceEvidenceIds, [
     "evidence:connection:0007",

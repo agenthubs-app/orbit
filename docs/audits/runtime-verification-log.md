@@ -374,3 +374,14 @@ Implementation boundary:
 - Event attendee records are scoped at the event, attendee, intent, person, contact, and evidence layers. The already owner-guarded Event attendee GET now passes the verified actor into the acquisition provider.
 - These capabilities still stage or return review previews only where their contracts say no write exists; authentication does not upgrade a preview into a persisted contact, relationship, outreach, notification, email, or calendar action.
 - `ACQUISITION-CAPABILITY-AUTH-001` is closed.
+
+## 2026-07-27 — Actor-bound Event seed and current route/data contracts
+
+- Reproduced the live Event seed failure against the in-memory live-record store: the seed completed, but actor-scoped `listEvents` returned `EVENTS_ACTOR_REQUIRED` because seeded Event records had no owner.
+- The Event seed now requires a non-empty actor id, writes it to every Event record, and returns the actor in its result. The CLI requires `ORBIT_SEED_ACTOR_ID` and exits before database writes when it is absent.
+- Moved the AI run handler factory beside the App Router route so the route exports only supported HTTP fields. The production export uses server authentication; focused live-provider coverage injects an authenticated actor without bypassing the Next request boundary.
+- Updated route-source regressions to inspect thin route bindings and their authenticated handlers together. No request-body `actorId` or `workspaceId` is accepted as identity.
+- Updated Profile and relationship-value regressions to assert current actor-scoped data mapping and generated graph records, rather than retired founder copy or stale fixture prose.
+- Focused result: 27/27 passed. Lint passed. Production build passed.
+- Exact production build on port 3100 returned `401 UNAUTHORIZED` for anonymous `GET /api/ai/runs/demo-ai-run-1`; anonymous `/app/profile` returned `307` to `/app/account/login?next=%2Fapp%2Fprofile`.
+- Full suite: 1,253 tests, 1,207 passed, 46 open-baseline failures, zero skipped/cancelled/todo, 35.8 seconds. Seven prior failure identities were removed and no new identity appeared.

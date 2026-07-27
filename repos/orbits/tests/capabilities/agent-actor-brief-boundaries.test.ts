@@ -225,23 +225,42 @@ test("server-rendered ledger pages resolve the authenticated actor without build
 });
 
 test("Agent ledger and queue routes resolve server auth instead of request identity fields", () => {
-  for (const route of [
-    "app/api/agent/ledger/route.ts",
-    "app/api/agent/ledger/[id]/transition/route.ts",
-    "app/api/agent/ledger/[id]/draft/route.ts",
-    "app/api/agent/actions/route.ts",
-    "app/api/agent/actions/[id]/accept/route.ts",
-    "app/api/agent/actions/[id]/dismiss/route.ts",
-    "app/api/agent/actions/[id]/view/route.ts",
-    "app/api/ai/conversations/route.ts",
-    "app/api/ai/runs/[id]/route.ts",
-    "app/api/ai/today/route.ts",
-    "app/api/events/[id]/encounters/route.ts",
-    "app/api/events/[id]/post-event/followup/route.ts",
-  ]) {
-    const source = readFileSync(join(process.cwd(), route), "utf8");
-    assert.match(source, /resolveAgentRequestContext/);
-    assert.doesNotMatch(source, /body\.(actorId|workspaceId)/);
+  const authBoundaries = [
+    ["app/api/agent/ledger/route.ts"],
+    ["app/api/agent/ledger/[id]/transition/route.ts"],
+    ["app/api/agent/ledger/[id]/draft/route.ts"],
+    ["app/api/agent/actions/route.ts"],
+    ["app/api/agent/actions/[id]/accept/route.ts"],
+    ["app/api/agent/actions/[id]/dismiss/route.ts"],
+    ["app/api/agent/actions/[id]/view/route.ts"],
+    ["app/api/ai/conversations/route.ts"],
+    [
+      "app/api/ai/runs/[id]/route.ts",
+      "app/api/ai/runs/[id]/handler.ts",
+    ],
+    ["app/api/ai/today/route.ts"],
+    [
+      "app/api/events/[id]/encounters/route.ts",
+      "app/api/events/[id]/encounters/handlers.ts",
+    ],
+    [
+      "app/api/events/[id]/post-event/followup/route.ts",
+      "app/api/events/[id]/post-event/followup/handler.ts",
+    ],
+  ] as const;
+
+  for (const [route, boundary = route] of authBoundaries) {
+    const routeSource = readFileSync(join(process.cwd(), route), "utf8");
+    const boundarySource = readFileSync(
+      join(process.cwd(), boundary),
+      "utf8",
+    );
+    assert.match(boundarySource, /resolveAgentRequestContext/);
+    assert.doesNotMatch(routeSource, /body\.(actorId|workspaceId)/);
+    assert.doesNotMatch(boundarySource, /body\.(actorId|workspaceId)/);
+    if (boundary !== route) {
+      assert.match(routeSource, /create[A-Za-z]+Handler/);
+    }
   }
 });
 

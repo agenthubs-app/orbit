@@ -11,6 +11,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { createOrbitAgentRuntimeService } from "../../features/agent/runtime/service-factory";
+
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 async function importProjectModule<TModule>(
@@ -572,11 +574,28 @@ test("AI provider API routes fail closed in live mode instead of returning NOT_I
         POST: (request: Request) => Promise<Response>;
       }>("app/api/ai/mock/message-draft/route.ts");
       const runRoute = await importProjectModule<{
-        GET: (
+        createAiProviderRunGetHandler: (dependencies?: {
+          agentContext?: {
+            authenticate?: () => Promise<{
+              user?: { id?: string | null };
+            } | null>;
+            runtimeForActor?: () => ReturnType<
+              typeof createOrbitAgentRuntimeService
+            >;
+          };
+        }) => (
           request: Request,
           context: { params: Promise<{ id: string }> },
         ) => Promise<Response>;
-      }>("app/api/ai/runs/[id]/route.ts");
+      }>("app/api/ai/runs/[id]/handler.ts");
+      const getRun = runRoute.createAiProviderRunGetHandler({
+        agentContext: {
+          authenticate: async () => ({
+            user: { id: "account:ai-provider-live-test" },
+          }),
+          runtimeForActor: () => createOrbitAgentRuntimeService("mock"),
+        },
+      });
 
       const draftResponse = await draftRoute.POST(
         new Request("https://orbit.local/api/ai/mock/message-draft", {
@@ -587,7 +606,7 @@ test("AI provider API routes fail closed in live mode instead of returning NOT_I
           method: "POST",
         }),
       );
-      const runResponse = await runRoute.GET(
+      const runResponse = await getRun(
         new Request("https://orbit.local/api/ai/runs/demo-ai-run-1"),
         { params: Promise.resolve({ id: "demo-ai-run-1" }) },
       );

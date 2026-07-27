@@ -19,6 +19,14 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
+  const actorId = process.env.ORBIT_SEED_ACTOR_ID?.trim();
+  if (!actorId) {
+    console.error(
+      "Set ORBIT_SEED_ACTOR_ID to the authenticated account that should own seeded live event records.",
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   const client = createPgLiveRecordSqlClient({
     connectionString: config.connectionString,
@@ -31,12 +39,13 @@ async function main(): Promise<void> {
     await runOrbitRecordsMigration(client);
 
     const result = await seedEventsMockDataIntoLiveStore({
+      actorId,
       store,
       workspaceId: config.workspaceId,
     });
 
     console.log(
-      `Seeded ${result.totalRecords} live event records for ${result.workspaceId}.`,
+      `Seeded ${result.totalRecords} live event records for ${result.actorId} in ${result.workspaceId}.`,
     );
 
     for (const collection of result.collections) {

@@ -18,8 +18,14 @@ test("Agent workflows are entered through domain or internal boundaries", () => 
     join(repositoryRoot, "app/api/events/[id]/post-event/followup/route.ts"),
     "utf8",
   );
-  assert.match(domainRoute, /const \{ id: eventId \} = await context\.params/);
+  const domainHandler = readFileSync(
+    join(repositoryRoot, "app/api/events/[id]/post-event/followup/handler.ts"),
+    "utf8",
+  );
+  assert.match(domainRoute, /createPostEventFollowupPostHandler/);
+  assert.match(domainHandler, /eventId: access\.eventId/);
   assert.doesNotMatch(domainRoute, /body\.eventId/);
+  assert.doesNotMatch(domainHandler, /body\.eventId/);
 
   const schedulerRoute = readFileSync(
     join(repositoryRoot, "app/api/internal/agent/scheduler/route.ts"),

@@ -81,6 +81,7 @@ export const EVENT_LIVE_SEED_EXPECTED_RECORDS = [
 ] as const satisfies readonly SeededLiveEventCollection[];
 
 export interface SeedEventsMockDataIntoLiveStoreOptions {
+  actorId: string;
   now?: () => string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
@@ -92,6 +93,7 @@ export interface SeededLiveEventCollection {
 }
 
 export interface SeedEventsMockDataIntoLiveStoreResult {
+  actorId: string;
   collections: readonly SeededLiveEventCollection[];
   seededAt: string;
   totalRecords: number;
@@ -160,6 +162,7 @@ function searchTextForGeneratedRelationshipEvent(input: {
 }
 
 function liveRecordForEvent(input: {
+  actorId: string;
   event: EventRecord;
   now: string;
   workspaceId: string;
@@ -193,12 +196,14 @@ function liveRecordForEvent(input: {
     createdAt: input.event.sourceMetadata.importedAt,
     updatedAt: input.now,
     lifecycleState: "active",
+    userId: input.actorId,
     searchText: searchTextFor(input.event),
     payload,
   };
 }
 
 function liveRecordForGeneratedRelationshipEvent(input: {
+  actorId: string;
   event: EventDTO;
   now: string;
   workspaceId: string;
@@ -238,6 +243,7 @@ function liveRecordForGeneratedRelationshipEvent(input: {
     createdAt: defaultMockFixtures.generatedAt,
     updatedAt: input.now,
     lifecycleState: "active",
+    userId: input.actorId,
     searchText: searchTextForGeneratedRelationshipEvent({
       event: input.event,
       evidence,
@@ -247,6 +253,7 @@ function liveRecordForGeneratedRelationshipEvent(input: {
 }
 
 async function seedEventCrudRecords(input: {
+  actorId: string;
   now: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
@@ -255,6 +262,7 @@ async function seedEventCrudRecords(input: {
 
   for (const event of mockEventRecords) {
     const record = liveRecordForEvent({
+      actorId: input.actorId,
       event,
       now: input.now,
       workspaceId: input.workspaceId,
@@ -266,6 +274,7 @@ async function seedEventCrudRecords(input: {
 
   for (const event of defaultMockFixtures.events) {
     const record = liveRecordForGeneratedRelationshipEvent({
+      actorId: input.actorId,
       event,
       now: input.now,
       workspaceId: input.workspaceId,
@@ -307,13 +316,21 @@ async function seedCapabilityPayload<TPayload extends object>(input: {
 }
 
 export async function seedEventsMockDataIntoLiveStore({
+  actorId,
   now = () => new Date().toISOString(),
   store,
   workspaceId,
 }: SeedEventsMockDataIntoLiveStoreOptions): Promise<SeedEventsMockDataIntoLiveStoreResult> {
+  const normalizedActorId = actorId.trim();
+  if (!normalizedActorId) {
+    throw new Error(
+      "An authenticated actor id is required before seeding live event records.",
+    );
+  }
   const seededAt = now();
   const collections: SeededLiveEventCollection[] = [
     await seedEventCrudRecords({
+      actorId: normalizedActorId,
       now: seededAt,
       store,
       workspaceId,
@@ -361,6 +378,7 @@ export async function seedEventsMockDataIntoLiveStore({
   ];
 
   return {
+    actorId: normalizedActorId,
     collections,
     seededAt,
     totalRecords: collections.reduce(

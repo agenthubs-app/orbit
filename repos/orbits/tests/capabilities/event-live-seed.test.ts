@@ -21,14 +21,17 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 
 test("events live seed writes all mock event datasets into live record storage", async () => {
   const store = createMemoryLiveRecordStore();
+  const actorId = "account:event-live-seed-test";
   const workspaceId = "workspace:event-live-seed-test";
 
   const firstSeed = await seedEventsMockDataIntoLiveStore({
+    actorId,
     now: () => "2026-07-01T12:00:00.000Z",
     store,
     workspaceId,
   });
   const secondSeed = await seedEventsMockDataIntoLiveStore({
+    actorId,
     now: () => "2026-07-01T12:00:00.000Z",
     store,
     workspaceId,
@@ -41,6 +44,7 @@ test("events live seed writes all mock event datasets into live record storage",
   const expectedTotalRecords = defaultMockFixtures.events.length + 8;
   assert.equal(firstSeed.totalRecords, expectedTotalRecords);
   assert.equal(secondSeed.totalRecords, expectedTotalRecords);
+  assert.equal(firstSeed.actorId, actorId);
 
   const eventRecords = store.listRecords({
     workspaceId,
@@ -63,6 +67,7 @@ test("events live seed writes all mock event datasets into live record storage",
   assert.equal(typeof generatedEventTitle, "string");
   assert.match(generatedEventTitle, /東京インバウンド飲食店成長会/);
   assert.equal(generatedEventRecord.sourceType, "event_import");
+  assert.equal(generatedEventRecord.userId, actorId);
 
   const allRecords = store.listRecords({ workspaceId });
   assert.equal(allRecords.length, expectedTotalRecords);
@@ -73,7 +78,7 @@ test("events live seed writes all mock event datasets into live record storage",
       workspaceId,
     }),
   });
-  const events = await eventService.listEvents();
+  const events = await eventService.listEvents({ actorId });
 
   assert.equal(events.success, true);
   assert.equal(events.data.events.length, defaultMockFixtures.events.length);
@@ -149,4 +154,15 @@ test("events live seed writes all mock event datasets into live record storage",
   assert.equal(matches.data.matches.length, 1);
   assert.equal(review.success, true);
   assert.equal(review.data.contacts.length, 2);
+});
+
+test("events live seed refuses to create ownerless live records", async () => {
+  await assert.rejects(
+    seedEventsMockDataIntoLiveStore({
+      actorId: " ",
+      store: createMemoryLiveRecordStore(),
+      workspaceId: "workspace:ownerless-event-live-seed-test",
+    }),
+    /authenticated actor id is required/i,
+  );
 });

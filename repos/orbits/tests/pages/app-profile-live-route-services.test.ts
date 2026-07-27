@@ -81,7 +81,10 @@ test("app profile route service bundle resolves all child services in live mode"
 
 test("app profile route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveProfile(async () => {
-    const viewModel = await loadAppProfileRouteViewModel();
+    const viewModel = await loadAppProfileRouteViewModel(undefined, {
+      displayName: "Live profile test actor",
+      id: "account:live-profile-test",
+    });
 
     assert.equal(viewModel.state, "route-state");
 
@@ -126,26 +129,22 @@ test("profile editor uses API extraction and save readback instead of timed succ
   assert.doesNotMatch(profileSource, /setMessage\(t\(\{ en: "Saved\."/);
 });
 
-test("/app/profile page applies the founder's Chinese matching profile copy", () => {
+test("/app/profile maps actor-scoped profile data without hardcoded founder identity", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
+  const adapterSource = source(
+    "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter.ts",
+  );
 
-  assert.match(pageSource, /buildFounderProfileViewModel/);
-  // 身份来自数据层(live 库 operator profile);硬编码文案只作兜底。
-  assert.match(
-    pageSource,
-    /fullName: viewModel\.profile\.fullName\?\.trim\(\) \|\| copy\.fullName/,
-  );
-  assert.match(pageSource, /Orbit 的创始人/);
-  assert.match(pageSource, /帮企业把 AI 放进销售、客服、运营和内部知识库这些真实流程里/);
-  assert.match(pageSource, /AI 落地方案拆解/);
-  assert.match(pageSource, /日本本地商务资源/);
-  assert.match(pageSource, /有真实 AI 导入需求的企业/);
-  assert.match(pageSource, /language === "en"/);
+  assert.match(pageSource, /profileRouteToOrbitProfileViewModel/);
+  assert.match(adapterSource, /fullName: profile\.displayName/);
+  assert.match(adapterSource, /const offering = \[\.\.\.\(profile\.offering/);
+  assert.match(adapterSource, /const seeking = \[\.\.\.\(profile\.seeking/);
+  assert.match(adapterSource, /topics: profileTopics/);
+  assert.doesNotMatch(pageSource, /buildFounderProfileViewModel/);
   assert.doesNotMatch(
-    pageSource,
-    /\.\.\.viewModel\.(?:industries|offeringTags|seekingTags|topics)/,
+    `${pageSource}\n${adapterSource}`,
+    /Orbit 的创始人|結城 航太郎|有真实 AI 导入需求的企业/,
   );
-  assert.doesNotMatch(pageSource, /fullName: "結城 航太郎"/);
 });
 
 test("app profile success model keeps editable identity fields for the real profile UI", async () => {
