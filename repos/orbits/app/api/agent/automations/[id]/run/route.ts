@@ -24,6 +24,7 @@ export async function POST(
       mode: resolveModuleMode(),
     }).context();
     const automation = await runAgentAutomation(requestContext.service, id, {
+      actorId: requestContext.actorId,
       memory,
       workerId: `manual:${requestContext.actorId.slice(0, 80)}`,
     });

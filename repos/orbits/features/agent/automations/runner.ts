@@ -6,7 +6,7 @@ import type {
 import type { AgentMemoryContext } from "../memory/contract";
 import type { AgentSignal } from "../signals/contract";
 import {
-  createOrbitAgentConversationService,
+  createOrbitAgentConversationServiceForActor,
 } from "../../orbit-ai/service-factory";
 import { stablePayloadHash } from "../runtime/hash";
 
@@ -28,6 +28,7 @@ export interface AgentAutomationTriggerContext {
 }
 
 export interface AgentAutomationRunnerDependencies {
+  actorId?: string;
   execute?: (
     automation: AgentAutomation,
   ) => Promise<AgentAutomationExecutionResult>;
@@ -83,10 +84,18 @@ async function finishClaimedAgentAutomation(
 
 async function executeWithOrbitAgent(
   automation: AgentAutomation,
+  actorId: string | undefined,
   memory: readonly AgentMemoryContext[] = [],
   triggerContext?: AgentAutomationTriggerContext,
 ): Promise<AgentAutomationExecutionResult> {
-  const service = createOrbitAgentConversationService();
+  const authenticatedActorId = actorId?.trim();
+  if (!authenticatedActorId) {
+    throw new Error(
+      "Authenticated actor identity is required to run an Agent Playbook.",
+    );
+  }
+  const service =
+    createOrbitAgentConversationServiceForActor(authenticatedActorId);
   const executionContext = [
     "[SERVER-TRUSTED PLAYBOOK EXECUTION]",
     `capability=${automation.capabilityId}`,
@@ -154,6 +163,7 @@ export async function runAgentAutomation(
     ((automation) =>
       executeWithOrbitAgent(
         automation,
+        dependencies.actorId,
         dependencies.memory,
         dependencies.triggerContext,
       ));
@@ -181,7 +191,11 @@ export async function runDueAgentAutomations(
   const execute =
     dependencies.execute ??
     ((automation) =>
-      executeWithOrbitAgent(automation, dependencies.memory));
+      executeWithOrbitAgent(
+        automation,
+        dependencies.actorId,
+        dependencies.memory,
+      ));
   const claimed = await service.claimDue(input);
   return Promise.all(
     claimed.map((automation) =>
@@ -211,6 +225,7 @@ export async function runAgentAutomationSignalTriggers(
     ((automation) =>
       executeWithOrbitAgent(
         automation,
+        dependencies.actorId,
         dependencies.memory,
         triggerContext,
       ));
@@ -299,7 +314,7 @@ export async function previewAgentAutomationDefinition(
   input: CreateAgentAutomationInput,
   dependencies: Pick<
     AgentAutomationRunnerDependencies,
-    "execute" | "memory"
+    "actorId" | "execute" | "memory"
   > = {},
 ): Promise<AgentAutomationExecutionResult> {
   const timestamp = new Date().toISOString();
@@ -323,6 +338,10 @@ export async function previewAgentAutomationDefinition(
   const execute =
     dependencies.execute ??
     ((automation) =>
-      executeWithOrbitAgent(automation, dependencies.memory));
+      executeWithOrbitAgent(
+        automation,
+        dependencies.actorId,
+        dependencies.memory,
+      ));
   return execute(preview);
 }

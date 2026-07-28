@@ -40,6 +40,7 @@ export async function POST(request: Request): Promise<Response> {
       mode: resolveModuleMode(),
     }).context();
     const result = await previewAgentAutomationDefinition(definition, {
+      actorId: context.actorId,
       memory,
     });
     return NextResponse.json({

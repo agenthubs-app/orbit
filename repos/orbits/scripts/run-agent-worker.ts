@@ -69,7 +69,7 @@ async function main(): Promise<void> {
           now: new Date().toISOString(),
           workerId: `${workerId}:automations`,
         },
-        { memory: memoryContext },
+        { actorId, memory: memoryContext },
       ),
       shouldRefreshSignals
         ? signals.refresh().then((refresh) =>
@@ -77,6 +77,7 @@ async function main(): Promise<void> {
               automations,
               refresh.signals.filter((signal) => signal.status === "new"),
               {
+                actorId,
                 memory: memoryContext,
                 workerId: `${workerId}:signals`,
               },

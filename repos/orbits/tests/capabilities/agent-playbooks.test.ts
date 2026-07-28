@@ -5,6 +5,7 @@ import {
   createStorageAgentAutomationService,
 } from "../../features/agent/automations/service";
 import {
+  previewAgentAutomationDefinition,
   runAgentAutomationsForSignals,
 } from "../../features/agent/automations/runner";
 import type {
@@ -147,6 +148,27 @@ test("Playbook compiler retries one schema-invalid response without relaxing saf
   assert.equal(attempts, 2);
   assert.equal(result.success, true);
   assert.equal(result.draft.definition.capabilityId, "followups.reviewQueue");
+});
+
+test("Playbook preview fails closed without a server-authenticated actor", async () => {
+  await assert.rejects(
+    () =>
+      previewAgentAutomationDefinition({
+        capabilityId: "followups.reviewQueue",
+        delivery: "in_app",
+        instruction: "Review due relationships and explain the evidence.",
+        title: "Daily follow-up review",
+        trigger: {
+          kind: "schedule",
+          schedule: {
+            kind: "daily",
+            time: "09:00",
+            timeZone: "Asia/Tokyo",
+          },
+        },
+      }),
+    /Authenticated actor identity is required/,
+  );
 });
 
 test("Playbook configuration edits create versions while pause and resume do not", async () => {

@@ -79,7 +79,7 @@ export async function POST(request: Request): Promise<Response> {
         now: new Date().toISOString(),
         workerId,
       },
-      { memory },
+      { actorId, memory },
     );
     await createAgentOperationsService({ actorId }).recordHeartbeat({
       automationRuns: automations.length,

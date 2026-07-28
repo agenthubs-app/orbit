@@ -45,6 +45,7 @@ export async function POST(): Promise<Response> {
       }),
       actionableSignals,
       {
+        actorId: context.actorId,
         memory: await createAgentMemoryService({
           actorId: context.actorId,
           mode,
