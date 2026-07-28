@@ -78,10 +78,21 @@ function EventCard({ event, language, t }: { event: OrbitLandingEventView; langu
 
 export function OrbitRealOrganizerPublic({ language = "zh", viewModel }: { language?: OrbitLanguage; viewModel: OrbitOrganizerPublicViewModel }) {
   const t = makeOrbitServerT(language);
+  const totalAttendees = viewModel.events.reduce(
+    (sum, event) => sum + event.participantCount,
+    0,
+  );
   const stats = [
-    { label: t({ en: "Events hosted", zh: "举办活动" }), value: "12" },
-    { label: t({ en: "Total attendees", zh: "累计参会" }), value: "4,200+" },
-    { label: t({ en: "Satisfaction", zh: "满意度" }), value: "4.8" },
+    {
+      label: t({ en: "Events hosted", zh: "举办活动" }),
+      value: new Intl.NumberFormat(dateLocale(language)).format(
+        viewModel.events.length,
+      ),
+    },
+    {
+      label: t({ en: "Total attendees", zh: "累计参会" }),
+      value: new Intl.NumberFormat(dateLocale(language)).format(totalAttendees),
+    },
   ];
 
   return (

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const liveDatabaseEnvKeys = [
@@ -81,6 +82,7 @@ test("/app/o/[slug] page uses a live-capable organizer loader instead of the leg
   );
   assert.match(organizerSource, /data-orbit-real-page="organizer-public"/);
   assert.match(organizerSource, /imageAlt=\{name\}/);
+  assert.doesNotMatch(organizerSource, /4,200\+|Satisfaction|满意度/);
 });
 
 test("app organizer public route loader returns organizer events in mock mode", async () => {
@@ -101,6 +103,58 @@ test("app organizer public route loader returns organizer events in mock mode", 
       assert.equal(routeModel.organizer.events[0]?.id, "demo-event-1");
     }
   });
+});
+
+test("public catalogue event codes resolve to an organizer without exposing attendee names", async () => {
+  const { loadAppOrganizerPublicRouteViewModel } = await import(
+    "../../app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model"
+  );
+  const routeModel = await loadAppOrganizerPublicRouteViewModel({
+    slug: "evt01",
+  });
+
+  assert.equal(routeModel.state, "success");
+  if (routeModel.state === "success") {
+    assert.equal(routeModel.organizer.name, "Orbit 人脉测试空间");
+    assert.ok(routeModel.organizer.events.length > 0);
+    assert.ok(
+      routeModel.organizer.events.some((event) => event.id === "event_01"),
+    );
+    assert.ok(
+      routeModel.organizer.events.every(
+        (event) =>
+          event.stats.attendees.length === 0 &&
+          event.stats.authed === false &&
+          event.stats.youRsvped === false &&
+          event.youRsvped === false,
+      ),
+    );
+    assert.ok(
+      routeModel.organizer.events.reduce(
+        (sum, event) => sum + event.participantCount,
+        0,
+      ) > 0,
+    );
+    const { OrbitRealOrganizerPublic } = await import(
+      "../../app/(app)/app/o/orbit-real-organizer-public"
+    );
+    const html = renderToStaticMarkup(
+      createElement(OrbitRealOrganizerPublic, {
+        viewModel: routeModel.organizer,
+      }),
+    );
+    const totalAttendees = routeModel.organizer.events.reduce(
+      (sum, event) => sum + event.participantCount,
+      0,
+    );
+
+    assert.match(
+      html,
+      new RegExp(`>${routeModel.organizer.events.length}</div>`),
+    );
+    assert.match(html, new RegExp(`>${totalAttendees}</div>`));
+    assert.doesNotMatch(html, /4,200\+|满意度/);
+  }
 });
 
 test("app organizer public route loader does not fall back for an unknown slug", async () => {

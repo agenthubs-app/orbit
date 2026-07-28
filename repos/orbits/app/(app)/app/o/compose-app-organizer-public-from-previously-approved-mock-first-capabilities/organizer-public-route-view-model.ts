@@ -4,7 +4,10 @@ import type {
 } from "../../../../../features/events/event-crud-and-import/contract";
 import { resolveEventCrudAndImportService } from "../../../../../features/events/service-factory";
 import type { ModuleMode } from "../../../../../shared/services/module-mode";
-import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
+import {
+  getOrbitLandingViewModel,
+  type OrbitLandingEventView,
+} from "../../orbit-landing-route-view-model";
 import type { OrbitOrganizerPublicViewModel } from "../../orbit-organizer-route-view-model";
 
 export type AppOrganizerPublicSearchParams = Record<
@@ -283,13 +286,59 @@ function organizerViewModel(input: {
   };
 }
 
+function publicCatalogueOrganizerViewModel(
+  slug: string,
+): OrbitOrganizerPublicViewModel | null {
+  const events = getOrbitLandingViewModel().events;
+  const event = events.find((item) => matchesSlug(item, slug));
+  if (!event) return null;
+
+  const name = event.organizer || event.host;
+  const organizerEvents = events
+    .filter((item) => item.organizer === name || item.host === name)
+    .map((item) => ({
+      ...item,
+      stats: {
+        ...item.stats,
+        attendees: [],
+        authed: false,
+        youRsvped: false,
+      },
+      youRsvped: false,
+    }));
+
+  return {
+    events: organizerEvents,
+    handle: `已记录 ${organizerEvents.length} 场 · ${organizerEvents.reduce(
+      (sum, item) => sum + item.participantCount,
+      0,
+    )} 参会者`,
+    initial: (name || "O").slice(0, 1),
+    name,
+  };
+}
+
 export async function loadAppOrganizerPublicRouteViewModel(
   input: AppOrganizerPublicRouteInput,
 ): Promise<AppOrganizerPublicRouteViewModel> {
-  const mode = input.mode ?? readSearchParam(input.searchParams, "mode") ?? undefined;
+  const requestedMode =
+    input.mode ?? readSearchParam(input.searchParams, "mode") ?? null;
   const scenario = normalizeScenario(
     input.scenario ?? readSearchParam(input.searchParams, "scenario"),
   );
+  const publicOrganizer =
+    !requestedMode && !scenario
+      ? publicCatalogueOrganizerViewModel(input.slug)
+      : null;
+
+  if (publicOrganizer) {
+    return {
+      organizer: publicOrganizer,
+      state: "success",
+    };
+  }
+
+  const mode = requestedMode ?? undefined;
   const serviceResolution = resolveEventCrudAndImportService(mode);
 
   if (serviceResolution.success === false) {
