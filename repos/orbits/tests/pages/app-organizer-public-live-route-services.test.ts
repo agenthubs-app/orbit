@@ -74,6 +74,7 @@ test("/app/o/[slug] page uses a live-capable organizer loader instead of the leg
   assert.match(pageSource, /loadAppOrganizerPublicRouteViewModel/);
   assert.match(pageSource, /StateView/);
   assert.match(pageSource, /OrbitRealOrganizerPublic/);
+  assert.doesNotMatch(pageSource, /searchParams/);
   assert.doesNotMatch(pageSource, /getOrbitOrganizerPublicViewModel/);
   assert.match(organizerSource, /PublicTopNav active="events"/);
   assert.match(
@@ -215,7 +216,7 @@ test("app organizer public route state presents the active language without chan
   }
 });
 
-test("app organizer public page renders the mock success page without client-only helper calls", async () => {
+test("app organizer public page does not expose internal mock controls through URL search params", async () => {
   await withMockOrganizer(async () => {
     const Page = (await import("../../app/(app)/app/o/[slug]/page"))
       .default as (props: {
@@ -229,33 +230,34 @@ test("app organizer public page renders the mock success page without client-onl
       }),
     );
 
-    assert.match(html, /data-orbit-real-page="organizer-public"/);
-    assert.match(html, /Climate founders dinner/);
-    assert.doesNotMatch(html, /Attempted to call productHref/);
+    assert.match(html, /未找到该主办方/);
+    assert.match(html, /PUBLIC_ORGANIZER_NOT_FOUND/);
+    assert.doesNotMatch(html, /Climate founders dinner|Calendar sync fixture/);
   });
 });
 
-test("app organizer public page renders a controlled live failure when event storage is unconfigured", async () => {
+test("app organizer public route loader retains an explicit controlled live failure for unauthenticated internal callers", async () => {
   await withUnconfiguredLiveOrganizer(async () => {
-    const Page = (await import("../../app/(app)/app/o/[slug]/page"))
-      .default as (props: {
-      params: Promise<{ slug: string }>;
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        params: Promise.resolve({ slug: "event_01" }),
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
+    const { loadAppOrganizerPublicRouteViewModel } = await import(
+      "../../app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model"
     );
+    const routeModel = await loadAppOrganizerPublicRouteViewModel({
+      mode: "live",
+      slug: "event_01",
+    });
 
-    assert.match(html, /主办方页面暂时无法加载/);
-    assert.match(html, /页面没有使用模拟数据生成主办方信息/);
-    assert.match(
-      html,
-      /EVENTS_LIVE_STORE_UNCONFIGURED|events-live-store-unconfigured/,
-    );
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-    assert.match(html, /app-organizer-public-route-state/);
+    assert.equal(routeModel.state, "route-state");
+    if (routeModel.state === "route-state") {
+      assert.equal(routeModel.routeState.scenario, "failure");
+      assert.equal(
+        routeModel.routeState.errorCode,
+        "EVENTS_ACTOR_REQUIRED",
+      );
+      assert.ok(
+        routeModel.routeState.evidenceIds.includes(
+          "evidence:events-live-store-unconfigured",
+        ),
+      );
+    }
   });
 });

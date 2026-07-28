@@ -14,7 +14,6 @@ import {
   loadAppOrganizerPublicRouteViewModel,
   presentAppOrganizerPublicRouteState,
   type AppOrganizerPublicRouteStateViewModel,
-  type AppOrganizerPublicSearchParams,
 } from "../compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model";
 
 async function getOrganizerPageLanguage(): Promise<OrbitLanguage> {
@@ -61,14 +60,11 @@ function OrganizerPublicRouteStateBoundary({
 
 export default async function AppOrganizerPublicPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<AppOrganizerPublicSearchParams>;
 }) {
   const { slug } = await params;
   const routeModel = await loadAppOrganizerPublicRouteViewModel({
-    searchParams: await searchParams,
     slug,
   });
   const language = await getOrganizerPageLanguage();
