@@ -580,7 +580,10 @@ function storeFor(input: {
   provider: LiveConnectionEvidenceProvider;
 }): RelationshipSearchStore {
   const results = relationshipResultsFor(input.graph);
-  const suggestions = suggestionsFor(input.provider, input.graph.generatedAt);
+  const suggestions =
+    results.length > 0
+      ? suggestionsFor(input.provider, input.graph.generatedAt)
+      : [];
 
   return {
     kind: "live_record",

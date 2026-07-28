@@ -129,11 +129,18 @@ test("actor-scoped relationship search never returns another actor's graph", asy
 
   const ownerResult = await ownerService.queryRelationships({});
   const otherResult = await otherService.queryRelationships({});
+  const ownerSuggestions = await ownerService.getSearchSuggestions({});
+  const otherSuggestions = await otherService.getSearchSuggestions({});
 
   assert.equal(ownerResult.success, true);
   assert.ok(ownerResult.data.results.length > 0);
+  assert.equal(ownerSuggestions.success, true);
+  assert.ok(ownerSuggestions.data.suggestions.length > 0);
   assert.equal(otherResult.success, true);
   assert.deepEqual(otherResult.data.results, []);
+  assert.equal(otherSuggestions.success, true);
+  assert.deepEqual(otherSuggestions.data.suggestions, []);
+  assert.equal(otherSuggestions.data.state, "empty");
 });
 
 test("relationship natural search factory registers live mode and fails closed without live database config", async () => {
