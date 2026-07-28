@@ -951,30 +951,33 @@ function DrawerHistoryRow({
   const canDelete = item.source === "session";
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.drawerHistoryRow,
-        pressed ? styles.pressed : null
-      ]}
-    >
-      <View style={styles.drawerHistoryText}>
-        <View style={styles.drawerHistoryMeta}>
-          <Text numberOfLines={1} style={styles.drawerHistoryWhen}>
-            {item.when}
+    <View style={styles.drawerHistoryRow}>
+      <Pressable
+        accessibilityLabel={`打开历史记录：${item.title}`}
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.drawerHistoryOpenButton,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <View style={styles.drawerHistoryText}>
+          <View style={styles.drawerHistoryMeta}>
+            <Text numberOfLines={1} style={styles.drawerHistoryWhen}>
+              {item.when}
+            </Text>
+            {item.pinned ? (
+              <Ionicons color={colors.amber} name="pin-outline" size={12} />
+            ) : null}
+          </View>
+          <Text numberOfLines={1} style={styles.drawerHistoryTitle}>
+            {item.title}
           </Text>
-          {item.pinned ? (
-            <Ionicons color={colors.amber} name="pin-outline" size={12} />
-          ) : null}
+          <Text numberOfLines={2} style={styles.drawerHistoryPreview}>
+            {item.preview || "继续问一个具体问题。"}
+          </Text>
         </View>
-        <Text numberOfLines={1} style={styles.drawerHistoryTitle}>
-          {item.title}
-        </Text>
-        <Text numberOfLines={2} style={styles.drawerHistoryPreview}>
-          {item.preview || "继续问一个具体问题。"}
-        </Text>
-      </View>
+      </Pressable>
       {canDelete ? (
         <Pressable
           accessibilityLabel="删除历史记录"
@@ -995,7 +998,7 @@ function DrawerHistoryRow({
           )}
         </Pressable>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
@@ -1149,6 +1152,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs
   },
+  drawerHistoryOpenButton: {
+    borderRadius: radius.control,
+    flex: 1,
+    minHeight: 48,
+    minWidth: 0,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs
+  },
   drawerHistoryPreview: {
     color: colors.text3,
     fontSize: typography.caption,
@@ -1275,7 +1286,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
     flexDirection: "row",
     gap: 4,
-    minHeight: 30,
+    justifyContent: "center",
+    minHeight: 44,
+    minWidth: 44,
     paddingHorizontal: 8,
     paddingVertical: 5
   },

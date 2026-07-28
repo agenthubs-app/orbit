@@ -5,7 +5,6 @@
  */
 import {
   Chip,
-  Field,
   WorkbenchFrame,
   WorkbenchSurface,
 } from "../../../shared/ui/primitives";
@@ -240,46 +239,35 @@ export function ProfileOnboardingCapabilityDemo() {
           {updateState.success && updateState.data.profile && (
             <>
               <p className="type-body">{updateState.data.nextAction}</p>
-              <form
-                aria-label="Mock manual profile editor controls"
+              <div
+                aria-label="Read-only saved mock profile snapshot"
                 className="control-stack"
               >
-                <Field
-                  label="Display name"
-                  helper="Required before the mock profile can be scored."
-                >
-                  <input
-                    name="displayName"
-                    type="text"
-                    defaultValue={updateState.data.profile.displayName}
-                  />
-                </Field>
-                <Field label="Relationship goal">
-                  <textarea
-                    name="relationshipGoal"
-                    defaultValue={updateState.data.profile.relationshipGoal}
-                  />
-                </Field>
-                <Field label="Follow-up window">
-                  <select
-                    name="preferredFollowUpWindow"
-                    defaultValue={updateState.data.profile.preferredFollowUpWindow}
-                  >
-                    <option value="24 hours">24 hours</option>
-                    <option value="48 hours">48 hours</option>
-                    <option value="one week">one week</option>
-                  </select>
-                </Field>
-                <Field label="Intro channels">
-                  <input
-                    name="preferredIntroChannels"
-                    type="text"
-                    defaultValue={updateState.data.profile.preferredIntroChannels.join(
-                      ", ",
-                    )}
-                  />
-                </Field>
-              </form>
+                <p className="type-caption">
+                  This snapshot displays the result returned by the mock update;
+                  it is not an editable save form.
+                </p>
+                <dl className="relationship-meta">
+                  <div>
+                    <dt>Display name</dt>
+                    <dd>{updateState.data.profile.displayName}</dd>
+                  </div>
+                  <div>
+                    <dt>Relationship goal</dt>
+                    <dd>{updateState.data.profile.relationshipGoal}</dd>
+                  </div>
+                  <div>
+                    <dt>Follow-up window</dt>
+                    <dd>{updateState.data.profile.preferredFollowUpWindow}</dd>
+                  </div>
+                  <div>
+                    <dt>Intro channels</dt>
+                    <dd>
+                      {updateState.data.profile.preferredIntroChannels.join(", ")}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
               <dl className="relationship-meta">
                 <div>
                   <dt>Saved profile</dt>

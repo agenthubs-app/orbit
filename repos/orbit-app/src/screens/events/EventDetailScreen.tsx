@@ -423,9 +423,13 @@ function EventAgendaModule({
 
 function EventOrganizerModule({ event }: { event: EventDetailSummary }) {
   const initial = event.organizerName.slice(0, 1) || "O";
+  const organizerDetail =
+    event.organizerName === "主办方待确认"
+      ? "活动来源暂未提供主办方信息。"
+      : event.venueDetail;
 
   return (
-    <DataCard detail={event.sourceLabel || event.venueDetail} title="主办方">
+    <DataCard detail={event.venueDetail} title="主办方">
       <View style={styles.organizerRow}>
         <View style={styles.organizerAvatar}>
           <Text style={styles.organizerAvatarText}>{initial}</Text>
@@ -435,7 +439,7 @@ function EventOrganizerModule({ event }: { event: EventDetailSummary }) {
             {event.organizerName}
           </Text>
           <Text numberOfLines={2} style={styles.checklistDetail}>
-            {event.sourceLabel || "活动来源和主办方信息会在这里同步。"}
+            {organizerDetail}
           </Text>
         </View>
       </View>

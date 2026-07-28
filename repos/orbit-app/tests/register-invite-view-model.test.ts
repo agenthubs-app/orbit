@@ -72,27 +72,20 @@ test("registerInviteToView combines event and profile into a Chinese mobile invi
     guardrail: "这里先检查资料；提交报名在活动问题页完成。",
     profile: {
       company: "Orbit",
-      headline: "Orbit 创始人，帮企业把 AI 用到销售、客服、运营和内部知识库里",
-      name: "小雨",
+      headline: "Orbit 创始人，用 AI 帮企业提效、降本、落地增长",
+      name: "赵翔",
       offering: [
-        "企业 AI 导入路径梳理",
-        "知识库 / 内部检索 / 员工助手方案",
-        "销售、客服、运营流程自动化",
-        "日本落地服务商与合作方连接",
-        "创业者、投资人、企业服务资源引荐"
+        "企业知识库 / RAG / 内部助手方案",
+        "中日市场资源"
       ],
       role: "创始人",
       seeking: [
-        "正在导入 AI 或准备做试点的企业",
-        "有日本市场落地经验的合作伙伴",
-        "企业服务、SaaS、自动化和数据治理资源"
+        "正在导入 AI 的企业",
+        "日本市场合作伙伴"
       ],
       topics: [
-        "企业 AI 导入",
-        "知识库与内部检索",
-        "Agent 工作流",
-        "销售和客服自动化",
-        "中日商务合作"
+        "企业 AI 降本增效",
+        "Agent 工作流"
       ]
     },
     readiness: {
@@ -136,7 +129,7 @@ test("registerInviteToView has a controlled empty state when event context is mi
   assert.equal(view.event.code, "EVENT");
   assert.equal(view.guardrail, "这里先检查资料；提交报名在活动问题页完成。");
   assert.deepEqual(view.readiness, {
-    completedCount: 2,
+    completedCount: 1,
     items: [
       {
         detail: "账号已确认，可以继续填写活动问题。",
@@ -145,9 +138,9 @@ test("registerInviteToView has a controlled empty state when event context is mi
         title: "账号"
       },
       {
-        detail: "能提供、想寻找和话题都已补齐。",
+        detail: "先补能提供、想寻找和话题。",
         id: "profile",
-        status: "complete",
+        status: "needs_attention",
         title: "公开资料"
       },
       {
@@ -157,10 +150,10 @@ test("registerInviteToView has a controlled empty state when event context is mi
         title: "活动问题"
       }
     ],
-    summary: "2 / 3 项可继续",
+    summary: "1 / 3 项可继续",
     title: "报名准备"
   });
-  assert.equal(view.profile.name, "小雨");
+  assert.equal(view.profile.name, "");
   assert.deepEqual(view.actions, [
     { href: "/events", label: "查看活动列表" },
     { href: "/profile", label: "检查个人资料" }
@@ -194,7 +187,7 @@ test("registerInviteToView sends signed-out users through auth before event regi
     status: "needs_attention",
     title: "账号"
   });
-  assert.equal(view.readiness.summary, "2 / 3 项可继续");
+  assert.equal(view.readiness.summary, "1 / 3 项可继续");
   assert.deepEqual(view.actions, [
     {
       href: "/account/login?next=%2Fevents%2Fevent_signup_03%2Fregister",

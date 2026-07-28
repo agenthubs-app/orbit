@@ -399,7 +399,7 @@ test("business card review debug route renders success empty pending and failure
 
   assert.match(html, /Business card review and confirm flow/);
   assert.match(html, /Review extracted fields/);
-  assert.match(html, /Correct extracted fields/);
+  assert.match(html, /Read-only correction payload preview/);
   assert.match(html, /Original extraction/);
   assert.match(html, /Operator correction/);
   assert.match(html, /name="reviewedFields.displayName"/);
@@ -408,7 +408,9 @@ test("business card review debug route renders success empty pending and failure
   assert.match(html, /name="reviewedFields.email"/);
   assert.match(html, /name="reviewedFields.phone"/);
   assert.match(html, /data-api-method="PATCH"/);
-  assert.match(html, /Accept or edit fields/);
+  assert.match(html, /server-rendered preview does not submit/);
+  assert.match(html, /Operator action required/);
+  assert.doesNotMatch(html, /<button[^>]*>\s*Accept or edit fields/u);
   assert.match(html, /Confirm reviewed card/);
   assert.match(html, /No contact write runs during review/);
   assert.match(html, /Success state/);

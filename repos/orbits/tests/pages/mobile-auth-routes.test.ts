@@ -122,6 +122,12 @@ test("credentials route returns a no-store Auth.js session", async () => {
     payload.data.cookieHeader,
     /^__Secure-authjs\.session-token=/u,
   );
+  assert.match(
+    response.headers.get("Set-Cookie") ?? "",
+    /^__Secure-authjs\.session-token=/u,
+  );
+  assert.match(response.headers.get("Set-Cookie") ?? "", /HttpOnly/iu);
+  assert.match(response.headers.get("Set-Cookie") ?? "", /SameSite=Lax/iu);
 });
 
 test("mobile credentials cookie is accepted by the Auth.js session handler", async () => {
@@ -255,6 +261,10 @@ test("Google completion exposes only code and state, then exchanges once", async
   assert.equal(exchangeResponse.headers.get("Cache-Control"), "no-store");
   assert.equal(payload.success, true);
   assert.equal(payload.data.cookieHeader, issued.cookieHeader);
+  assert.match(
+    exchangeResponse.headers.get("Set-Cookie") ?? "",
+    /^__Secure-authjs\.session-token=/u,
+  );
 });
 
 test("mobile auth routes and broker do not log sensitive values", () => {

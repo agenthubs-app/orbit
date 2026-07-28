@@ -84,6 +84,24 @@ test("Orbit AI drawer can delete imported web session history", () => {
   assert.match(screenSource, /item\.source !== "session"/u);
 });
 
+test("Orbit AI history keeps open and delete actions as sibling buttons", () => {
+  const rowStart = screenSource.indexOf("function DrawerHistoryRow");
+  const stylesStart = screenSource.indexOf("const styles", rowStart);
+  const rowSource = screenSource.slice(rowStart, stylesStart);
+
+  assert.match(rowSource, /<View style=\{styles\.drawerHistoryRow\}>/u);
+  assert.match(
+    rowSource,
+    /accessibilityLabel=\{`打开历史记录：\$\{item\.title\}`\}/u
+  );
+  assert.match(rowSource, /accessibilityLabel="删除历史记录"/u);
+  assert.doesNotMatch(
+    rowSource,
+    /<Pressable[\s\S]*styles\.drawerHistoryRow[\s\S]*<Pressable/u
+  );
+  assert.match(screenSource, /historyDeleteButton:[\s\S]*minHeight: 44/u);
+});
+
 test("Orbit AI drawer keeps web sessions and normal AI conversations in history", () => {
   assert.doesNotMatch(
     screenSource,

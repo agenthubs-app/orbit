@@ -28,19 +28,6 @@ export interface AccountSessionOptions {
 
 type UnknownRecord = Record<string, unknown>;
 
-const founderAccountView = {
-  authActions: [],
-  displayName: "小雨",
-  goal:
-    "用 Orbit 找到能互相帮忙的人：AI 落地客户、合作伙伴、日本本地资源和靠谱引荐。",
-  nextAction: "回到个人资料，把能提供的资源写得更具体。",
-  planLabel: "人脉交换工作区",
-  roleLabel: "创始人",
-  summary: "这里决定别人看到你是谁，以及这个工作区要优先连接什么资源。",
-  timezoneLabel: "东京时间",
-  workspaceName: "Orbit"
-};
-
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -57,22 +44,6 @@ function stringField(
 function nestedRecord(record: UnknownRecord, fieldName: string): UnknownRecord {
   const value = record[fieldName];
   return isRecord(value) ? value : {};
-}
-
-function containsImplementationLabel(value: string): boolean {
-  return /\b(mock|fixture|provider|generated|source-backed|source:|evidence:|demo workspace|demo founder|command-center|implementation|deterministic)\b/iu.test(
-    value
-  );
-}
-
-function userFacingText(value: string, fallback: string): string {
-  const text = value.trim();
-
-  if (!text || containsImplementationLabel(text)) {
-    return fallback;
-  }
-
-  return text;
 }
 
 function statusLabel(status: string): string {
@@ -109,41 +80,23 @@ function timezoneLabel(value: string): string {
     return "东京时间";
   }
 
-  return userFacingText(value, founderAccountView.timezoneLabel);
+  return value.trim() || "未填写";
 }
 
 function planLabel(value: string): string {
   if (value === "mock-pro" || value === "live-relationship-os") {
-    return founderAccountView.planLabel;
+    return "人脉交换工作区";
   }
 
-  return userFacingText(value, founderAccountView.planLabel);
+  return value.trim() || "未设置方案";
 }
 
 function roleLabel(value: string): string {
   if (value === "founder-operator" || value === "operator") {
-    return founderAccountView.roleLabel;
+    return value === "founder-operator" ? "创始人" : "运营者";
   }
 
-  return userFacingText(value, founderAccountView.roleLabel);
-}
-
-function isKnownDemoAccount(
-  account: UnknownRecord,
-  user: UnknownRecord
-): boolean {
-  return (
-    stringField(user, "id") === "profile_orbit_generated_operator" ||
-    stringField(user, "displayName") === "小雨" ||
-    stringField(user, "displayName") === "赵翔" ||
-    stringField(user, "displayName") === "Xinyi Zhao" ||
-    stringField(account, "displayName") === "Orbit Generated Relationship Workspace" ||
-    stringField(account, "displayName") === "Ari Lane" ||
-    stringField(account, "displayName") === "赵翔" ||
-    stringField(account, "workspaceName") === "Orbit Founder Relationship OS" ||
-    stringField(account, "displayName") === "Xinyi Zhao" ||
-    stringField(user, "displayName") === "Ari Lane"
-  );
+  return value.trim() || "未填写";
 }
 
 function effectiveStatus(
@@ -175,51 +128,44 @@ export function accountSessionToView(
     options
   );
 
-  if (!isRecord(payload) || isKnownDemoAccount(account, user)) {
+  if (status !== "signed-in") {
     return {
-      ...founderAccountView,
       authActions: authActions(status),
-      displayName:
-        options.authUser?.name.trim() || founderAccountView.displayName,
-      emptyMessage: "当前账号接口没有返回可展示的登录信息。",
-      emptyTitle: "账号状态不可用",
+      displayName: "账号",
+      emptyMessage: "登录后才会显示你的身份、工作区和关系目标。",
+      emptyTitle: "尚未登录",
+      goal: "",
+      nextAction: "登录后可以继续完善个人资料。",
+      planLabel: "",
+      roleLabel: "",
       statusLabel: statusLabel(status),
-      title: "账号与工作区"
+      summary: "当前设备没有已验证身份，Orbit 不会展示任何人的账号资料。",
+      timezoneLabel: "",
+      title: "账号与工作区",
+      workspaceName: ""
     };
   }
 
-  const goal = userFacingText(
-    stringField(profile, "relationshipGoal"),
-    founderAccountView.goal
-  );
-  const nextAction =
-    status === "signed-in"
-      ? userFacingText(stringField(payload, "nextAction"), founderAccountView.nextAction)
-      : "先登录，再回到个人资料继续完善信息。";
-
   return {
-    displayName: userFacingText(
-      options.authUser?.name ||
-        stringField(user, "displayName") ||
-        stringField(account, "displayName"),
-      founderAccountView.displayName
-    ),
+    displayName:
+      options.authUser?.name.trim() ||
+      stringField(user, "displayName") ||
+      stringField(account, "displayName") ||
+      "未填写姓名",
     emptyMessage: "当前账号接口没有返回可展示的登录信息。",
     emptyTitle: "账号状态不可用",
-    goal,
+    goal: stringField(profile, "relationshipGoal", "尚未填写关系目标。"),
     authActions: authActions(status),
-    nextAction,
+    nextAction: "回到个人资料，补全希望别人看到的信息。",
     planLabel: planLabel(stringField(account, "plan")),
     roleLabel: roleLabel(stringField(account, "role")),
     statusLabel: statusLabel(status),
-    summary: founderAccountView.summary,
+    summary: "查看当前登录身份、工作区和关系目标。",
     timezoneLabel: timezoneLabel(
       stringField(user, "timezone") || stringField(profile, "homeMarket")
     ),
     title: "账号与工作区",
-    workspaceName: userFacingText(
-      stringField(account, "workspaceName"),
-      founderAccountView.workspaceName
-    )
+    workspaceName:
+      stringField(account, "workspaceName") || "未设置工作区"
   };
 }

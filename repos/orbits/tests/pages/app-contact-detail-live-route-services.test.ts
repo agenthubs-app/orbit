@@ -197,6 +197,101 @@ test("app contact detail live route uses one shared focused graph for success pa
   }
 });
 
+test("app contact detail live route renders a source-backed contact without fabricated relationship enrichment", async () => {
+  const graph: LocalRemoteContactGraph = {
+    contacts: [
+      {
+        id: "contact:business-card:standalone",
+        displayName: "林 美咲",
+        organization: "关西质量协作实验室",
+        role: "供应链质量负责人",
+        location: "Osaka",
+        profileSnippet: "关注跨境供应链验证。",
+        stage: "captured",
+        source: {
+          type: "business_card_ocr",
+          id: "source:business-card-ocr",
+          label: "Business card OCR",
+        },
+        evidenceIds: ["evidence:business-card:standalone"],
+        createdAt: "2026-07-28T10:00:00.000Z",
+        updatedAt: "2026-07-28T10:00:00.000Z",
+        primaryEmail: "misaki.kansai@example.invalid",
+        primaryPhone: "+81-6-5555-0101",
+      },
+    ],
+    connections: [],
+    evidence: [],
+    generatedAt: "2026-07-28T10:00:00.000Z",
+  };
+  const provider: LiveContactsGraphProvider = {
+    source: "live-record-store:contacts:standalone",
+    sourceLabel: "Standalone source-backed contact",
+    readContactGraph() {
+      throw new Error("contact detail route should use the focused graph");
+    },
+    readContactGraphForContact(contactId, actorId) {
+      assert.equal(contactId, "contact:business-card:standalone");
+      assert.equal(actorId, "actor:standalone");
+      return graph;
+    },
+  };
+
+  const routeModel = await loadAppContactDetailRoute({
+    actorId: "actor:standalone",
+    contactId: "contact%3Abusiness-card%3Astandalone",
+    liveContactGraphProvider: provider,
+    mode: "live",
+  });
+
+  assert.equal(routeModel.routeState, "success");
+
+  if (routeModel.routeState === "success") {
+    assert.equal(routeModel.relationshipEnrichmentState, "not_recorded");
+    assert.equal(routeModel.connection, null);
+    assert.equal(routeModel.assessment, null);
+    assert.equal(routeModel.valuePayload, null);
+
+    const viewModel = contactDetailRouteToOrbitContactsViewModel(
+      routeModel,
+      "zh",
+    );
+    const contact = viewModel.connections[0];
+
+    assert.equal(contact.displayName, "林 美咲");
+    assert.equal(contact.company, "关西质量协作实验室");
+    assert.equal(contact.email, "misaki.kansai@example.invalid");
+    assert.equal(contact.phone, "+81-6-5555-0101");
+    assert.equal(contact.pipelineStatus, "to_contact");
+    assert.equal(contact.strength, "unscored");
+    assert.equal(contact.source, "scan");
+    assert.deepEqual(contact.valueTags, ["名片来源"]);
+    assert.equal(viewModel.events.length, 1);
+  }
+});
+
+test("contact detail recovery encodes an already encoded contact id only once", async () => {
+  await withUnconfiguredLiveContacts(async () => {
+    const routeModel = await loadAppContactDetailRoute({
+      actorId: "actor:encoded-contact",
+      contactId: "contact%3Abusiness-card%3Aencoded",
+      mode: "live",
+    });
+
+    assert.equal(routeModel.routeState, "failure");
+    if (routeModel.routeState === "failure") {
+      assert.equal(
+        routeModel.recoveryActions[0]?.href,
+        "/app/contacts/contact%3Abusiness-card%3Aencoded",
+      );
+      assert.doesNotMatch(
+        routeModel.recoveryActions[0]?.href ?? "",
+        /%253A/,
+      );
+    }
+  });
+});
+
 test("contact detail view model selects one display language from multilingual live snippets", async () => {
   const graph: LocalRemoteContactGraph = {
     contacts: [

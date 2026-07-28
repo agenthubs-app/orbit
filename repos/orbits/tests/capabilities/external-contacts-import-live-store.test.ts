@@ -51,6 +51,7 @@ function createSeedStore() {
     record("networkPeople", {
       id: "person_001",
       personKind: "external_contact",
+      externalSourceKind: "phone",
       displayName: "高橋 智子",
       organization: "Aoba Foods",
       role: "Investor Partner",
@@ -58,7 +59,7 @@ function createSeedStore() {
       primaryEmail: "tomoko@example.test",
       profileSnippet: "Looking for restaurant reservation CRM pilot customers.",
       source: {
-        type: "manual",
+        type: "external_contacts",
         id: "source:external-person:person_001",
         label: "Current-user external contact record",
       },
@@ -69,6 +70,7 @@ function createSeedStore() {
     record("networkPeople", {
       id: "person_002",
       personKind: "external_contact",
+      externalSourceKind: "google_contacts",
       displayName: "渡辺 颯太",
       organization: "Kansai Foods",
       role: "Product Manager",
@@ -76,7 +78,7 @@ function createSeedStore() {
       primaryEmail: "sota@example.test",
       profileSnippet: "Interested in post-event follow-up operations.",
       source: {
-        type: "manual",
+        type: "external_contacts",
         id: "source:external-person:person_002",
         label: "Current-user external contact record",
       },
@@ -258,6 +260,15 @@ test("external contact candidates are isolated by actor ownership metadata", asy
   assert.equal(actorBCandidates.success, true);
   assert.equal(actorBCandidates.data.state, "empty");
   assert.equal(actorBCandidates.data.candidates.length, 0);
+  assert.deepEqual(
+    actorBCandidates.data.sources.map((source) => source.permissionState),
+    [
+      "live-not-connected",
+      "live-not-connected",
+      "live-not-connected",
+      "live-not-connected",
+    ],
+  );
 });
 
 test("external contacts live service fails closed when storage is unconfigured", async () => {

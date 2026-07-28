@@ -667,7 +667,7 @@ export function buildContactDetailNoteRequest(
     request: {
       body: {
         note: {
-          authorLabel: "小雨",
+          authorLabel: "我",
           body
         }
       }

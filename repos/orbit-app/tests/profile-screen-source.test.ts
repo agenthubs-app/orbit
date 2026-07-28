@@ -127,25 +127,19 @@ test("profile signed-out gate gives a visible login action", () => {
   );
 });
 
-test("profile signed-out state still previews the public Xiaoyu profile", () => {
+test("profile signed-out state does not render any person's profile", () => {
   const signedOutSlice = screenSource.slice(
     screenSource.indexOf("auth.ready && !auth.signedIn"),
     screenSource.indexOf("auth.signedIn && state.kind === \"loading\"")
   );
-  const editStart = screenSource.indexOf("function ProfileManualEditCard");
 
-  assert.match(screenSource, /function SignedOutProfilePreview/u);
-  assert.match(signedOutSlice, /<SignedOutProfilePreview/u);
-  assert.match(screenSource, /profileToSummary\(null\)/u);
-  assert.match(screenSource, /<OrbitBusinessCard profile=\{profile\} \/>/u);
-  assert.match(screenSource, /title="公开资料预览"/u);
-  assert.match(screenSource, /title="登录后编辑资料"/u);
-  assert.ok(editStart > -1);
-  assert.ok(
-    signedOutSlice.indexOf("<SignedOutProfilePreview") <
-      signedOutSlice.indexOf("登录查看个人资料"),
-    "public profile preview should appear before the login action"
-  );
+  assert.match(signedOutSlice, /title="登录后查看个人资料"/u);
+  assert.match(signedOutSlice, /Orbit 不会展示任何人的资料/u);
+  assert.doesNotMatch(screenSource, /function SignedOutProfilePreview/u);
+  assert.doesNotMatch(signedOutSlice, /<SignedOutProfilePreview/u);
+  assert.doesNotMatch(screenSource, /profileToSummary\(null\)/u);
+  assert.doesNotMatch(signedOutSlice, /<OrbitBusinessCard/u);
+  assert.doesNotMatch(signedOutSlice, /公开资料预览/u);
   assert.doesNotMatch(signedOutSlice, /ProfileManualEditCard/u);
   assert.doesNotMatch(signedOutSlice, /ProfileUpdateSuggestionsCard/u);
 });

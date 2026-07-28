@@ -113,6 +113,10 @@ test("account API routes return stable envelopes for demo and signed-out probes"
   );
   const signOutResponse = await signOutRoute.POST(
     new Request("https://orbit.local/api/account/session/sign-out", {
+      headers: {
+        cookie:
+          "authjs.session-token.0=first; authjs.session-token.1=second",
+      },
       method: "POST",
     }),
   );
@@ -127,6 +131,27 @@ test("account API routes return stable envelopes for demo and signed-out probes"
 
   assert.equal(signOutResponse.status, 200);
   assert.equal(signOutResponse.headers.get("cache-control"), "no-store");
+  const expiredCookies = signOutResponse.headers.getSetCookie();
+  assert.ok(
+    expiredCookies.some((value) =>
+      value.startsWith("authjs.session-token=;"),
+    ),
+  );
+  assert.ok(
+    expiredCookies.some((value) =>
+      value.startsWith("__Secure-authjs.session-token=;"),
+    ),
+  );
+  assert.ok(
+    expiredCookies.some((value) =>
+      value.startsWith("authjs.session-token.0=;"),
+    ),
+  );
+  assert.ok(
+    expiredCookies.some((value) =>
+      value.startsWith("authjs.session-token.1=;"),
+    ),
+  );
   assert.deepEqual(await signOutResponse.json(), {
     success: true,
     data: createMockAccountSessionService().getSignedOutSession().data,

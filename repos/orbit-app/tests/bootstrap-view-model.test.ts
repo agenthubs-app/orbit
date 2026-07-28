@@ -31,7 +31,7 @@ test("bootstrapToSummary maps first-screen aggregate counts", () => {
     highValueRelationships: 5,
     nextAction: "Review today's follow-ups.",
     pendingFollowupCount: 4,
-    profileName: "小雨",
+    profileName: "Xinyi Zhao",
     relationshipAssetCount: 42,
     summary: "You have 4 follow-ups and 2 upcoming events.",
     upcomingEventCount: 2,
@@ -56,7 +56,7 @@ test("bootstrapToSummary falls back for empty aggregate payloads", () => {
     highValueRelationships: 0,
     nextAction: "先看今天最值得处理的一件事。",
     pendingFollowupCount: 0,
-    profileName: "小雨",
+    profileName: "Orbit 用户",
     relationshipAssetCount: 0,
     summary: "连接人脉数据后，Orbit 会在这里整理当天重点。",
     upcomingEventCount: 0,
@@ -99,7 +99,7 @@ test("bootstrapToSummary hides implementation labels from startup copy", () => {
   assert.doesNotMatch(summary.workspaceName, /人脉工作台/u);
 });
 
-test("bootstrapToSummary normalizes the old Orbit main profile name", () => {
+test("bootstrapToSummary preserves the old Orbit main profile name", () => {
   const summary = bootstrapToSummary({
     account: {
       workspaceName: "Orbit"
@@ -118,7 +118,7 @@ test("bootstrapToSummary normalizes the old Orbit main profile name", () => {
     upcomingEvents: []
   });
 
-  assert.equal(summary.profileName, "小雨");
+  assert.equal(summary.profileName, "赵翔");
 });
 
 test("bootstrapMetrics creates compact home metrics", () => {

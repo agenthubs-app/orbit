@@ -101,6 +101,49 @@ test("permission live store maps remote permission records into staged authoriza
   ]);
 });
 
+test("permission requests persist for the authenticated account and remain isolated", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const provider = createStoragePermissionStateProvider({
+    sourceLabel: "Permission request persistence test",
+    store,
+    workspaceId,
+  });
+  const primaryAccountId = "account:permission-primary";
+  const secondaryAccountId = "account:permission-secondary";
+  const primaryService = createLivePermissionStateService({
+    now: () => "2026-07-29T04:00:00.000Z",
+    provider: {
+      source: provider.source,
+      sourceLabel: provider.sourceLabel,
+      readPermissionGraph: () =>
+        provider.readPermissionGraphForAccount!(primaryAccountId),
+      requestPermission: (input) =>
+        provider.requestPermissionForAccount!(primaryAccountId, input),
+    },
+  });
+
+  const request = await primaryService.requestPermission({
+    capability: "calendar",
+    intent: "connect-event-calendar",
+  });
+  const refreshed = await primaryService.listPermissionStates();
+  const secondary =
+    await provider.readPermissionGraphForAccount!(secondaryAccountId);
+
+  assert.equal(request.success, true);
+  assert.equal(request.data.permission.status, "pending");
+  assert.equal(refreshed.success, true);
+  assert.equal(refreshed.data.state, "pending");
+  assert.deepEqual(
+    refreshed.data.permissions.map((permission) => ({
+      capability: permission.capability,
+      status: permission.status,
+    })),
+    [{ capability: "calendar", status: "pending" }],
+  );
+  assert.deepEqual(secondary.permissions, []);
+});
+
 test("permission live service fails closed when live storage is unconfigured", async () => {
   const service = createLivePermissionStateService();
   const list = await service.listPermissionStates();

@@ -296,7 +296,7 @@ test("generated relationship fixture separates platform people from current-user
   );
 });
 
-test("generated relationship fixture includes future signup entry events", () => {
+test("generated relationship fixture includes source-backed future registration entry events", () => {
   const state = createOrbitLocalRemoteDatabase().getState() as unknown as RelationshipSchemaState;
   const generatedAt = new Date(createOrbitLocalRemoteDatabase().getState().generatedAt).getTime();
   const evidenceIds = idSet(state.evidence);
@@ -311,10 +311,18 @@ test("generated relationship fixture includes future signup entry events", () =>
       new Date(event.startsAt).getTime() > generatedAt,
       `${event.id} must not have started yet`,
     );
-    assert.match(
+    assert.equal(event.source.type, "event_import");
+    assert.equal(event.source.id, `source:${event.id}`);
+    assert.ok(
+      event.evidenceIds.some((evidenceId) =>
+        evidenceId.startsWith("evidence:event_signup:"),
+      ),
+      `${event.id} should carry stable registration-entry evidence`,
+    );
+    assert.doesNotMatch(
       `${event.name} ${event.source.label ?? ""}`,
-      /signup|registration|报名|申込/i,
-      `${event.id} should be identifiable as a signup entry event`,
+      /\b(?:lab|test)\b|测试|テスト/iu,
+      `${event.id} must not expose implementation/test copy`,
     );
     assertEvidenceBacked(event.id, event.evidenceIds, evidenceIds);
   }

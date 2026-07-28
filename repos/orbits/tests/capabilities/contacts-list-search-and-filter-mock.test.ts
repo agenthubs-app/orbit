@@ -138,7 +138,7 @@ test("contacts list search and filter contract exposes typed filters fixtures an
   assert.equal(success.data.provenance.databaseQueryExecuted, false);
   assert.equal(success.data.provenance.externalNetworkRequested, false);
   assert.equal(success.data.provenance.aiProviderRequested, false);
-  assert.equal(success.data.availableFilters.tags.length, 8);
+  assert.equal(success.data.availableFilters.tags.length, 9);
   assert.equal(success.data.availableFilters.sources.length, 8);
   assert.equal(success.data.availableFilters.values.length, 5);
   assert.equal(success.data.availableFilters.statuses.length, 4);

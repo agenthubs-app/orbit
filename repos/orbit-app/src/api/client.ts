@@ -1,4 +1,9 @@
-import type { ApiEnvelope, ApiResult, OrbitApiMeta } from "./types";
+import type {
+  ApiEnvelope,
+  ApiErrorBody,
+  ApiResult,
+  OrbitApiMeta
+} from "./types";
 import {
   DEFAULT_ORBIT_API_BASE_URL,
   normalizeOrbitApiBaseUrl
@@ -53,6 +58,31 @@ const INVALID_JSON_MESSAGE = "Orbit 服务返回的数据暂时无法解析，�
 const NETWORK_ERROR_MESSAGE = "暂时无法连接 Orbit 服务，请检查网络后再试。";
 const NON_JSON_RESPONSE_MESSAGE =
   "Orbit 服务返回了无法识别的内容，请稍后重试。";
+const API_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  CONFLICT: "当前状态已经变化，请刷新后再试。",
+  FORBIDDEN: "当前账号没有权限完成这项操作。",
+  INTERNAL_ERROR: "Orbit 服务暂时出了问题，请稍后重试。",
+  NOT_FOUND: "没有找到对应内容，它可能已被移除或不可用。",
+  SERVICE_UNAVAILABLE: "Orbit 服务暂不可用，请稍后再试。",
+  UNAUTHORIZED: "登录状态已失效，请重新登录后再试。",
+  VALIDATION_ERROR: "提交内容不符合要求，请检查后再试。"
+};
+const BUSINESS_CARD_SCAN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  BUSINESS_CARD_IMAGE_REQUIRED:
+    "请先拍摄或选择一张清晰的名片图片，再生成待确认候选。",
+  BUSINESS_CARD_IMAGE_TOO_LARGE:
+    "名片图片不能超过 10 MiB，请压缩图片或换一张后再试。",
+  BUSINESS_CARD_IMAGE_UNSUPPORTED:
+    "仅支持 JPEG、PNG 或 WebP 名片图片，请更换文件后再试。",
+  BUSINESS_CARD_OCR_PROVIDER_FAILED:
+    "这张名片暂时无法识别。当前不会生成候选或写入联系人，请换一张更清晰的图片，或粘贴名片文字。",
+  BUSINESS_CARD_OCR_UNCONFIGURED:
+    "名片识别服务尚未配置。当前不会生成候选或写入联系人；你可以先粘贴名片文字，或稍后再试。",
+  BUSINESS_CARD_SCAN_OCR_LIVE_STORE_FAILED:
+    "名片识别记录暂时无法读取，请稍后再试。",
+  BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED:
+    "名片识别记录服务尚未配置，当前不会生成候选或写入联系人。"
+};
 
 function configuredBaseUrl(): string {
   return DEFAULT_ORBIT_API_BASE_URL;
@@ -110,6 +140,41 @@ function isEnvelope<TData>(value: unknown): value is ApiEnvelope<TData> {
   }
 
   return value.success === false && isApiErrorBody(value.error);
+}
+
+function hasChineseCopy(value: string): boolean {
+  return /[\u3400-\u9fff]/u.test(value);
+}
+
+function localizedApiErrorMessage(
+  error: ApiErrorBody,
+  status: number
+): string {
+  const businessCardErrorCode =
+    error.context?.businessCardScanOcrErrorCode?.trim() ?? "";
+  const businessCardMessage =
+    BUSINESS_CARD_SCAN_ERROR_MESSAGES[businessCardErrorCode];
+
+  if (businessCardMessage) {
+    return businessCardMessage;
+  }
+
+  const serverMessage = error.message.trim();
+
+  if (hasChineseCopy(serverMessage)) {
+    return serverMessage;
+  }
+
+  if (status === 429) {
+    return "操作过于频繁，请稍后再试。";
+  }
+
+  return (
+    API_ERROR_MESSAGES[error.code] ??
+    (status >= 500
+      ? "Orbit 服务暂不可用，请稍后再试。"
+      : "这项操作暂时无法完成，请稍后再试。")
+  );
 }
 
 async function readJson(response: Response): Promise<
@@ -218,6 +283,18 @@ async function request<TData>(
       "ORBIT_APP_INVALID_ENVELOPE",
       INVALID_ENVELOPE_MESSAGE
     );
+  }
+
+  if (payload.value.success === false) {
+    return {
+      ...payload.value,
+      error: {
+        ...payload.value.error,
+        message: localizedApiErrorMessage(payload.value.error, response.status)
+      },
+      meta,
+      status: response.status
+    };
   }
 
   return {

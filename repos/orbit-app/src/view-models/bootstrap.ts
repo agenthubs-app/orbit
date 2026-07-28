@@ -91,20 +91,8 @@ function userFacingWorkspaceName(value: string): string {
 
 function userFacingProfileName(profile: Record<string, unknown>): string {
   const displayName = stringField(profile, "displayName");
-  const organization = stringField(profile, "organization");
-  const id = stringField(profile, "id");
 
-  if (
-    id === "profile_orbit_generated_operator" ||
-    displayName === "小雨" ||
-    displayName === "赵翔" ||
-    displayName === "Xinyi Zhao" ||
-    organization === "OPPO Japan Research"
-  ) {
-    return "小雨";
-  }
-
-  return displayName || "小雨";
+  return displayName || "Orbit 用户";
 }
 
 export function bootstrapToSummary(data: unknown): AppBootstrapSummary {

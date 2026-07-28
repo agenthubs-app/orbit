@@ -172,6 +172,7 @@ async function postForSession({
     response = await fetchImpl(endpoint(baseUrl, path), {
       body: JSON.stringify(body),
       cache: "no-store",
+      credentials: "include",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json"
@@ -419,23 +420,20 @@ export async function validateAuthSession({
 }): Promise<
   MobileAuthResult<{ expiresAt: string; user: MobileAuthUser }>
 > {
-  if (!cookieHeader.trim()) {
-    return failure(
-      "ORBIT_APP_AUTH_SESSION_MISSING",
-      "登录状态已失效，请重新登录。"
-    );
-  }
-
   let response: Response;
+  const normalizedCookieHeader = cookieHeader.trim();
 
   try {
     response = await fetchImpl(
       endpoint(baseUrl, ORBIT_API_ENDPOINTS.authSession),
       {
         cache: "no-store",
+        credentials: "include",
         headers: {
           Accept: "application/json",
-          Cookie: cookieHeader.trim()
+          ...(normalizedCookieHeader
+            ? { Cookie: normalizedCookieHeader }
+            : {})
         },
         method: "GET"
       }

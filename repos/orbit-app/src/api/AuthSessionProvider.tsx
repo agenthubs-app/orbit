@@ -1,6 +1,7 @@
 import * as Crypto from "expo-crypto";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 import {
   createContext,
   useCallback,
@@ -61,6 +62,7 @@ interface AuthSessionContextValue {
 }
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
+const usesBrowserManagedSession = Platform.OS === "web";
 
 async function sha256(value: Uint8Array): Promise<Uint8Array> {
   const bytes = new ArrayBuffer(value.byteLength);
@@ -94,9 +96,11 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
     const restoreSession = async () => {
       try {
-        const storedValue = await nativeAuthSessionStorage.read(baseUrl);
+        const storedValue = usesBrowserManagedSession
+          ? ""
+          : (await nativeAuthSessionStorage.read(baseUrl)) ?? "";
 
-        if (!storedValue) {
+        if (!usesBrowserManagedSession && !storedValue) {
           return;
         }
 
@@ -110,12 +114,15 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         }
 
         if (result.success) {
-          setCookieHeader(storedValue);
+          setCookieHeader(usesBrowserManagedSession ? "" : storedValue);
           setUser(result.data.user);
           return;
         }
 
-        if (result.error.code !== "ORBIT_APP_AUTH_NETWORK_ERROR") {
+        if (
+          !usesBrowserManagedSession &&
+          result.error.code !== "ORBIT_APP_AUTH_NETWORK_ERROR"
+        ) {
           await nativeAuthSessionStorage.clear(baseUrl);
         }
       } catch {
@@ -161,16 +168,18 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         };
       }
 
-      try {
-        await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
-      } catch {
-        return {
-          message: "无法安全保存登录状态，请稍后再试。",
-          success: false
-        };
+      if (!usesBrowserManagedSession) {
+        try {
+          await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
+        } catch {
+          return {
+            message: "无法安全保存登录状态，请稍后再试。",
+            success: false
+          };
+        }
       }
 
-      setCookieHeader(session.cookieHeader);
+      setCookieHeader(usesBrowserManagedSession ? "" : session.cookieHeader);
       setUser(validation.data.user);
       return { success: true };
     },
@@ -263,7 +272,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   );
 
   const signOut = useCallback(async (): Promise<AuthActionResult> => {
-    if (cookieHeader.trim()) {
+    if (user !== null) {
       const result = await signOutOrbitSession({ baseUrl, cookieHeader });
 
       if (!result.success) {
@@ -271,13 +280,15 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
     }
 
-    try {
-      await nativeAuthSessionStorage.clear(baseUrl);
-    } catch {
-      return {
-        message: "无法清除这台设备上的登录状态，请稍后再试。",
-        success: false
-      };
+    if (!usesBrowserManagedSession) {
+      try {
+        await nativeAuthSessionStorage.clear(baseUrl);
+      } catch {
+        return {
+          message: "无法清除这台设备上的登录状态，请稍后再试。",
+          success: false
+        };
+      }
     }
 
     // 登出后设备上不该再留着这个账号的人脉数据。
@@ -285,7 +296,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setCookieHeader("");
     setUser(null);
     return { success: true };
-  }, [baseUrl, cookieHeader]);
+  }, [baseUrl, cookieHeader, user]);
 
   // 任何一次请求收到 401，都说明这台设备上保存的会话已经失效。
   //
@@ -300,7 +311,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     }
 
     return onSessionExpired(() => {
-      void nativeAuthSessionStorage.clear(baseUrl).catch(() => undefined);
+      if (!usesBrowserManagedSession) {
+        void nativeAuthSessionStorage.clear(baseUrl).catch(() => undefined);
+      }
       // 快照里是这个账号的人脉数据，会话失效就不该继续留在设备上。
       void clearSnapshots();
       setCookieHeader("");

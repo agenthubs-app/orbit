@@ -256,6 +256,7 @@ const strengthMeta: Record<OrbitContactView["strength"], { cls: string; label: {
   medium: { cls: "nc-st-medium", label: { en: "Medium", zh: "中关系" } },
   weak: { cls: "nc-st-weak", label: { en: "Weak", zh: "弱关系" } },
   dormant: { cls: "nc-st-dormant", label: { en: "Dormant", zh: "沉睡" } },
+  unscored: { cls: "nc-st-unscored", label: { en: "Unscored", zh: "未评分" } },
 };
 
 export function SourceBadge({ source, t }: { source: OrbitContactView["source"]; t: Translate }) {
@@ -349,8 +350,10 @@ function PersonCard({
       {item.nextAction ? (
         <div className="nc-foot">
           <span className="nc-act"><Icon name={item.dormant ? "bell" : "arrow"} size={16} />{t({ en: "Suggested", zh: "建议" })}：{item.nextAction.text}</span>
-          <Basis kind={item.dormant ? "rule" : "ai"} copy={{ en: item.nextAction.reason, zh: item.nextAction.reason }} evidenceId={item.nextAction.evidenceId} t={t} />
-          <span style={{ color: "var(--text-3)", fontSize: 13, marginLeft: "auto" }}>· {item.lastInteraction}</span>
+          <Basis kind="evidence" copy={{ en: item.nextAction.reason, zh: item.nextAction.reason }} evidenceId={item.nextAction.evidenceId} t={t} />
+          {item.lastInteraction ? (
+            <span style={{ color: "var(--text-3)", fontSize: 13, marginLeft: "auto" }}>· {item.lastInteraction}</span>
+          ) : null}
         </div>
       ) : null}
     </a>
@@ -461,7 +464,12 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
   for (const status of viewModel.pipelineStatuses) {
     counts[status.value] = items.filter((item) => item.pipelineStatus === status.value).length;
   }
-  const eventCount = new Set(items.map((item) => item.lastEventId).filter(Boolean)).size;
+  const eventCount = new Set(
+    items
+      .filter((item) => item.source === "event")
+      .map((item) => item.lastEventId)
+      .filter(Boolean),
+  ).size;
   const valueFilters = Array.from(
     new Set(items.flatMap((item) => item.valueTags.map((tag) => tag.trim()))),
   )

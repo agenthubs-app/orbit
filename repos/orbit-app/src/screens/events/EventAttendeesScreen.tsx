@@ -13,6 +13,7 @@ import {
 import {
   ORBIT_API_ENDPOINTS,
   eventAttendeesPath,
+  eventDetailPath,
   eventEncounterEvidencePath,
   eventEncountersPath,
   eventMatchesPath,
@@ -43,6 +44,7 @@ import {
   type EventAttendeeRosterImportView,
   type EventEncounterNoteView
 } from "../../view-models/event-attendees";
+import { eventDetailToSummary } from "../../view-models/events";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -67,6 +69,7 @@ export function EventAttendeesScreen() {
   const router = useRouter();
   const client = useOrbitApiClient();
   const { baseUrl } = useOrbitApiBaseUrl();
+  const eventState = useApiResource<unknown>(eventDetailPath(eventId), () => false);
   const rosterState = useApiResource<unknown>(
     eventAttendeesPath(eventId),
     (data) => eventAttendeeRosterToView(data).attendees.length === 0
@@ -102,6 +105,7 @@ export function EventAttendeesScreen() {
     setDraftImportView(null);
     setRosterImportView(null);
     setSavedEncounterNotesByAttendee({});
+    eventState.refresh();
     rosterState.refresh();
     matchesState.refresh();
   }
@@ -261,9 +265,33 @@ export function EventAttendeesScreen() {
     setImportingRoster(false);
   }
 
+  const event =
+    eventState.kind === "success" || eventState.kind === "empty"
+      ? eventDetailToSummary(eventState.data)
+      : null;
+  const rosterSourceMissing =
+    Boolean(event) &&
+    rosterState.kind === "failure" &&
+    rosterState.error.code === "NOT_FOUND";
+  const matchesSourceMissing =
+    Boolean(event) &&
+    matchesState.kind === "failure" &&
+    matchesState.error.code === "NOT_FOUND";
   const roster =
     rosterState.kind === "success" || rosterState.kind === "empty"
       ? eventAttendeeRosterToView(rosterState.data)
+      : rosterSourceMissing && event
+        ? eventAttendeeRosterToView({
+            attendees: [],
+            event: {
+              name: event.title,
+              startsAt: event.startsAt,
+              venue: event.location
+            },
+            nextAction:
+              "该活动尚未连接参会者名单；当前不会导入候选或写入联系人。",
+            summary: "参会者来源尚未连接。"
+          })
       : null;
   const matches =
     matchesState.kind === "success" || matchesState.kind === "empty"
@@ -276,17 +304,33 @@ export function EventAttendeesScreen() {
       refreshControl={
         <RefreshControl
           onRefresh={refresh}
-          refreshing={rosterState.refreshing || matchesState.refreshing}
+          refreshing={
+            eventState.refreshing || rosterState.refreshing || matchesState.refreshing
+          }
           tintColor={colors.accent}
         />
       }
       title="参会者"
     >
-      {rosterState.kind === "loading" ? <LoadingState /> : null}
-      {rosterState.kind === "offline" ? (
-        <ErrorState message={rosterState.error.message} title="服务器连不上" />
+      {eventState.kind === "loading" || rosterState.kind === "loading" ? (
+        <LoadingState />
       ) : null}
-      {rosterState.kind === "failure" ? (
+      {eventState.kind === "offline" || rosterState.kind === "offline" ? (
+        <ErrorState
+          message={
+            eventState.kind === "offline"
+              ? eventState.error.message
+              : rosterState.kind === "offline"
+                ? rosterState.error.message
+                : "服务器连不上"
+          }
+          title="服务器连不上"
+        />
+      ) : null}
+      {eventState.kind === "failure" ? (
+        <ErrorState message={eventState.error.message} />
+      ) : null}
+      {rosterState.kind === "failure" && !rosterSourceMissing ? (
         <ErrorState message={rosterState.error.message} />
       ) : null}
       {roster ? (
@@ -294,6 +338,8 @@ export function EventAttendeesScreen() {
           <DataCard detail={roster.eventDetail} title={roster.eventTitle}>
             <Text style={styles.bodyText}>{roster.nextAction}</Text>
             <View style={styles.actionRow}>
+              {!rosterSourceMissing ? (
+                <>
               <Pressable
                 accessibilityRole="button"
                 onPress={() =>
@@ -340,6 +386,8 @@ export function EventAttendeesScreen() {
                   {importingDrafts ? "导入中" : "导入为候选"}
                 </Text>
               </Pressable>
+                </>
+              ) : null}
             </View>
           </DataCard>
           {matches && matches.matches.length > 0 ? (
@@ -355,7 +403,7 @@ export function EventAttendeesScreen() {
               </View>
             </DataCard>
           ) : null}
-          {matchesState.kind === "failure" ? (
+          {matchesState.kind === "failure" && !matchesSourceMissing ? (
             <ErrorState message={matchesState.error.message} title="现场匹配不可用" />
           ) : null}
           {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
@@ -370,7 +418,14 @@ export function EventAttendeesScreen() {
             />
           ) : null}
           {roster.attendees.length === 0 ? (
-            <EmptyState message="这场活动暂时没有可见名单。" title="没有参会者" />
+            <EmptyState
+              message={
+                rosterSourceMissing
+                  ? "这场活动尚未连接参会者来源；未连接时不会导入名单、生成候选或写入联系人。"
+                  : "这场活动暂时没有可见名单。"
+              }
+              title={rosterSourceMissing ? "参会者来源尚未连接" : "没有参会者"}
+            />
           ) : (
             roster.attendees.map((attendee) => (
               <AttendeeCard

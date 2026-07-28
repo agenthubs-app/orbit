@@ -52,3 +52,14 @@ test("event attendee cards include an avatar identity marker", () => {
   assert.match(screenSource, /styles\.attendeeAvatarImage/u);
   assert.match(screenSource, /<AttendeeAvatar/u);
 });
+
+test("event attendees distinguish a valid event from an unconnected roster", () => {
+  assert.match(screenSource, /eventDetailPath/u);
+  assert.match(screenSource, /eventDetailToSummary/u);
+  assert.match(screenSource, /rosterSourceMissing/u);
+  assert.match(screenSource, /参会者来源尚未连接/u);
+  assert.match(
+    screenSource,
+    /未连接时不会导入名单、生成候选或写入联系人/u
+  );
+});

@@ -203,13 +203,10 @@ function TaskList({ tasks }: { tasks: readonly FollowupTask[] }) {
                 Provider boundary: {task.audit.providerBoundary}
               </p>
               <EvidenceChips evidenceIds={task.evidenceIds} />
-              <button
-                aria-label={`Verify evidence for ${task.taskId}`}
-                className="secondary-action"
-                type="button"
-              >
-                {task.audit.verificationAction}
-              </button>
+              <p className="type-caption">
+                Verification instruction:{" "}
+                <code>{task.audit.verificationAction}</code>
+              </p>
             </div>
           </dd>
         </div>

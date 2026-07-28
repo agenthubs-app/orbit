@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
   ORBIT_API_ENDPOINTS,
   calendarPermissionRequestPath
@@ -54,6 +56,8 @@ function toneBackground(tone: PermissionCardTone): string {
 }
 
 export function AccountPermissionsScreen() {
+  const router = useRouter();
+  const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
   const [requestingCalendar, setRequestingCalendar] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -115,14 +119,41 @@ export function AccountPermissionsScreen() {
       }
       title="权限中心"
     >
-      {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "offline" ? (
+      {!auth.ready ? <LoadingState /> : null}
+      {auth.ready && !auth.signedIn ? (
+        <DataCard
+          detail="当前设备没有已验证身份，Orbit 不会展示任何账号的权限记录。"
+          title="登录后查看权限中心"
+        >
+          <Text style={styles.bodyText}>
+            登录后可以查看并复核当前账号的日历、通知、相机和联系人能力。
+          </Text>
+          <Pressable
+            accessibilityLabel="登录查看权限中心"
+            accessibilityRole="button"
+            onPress={() =>
+              router.push(
+                "/account/login?next=%2Faccount%2Fpermissions" as Href
+              )
+            }
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Ionicons color={colors.onAccent} name="log-in-outline" size={16} />
+            <Text style={styles.primaryButtonText}>登录查看权限中心</Text>
+          </Pressable>
+        </DataCard>
+      ) : null}
+      {auth.signedIn && state.kind === "loading" ? <LoadingState /> : null}
+      {auth.signedIn && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />
       ) : null}
-      {state.kind === "failure" ? (
+      {auth.signedIn && state.kind === "failure" ? (
         <ErrorState message={state.error.message} title="权限状态不可用" />
       ) : null}
-      {view ? (
+      {auth.signedIn && view ? (
         <PermissionWorkspace
           onRequestCalendar={requestCalendarReview}
           requestError={requestError}

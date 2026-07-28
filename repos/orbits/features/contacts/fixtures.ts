@@ -45,6 +45,7 @@ const tagLabels: Record<ContactTagFilter, string> = {
   "event:climate-founders-dinner": "Climate founders dinner",
   "priority:nurture": "Nurture priority",
   "priority:warm-follow-up": "Warm follow-up",
+  "source:business-card": "Business card source",
   "source:event-import": "Event import source",
   "source:external-import": "External import source",
   "topic:community": "Community context",

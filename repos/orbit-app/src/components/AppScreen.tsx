@@ -79,11 +79,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.pill,
     borderWidth: 1,
-    height: 36,
+    height: 44,
     justifyContent: "center",
     marginBottom: spacing.xs,
     marginLeft: -spacing.xs,
-    width: 36
+    width: 44
   },
   backButtonPressed: {
     opacity: 0.72

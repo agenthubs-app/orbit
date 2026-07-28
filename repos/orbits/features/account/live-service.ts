@@ -217,7 +217,7 @@ function sessionPayload(
   }
 
   const { account, profile } = selected;
-  const headline = profile.headline ?? profile.role ?? "Relationship operator";
+  const headline = profile.headline ?? profile.role ?? "";
 
   return {
     state: "success",
@@ -243,11 +243,9 @@ function sessionPayload(
     },
     profile: {
       headline,
-      relationshipGoal:
-        profile.relationshipGoal ??
-        "Use remote live storage to develop source-backed relationship workflows.",
-      homeMarket: profile.homeMarket ?? "Tokyo",
-      preferredFollowUpWindow: profile.preferredFollowUpWindow ?? "48 hours",
+      relationshipGoal: profile.relationshipGoal ?? "",
+      homeMarket: profile.homeMarket ?? profile.timezone ?? "",
+      preferredFollowUpWindow: profile.preferredFollowUpWindow ?? "",
     },
     provenance: {
       source: provider.source,
@@ -257,7 +255,7 @@ function sessionPayload(
       privacy: "live-account-session",
     },
     nextAction:
-      "Use the remote account context while keeping auth tokens outside Orbit feature contracts.",
+      "Review the current account and complete any missing profile fields.",
   };
 }
 

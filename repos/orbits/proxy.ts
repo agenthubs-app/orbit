@@ -31,6 +31,21 @@ export const proxy = auth((request) => {
   const language = normalizeOrbitLanguage(request.nextUrl.searchParams.get("lang"));
   const requestHeaders = new Headers(request.headers);
 
+  // CORS preflight 按规范不携带业务会话，只声明随后请求的方法和 headers。
+  // 这里仅确认 `/api` 的传输能力；真正的 GET/POST/PUT/PATCH/DELETE 仍继续
+  // 经过下面的账号认证边界和各 route 自己的 actor 校验。
+  if (
+    request.method === "OPTIONS" &&
+    request.nextUrl.pathname.startsWith("/api/")
+  ) {
+    return new NextResponse(null, {
+      headers: {
+        "cache-control": "no-store",
+      },
+      status: 204,
+    });
+  }
+
   if (language) {
     requestHeaders.set("x-orbit-lang", language);
   }

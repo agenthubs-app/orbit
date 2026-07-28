@@ -2,7 +2,8 @@
  * Next.js 应用配置。
  *
  * 这里关闭 `X-Powered-By` 响应头，避免在响应里暴露框架指纹。
- * `/api` 允许 Expo web/mobile dev clients 跨端口读取 API；不启用 credentials。
+ * `/api` 允许 Expo web/mobile dev clients 跨端口读取 API。
+ * 浏览器会话只在配置了明确 origin 时启用 credentials，绝不和通配符混用。
  */
 /** @type {import("next").NextConfig} */
 const apiCorsOrigin = process.env.ORBIT_API_CORS_ORIGIN ?? "*";
@@ -29,6 +30,14 @@ const nextConfig = {
             key: "Access-Control-Allow-Headers",
             value: "Content-Type, Authorization",
           },
+          ...(apiCorsOrigin === "*"
+            ? []
+            : [
+                {
+                  key: "Access-Control-Allow-Credentials",
+                  value: "true",
+                },
+              ]),
           {
             key: "Access-Control-Expose-Headers",
             value:

@@ -184,17 +184,17 @@ function ReviewFieldRows({ draft }: { draft: BusinessCardReviewDraft }) {
 
 function OperatorReviewForm({ draft }: { draft: BusinessCardReviewDraft }) {
   return (
-    <form
-      action={`/api/contact-drafts/${draft.id}`}
+    <section
       aria-label="Correct extracted business card fields"
       className="review-field-form"
       data-api-method="PATCH"
     >
-      <p className="type-caption">Correct extracted fields</p>
+      <p className="type-caption">Read-only correction payload preview</p>
       <p className="type-body" id="business-card-review-form-note">
         Original extraction stays visible beside every operator correction. The
         PATCH route accepts these named fields under <code>reviewedFields</code>
-        {" "}and returns reviewed evidence without creating a contact.
+        {" "}and returns reviewed evidence without creating a contact. This
+        server-rendered preview does not submit or claim that a review was saved.
       </p>
       <div
         aria-label="Per-field business card correction controls"
@@ -242,18 +242,15 @@ function OperatorReviewForm({ draft }: { draft: BusinessCardReviewDraft }) {
       </div>
       <input name="reviewerLabel" type="hidden" defaultValue="Demo reviewer" />
       <div className="button-row">
-        <button
-          aria-describedby="business-card-review-form-note"
-          className="primary-action"
-          type="button"
-        >
-          Accept or edit fields
-        </button>
+        <p className="type-caption">
+          Operator action required: send the displayed payload to{" "}
+          <code>PATCH /api/contact-drafts/{draft.id}</code>.
+        </p>
         <code className="review-route-command">
           PATCH /api/contact-drafts/{draft.id}
         </code>
       </div>
-    </form>
+    </section>
   );
 }
 

@@ -1,4 +1,5 @@
 import type { ApiResult } from "../api/types";
+import { Platform } from "react-native";
 
 // 每一次成功的 GET 都在本地留一份快照，下次打开这一屏时先渲染它，
 // 网络回来了再覆盖。断网时快照就是用户看到的内容——离线是常态，
@@ -59,6 +60,10 @@ function reportUnavailable(error: unknown): null {
 }
 
 async function database(): Promise<Database | null> {
+  if (Platform.OS === "web") {
+    return null;
+  }
+
   if (databasePromise) {
     return databasePromise;
   }

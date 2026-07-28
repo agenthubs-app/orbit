@@ -65,6 +65,13 @@ export function createActorScopedPermissionStateService(
             sourceLabel: provider.sourceLabel,
             readPermissionGraph: () =>
               provider.readPermissionGraphForAccount!(normalizedAccountId),
+            requestPermission: provider.requestPermissionForAccount
+              ? (input) =>
+                  provider.requestPermissionForAccount!(
+                    normalizedAccountId,
+                    input,
+                  )
+              : undefined,
           }
         : null,
   });

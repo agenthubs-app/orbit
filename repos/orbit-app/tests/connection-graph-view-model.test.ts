@@ -305,7 +305,7 @@ test("buildConnectionProfilePreviewRequest prepares a review-only relationship p
           mutualValue: {
             contactReceives: "曾伟可以获得有明确上下文的资源、介绍或业务线索。",
             orbitUserReceives:
-              "小雨可以通过曾伟的经验、渠道或需求判断下一步合作机会。",
+              "你可以通过曾伟的经验、渠道或需求判断下一步合作机会。",
             valueTypes: ["commercial_opportunity", "knowledge_exchange"]
           },
           nextAction: {
@@ -375,7 +375,7 @@ test("connectionProfileToView maps relationship profile previews into Chinese re
   assert.deepEqual(view.mutualValues, [
     { label: "对方获得", value: "获得关西可信赖的落地服务商介绍。" },
     {
-      label: "小雨获得",
+      label: "你获得",
       value: "补强跨境 D2C 客户在日本落地的服务资源。"
     },
     { label: "价值类型", value: "商业机会、知识交换" }

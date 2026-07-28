@@ -65,6 +65,68 @@ test("Orbit API client returns failure envelopes without throwing", async () => 
   assert.equal(result.status, 503);
 });
 
+test("Orbit API client localizes business-card OCR failures from stable context", async () => {
+  const client = createOrbitApiClient({
+    baseUrl: "http://localhost:3000",
+    fetchImpl: async () =>
+      response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "SERVICE_UNAVAILABLE",
+            context: {
+              businessCardScanOcrErrorCode: "BUSINESS_CARD_OCR_UNCONFIGURED"
+            },
+            message: "Cloud business card OCR is not configured."
+          }
+        }),
+        { status: 503 }
+      )
+  });
+
+  const result = await client.post("/api/contact-drafts/business-card/scan");
+
+  assert.equal(result.success, false);
+  if (result.success) {
+    assert.fail("Expected a failed API result");
+  }
+  assert.equal(result.error.code, "SERVICE_UNAVAILABLE");
+  assert.equal(
+    result.error.message,
+    "名片识别服务尚未配置。当前不会生成候选或写入联系人；你可以先粘贴名片文字，或稍后再试。"
+  );
+  assert.equal(
+    result.error.context?.businessCardScanOcrErrorCode,
+    "BUSINESS_CARD_OCR_UNCONFIGURED"
+  );
+  assert.doesNotMatch(result.error.message, /Cloud|OCR|configured/u);
+});
+
+test("Orbit API client preserves already-localized server errors", async () => {
+  const client = createOrbitApiClient({
+    baseUrl: "http://localhost:3000",
+    fetchImpl: async () =>
+      response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "请先填写联系人姓名。"
+          }
+        }),
+        { status: 400 }
+      )
+  });
+
+  const result = await client.post("/api/contact-drafts/manual");
+
+  assert.equal(result.success, false);
+  if (result.success) {
+    assert.fail("Expected a failed API result");
+  }
+  assert.equal(result.error.message, "请先填写联系人姓名。");
+});
+
 test("Orbit API client sends PATCH requests with JSON bodies", async () => {
   const calls: Array<{
     init: RequestInit | undefined;

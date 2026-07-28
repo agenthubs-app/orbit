@@ -230,31 +230,28 @@ export function ProfileScreen() {
     >
       {!auth.ready ? <LoadingState /> : null}
       {auth.ready && !auth.signedIn ? (
-        <>
-          <SignedOutProfilePreview />
-          <DataCard
-            detail="登录后可以编辑资料、保存提取结果和确认资料建议。"
-            title="登录后编辑资料"
+        <DataCard
+          detail="当前设备没有已验证身份，Orbit 不会展示任何人的资料。"
+          title="登录后查看个人资料"
+        >
+          <Text style={styles.bodyText}>
+            使用邮箱或 Google 登录，完成后会回到这里。
+          </Text>
+          <Pressable
+            accessibilityLabel="登录查看个人资料"
+            accessibilityRole="button"
+            onPress={() =>
+              router.push("/account/login?next=%2Fprofile" as Href)
+            }
+            style={({ pressed }) => [
+              styles.profileLoginButton,
+              pressed ? styles.pressed : null
+            ]}
           >
-            <Text style={styles.bodyText}>
-              使用邮箱或 Google 登录，完成后回到这里。
-            </Text>
-            <Pressable
-              accessibilityLabel="登录查看个人资料"
-              accessibilityRole="button"
-              onPress={() =>
-                router.push("/account/login?next=%2Fprofile" as Href)
-              }
-              style={({ pressed }) => [
-                styles.profileLoginButton,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Ionicons color={colors.onAccent} name="log-in-outline" size={16} />
-              <Text style={styles.profileLoginButtonText}>登录查看个人资料</Text>
-            </Pressable>
-          </DataCard>
-        </>
+            <Ionicons color={colors.onAccent} name="log-in-outline" size={16} />
+            <Text style={styles.profileLoginButtonText}>登录查看个人资料</Text>
+          </Pressable>
+        </DataCard>
       ) : null}
       {auth.signedIn && state.kind === "loading" ? <LoadingState /> : null}
       {auth.signedIn && state.kind === "offline" ? (
@@ -287,25 +284,6 @@ export function ProfileScreen() {
         />
       ) : null}
     </AppScreen>
-  );
-}
-
-function SignedOutProfilePreview() {
-  const profile = profileToSummary(null);
-
-  return (
-    <>
-      <DataCard detail="别人会先看到这些信息" title="公开资料预览">
-        <OrbitBusinessCard profile={profile} />
-        {profile.bio ? <Text style={styles.bodyText}>{profile.bio}</Text> : null}
-      </DataCard>
-      <ProfileTagSection items={profile.offering} title="我能提供" />
-      <ProfileTagSection items={profile.seeking} title="我想寻求" />
-      <ProfileTagSection items={profile.topics} title="想聊的话题" />
-      {profile.relationshipGoal ? (
-        <DataCard detail={profile.relationshipGoal} title="关系目标" />
-      ) : null}
-    </>
   );
 }
 

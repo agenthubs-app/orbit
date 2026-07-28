@@ -70,11 +70,10 @@ export interface PartyModeView {
 
 export interface PartyModeInput {
   attendeesPayload: unknown;
+  eventId: string;
   eventPayload: unknown;
   matchesPayload: unknown;
 }
-
-export const DEFAULT_PARTY_EVENT_ID = "event_01";
 
 function compactId(value: string): string {
   return value.replace(/[^a-z0-9]+/giu, "").toUpperCase();
@@ -284,7 +283,7 @@ export function partyModeToView(input: PartyModeInput): PartyModeView {
   const event = eventDetailToSummary(input.eventPayload);
   const roster = eventAttendeeRosterToView(input.attendeesPayload);
   const matchView = eventMatchesToView(input.matchesPayload);
-  const eventId = event.id === "event" ? DEFAULT_PARTY_EVENT_ID : event.id;
+  const eventId = event.id === "event" ? input.eventId : event.id;
   const accessCode = partyAccessCode(eventId);
   const eventTitle = displayTitle(event.title, roster.eventTitle);
   const eventDetail = displayDetail(

@@ -100,7 +100,7 @@ test("eventDetailToSummary maps event detail payloads", () => {
     id: "event-1",
     location: "Shibuya",
     nextAction: "先看报名信息，再决定要准备的介绍和会谈重点。",
-    organizerName: "日中投资人与创业者报名沙龙",
+    organizerName: "主办方待确认",
     participantCountLabel: "报名人数待确认",
     preparation: "整理参会者背景、想认识的人和可以主动提供的资源。",
     registrationActionLabel: "报名参加",
@@ -244,6 +244,38 @@ test("eventDetailToSummary removes signup test wording from user-facing copy", (
     "通过报名表确认兴趣、可提供的资源和希望介绍的人。"
   );
   assert.equal(summary.sourceLabel, "关西跨境商务交流会");
+});
+
+test("eventDetailToSummary keeps manual event fields semantic and hides storage copy", () => {
+  const summary = eventDetailToSummary({
+    event: {
+      description: "不触发日历、通知、邮件或外部网络。",
+      id: "event:live-record:20260729",
+      nextAction: "Prepare relationship context for the storage-backed event.",
+      recommendedPreparation:
+        "Review the storage-backed event before attaching attendees.",
+      relationshipContext:
+        "本地全产品功能审计创建，仅用于动态路由与账号隔离验证。",
+      sourceMetadata: {
+        label: "本地全产品功能审计创建，仅用于动态路由与账号隔离验证。"
+      },
+      startsAt: "2026-09-29T10:00:00+09:00",
+      status: "confirmed",
+      title: "功能审计私有活动 20260729",
+      venue: "Orbit 本地开发环境"
+    }
+  });
+
+  assert.equal(summary.title, "功能审计私有活动 20260729");
+  assert.equal(summary.organizerName, "主办方待确认");
+  assert.equal(
+    summary.preparation,
+    "整理参会者背景、想认识的人和可以主动提供的资源。"
+  );
+  assert.equal(
+    summary.nextAction,
+    "先看报名信息，再决定要准备的介绍和会谈重点。"
+  );
 });
 
 test("contactDetailToSummary maps contact detail payloads", () => {
@@ -402,7 +434,7 @@ test("buildContactDetailNoteRequest prepares contact detail note updates", () =>
       request: {
         body: {
           note: {
-            authorLabel: "小雨",
+            authorLabel: "我",
             body: "下次把关西渠道名单发给 Kenji。"
           }
         }

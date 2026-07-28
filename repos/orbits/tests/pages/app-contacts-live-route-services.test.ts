@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadAppContactsRouteViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { resolveAppContactsListSearchAndFilterService } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-service-factory";
+import { contactsRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -88,4 +89,66 @@ test("/app/contacts page renders the live-capable product contacts UI", async ()
   assert.match(pageSource, /redirect\("\/app\/account\/login/);
   assert.match(pageSource, /session\.user\.id/);
   assert.doesNotMatch(pageSource, /AppContactsCommandCenter/);
+});
+
+test("captured source-only contacts remain pending, unscored, and are not counted as events", () => {
+  const viewModel = contactsRouteToOrbitContactsViewModel({
+    state: "success",
+    payload: {
+      appliedFilters: {
+        query: "",
+        sourceFilters: [],
+        statusFilters: [],
+        tagFilters: [],
+        valueFilters: [],
+      },
+      availableFilters: {
+        sources: [],
+        statuses: [],
+        values: [],
+      },
+      contacts: [
+        {
+          databaseQueryExecuted: true,
+          detailHref: "/app/contacts/contact%3Abusiness-card%3Alist",
+          displayName: "林 美咲",
+          evidenceIds: ["evidence:business-card:list"],
+          externalServicesContacted: false,
+          id: "contact:business-card:list",
+          location: "Osaka",
+          needsAttention: true,
+          nextAction: "Review source evidence before follow-up",
+          organization: "关西质量协作实验室",
+          profileSnippet: "Source-backed contact",
+          relationshipContextCopy: "Business card context",
+          relationshipValueLabels: [],
+          relationshipValueSummary: "No relationship score is recorded.",
+          role: "供应链质量负责人",
+          searchIndexReadExecuted: false,
+          sourceLabel: "Business card OCR",
+          sourceType: "business_card_ocr",
+          status: "needs_follow_up",
+          statusLabel: "Needs follow-up",
+          tags: [],
+          valueRationale: "No relationship value record is present.",
+        },
+      ],
+      ledger: {
+        knownPeople: 1,
+        needsAttention: 1,
+        sourceFilters: 0,
+        valueTags: 0,
+      },
+      listEvidenceIds: ["evidence:business-card:list"],
+      listSummary: "One source-backed contact.",
+      reviewActionRequested: false,
+    },
+  });
+  const contact = viewModel.connections[0];
+
+  assert.equal(contact.pipelineStatus, "to_contact");
+  assert.equal(contact.strength, "unscored");
+  assert.equal(contact.source, "scan");
+  assert.equal(contact.lastEventId, "");
+  assert.deepEqual(viewModel.events, []);
 });

@@ -6,7 +6,7 @@ import {
 } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Pressable,
@@ -163,6 +163,8 @@ export function ContactAcquisitionScreen() {
     useState<ContactMergeApplyView | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
   const [qrCameraOpen, setQrCameraOpen] = useState(false);
+  const [qrPermissionPending, setQrPermissionPending] = useState(false);
+  const qrPermissionRequestIdRef = useRef(0);
   const [qrScannerReady, setQrScannerReady] = useState(true);
   const [reviewFields, setReviewFields] =
     useState<ContactDraftReviewFormState | null>(null);
@@ -213,6 +215,13 @@ export function ContactAcquisitionScreen() {
     }
   }, [result?.draftId, result?.reviewFields?.length]);
 
+  useEffect(
+    () => () => {
+      qrPermissionRequestIdRef.current += 1;
+    },
+    []
+  );
+
   function updateField(field: keyof ContactAcquisitionFormState, value: string) {
     setForm((current) => ({
       ...current,
@@ -221,15 +230,38 @@ export function ContactAcquisitionScreen() {
   }
 
   async function openQrScanner() {
+    const requestId = qrPermissionRequestIdRef.current + 1;
+    qrPermissionRequestIdRef.current = requestId;
     setError(null);
 
     if (!cameraPermission?.granted) {
-      const permission = await requestCameraPermission();
+      setQrPermissionPending(true);
 
-      if (!permission.granted) {
-        setError("需要允许使用相机，才能扫描 QR。");
+      try {
+        const permission = await requestCameraPermission();
+
+        if (requestId !== qrPermissionRequestIdRef.current) {
+          return;
+        }
+
+        if (!permission.granted) {
+          setError("需要允许使用相机，才能扫描 QR。");
+          return;
+        }
+      } catch {
+        if (requestId === qrPermissionRequestIdRef.current) {
+          setError("相机权限暂时无法申请，请检查系统设置后再试。");
+        }
         return;
+      } finally {
+        if (requestId === qrPermissionRequestIdRef.current) {
+          setQrPermissionPending(false);
+        }
       }
+    }
+
+    if (requestId !== qrPermissionRequestIdRef.current) {
+      return;
     }
 
     setQrScannerReady(true);
@@ -237,8 +269,15 @@ export function ContactAcquisitionScreen() {
   }
 
   function closeQrScanner() {
+    qrPermissionRequestIdRef.current += 1;
     setQrCameraOpen(false);
+    setQrPermissionPending(false);
     setQrScannerReady(true);
+  }
+
+  function selectMode(nextMode: ContactAcquisitionMode) {
+    closeQrScanner();
+    setMode(nextMode);
   }
 
   function handleQrBarcodeScanned(result: BarcodeScanningResult) {
@@ -720,15 +759,17 @@ export function ContactAcquisitionScreen() {
       title="添加人脉"
     >
       <DataCard detail="确认前不会写入联系人" title="选择来源">
-        <View style={styles.modeRow}>
+        <View accessibilityRole="tablist" style={styles.modeRow}>
           {modes.map((item) => {
             const selected = item.mode === mode;
 
             return (
               <Pressable
-                accessibilityRole="button"
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                aria-selected={selected}
                 key={item.mode}
-                onPress={() => setMode(item.mode)}
+                onPress={() => selectMode(item.mode)}
                 style={({ pressed }) => [
                   styles.modeButton,
                   selected ? styles.modeButtonActive : null,
@@ -764,6 +805,7 @@ export function ContactAcquisitionScreen() {
             onOpenScanner={openQrScanner}
             onQrBarcodeScanned={handleQrBarcodeScanned}
             qrCameraOpen={qrCameraOpen}
+            qrPermissionPending={qrPermissionPending}
             updateField={updateField}
           />
         ) : null}
@@ -967,6 +1009,7 @@ function QrFields({
   onOpenScanner,
   onQrBarcodeScanned,
   qrCameraOpen,
+  qrPermissionPending,
   updateField
 }: {
   form: ContactAcquisitionFormState;
@@ -974,6 +1017,7 @@ function QrFields({
   onOpenScanner: () => void;
   onQrBarcodeScanned: (result: BarcodeScanningResult) => void;
   qrCameraOpen: boolean;
+  qrPermissionPending: boolean;
   updateField: (field: keyof ContactAcquisitionFormState, value: string) => void;
 }) {
   return (
@@ -1014,14 +1058,18 @@ function QrFields({
       ) : (
         <Pressable
           accessibilityRole="button"
+          disabled={qrPermissionPending}
           onPress={onOpenScanner}
           style={({ pressed }) => [
             styles.secondaryButton,
+            qrPermissionPending ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.accent} name="scan-outline" size={18} />
-          <Text style={styles.secondaryButtonText}>扫 QR</Text>
+          <Text style={styles.secondaryButtonText}>
+            {qrPermissionPending ? "等待相机权限" : "扫 QR"}
+          </Text>
         </Pressable>
       )}
       <Input
@@ -1060,6 +1108,7 @@ function BusinessCardFields({
         {form.imageUri ? (
           <Image
             accessibilityLabel="已选择的名片图片"
+            resizeMode="cover"
             source={{ uri: form.imageUri }}
             style={styles.cardImagePreview}
           />
@@ -1477,7 +1526,7 @@ function ContactExternalCandidatesCard({
     <DataCard detail={view.summary} title="外部导入">
       <Text style={styles.bodyText}>{view.nextAction}</Text>
       {view.sources.length > 0 ? (
-        <View style={styles.externalSourceRow}>
+        <View accessibilityRole="radiogroup" style={styles.externalSourceRow}>
           <SourceChip
             active={!activeSource}
             countLabel={`${view.candidates.length} 个候选`}
@@ -1543,7 +1592,9 @@ function SourceChip({
 }) {
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole="radio"
+      accessibilityState={{ checked: active }}
+      aria-checked={active}
       onPress={onPress}
       style={({ pressed }) => [
         styles.sourceChip,
@@ -1716,7 +1767,7 @@ function ReferralRecommendationsCard({
       <Text style={styles.bodyText}>
         {view?.nextAction ?? "选择一个引荐来源，先生成待确认候选。"}
       </Text>
-      <View style={styles.externalSourceRow}>
+      <View accessibilityRole="radiogroup" style={styles.externalSourceRow}>
         <SourceChip
           active={!activeSource}
           countLabel={
@@ -2292,7 +2343,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 44,
     paddingHorizontal: spacing.sm
   },
   modeButtonActive: {
@@ -2472,7 +2523,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -2491,7 +2542,7 @@ const styles = StyleSheet.create({
     bottom: spacing.md,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     position: "absolute"
   },

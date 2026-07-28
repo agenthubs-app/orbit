@@ -23,6 +23,7 @@ export const CONTACT_TAG_FILTERS = [
   "event:climate-founders-dinner",
   "topic:storage-pilots",
   "priority:warm-follow-up",
+  "source:business-card",
   "source:external-import",
   "topic:community",
   "topic:venture-ecosystem",

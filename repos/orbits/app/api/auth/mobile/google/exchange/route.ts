@@ -1,12 +1,9 @@
-import { NextResponse } from "next/server";
-
 import { resolveMobileAuthService } from "../../../../../../features/auth/mobile-service-factory";
-import {
-  runtimeBoundaryHeaders,
-  success,
-} from "../../../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode";
-import { mobileAuthFailureResponse } from "../../http";
+import {
+  mobileAuthFailureResponse,
+  mobileAuthSessionResponse,
+} from "../../http";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +28,5 @@ export async function POST(request: Request): Promise<Response> {
     return mobileAuthFailureResponse(result, mode);
   }
 
-  return NextResponse.json(success(result.data), {
-    headers: runtimeBoundaryHeaders(mode),
-  });
+  return mobileAuthSessionResponse(result.data, mode);
 }

@@ -6,7 +6,6 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { colors, radius, spacing, typography } from "../../design/tokens";
@@ -39,14 +38,26 @@ export function AccountScreen() {
       }
       title="账号与工作区"
     >
-      {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "offline" ? (
+      {!auth.ready ? <LoadingState /> : null}
+      {auth.ready && !auth.signedIn ? (
+        <AccountContent
+          onRefresh={state.refresh}
+          signedIn={false}
+          view={accountSessionToView(null, {
+            authenticated: false,
+            authUser: null
+          })}
+        />
+      ) : null}
+      {auth.signedIn && state.kind === "loading" ? <LoadingState /> : null}
+      {auth.signedIn && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />
       ) : null}
-      {state.kind === "failure" ? (
+      {auth.signedIn && state.kind === "failure" ? (
         <ErrorState message={state.error.message} title="账号状态不可用" />
       ) : null}
-      {state.kind === "success" || state.kind === "empty" ? (
+      {auth.signedIn &&
+      (state.kind === "success" || state.kind === "empty") ? (
         <AccountContent
           onRefresh={state.refresh}
           signedIn={auth.signedIn}
@@ -72,7 +83,6 @@ function AccountContent({
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const [feedback, setFeedback] = useState<string | null>(null);
-  const isSignedIn = view.statusLabel === "已登录";
 
   async function signOut() {
     setFeedback(null);
@@ -88,40 +98,57 @@ function AccountContent({
 
   return (
     <>
-      <DataCard detail={view.summary} title={view.displayName}>
-        <View style={styles.statusRow}>
-          <View style={[styles.statusBadge, !isSignedIn ? styles.statusBadgeMuted : null]}>
-            <Ionicons
-              color={isSignedIn ? colors.live : colors.text3}
-              name={isSignedIn ? "checkmark-circle-outline" : "person-circle-outline"}
-              size={18}
-            />
-            <Text style={[styles.statusText, !isSignedIn ? styles.statusTextMuted : null]}>
-              {view.statusLabel}
-            </Text>
+      {signedIn ? (
+        <>
+          <DataCard detail={view.summary} title={view.displayName}>
+            <View style={styles.statusRow}>
+              <View style={styles.statusBadge}>
+                <Ionicons
+                  color={colors.live}
+                  name="checkmark-circle-outline"
+                  size={18}
+                />
+                <Text style={styles.statusText}>{view.statusLabel}</Text>
+              </View>
+              <Text style={styles.timezoneText}>{view.timezoneLabel}</Text>
+            </View>
+          </DataCard>
+
+          <DataCard detail={view.planLabel} title={view.workspaceName}>
+            <View style={styles.infoGrid}>
+              <InfoCell label="身份" value={view.roleLabel} />
+              <InfoCell label="时区" value={view.timezoneLabel} />
+            </View>
+          </DataCard>
+
+          <DataCard detail="别人找到你之前，会先看这类信息" title="连接目标">
+            <Text style={styles.bodyText}>{view.goal}</Text>
+            <View style={styles.nextStep}>
+              <Ionicons
+                color={colors.accent}
+                name="arrow-forward-circle-outline"
+                size={18}
+              />
+              <Text style={styles.nextStepText}>{view.nextAction}</Text>
+            </View>
+          </DataCard>
+        </>
+      ) : (
+        <DataCard detail={view.summary} title="登录后查看账号与工作区">
+          <View style={styles.statusRow}>
+            <View style={[styles.statusBadge, styles.statusBadgeMuted]}>
+              <Ionicons
+                color={colors.text3}
+                name="person-circle-outline"
+                size={18}
+              />
+              <Text style={[styles.statusText, styles.statusTextMuted]}>
+                {view.statusLabel}
+              </Text>
+            </View>
           </View>
-          <Text style={styles.timezoneText}>{view.timezoneLabel}</Text>
-        </View>
-      </DataCard>
-
-      <DataCard detail={view.planLabel} title={view.workspaceName}>
-        <View style={styles.infoGrid}>
-          <InfoCell label="身份" value={view.roleLabel} />
-          <InfoCell label="时区" value={view.timezoneLabel} />
-        </View>
-      </DataCard>
-
-      <DataCard detail="别人找到你之前，会先看这类信息" title="连接目标">
-        <Text style={styles.bodyText}>{view.goal}</Text>
-        <View style={styles.nextStep}>
-          <Ionicons color={colors.accent} name="arrow-forward-circle-outline" size={18} />
-          <Text style={styles.nextStepText}>{view.nextAction}</Text>
-        </View>
-      </DataCard>
-
-      {view.statusLabel !== "已登录" ? (
-        <EmptyState message={view.emptyMessage} title={view.emptyTitle} />
-      ) : null}
+        </DataCard>
+      )}
 
       {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
 

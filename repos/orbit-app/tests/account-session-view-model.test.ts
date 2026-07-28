@@ -1,13 +1,19 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { accountSessionToView } from "../src/view-models/account-session";
+
+const accountScreenSource = readFileSync(
+  new URL("../src/screens/profile/AccountScreen.tsx", import.meta.url),
+  "utf8"
+);
 
 function flattenedText(value: unknown): string {
   return JSON.stringify(value);
 }
 
-test("accountSessionToView maps demo account payload to the Chinese Orbit identity", () => {
+test("accountSessionToView preserves the signed-in account identity", () => {
   const view = accountSessionToView({
     account: {
       displayName: "Ari Lane",
@@ -36,25 +42,23 @@ test("accountSessionToView maps demo account payload to the Chinese Orbit identi
   });
 
   assert.equal(view.title, "账号与工作区");
-  assert.equal(view.displayName, "小雨");
-  assert.equal(view.workspaceName, "Orbit");
+  assert.equal(view.displayName, "Ari Lane");
+  assert.equal(view.workspaceName, "Orbit Founder Relationship OS");
   assert.equal(view.statusLabel, "已登录");
   assert.equal(view.roleLabel, "创始人");
   assert.equal(view.planLabel, "人脉交换工作区");
   assert.equal(view.timezoneLabel, "东京时间");
   assert.equal(
     view.summary,
-    "这里决定别人看到你是谁，以及这个工作区要优先连接什么资源。"
+    "查看当前登录身份、工作区和关系目标。"
   );
   assert.equal(
     view.goal,
-    "用 Orbit 找到能互相帮忙的人：AI 落地客户、合作伙伴、日本本地资源和靠谱引荐。"
+    "Prioritize source-backed demo workspace follow-up with clear context."
   );
-  assert.equal(view.nextAction, "回到个人资料，把能提供的资源写得更具体。");
-
-  assert.doesNotMatch(
-    flattenedText(view),
-    /\b(mock|fixture|provider|generated|source-backed|source:|evidence:|demo workspace|demo founder|command-center|implementation)\b/iu
+  assert.equal(
+    view.nextAction,
+    "回到个人资料，补全希望别人看到的信息。"
   );
 });
 
@@ -71,9 +75,12 @@ test("accountSessionToView gives a clear signed-out state", () => {
   });
 
   assert.equal(view.statusLabel, "未登录");
-  assert.equal(view.displayName, "小雨");
-  assert.equal(view.emptyTitle, "账号状态不可用");
-  assert.equal(view.nextAction, "先登录，再回到个人资料继续完善信息。");
+  assert.equal(view.displayName, "账号");
+  assert.equal(view.emptyTitle, "尚未登录");
+  assert.equal(view.nextAction, "登录后可以继续完善个人资料。");
+  assert.equal(view.goal, "");
+  assert.equal(view.workspaceName, "");
+  assert.doesNotMatch(flattenedText(view), /小雨|创始人|Orbit Founder/u);
   assert.deepEqual(view.authActions, [
     {
       href: "/account/login",
@@ -86,7 +93,7 @@ test("accountSessionToView gives a clear signed-out state", () => {
   ]);
 });
 
-test("accountSessionToView maps the known generated operator account to Orbit founder copy", () => {
+test("accountSessionToView does not rewrite a stored generated operator identity", () => {
   const view = accountSessionToView({
     account: {
       displayName: "Orbit Generated Relationship Workspace",
@@ -111,12 +118,15 @@ test("accountSessionToView maps the known generated operator account to Orbit fo
   });
 
   assert.equal(view.displayName, "小雨");
-  assert.equal(view.workspaceName, "Orbit");
-  assert.equal(view.roleLabel, "创始人");
-  assert.equal(view.goal, "用 Orbit 找到能互相帮忙的人：AI 落地客户、合作伙伴、日本本地资源和靠谱引荐。");
+  assert.equal(view.workspaceName, "Orbit Generated Relationship Workspace");
+  assert.equal(view.roleLabel, "AI & Computer Vision Engineer");
+  assert.equal(
+    view.goal,
+    "Use remote live storage to develop source-backed relationship workflows."
+  );
 });
 
-test("accountSessionToView normalizes the old main user account to Xiaoyu", () => {
+test("accountSessionToView preserves the old main user account identity", () => {
   const view = accountSessionToView({
     account: {
       displayName: "赵翔",
@@ -138,10 +148,10 @@ test("accountSessionToView normalizes the old main user account to Xiaoyu", () =
     }
   });
 
-  assert.equal(view.displayName, "小雨");
-  assert.equal(view.workspaceName, "Orbit");
+  assert.equal(view.displayName, "赵翔");
+  assert.equal(view.workspaceName, "Orbit Founder Relationship OS");
   assert.equal(view.roleLabel, "创始人");
-  assert.equal(view.goal, "用 Orbit 找到能互相帮忙的人：AI 落地客户、合作伙伴、日本本地资源和靠谱引荐。");
+  assert.equal(view.goal, "Use Orbit to find the next useful relationship.");
 });
 
 test("accountSessionToView prefers the validated mobile session identity", () => {
@@ -172,4 +182,16 @@ test("accountSessionToView prefers the validated mobile session identity", () =>
   assert.equal(view.displayName, "田中美咲");
   assert.equal(view.statusLabel, "已登录");
   assert.deepEqual(view.authActions, []);
+});
+
+test("account screen renders the signed-out boundary before API failure states", () => {
+  assert.match(accountScreenSource, /auth\.ready && !auth\.signedIn/u);
+  assert.match(
+    accountScreenSource,
+    /accountSessionToView\(null,\s*\{\s*authenticated: false/u
+  );
+  assert.match(
+    accountScreenSource,
+    /auth\.signedIn && state\.kind === "failure"/u
+  );
 });

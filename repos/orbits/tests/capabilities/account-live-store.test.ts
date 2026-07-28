@@ -94,6 +94,13 @@ test("account live store maps remote account and profile records into a current 
   assert.equal(session.data.user?.displayName, "結城 航太郎");
   assert.equal(session.data.user?.timezone, "Asia/Tokyo");
   assert.equal(session.data.profile?.headline, "Relationship Operations Lead");
+  assert.equal(session.data.profile?.relationshipGoal, "");
+  assert.equal(session.data.profile?.homeMarket, "Asia/Tokyo");
+  assert.equal(session.data.profile?.preferredFollowUpWindow, "");
+  assert.doesNotMatch(
+    JSON.stringify(session.data),
+    /source-backed relationship workflows|auth tokens outside/iu,
+  );
   assert.equal(session.data.provenance.privacy, "live-account-session");
   assert.deepEqual(session.data.provenance.evidenceIds, [
     "evidence:account_orbit_generated",

@@ -178,14 +178,14 @@ export const generatedRelationshipFixtures = {
     },
     {
       "id": "event_signup_01",
-      "name": "关西跨境商务报名测试会",
+      "name": "关西跨境商务对接会",
       "location": "大阪",
       "startsAt": "2026-08-18T10:00:00+09:00",
       "endsAt": "2026-08-18T12:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_signup_01",
-        "label": "活动导入：关西跨境商务报名测试会"
+        "label": "活动导入：关西跨境商务对接会"
       },
       "evidenceIds": [
         "evidence:event_signup:01"
@@ -193,14 +193,14 @@ export const generatedRelationshipFixtures = {
     },
     {
       "id": "event_signup_02",
-      "name": "东京 AI 落地伙伴报名会",
+      "name": "东京 AI 落地伙伴对接会",
       "location": "东京",
       "startsAt": "2026-09-01T14:00:00+09:00",
       "endsAt": "2026-09-01T14:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_signup_02",
-        "label": "活动导入：东京 AI 落地伙伴报名会"
+        "label": "活动导入：东京 AI 落地伙伴对接会"
       },
       "evidenceIds": [
         "evidence:event_signup:02"
@@ -208,14 +208,14 @@ export const generatedRelationshipFixtures = {
     },
     {
       "id": "event_signup_03",
-      "name": "日中投资人与创业者报名沙龙",
+      "name": "日中投资人与创业者沙龙",
       "location": "东京",
       "startsAt": "2026-09-15T18:00:00+09:00",
       "endsAt": "2026-09-15T18:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_signup_03",
-        "label": "活动导入：日中投资人与创业者报名沙龙"
+        "label": "活动导入：日中投资人与创业者沙龙"
       },
       "evidenceIds": [
         "evidence:event_signup:03"
@@ -84532,7 +84532,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:event_signup:01",
       "sourceType": "event_import",
       "sourceId": "event_signup_01",
-      "summary": "JA: 新規参加者が申込フォームから関心、提供価値、紹介希望を入力するためのテスト用未開催イベント。 ZH: 用于测试新参与者通过报名表填写兴趣、可提供价值和希望介绍对象的未开始活动。 EN: A not-yet-started event for testing signup form intake, interests, offers, and requested introductions.",
+      "summary": "JA: 関西を拠点とする越境ビジネス交流会。大阪・京都・神戸の企業が海外パートナーと貿易・投資のつながりを築きます。 ZH: 立足关西的跨境商务对接会，帮助大阪、京都、神户的企业与海外伙伴建立贸易与投资联系。 EN: A Kansai-based cross-border business connect, helping companies in Osaka, Kyoto and Kobe build trade and investment ties with overseas partners.",
       "occurredAt": "2026-08-18T10:00:00+09:00",
       "confidence": 0.94,
       "createdBy": "profile_orbit_generated_operator"
@@ -84541,7 +84541,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:event_signup:02",
       "sourceType": "event_import",
       "sourceId": "event_signup_02",
-      "summary": "JA: AI導入責任者と実装パートナー候補が、申込時点の課題と期待成果を登録する未開催イベント。 ZH: 让 AI 导入负责人和实施伙伴候选人在报名阶段登记课题与预期成果的未开始活动。 EN: A not-yet-started event for testing registration intake from AI buyers and implementation partners.",
+      "summary": "JA: AI実装を必要とする企業と、実行できる技術パートナーをつなぐ交流会。ニーズ側と実装側を同じテーブルに置きます。 ZH: 为需要 AI 落地的企业与能交付的技术伙伴牵线的对接会，把需求方与实施方直接放到一张桌上。 EN: A meetup pairing companies that need AI implementation with technical partners who can deliver, putting demand and delivery at the same table.",
       "occurredAt": "2026-09-01T14:00:00+09:00",
       "confidence": 0.94,
       "createdBy": "profile_orbit_generated_operator"
@@ -84550,7 +84550,7 @@ export const generatedRelationshipFixtures = {
       "id": "evidence:event_signup:03",
       "sourceType": "event_import",
       "sourceId": "event_signup_03",
-      "summary": "JA: 投資家と創業者が申込入口から資金調達ステージ、紹介希望、会話テーマを登録する未開催イベント。 ZH: 让投资人与创业者通过报名入口登记融资阶段、希望介绍对象和会谈主题的未开始活动。 EN: A not-yet-started event for testing signup intake around fundraising stage, intro requests, and meeting topics.",
+      "summary": "JA: 日中の投資家と創業者をつなぐサロン。越境起業と資本連携をテーマに、深い1対1の交流を促します。 ZH: 连接日中两地投资人与创业者的沙龙，围绕跨境创业与资本合作，促成有深度的一对一交流。 EN: A salon connecting investors and founders across Japan and China, fostering deep one-on-one exchange around cross-border ventures and capital collaboration.",
       "occurredAt": "2026-09-15T18:00:00+09:00",
       "confidence": 0.94,
       "createdBy": "profile_orbit_generated_operator"

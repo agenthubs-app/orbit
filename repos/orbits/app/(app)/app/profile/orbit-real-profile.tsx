@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, ReactNode, useMemo, useState } from "react";
 
 import type { ProfileDocumentExtractionPayload } from "../../../../features/profile/extraction-contract";
 import type {
@@ -57,19 +57,48 @@ function profileUpdateInput(profile: OrbitProfileView): ManualProfileUpdateInput
   };
 }
 
-function profileReadbackMatches(
+export function profileReadbackMatches(
   expected: ManualProfileUpdateInput,
   payload: ProfilePayload,
 ): boolean {
   const saved = payload.profile;
+  const normalize = (value: string | undefined) => value?.trim() ?? "";
+  const sameList = (
+    left: readonly string[] | undefined,
+    right: readonly string[] | undefined,
+  ) =>
+    JSON.stringify((left ?? []).map((item) => item.trim())) ===
+    JSON.stringify((right ?? []).map((item) => item.trim()));
 
   return Boolean(
     saved &&
-      saved.displayName === expected.displayName?.trim() &&
-      saved.organization === expected.organization?.trim() &&
-      saved.role === expected.role?.trim() &&
-      saved.homeMarket === expected.homeMarket?.trim() &&
-      saved.relationshipGoal === expected.relationshipGoal?.trim(),
+      saved.displayName === normalize(expected.displayName) &&
+      saved.headline === normalize(expected.headline) &&
+      saved.organization === normalize(expected.organization) &&
+      saved.role === normalize(expected.role) &&
+      saved.homeMarket === normalize(expected.homeMarket) &&
+      saved.relationshipGoal === normalize(expected.relationshipGoal) &&
+      saved.preferredFollowUpWindow ===
+        normalize(expected.preferredFollowUpWindow) &&
+      normalize(saved.industry) === normalize(expected.industry) &&
+      normalize(saved.bio) === normalize(expected.bio) &&
+      saved.seniorityLevel === expected.seniorityLevel &&
+      normalize(saved.handles?.email) === normalize(expected.handles?.email) &&
+      normalize(saved.handles?.phone) === normalize(expected.handles?.phone) &&
+      normalize(saved.handles?.wechatId) ===
+        normalize(expected.handles?.wechatId) &&
+      normalize(saved.handles?.lineId) ===
+        normalize(expected.handles?.lineId) &&
+      normalize(saved.handles?.website) ===
+        normalize(expected.handles?.website) &&
+      sameList(
+        saved.targetRelationshipTypes,
+        expected.targetRelationshipTypes,
+      ) &&
+      sameList(saved.preferredIntroChannels, expected.preferredIntroChannels) &&
+      sameList(saved.offering, expected.offering) &&
+      sameList(saved.seeking, expected.seeking) &&
+      sameList(saved.topics, expected.topics),
   );
 }
 
@@ -388,6 +417,24 @@ function ChipGroup({
   t: Translate;
   values: string[];
 }) {
+  const [draft, setDraft] = useState("");
+  const allOptions = Array.from(new Set([...values, ...options]));
+
+  function addDraft() {
+    const tag = draft.trim();
+    if (!tag || values.includes(tag)) return;
+
+    onToggle(section, tag);
+    setDraft("");
+  }
+
+  function onDraftKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+    addDraft();
+  }
+
   return (
     <div role="group" aria-label={label}>
       <div style={{ alignItems: "baseline", display: "flex", gap: 8, marginBottom: 8 }}>
@@ -395,7 +442,7 @@ function ChipGroup({
         <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: `${values.length} selected`, zh: `已选 ${values.length}` })}</span>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {options.map((option) => {
+        {allOptions.map((option) => {
           const active = values.includes(option);
 
           return (
@@ -406,6 +453,32 @@ function ChipGroup({
           );
         })}
       </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <input
+          aria-label={t({
+            en: `Add ${label.toLowerCase()} item`,
+            zh: `添加${label}项目`,
+          })}
+          className="field"
+          maxLength={80}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={onDraftKeyDown}
+          placeholder={t({
+            en: "Enter a specific item",
+            zh: "输入具体内容",
+          })}
+          style={{ flex: "1 1 220px", minWidth: 0 }}
+          value={draft}
+        />
+        <button
+          className="btn btn-ghost btn-sm"
+          disabled={!draft.trim() || values.includes(draft.trim())}
+          onClick={addDraft}
+          type="button"
+        >
+          {t({ en: "Add", zh: "添加" })}
+        </button>
+      </div>
     </div>
   );
 }
@@ -413,7 +486,6 @@ function ChipGroup({
 function EditSections({
   extractProps,
   profile,
-  selectRenderKey,
   t,
   toggleTag,
   update,
@@ -429,7 +501,6 @@ function EditSections({
     t: Translate;
   };
   profile: OrbitProfileView;
-  selectRenderKey: number;
   t: Translate;
   toggleTag: (field: TagField, tag: string) => void;
   update: <K extends keyof OrbitProfileView>(field: K, value: OrbitProfileView[K]) => void;
@@ -447,13 +518,7 @@ function EditSections({
           <FieldInput label={t({ en: "Name", zh: "姓名" })} onValue={(value) => update("fullName", value)} value={profile.fullName} />
           <FieldInput label={t({ en: "Company", zh: "公司" })} onValue={(value) => update("company", value)} value={profile.company} />
           <FieldInput label={t({ en: "Title", zh: "职位" })} onValue={(value) => update("title", value)} value={profile.title} />
-          <label style={{ minWidth: 0 }}>
-            <span className="field-label">{t({ en: "Industry", zh: "行业" })}</span>
-            <select key={selectRenderKey} className="field" onChange={(event) => update("industry", event.target.value)} value={profile.industry}>
-              <option value="">{t({ en: "Please select", zh: "请选择" })}</option>
-              {viewModel.industries.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
+          <FieldInput label={t({ en: "Industry", zh: "行业" })} onValue={(value) => update("industry", value)} value={profile.industry} />
         </div>
       </Section>
       <Section desc={t({ en: "Fill in WeChat or LINE (at least one) so matches can reach you.", zh: "微信或 LINE 至少填一个，匹配后对方才能联系到你。" })} title={t({ en: "Contact", zh: "联系方式" })}>
@@ -514,32 +579,8 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [messageKind, setMessageKind] = useState<NoticeKind>("info");
-  const [selectRenderKey, setSelectRenderKey] = useState(0);
   const letter = profileInitial(profile);
   const subText = t({ en: "Fill it once, auto-reused when registering for every event.", zh: "填一次，报名各场活动自动复用。" });
-
-  useEffect(() => {
-    let cancelled = false;
-    let frame = 0;
-
-    const remountSelect = () => {
-      if (!window.matchMedia("(min-width: 761px)").matches) return;
-      frame = window.requestAnimationFrame(() => {
-        if (!cancelled) setSelectRenderKey(1);
-      });
-    };
-
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(remountSelect, remountSelect);
-    } else {
-      remountSelect();
-    }
-
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(frame);
-    };
-  }, []);
 
   const missing = useMemo(() => {
     const fields: string[] = [];
@@ -719,7 +760,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   }
 
   const extractProps = { extractText, extracting, method, onTextExtract, setExtractText, setMethod, t };
-  const editProps = { extractProps, profile, selectRenderKey, t, toggleTag, update, viewModel };
+  const editProps = { extractProps, profile, t, toggleTag, update, viewModel };
   const alert = message ? (
     <div role={messageKind === "error" ? "alert" : "status"} style={{ background: messageKind === "error" ? "var(--danger-soft, #fff1f2)" : messageKind === "success" ? "var(--live-soft)" : "var(--surface-2)", borderRadius: "var(--r-sm)", color: messageKind === "error" ? "var(--danger, #C2410C)" : messageKind === "success" ? "var(--live-text)" : "var(--text-2)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
   ) : null;

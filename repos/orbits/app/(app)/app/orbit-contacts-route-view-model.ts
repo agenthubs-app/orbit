@@ -32,7 +32,12 @@ export interface OrbitContactView {
   dormant: boolean;
 }
 
-export type OrbitContactStrength = "strong" | "medium" | "weak" | "dormant";
+export type OrbitContactStrength =
+  | "strong"
+  | "medium"
+  | "weak"
+  | "dormant"
+  | "unscored";
 export type OrbitContactSource = "exchange" | "scan" | "manual" | "qr" | "event" | "referral" | "contact";
 
 export interface OrbitContactNoteView {

@@ -14,6 +14,7 @@ export const CONTACT_DETAIL_TAG_OPTIONS = [
   "event:climate-founders-dinner",
   "topic:storage-pilots",
   "priority:warm-follow-up",
+  "source:business-card",
   "source:external-import",
   "topic:community",
   "topic:venture-ecosystem",

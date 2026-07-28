@@ -1,15 +1,6 @@
 import type { EventRecord } from "../../../../../features/events/event-crud-and-import/contract";
 import { resolveEventCrudAndImportService } from "../../../../../features/events/service-factory";
 import type { ModuleMode } from "../../../../../shared/services/module-mode";
-import {
-  loadAppProfileRouteViewModel,
-  type AppProfileSearchParams,
-} from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
-import { profileRouteToOrbitProfileViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
-import {
-  orbitRegisterEmptyProfile,
-  type OrbitRegisterViewModel,
-} from "../register-view-model-contract";
 
 export type AppRegisterSearchParams = Record<
   string,
@@ -48,7 +39,14 @@ export interface AppRegisterRouteStateViewModel {
 export type AppRegisterRouteViewModel =
   | {
       state: "success";
-      register: OrbitRegisterViewModel;
+      register: {
+        event: {
+          code: string;
+          id: string;
+          name: string;
+          theme: string;
+        };
+      };
     }
   | {
       state: "route-state";
@@ -177,22 +175,7 @@ function eventRouteState(input: {
   };
 }
 
-function profileRouteState(input: {
-  errorCode?: string | null;
-  evidenceIds: readonly string[];
-  scenario?: AppRegisterRouteScenario | null;
-}): AppRegisterRouteViewModel {
-  return {
-    state: "route-state",
-    routeState: baseRouteState({
-      errorCode: input.errorCode ?? "PROFILE_ROUTE_FAILURE",
-      evidenceIds: input.evidenceIds,
-      scenario: input.scenario ?? "failure",
-    }),
-  };
-}
-
-function eventView(event: EventRecord): OrbitRegisterViewModel["event"] {
+function eventView(event: EventRecord) {
   return {
     code: compactCodeForEventId(event.id),
     id: event.id,
@@ -201,39 +184,9 @@ function eventView(event: EventRecord): OrbitRegisterViewModel["event"] {
   };
 }
 
-function registerViewModel(input: {
-  event: EventRecord;
-  profile: ReturnType<typeof profileRouteToOrbitProfileViewModel>;
-}): OrbitRegisterViewModel {
-  const profile = input.profile;
-
+function registerViewModel(event: EventRecord) {
   return {
-    event: eventView(input.event),
-    industryOptions: profile.industries,
-    levelOptions: [
-      "Founder / partner",
-      "Executive",
-      "Director / lead",
-      "Manager",
-      "Individual contributor",
-    ],
-    offeringTags: profile.offeringTags,
-    profilePreview: {
-      ...orbitRegisterEmptyProfile,
-      bio: profile.profile.bio,
-      company: profile.profile.company,
-      industry: profile.profile.industry,
-      intro: profile.profile.intro,
-      lineId: profile.profile.lineId,
-      name: profile.profile.fullName,
-      offering: profile.profile.offering,
-      seeking: profile.profile.seeking,
-      title: profile.profile.title,
-      topics: profile.profile.topics,
-      wechatName: profile.profile.wechatName,
-    },
-    seekingTags: profile.seekingTags,
-    topics: profile.topics,
+    event: eventView(event),
   };
 }
 
@@ -281,30 +234,8 @@ export async function loadAppRegisterRouteViewModel(
     });
   }
 
-  const profileRoute = await loadAppProfileRouteViewModel(
-    searchParams as AppProfileSearchParams | undefined,
-  );
-
-  if (profileRoute.state === "route-state") {
-    return profileRouteState({
-      errorCode: profileRoute.routeState.errorCode,
-      evidenceIds: profileRoute.routeState.evidenceIds,
-      scenario: profileRoute.routeState.scenario,
-    });
-  }
-
-  if (profileRoute.state === "failure") {
-    return profileRouteState({
-      errorCode: "PROFILE_ROUTE_FAILURE",
-      evidenceIds: profileRoute.failure.evidenceIds,
-    });
-  }
-
   return {
     state: "success",
-    register: registerViewModel({
-      event: eventResult.data.event,
-      profile: profileRouteToOrbitProfileViewModel(profileRoute),
-    }),
+    register: registerViewModel(eventResult.data.event),
   };
 }

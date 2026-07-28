@@ -14,9 +14,28 @@ import { getHttpStatusForAppErrorCode } from "../../../../../shared/errors/app-e
 
 export const dynamic = "force-dynamic";
 
+function sessionCookieNames(request: Request): string[] {
+  const names = new Set([
+    "authjs.session-token",
+    "__Secure-authjs.session-token",
+  ]);
+  const cookieHeader = request.headers.get("cookie") ?? "";
+
+  for (const pair of cookieHeader.split(";")) {
+    const name = pair.slice(0, pair.indexOf("=")).trim();
+
+    if (
+      /^(?:__Secure-)?authjs\.session-token(?:\.\d+)?$/u.test(name)
+    ) {
+      names.add(name);
+    }
+  }
+
+  return [...names];
+}
+
 // /api/account/session/sign-out 是账号退出入口。
-// route 只读取演示 scenario 并调用 account session service；
-// 会话状态、require-account 校验和失败语义都由 feature contract 维护。
+// route 调用 account session service，并让所有 Auth.js 会话 Cookie 立即过期。
 export async function POST(request: Request): Promise<Response> {
   // mode 会写入 runtime boundary header，帮助前端判断当前是 mock/live/hybrid。
   const mode = resolveFeatureMode(
@@ -43,9 +62,23 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  // 成功退出不在 route 里清理额外资源；payload 完全来自 session service。
-  return NextResponse.json(success(result.data), {
+  const response = NextResponse.json(success(result.data), {
     headers: runtimeBoundaryHeaders(mode),
     status: 200,
   });
+
+  for (const name of sessionCookieNames(request)) {
+    response.cookies.set({
+      expires: new Date(0),
+      httpOnly: true,
+      maxAge: 0,
+      name,
+      path: "/",
+      sameSite: "lax",
+      secure: name.startsWith("__Secure-"),
+      value: "",
+    });
+  }
+
+  return response;
 }

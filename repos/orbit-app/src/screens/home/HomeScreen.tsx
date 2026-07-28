@@ -255,6 +255,7 @@ function HomeHubContent({
             value={askDraft}
           />
           <Pressable
+            accessibilityLabel="发送给 iOrbit"
             accessibilityRole="button"
             onPress={() => submitAsk(askDraft)}
             style={({ pressed }) => [

@@ -69,6 +69,7 @@ function publicCatalogueEventRecord(eventId: string): EventRecord | null {
 
 export async function loadEventForRegistration(
   eventId: string,
+  actorId?: string | null,
 ): Promise<EventRecord | null> {
   const normalizedEventId = eventId.trim();
   const knownEvent = knownRegistrationEvents.find(
@@ -87,6 +88,7 @@ export async function loadEventForRegistration(
 
   try {
     const result = await createEventCrudAndImportService().getEvent({
+      actorId: actorId?.trim() || undefined,
       eventId: normalizedEventId,
     });
 

@@ -87,7 +87,6 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
       if (mode === "signup") {
         const result = await auth.register({
-          displayName: "小雨",
           email: values.email,
           password: values.password
         });

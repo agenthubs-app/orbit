@@ -81,7 +81,7 @@ test("homeToView combines profile, events, and contacts into a Chinese mobile hu
     profile: profilePayload
   });
 
-  assert.equal(view.profile.displayName, "小雨");
+  assert.equal(view.profile.displayName, "Xinyi Zhao");
   assert.deepEqual(view.stats, {
     events: "3",
     inProgress: "1",
@@ -119,42 +119,24 @@ test("homeToView combines profile, events, and contacts into a Chinese mobile hu
     }
   ]);
   assert.deepEqual(view.profilePanel, {
-    bio:
-      "我是 Orbit 的创始人，主要帮企业把 AI 接进真实业务：销售线索整理、客服知识库、内部检索、运营报表、员工助理和跨系统工作流。很多团队不是缺工具，而是缺一个能先跑起来的切入点。我通常会从最重复、最容易漏、最占人力的环节开始，把试点拆小，再推进到能稳定使用的生产流程。",
+    bio: "Orbit 创始人，帮企业把 AI 用到真实业务里。",
     facts: [
       { label: "身份", value: "创始人" },
-      { label: "领域", value: "AI 企业应用 · 日本市场 · B2B" },
+      { label: "领域", value: "AI 企业应用" },
       { label: "时区", value: "Tokyo" }
     ],
-    goal:
-      "通过 Orbit 找到值得互相帮忙的人：我会优先介绍明确需求、靠谱交付和能形成长期合作的资源。",
+    goal: "找到能互相帮忙的企业客户、合作伙伴和日本本地资源。",
     groups: [
       {
-        items: [
-          "企业 AI 导入路径梳理",
-          "知识库 / 内部检索 / 员工助手方案",
-          "销售、客服、运营流程自动化",
-          "日本落地服务商与合作方连接",
-          "创业者、投资人、企业服务资源引荐"
-        ],
+        items: ["AI 落地路径", "企业知识库"],
         title: "我能提供"
       },
       {
-        items: [
-          "正在导入 AI 或准备做试点的企业",
-          "有日本市场落地经验的合作伙伴",
-          "企业服务、SaaS、自动化和数据治理资源"
-        ],
+        items: ["正在导入 AI 的企业"],
         title: "我在寻找"
       },
       {
-        items: [
-          "企业 AI 导入",
-          "知识库与内部检索",
-          "Agent 工作流",
-          "销售和客服自动化",
-          "中日商务合作"
-        ],
+        items: ["RAG", "Agent 工作流"],
         title: "想聊的话题"
       }
     ],
@@ -199,6 +181,10 @@ test("home relationship workbench is a fixed three-cell row", () => {
   );
   assert.match(source, /pipelineCell:\s*\{[^}]*minWidth:\s*0/su);
   assert.match(source, /pipelineDivider:\s*\{/u);
+  assert.match(
+    source,
+    /<Pressable\s+accessibilityLabel="发送给 iOrbit"\s+accessibilityRole="button"/su
+  );
 });
 
 test("home events route renders events as an image-first list", () => {

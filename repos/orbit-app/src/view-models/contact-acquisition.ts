@@ -612,10 +612,13 @@ function businessCardWriteCandidate(
 
 function confirmationText(
   confirmation: Record<string, unknown>,
-  confirmed: boolean
+  confirmed: boolean,
+  contactWriteAvailable: boolean
 ): string {
   if (confirmed) {
-    return "已确认，下一步再写入联系人。";
+    return contactWriteAvailable
+      ? "候选已确认；请再次明确确认后再写入联系人。"
+      : "候选已确认；当前流程仍不会写入联系人。";
   }
 
   return confirmation.required === false
@@ -759,6 +762,7 @@ function externalSourceStateLabel(value: string): string {
   const labels: Record<string, string> = {
     "live-indexed": "已授权",
     "live-linked": "已连接",
+    "live-not-connected": "未连接",
     "live-uploaded": "已上传",
     "mock-granted": "已授权",
     "mock-linked": "已连接",
@@ -1104,7 +1108,11 @@ export function acquisitionResultToSummary(
         }
       : {}),
     confirmLabel: confirmed ? "已确认候选" : "确认候选",
-    confirmationText: confirmationText(confirmation, confirmed),
+    confirmationText: confirmationText(
+      confirmation,
+      confirmed,
+      Boolean(contactWrite)
+    ),
     detail,
     draftId,
     evidenceExcerpts: evidenceExcerpts(draft),

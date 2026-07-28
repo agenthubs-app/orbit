@@ -162,6 +162,25 @@ test("eventsToSummaries exposes image-list metadata for event lists", () => {
   assert.equal(summaries[1]?.participantCountLabel, "报名人数待确认");
 });
 
+test("eventsToSummaries does not replace a manual title with its source note", () => {
+  const summaries = eventsToSummaries({
+    events: [
+      {
+        id: "event:live-record:20260729",
+        sourceMetadata: {
+          label: "本地全产品功能审计创建，仅用于动态路由与账号隔离验证。"
+        },
+        startsAt: "2026-09-29T10:00:00+09:00",
+        status: "confirmed",
+        title: "功能审计私有活动 20260729",
+        venue: "Orbit 本地开发环境"
+      }
+    ]
+  });
+
+  assert.equal(summaries[0]?.title, "功能审计私有活动 20260729");
+});
+
 test("filterEventSummaries supports event discovery search, status, and topic chips", () => {
   const summaries = eventsToSummaries({
     events: [
@@ -812,10 +831,19 @@ test("profileToSummary maps profile payloads and empty profiles", () => {
   );
 
   const fallbackProfile = profileToSummary({ profile: null });
-  assert.equal(fallbackProfile.displayName, "小雨");
-  assert.equal(fallbackProfile.organization, "Orbit");
-  assert.equal(fallbackProfile.role, "创始人");
-  assert.match(fallbackProfile.bio, /AI 接进真实业务/u);
+  assert.deepEqual(fallbackProfile, {
+    bio: "",
+    displayName: "",
+    headline: "",
+    industry: "",
+    offering: [],
+    organization: "",
+    relationshipGoal: "",
+    role: "",
+    seeking: [],
+    timezone: "",
+    topics: []
+  });
 
   const demoProfile = profileToSummary({
     profile: {
@@ -825,10 +853,12 @@ test("profileToSummary maps profile payloads and empty profiles", () => {
     }
   });
   assert.equal(demoProfile.displayName, "小雨");
-  assert.equal(demoProfile.organization, "Orbit");
+  assert.equal(demoProfile.organization, "OPPO Japan Research");
+  assert.equal(demoProfile.bio, "");
+  assert.deepEqual(demoProfile.offering, []);
 });
 
-test("profileToSummary normalizes the old Orbit main user payload to Xiaoyu", () => {
+test("profileToSummary preserves the actor's stored profile without identity rewriting", () => {
   const profile = profileToSummary({
     profile: {
       bio: "短介绍",
@@ -845,15 +875,9 @@ test("profileToSummary normalizes the old Orbit main user payload to Xiaoyu", ()
     }
   });
 
-  assert.equal(profile.displayName, "小雨");
+  assert.equal(profile.displayName, "赵翔");
   assert.equal(profile.organization, "Orbit");
   assert.equal(profile.role, "创始人");
-  assert.match(profile.bio, /销售线索整理/u);
-  assert.deepEqual(profile.topics, [
-    "企业 AI 导入",
-    "知识库与内部检索",
-    "Agent 工作流",
-    "销售和客服自动化",
-    "中日商务合作"
-  ]);
+  assert.equal(profile.bio, "短介绍");
+  assert.deepEqual(profile.topics, ["企业 AI 降本增效"]);
 });

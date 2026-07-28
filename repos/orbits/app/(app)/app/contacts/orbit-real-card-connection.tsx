@@ -28,6 +28,7 @@ const strengthMeta: Record<OrbitContactView["strength"], { cls: string; label: C
   medium: { cls: "nc-st-medium", label: { en: "Medium", zh: "中关系" } },
   weak: { cls: "nc-st-weak", label: { en: "Weak", zh: "弱关系" } },
   dormant: { cls: "nc-st-dormant", label: { en: "Dormant", zh: "沉睡" } },
+  unscored: { cls: "nc-st-unscored", label: { en: "Unscored", zh: "未评分" } },
 };
 
 function crmInitial(value: string) {

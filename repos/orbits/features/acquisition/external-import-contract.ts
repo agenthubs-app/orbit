@@ -144,7 +144,8 @@ export interface ExternalContactsSourceSummary {
     | "mock-linked"
     | "live-indexed"
     | "live-linked"
-    | "live-uploaded";
+    | "live-uploaded"
+    | "live-not-connected";
   source: ExternalContactsSourceReference;
   providerSyncRequested: false;
   fileParsingAtScale: false;

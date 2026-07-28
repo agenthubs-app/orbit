@@ -3146,6 +3146,7 @@ const orbitNamecardStyles = `
 [data-orbit-real-page] .nc-st-medium { color:var(--sky); } [data-orbit-real-page] .nc-st-medium .nc-dot { background:var(--sky); }
 [data-orbit-real-page] .nc-st-weak { color:var(--amber-text); } [data-orbit-real-page] .nc-st-weak .nc-dot { background:var(--amber); }
 [data-orbit-real-page] .nc-st-dormant { color:var(--text-3); } [data-orbit-real-page] .nc-st-dormant .nc-dot { background:var(--text-3); }
+[data-orbit-real-page] .nc-st-unscored { color:var(--text-3); } [data-orbit-real-page] .nc-st-unscored .nc-dot { background:var(--hairline-strong); }
 
 [data-orbit-real-page] .nc-status { display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-status .nc-dot { width:7px; height:7px; border-radius:50%; }

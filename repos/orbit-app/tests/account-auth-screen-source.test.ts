@@ -41,6 +41,7 @@ test("account auth screen is brand-first without explainer or status cards", () 
     screenSource,
     /title="登录说明"|title="账号状态"|SessionPreview|accountSessionToView|ORBIT_API_ENDPOINTS\.accountMe/u
   );
+  assert.doesNotMatch(screenSource, /displayName:\s*"小雨"/u);
 });
 
 test("forgot password moves to the verification form without showing a failed reset state", () => {

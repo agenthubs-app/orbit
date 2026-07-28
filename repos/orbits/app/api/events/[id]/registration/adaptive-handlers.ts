@@ -39,7 +39,7 @@ export function createRegistrationInterviewPostHandler(
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
     const { id } = await context.params;
-    const event = await loadEventForRegistration(id);
+    const event = await loadEventForRegistration(id, actor.id);
 
     if (!event) {
       return NextResponse.json(
@@ -91,7 +91,7 @@ export function createRegistrationPersonaPostHandler(
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
     const { id } = await context.params;
-    const event = await loadEventForRegistration(id);
+    const event = await loadEventForRegistration(id, actor.id);
 
     if (!event) {
       return NextResponse.json(

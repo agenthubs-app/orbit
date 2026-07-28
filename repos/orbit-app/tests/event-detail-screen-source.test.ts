@@ -30,6 +30,12 @@ test("event detail screen renders web-style event information modules", () => {
   assert.match(screenSource, /title="当晚议程"/u);
   assert.match(screenSource, /title="主办方"/u);
   assert.match(screenSource, /event\.registrationActionLabel/u);
+  assert.match(screenSource, /event\.organizerName === "主办方待确认"/u);
+  assert.match(screenSource, /活动来源暂未提供主办方信息/u);
+  assert.doesNotMatch(
+    screenSource,
+    /<DataCard detail=\{event\.sourceLabel \|\| event\.venueDetail\} title="主办方">/u
+  );
 });
 
 test("event detail registration card labels event status as event confirmation", () => {

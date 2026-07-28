@@ -43,6 +43,8 @@ test("action screens use the authenticated Orbit API client", () => {
 test("auth session provider restores a validated SecureStore-backed session", () => {
   assert.match(authProviderSource, /nativeAuthSessionStorage/u);
   assert.match(authProviderSource, /validateAuthSession/u);
+  assert.match(authProviderSource, /usesBrowserManagedSession/u);
+  assert.match(authProviderSource, /Platform\.OS === "web"/u);
   assert.match(authProviderSource, /user/u);
   assert.doesNotMatch(authProviderSource, /AsyncStorage\.setItem/u);
   assert.doesNotMatch(

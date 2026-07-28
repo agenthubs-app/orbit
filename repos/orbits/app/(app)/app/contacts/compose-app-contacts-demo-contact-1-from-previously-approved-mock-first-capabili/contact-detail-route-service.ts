@@ -86,14 +86,19 @@ export interface AppContactDetailLocalActionResult {
 
 export interface AppContactDetailSuccessModel {
   actionResult: AppContactDetailLocalActionResult | null;
-  assessment: RelationshipValueAssessment;
+  assessment: RelationshipValueAssessment | null;
   contact: ContactDetail;
   contactPayload: ContactDetailTagStatusPayload;
-  connection: ConnectionRecord;
-  connectionPayload: ConnectionEvidenceDetailPayload;
+  connection: ConnectionRecord | null;
+  connectionPayload: ConnectionEvidenceDetailPayload | null;
   evidenceTimeline: readonly ConnectionEvidenceTimelineItem[];
+  relationshipEnrichmentState:
+    | "available"
+    | "not_recorded"
+    | "pending"
+    | "unavailable";
   routeState: "success";
-  valuePayload: RelationshipValuePayload;
+  valuePayload: RelationshipValuePayload | null;
 }
 
 export interface AppContactDetailBoundaryModel {
@@ -245,12 +250,23 @@ function normalizeAction(action?: string | null): AppContactDetailRouteAction | 
   return null;
 }
 
+function normalizeContactId(contactId: string): string {
+  const rawContactId = contactId.trim();
+
+  try {
+    return decodeURIComponent(rawContactId);
+  } catch {
+    // Malformed percent encoding is still treated as an opaque route id.
+    return rawContactId;
+  }
+}
+
 function createBoundaryModel(
   routeState: Exclude<AppContactDetailRouteState, "success">,
   contactId: string,
   evidence: readonly string[] = routeBoundaryCopy[routeState].evidence,
 ): AppContactDetailBoundaryModel {
-  const normalizedContactId = contactId.trim();
+  const normalizedContactId = normalizeContactId(contactId);
   const retryHref = normalizedContactId
     ? `/app/contacts/${encodeURIComponent(normalizedContactId)}`
     : "/app/contacts";
@@ -496,44 +512,79 @@ async function loadComposedContactDetailRoute(input: {
     contactId: input.contactId,
     scenario: routeScenario,
   });
+
+  if (contactResult.success === false) {
+    return createBoundaryModel(
+      "failure",
+      input.contactId,
+      contactResult.error.evidenceIds,
+    );
+  }
+
+  if (contactResult.data.state === "pending") {
+    return createBoundaryModel(
+      "pending",
+      input.contactId,
+      contactResult.data.provenance.evidenceIds,
+    );
+  }
+
+  if (!contactResult.data.contact) {
+    return createBoundaryModel(
+      "empty",
+      input.contactId,
+      contactResult.data.provenance.evidenceIds,
+    );
+  }
+
+  const contactOnlySuccess = (
+    relationshipEnrichmentState:
+      | "not_recorded"
+      | "pending"
+      | "unavailable",
+  ): AppContactDetailSuccessModel => ({
+    actionResult: null,
+    assessment: null,
+    contact: contactResult.data.contact!,
+    contactPayload: contactResult.data,
+    connection: null,
+    connectionPayload: null,
+    evidenceTimeline: [],
+    relationshipEnrichmentState,
+    routeState: "success",
+    valuePayload: null,
+  });
+
   const connectionListResult = await input.services.connectionEvidence.listConnections({
     actorId: input.actorId,
     scenario: routeScenario,
   });
-  const connectionId =
-    connectionListResult.success === true
-      ? connectionIdForContact(connectionListResult.data, input.contactId)
-      : APP_CONTACT_DETAIL_CONNECTION_ID;
+
+  if (connectionListResult.success === false) {
+    return contactOnlySuccess("unavailable");
+  }
+
+  const connectionId = connectionIdForContact(
+    connectionListResult.data,
+    input.contactId,
+  );
+
+  if (connectionId === null) {
+    return contactOnlySuccess("not_recorded");
+  }
+
   const connectionResult = await input.services.connectionEvidence.getConnection({
     actorId: input.actorId,
-    connectionId: connectionId ?? APP_CONTACT_DETAIL_CONNECTION_ID,
+    connectionId,
     scenario: routeScenario,
   });
   const valueResult = await input.services.relationshipValue.getRelationshipValue({
-    connectionId: connectionId ?? APP_CONTACT_DETAIL_CONNECTION_ID,
+    connectionId,
     scenario: routeScenario,
   });
 
-  if (
-    contactResult.success === false ||
-    connectionListResult.success === false ||
-    connectionId === null ||
-    connectionResult.success === false ||
-    valueResult.success === false
-  ) {
-    const evidence = [
-      ...(contactResult.success === false ? contactResult.error.evidenceIds : []),
-      ...(connectionListResult.success === false
-        ? connectionListResult.error.evidenceIds
-        : []),
-      ...(connectionId === null ? ["contact-detail-no-live-connection"] : []),
-      ...(connectionResult.success === false
-        ? connectionResult.error.evidenceIds
-        : []),
-      ...(valueResult.success === false ? valueResult.error.evidenceIds : []),
-    ];
-
-    return createBoundaryModel("failure", input.contactId, evidence);
+  if (connectionResult.success === false || valueResult.success === false) {
+    return contactOnlySuccess("unavailable");
   }
 
   const routeState = routeStateForPayloads(
@@ -543,6 +594,17 @@ async function loadComposedContactDetailRoute(input: {
   );
 
   if (routeState) {
+    if (routeState === "pending") {
+      return contactOnlySuccess("pending");
+    }
+
+    if (
+      !connectionResult.data.connection ||
+      !valueResult.data.assessment
+    ) {
+      return contactOnlySuccess("unavailable");
+    }
+
     return createBoundaryModel(
       routeState,
       input.contactId,
@@ -561,6 +623,7 @@ async function loadComposedContactDetailRoute(input: {
     connection: connectionResult.data.connection,
     connectionPayload: connectionResult.data,
     evidenceTimeline: connectionResult.data.evidenceTimeline,
+    relationshipEnrichmentState: "available",
     routeState: "success",
     valuePayload: valueResult.data,
   };
@@ -612,19 +675,21 @@ export async function loadAppContactDetailRoute({
   mode,
   scenario,
 }: AppContactDetailRouteInput): Promise<AppContactDetailRouteModel> {
+  const normalizedContactId = normalizeContactId(contactId);
+
   // 主入口：live 模式先读取一次 focused graph，再复用现有 live capability
   // mappers；mock/hybrid 继续走原有 service composition。
   if (resolveModuleMode(mode) === "live") {
     return loadLiveAppContactDetailRoute({
       action,
       actorId,
-      contactId,
+      contactId: normalizedContactId,
       liveContactGraphProvider,
       scenario,
     });
   }
 
-  const services = resolveRouteServices(mode, contactId);
+  const services = resolveRouteServices(mode, normalizedContactId);
 
   if (isBoundaryModel(services)) {
     return services;
@@ -633,7 +698,7 @@ export async function loadAppContactDetailRoute({
   return loadComposedContactDetailRoute({
     action,
     actorId,
-    contactId,
+    contactId: normalizedContactId,
     scenario,
     services,
   });

@@ -26,6 +26,7 @@ import {
   type ExternalContactsSourceSummary,
 } from "./external-import-contract";
 import type {
+  LiveExternalContactPerson,
   LiveExternalContactsImportGraph,
   LiveExternalContactsImportProvider,
 } from "./storage/external-import-live-record-provider";
@@ -237,27 +238,11 @@ function sourceReferenceFor(input: {
 }
 
 function sourceKindForPerson(
-  person: NetworkPersonDTO,
-  index: number,
-): ExternalContactsImportSourceKind {
-  const numericSuffix = person.id.match(/(\d+)$/)?.[1];
-
-  if (numericSuffix) {
-    const numericIndex = Math.max(Number.parseInt(numericSuffix, 10) - 1, 0);
-
-    return EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS[
-      numericIndex % EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS.length
-    ];
-  }
-
-  const hash = [...person.id].reduce(
-    (total, char) => total + char.charCodeAt(0),
-    index,
-  );
-
-  return EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS[
-    hash % EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS.length
-  ];
+  person: LiveExternalContactPerson,
+): ExternalContactsImportSourceKind | null {
+  return person.source.type === "external_contacts"
+    ? person.externalSourceKind ?? null
+    : null;
 }
 
 function confidenceFor(evidence: RelationshipEvidenceDTO | null) {
@@ -316,7 +301,9 @@ function sourceSummaryFor(input: {
   sourceKind: ExternalContactsImportSourceKind;
 }): ExternalContactsSourceSummary {
   const permissionState =
-    input.sourceKind === "csv"
+    input.candidateCount === 0
+      ? "live-not-connected"
+      : input.sourceKind === "csv"
       ? "live-uploaded"
       : input.sourceKind === "existing_customer_list"
         ? "live-linked"
@@ -368,10 +355,11 @@ function evidenceRecordFor(input: {
 function buildCandidateRecord(input: {
   contacts: readonly ContactDTO[];
   evidence: readonly RelationshipEvidenceDTO[];
-  index: number;
-  person: NetworkPersonDTO;
+  person: LiveExternalContactPerson & {
+    externalSourceKind: ExternalContactsImportSourceKind;
+  };
 }): LiveExternalContactCandidateRecord {
-  const sourceKind = sourceKindForPerson(input.person, input.index);
+  const sourceKind = input.person.externalSourceKind;
   const source = sourceReferenceFor({
     person: input.person,
     sourceKind,
@@ -472,12 +460,19 @@ function buildRecords(
   graph: LiveExternalContactsImportGraph,
 ): readonly LiveExternalContactCandidateRecord[] {
   return graph.networkPeople
-    .filter((person) => person.personKind === "external_contact")
-    .map((person, index) =>
+    .filter(
+      (
+        person,
+      ): person is LiveExternalContactPerson & {
+        externalSourceKind: ExternalContactsImportSourceKind;
+      } =>
+        person.personKind === "external_contact" &&
+        sourceKindForPerson(person) !== null,
+    )
+    .map((person) =>
       buildCandidateRecord({
         contacts: graph.contacts,
         evidence: graph.evidence,
-        index,
         person,
       }),
     );

@@ -220,15 +220,10 @@ function ReminderList({ reminders }: { reminders: readonly ScheduledReminder[] }
                 Provider boundary: {reminder.audit.providerBoundary}
               </p>
               <EvidenceChips evidenceIds={reminder.evidenceIds} />
-              <button
-                aria-label={`${reminderEvidenceActionLabel(reminder)} for ${
-                  reminder.reminderId
-                }`}
-                className="secondary-action"
-                type="button"
-              >
-                {reminderEvidenceActionLabel(reminder)}
-              </button>
+              <p className="type-caption">
+                Verification instruction:{" "}
+                <code>{reminderEvidenceActionLabel(reminder)}</code>
+              </p>
             </div>
           </dd>
         </div>

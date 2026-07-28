@@ -37,6 +37,14 @@ function readSearchParam(
   return Array.isArray(value) ? value[0] : value;
 }
 
+function decodeContactRouteId(id: string): string {
+  try {
+    return decodeURIComponent(id);
+  } catch {
+    return id;
+  }
+}
+
 async function getContactDetailPageLanguage(): Promise<OrbitLanguage> {
   try {
     return await getOrbitServerLanguage();
@@ -88,11 +96,12 @@ export default async function AppContactDetailPage({
   searchParams?: Promise<AppContactDetailPageSearchParams>;
 }) {
   const { id } = await params;
+  const contactId = decodeContactRouteId(id);
   const session = await auth();
   const actorId = session?.user?.id;
   if (!actorId) {
     redirect(
-      `/app/account/login?next=${encodeURIComponent(`/app/contacts/${id}`)}`,
+      `/app/account/login?next=${encodeURIComponent(`/app/contacts/${contactId}`)}`,
     );
   }
 
@@ -101,7 +110,7 @@ export default async function AppContactDetailPage({
   const routeModel = await loadAppContactDetailRoute({
     action: readSearchParam(query, "action"),
     actorId,
-    contactId: id,
+    contactId,
     mode: readSearchParam(query, "mode"),
     scenario: readSearchParam(query, "scenario"),
   });
@@ -112,7 +121,7 @@ export default async function AppContactDetailPage({
       <OrbitVisualFreezeRuntime />
       {routeModel.routeState === "success" ? (
         <OrbitRealCardConnection
-          contactId={id}
+          contactId={contactId}
           viewModel={localizeOrbitTree(
             applyOrbitContactsPresentation(
               contactDetailRouteToOrbitContactsViewModel(routeModel, language),

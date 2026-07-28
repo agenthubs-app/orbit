@@ -66,6 +66,7 @@ const tagLabels: Record<ContactTagFilter, string> = {
   "event:climate-founders-dinner": "Climate founders dinner",
   "priority:nurture": "Nurture priority",
   "priority:warm-follow-up": "Warm follow-up",
+  "source:business-card": "Business card source",
   "source:event-import": "Event import source",
   "source:external-import": "External import source",
   "topic:community": "Community context",
@@ -188,8 +189,17 @@ function toContactSource(
   };
 }
 
-// ContactDTO.stage 与 contacts list status 不完全等价，未知阶段默认按 active 展示。
+// 新采集的联系人还没有进入推进阶段；应进入待跟进，而不是被误标成 active。
+// reviewing 表示已经开始处理，映射为 active。其余受支持状态保持原值。
 function toContactStatus(contact: ContactDTO): ContactStatusFilter {
+  if (contact.stage === "captured") {
+    return "needs_follow_up";
+  }
+
+  if (contact.stage === "reviewing") {
+    return "active";
+  }
+
   return supportedStatuses.has(contact.stage as ContactStatusFilter)
     ? (contact.stage as ContactStatusFilter)
     : "active";

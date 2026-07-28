@@ -25,6 +25,7 @@ const strengthColor: Record<OrbitContactStrength, string> = {
   dormant: "var(--text-3)",
   medium: "var(--sky)",
   strong: "var(--live)",
+  unscored: "var(--text-3)",
   weak: "var(--accent)",
 };
 

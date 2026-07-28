@@ -61,3 +61,10 @@ test("party people surfaces render attendee avatar images when available", () =>
   assert.match(screenSource, /styles\.connectionNodeAvatar/u);
   assert.match(screenSource, /styles\.graphPersonAvatar/u);
 });
+
+test("party routes do not synthesize live state when attendee data is absent", () => {
+  assert.match(screenSource, /attendeeSourceMissing/u);
+  assert.match(screenSource, /title="现场数据尚未连接"/u);
+  assert.match(screenSource, /当前不会生成通行码、现场匹配或签到结果/u);
+  assert.match(screenSource, /label="返回活动"/u);
+});

@@ -188,6 +188,7 @@ const tagValueLabels: Record<string, Record<string, string>> = {
     "storage-pilots": "storage pilots",
     community: "community",
     "venture-ecosystem": "venture ecosystem",
+    "business-card": "business card",
     "external-import": "external import",
     "event-import": "event import",
   },
@@ -198,6 +199,7 @@ const tagValueLabels: Record<string, Record<string, string>> = {
     "storage-pilots": "储能试点",
     community: "社群",
     "venture-ecosystem": "创投生态",
+    "business-card": "名片来源",
     "external-import": "外部导入",
     "event-import": "活动导入",
   },
@@ -284,7 +286,7 @@ function sameDisplayCopy(left: string, right: string): boolean {
 }
 
 function eventIdFor(model: AppContactDetailSuccessModel): string {
-  const eventSource = model.connection.sourceLinks.find(
+  const eventSource = model.connection?.sourceLinks.find(
     (source) => source.type === "event_import",
   );
 
@@ -292,14 +294,18 @@ function eventIdFor(model: AppContactDetailSuccessModel): string {
     return eventSource.id;
   }
 
+  if (model.contact.source.type === "event_import") {
+    return model.contact.source.id;
+  }
+
   if (model.contact.lastInteraction.source.id.startsWith("source:")) {
     return model.contact.lastInteraction.source.label;
   }
 
   return (
-    model.contact.lastInteraction.source.id ??
-    model.connection.sourceLinks[0]?.id ??
-    "live-relationship-source"
+    model.contact.lastInteraction.source.id ||
+    model.connection?.sourceLinks[0]?.id ||
+    model.contact.source.id
   );
 }
 
@@ -308,12 +314,12 @@ function eventNameFor(
   eventId: string,
 ): string {
   return (
-    model.connection.sourceLinks.find((source) => source.type === "event_import")
+    model.connection?.sourceLinks.find((source) => source.type === "event_import")
       ?.label ??
     model.contact.lastInteraction.source.label ??
     model.contact.source.label ??
-    model.connection.sourceLinks.find((source) => source.id === eventId)?.label ??
-    model.connection.sourceLinks[0]?.label ??
+    model.connection?.sourceLinks.find((source) => source.id === eventId)?.label ??
+    model.connection?.sourceLinks[0]?.label ??
     eventId
   );
 }
@@ -352,7 +358,7 @@ function encounterFor(
     context: {
       metAt:
         model.contact.lastInteraction.occurredAt ||
-        model.connection.lastTouchedAt ||
+        model.connection?.lastTouchedAt ||
         model.contact.updatedAt,
       publicProfile: {
         bio,
@@ -366,17 +372,20 @@ function encounterFor(
       reason:
         displayText(
           model.contact.relationshipContext ||
-            model.connection.connectionReason ||
-            model.assessment.rationale.summary,
+            model.connection?.connectionReason ||
+            model.assessment?.rationale.summary ||
+            model.contact.source.label,
           language,
         ),
       score:
-        model.assessment.priorityScore.value || model.connection.strengthScore,
+        model.assessment?.priorityScore.value ||
+        model.connection?.strengthScore ||
+        0,
       tableNo: 0,
     },
-    createdAt: model.connection.lastTouchedAt || model.contact.updatedAt,
+    createdAt: model.connection?.lastTouchedAt || model.contact.updatedAt,
     eventId,
-    id: `encounter:${model.connection.id}`,
+    id: `encounter:${model.connection?.id ?? model.contact.id}`,
   };
 }
 
@@ -405,8 +414,9 @@ export function contactDetailRouteToOrbitContactsViewModel(
     note:
       displayText(
         model.contact.relationshipContext ||
-          model.connection.connectionReason ||
-          model.assessment.rationale.summary,
+          model.connection?.connectionReason ||
+          model.assessment?.rationale.summary ||
+          model.contact.source.label,
         language,
       ),
     notes,
@@ -418,9 +428,14 @@ export function contactDetailRouteToOrbitContactsViewModel(
     stage: model.contact.status,
     title: displayText(model.contact.role, language),
     wechat: model.contact.wechatId ?? "",
-    strength: strengthFromScore(
-      model.assessment.priorityScore.value || model.connection.strengthScore,
-    ),
+    strength:
+      model.assessment || model.connection
+        ? strengthFromScore(
+            model.assessment?.priorityScore.value ||
+              model.connection?.strengthScore ||
+              0,
+          )
+        : "unscored",
     valueTags: model.contact.tags.map((tag) => tagLabel(tag, language)),
     nextAction: model.contact.nextAction
       ? {
@@ -442,12 +457,14 @@ export function contactDetailRouteToOrbitContactsViewModel(
 
   return {
     connections: [contact],
-    events: [
-      {
-        id: eventId,
-        name: eventName,
-      },
-    ],
+    events: eventId
+      ? [
+          {
+            id: eventId,
+            name: eventName,
+          },
+        ]
+      : [],
     intros: [],
     pipelineStatuses: [
       { value: "to_contact", label: "待联系" },

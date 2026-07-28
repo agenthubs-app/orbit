@@ -138,36 +138,18 @@ export interface ProfileDocumentExtractionView {
   title: string;
 }
 
-const orbitFounderProfile: ProfileSummary = {
-  bio:
-    "我是 Orbit 的创始人，主要帮企业把 AI 接进真实业务：销售线索整理、客服知识库、内部检索、运营报表、员工助理和跨系统工作流。很多团队不是缺工具，而是缺一个能先跑起来的切入点。我通常会从最重复、最容易漏、最占人力的环节开始，把试点拆小，再推进到能稳定使用的生产流程。",
-  displayName: "小雨",
-  headline: "Orbit 创始人，帮企业把 AI 用到销售、客服、运营和内部知识库里",
-  industry: "AI 企业应用 · 日本市场 · B2B",
-  offering: [
-    "企业 AI 导入路径梳理",
-    "知识库 / 内部检索 / 员工助手方案",
-    "销售、客服、运营流程自动化",
-    "日本落地服务商与合作方连接",
-    "创业者、投资人、企业服务资源引荐"
-  ],
-  organization: "Orbit",
-  relationshipGoal:
-    "通过 Orbit 找到值得互相帮忙的人：我会优先介绍明确需求、靠谱交付和能形成长期合作的资源。",
-  role: "创始人",
-  seeking: [
-    "正在导入 AI 或准备做试点的企业",
-    "有日本市场落地经验的合作伙伴",
-    "企业服务、SaaS、自动化和数据治理资源"
-  ],
-  timezone: "Tokyo",
-  topics: [
-    "企业 AI 导入",
-    "知识库与内部检索",
-    "Agent 工作流",
-    "销售和客服自动化",
-    "中日商务合作"
-  ]
+const emptyProfileSummary: ProfileSummary = {
+  bio: "",
+  displayName: "",
+  headline: "",
+  industry: "",
+  offering: [],
+  organization: "",
+  relationshipGoal: "",
+  role: "",
+  seeking: [],
+  timezone: "",
+  topics: []
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -459,42 +441,33 @@ function profileSignalNextAction(value: string, count: number): string {
   return chineseText(value, "先逐条确认来源，再决定是否应用到个人资料。");
 }
 
-function isKnownDemoProfile(profile: Record<string, unknown>): boolean {
-  return (
-    profileField(profile, "id") === "profile_orbit_generated_operator" ||
-    profileField(profile, "displayName") === "小雨" ||
-    profileField(profile, "displayName") === "赵翔" ||
-    profileField(profile, "displayName") === "Xinyi Zhao" ||
-    profileField(profile, "organization") === "OPPO Japan Research"
-  );
-}
-
 export function profileToSummary(data: unknown): ProfileSummary {
   const profile = isRecord(data)
     ? data.profile
     : null;
 
-  if (!isRecord(profile) || isKnownDemoProfile(profile)) {
-    return orbitFounderProfile;
+  if (!isRecord(profile)) {
+    return {
+      ...emptyProfileSummary,
+      offering: [],
+      seeking: [],
+      topics: []
+    };
   }
 
   return {
-    bio: profileField(profile, "bio", orbitFounderProfile.bio),
-    displayName: profileField(profile, "displayName", orbitFounderProfile.displayName),
-    headline: profileField(profile, "headline", orbitFounderProfile.headline),
-    industry: profileField(profile, "industry", orbitFounderProfile.industry),
+    bio: profileField(profile, "bio"),
+    displayName: profileField(profile, "displayName"),
+    headline: profileField(profile, "headline"),
+    industry: profileField(profile, "industry"),
     offering: stringListField(profile, "offering"),
-    organization: profileField(profile, "organization", orbitFounderProfile.organization),
-    relationshipGoal: stringField(
-      profile,
-      "relationshipGoal",
-      orbitFounderProfile.relationshipGoal
-    ),
-    role: profileField(profile, "role", orbitFounderProfile.role),
+    organization: profileField(profile, "organization"),
+    relationshipGoal: stringField(profile, "relationshipGoal"),
+    role: profileField(profile, "role"),
     seeking: stringListField(profile, "seeking"),
     timezone:
       stringField(profile, "timezone") ||
-      profileField(profile, "homeMarket", orbitFounderProfile.timezone),
+      profileField(profile, "homeMarket"),
     topics: stringListField(profile, "topics")
   };
 }

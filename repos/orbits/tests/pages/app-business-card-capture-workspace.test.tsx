@@ -9,6 +9,23 @@ import {
   initialBusinessCardCaptureState,
   type BusinessCardScanPayload,
 } from "../../app/(app)/app/contacts/business-card-capture-workspace";
+import type { BusinessCardCaptureAvailability } from "../../features/acquisition/business-card-capture-availability";
+
+const READY_AVAILABILITY: BusinessCardCaptureAvailability = {
+  available: true,
+  contactStorageConfigured: true,
+  mode: "live",
+  ocrProviderConfigured: true,
+  reason: "ready",
+};
+
+const UNAVAILABLE_AVAILABILITY: BusinessCardCaptureAvailability = {
+  available: false,
+  contactStorageConfigured: true,
+  mode: "live",
+  ocrProviderConfigured: false,
+  reason: "ocr_provider_unconfigured",
+};
 
 const SCAN_PAYLOAD: BusinessCardScanPayload = {
   capture: {
@@ -41,13 +58,29 @@ const SCAN_PAYLOAD: BusinessCardScanPayload = {
 };
 
 test("business card capture workspace exposes a primary private scan entry", () => {
-  const html = renderToStaticMarkup(<BusinessCardCaptureWorkspace />);
+  const html = renderToStaticMarkup(
+    <BusinessCardCaptureWorkspace availability={READY_AVAILABILITY} />,
+  );
 
   assert.match(html, /拍照扫描/);
   assert.match(html, /上传名片图片/);
   assert.match(html, /图片只用于本次云端识别/);
+  assert.match(html, /私密采集 · 云端识别/);
   assert.match(html, /image\/jpeg,image\/png,image\/webp/);
   assert.doesNotMatch(html, /邀请对方加入 Orbit/);
+});
+
+test("business card capture workspace fails closed before upload when OCR is unconfigured", () => {
+  const html = renderToStaticMarkup(
+    <BusinessCardCaptureWorkspace availability={UNAVAILABLE_AVAILABILITY} />,
+  );
+
+  assert.match(html, /名片识别尚未连接/);
+  assert.match(html, /不会上传图片，也不会创建联系人/);
+  assert.match(html, /GEMINI_API_KEY or GOOGLE_API_KEY/);
+  assert.match(html, /data-business-card-capture="unavailable"/);
+  assert.doesNotMatch(html, /上传名片图片/);
+  assert.doesNotMatch(html, /type="file"/);
 });
 
 test("business card capture reducer gates contact confirmation and then reveals optional invitation", () => {

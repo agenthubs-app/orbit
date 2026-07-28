@@ -66,6 +66,7 @@ test("mobile credentials uses the bridge envelope", async () => {
     });
     assert.equal(init?.method, "POST");
     assert.equal(init?.cache, "no-store");
+    assert.equal(init?.credentials, "include");
     assert.equal(
       new Headers(init?.headers).get("Content-Type"),
       "application/json"
@@ -235,6 +236,7 @@ test("session validation sends the stored Cookie and requires a real user", asyn
         new Headers(init?.headers).get("Cookie"),
         session.cookieHeader
       );
+      assert.equal(init?.credentials, "include");
 
       return jsonResponse({
         expires: session.expiresAt,
@@ -250,4 +252,22 @@ test("session validation sends the stored Cookie and requires a real user", asyn
 
   assert.equal(valid.success, true);
   assert.equal(missing.success, false);
+});
+
+test("session validation can use a browser-managed HttpOnly cookie", async () => {
+  const result = await validateAuthSession({
+    baseUrl: "https://orbit.example",
+    cookieHeader: "",
+    fetchImpl: async (_input, init) => {
+      assert.equal(init?.credentials, "include");
+      assert.equal(new Headers(init?.headers).has("Cookie"), false);
+
+      return jsonResponse({
+        expires: session.expiresAt,
+        user: session.user
+      });
+    }
+  });
+
+  assert.equal(result.success, true);
 });

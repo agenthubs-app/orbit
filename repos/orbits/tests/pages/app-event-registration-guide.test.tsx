@@ -140,6 +140,11 @@ test("the approved public catalogue enters registration with honest time status"
 
   assert.equal(endedEvent?.status, "cancelled");
   assert.equal(upcomingEvent?.status, "imported");
+  assert.equal(upcomingEvent?.title, "关西跨境商务对接会");
+  assert.equal(
+    upcomingEvent?.sourceMetadata.label,
+    "活动导入：关西跨境商务对接会",
+  );
   assert.ok(Date.parse(endedEvent?.endsAt ?? "") < Date.now());
   assert.ok(Date.parse(upcomingEvent?.endsAt ?? "") > Date.now());
   assert.equal(
@@ -183,5 +188,26 @@ test("registration workspace exposes real register cancel and re-register states
   assert.match(source, /取消报名|Cancel registration/);
   assert.match(source, /重新回答|Redo the interview/);
   assert.match(source, /participantProfile\.answers/);
+  assert.match(source, /data-reg-saved-registration/);
+  assert.match(source, /data-reg-cancelled-registration/);
+  assert.match(source, /role="alertdialog"/);
+  assert.match(source, /报名已保存|Registration saved/);
+  assert.match(source, /报名已取消|Registration cancelled/);
+  assert.match(source, /turn\.answer/);
+  assert.match(source, /registrationBody\?\.error\?\.message/);
+  assert.doesNotMatch(
+    source,
+    /if \(stage === "generating" && persona === null && transcript\.length > 0\)/,
+  );
+
+  const generationStart = source.indexOf("const runGeneration");
+  const generationEnd = source.indexOf("async function submitAnswer");
+  const generationSource = source.slice(generationStart, generationEnd);
+  const registrationWrite = generationSource.indexOf("/registration`,");
+  const personaGeneration = generationSource.indexOf("/registration/persona`,");
+
+  assert.ok(registrationWrite >= 0);
+  assert.ok(personaGeneration > registrationWrite);
+  assert.doesNotMatch(generationSource, /Promise\.all/);
   assert.doesNotMatch(source, /email.*send|notify.*organizer/i);
 });

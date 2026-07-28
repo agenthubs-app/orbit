@@ -5,6 +5,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { eventDetailPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
+import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { SectionHeader } from "../../components/SectionHeader";
@@ -28,9 +29,42 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function RegisterInviteScreen() {
-  const auth = useOrbitAuthSession();
   const params = useLocalSearchParams<{ code?: string | string[] }>();
-  const inviteCode = firstParam(params.code).trim() || "demo-event-1";
+  const inviteCode = firstParam(params.code).trim();
+
+  if (!inviteCode) {
+    return <RegisterInviteCodeRequired />;
+  }
+
+  return <RegisterInviteEventScreen inviteCode={inviteCode} />;
+}
+
+function RegisterInviteCodeRequired() {
+  const router = useRouter();
+
+  return (
+    <AppScreen eyebrow="活动报名" title="报名资料准备">
+      <EmptyState
+        message="请从活动详情打开报名入口；没有真实活动或邀请码时，不会生成报名资料。"
+        title="尚未选择活动"
+      />
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push("/events" as Href)}
+        style={({ pressed }) => [
+          styles.actionButton,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Text style={styles.actionText}>查看活动</Text>
+        <Ionicons color={colors.text3} name="chevron-forward" size={18} />
+      </Pressable>
+    </AppScreen>
+  );
+}
+
+function RegisterInviteEventScreen({ inviteCode }: { inviteCode: string }) {
+  const auth = useOrbitAuthSession();
   const eventState = useApiResource<unknown>(
     eventDetailPath(inviteCode),
     () => false
@@ -51,6 +85,8 @@ export function RegisterInviteScreen() {
     profileState.kind === "loading";
   const offline =
     eventState.kind === "offline" ? eventState : profileState.kind === "offline" ? profileState : null;
+  const failure =
+    eventState.kind === "failure" ? eventState : profileState.kind === "failure" ? profileState : null;
 
   return (
     <AppScreen
@@ -68,7 +104,8 @@ export function RegisterInviteScreen() {
       {offline ? (
         <ErrorState message={offline.error.message} title="服务器连不上" />
       ) : null}
-      {!loading && !offline ? (
+      {failure ? <ErrorState message={failure.error.message} /> : null}
+      {!loading && !offline && !failure ? (
         <RegisterInviteContent
           authenticated={auth.signedIn}
           eventPayload={

@@ -228,10 +228,11 @@ test("profile onboarding debug route renders success, empty, pending, and failur
   assert.match(html, /relationship operating system/);
   assert.match(html, /83% complete/);
   assert.match(html, /PROFILE_VALIDATION_FAILED/);
-  assert.match(html, /Mock manual profile editor controls/);
-  assert.match(html, /name="displayName"/);
-  assert.match(html, /name="relationshipGoal"/);
-  assert.match(html, /name="preferredFollowUpWindow"/);
+  assert.match(html, /Read-only saved mock profile snapshot/);
+  assert.match(html, /not an editable save form/);
+  assert.doesNotMatch(html, /name="displayName"/);
+  assert.doesNotMatch(html, /name="relationshipGoal"/);
+  assert.doesNotMatch(html, /name="preferredFollowUpWindow"/);
   assert.match(html, /Profile-informed follow-up/);
   assert.match(html, /48 hours/);
   assert.match(html, /warm intro/);

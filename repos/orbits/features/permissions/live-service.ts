@@ -526,8 +526,23 @@ export function createLivePermissionStateService({
         );
       }
 
+      if (!provider.requestPermission) {
+        return failure(
+          "PERMISSION_STATE_LIVE_STORE_UNCONFIGURED",
+          unconfiguredProvenance(now()),
+        );
+      }
+
+      const requestedAt = now();
+      const intent = normalizeIntent(input.intent);
+      await provider.requestPermission({
+        capability,
+        intent,
+        requestedAt,
+      });
+
       return requestSuccess(
-        pendingPayload(now(), capability, normalizeIntent(input.intent)),
+        pendingPayload(requestedAt, capability, intent),
       );
     },
   };

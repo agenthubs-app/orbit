@@ -337,9 +337,9 @@ export function permissionStatesToView(data: unknown): PermissionStatesView {
     .map(permissionCard);
 
   return {
-    canRequestCalendar: cards.some(
-      (card) => card.id === "calendar" && card.tone !== "ready"
-    ),
+    canRequestCalendar:
+      !cards.some((card) => card.id === "calendar") ||
+      cards.some((card) => card.id === "calendar" && card.tone !== "ready"),
     emptyText: cards.length === 0 ? "还没有需要处理的权限。" : "",
     nextAction: nextActionFor(cards),
     permissions: cards,

@@ -244,6 +244,12 @@ test("contactExternalCandidatesToView maps external contact sources and candidat
         kind: "google_contacts",
         label: "Google Contacts",
         permissionState: "mock-linked"
+      },
+      {
+        candidateCount: 0,
+        kind: "csv",
+        label: "CSV",
+        permissionState: "live-not-connected"
       }
     ],
     state: "success",
@@ -267,6 +273,12 @@ test("contactExternalCandidatesToView maps external contact sources and candidat
       id: "google_contacts",
       label: "Google Contacts",
       stateLabel: "已连接"
+    },
+    {
+      countLabel: "0 个候选",
+      id: "csv",
+      label: "CSV 文件",
+      stateLabel: "未连接"
     }
   ]);
   assert.deepEqual(view.candidates, [
@@ -830,6 +842,36 @@ test("business card contact write helper builds the explicit web confirmation re
   );
 });
 
+test("confirmed manual candidates disclose that no contact writer is available", () => {
+  const summary = acquisitionResultToSummary({
+    confirmedDraft: {
+      confirmation: {
+        required: false,
+        state: "confirmed"
+      },
+      displayName: "功能审计联系人",
+      id: "manual-audit-draft",
+      source: {
+        label: "Manual contact creation",
+        type: "manual"
+      },
+      status: "confirmed"
+    },
+    contactCandidate: {
+      contactWriteExecuted: false,
+      readyForContactWrite: true
+    },
+    state: "confirmed"
+  });
+
+  assert.equal(summary.contactWrite, undefined);
+  assert.equal(
+    summary.confirmationText,
+    "候选已确认；当前流程仍不会写入联系人。"
+  );
+  assert.equal(summary.writeState, "候选已确认");
+});
+
 test("business card contact write result maps created and duplicate states", () => {
   assert.deepEqual(
     businessCardContactWriteToView({
@@ -1062,7 +1104,7 @@ test("acquisitionResultToSummary maps confirmed drafts as candidates, not writte
   assert.deepEqual(summary, {
     canConfirm: false,
     confirmLabel: "已确认候选",
-    confirmationText: "已确认，下一步再写入联系人。",
+      confirmationText: "候选已确认；当前流程仍不会写入联系人。",
     detail: "Orbit · AI 导入负责人",
     draftId: "manual-draft:live:1",
     evidenceExcerpts: [],

@@ -22,6 +22,24 @@ test("SQLite 不可用时读取快照返回空而不是抛错", async () => {
   assert.equal(snapshot, null);
 });
 
+test("Web 端明确跳过原生 SQLite 快照层", () => {
+  const storeSource = readFileSync(
+    join(repoRoot, "src", "data", "snapshot-store.ts"),
+    "utf8"
+  );
+  const webStoreSource = readFileSync(
+    join(repoRoot, "src", "data", "snapshot-store.web.ts"),
+    "utf8"
+  );
+
+  assert.match(
+    storeSource,
+    /if \(Platform\.OS === "web"\) \{\s*return null;/u
+  );
+  assert.match(webStoreSource, /return null;/u);
+  assert.doesNotMatch(webStoreSource, /expo-sqlite|openDatabaseAsync/u);
+});
+
 test("SQLite 不可用时写入快照静默降级", async () => {
   await assert.doesNotReject(
     writeSnapshot("http://localhost:3000", "/api/contacts", {

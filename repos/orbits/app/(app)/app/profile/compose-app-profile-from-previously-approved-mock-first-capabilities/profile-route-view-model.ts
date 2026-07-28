@@ -496,6 +496,7 @@ function actorOnboardingProfile(
 
 function successViewModel(input: {
   actionRequested: boolean;
+  actor?: AppProfileActor | null;
   profileState: Extract<ProfileResult, { success: true }>;
   requestedIntroChannels: readonly string[] | null;
   resumeState: Extract<ProfileDocumentExtractionResult, { success: true }>;
@@ -508,6 +509,14 @@ function successViewModel(input: {
   }
 
   const resumeDraft = input.resumeState.data.draft;
+  const actorEmail = input.actor?.email?.trim() || undefined;
+  const handles =
+    profile.handles || actorEmail
+      ? {
+          ...profile.handles,
+          email: profile.handles?.email || actorEmail,
+        }
+      : undefined;
   const selectedIntroChannels =
     input.actionRequested && input.requestedIntroChannels
       ? input.requestedIntroChannels
@@ -569,6 +578,7 @@ function successViewModel(input: {
     profile: {
       bio: profile.bio,
       displayName: profile.displayName,
+      handles,
       headline: profile.headline,
       homeMarket: profile.homeMarket,
       industry: profile.industry,
@@ -680,6 +690,7 @@ export async function loadAppProfileRouteViewModel(
       state: "success",
       profile: successViewModel({
         actionRequested: false,
+        actor,
         profileState: onboardingState,
         requestedIntroChannels: null,
         resumeState,
@@ -693,6 +704,7 @@ export async function loadAppProfileRouteViewModel(
     profile: successViewModel({
       actionRequested:
         readSearchParam(searchParams, "action") === "complete-profile-field",
+      actor,
       profileState,
       requestedIntroChannels: readSearchParamList(
         searchParams,

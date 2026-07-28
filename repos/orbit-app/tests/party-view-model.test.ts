@@ -43,6 +43,7 @@ test("partyModeToView builds a Chinese on-site party view from event context", (
         venue: "大阪 Grand Front"
       }
     },
+    eventId: "event_01",
     eventPayload: {
       event: {
         description:
@@ -103,13 +104,14 @@ test("partyModeToView builds a Chinese on-site party view from event context", (
 test("partyModeToView keeps empty party state useful", () => {
   const view = partyModeToView({
     attendeesPayload: {},
+    eventId: "live-event-42",
     eventPayload: {},
     matchesPayload: {}
   });
 
-  assert.equal(view.eventId, "event_01");
+  assert.equal(view.eventId, "live-event-42");
   assert.equal(view.eventTitle, "活动现场");
-  assert.equal(view.accessCode, "EVEN-4821");
+  assert.equal(view.accessCode, "LIVE-4821");
   assert.deepEqual(view.priorityPeople, []);
   assert.deepEqual(view.graphGroups, []);
   assert.equal(view.nextAction, "先打开签到码，再看这场活动最值得优先认识的人。");
@@ -134,6 +136,7 @@ test("partyModeToView does not duplicate relationship context as the reason", ()
         name: "东京餐饮入境客增长会"
       }
     },
+    eventId: "event_01",
     eventPayload: {
       event: {
         id: "event_01",

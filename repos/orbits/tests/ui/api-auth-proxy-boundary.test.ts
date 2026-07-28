@@ -15,6 +15,16 @@ test("API proxy defaults personal endpoints to authenticated access", () => {
   assert.match(proxySource, /matcher:\s*\["\/app\/:path\*",\s*"\/api\/:path\*"\]/);
 });
 
+test("API proxy permits data-free CORS preflight before authenticating the real request", () => {
+  assert.match(proxySource, /request\.method === "OPTIONS"/);
+  assert.match(
+    proxySource,
+    /request\.nextUrl\.pathname\.startsWith\("\/api\/"\)/,
+  );
+  assert.match(proxySource, /status:\s*204/);
+  assert.match(proxySource, /cache-control/);
+});
+
 test("API proxy public allowlist is narrow and explicit", () => {
   assert.match(proxySource, /pathname === "\/api\/health"/);
   assert.match(proxySource, /pathname\.startsWith\("\/api\/auth\/"\)/);

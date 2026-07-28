@@ -52,7 +52,12 @@ type RegistrationEnvelope = {
   success: boolean;
 };
 
-type Stage = "interview" | "generating" | "persona";
+type Stage =
+  | "cancelled"
+  | "generating"
+  | "interview"
+  | "persona"
+  | "registered";
 
 const TOTAL_STEPS = ADAPTIVE_INTERVIEW_MAX_TURNS;
 const GENERATING_MIN_MS = 2700;
@@ -134,12 +139,14 @@ export function EventRegistrationWorkspace({
   questionSet,
 }: RegistrationWorkspaceProps) {
   const storedTranscript = transcriptFromAnswers(
-    initialRegistration?.status === "rsvped"
-      ? initialRegistration.participantProfile.answers
-      : {},
+    initialRegistration?.participantProfile.answers ?? {},
   );
   const [stage, setStage] = useState<Stage>(
-    storedTranscript.length > 0 ? "generating" : "interview",
+    initialRegistration?.status === "rsvped"
+      ? "registered"
+      : initialRegistration?.status === "cancelled"
+        ? "cancelled"
+        : "interview",
   );
   const [registration, setRegistration] = useState(initialRegistration);
   const [transcript, setTranscript] = useState<AdaptiveInterviewTurn[]>(storedTranscript);
@@ -155,6 +162,7 @@ export function EventRegistrationWorkspace({
   const [persona, setPersona] = useState<EventPersona | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingCancel, setPendingCancel] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const generationRunId = useRef(0);
   // 选项预取:题目一出现就为每个选项并行预生成下一题,用户点击时通常已就绪,
   // 把 ~10s 的模型延迟藏进读题决策时间里。key=选项文本。
@@ -200,10 +208,12 @@ export function EventRegistrationWorkspace({
     [event.id, language],
   );
 
-  // 生成阶段:持久化答案 + 请求画像,并行推进阶段动画;两者都完成才揭示。
+  // 生成阶段先持久化报名,确认写入成功后再请求派生画像。画像失败时保留
+  // 已报名状态和可回读的原始回答,绝不把仅生成画像当作报名成功。
   const runGeneration = useCallback(
     async (finalTranscript: readonly AdaptiveInterviewTurn[]) => {
       const runId = ++generationRunId.current;
+      let savedRegistration: EventRegistration | null = null;
 
       setStage("generating");
       setGeneratingStep(0);
@@ -215,48 +225,60 @@ export function EventRegistrationWorkspace({
       }, GENERATING_STAGE_MS);
 
       try {
-        const [personaResult] = await Promise.all([
-          (async () => {
-            const response = await fetch(
-              `/api/events/${encodeURIComponent(event.id)}/registration/persona`,
-              {
-                body: JSON.stringify({ language, transcript: finalTranscript }),
-                headers: { "content-type": "application/json" },
-                method: "POST",
-              },
-            );
-            const body = (await response.json().catch(() => null)) as {
-              data?: { persona: EventPersona };
-              success?: boolean;
-            } | null;
+        const registrationResponse = await fetch(
+          `/api/events/${encodeURIComponent(event.id)}/registration`,
+          {
+            body: JSON.stringify({ answers: answersFrom(finalTranscript) }),
+            headers: { "content-type": "application/json" },
+            method: "POST",
+          },
+        );
+        const registrationBody = (await registrationResponse
+          .json()
+          .catch(() => null)) as RegistrationEnvelope | null;
 
-            if (!response.ok || body?.success !== true || !body.data) {
-              throw new Error(
-                copy(language, {
-                  en: "Persona generation failed.",
-                  zh: "画像生成失败。",
-                }),
-              );
-            }
+        if (
+          !registrationResponse.ok ||
+          registrationBody?.success !== true ||
+          !registrationBody.data
+        ) {
+          throw new Error(
+            registrationBody?.error?.message ??
+              copy(language, {
+                en: "Your registration answers could not be saved.",
+                zh: "报名回答未能保存，请重试。",
+              }),
+          );
+        }
 
-            return body.data.persona;
-          })(),
-          (async () => {
-            const response = await fetch(
-              `/api/events/${encodeURIComponent(event.id)}/registration`,
-              {
-                body: JSON.stringify({ answers: answersFrom(finalTranscript) }),
-                headers: { "content-type": "application/json" },
-                method: "POST",
-              },
-            );
-            const body = (await response.json().catch(() => null)) as RegistrationEnvelope | null;
+        savedRegistration = registrationBody.data;
+        setRegistration(savedRegistration);
 
-            if (response.ok && body?.success === true && body.data) {
-              setRegistration(body.data);
-            }
-          })(),
-        ]);
+        const personaResponse = await fetch(
+          `/api/events/${encodeURIComponent(event.id)}/registration/persona`,
+          {
+            body: JSON.stringify({ language, transcript: finalTranscript }),
+            headers: { "content-type": "application/json" },
+            method: "POST",
+          },
+        );
+        const personaBody = (await personaResponse.json().catch(() => null)) as {
+          data?: { persona: EventPersona };
+          success?: boolean;
+        } | null;
+
+        if (
+          !personaResponse.ok ||
+          personaBody?.success !== true ||
+          !personaBody.data
+        ) {
+          throw new Error(
+            copy(language, {
+              en: "Your registration was saved, but the event persona could not be generated.",
+              zh: "报名已保存，但活动画像生成失败。",
+            }),
+          );
+        }
 
         const elapsed = Date.now() - startedAt;
 
@@ -267,7 +289,7 @@ export function EventRegistrationWorkspace({
         }
 
         if (generationRunId.current === runId) {
-          setPersona(personaResult);
+          setPersona(personaBody.data.persona);
           setStage("persona");
         }
       } catch (caught) {
@@ -277,23 +299,18 @@ export function EventRegistrationWorkspace({
               ? caught.message
               : copy(language, { en: "Something went wrong.", zh: "出错了,请重试。" }),
           );
-          setStage("interview");
+          setStage(
+            (savedRegistration ?? registration)?.status === "rsvped"
+              ? "registered"
+              : "interview",
+          );
         }
       } finally {
         window.clearInterval(stageTimer);
       }
     },
-    [event.id, language],
+    [event.id, language, registration],
   );
-
-  // 已报名用户重访:初始 stage 即为 generating(仅存量答案路径会这样),
-  // 挂载后立刻从存量 transcript 重新生成画像。
-  useEffect(() => {
-    if (stage === "generating" && persona === null && transcript.length > 0) {
-      void runGeneration(transcript);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function submitAnswer(answer: string) {
     if (!question || thinking) {
@@ -458,6 +475,7 @@ export function EventRegistrationWorkspace({
     setFreeText("");
     setFreeTextOpen(false);
     setError(null);
+    setConfirmingCancel(false);
   }
 
   async function cancelRegistration() {
@@ -479,6 +497,9 @@ export function EventRegistrationWorkspace({
       }
 
       setRegistration(body.data);
+      setPersona(null);
+      setConfirmingCancel(false);
+      setStage("cancelled");
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -571,6 +592,10 @@ export function EventRegistrationWorkspace({
             <span style={{ alignItems: "center", background: "var(--live-soft, var(--accent-soft))", borderRadius: "var(--r-pill)", color: "var(--live, var(--accent))", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
               <span style={{ background: "currentcolor", borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
               {copy(language, { en: "Registered", zh: "已报名" })}
+            </span>
+          ) : status === "cancelled" ? (
+            <span style={{ alignItems: "center", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", color: "var(--text-3)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
+              {copy(language, { en: "Registration cancelled", zh: "报名已取消" })}
             </span>
           ) : null}
         </header>
@@ -800,6 +825,162 @@ export function EventRegistrationWorkspace({
           </div>
         ) : null}
 
+        {stage === "registered" ? (
+          <section
+            data-reg-saved-registration
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 24,
+              boxShadow: "var(--sh-lg)",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ display: "grid", gap: 12, padding: "30px 34px 24px" }}>
+              <span style={{ alignItems: "center", color: "var(--live, var(--accent))", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 7, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                <Icon name="check" size={15} />
+                {copy(language, { en: "Registration saved", zh: "报名已保存" })}
+              </span>
+              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.35rem, 3vw, 1.8rem)", margin: 0 }}>
+                {copy(language, {
+                  en: "Your event-scoped answers are stored.",
+                  zh: "你的本场回答已可靠保存",
+                })}
+              </h2>
+              <p style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>
+                {copy(language, {
+                  en: "These exact answers remain after refresh or sign-in. The AI persona is a derived preview and is regenerated only when you request it.",
+                  zh: "下列原始回答在刷新或重新登录后仍会保留。AI 活动画像属于派生预览，只会在你主动要求时重新生成。",
+                })}
+              </p>
+              <dl style={{ display: "grid", gap: 10, margin: "6px 0 0" }}>
+                {transcript.map((turn) => (
+                  <div
+                    key={turn.field}
+                    style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 14,
+                      display: "grid",
+                      gap: 5,
+                      padding: "13px 15px",
+                    }}
+                  >
+                    <dt style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 700 }}>
+                      {fieldLabel(language, turn.field)}
+                    </dt>
+                    <dd style={{ color: "var(--ink)", fontSize: 14.5, lineHeight: 1.55, margin: 0 }}>
+                      {turn.answer}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              {error ? (
+                <div className="orbit-alert error" role="alert">
+                  {error}
+                </div>
+              ) : null}
+            </div>
+            <footer style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", padding: "14px 22px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <button
+                  className="btn btn-primary"
+                  disabled={transcript.length === 0}
+                  onClick={() => void runGeneration(transcript)}
+                  type="button"
+                >
+                  {copy(language, { en: "Generate event persona", zh: "生成活动画像" })}
+                </button>
+                <button
+                  className="reg-ghost-btn"
+                  onClick={restartInterview}
+                  type="button"
+                  style={{ background: "transparent", border: 0, color: "var(--text-2)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600 }}
+                >
+                  {copy(language, { en: "Edit answers", zh: "修改回答" })}
+                </button>
+                <button
+                  className="reg-ghost-btn"
+                  onClick={() => {
+                    setError(null);
+                    setConfirmingCancel(true);
+                  }}
+                  type="button"
+                  style={{ background: "transparent", border: 0, color: "var(--danger, #C2410C)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600 }}
+                >
+                  {copy(language, { en: "Cancel registration", zh: "取消报名" })}
+                </button>
+              </div>
+              <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--text-3)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                {copy(language, { en: "Back to event", zh: "返回活动页" })}
+              </a>
+            </footer>
+          </section>
+        ) : null}
+
+        {stage === "cancelled" ? (
+          <section
+            data-reg-cancelled-registration
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 24,
+              boxShadow: "var(--sh-lg)",
+              display: "grid",
+              gap: 14,
+              padding: "30px 34px",
+            }}
+          >
+            <span style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 750, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {copy(language, { en: "Registration cancelled", zh: "报名已取消" })}
+            </span>
+            <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.35rem, 3vw, 1.8rem)", margin: 0 }}>
+              {copy(language, {
+                en: "You are no longer registered for this event.",
+                zh: "你已不再参加这场活动",
+              })}
+            </h2>
+            <p role="status" style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>
+              {copy(language, {
+                en: "No email, organizer message, calendar update, or refund was triggered. You can reactivate the same registration record by answering again.",
+                zh: "本次取消不会发送邮件、联系主办方、修改日历或发起退款。再次回答时会重新激活同一条报名记录，不会创建重复记录。",
+              })}
+            </p>
+            {transcript.length > 0 ? (
+              <details>
+                <summary style={{ color: "var(--text-2)", cursor: "pointer", fontSize: 13.5, fontWeight: 650 }}>
+                  {copy(language, { en: "Review previously saved answers", zh: "查看此前保存的回答" })}
+                </summary>
+                <dl style={{ display: "grid", gap: 8, margin: "12px 0 0" }}>
+                  {transcript.map((turn) => (
+                    <div key={turn.field}>
+                      <dt style={{ color: "var(--text-3)", fontSize: 12 }}>
+                        {fieldLabel(language, turn.field)}
+                      </dt>
+                      <dd style={{ color: "var(--ink)", fontSize: 14, margin: "3px 0 0" }}>
+                        {turn.answer}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
+            ) : null}
+            {error ? (
+              <div className="orbit-alert error" role="alert">
+                {error}
+              </div>
+            ) : null}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <button className="btn btn-primary" onClick={restartInterview} type="button">
+                {copy(language, { en: "Register again", zh: "重新报名" })}
+              </button>
+              <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--text-3)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                {copy(language, { en: "Back to event", zh: "返回活动页" })}
+              </a>
+            </div>
+          </section>
+        ) : null}
+
         {stage === "generating" ? (
           <div
             style={{
@@ -1022,14 +1203,14 @@ export function EventRegistrationWorkspace({
                 {status === "rsvped" ? (
                   <button
                     className="reg-ghost-btn"
-                    disabled={pendingCancel}
-                    onClick={() => void cancelRegistration()}
+                    onClick={() => {
+                      setError(null);
+                      setConfirmingCancel(true);
+                    }}
                     type="button"
                     style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--danger, #C2410C)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
                   >
-                    {pendingCancel
-                      ? copy(language, { en: "Cancelling…", zh: "取消中…" })
-                      : copy(language, { en: "Cancel registration", zh: "取消报名" })}
+                    {copy(language, { en: "Cancel registration", zh: "取消报名" })}
                   </button>
                 ) : null}
               </div>
@@ -1043,6 +1224,88 @@ export function EventRegistrationWorkspace({
                 {error}
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {confirmingCancel && status === "rsvped" ? (
+          <div
+            role="presentation"
+            style={{
+              alignItems: "center",
+              background: "color-mix(in srgb, var(--ink) 38%, transparent)",
+              display: "flex",
+              inset: 0,
+              justifyContent: "center",
+              padding: 20,
+              position: "fixed",
+              zIndex: 120,
+            }}
+          >
+            <section
+              aria-labelledby="event-registration-cancel-title"
+              aria-modal="true"
+              role="alertdialog"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 18,
+                boxShadow: "var(--sh-pop)",
+                display: "grid",
+                gap: 14,
+                maxWidth: 460,
+                padding: 24,
+                width: "100%",
+              }}
+            >
+              <h2
+                id="event-registration-cancel-title"
+                style={{ color: "var(--ink)", fontSize: 21, margin: 0 }}
+              >
+                {copy(language, {
+                  en: "Cancel this event registration?",
+                  zh: "确认取消这次活动报名？",
+                })}
+              </h2>
+              <p style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>
+                {copy(language, {
+                  en: "You will leave attendee matching. Your saved answers remain attached to this registration so you can reactivate the same record later.",
+                  zh: "取消后你将退出本场活动撮合。已保存的回答仍归属于这条报名记录，之后可重新激活同一记录。",
+                })}
+              </p>
+              {error ? (
+                <div className="orbit-alert error" role="alert">
+                  {error}
+                </div>
+              ) : null}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  autoFocus
+                  className="btn btn-secondary"
+                  disabled={pendingCancel}
+                  onClick={() => {
+                    setError(null);
+                    setConfirmingCancel(false);
+                  }}
+                  type="button"
+                >
+                  {copy(language, { en: "Keep registration", zh: "保留报名" })}
+                </button>
+                <button
+                  className="btn"
+                  disabled={pendingCancel}
+                  onClick={() => void cancelRegistration()}
+                  type="button"
+                  style={{ background: "var(--danger, #C2410C)", color: "white" }}
+                >
+                  {pendingCancel
+                    ? copy(language, { en: "Cancelling…", zh: "取消中…" })
+                    : copy(language, {
+                        en: "Confirm cancellation",
+                        zh: "确认取消报名",
+                      })}
+                </button>
+              </div>
+            </section>
           </div>
         ) : null}
 

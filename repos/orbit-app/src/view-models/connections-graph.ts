@@ -526,7 +526,7 @@ export function buildConnectionProfilePreviewRequest(
         context: `${name}目前适合从关系背景、互惠价值和下一步动作三个维度复核。`,
         mutualValue: {
           contactReceives: `${name}可以获得有明确上下文的资源、介绍或业务线索。`,
-          orbitUserReceives: `小雨可以通过${name}的经验、渠道或需求判断下一步合作机会。`,
+          orbitUserReceives: `你可以通过${name}的经验、渠道或需求判断下一步合作机会。`,
           valueTypes: ["commercial_opportunity", "knowledge_exchange"]
         },
         nextAction: {
@@ -570,7 +570,7 @@ export function connectionProfileToView(data: unknown): ConnectionProfilePreview
   );
   const orbitUserReceives = userFacingText(
     stringField(mutualValue ?? {}, "orbitUserReceives"),
-    "小雨可以获得更清晰的合作机会和关系判断。"
+    "你可以获得更清晰的合作机会和关系判断。"
   );
   const valueTypeText = valueTypes.map(valueTypeLabel).join("、");
 
@@ -582,7 +582,7 @@ export function connectionProfileToView(data: unknown): ConnectionProfilePreview
     kind: "ready",
     mutualValues: [
       { label: "对方获得", value: contactReceives },
-      { label: "小雨获得", value: orbitUserReceives },
+      { label: "你获得", value: orbitUserReceives },
       { label: "价值类型", value: valueTypeText || "待判断" }
     ],
     nextActionDetail: userFacingText(

@@ -243,6 +243,14 @@ function evidenceFor(
 }
 
 function statusFor(contact: ContactDTO): ContactDetailStatusOption {
+  if (contact.stage === "captured") {
+    return "needs_follow_up";
+  }
+
+  if (contact.stage === "reviewing") {
+    return "active";
+  }
+
   if (
     contact.stage === "active" ||
     contact.stage === "needs_follow_up" ||
@@ -259,10 +267,12 @@ function tagsFor(input: {
   contact: ContactDTO;
   connection: ConnectionDTO | null;
 }): ContactDetailTagOption[] {
-  const sourceTag =
+  const sourceTag: ContactDetailTagOption =
     input.contact.source.type === "event_import"
       ? "source:event-import"
-      : "source:external-import";
+      : input.contact.source.type === "business_card_ocr"
+        ? "source:business-card"
+        : "source:external-import";
   const text = [
     input.contact.profileSnippet,
     input.connection?.summary,

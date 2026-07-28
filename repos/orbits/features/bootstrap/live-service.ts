@@ -347,13 +347,10 @@ function payloadFor(
       ? {
           profileId: profile.id,
           displayName: profile.displayName,
-          headline: profile.headline ?? profile.role ?? "Relationship operator",
-          relationshipGoal:
-            profile.relationshipGoal ??
-            "Use remote live storage for source-backed relationship workflows.",
-          homeMarket: profile.homeMarket ?? profile.timezone ?? "Live storage",
-          preferredFollowUpWindow:
-            profile.preferredFollowUpWindow ?? "within 48 hours",
+          headline: profile.headline ?? profile.role ?? "",
+          relationshipGoal: profile.relationshipGoal ?? "",
+          homeMarket: profile.homeMarket ?? profile.timezone ?? "",
+          preferredFollowUpWindow: profile.preferredFollowUpWindow ?? "",
           evidenceIds: graph.evidenceIds,
           sourceRefs: [
             sourceRef(

@@ -140,7 +140,7 @@ test("permissionStatesToView keeps empty permission states useful", async () => 
   });
 
   assert.deepEqual(view, {
-    canRequestCalendar: false,
+    canRequestCalendar: true,
     emptyText: "还没有需要处理的权限。",
     nextAction: "先从活动准备、跟进或名片录入里选择一个要继续的任务。",
     permissions: [],

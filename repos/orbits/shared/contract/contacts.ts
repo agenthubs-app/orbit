@@ -12,6 +12,7 @@ export type ContactTagFilterCode =
   | "event:climate-founders-dinner"
   | "topic:storage-pilots"
   | "priority:warm-follow-up"
+  | "source:business-card"
   | "source:external-import"
   | "topic:community"
   | "topic:venture-ecosystem"

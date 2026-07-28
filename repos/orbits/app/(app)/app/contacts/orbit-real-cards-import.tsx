@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import type { BusinessCardCaptureAvailability } from "../../../../features/acquisition/business-card-capture-availability";
 import { AccountTopNav } from "../orbit-account-shell";
 import { CrmSidebar as SharedCrmSidebar } from "./orbit-crm-sidebar";
 import { OrbitCardsInteractions } from "./orbit-cards-interactions";
@@ -134,38 +135,50 @@ function Sidebar({ t }: { t: Translate }) {
 function SourceCard({
   source,
   selected,
+  businessCardAvailability,
   onSelect,
   t,
 }: {
   source: (typeof SOURCES)[number];
   selected: boolean;
+  businessCardAvailability: BusinessCardCaptureAvailability;
   onSelect: () => void;
   t: Translate;
 }) {
-  const available = source.key === "scan";
+  const available =
+    source.key === "scan" && businessCardAvailability.available;
+  const scanUnavailable = source.key === "scan" && !available;
+  const unavailableTitle = scanUnavailable
+    ? t({
+        en: "Cloud business-card recognition is not configured for this environment.",
+        zh: "当前环境尚未配置云端名片识别。",
+      })
+    : t({
+        en: "This source is not connected in the current environment.",
+        zh: "当前环境尚未连接这个来源。",
+      });
 
   return (
     <button
       aria-disabled={!available}
       className={`card card-hover nc-source-card${selected ? " is-selected" : ""}`}
       disabled={!available}
-      onClick={onSelect}
-      title={
-        available
-          ? undefined
-          : t({
-              en: "This source is not connected in the current environment.",
-              zh: "当前环境尚未连接这个来源。",
-            })
-      }
+      onClick={available ? onSelect : undefined}
+      title={available ? undefined : unavailableTitle}
       type="button"
     >
       <span className={`nc-src-tile ${source.tile}`}><Icon name={source.icon} size={20} /></span>
       <span style={{ minWidth: 0, textAlign: "left" }}>
         <span style={{ alignItems: "center", display: "flex", gap: 8 }}>
           <span className="h-section" style={{ fontSize: 15 }}>{t(source.title)}</span>
-          {source.badge ? <span className="nc-src nc-src-scan">{t(source.badge)}</span> : null}
-          {!available ? <span className="nc-src nc-src-contact">{t({ en: "Not connected", zh: "未连接" })}</span> : null}
+          {source.badge && available ? <span className="nc-src nc-src-scan">{t(source.badge)}</span> : null}
+          {!available ? (
+            <span className="nc-src nc-src-contact">
+              {scanUnavailable
+                ? t({ en: "Unavailable", zh: "不可用" })
+                : t({ en: "Not connected", zh: "未连接" })}
+            </span>
+          ) : null}
         </span>
         <span className="nc-source-desc">{t(source.desc)}</span>
         <span className="nc-source-hint">
@@ -177,7 +190,11 @@ function SourceCard({
   );
 }
 
-export function OrbitRealCardsImport() {
+export function OrbitRealCardsImport({
+  businessCardAvailability,
+}: {
+  businessCardAvailability: BusinessCardCaptureAvailability;
+}) {
   const { t } = useOrbitLanguage();
   const [selectedSource, setSelectedSource] = useState("scan");
 
@@ -211,6 +228,7 @@ export function OrbitRealCardsImport() {
 
                 {SOURCES.map((source) => (
                   <SourceCard
+                    businessCardAvailability={businessCardAvailability}
                     key={source.key}
                     onSelect={() => setSelectedSource(source.key)}
                     selected={selectedSource === source.key}
@@ -229,7 +247,9 @@ export function OrbitRealCardsImport() {
               </section>
 
               {/* RIGHT · real business-card capture and confirmation flow */}
-              <BusinessCardCaptureWorkspace />
+              <BusinessCardCaptureWorkspace
+                availability={businessCardAvailability}
+              />
             </div>
           </div>
         </div>
@@ -239,14 +259,16 @@ export function OrbitRealCardsImport() {
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", gap: 10, padding: "12px 18px" }}>
-          <a aria-label={t({ en: "Back", zh: "返回" })} href="/app/contacts/new" style={{ color: "var(--text-2)", display: "inline-flex" }}>
+          <a aria-label={t({ en: "Back", zh: "返回" })} href="/app/contacts" style={{ color: "var(--text-2)", display: "inline-flex" }}>
             <Icon name="chevL" size={20} />
           </a>
           <div style={{ color: "var(--ink)", fontSize: 16, fontWeight: 600 }}>{t({ en: "Card review", zh: "名片复核" })}</div>
         </div>
 
         <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 40px" }}>
-          <BusinessCardCaptureWorkspace />
+          <BusinessCardCaptureWorkspace
+            availability={businessCardAvailability}
+          />
 
           <hr className="nc-divider" style={{ margin: "20px 0 14px" }} />
           <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
@@ -255,14 +277,23 @@ export function OrbitRealCardsImport() {
           </div>
           <div className="nc-m-sources">
             {SOURCES.filter((source) => source.key !== "scan").map((source) => (
-              <a className="card card-hover" href="/app/contacts/new" key={source.key}>
+              <div
+                aria-disabled="true"
+                className="card"
+                key={source.key}
+                title={t({
+                  en: "This source is not connected in the current environment.",
+                  zh: "当前环境尚未连接这个来源。",
+                })}
+              >
                 <span className={`nc-src-tile ${source.tile}`}><Icon name={source.icon} size={17} /></span>
                 <span className="grow" style={{ minWidth: 0 }}>
                   <span style={{ color: "var(--ink)", display: "block", fontSize: 14, fontWeight: 600 }}>{t(source.title)}</span>
                   <span className="nc-source-desc">{t(source.desc)}</span>
+                  <span className="nc-source-desc">{t({ en: "Not connected", zh: "未连接" })}</span>
                 </span>
                 <Icon name="chevR" size={18} color="var(--text-4)" />
-              </a>
+              </div>
             ))}
           </div>
         </div>
@@ -335,7 +366,7 @@ const LOCAL_STYLE = `
 
 [data-orbit-real-page] .nc-m-scanned { display: grid; grid-template-columns: 108px 1fr; gap: 12px; align-items: center; margin-bottom: 14px; }
 [data-orbit-real-page] .nc-m-review .nc-rev { padding: 10px 2px; }
-[data-orbit-real-page] .nc-m-sources a { display: grid; grid-template-columns: 34px 1fr auto; gap: 11px; align-items: center; padding: 11px 12px; text-decoration: none; color: inherit; }
-[data-orbit-real-page] .nc-m-sources a + a { margin-top: 8px; }
+[data-orbit-real-page] .nc-m-sources > div { color: inherit; display: grid; font: inherit; grid-template-columns: 34px 1fr auto; gap: 11px; align-items: center; opacity: .66; padding: 11px 12px; text-align: left; width: 100%; }
+[data-orbit-real-page] .nc-m-sources > div + div { margin-top: 8px; }
 [data-orbit-real-page] .nc-m-sources .nc-src-tile { width: 34px; height: 34px; }
 `;

@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
 } from "react";
 
+import type { BusinessCardCaptureAvailability } from "../../../../features/acquisition/business-card-capture-availability";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
 
@@ -304,7 +305,11 @@ function Field({
   );
 }
 
-export function BusinessCardCaptureWorkspace() {
+export function BusinessCardCaptureWorkspace({
+  availability,
+}: {
+  availability: BusinessCardCaptureAvailability;
+}) {
   const { t } = useOrbitLanguage();
   const [state, dispatch] = useReducer(
     businessCardCaptureReducer,
@@ -321,6 +326,71 @@ export function BusinessCardCaptureWorkspace() {
     },
     [],
   );
+
+  if (!availability.available) {
+    const missingCapability =
+      availability.reason === "live_mode_required"
+        ? t({
+            en: "The durable live capability is not active.",
+            zh: "当前未启用可持久化的 live 能力。",
+          })
+        : availability.reason === "contact_storage_unconfigured"
+          ? t({
+              en: "The private contact store is not configured.",
+              zh: "当前未配置私有联系人存储。",
+            })
+          : t({
+              en: "The cloud OCR provider is not configured.",
+              zh: "当前未配置云端 OCR 服务。",
+            });
+
+    return (
+      <section
+        className="bcc-shell"
+        data-business-card-capture="unavailable"
+      >
+        <style>{CAPTURE_STYLE}</style>
+        <div className="bcc-unavailable">
+          <span><Icon name="lock" size={22} /></span>
+          <div>
+            <div className="bcc-kicker">
+              {t({
+                en: "CAPABILITY UNAVAILABLE",
+                zh: "能力当前不可用",
+              })}
+            </div>
+            <h2>
+              {t({
+                en: "Business-card recognition is not connected",
+                zh: "名片识别尚未连接",
+              })}
+            </h2>
+            <p>{missingCapability}</p>
+            <p>
+              {t({
+                en: "No image will be uploaded and no contact will be created in this state.",
+                zh: "在此状态下不会上传图片，也不会创建联系人。",
+              })}
+            </p>
+            <details>
+              <summary>
+                {t({
+                  en: "Workspace administrator setup",
+                  zh: "工作区管理员配置",
+                })}
+              </summary>
+              <code>ORBIT_MODULE_MODE=live</code>
+              <code>GEMINI_API_KEY or GOOGLE_API_KEY</code>
+              <code>ORBIT_EVENT_DATABASE_URL or ORBIT_LIVE_DATABASE_URL</code>
+            </details>
+            <a className="btn btn-ghost" href="/app/contacts">
+              {t({ en: "Back to contacts", zh: "返回人脉" })}
+            </a>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -543,7 +613,7 @@ export function BusinessCardCaptureWorkspace() {
     return (
       <section className="bcc-shell" data-business-card-capture="idle">
         <style>{CAPTURE_STYLE}</style>
-        <div className="bcc-kicker">{t({ en: "PRIVATE CAPTURE · BUSINESS CARD", zh: "本地采集 · 名片" })}</div>
+        <div className="bcc-kicker">{t({ en: "PRIVATE CAPTURE · CLOUD OCR", zh: "私密采集 · 云端识别" })}</div>
         <h2>{t({ en: "Turn a card into a relationship", zh: "把一张名片，变成一段可信关系" })}</h2>
         <p className="bcc-lede">
           {t({
@@ -949,6 +1019,7 @@ const CAPTURE_STYLE = `
 .bcc-error-note { background: var(--amber-soft); border-radius: 11px; color: var(--amber-text); font-size: 12px; padding: 10px; }
 .bcc-send-boundary { color: var(--text-4); font-family: var(--mono); font-size: 9px; }
 .bcc-failure { align-items: center; display: flex; flex-direction: column; min-height: 320px; justify-content: center; text-align: center; }.bcc-failure > svg { color: var(--amber); }.bcc-failure p { color: var(--text-2); max-width: 480px; }
+.bcc-unavailable { align-items: flex-start; display: flex; gap: 14px; min-height: 320px; padding: 28px 8px; }.bcc-unavailable > span { background: var(--amber-soft); border-radius: 50%; color: var(--amber-text); display: grid; flex: 0 0 44px; height: 44px; place-items: center; }.bcc-unavailable p { color: var(--text-2); line-height: 1.6; margin: 5px 0; max-width: 620px; }.bcc-unavailable details { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; margin: 18px 0; padding: 11px 12px; }.bcc-unavailable summary { color: var(--text-2); cursor: pointer; font-size: 13px; font-weight: 700; }.bcc-unavailable code { color: var(--text-3); display: block; font-size: 11px; margin-top: 8px; overflow-wrap: anywhere; }
 @keyframes bcc-pulse { 0%,100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.25); } }
 @media (max-width: 840px) { .bcc-rail { grid-template-columns: 1fr; }.bcc-card-evidence { order: 0; }.bcc-fields { order: 1; }.bcc-field-pair { grid-template-columns: 1fr; }.bcc-confirm { align-items: stretch; flex-direction: column; }.bcc-confirm .btn { width: 100%; }.bcc-shell { border-radius: 16px; padding: 16px; }.bcc-dropzone { min-height: 250px; } }
 @media (prefers-reduced-motion: reduce) { .bcc-processing span { animation: none; } }

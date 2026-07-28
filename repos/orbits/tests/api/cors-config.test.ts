@@ -43,4 +43,33 @@ test("API routes expose CORS headers for Expo web clients", async () => {
     headerMap.get("Access-Control-Allow-Headers") ?? "",
     /\bContent-Type\b/,
   );
+  assert.equal(headerMap.has("Access-Control-Allow-Credentials"), false);
+});
+
+test("API routes enable browser credentials only for an explicit Expo origin", async () => {
+  const previousOrigin = process.env.ORBIT_API_CORS_ORIGIN;
+  process.env.ORBIT_API_CORS_ORIGIN = "http://localhost:8081";
+  delete require.cache[require.resolve("../../next.config.js")];
+
+  try {
+    const credentialedConfig = require("../../next.config.js") as OrbitNextConfig;
+    const headerRules = await credentialedConfig.headers?.();
+    const apiRule = headerRules?.find((rule) => rule.source === "/api/:path*");
+    const headerMap = new Map(
+      apiRule?.headers.map((header) => [header.key, header.value]) ?? [],
+    );
+
+    assert.equal(
+      headerMap.get("Access-Control-Allow-Origin"),
+      "http://localhost:8081",
+    );
+    assert.equal(headerMap.get("Access-Control-Allow-Credentials"), "true");
+  } finally {
+    if (previousOrigin === undefined) {
+      delete process.env.ORBIT_API_CORS_ORIGIN;
+    } else {
+      process.env.ORBIT_API_CORS_ORIGIN = previousOrigin;
+    }
+    delete require.cache[require.resolve("../../next.config.js")];
+  }
 });

@@ -79,6 +79,8 @@ test("/app/contacts/new renders the action workspace without preflight side effe
   assert.match(pageSource, /session\?\.user\?\.id/);
   assert.match(pageSource, /redirect\("\/app\/account\/login\?next=/);
   assert.match(pageSource, /OrbitRealCardsImport/);
+  assert.match(pageSource, /resolveBusinessCardCaptureAvailability/);
+  assert.match(pageSource, /businessCardAvailability=/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
   assert.doesNotMatch(
     pageSource,
@@ -86,4 +88,9 @@ test("/app/contacts/new renders the action workspace without preflight side effe
   );
   assert.match(importWorkspaceSource, /BusinessCardCaptureWorkspace/);
   assert.match(importWorkspaceSource, /Not connected|未连接/);
+  assert.match(importWorkspaceSource, /href="\/app\/contacts"/);
+  assert.doesNotMatch(
+    importWorkspaceSource,
+    /className="card card-hover" href="\/app\/contacts\/new"/,
+  );
 });

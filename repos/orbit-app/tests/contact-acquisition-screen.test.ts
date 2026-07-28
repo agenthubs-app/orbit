@@ -35,6 +35,36 @@ test("contact acquisition can scan QR codes with the native camera", () => {
   assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.contacts/u);
 });
 
+test("QR camera permission waits are visible and invalidated by source changes", () => {
+  assert.match(screenSource, /qrPermissionRequestIdRef/u);
+  assert.match(screenSource, /qrPermissionPending/u);
+  assert.match(screenSource, /等待相机权限/u);
+  assert.match(
+    screenSource,
+    /requestId !== qrPermissionRequestIdRef\.current/u
+  );
+  assert.match(screenSource, /onPress=\{\(\) => selectMode\(item\.mode\)\}/u);
+  assert.match(
+    screenSource,
+    /function selectMode[\s\S]*closeQrScanner\(\)[\s\S]*setMode\(nextMode\)/u
+  );
+});
+
+test("source selectors expose their visual selection to assistive technology", () => {
+  assert.match(
+    screenSource,
+    /accessibilityRole="tablist"[\s\S]*accessibilityRole="tab"[\s\S]*accessibilityState=\{\{ selected \}\}[\s\S]*aria-selected=\{selected\}/u
+  );
+  assert.match(
+    screenSource,
+    /function SourceChip[\s\S]*accessibilityRole="radio"[\s\S]*accessibilityState=\{\{ checked: active \}\}[\s\S]*aria-checked=\{active\}/u
+  );
+  assert.equal(
+    screenSource.match(/accessibilityRole="radiogroup"/gu)?.length,
+    2
+  );
+});
+
 test("contact acquisition keeps QR scan overlay warning-free on current React Native", () => {
   assert.doesNotMatch(screenSource, /<View pointerEvents=/u);
   assert.match(screenSource, /qrScanFrame:[\s\S]*pointerEvents: "none"/u);

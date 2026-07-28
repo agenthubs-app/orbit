@@ -21,13 +21,27 @@ function initialFor(value: string): string {
 function sourceFor(
   contact: AppContactListItemViewModel,
 ): OrbitContactView["source"] {
-  const source = contact.sourceLabel.toLowerCase();
-
-  if (source.includes("scan") || source.includes("card") || source.includes("ocr")) {
+  if (contact.sourceType === "business_card_ocr") {
     return "scan";
   }
 
-  if (source.includes("manual")) {
+  if (contact.sourceType === "event_import") {
+    return "event";
+  }
+
+  if (contact.sourceType === "external_contacts") {
+    return "contact";
+  }
+
+  if (contact.sourceType === "qr_scan") {
+    return "qr";
+  }
+
+  if (contact.sourceType === "referral") {
+    return "referral";
+  }
+
+  if (contact.sourceType === "manual") {
     return "manual";
   }
 
@@ -51,10 +65,18 @@ function pipelineStatusFor(
 }
 
 function eventIdFor(contact: AppContactListItemViewModel): string {
+  if (contact.sourceType !== "event_import") {
+    return "";
+  }
+
   return `source:${contact.sourceLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "contact"}`;
 }
 
 function strengthFor(contact: AppContactListItemViewModel): OrbitContactStrength {
+  if (contact.relationshipValueLabels.length === 0) {
+    return "unscored";
+  }
+
   const highValue = contact.relationshipValueLabels.some((label) =>
     /commercial|strategic|invest/i.test(label),
   );
@@ -147,7 +169,11 @@ export function contactsRouteToOrbitContactsViewModel(
   model: AppContactsSuccessRouteViewModel,
 ): OrbitContactsViewModel {
   const sourceLabels = Array.from(
-    new Set(model.payload.contacts.map((contact) => contact.sourceLabel)),
+    new Set(
+      model.payload.contacts
+        .filter((contact) => contact.sourceType === "event_import")
+        .map((contact) => contact.sourceLabel),
+    ),
   );
 
   return {

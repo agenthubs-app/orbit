@@ -353,7 +353,7 @@ function cleanEventDisplayText(value: string): string {
 }
 
 function containsImplementationLabel(value: string): boolean {
-  return /\b(source-backed|generated|fixture|fixtures|provider|profile_orbit|source:|evidence:|live storage)\b/i.test(
+  return /\b(source-backed|storage-backed|live-store|generated|fixture|fixtures|provider|profile_orbit|source:|evidence:|live storage)\b/i.test(
     value
   );
 }
@@ -383,9 +383,19 @@ function chineseDisplayText(value: string, fallback: string): string {
 }
 
 function eventTitle(event: Record<string, unknown>): string {
+  const rawTitle = eventField(event, "title") || stringField(event, "name");
+  const preferredTitle = cleanEventDisplayText(preferredChineseSegment(rawTitle));
+
+  if (preferredTitle && segmentLooksChinese(preferredTitle)) {
+    return preferredTitle;
+  }
+
   const sourceLabel = nestedStringField(event, "sourceMetadata", "label");
-  const rawTitle = sourceLabel || eventField(event, "title") || stringField(event, "name");
-  return cleanEventDisplayText(preferredChineseSegment(rawTitle)) || "活动";
+  return (
+    cleanEventDisplayText(preferredChineseSegment(sourceLabel)) ||
+    preferredTitle ||
+    "活动"
+  );
 }
 
 const eventCoverById: Record<string, string> = {
@@ -860,7 +870,7 @@ export function eventDetailToSummary(data: unknown): EventDetailSummary {
     nextAction,
     organizerName:
       userFacingText(stringField(event, "organizer"), "") ||
-      source ||
+      userFacingText(stringField(event, "host"), "") ||
       "主办方待确认",
     participantCountLabel: eventParticipantCountLabel(event),
     preparation,

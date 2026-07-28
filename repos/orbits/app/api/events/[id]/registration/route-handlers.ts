@@ -64,7 +64,7 @@ export function createEventRegistrationRouteHandlers(input: {
 
     const mode = resolveFeatureMode();
     const { id } = await context.params;
-    const event = await loadEventForRegistration(id);
+    const event = await loadEventForRegistration(id, actor.id);
     if (!event) {
       return errorResponse(
         new AppError("NOT_FOUND", "The event could not be found."),
@@ -115,7 +115,7 @@ export function createEventRegistrationRouteHandlers(input: {
 
     const mode = resolveFeatureMode();
     const { id } = await context.params;
-    const event = await loadEventForRegistration(id);
+    const event = await loadEventForRegistration(id, actor.id);
     if (!event) {
       return errorResponse(
         new AppError("NOT_FOUND", "The event could not be found."),

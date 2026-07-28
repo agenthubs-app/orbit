@@ -92,11 +92,19 @@ test("app register route loader returns the real registration model in mock mode
       assert.equal(viewModel.register.event.code, "DEMOEVENT1");
       assert.equal(viewModel.register.event.id, "demo-event-1");
       assert.equal(viewModel.register.event.name, "Climate founders dinner");
-      assert.ok(viewModel.register.industryOptions.length > 0);
-      assert.ok(viewModel.register.profilePreview.name);
-      assert.ok(viewModel.register.topics.length > 0);
+      assert.deepEqual(Object.keys(viewModel.register), ["event"]);
     }
   });
+});
+
+test("legacy register route does not load an unused profile form before redirecting", () => {
+  const routeSource = source(
+    "app/(app)/app/register/compose-app-register-from-previously-approved-mock-first-capabilities/register-route-view-model.ts",
+  );
+
+  assert.doesNotMatch(routeSource, /loadAppProfileRouteViewModel/);
+  assert.doesNotMatch(routeSource, /profileRouteToOrbitProfileViewModel/);
+  assert.doesNotMatch(routeSource, /profilePreview|industryOptions|offeringTags/);
 });
 
 test("/app/register redirects a resolved mock invite to the canonical event registration route", async () => {

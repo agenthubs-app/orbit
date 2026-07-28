@@ -195,13 +195,10 @@ function DraftList({ drafts }: { drafts: readonly MessageDraft[] }) {
                 Provider boundary: {draft.audit.providerBoundary}
               </p>
               <EvidenceChips evidenceIds={draft.evidenceIds} />
-              <button
-                aria-label={`Review source evidence for ${draft.draftId}`}
-                className="secondary-action"
-                type="button"
-              >
-                {draft.audit.verificationAction}
-              </button>
+              <p className="type-caption">
+                Verification instruction:{" "}
+                <code>{draft.audit.verificationAction}</code>
+              </p>
             </div>
           </dd>
         </div>

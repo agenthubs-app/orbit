@@ -20,34 +20,14 @@ export function profileRouteToOrbitProfileViewModel(
   const offering = [...(profile.offering ?? [])];
   const seeking = [...(profile.seeking ?? [])];
   const profileTopics = [...(profile.topics ?? [])];
-  const offeringTags = Array.from(
-    new Set([
-      ...offering,
-      ...profile.preferredIntroChannels,
-    ].filter(Boolean)),
-  );
-  const seekingTags = Array.from(
-    new Set([
-      ...seeking,
-      profile.relationshipGoal,
-      profile.homeMarket,
-      ...profile.targetRelationshipTypes,
-    ].filter(Boolean)),
-  );
-  const topics = Array.from(
-    new Set([
-      ...profileTopics,
-      ...profile.targetRelationshipTypes,
-      profile.homeMarket,
-    ].filter(Boolean)),
-  );
+  const offeringTags = [...offering];
+  const seekingTags = [...seeking];
+  const topics = [...profileTopics];
 
   return {
     industries: Array.from(
       new Set([
         profile.industry ?? "",
-        profile.homeMarket,
-        ...profile.targetRelationshipTypes,
       ].filter(Boolean)),
     ),
     offeringTags,

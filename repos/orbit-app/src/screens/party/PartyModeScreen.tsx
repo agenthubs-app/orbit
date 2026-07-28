@@ -24,7 +24,6 @@ import { MetricPill } from "../../components/MetricPill";
 import { colors, radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
-  DEFAULT_PARTY_EVENT_ID,
   partyModeToView,
   type PartyAgendaItemView,
   type PartyGraphGroupView,
@@ -85,7 +84,49 @@ export function PartyModeScreen({
   const eventId =
     firstParam(params.eventId)?.trim() ||
     firstParam(params.code)?.trim() ||
-    DEFAULT_PARTY_EVENT_ID;
+    null;
+  const copy = screenCopy(variant);
+
+  if (!eventId) {
+    return <PartyEventRequired copy={copy} />;
+  }
+
+  return <PartyEventScreen eventId={eventId} variant={variant} />;
+}
+
+function PartyEventRequired({
+  copy
+}: {
+  copy: { eyebrow: string; title: string };
+}) {
+  const router = useRouter();
+
+  return (
+    <AppScreen eyebrow={copy.eyebrow} title={copy.title}>
+      <EmptyState
+        message="先从活动列表打开一场真实活动，再进入签到、匹配和关系图。"
+        title="尚未选择活动"
+      />
+      <View style={styles.actionGrid}>
+        <ActionButton
+          icon="calendar-outline"
+          label="查看活动"
+          onPress={() => router.push("/events" as Href)}
+          primary
+        />
+      </View>
+    </AppScreen>
+  );
+}
+
+function PartyEventScreen({
+  eventId,
+  variant
+}: {
+  eventId: string;
+  variant: PartyModeVariant;
+}) {
+  const router = useRouter();
   const eventState = useApiResource<unknown>(eventDetailPath(eventId), () => false);
   const attendeeState = useApiResource<unknown>(
     eventAttendeesPath(eventId),
@@ -93,6 +134,10 @@ export function PartyModeScreen({
   );
   const matchState = useApiResource<unknown>(eventMatchesPath(eventId), () => false);
   const copy = screenCopy(variant);
+  const attendeeSourceMissing =
+    (eventState.kind === "success" || eventState.kind === "empty") &&
+    attendeeState.kind === "failure" &&
+    attendeeState.error.code === "NOT_FOUND";
 
   function refresh() {
     eventState.refresh();
@@ -104,6 +149,7 @@ export function PartyModeScreen({
     isUsable(eventState) && isUsable(attendeeState)
       ? partyModeToView({
           attendeesPayload: attendeeState.data,
+          eventId,
           eventPayload: eventState.data,
           matchesPayload: isUsable(matchState) ? matchState.data : {}
         })
@@ -137,7 +183,8 @@ export function PartyModeScreen({
           title="服务器连不上"
         />
       ) : null}
-      {eventState.kind === "failure" || attendeeState.kind === "failure" ? (
+      {eventState.kind === "failure" ||
+      (attendeeState.kind === "failure" && !attendeeSourceMissing) ? (
         <ErrorState
           message={
             eventState.kind === "failure"
@@ -147,6 +194,27 @@ export function PartyModeScreen({
                 : "活动现场暂时打不开。"
           }
         />
+      ) : null}
+      {attendeeSourceMissing ? (
+        <>
+          <EmptyState
+            message="这场活动还没有接入参会者名单或签到数据。当前不会生成通行码、现场匹配或签到结果。"
+            title="现场数据尚未连接"
+          />
+          <View style={styles.actionGrid}>
+            <ActionButton
+              icon="calendar-outline"
+              label="返回活动"
+              onPress={() =>
+                router.push({
+                  params: { id: eventId },
+                  pathname: "/events/[id]"
+                })
+              }
+              primary
+            />
+          </View>
+        </>
       ) : null}
       {party ? (
         <>
@@ -576,7 +644,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     justifyContent: "center",
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },

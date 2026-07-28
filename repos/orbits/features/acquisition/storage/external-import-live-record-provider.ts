@@ -4,6 +4,10 @@ import type {
   RelationshipEvidenceDTO,
 } from "../../../shared/domain/contracts";
 import {
+  EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS,
+  type ExternalContactsImportSourceKind,
+} from "../external-import-contract";
+import {
   isRelationshipStage,
   isSourceType,
 } from "../../../shared/domain/source-types";
@@ -14,11 +18,15 @@ import type {
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
 
+export interface LiveExternalContactPerson extends NetworkPersonDTO {
+  externalSourceKind?: ExternalContactsImportSourceKind;
+}
+
 export interface LiveExternalContactsImportGraph {
   contacts: readonly ContactDTO[];
   evidence: readonly RelationshipEvidenceDTO[];
   generatedAt: string;
-  networkPeople: readonly NetworkPersonDTO[];
+  networkPeople: readonly LiveExternalContactPerson[];
 }
 
 export type LiveExternalContactsImportProviderResult<TResult> =
@@ -127,10 +135,17 @@ function contactFromRecord(
 
 function networkPersonFromRecord(
   record: LiveRecord<Record<string, unknown>>,
-): NetworkPersonDTO | null {
+): LiveExternalContactPerson | null {
   const payload = record.payload;
   const source = sourceReference(payload.source);
   const ids = evidenceIds(payload.evidenceIds);
+  const externalSourceKind =
+    nonEmptyString(payload.externalSourceKind) &&
+    EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS.includes(
+      payload.externalSourceKind as ExternalContactsImportSourceKind,
+    )
+      ? payload.externalSourceKind as ExternalContactsImportSourceKind
+      : undefined;
 
   if (
     !nonEmptyString(payload.id) ||
@@ -161,6 +176,7 @@ function networkPersonFromRecord(
     evidenceIds: ids,
     createdAt: payload.createdAt,
     updatedAt: payload.updatedAt,
+    ...(externalSourceKind ? { externalSourceKind } : {}),
   };
 }
 
@@ -264,7 +280,7 @@ export function createStorageExternalContactsImportProvider({
         networkPeople: personRecords
           .map(networkPersonFromRecord)
           .filter(
-            (person): person is NetworkPersonDTO => person !== null,
+            (person): person is LiveExternalContactPerson => person !== null,
           ),
       };
     },

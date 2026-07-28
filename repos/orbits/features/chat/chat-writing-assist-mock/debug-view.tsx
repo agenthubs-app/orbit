@@ -215,13 +215,10 @@ function AssistList({
                 Provider boundary: {assist.audit.providerBoundary}
               </p>
               <EvidenceChips evidenceIds={assist.evidenceIds} />
-              <button
-                aria-label={`${assist.audit.verificationAction} for ${assist.assistId}`}
-                className="secondary-action"
-                type="button"
-              >
-                {assist.audit.verificationAction}
-              </button>
+              <p className="type-caption">
+                Verification instruction:{" "}
+                <code>{assist.audit.verificationAction}</code>
+              </p>
             </div>
           </dd>
         </div>

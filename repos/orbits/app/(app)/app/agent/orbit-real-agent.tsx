@@ -909,6 +909,7 @@ function AgentHistoryList({
                         style={{ alignItems: "center", display: "flex", flex: 1, minWidth: 0, padding: "4px 0" }}
                       >
                         <input
+                          aria-label={t({ en: "Rename conversation", zh: "重命名对话" })}
                           autoFocus
                           data-orbit-agent-history-rename-input={item.sessionId}
                           onBlur={() => finishRename(item)}
