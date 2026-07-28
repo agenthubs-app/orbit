@@ -2607,6 +2607,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for card-code identity, authenticated entry, question-set presentation, actor propagation, mock/failure query isolation, and no-write opening behavior; this traversal intentionally did not submit answers, while the separate 2026-07-28 case covers persisted registration/cancel/reactivate/offline/two-account behavior; remaining eight-question completion, persona provider failure, other codes, guest return, responsive, keyboard, and assistive traversal remain unverified",
   },
   {
+    id: "web-legacy-register-public-resolver-2026-07-29",
+    target:
+      "Web legacy /app/register compatibility entry → reviewed public code resolution, canonical redirect, and no fixture propagation",
+    testData:
+      "Direct /app/register with no code; demo-event-1 with mode=mock&scenario=failure; reviewed EVTSIGNUP01 with language=en plus the same adversarial controls; authenticated production browser",
+    expected:
+      "The compatibility route must not default to a demo event or call private/mock Event CRUD. It may resolve only an exact reviewed public event ID/code, forward only presentation language, return an honest non-looping empty state for missing/unknown codes, and leave authentication/writes to the canonical registration route.",
+    actual:
+      "Before repair, bare /app/register tried default demo-event-1 through live Event CRUD and failed, while mode=mock resolved the Seed Investor fixture and redirected with mode=mock into its registration interview. After repair, bare and demo-fixture URLs rendered Registration is not ready with no retry loop or fixture title. EVTSIGNUP01 resolved through the same public code algorithm to event_signup_01 and redirected only to /app/events/event_signup_01/register?language=en; mode/scenario were discarded and the canonical page rendered the real 1/8 interview.",
+    evidence:
+      "Authenticated production-browser before/after traversal of three compatibility URLs; focused legacy/canonical registration tests 13/13; exact production build; GitNexus all pre-edit impacts LOW and staged detection LOW with zero execution flows; commit 5a9ff1b5",
+    conclusion:
+      "pass for no-code and unknown-fixture empty boundaries, reviewed public code resolution, canonical internal ID, language-only forwarding, test-control isolation, non-looping recovery, and no compatibility-route writes; guest login return, other reviewed codes, duplicate/array/encoded inputs, cache/proxy behavior, localized English event title, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
     id: "live-business-card-unconfigured-failure-closed-2026-07-28",
     target:
       "Authenticated Web contacts import hub → business-card capability readiness → restricted-state exit",
@@ -3378,7 +3393,7 @@ const AUDIT_REMEDIATIONS = [
     regression:
       "Focused profile/register tests: 14/14 passed; Web full suite: 1315/1315 passed; production build passed.",
     status:
-      "fixed; the canonical /app/events/[id]/register live interaction and persistence chain is now partially runtime-verified under AUDIT-P1-006",
+      "fixed for removing the unused profile/form dependency; the remaining default-demo, Event CRUD, and public query-control boundary was subsequently completed under AUDIT-P1-057; the canonical /app/events/[id]/register persistence chain remains runtime-verified under AUDIT-P1-006",
   },
   {
     id: "AUDIT-P1-006",
@@ -4093,6 +4108,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW upstream impact for loadComposedContactDetailRoute and staged detection MEDIUM across NormalizeScenario, ContactOnlySuccess, and ConnectionIdForContact flows. Focused Contact Detail tests passed 13/13 and the exact production build passed. Browser runtime changed contact_detail_not_found from generic failure plus same-ID retry into a truthful empty state with neutral no-side-effects copy and one contacts-list recovery.",
     status:
       "fixed and runtime-verified for the exercised actor-scoped not-found classification, evidence retention, dead-retry removal, and no-write recovery; Chinese route-copy localization, guest return, other missing IDs, provider/config/actor failure copy, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-057",
+    severity: "P1",
+    rootCause:
+      "The legacy /app/register adapter still defaulted missing input to demo-event-1, accepted public mode/scenario controls, and used Event CRUD to resolve the code. Bare production entry therefore failed through live private-service boundaries, while mode=mock exposed a Seed Investor registration fixture and propagated mode=mock into the canonical URL. This contradicted the earlier narrow-resolver decision recorded under AUDIT-P2-005.",
+    decision:
+      "Expose the registration feature's existing public-catalogue-only ID/code resolver and make the compatibility loader depend solely on it. Accept only code plus presentation language at the HTTP adapter; discard mode/scenario, remove the default demo, return a single Events recovery for missing/unknown codes, and redirect reviewed matches to the canonical internal event ID without test parameters.",
+    files:
+      "repos/orbits/features/events/registration/event-loader.ts; repos/orbits/app/(app)/app/register/compose-app-register-from-previously-approved-mock-first-capabilities/register-route-view-model.ts; repos/orbits/app/(app)/app/register/page.tsx; repos/orbits/tests/pages/app-register-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW impact for AppRegisterPage, loadAppRegisterRouteViewModel, normalizeScenario, and baseRouteState; staged detection was LOW with zero execution flows. Focused legacy and canonical registration tests passed 13/13, and the exact production build passed. Browser runtime changed bare/demo URLs into non-looping empty boundaries and reduced the adversarial reviewed-code redirect to /app/events/event_signup_01/register?language=en before rendering the real interview.",
+    status:
+      "fixed and runtime-verified for the exercised no-code, mock-fixture, and reviewed-code compatibility paths, canonical identity, language-only forwarding, query isolation, and no-write adapter behavior; guest login return, other reviewed codes, duplicate/array/encoded inputs, cache/proxy behavior, English event-title localization, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
