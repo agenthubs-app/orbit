@@ -662,6 +662,70 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-web-all-actions-empty-ledger",
     },
   ],
+  [
+    "web:/app/contacts/dashboard",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-empty-relationship-dashboard-verified",
+      runtimeEvidence: [
+        "the dashboard rendered zero actor-scoped contacts without relationship metrics, recommendations, or fallback identities",
+        "the empty boundary explained that the dashboard would derive from real records only after a contact is added",
+        "添加联系人 opened the existing fail-closed import hub without creating a contact",
+      ],
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-empty-relationship-dashboard",
+    },
+  ],
+  [
+    "web:/app/contacts/graph",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-empty-relationship-graph-verified",
+      runtimeEvidence: [
+        "the graph reported zero contacts and zero events with no node, edge, identity, or relationship claim",
+        "放大 changed the local scale from 100% to 120%",
+        "缩小 restored the local scale to 100%",
+        "the relationship sidebar opened the actor-scoped introduction ledger",
+      ],
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-empty-relationship-graph",
+    },
+  ],
+  [
+    "web:/app/contacts/intros",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-empty-introduction-ledger-and-picker-verified",
+      runtimeEvidence: [
+        "the introduction ledger kept all, draft, and sent counts at zero without deriving history from contacts",
+        "the three zero-count filters each preserved the truthful no-match state",
+        "发起引荐 opened a draft-only composer whose save action stayed disabled",
+        "the first contact picker initially reproduced a blank-search dead end",
+        "after repair the zero-contact picker explained that two source-backed contacts are required and exposed 添加联系人",
+        "添加联系人 opened the fail-closed import hub, while 取消 closed the unchanged composer without a write",
+      ],
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-empty-introduction-ledger-and-picker",
+    },
+  ],
+  [
+    "web:/app/contacts/pipeline",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-empty-read-only-pipeline-verified",
+      runtimeEvidence: [
+        "the pipeline reported zero source-backed contacts",
+        "pending, progressing, and collaborated groups all remained at zero",
+        "the page exposed no synthetic contact, stage mutation, reminder, draft, or follow-up action",
+      ],
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-empty-read-only-pipeline",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -1163,6 +1227,123 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Read-only navigation; no conversation, message, writing assist, summary, extraction, privacy setting, profile, Agent operation, or external record was written.",
       verificationCase: "web-chat-workspace-actor-isolation-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/all-actions|repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx:68",
+    {
+      actualResult:
+        "人脉表盘 opened the actor-scoped relationship dashboard from the empty operation ledger.",
+      testData:
+        "Authenticated audit actor with zero operation-ledger entries and zero contacts",
+      idempotency:
+        "Read-only navigation; no operation, contact, relationship metric, recommendation, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/dashboard|repos/orbits/app/(app)/app/contacts/orbit-real-cards-dashboard.tsx:285",
+    {
+      actualResult:
+        "添加联系人 opened /app/contacts/new, which preserved the explicit unconfigured OCR/import boundary and created no contact.",
+      testData:
+        "Authenticated actor-scoped empty relationship dashboard",
+      idempotency:
+        "Navigation only; no image was uploaded and no contact, draft, signal, relationship metric, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/graph|repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx:68",
+    {
+      actualResult:
+        "引荐记录 opened the actor-scoped zero-introduction ledger from the empty graph.",
+      testData:
+        "Authenticated relationship graph with zero contacts, zero events, zero nodes, and zero edges",
+      idempotency:
+        "Read-only navigation; no graph, contact, introduction, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/graph|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:930",
+    {
+      actualResult:
+        "缩小 restored the local empty-graph scale from 120% to 100%.",
+      testData: "Actor-scoped graph with zero contacts and zero events",
+      idempotency:
+        "Local presentation state only; no graph, contact, event, relationship, preference, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/graph|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:932",
+    {
+      actualResult:
+        "放大 changed the local empty-graph scale from 100% to 120%.",
+      testData: "Actor-scoped graph with zero contacts and zero events",
+      idempotency:
+        "Local presentation state only; no graph, contact, event, relationship, preference, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1132",
+    {
+      actualResult:
+        "选择联系人 opened the first-contact picker without substituting a fixture identity; after repair the zero-contact state named the prerequisite instead of showing a blank search field.",
+      testData:
+        "Authenticated introduction composer with zero actor-scoped contacts",
+      idempotency:
+        "Local modal state only; no contact, introduction draft, message, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1287",
+    {
+      actualResult:
+        "添加联系人 left the repaired picker and opened the fail-closed import hub.",
+      testData:
+        "Repaired introduction picker with zero source-backed contacts",
+      idempotency:
+        "Navigation only; no image was uploaded and no contact, introduction, draft, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1310",
+    {
+      actualResult:
+        "取消 closed the introduction composer and returned to the unchanged zero-entry ledger.",
+      testData: "Open introduction composer with no selected contacts or note",
+      idempotency:
+        "Local modal state only; no introduction, draft, contact, message, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1363",
+    {
+      actualResult:
+        "发起引荐 opened a draft-only composer, left 保存草稿 disabled, and stated that nothing would be sent.",
+      testData:
+        "Authenticated actor with zero contacts and zero stored introduction records",
+      idempotency:
+        "Local modal state only; no introduction, draft, contact, message, notification, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1368",
+    {
+      actualResult:
+        "草稿 0, 已发送 0, and 全部 0 each became the pressed filter in turn while preserving the explicit no-match state and zero counts.",
+      testData:
+        "Actor-scoped introduction ledger with zero all, draft, and sent records",
+      idempotency:
+        "Local filter state only; no introduction, draft, contact, message, or external record was written.",
+      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
     },
   ],
 ]);
@@ -1898,6 +2079,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for the exercised actor-scoped zero-entry ledger and absence of derived controls; populated filters, audit detail, retry/cancel/undo transitions, draft editing, and idempotent readback remain pending real actor operations",
   },
+  {
+    id: "web-relationship-derived-zero-surfaces-2026-07-29",
+    target:
+      "Authenticated Web relationship Dashboard, Graph, Introductions, and Pipeline under one zero-contact actor",
+    testData:
+      "Audit actor with zero contacts, zero graph nodes/edges, zero introductions, zero relationship metrics, and zero pipeline rows",
+    expected:
+      "Every derived surface must preserve zero data without fallback identities or actions; local filters and zoom may change presentation only; the introduction composer must remain draft-only and give a usable prerequisite boundary when no contact can be selected",
+    actual:
+      "Dashboard rendered a real-record prerequisite and its add action opened the fail-closed import hub. Graph stayed at 0 contacts / 0 events while zoom moved 100% → 120% → 100%. Pipeline kept all three groups at zero with no mutation controls. Introductions kept all counts at zero, cycled all filters truthfully, opened a non-sending disabled composer, and initially exposed a blank picker; after repair the picker required two source-backed contacts and linked to the import hub. Cancel returned to the unchanged ledger.",
+    evidence:
+      "Authenticated production browser traversal across four surfaces and ten interactions; Contacts subroute/live tests 11/11; Web lint and Next TypeScript; exact-origin production build",
+    conclusion:
+      "pass for the exercised zero-data dashboard, graph navigation/zoom, introduction filters/composer/picker recovery, and read-only pipeline; populated dashboard metrics, graph nodes/edges, contact detail navigation, introduction creation/readback, and pipeline rows remain pending real actor data",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2400,6 +2596,20 @@ const AUDIT_REMEDIATIONS = [
       "Chat/Agent focused tests 21/21, Web lint, Next TypeScript, and exact-origin production build passed. Runtime changed from more than 40 unrelated conversations with full message/context/summary/privacy data to the actor's empty state; conversation_seed_069 was rejected and Reload preserved the empty state.",
     status:
       "fixed and runtime-verified for the exercised empty actor, legacy conversation ID denial, and recovery navigation; populated post-fix multi-account browser readback remains pending",
+  },
+  {
+    id: "AUDIT-P1-037",
+    severity: "P1",
+    rootCause:
+      "The introduction composer always rendered its search field and mapped contact list, even when the actor had zero contacts. Selecting either contact slot therefore opened an apparently interactive picker with no result, no explanation, and no recovery path.",
+    decision:
+      "Branch the picker on the actor-scoped contact denominator. With zero contacts, hide the meaningless search field, state that two source-backed contacts are required, and link to the fail-closed import hub. With contacts present but no search match, keep a distinct no-match status.",
+    files:
+      "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx; repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts",
+    regression:
+      "Contacts subroute/live tests 11/11, Web lint, Next TypeScript, and exact-origin production build passed. Runtime reproduced the blank picker before repair, then rendered 还没有可选择的联系人, the two-contact prerequisite, and 添加联系人; the recovery link opened the import hub without creating data.",
+    status:
+      "fixed and runtime-verified for the zero-contact picker and recovery link; populated no-search-match copy is source-tested, while successful two-contact selection and draft readback remain pending real actor data",
   },
 ];
 

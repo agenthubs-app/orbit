@@ -63,14 +63,14 @@
 | `web:/app/admin/events` | web | production | `/app/admin/events` | `web:/app/admin` |  | 0 | 9 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/agent` | web | production | `/app/agent` | `web:/app` |  | 2 | 92 | 28 | runtime-partially-verified-web-agent-session-actor-isolation |
 | `web:/app/chat` | web | production | `/app/chat` | `web:/app` |  | 2 | 54 | 12 | runtime-partially-verified-web-chat-workspace-actor-isolation |
-| `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 2 | 93 | 34 | runtime-partially-verified-live-contact-list |
-| `web:/app/contacts/[id]` | web | production | `/app/contacts/[id]` | `web:/app/contacts` | id | 2 | 100 | 30 | runtime-partially-verified-live-contact-detail |
+| `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 2 | 94 | 34 | runtime-partially-verified-live-contact-list |
+| `web:/app/contacts/[id]` | web | production | `/app/contacts/[id]` | `web:/app/contacts` | id | 2 | 101 | 30 | runtime-partially-verified-live-contact-detail |
 | `web:/app/contacts/all-actions` | web | production | `/app/contacts/all-actions` | `web:/app/contacts` |  | 2 | 60 | 10 | runtime-partially-verified-web-all-actions-empty-ledger |
-| `web:/app/contacts/dashboard` | web | production | `/app/contacts/dashboard` | `web:/app/contacts` |  | 2 | 56 | 2 | inventory-complete-runtime-verification-pending |
-| `web:/app/contacts/graph` | web | production | `/app/contacts/graph` | `web:/app/contacts` |  | 2 | 93 | 2 | inventory-complete-runtime-verification-pending |
-| `web:/app/contacts/intros` | web | production | `/app/contacts/intros` | `web:/app/contacts` |  | 2 | 93 | 2 | inventory-complete-runtime-verification-pending |
+| `web:/app/contacts/dashboard` | web | production | `/app/contacts/dashboard` | `web:/app/contacts` |  | 2 | 56 | 3 | runtime-partially-verified-web-empty-relationship-dashboard |
+| `web:/app/contacts/graph` | web | production | `/app/contacts/graph` | `web:/app/contacts` |  | 2 | 94 | 3 | runtime-partially-verified-web-empty-relationship-graph |
+| `web:/app/contacts/intros` | web | production | `/app/contacts/intros` | `web:/app/contacts` |  | 2 | 94 | 3 | runtime-partially-verified-web-empty-introduction-ledger-and-picker |
 | `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 2 | 77 | 4 | runtime-partially-verified-external-capability-restricted |
-| `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 2 | 94 | 2 | inventory-complete-runtime-verification-pending |
+| `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 2 | 95 | 3 | runtime-partially-verified-web-empty-read-only-pipeline |
 | `web:/app/dashboard` | web | production | `/app/dashboard` | `web:/app` |  | 0 | 0 | 8 | inventory-complete-runtime-verification-pending |
 | `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 36 | 28 | runtime-partially-verified-browser-base-state |
 | `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 2 | 84 | 24 | runtime-partially-verified-browser-base-state |
