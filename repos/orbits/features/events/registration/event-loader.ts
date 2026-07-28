@@ -71,6 +71,12 @@ function publicCatalogueEventRecord(eventId: string): EventRecord | null {
     : null;
 }
 
+export function loadPublicEventForRegistration(
+  eventId: string,
+): EventRecord | null {
+  return publicCatalogueEventRecord(eventId.trim());
+}
+
 export async function loadEventForRegistration(
   eventId: string,
   actorId?: string | null,
@@ -84,7 +90,7 @@ export async function loadEventForRegistration(
     return knownEvent;
   }
 
-  const catalogueEvent = publicCatalogueEventRecord(normalizedEventId);
+  const catalogueEvent = loadPublicEventForRegistration(normalizedEventId);
 
   if (catalogueEvent) {
     return catalogueEvent;

@@ -41,7 +41,7 @@ export default async function AppRegisterPage({
 }) {
   const query = await searchParams;
   const routeModel = await loadAppRegisterRouteViewModel({
-    searchParams: query,
+    code: Array.isArray(query.code) ? query.code[0] : query.code,
   });
 
   if (routeModel.state === "success") {
@@ -49,10 +49,8 @@ export default async function AppRegisterPage({
     const language = Array.isArray(query.language)
       ? query.language[0]
       : query.language;
-    const mode = Array.isArray(query.mode) ? query.mode[0] : query.mode;
 
     if (language) destination.set("language", language);
-    if (mode === "mock") destination.set("mode", mode);
 
     const suffix = destination.size > 0 ? `?${destination.toString()}` : "";
     redirect(

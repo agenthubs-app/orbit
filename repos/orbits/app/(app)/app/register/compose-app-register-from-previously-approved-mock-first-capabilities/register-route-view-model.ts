@@ -1,6 +1,5 @@
 import type { EventRecord } from "../../../../../features/events/event-crud-and-import/contract";
-import { resolveEventCrudAndImportService } from "../../../../../features/events/service-factory";
-import type { ModuleMode } from "../../../../../shared/services/module-mode";
+import { loadPublicEventForRegistration } from "../../../../../features/events/registration/event-loader";
 
 export type AppRegisterSearchParams = Record<
   string,
@@ -10,8 +9,6 @@ export type AppRegisterRouteScenario = "empty" | "pending" | "failure";
 
 export interface AppRegisterRouteInput {
   code?: string | null;
-  mode?: ModuleMode | string | null;
-  scenario?: string | null;
   searchParams?: AppRegisterSearchParams;
 }
 
@@ -53,8 +50,6 @@ export type AppRegisterRouteViewModel =
       routeState: AppRegisterRouteStateViewModel;
     };
 
-const defaultRegisterEventId = "demo-event-1";
-
 function readSearchParam(
   searchParams: AppRegisterSearchParams | undefined,
   key: string,
@@ -62,16 +57,6 @@ function readSearchParam(
   const value = searchParams?.[key];
 
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
-}
-
-function normalizeScenario(
-  scenario?: string | null,
-): AppRegisterRouteScenario | null {
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
 }
 
 function compactCodeForEventId(eventId: string): string {
@@ -148,13 +133,17 @@ function baseRouteState(input: {
         recoveryCopy:
           "Open an event with reviewed source context before retrying registration.",
       },
-      {
-        id: "register-retry",
-        href: "/app/register",
-        label: "Retry registration",
-        recoveryCopy:
-          "Retry registration after confirming the event and profile services are configured.",
-      },
+      ...(input.scenario === "empty"
+        ? []
+        : [
+            {
+              id: "register-retry",
+              href: "/app/register",
+              label: "Retry registration",
+              recoveryCopy:
+                "Retry registration after confirming the event and profile services are configured.",
+            },
+          ]),
     ],
     scenario: input.scenario,
   };
@@ -197,45 +186,29 @@ export async function loadAppRegisterRouteViewModel(
   const eventId =
     input.code?.trim() ||
     readSearchParam(searchParams, "code")?.trim() ||
-    defaultRegisterEventId;
-  const mode = input.mode ?? readSearchParam(searchParams, "mode") ?? undefined;
-  const scenario = normalizeScenario(
-    input.scenario ?? readSearchParam(searchParams, "scenario"),
-  );
+    null;
 
-  if (scenario === "empty" || scenario === "pending") {
+  if (!eventId) {
     return {
       state: "route-state",
       routeState: baseRouteState({
-        evidenceIds: [`register-route-${scenario}`],
-        scenario,
+        evidenceIds: ["register-route-code-required"],
+        scenario: "empty",
       }),
     };
   }
 
-  const eventServiceResolution = resolveEventCrudAndImportService(mode);
-
-  if (eventServiceResolution.success === false) {
+  const event = loadPublicEventForRegistration(eventId);
+  if (!event) {
     return eventRouteState({
-      code: eventServiceResolution.error.code,
-      evidenceIds: [eventServiceResolution.error.capabilityId],
-    });
-  }
-
-  const eventResult = await eventServiceResolution.service.getEvent({
-    eventId,
-    scenario,
-  });
-
-  if (eventResult.success === false) {
-    return eventRouteState({
-      code: eventResult.error.code,
-      evidenceIds: eventResult.error.evidenceIds,
+      code: "PUBLIC_REGISTRATION_EVENT_NOT_FOUND",
+      evidenceIds: ["public-catalogue-registration-event-not-found"],
+      scenario: "empty",
     });
   }
 
   return {
     state: "success",
-    register: registerViewModel(eventResult.data.event),
+    register: registerViewModel(event),
   };
 }
