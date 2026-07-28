@@ -260,7 +260,10 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
         />
       ) : null}
 
-      <OrbitEventMatchmaking eventId={event.id} />
+      <OrbitEventMatchmaking
+        eventId={event.id}
+        registrationOpen={event.status !== "ended"}
+      />
 
       {event.about && event.about.length ? (
         <section>

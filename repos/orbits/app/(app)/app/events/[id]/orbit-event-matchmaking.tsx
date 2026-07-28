@@ -269,7 +269,13 @@ function RequestCard({
   );
 }
 
-export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
+export function OrbitEventMatchmaking({
+  eventId,
+  registrationOpen = true,
+}: {
+  eventId: string;
+  registrationOpen?: boolean;
+}) {
   const { t } = useOrbitLanguage();
   const [workspace, setWorkspace] =
     useState<EventMatchmakingWorkspace | null>(null);
@@ -362,11 +368,16 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
           {t({ en: "People worth meeting", zh: "值得认识的人" })}
         </h3>
         <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-          {workspace?.privacyNotice ??
-            t({
-              en: "A small, explainable shortlist. No automatic messages.",
-              zh: "只给少量、可解释的候选，不自动发送消息。",
-            })}
+          {workspace?.state === "registration_required" && !registrationOpen
+            ? t({
+                en: "Ended-event matching is limited to people who registered before it ended. Contact details still require mutual consent.",
+                zh: "会后撮合仅限结束前已确认报名的参与者；联系方式仍需双方同意后才会披露。",
+              })
+            : workspace?.privacyNotice ??
+              t({
+                en: "A small, explainable shortlist. No automatic messages.",
+                zh: "只给少量、可解释的候选，不自动发送消息。",
+              })}
         </p>
       </div>
 
@@ -389,18 +400,25 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
       {workspace?.state === "registration_required" ? (
         <div className="card-flat" style={{ display: "grid", gap: 8, padding: 14 }}>
           <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-            {t({
-              en: "Only confirmed event participants can appear in matching.",
-              zh: "只有已确认报名的活动参与者才能进入撮合。",
-            })}
+            {registrationOpen
+              ? t({
+                  en: "Only confirmed event participants can appear in matching.",
+                  zh: "只有已确认报名的活动参与者才能进入撮合。",
+                })
+              : t({
+                  en: "This event has ended and registration is closed.",
+                  zh: "活动已结束，报名已关闭。",
+                })}
           </p>
-          <a
-            className="btn btn-primary btn-sm"
-            href={`/app/events/${encodeURIComponent(eventId)}/register`}
-            style={{ justifySelf: "start", textDecoration: "none" }}
-          >
-            {t({ en: "Complete registration", zh: "完成报名资料" })}
-          </a>
+          {registrationOpen ? (
+            <a
+              className="btn btn-primary btn-sm"
+              href={`/app/events/${encodeURIComponent(eventId)}/register`}
+              style={{ justifySelf: "start", textDecoration: "none" }}
+            >
+              {t({ en: "Complete registration", zh: "完成报名资料" })}
+            </a>
+          ) : null}
         </div>
       ) : null}
 

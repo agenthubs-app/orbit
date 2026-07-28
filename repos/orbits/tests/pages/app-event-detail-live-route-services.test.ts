@@ -381,3 +381,20 @@ test("event matchmaking returns guests to the exact app event after login", () =
     /encodeURIComponent\(`\/app\/events\/\$\{eventId\}`\)/,
   );
 });
+
+test("ended event matchmaking does not offer a dead registration route", () => {
+  const detailSource = source(
+    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+  );
+  const matchmakingSource = source(
+    "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
+  );
+
+  assert.match(
+    detailSource,
+    /registrationOpen=\{event\.status !== "ended"\}/,
+  );
+  assert.match(matchmakingSource, /会后撮合仅限结束前已确认报名的参与者/);
+  assert.match(matchmakingSource, /活动已结束，报名已关闭/);
+  assert.match(matchmakingSource, /\{registrationOpen \? \(/);
+});
