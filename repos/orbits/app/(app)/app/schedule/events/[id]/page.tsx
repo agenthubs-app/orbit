@@ -10,13 +10,15 @@ import { auth } from "../../../../../../auth";
 import { redirect } from "next/navigation";
 import { loadAppScheduleEventPreviewRouteViewModel } from "./event-preview-route-view-model";
 import { OrbitRealScheduleEvent } from "./orbit-real-schedule-event";
+import { decodeScheduleEventRouteId } from "./schedule-event-route-id";
 
 export default async function AppScheduleEventPreviewPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: routeId } = await params;
+  const id = decodeScheduleEventRouteId(routeId);
   const session = await auth();
   const actorId = session?.user?.id;
   if (!actorId) {

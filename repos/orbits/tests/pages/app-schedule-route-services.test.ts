@@ -279,6 +279,25 @@ test("schedule event preview passes actor identity and never falls back to mock 
   assert.match(pageSource, /redirect\(/);
 });
 
+test("schedule event preview decodes a dynamic event id exactly once at the page boundary", async () => {
+  const { decodeScheduleEventRouteId } = await import(
+    "../../app/(app)/app/schedule/events/[id]/schedule-event-route-id"
+  );
+  const pageSource = source("app/(app)/app/schedule/events/[id]/page.tsx");
+
+  assert.equal(
+    decodeScheduleEventRouteId("event%3Alive-record%3A20260729"),
+    "event:live-record:20260729",
+  );
+  assert.equal(
+    decodeScheduleEventRouteId(" event:live-record:20260729 "),
+    "event:live-record:20260729",
+  );
+  assert.equal(decodeScheduleEventRouteId("%E0%A4%A"), "%E0%A4%A");
+  assert.match(pageSource, /const id = decodeScheduleEventRouteId\(routeId\)/);
+  assert.match(pageSource, /eventId: id/);
+});
+
 test("schedule route states keep Chinese recovery copy for empty, pending, and failure", async () => {
   const scenarios: readonly AppScheduleRouteScenario[] = [
     "empty",
