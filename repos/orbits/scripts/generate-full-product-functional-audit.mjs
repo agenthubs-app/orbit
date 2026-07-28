@@ -758,6 +758,55 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
     },
   ],
   [
+    "web:/app/party",
+    {
+      entryBehavior:
+        "authenticated-browser-source-backed-party-prerequisite-boundary-verified",
+      runtimeEvidence: [
+        "the route without an event ID distinguished a missing event selection from missing people context",
+        "the actor's selected private event was found, while absent attendee and recommendation records rendered Party 尚未就绪 rather than a system failure",
+        "the Chinese boundary stated that no check-in, contact, notification, calendar, AI, or external action would occur",
+        "来源详情 exposed the five missing composed-context evidence records",
+        "返回当前活动 preserved the encoded private event ID and opened its actor-owned detail instead of the unrelated public catalogue",
+      ],
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-party-source-context-boundary",
+    },
+  ],
+  [
+    "web:/app/party/checkin",
+    {
+      entryBehavior:
+        "authenticated-browser-source-backed-party-checkin-prerequisite-boundary-verified",
+      runtimeEvidence: [
+        "the selected actor-owned event resolved before the Check-in surface evaluated its people-context prerequisite",
+        "missing attendee and recommendation records rendered the localized no-write Party prerequisite instead of a check-in control or system failure",
+        "来源详情 exposed the exact missing composed-context evidence",
+        "返回当前活动 preserved the encoded private event ID and opened the same actor-owned detail",
+      ],
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-party-checkin-source-context-boundary",
+    },
+  ],
+  [
+    "web:/app/party/graph",
+    {
+      entryBehavior:
+        "authenticated-browser-source-backed-party-graph-prerequisite-boundary-verified",
+      runtimeEvidence: [
+        "the selected actor-owned event resolved before the Graph surface evaluated its people-context prerequisite",
+        "missing attendee and recommendation records rendered the localized no-write Party prerequisite without inventing nodes, edges, people, or a system failure",
+        "来源详情 exposed the exact missing composed-context evidence",
+        "返回当前活动 preserved the encoded private event ID and opened the same actor-owned detail",
+      ],
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-party-graph-source-context-boundary",
+    },
+  ],
+  [
     "web:/app/schedule",
     {
       entryBehavior:
@@ -1390,6 +1439,78 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Local filter state only; no introduction, draft, contact, message, or external record was written.",
       verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party|repos/orbits/shared/ui/state-view.tsx:217",
+    {
+      actualResult:
+        "来源详情 expanded the selected event's no-people-context boundary and exposed five missing composed-capability evidence records.",
+      testData:
+        "Authenticated Party route with actor-owned event:live-record:20260729 and no attendee, readiness, want-connect, encounter-note, or post-event-review records",
+      idempotency:
+        "Local disclosure state only; no check-in, contact, event, recommendation, notification, calendar, AI, or external record was written.",
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party|repos/orbits/shared/ui/state-view.tsx:249",
+    {
+      actualResult:
+        "返回当前活动 opened /app/events/event%3Alive-record%3A20260729 and rendered the same actor-owned private event detail.",
+      testData:
+        "Authenticated Party prerequisite boundary for event:live-record:20260729",
+      idempotency:
+        "Read-only navigation; no event, check-in, contact, recommendation, notification, calendar, AI, or external record was written.",
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party/checkin|repos/orbits/shared/ui/state-view.tsx:217",
+    {
+      actualResult:
+        "来源详情 expanded the Check-in prerequisite and exposed the same five missing composed-capability evidence records.",
+      testData:
+        "Authenticated Party Check-in route with actor-owned event:live-record:20260729 and no reviewed people context",
+      idempotency:
+        "Local disclosure state only; no check-in, contact, event, recommendation, notification, calendar, AI, or external record was written.",
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party/checkin|repos/orbits/shared/ui/state-view.tsx:249",
+    {
+      actualResult:
+        "返回当前活动 preserved the encoded event ID from Check-in and opened the same actor-owned private event detail.",
+      testData:
+        "Authenticated Party Check-in prerequisite boundary for event:live-record:20260729",
+      idempotency:
+        "Read-only navigation; no check-in, event, contact, recommendation, notification, calendar, AI, or external record was written.",
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party/graph|repos/orbits/shared/ui/state-view.tsx:217",
+    {
+      actualResult:
+        "来源详情 expanded the Graph prerequisite and exposed the same five missing composed-capability evidence records without rendering a synthetic graph.",
+      testData:
+        "Authenticated Party Graph route with actor-owned event:live-record:20260729 and no reviewed people context",
+      idempotency:
+        "Local disclosure state only; no graph, node, edge, contact, event, recommendation, notification, AI, or external record was written.",
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party/graph|repos/orbits/shared/ui/state-view.tsx:249",
+    {
+      actualResult:
+        "返回当前活动 preserved the encoded event ID from Graph and opened the same actor-owned private event detail.",
+      testData:
+        "Authenticated Party Graph prerequisite boundary for event:live-record:20260729",
+      idempotency:
+        "Read-only navigation; no graph, event, contact, recommendation, notification, calendar, AI, or external record was written.",
+      verificationCase: "web-party-source-context-boundaries-2026-07-29",
     },
   ],
 ]);
@@ -2170,6 +2291,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for both compatibility destinations, the day query, the arrangements hash/anchor, and canonical actor-owned destination data; browser history behavior and populated follow-up/task interactions remain owned by the merged Today surface and are not separately duplicated here",
   },
+  {
+    id: "web-party-source-context-boundaries-2026-07-29",
+    target:
+      "Authenticated Web Party, Check-in, and Graph → selected private event with no reviewed people context",
+    testData:
+      "Audit actor's event:live-record:20260729, whose base event exists but whose attendee roster, readiness, want-connect, encounter-note, post-event-review, and recommendation context are absent",
+    expected:
+      "Every Party entry must distinguish a missing event selection from missing people context, classify absent composed records as an empty prerequisite rather than a system failure, perform no Party action, localize the boundary, expose inspectable evidence, and preserve the exact event identity in recovery",
+    actual:
+      "Before repair, the three event-aware entries rendered Party could not load with event_not_found evidence and their recovery link discarded the private event ID into the public catalogue. After repair, all three rendered localized Party 尚未就绪, stated that the selected event exists but its reviewed people context does not, exposed the five evidence records, and returned through the encoded ID to the same actor-owned detail. The no-event Party entry separately stated that no event was selected.",
+    evidence:
+      "Authenticated production browser before/after traversal across Party, Check-in, Graph, all three disclosures, and all three recovery links; focused Event Detail and Party tests 22/22; Web lint; exact-origin production build",
+    conclusion:
+      "pass for event/context distinction, missing-context classification, localized no-write boundary, evidence disclosure, and exact recovery on all three routes; the remaining 77 success-state interactions per route require a real actor-owned event with reviewed attendee/recommendation data and remain explicitly unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2700,6 +2836,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Dashboard tests 10/10, Web lint, and exact-origin production build passed. Authenticated runtime changed the Party redirect into the canonical relationship dashboard; the empty actor rendered all counts at zero, coverage 0, no fabricated current goal, and localized no-data next-action guidance.",
     status:
       "fixed and runtime-verified for route identity, the exercised empty actor, zero denominator, and no-data presentation; populated multi-account browser isolation, metric calculations, opportunity navigation, and follow-up readback remain pending real actor data",
+  },
+  {
+    id: "AUDIT-P1-039",
+    severity: "P1",
+    rootCause:
+      "The Event Detail aggregate treated every child capability's EVENT_NOT_FOUND result as a route failure even after the canonical base event had loaded successfully. Event Detail masked that semantic error with a list fallback, but Party, Check-in, and Graph consumed the aggregate directly and presented missing attendee/recommendation records as Party could not load. Their route-state copy was English in the Chinese product, conflated no event selection with a selected event lacking people context, and reduced the selected event to a boolean, so recovery discarded its ID and opened the unrelated public catalogue.",
+    decision:
+      "Classify only the six explicit composed-context EVENT_NOT_FOUND codes as an empty boundary after base-event success; preserve unconfigured storage, controlled failures, and base-event absence as failures. Carry the resolved language and exact event ID through the Party route model, distinguish no selection from missing reviewed people context, localize the no-write boundary, and encode the event ID into a Return to current event recovery action.",
+    files:
+      "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts; repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts; repos/orbits/app/(app)/app/party/page.tsx; repos/orbits/app/(app)/app/party/checkin/page.tsx; repos/orbits/app/(app)/app/party/graph/page.tsx; focused Event Detail and Party tests",
+    regression:
+      "Focused Event Detail and Party tests 22/22, Web lint, and exact-origin production build passed. Production runtime changed all three real-event entries from English Party could not load to localized Party 尚未就绪, kept the no-event state distinct, exposed the missing-context evidence, and returned each route to /app/events/event%3Alive-record%3A20260729.",
+    status:
+      "fixed and runtime-verified for missing selection, missing composed context, Chinese boundary, evidence disclosure, and exact recovery across Party, Check-in, and Graph; populated Party success-state controls remain pending real reviewed attendee/recommendation records",
   },
 ];
 

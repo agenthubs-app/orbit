@@ -72,17 +72,17 @@
 | `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 2 | 77 | 4 | runtime-partially-verified-external-capability-restricted |
 | `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 2 | 95 | 3 | runtime-partially-verified-web-empty-read-only-pipeline |
 | `web:/app/dashboard` | web | production | `/app/dashboard` | `web:/app` |  | 2 | 51 | 9 | runtime-partially-verified-web-actor-scoped-relationship-dashboard |
-| `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 36 | 28 | runtime-partially-verified-browser-base-state |
-| `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 2 | 84 | 24 | runtime-partially-verified-browser-base-state |
+| `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 36 | 29 | runtime-partially-verified-browser-base-state |
+| `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 2 | 84 | 25 | runtime-partially-verified-browser-base-state |
 | `web:/app/events/[id]/register` | web | production | `/app/events/[id]/register` | `web:/app/events/[id]` | id | 1 | 30 | 5 | runtime-partially-verified-live-event-registration |
 | `web:/app/followups` | web | production | `/app/followups` | `web:/app` |  | 0 | 0 | 8 | runtime-partially-verified-web-followups-today-compatibility-route |
 | `web:/app/home` | web | production | `/app/home` | `web:/app` |  | 2 | 65 | 8 | runtime-partially-verified-web-actor-scoped-home-event |
 | `web:/app/home/events` | web | production | `/app/home/events` | `web:/app/home` |  | 2 | 65 | 4 | runtime-partially-verified-web-home-events-filter-and-detail |
 | `web:/app/login-admin` | web | production | `/app/login-admin` | `web:/app` |  | 0 | 5 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/o/[slug]` | web | production | `/app/o/[slug]` | `web:/app` | slug | 0 | 24 | 2 | runtime-partially-verified-browser-base-state |
-| `web:/app/party` | web | production | `/app/party` | `web:/app` |  | 2 | 79 | 5 | inventory-complete-runtime-verification-pending |
-| `web:/app/party/checkin` | web | production | `/app/party/checkin` | `web:/app/party` |  | 2 | 79 | 4 | inventory-complete-runtime-verification-pending |
-| `web:/app/party/graph` | web | production | `/app/party/graph` | `web:/app/party` |  | 2 | 79 | 3 | inventory-complete-runtime-verification-pending |
+| `web:/app/party` | web | production | `/app/party` | `web:/app` |  | 2 | 79 | 6 | runtime-partially-verified-web-party-source-context-boundary |
+| `web:/app/party/checkin` | web | production | `/app/party/checkin` | `web:/app/party` |  | 2 | 79 | 5 | runtime-partially-verified-web-party-checkin-source-context-boundary |
+| `web:/app/party/graph` | web | production | `/app/party/graph` | `web:/app/party` |  | 2 | 79 | 4 | runtime-partially-verified-web-party-graph-source-context-boundary |
 | `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 11 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 2 | 69 | 8 | runtime-partially-verified-live-profile-persistence |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 4 | 3 | runtime-partially-verified-browser-base-state |

@@ -164,8 +164,8 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
 
   assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 89);
-  assert.equal(inventory.summary.interactionsRuntimeVerified, 67);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 92);
+  assert.equal(inventory.summary.interactionsRuntimeVerified, 73);
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/events/[id]/register",
@@ -243,6 +243,26 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
     )?.verificationConclusion,
     "runtime-partially-verified-web-schedule-today-compatibility-route",
   );
+  for (const [surfaceId, verificationConclusion] of [
+    [
+      "web:/app/party",
+      "runtime-partially-verified-web-party-source-context-boundary",
+    ],
+    [
+      "web:/app/party/checkin",
+      "runtime-partially-verified-web-party-checkin-source-context-boundary",
+    ],
+    [
+      "web:/app/party/graph",
+      "runtime-partially-verified-web-party-graph-source-context-boundary",
+    ],
+  ] as const) {
+    assert.equal(
+      inventory.surfaces.find((surface) => surface.surfaceId === surfaceId)
+        ?.verificationConclusion,
+      verificationConclusion,
+    );
+  }
   for (const [surfaceId, verificationConclusion] of [
     [
       "mobile:/ai",
