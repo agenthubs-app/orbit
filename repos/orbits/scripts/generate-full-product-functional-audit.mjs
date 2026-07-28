@@ -2637,6 +2637,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for the exercised formal write, list, same-name search, detail navigation, refresh, source semantics, idempotency, and two-account isolation cases; responsive, keyboard, assistive-technology, connection-enriched detail, and service-failure states remain pending",
   },
   {
+    id: "web-contact-detail-query-isolation-2026-07-29",
+    target:
+      "Authenticated Web private Contact Detail untrusted mode/scenario/action parameters → actor-scoped live-only boundary",
+    testData:
+      "Current audit actor with no matching demo-contact-1 record; /app/contacts/demo-contact-1?mode=mock before repair and mode=mock&scenario=failure&action=prepare-follow-up after repair; Chinese locale; exact production build",
+    expected:
+      "A private contact route must resolve only the authenticated actor's live contact graph. Public query values must not select mock identity data, force fixture states, or execute an action branch during GET rendering; a missing actor-owned contact must expose no fallback person or relationship.",
+    actual:
+      "Before repair, mode=mock rendered the full Kenji Watanabe fixture despite the actor having no matching contact: Aster Grid role, relationship background, bio, topics, conversation prompts, recent interaction, tags, bidirectional value, timeline, evidence IDs, next step, and draft-email control. After repair, the strongest combined query returned an actor-scoped boundary whose expanded source evidence was evidence:contact_detail_not_found. No Kenji identity, company, profile, contact field, enrichment, timeline, evidence detail, draft, message, notification, AI, or outside-provider result appeared. The boundary currently labels not-found as could not load; that separate semantic defect remains open for the next repair.",
+    evidence:
+      "Authenticated production-browser before/after DOM and source-details expansion; source trace from AppContactDetailPage query parameters into mode/scenario/action loader inputs; 16/16 focused live-detail, auth, mock-contract, and visual tests; exact production build; GitNexus page/reader impacts LOW and no staged graph changes; commit e87f35b5",
+    conclusion:
+      "pass for blocking the exercised authenticated mock identity leak, scenario injection, and GET action branch while preserving actor-scoped live lookup and no-write behavior; not-found classification remains incorrect, and guest return, valid current-actor enriched contact under adversarial query, duplicate/array/encoded values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
     id: "expo-web-auth-profile-account-privacy-2026-07-28",
     target:
       "Expo Web signed-out profile/account gates → credentials sign-in → actor-owned profile/account → refresh restore → sign-out → protected hard navigation",
@@ -4035,6 +4050,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus mapped eventCodeFor to four direct callers and 13 upstream symbols at LOW risk, hashString to five direct callers and 22 upstream symbols at MEDIUM risk, and the combined staged change to seven registration/detail flows at HIGH risk. After that warning, 38/38 registration page, profile-guide, adaptive-auth, route, live-provider, and Event Detail tests passed; the exact production build passed. Browser runtime changed the normal EVTSIGNUP01 entry from actor-required failure into the real 1/8 interview, and the mock/failure query URL produced identical DOM without activating a write control.",
     status:
       "fixed and runtime-verified for the exercised authenticated EVTSIGNUP01 entry, canonical identity, actor propagation, query isolation, and no-write opening; existing separate runtime evidence covers write/readback/cancel/reactivate/offline/two-account behavior, while full eight-question completion, persona-provider failure, other codes, guest return, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-055",
+    severity: "P1",
+    rootCause:
+      "AppContactDetailPage authenticated the actor but also accepted public action, mode, and scenario query values and forwarded them into the internal contact-detail composer. mode=mock bypassed the actor's live graph and rendered the complete demo-contact-1 relationship fixture, while action could select a local follow-up draft/evidence branch during a GET render.",
+    decision:
+      "Make the production HTTP adapter depend only on the decoded contact path ID and authenticated actor. Remove searchParams plus all action/mode/scenario forwarding from the page, while retaining those explicit inputs on the internal loader for deterministic unit tests and capability demos. Missing live contacts now fail closed without any mock identity or relationship projection.",
+    files:
+      "repos/orbits/app/(app)/app/contacts/[id]/page.tsx; repos/orbits/tests/pages/app-contact-detail-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW impact with no upstream callers for AppContactDetailPage and one direct page caller for its query reader; staged detection found no graph-level change. Focused contact detail, auth, mock-contract, and visual tests passed 16/16, and the exact production build passed. Browser runtime changed the mock URL from a complete Kenji Watanabe relationship profile into an actor-scoped contact-detail-not-found evidence boundary; the combined mock/failure/action URL exposed no fixture or draft data.",
+    status:
+      "fixed and runtime-verified for the exercised authenticated mock/scenario/action query leak and no-write boundary; the not-found state is still misclassified as a generic failure, while guest return, a valid enriched live contact under adversarial query, duplicate/array/encoded values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
