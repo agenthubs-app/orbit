@@ -452,12 +452,11 @@ export default async function AppEventRegistrationGuidePage({
   const preferredLanguage = readSearchParam(query, "language");
   const language = await getEventRegistrationPageLanguage(preferredLanguage);
   const result = await loadRegistrationProfileGuideForCurrentTestUser({
+    actorId: actor?.id,
     eventId: id,
     languagePreference: language,
-    mode: readSearchParam(query, "mode"),
-    scenario: readSearchParam(query, "scenario"),
   });
-  const event = await loadEventForRegistration(id);
+  const event = await loadEventForRegistration(id, actor?.id);
 
   if (isRegisterableEventForWorkspace(event)) {
     // live 活动的 title/venue 是「日/中/英」斜杠拼接串;进入画像问答前按

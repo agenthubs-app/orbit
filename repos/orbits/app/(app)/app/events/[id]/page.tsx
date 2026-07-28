@@ -542,6 +542,7 @@ export default async function AppEventDetailPage({
   });
   const registrationGuideResult =
     await loadRegistrationProfileGuideForCurrentTestUser({
+      actorId: session.user.id,
       eventId: id,
       languagePreference: language,
       mode: routeMode,

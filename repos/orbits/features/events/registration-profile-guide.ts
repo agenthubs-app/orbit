@@ -113,6 +113,7 @@ interface RegistrationProfileGuideInput {
 }
 
 interface RegistrationProfileGuideLoadInput {
+  actorId?: string | null;
   eventId: string;
   languagePreference?: RegistrationProfileGuideLanguage | string | null;
   mode?: ModuleMode | string | null;
@@ -709,6 +710,7 @@ export async function loadRegistrationProfileGuideForCurrentTestUser(
   }
 
   const eventResult = await eventServiceResolution.service.getEvent({
+    actorId: input.actorId?.trim() || undefined,
     eventId: input.eventId,
     scenario: input.scenario,
   });

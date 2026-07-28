@@ -9,6 +9,7 @@ import {
   publicEventCatalogueRecord,
   readPublicEventCatalogue,
 } from "../public-catalogue";
+import { eventCodeFor } from "../public-route-code";
 
 const kanaPattern = /[぀-ヿ]/u;
 const hanPattern = /[㐀-鿿]/u;
@@ -60,7 +61,10 @@ const knownRegistrationEvents: readonly EventRecord[] = [
 
 function publicCatalogueEventRecord(eventId: string): EventRecord | null {
   const catalogue = readPublicEventCatalogue();
-  const event = catalogue.events.find((item) => item.id === eventId);
+  const event = catalogue.events.find(
+    (item, index) =>
+      item.id === eventId || eventCodeFor(item, index) === eventId,
+  );
 
   return event
     ? publicEventCatalogueRecord(event, catalogue.generatedAt)

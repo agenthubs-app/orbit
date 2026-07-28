@@ -70,11 +70,15 @@ test("public event detail stays readable while registration itself requires auth
   assert.match(pageSource, /actorId: session\.user\.id/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
   assert.match(registerSource, /actorContext\.requestScoped/);
+  assert.match(registerSource, /actorId: actor\?\.id/);
+  assert.match(registerSource, /loadEventForRegistration\(id, actor\?\.id\)/);
+  assert.doesNotMatch(registerSource, /readSearchParam\(query, "mode"\)/);
+  assert.doesNotMatch(registerSource, /readSearchParam\(query, "scenario"\)/);
   assert.match(registerSource, /\/app\/account\/login\?next=/);
   assert.match(registerSource, /\/app\/events\/\$\{id\}\/register/);
 });
 
-test("/app/events/[id]/register renders event-specific optional participant-profile questions", async () => {
+test("/app/events/[id]/register renders event-specific optional participant-profile questions without a mock query", async () => {
   const Page = (await import("../../app/(app)/app/events/[id]/register/page"))
     .default as (props: {
     params: Promise<{ id: string }>;
@@ -83,7 +87,7 @@ test("/app/events/[id]/register renders event-specific optional participant-prof
   const html = renderToStaticMarkup(
     await Page({
       params: Promise.resolve({ id: "event_001" }),
-      searchParams: Promise.resolve({ language: "en", mode: "mock" }),
+      searchParams: Promise.resolve({ language: "en" }),
     }),
   );
 
@@ -137,9 +141,12 @@ test("the approved public catalogue enters registration with honest time status"
   );
   const endedEvent = await loadEventForRegistration("event_01");
   const upcomingEvent = await loadEventForRegistration("event_signup_01");
+  const upcomingEventByPublicCode =
+    await loadEventForRegistration("EVTSIGNUP01");
 
   assert.equal(endedEvent?.status, "cancelled");
   assert.equal(upcomingEvent?.status, "imported");
+  assert.equal(upcomingEventByPublicCode?.id, "event_signup_01");
   assert.equal(upcomingEvent?.title, "关西跨境商务对接会");
   assert.equal(
     upcomingEvent?.sourceMetadata.label,
