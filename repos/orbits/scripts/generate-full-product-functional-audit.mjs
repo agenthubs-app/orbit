@@ -581,8 +581,11 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "upcoming, active, ended, topic, and combined filters returned source-backed counts without fallback events",
         "the map preserved all 13 located events, selected EVT01 from both list and pin controls, and opened its exact detail",
         "localized date tokens rendered once as 2月15日 rather than the duplicated 2月15日日 found before repair",
+        "before repair, scenario=empty replaced all 13 approved events with a synthetic no-events state on the production public route",
+        "after repair, the identical URL preserved all 13 events plus the catalogue search, filters, and map controls",
       ],
-      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+      verificationCase:
+        "web-public-event-catalogue-query-isolation-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-web-public-event-catalogue-controls",
     },
@@ -3142,6 +3145,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for the exercised desktop catalogue denominator, exact/nonexistent search, all status branches, one topic intersection, empty-state recovery, module/map switching, map rail and pin selection, localized day-token repair, exact detail navigation, and no-write behavior; guest account controls, mobile/responsive interactions, keyboard/screen-reader traversal, invalid coordinates, source-empty catalogue, and provider failure remain explicitly unverified",
   },
   {
+    id: "web-public-event-catalogue-query-isolation-2026-07-29",
+    target:
+      "Authenticated Web public Events catalogue untrusted scenario parameter → immutable reviewed catalogue source",
+    testData:
+      "/app/events?scenario=empty against the exact production build; Chinese locale; approved 13-event catalogue with search, status/topic filters, and map controls",
+    expected:
+      "A public URL must not replace reviewed catalogue data with an internal empty fixture. The same 13 approved events and their normal read-only controls must render regardless of an unrecognized scenario query parameter.",
+    actual:
+      "Before repair, scenario=empty removed all 13 events, hid the map/topic controls, showed 没有匹配的开放活动, and rendered the synthetic 新的活动正在筹备中 state. After repair, the identical URL retained its query string but rendered 13 场活动, all 13 exact cards, search, status and topic filters, and both content/map view controls.",
+    evidence:
+      "Authenticated production-browser before/after DOM on the identical adversarial URL; source trace from AppEventsPage searchParams to the synthetic empty array; focused Events tests 8/8; exact production build; GitNexus pre-edit impacts LOW for AppEventsPage and its one-use reader, with staged detection HIGH across nine AppEventsPage execution flows; commit b0b52572",
+    conclusion:
+      "pass for blocking the exercised authenticated synthetic-empty query while preserving the full reviewed catalogue and no-write behavior; array/duplicate/encoded values, other scenario values, guest session, cache/proxy behavior, mobile/responsive, assistive traversal, and other production routes remain unverified",
+  },
+  {
     id: "web-public-organizer-navigation-2026-07-29",
     target:
       "Authenticated Web public Organizer → exact event detail, source-preserving return, direct-detail fallback, and catalogue exit",
@@ -3943,6 +3961,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW risk and no upstream callers for AppOrganizerPublicPage. Focused Organizer tests passed 7/7 and assert that the page source has no searchParams dependency while the internal loader still supports explicit mock and controlled live-failure calls. The exact production build passed. Browser runtime changed demo-event-1?mode=mock from a verified mock organizer into the public not-found boundary, while evt01?mode=mock&scenario=failure continued to render the exact 13-event, 500-participant reviewed catalogue projection.",
     status:
       "fixed and runtime-verified for the exercised authenticated mock-selection and forced-failure URLs with exact and unknown slugs; duplicate/array/encoded values, empty/pending/live-only inputs, guest session, proxy/cache behavior, other public routes, and future debug parameters remain unverified",
+  },
+  {
+    id: "AUDIT-P1-052",
+    severity: "P1",
+    rootCause:
+      "AppEventsPage accepted a public scenario search parameter and treated scenario=empty as authority to replace the entire approved public catalogue with an empty array. That URL-only test fixture branch bypassed the real 13-event source and caused the production page to claim that no events were published.",
+    decision:
+      "Remove searchParams and the scenario reader from the public catalogue page so its source is always getOrbitLandingViewModel plus actor-scoped registration reads. Preserve the separate internal events loader's explicit scenario input for controlled tests; production catalogue filtering remains exclusively client-side over the reviewed source.",
+    files:
+      "repos/orbits/app/(app)/app/events/page.tsx; repos/orbits/tests/pages/app-events-live-route-services.test.ts",
+    regression:
+      "Pre-edit GitNexus impact was LOW with no upstream callers for AppEventsPage and one direct caller for its local reader. Staged detection reported HIGH because AppEventsPage participates in nine generated execution flows; this was reported rather than discarded. Focused Events tests passed 8/8, the exact production build passed, and browser runtime changed /app/events?scenario=empty from a synthetic no-events state into the complete 13-card catalogue with search, filter, and map controls.",
+    status:
+      "fixed and runtime-verified for the exercised authenticated scenario=empty URL with the full catalogue and no writes; array/duplicate/encoded values, other scenarios, guest session, cache/proxy behavior, mobile/responsive, assistive traversal, and other routes remain unverified",
   },
 ];
 
