@@ -4,12 +4,26 @@ import test from "node:test";
 import {
   buildRelationshipThreadDraftRequest,
   createdRelationshipThreadToView,
+  defaultRelationshipDraft,
   relationshipConversationIdForContact,
   relationshipInboxBadgeCount,
   relationshipAlertsToView,
   relationshipInboxToView
 } from "../src/view-models/relationship-inbox";
 import * as relationshipInbox from "../src/view-models/relationship-inbox";
+
+test("defaultRelationshipDraft avoids duplicate generic greetings", () => {
+  const genericDraft = defaultRelationshipDraft({});
+  const namedDraft = defaultRelationshipDraft({
+    organization: " Orbit ",
+    participantName: " 李明 "
+  });
+
+  assert.equal(genericDraft.body.split("\n")[0], "您好：");
+  assert.doesNotMatch(genericDraft.body, /您好，您好/);
+  assert.equal(namedDraft.body.split("\n")[0], "李明，您好：");
+  assert.equal(namedDraft.subject, "关于Orbit的跟进");
+});
 
 test("relationshipInboxToView localizes async inbox payloads for mobile", () => {
   const view = relationshipInboxToView({

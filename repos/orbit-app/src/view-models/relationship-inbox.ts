@@ -1046,11 +1046,12 @@ export function defaultRelationshipDraft(input: {
   organization?: string;
   participantName?: string;
 }): { body: string; subject: string } {
-  const participantName = input.participantName?.trim() || "您好";
+  const participantName = input.participantName?.trim() || "";
+  const greeting = participantName ? `${participantName}，您好：` : "您好：";
   const organization = input.organization?.trim() || "这件事";
 
   return {
-    body: `${participantName}，您好：\n\n我想继续跟进${organization}相关的沟通。为了避免信息遗漏，我先把背景和下一步写成草稿，确认后再发送。\n\n如果您方便，我们可以约 15 分钟把重点对齐一下。`,
+    body: `${greeting}\n\n我想继续跟进${organization}相关的沟通。为了避免信息遗漏，我先把背景和下一步写成草稿，确认后再发送。\n\n如果您方便，我们可以约 15 分钟把重点对齐一下。`,
     subject: `关于${organization}的跟进`
   };
 }
