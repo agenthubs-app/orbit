@@ -500,7 +500,6 @@ export function ScheduleListPanel({
 }
 
 export function AddScheduleModal({
-  connections,
   onClose,
   t,
 }: {
@@ -508,49 +507,22 @@ export function AddScheduleModal({
   onClose: () => void;
   t: Translate;
 }) {
-  const [cid, setCid] = useState("");
-
   return (
     <ModalShell onClose={onClose} maxW={520} step={t({ en: "Schedule a meeting", zh: "安排约见" })}>
       <h2 className="h-title" style={{ margin: "4px 0 6px" }}>{t({ en: "Schedule a meeting", zh: "安排约见" })}</h2>
-      <p style={{ color: "var(--text-2)", fontSize: 14, margin: "0 0 18px" }}>{t({ en: "Pick someone from your contacts, set up a meeting, and it syncs to your relationship history automatically.", zh: "从名片夹选择一个人，约一次见面，自动同步到你们的交往记录。" })}</p>
-      <div className="field-label" id="followup-contact-label">{t({ en: "Select a contact", zh: "选择联系人" })}</div>
-      <div aria-labelledby="followup-contact-label" className="scroll" role="group" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 220, overflowY: "auto" }}>
-        {connections.map((connection) => (
-          <button
-            key={connection.id}
-            type="button"
-            onClick={() => setCid(connection.id)}
-            style={{ alignItems: "center", background: cid === connection.id ? "var(--accent-softer)" : "var(--surface)", border: `1px solid ${cid === connection.id ? "var(--accent)" : "var(--border)"}`, borderRadius: 12, cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: 11, textAlign: "left" }}
-          >
-            <Avatar letter={connection.initial} g={connection.g} size={36} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{connection.displayName}</div>
-              <div style={{ color: "var(--text-3)", fontSize: 12 }}>{connection.title} · {connection.company}</div>
-            </div>
-            {cid === connection.id ? <Icon name="check" size={16} color="var(--accent)" /> : null}
-          </button>
-        ))}
+      <div
+        className="card-flat"
+        role="status"
+        style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.7, marginTop: 16, padding: 18 }}
+      >
+        {t({
+          en: "Meeting scheduling is not configured yet. Orbit will not create a meeting, update relationship history, write to a calendar, or send an invitation.",
+          zh: "约见服务暂未配置。Orbit 不会创建约见、更新交往记录、写入日历或发送邀请。",
+        })}
       </div>
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
-        <div>
-          <label className="field-label" htmlFor="followup-date">{t({ en: "Date", zh: "日期" })}</label>
-          <input className="field" defaultValue="2026-06-28" id="followup-date" />
-        </div>
-        <div>
-          <label className="field-label" htmlFor="followup-time">{t({ en: "Time", zh: "时间" })}</label>
-          <input className="field" defaultValue="15:00" id="followup-time" />
-        </div>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <label className="field-label" htmlFor="followup-topic">{t({ en: "Topic", zh: "议题" })}</label>
-        <input className="field" id="followup-topic" placeholder={t({ en: "What you'd like to talk about", zh: "想聊的事情" })} />
-      </div>
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
-        <button className="btn btn-ghost" onClick={onClose}>{t({ en: "Cancel", zh: "取消" })}</button>
-        <button className="btn btn-primary" onClick={onClose} disabled={!cid}>
-          <Icon name="check" size={16} color="var(--on-dark)" />
-          {t({ en: "Send invite", zh: "发送约见" })}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+        <button className="btn btn-primary" onClick={onClose} type="button">
+          {t({ en: "Got it", zh: "知道了" })}
         </button>
       </div>
     </ModalShell>

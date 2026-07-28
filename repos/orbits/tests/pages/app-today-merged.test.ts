@@ -502,6 +502,16 @@ test("the header actions source carries the mobile FAB marker", () => {
   assert.match(headerActionsSource, /@media \(max-width: 760px\)/);
 });
 
+test("the shared scheduling modal fails closed without contact or calendar mutation services", () => {
+  const timeSpineSource = sourceForEscapeGate("app/(app)/app/today/orbit-today-time-spine.tsx");
+
+  assert.match(timeSpineSource, /约见服务暂未配置/);
+  assert.match(timeSpineSource, /不会创建约见、更新交往记录、写入日历或发送邀请/);
+  assert.doesNotMatch(timeSpineSource, /defaultValue="2026-06-28"/);
+  assert.doesNotMatch(timeSpineSource, /Select a contact/);
+  assert.doesNotMatch(timeSpineSource, /Send invite/);
+});
+
 test("an open modal stops Escape from also reaching page-level hotkey listeners", () => {
   const modalA11y = sourceForEscapeGate("app/(app)/app/orbit-modal-a11y.ts");
   const escapeMatch = modalA11y.match(
