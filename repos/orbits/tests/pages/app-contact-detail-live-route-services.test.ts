@@ -488,6 +488,8 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
   assert.match(pageSource, /const session = await auth\(\)/);
   assert.match(pageSource, /actorId,/);
   assert.match(pageSource, /redirect\(/);
+  assert.doesNotMatch(pageSource, /searchParams|readSearchParam/);
+  assert.doesNotMatch(pageSource, /action:|mode:|scenario:/);
 });
 
 test("contact detail UI exposes only source-backed relationship data and real navigation", () => {

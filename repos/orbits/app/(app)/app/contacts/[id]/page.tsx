@@ -23,20 +23,6 @@ import { OrbitRealCardConnection } from "../orbit-real-card-connection";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 
-export type AppContactDetailPageSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
-
-function readSearchParam(
-  searchParams: AppContactDetailPageSearchParams | undefined,
-  key: string,
-): string | undefined {
-  const value = searchParams?.[key];
-
-  return Array.isArray(value) ? value[0] : value;
-}
-
 function decodeContactRouteId(id: string): string {
   try {
     return decodeURIComponent(id);
@@ -90,10 +76,8 @@ function ContactDetailRouteStateView({
 
 export default async function AppContactDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<AppContactDetailPageSearchParams>;
 }) {
   const { id } = await params;
   const contactId = decodeContactRouteId(id);
@@ -105,14 +89,10 @@ export default async function AppContactDetailPage({
     );
   }
 
-  const query = await searchParams;
   const language = await getContactDetailPageLanguage();
   const routeModel = await loadAppContactDetailRoute({
-    action: readSearchParam(query, "action"),
     actorId,
     contactId,
-    mode: readSearchParam(query, "mode"),
-    scenario: readSearchParam(query, "scenario"),
   });
 
   return (
