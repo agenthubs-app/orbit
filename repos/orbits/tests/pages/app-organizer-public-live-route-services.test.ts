@@ -103,6 +103,23 @@ test("app organizer public route loader returns organizer events in mock mode", 
   });
 });
 
+test("app organizer public route loader does not fall back for an unknown slug", async () => {
+  await withMockOrganizer(async () => {
+    const { loadAppOrganizerPublicRouteViewModel } = await import(
+      "../../app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model"
+    );
+    const routeModel = await loadAppOrganizerPublicRouteViewModel({
+      slug: "unknown-organizer",
+    });
+
+    assert.equal(routeModel.state, "route-state");
+
+    if (routeModel.state === "route-state") {
+      assert.equal(routeModel.routeState.scenario, "empty");
+    }
+  });
+});
+
 test("app organizer public page renders the mock success page without client-only helper calls", async () => {
   await withMockOrganizer(async () => {
     const Page = (await import("../../app/(app)/app/o/[slug]/page"))

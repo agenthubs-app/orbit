@@ -60,6 +60,7 @@ export const ORBIT_API_ENDPOINTS = {
   relationshipSearch: "/api/search/relationships",
   relationshipSearchSuggestions: "/api/search/suggestions",
   events: "/api/events",
+  publicEvents: "/api/events/public",
   health: "/api/health",
   profile: "/api/profile",
   profileBusinessCardExtraction: "/api/profile/extractions/business-card",

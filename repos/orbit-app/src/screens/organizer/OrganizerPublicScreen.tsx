@@ -44,7 +44,7 @@ export function OrganizerPublicScreen() {
   const organizerSlug = firstParam(slug);
   const { baseUrl } = useOrbitApiBaseUrl();
   const state = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.events,
+    ORBIT_API_ENDPOINTS.publicEvents,
     () => false
   );
 
@@ -146,7 +146,9 @@ function OrganizerHero({
       >
         <View style={styles.organizerHeroScrim} />
         <View style={styles.organizerHeroTop}>
-          <Text style={styles.verifiedBadge}>已认证主办方</Text>
+          {view.primaryEvent ? (
+            <Text style={styles.verifiedBadge}>已认证主办方</Text>
+          ) : null}
         </View>
         <View style={styles.organizerHeroBottom}>
           <View style={styles.avatar}>

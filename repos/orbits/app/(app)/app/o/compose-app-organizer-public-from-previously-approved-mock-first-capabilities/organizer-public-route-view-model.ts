@@ -256,13 +256,16 @@ function organizerViewModel(input: {
   slug: string;
 }): OrbitOrganizerPublicViewModel | null {
   const events = input.eventList.events.map(landingEventFor);
-  const fallbackEvent = events[0];
 
-  if (!fallbackEvent) {
+  if (events.length === 0) {
     return null;
   }
 
-  const event = events.find((item) => matchesSlug(item, input.slug)) ?? fallbackEvent;
+  const event = events.find((item) => matchesSlug(item, input.slug));
+
+  if (!event) {
+    return null;
+  }
   const name = event.organizer || event.host;
   const theirEvents = events.filter(
     (item) => item.organizer === name || item.host === name,

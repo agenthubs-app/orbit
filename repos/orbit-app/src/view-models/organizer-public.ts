@@ -124,9 +124,9 @@ function matchesSlug(event: UnknownRecord, slug: string): boolean {
 function organizerName(event: UnknownRecord): string {
   const source = nestedRecord(event, "sourceMetadata");
   return userFacingText(
-    stringField(source, "label") ||
-      stringField(event, "organizer") ||
-      stringField(event, "host"),
+    stringField(event, "organizer") ||
+      stringField(event, "host") ||
+      stringField(source, "label"),
     "主办方"
   );
 }
@@ -339,7 +339,7 @@ export function organizerPublicToView({
   slug: string;
 }): OrganizerPublicView {
   const rawEvents = listFromPayload(events);
-  const selected = rawEvents.find((event) => matchesSlug(event, slug)) ?? rawEvents[0];
+  const selected = rawEvents.find((event) => matchesSlug(event, slug));
 
   if (!selected) {
     return {
@@ -349,10 +349,10 @@ export function organizerPublicToView({
           label: "查看活动"
         }
       ],
-      emptyMessage: "主办方公开页会在有活动后显示。",
-      emptyTitle: "暂时没有公开活动",
+      emptyMessage: "没有找到与此链接对应的公开主办方或活动。",
+      emptyTitle: "未找到公开主办方",
       events: [],
-      handle: "没有可展示的活动",
+      handle: "链接没有对应公开记录",
       initial: "主",
       name: "主办方",
       primaryEvent: null,

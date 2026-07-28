@@ -103,8 +103,44 @@ test("organizerPublicToView falls back to a useful empty page", () => {
 
   assert.equal(view.name, "主办方");
   assert.equal(view.events.length, 0);
-  assert.equal(view.emptyTitle, "暂时没有公开活动");
+  assert.equal(view.emptyTitle, "未找到公开主办方");
   assert.equal(view.stats.participants, "0");
+});
+
+test("organizerPublicToView does not fall back to another organizer for an unknown slug", () => {
+  const view = organizerPublicToView({
+    events: eventsPayload,
+    slug: "unknown-organizer"
+  });
+
+  assert.equal(view.name, "主办方");
+  assert.equal(view.events.length, 0);
+  assert.equal(view.primaryEvent, null);
+});
+
+test("organizerPublicToView prefers the explicit public organizer over source notes", () => {
+  const view = organizerPublicToView({
+    events: {
+      events: [
+        {
+          code: "EVTSIGNUP02",
+          endsAt: "2026-09-01T16:00:00.000+09:00",
+          id: "event_signup_02",
+          organizer: "Orbit 人脉测试空间",
+          sourceMetadata: {
+            label: "活动导入：东京 AI 落地伙伴对接会"
+          },
+          startsAt: "2026-09-01T14:00:00.000+09:00",
+          title: "东京 AI 落地伙伴对接会",
+          venue: "东京"
+        }
+      ]
+    },
+    slug: "evtsignup02"
+  });
+
+  assert.equal(view.name, "Orbit 人脉测试空间");
+  assert.equal(view.events[0]?.id, "event_signup_02");
 });
 
 test("organizerPublicToView prefers Chinese event labels over mixed-language titles", () => {
