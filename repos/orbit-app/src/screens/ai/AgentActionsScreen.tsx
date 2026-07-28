@@ -10,7 +10,6 @@ import {
 import {
   agentActionAcceptPath,
   agentActionDismissPath,
-  externalActionSandboxSendMessagePath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -26,28 +25,11 @@ import {
   type AgentActionCardView,
   type AgentActionsView
 } from "../../view-models/agent-actions";
-import {
-  buildExternalActionConfirmationDecisionRequest,
-  buildExternalActionSendMessageRequest,
-  externalActionConfirmationDecisionToView,
-  externalActionNoOpToView,
-  externalActionSandboxToView,
-  type ExternalActionConfirmationDecision,
-  type ExternalActionConfirmationDecisionView,
-  type ExternalActionNoOpView,
-  type ExternalActionSandboxActionView,
-  type ExternalActionSandboxView
-} from "../../view-models/external-action-sandbox";
 
 type AgentActionDecision = "accept" | "dismiss";
 
 interface PendingAgentActionDecision {
   decision: AgentActionDecision;
-  id: string;
-}
-
-interface PendingExternalConfirmationDecision {
-  decision: ExternalActionConfirmationDecision;
   id: string;
 }
 
@@ -57,32 +39,15 @@ export function AgentActionsScreen() {
     ORBIT_API_ENDPOINTS.agentActions,
     (data) => agentActionsToView({ actionsPayload: data }).actions.length === 0
   );
-  const sandboxState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.externalActionSandboxAudit,
-    (data) => {
-      const view = externalActionSandboxToView(data);
-      return view.actions.length + view.auditRecords.length === 0;
-    }
-  );
   const [pendingDecision, setPendingDecision] =
     useState<PendingAgentActionDecision | null>(null);
-  const [pendingExternalActionId, setPendingExternalActionId] =
-    useState<string | null>(null);
-  const [pendingConfirmationDecision, setPendingConfirmationDecision] =
-    useState<PendingExternalConfirmationDecision | null>(null);
-  const [externalConfirmationResult, setExternalConfirmationResult] =
-    useState<ExternalActionConfirmationDecisionView | null>(null);
-  const [externalActionResult, setExternalActionResult] =
-    useState<ExternalActionNoOpView | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   function refreshAll() {
     setFeedback(null);
     setActionError(null);
-    setExternalConfirmationResult(null);
     actionsState.refresh();
-    sandboxState.refresh();
   }
 
   async function decideAction(
@@ -121,89 +86,13 @@ export function AgentActionsScreen() {
     }
   }
 
-  async function confirmExternalSend(action: ExternalActionSandboxActionView) {
-    setPendingExternalActionId(action.id);
-    setExternalActionResult(null);
-    setExternalConfirmationResult(null);
-    setFeedback(null);
-    setActionError(null);
-
-    try {
-      const result = await client.post<unknown>(
-        externalActionSandboxSendMessagePath(),
-        {
-          body: buildExternalActionSendMessageRequest(action)
-        }
-      );
-
-      if (result.success) {
-        setExternalActionResult(externalActionNoOpToView(result.data));
-        sandboxState.refresh();
-      } else {
-        setActionError(result.error.message);
-      }
-    } catch {
-      setActionError("沙盒确认暂时处理不了。请刷新后再试一次。");
-    } finally {
-      setPendingExternalActionId(null);
-    }
-  }
-
-  async function decideExternalConfirmation(
-    action: ExternalActionSandboxActionView,
-    decision: ExternalActionConfirmationDecision
-  ) {
-    const request = buildExternalActionConfirmationDecisionRequest(
-      action,
-      decision
-    );
-
-    if (!request.success) {
-      setActionError(request.error);
-      return;
-    }
-
-    setPendingConfirmationDecision({ decision, id: action.id });
-    setExternalActionResult(null);
-    setExternalConfirmationResult(null);
-    setFeedback(null);
-    setActionError(null);
-
-    try {
-      const result = await client.post<unknown>(request.request.path, {
-        body: request.request.body
-      });
-
-      if (result.success) {
-        setExternalConfirmationResult(
-          externalActionConfirmationDecisionToView(result.data)
-        );
-        sandboxState.refresh();
-      } else {
-        setActionError(result.error.message);
-      }
-    } catch {
-      setActionError("这条确认暂时处理不了。请刷新后再试一次。");
-    } finally {
-      setPendingConfirmationDecision(null);
-    }
-  }
-
-  const sandboxView =
-    sandboxState.kind === "success" || sandboxState.kind === "empty"
-      ? externalActionSandboxToView(sandboxState.data)
-      : null;
-
   return (
     <AppScreen
       eyebrow="Orbit AI"
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
-          refreshing={
-            actionsState.refreshing ||
-            sandboxState.refreshing
-          }
+          refreshing={actionsState.refreshing}
           tintColor={colors.accent}
         />
       }
@@ -216,22 +105,12 @@ export function AgentActionsScreen() {
       {actionsState.kind === "failure" ? (
         <ErrorState message={actionsState.error.message} title="动作队列不可用" />
       ) : null}
-      {sandboxState.kind === "failure" ? (
-        <ErrorState message={sandboxState.error.message} title="对外动作确认不可用" />
-      ) : null}
       {actionsState.kind === "success" || actionsState.kind === "empty" ? (
         <AgentActionsContent
           actionError={actionError}
-          externalConfirmationResult={externalConfirmationResult}
-          externalActionResult={externalActionResult}
           feedback={feedback}
           onDecision={decideAction}
-          onExternalConfirmationDecision={decideExternalConfirmation}
-          onExternalSendConfirm={confirmExternalSend}
-          pendingConfirmationDecision={pendingConfirmationDecision}
           pendingDecision={pendingDecision}
-          pendingExternalActionId={pendingExternalActionId}
-          sandboxView={sandboxView}
           view={agentActionsToView({
             actionsPayload: actionsState.data
           })}
@@ -243,32 +122,15 @@ export function AgentActionsScreen() {
 
 function AgentActionsContent({
   actionError,
-  externalConfirmationResult,
-  externalActionResult,
   feedback,
   onDecision,
-  onExternalConfirmationDecision,
-  onExternalSendConfirm,
-  pendingConfirmationDecision,
   pendingDecision,
-  pendingExternalActionId,
-  sandboxView,
   view
 }: {
   actionError: string | null;
-  externalConfirmationResult: ExternalActionConfirmationDecisionView | null;
-  externalActionResult: ExternalActionNoOpView | null;
   feedback: string | null;
   onDecision: (action: AgentActionCardView, decision: AgentActionDecision) => void;
-  onExternalConfirmationDecision: (
-    action: ExternalActionSandboxActionView,
-    decision: ExternalActionConfirmationDecision
-  ) => void;
-  onExternalSendConfirm: (action: ExternalActionSandboxActionView) => void;
-  pendingConfirmationDecision: PendingExternalConfirmationDecision | null;
   pendingDecision: PendingAgentActionDecision | null;
-  pendingExternalActionId: string | null;
-  sandboxView: ExternalActionSandboxView | null;
   view: AgentActionsView;
 }) {
   return (
@@ -306,17 +168,6 @@ function AgentActionsContent({
 
       {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
       {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
-      {sandboxView ? (
-        <ExternalActionSandboxCard
-          confirmationResult={externalConfirmationResult}
-          onConfirmationDecision={onExternalConfirmationDecision}
-          onConfirmSend={onExternalSendConfirm}
-          pendingConfirmationDecision={pendingConfirmationDecision}
-          pendingExternalActionId={pendingExternalActionId}
-          result={externalActionResult}
-          view={sandboxView}
-        />
-      ) : null}
 
       {view.actions.length === 0 ? (
         <EmptyState message={view.emptyMessage} title={view.emptyTitle} />
@@ -331,179 +182,6 @@ function AgentActionsContent({
         ))
       )}
     </>
-  );
-}
-
-function ExternalActionSandboxCard({
-  confirmationResult,
-  onConfirmationDecision,
-  onConfirmSend,
-  pendingConfirmationDecision,
-  pendingExternalActionId,
-  result,
-  view
-}: {
-  confirmationResult: ExternalActionConfirmationDecisionView | null;
-  onConfirmationDecision: (
-    action: ExternalActionSandboxActionView,
-    decision: ExternalActionConfirmationDecision
-  ) => void;
-  onConfirmSend: (action: ExternalActionSandboxActionView) => void;
-  pendingConfirmationDecision: PendingExternalConfirmationDecision | null;
-  pendingExternalActionId: string | null;
-  result: ExternalActionNoOpView | null;
-  view: ExternalActionSandboxView;
-}) {
-  return (
-    <DataCard detail={view.summary} title="对外动作确认">
-      <View style={styles.nextStep}>
-        <Ionicons color={colors.accent} name="shield-outline" size={18} />
-        <Text style={styles.nextStepText}>{view.nextAction}</Text>
-      </View>
-      {result ? (
-        <View style={styles.sandboxResult}>
-          <Text style={styles.resultTitle}>{result.title}</Text>
-          <Text style={styles.bodyText}>{result.detail}</Text>
-          <Text style={styles.ruleText}>{result.message}</Text>
-        </View>
-      ) : null}
-      {confirmationResult ? (
-        <View style={styles.sandboxResult}>
-          <Text style={styles.resultTitle}>{confirmationResult.title}</Text>
-          <Text style={styles.bodyText}>{confirmationResult.detail}</Text>
-          <Text style={styles.ruleText}>{confirmationResult.message}</Text>
-        </View>
-      ) : null}
-      {view.emptyText ? (
-        <Text style={styles.bodyText}>{view.emptyText}</Text>
-      ) : null}
-      {view.actions.length > 0 ? (
-        <View style={styles.sandboxStack}>
-          {view.actions.map((action) => {
-            const pending = pendingExternalActionId === action.id;
-            const approvePending =
-              pendingConfirmationDecision?.id === action.id &&
-              pendingConfirmationDecision.decision === "approve";
-            const rejectPending =
-              pendingConfirmationDecision?.id === action.id &&
-              pendingConfirmationDecision.decision === "reject";
-            const anyPending = Boolean(
-              pendingExternalActionId || pendingConfirmationDecision
-            );
-
-            return (
-              <View key={action.id} style={styles.sandboxBlock}>
-                <View style={styles.rowHeader}>
-                  <Text style={styles.rowTitle}>{action.actionTypeLabel}</Text>
-                  <Text style={styles.rowMeta}>{action.confirmationLabel}</Text>
-                </View>
-                <Text style={styles.bodyText}>{action.requestedEffect}</Text>
-                <Text style={styles.ruleText}>{action.suppressedEffect}</Text>
-                {action.confirmationId ? (
-                  <View style={styles.actionButtonRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={anyPending}
-                      onPress={() => onConfirmationDecision(action, "approve")}
-                      style={({ pressed }) => [
-                        styles.primaryButton,
-                        approvePending ? styles.disabled : null,
-                        pressed ? styles.pressed : null
-                      ]}
-                    >
-                      <Ionicons
-                        color={colors.onAccent}
-                        name="checkmark-done-outline"
-                        size={17}
-                      />
-                      <Text style={styles.primaryButtonText}>
-                        {approvePending ? "批准中" : "批准确认"}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={anyPending}
-                      onPress={() => onConfirmationDecision(action, "reject")}
-                      style={({ pressed }) => [
-                        styles.secondaryButton,
-                        rejectPending ? styles.disabled : null,
-                        pressed ? styles.pressed : null
-                      ]}
-                    >
-                      <Ionicons color={colors.accent} name="close-outline" size={17} />
-                      <Text style={styles.secondaryButtonText}>
-                        {rejectPending ? "拒绝中" : "拒绝确认"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-                {action.canConfirmSend ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={anyPending}
-                    onPress={() => onConfirmSend(action)}
-                    style={({ pressed }) => [
-                      styles.primaryButton,
-                      pending ? styles.disabled : null,
-                      pressed ? styles.pressed : null
-                    ]}
-                  >
-                    <Ionicons
-                      color={colors.onAccent}
-                      name="mail-unread-outline"
-                      size={17}
-                    />
-                    <Text style={styles.primaryButtonText}>
-                      {pending ? "确认中" : "确认沙盒发送"}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
-      ) : null}
-      {view.auditRecords.length > 0 ? (
-        <View style={styles.historySection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons color={colors.accent} name="time-outline" size={17} />
-              <Text style={styles.sectionTitle}>确认历史</Text>
-            </View>
-            <Text style={styles.sectionMeta}>{view.auditRecords.length} 条</Text>
-          </View>
-          <View style={styles.sandboxStack}>
-            {view.auditRecords.map((audit) => (
-              <View key={audit.id} style={styles.auditRow}>
-                <View style={styles.rowHeader}>
-                  <Text style={styles.rowTitle}>{audit.title}</Text>
-                  <Text style={styles.rowMeta}>{audit.evidenceLabel}</Text>
-                </View>
-                <View style={styles.tagRow}>
-                  <View style={styles.tag}>
-                    <Text style={styles.tagText}>{audit.resultLabel}</Text>
-                  </View>
-                  <View style={styles.tag}>
-                    <Text style={styles.tagText}>{audit.providerLabel}</Text>
-                  </View>
-                </View>
-                {audit.contextLines.map((line) => (
-                  <View key={`${audit.id}-${line}`} style={styles.auditContextRow}>
-                    <Ionicons color={colors.text3} name="ellipse" size={5} />
-                    <Text style={styles.auditContextText}>{line}</Text>
-                  </View>
-                ))}
-                <View style={styles.auditMetaRow}>
-                  <Text style={styles.auditMetaText}>{audit.actorLabel}</Text>
-                  <Text style={styles.auditMetaText}>{audit.timestampLabel}</Text>
-                </View>
-                <Text style={styles.bodyText}>{audit.safetyText}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      ) : null}
-    </DataCard>
   );
 }
 
@@ -597,36 +275,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 22
   },
-  auditRow: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md
-  },
-  auditContextRow: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: spacing.sm
-  },
-  auditContextText: {
-    color: colors.text2,
-    flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20
-  },
-  auditMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  auditMetaText: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
-  },
   bodyText: {
     color: colors.text,
     fontSize: typography.small,
@@ -669,10 +317,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.small,
     lineHeight: 19
-  },
-  historySection: {
-    gap: spacing.sm,
-    paddingTop: spacing.xs
   },
   metricChip: {
     backgroundColor: colors.accentSofter,
@@ -754,73 +398,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.small,
     lineHeight: 20
-  },
-  resultTitle: {
-    color: colors.live,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 20
-  },
-  rowHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "space-between"
-  },
-  rowMeta: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 18
-  },
-  rowTitle: {
-    color: colors.ink,
-    flex: 1,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 20
-  },
-  sandboxBlock: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md
-  },
-  sandboxResult: {
-    backgroundColor: colors.liveSoft,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.md
-  },
-  sandboxStack: {
-    gap: spacing.md
-  },
-  sectionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "space-between"
-  },
-  sectionMeta: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
-  },
-  sectionTitle: {
-    color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 20
-  },
-  sectionTitleRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs
   },
   secondaryButton: {
     alignItems: "center",
