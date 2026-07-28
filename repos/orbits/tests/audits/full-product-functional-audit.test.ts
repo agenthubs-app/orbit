@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import {
   existsSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
+  rmSync,
 } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -18,10 +21,6 @@ const WEB_ROOT = path.resolve(TEST_DIR, "../..");
 const WORKSPACE_ROOT = path.resolve(WEB_ROOT, "../..");
 const WEB_APP_ROOT = path.join(WEB_ROOT, "app");
 const MOBILE_APP_ROOT = path.join(WORKSPACE_ROOT, "repos/orbit-app/app");
-const OUTPUT_ROOT = path.join(
-  WORKSPACE_ROOT,
-  "docs/audits/full-product-functional-audit",
-);
 
 function listFiles(
   root: string,
@@ -439,46 +438,63 @@ test("overlay implementation and route-instance denominators are internally cons
 });
 
 test("generated documents and machine inventory share the same denominators", () => {
-  const written = writeFullProductFunctionalAudit();
-  for (const name of [
-    "README.md",
-    "surfaces.md",
-    "interaction-matrix.md",
-    "verification.md",
-    "remediation.md",
-    "inventory.json",
-  ]) {
-    assert.equal(existsSync(path.join(OUTPUT_ROOT, name)), true, `missing ${name}`);
+  const outputRoot = mkdtempSync(
+    path.join(os.tmpdir(), "orbit-full-product-audit-"),
+  );
+
+  try {
+    const written = writeFullProductFunctionalAudit(outputRoot);
+    for (const name of [
+      "README.md",
+      "surfaces.md",
+      "interaction-matrix.md",
+      "verification.md",
+      "remediation.md",
+      "inventory.json",
+    ]) {
+      assert.equal(
+        existsSync(path.join(outputRoot, name)),
+        true,
+        `missing ${name}`,
+      );
+    }
+
+    const json = JSON.parse(
+      readFileSync(path.join(outputRoot, "inventory.json"), "utf8"),
+    );
+    const readme = readFileSync(path.join(outputRoot, "README.md"), "utf8");
+    const surfaces = readFileSync(
+      path.join(outputRoot, "surfaces.md"),
+      "utf8",
+    );
+    const interactions = readFileSync(
+      path.join(outputRoot, "interaction-matrix.md"),
+      "utf8",
+    );
+
+    assert.equal(json.summary.routeSurfaces, written.summary.routeSurfaces);
+    assert.equal(
+      json.summary.interactionRouteInstances,
+      written.summary.interactionRouteInstances,
+    );
+    assert.match(
+      readme,
+      new RegExp(`路由界面分母：${written.summary.routeSurfaces}`, "u"),
+    );
+    assert.match(
+      interactions,
+      new RegExp(`当前分母为 ${written.summary.interactionRouteInstances}`, "u"),
+    );
+    assert.equal(
+      surfaces
+        .split("\n")
+        .filter(
+          (line) =>
+            line.startsWith("| `web:") || line.startsWith("| `mobile:"),
+        ).length,
+      written.summary.routeSurfaces,
+    );
+  } finally {
+    rmSync(outputRoot, { force: true, recursive: true });
   }
-
-  const json = JSON.parse(
-    readFileSync(path.join(OUTPUT_ROOT, "inventory.json"), "utf8"),
-  );
-  const readme = readFileSync(path.join(OUTPUT_ROOT, "README.md"), "utf8");
-  const surfaces = readFileSync(path.join(OUTPUT_ROOT, "surfaces.md"), "utf8");
-  const interactions = readFileSync(
-    path.join(OUTPUT_ROOT, "interaction-matrix.md"),
-    "utf8",
-  );
-
-  assert.equal(json.summary.routeSurfaces, written.summary.routeSurfaces);
-  assert.equal(
-    json.summary.interactionRouteInstances,
-    written.summary.interactionRouteInstances,
-  );
-  assert.match(
-    readme,
-    new RegExp(`路由界面分母：${written.summary.routeSurfaces}`, "u"),
-  );
-  assert.match(
-    interactions,
-    new RegExp(`当前分母为 ${written.summary.interactionRouteInstances}`, "u"),
-  );
-  assert.equal(
-    surfaces
-      .split("\n")
-      .filter((line) => line.startsWith("| `web:") || line.startsWith("| `mobile:"))
-      .length,
-    written.summary.routeSurfaces,
-  );
 });

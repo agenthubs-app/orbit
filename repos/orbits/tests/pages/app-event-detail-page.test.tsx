@@ -72,7 +72,10 @@ test("/app/events/[id] serves public catalogue first and protects only private f
   assert.match(pageSource, /getOrbitLandingViewModel/);
   assert.match(pageSource, /if \(catalogueEvent\)/);
   assert.match(pageSource, /attendees: registered \?/);
-  assert.match(pageSource, /const \[\{ id \}, query, session\] = await Promise\.all/);
+  assert.match(
+    pageSource,
+    /const \[\{ id: routeId \}, query, session\] = await Promise\.all/,
+  );
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /if \(!session\?\.user\?\.id\)/);
   assert.match(pageSource, /actorId: session\.user\.id/);

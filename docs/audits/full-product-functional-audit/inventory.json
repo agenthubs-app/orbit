@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "72bedab578efd73f35e7b27db23edb3bb8d94097",
-  "deterministicSourceTime": "2026-07-29T05:53:23+09:00",
+  "generatedFromCommit": "5889bc293d97b680f50060390ae0acc1f7cd8a7a",
+  "deterministicSourceTime": "2026-07-29T06:08:31+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {

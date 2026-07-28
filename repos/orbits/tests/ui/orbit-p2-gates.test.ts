@@ -68,9 +68,11 @@ test("P2-1: schedule/events/[id]/page.tsx is a thin route adapter (<80 lines)", 
   );
 });
 
-test("P2-5: the legacy dashboard URL stays a thin alias for the canonical Party workspace", () => {
+test("P2-5: dashboard stays an authenticated relationship-analysis workspace distinct from Party", () => {
   const pageSource = source("app/(app)/app/dashboard/page.tsx");
 
-  assert.match(pageSource, /redirect\("\/app\/party"\)/);
-  assert.doesNotMatch(pageSource, /OrbitRealDashboard|OrbitRealParty/);
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(pageSource, /loadAppDashboardRouteViewModel/);
+  assert.match(pageSource, /OrbitRealDashboard/);
+  assert.doesNotMatch(pageSource, /redirect\("\/app\/party"\)|OrbitRealParty/);
 });

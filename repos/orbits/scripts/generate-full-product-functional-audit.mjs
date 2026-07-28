@@ -4684,9 +4684,9 @@ function renderRemediation(inventory) {
   ].join("\n");
 }
 
-export function writeFullProductFunctionalAudit() {
+export function writeFullProductFunctionalAudit(outputRoot = OUTPUT_ROOT) {
   const inventory = buildFullProductFunctionalAuditInventory();
-  mkdirSync(OUTPUT_ROOT, { recursive: true });
+  mkdirSync(outputRoot, { recursive: true });
   const files = {
     "README.md": renderReadme(inventory),
     "surfaces.md": renderSurfaces(inventory),
@@ -4696,7 +4696,7 @@ export function writeFullProductFunctionalAudit() {
     "inventory.json": JSON.stringify(inventory, null, 2),
   };
   for (const [name, value] of Object.entries(files)) {
-    writeFileSync(path.join(OUTPUT_ROOT, name), `${value}\n`);
+    writeFileSync(path.join(outputRoot, name), `${value}\n`);
   }
   return inventory;
 }

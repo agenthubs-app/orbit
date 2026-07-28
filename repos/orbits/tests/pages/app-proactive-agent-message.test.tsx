@@ -36,10 +36,26 @@ async function firstProactiveMessageId(): Promise<string> {
 }
 
 test("/app/chat does not surface fixture-backed proactive calendar messages", async () => {
-  const Page = (await import("../../app/(app)/app/chat/page")).default;
-  const html = renderToStaticMarkup(await Page());
+  const { loadAppChatRouteViewModel } = await import(
+    "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
+  );
+  const { ChatWorkspace } = await import(
+    "../../app/(app)/app/chat/chat-workspace"
+  );
+  const routeModel = await loadAppChatRouteViewModel(undefined, {
+    actorId: "account:test-proactive-chat",
+  });
 
-  assert.match(html, /data-orbit-route="app-chat-route"/);
+  assert.equal(routeModel.state, "success");
+  if (routeModel.state !== "success") {
+    return;
+  }
+
+  const html = renderToStaticMarkup(
+    <ChatWorkspace language="zh" workspace={routeModel.workspace} />,
+  );
+
+  assert.match(html, /data-orbit-real-page="chat"/);
   assert.doesNotMatch(
     html,
     /data-orbit-proactive-inbox|Upcoming from Orbit Agent|Seed investor preparation call/,

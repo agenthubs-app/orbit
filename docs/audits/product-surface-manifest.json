@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "72bedab578efd73f35e7b27db23edb3bb8d94097",
-  "generatedAt": "2026-07-29T05:53:23+09:00",
+  "commit": "5889bc293d97b680f50060390ae0acc1f7cd8a7a",
+  "generatedAt": "2026-07-29T06:08:31+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",

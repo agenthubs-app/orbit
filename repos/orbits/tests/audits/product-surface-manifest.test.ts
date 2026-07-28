@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  writeProductSurfaceManifest,
+  buildProductSurfaceManifest,
 } from "../../scripts/generate-product-surface-manifest.mjs";
 
-const manifest = writeProductSurfaceManifest();
+const { manifest } = buildProductSurfaceManifest();
 const allActions = manifest.surfaces.flatMap((surface) =>
   surface.actions.map((action) => ({ route: surface.route, ...action })),
 );
