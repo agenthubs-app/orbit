@@ -182,6 +182,12 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
         "web-public-organizer-navigation-2026-07-29",
       ),
     );
+  const publicOrganizerUnknownSlugInteractions =
+    runtimeVerifiedInteractions.filter((interaction) =>
+      interaction.testEvidence.includes(
+        "web-public-organizer-unknown-slug-boundary-2026-07-29",
+      ),
+    );
 
   assert.equal(
     inventory.summary.interactionsRuntimeVerified,
@@ -189,6 +195,7 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
   assert.equal(publicEventDetailInteractions.length, 20);
   assert.equal(publicOrganizerNavigationInteractions.length, 3);
+  assert.equal(publicOrganizerUnknownSlugInteractions.length, 2);
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/profile",

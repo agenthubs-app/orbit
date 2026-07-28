@@ -617,8 +617,11 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "the public projection stripped attendee names, actor registration state, and private roster data",
         "the EVT01 card opened the exact event detail and its back control returned to the organizer source",
         "返回活动 exited the organizer surface to the complete 13-event catalogue",
+        "an unknown public slug terminated at the public-catalogue boundary instead of entering private event storage",
+        "the not-found boundary rendered complete Chinese and English copy without a verified badge, event card, or fallback organizer",
+        "source details exposed the dedicated not-found evidence and the recovery action restored all 13 catalogue events",
       ],
-      verificationCase: "web-public-organizer-navigation-2026-07-29",
+      verificationCase: "web-public-organizer-unknown-slug-boundary-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-web-public-catalogue-organizer",
     },
@@ -1910,6 +1913,32 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
+    "web:/app/o/[slug]|repos/orbits/shared/ui/state-view.tsx:217",
+    {
+      actualResult:
+        "来源详情 expanded the unknown-organizer boundary and exposed PUBLIC_ORGANIZER_NOT_FOUND plus public-catalogue-organizer-not-found.",
+      testData:
+        "Unknown public slug not-a-real-organizer under the Chinese locale",
+      idempotency:
+        "Local disclosure state only; no public or private event, organizer, registration, contact, or external record was read into the page or written.",
+      verificationCase:
+        "web-public-organizer-unknown-slug-boundary-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/o/[slug]|repos/orbits/shared/ui/state-view.tsx:249",
+    {
+      actualResult:
+        "返回活动 left the unknown-organizer boundary and restored the complete 13-event public catalogue.",
+      testData:
+        "Localized unknown-organizer not-found state with no event or organizer fallback",
+      idempotency:
+        "Read-only navigation only; no public or private event, organizer, registration, contact, or external record was written.",
+      verificationCase:
+        "web-public-organizer-unknown-slug-boundary-2026-07-29",
+    },
+  ],
+  [
     "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#View all their events / 查看 TA 的全部活动",
     {
       actualResult:
@@ -3125,6 +3154,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for exact organizer-card identity, organizer and catalogue history return, direct-entry fallback, external/same-page rejection in tests, catalogue exit, and no-write behavior; unknown-organizer recovery controls, external-referrer browser runtime, mobile/responsive, keyboard/screen-reader traversal, and browser history with multiple identical detail entries remain unverified",
   },
   {
+    id: "web-public-organizer-unknown-slug-boundary-2026-07-29",
+    target:
+      "Authenticated Web public Organizer unknown slug → public-only not-found state, bilingual presentation, evidence disclosure, and catalogue recovery",
+    testData:
+      "Unknown slug not-a-real-organizer; production live mode; public 13-event catalogue; authenticated actor with no audit registration/contact residue; Chinese and English locale projections",
+    expected:
+      "A public miss must terminate before private Event CRUD resolution, return a not-found boundary rather than a storage failure, expose no organizer/event/verified fallback, preserve source evidence, present the active language, and recover only to the approved public catalogue",
+    actual:
+      "Before repair, the public miss fell through to the private Event CRUD service, rendered Organizer page could not load under a Chinese preference, and described a storage failure. After repair, the same slug returned PUBLIC_ORGANIZER_NOT_FOUND directly from the public catalogue branch. Chinese rendered 未找到该主办方 / 返回活动; English rendered Organizer not found / Return to events. No verified badge or event card appeared. 来源详情 exposed both stable evidence IDs, and recovery restored all 13 approved events.",
+    evidence:
+      "Authenticated production-browser before/after DOM, locale switch, source-details disclosure, and recovery traversal; focused Organizer tests 7/7 including live-store-unconfigured public miss and explicit live failure; exact production build; GitNexus LOW impacts and MEDIUM staged flow detection; commit 5d82a730",
+    conclusion:
+      "pass for production public/private source termination, unknown-slug classification, dedicated evidence, Chinese/English copy, no fallback identity/data, disclosure, recovery, and no-write behavior; Japanese-specific copy, guest browser session, private-store access tracing under populated unrelated actors, responsive, keyboard/screen-reader, explicit mock scenarios, and provider timeout remain unverified",
+  },
+  {
     id: "web-public-event-detail-lifecycle-2026-07-29",
     target:
       "Authenticated Web public Event Detail → attendee roster, matchmaking, post-event follow-up, organizer, replay Party, Agent context, and return navigation",
@@ -3853,6 +3897,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW risk across two upstream symbols and one Event Detail page flow. Focused Event Detail tests passed 15/15 and the exact production build passed. Authenticated browser traversal changed organizer → EVT01 → 返回上一页 from /app/events to /app/o/evt01, preserved catalogue → EVT01 → /app/events, and kept an empty-referrer direct entry on the safe /app/events fallback.",
     status:
       "fixed and runtime-verified for organizer, catalogue, and direct-entry paths; external/same-page referrers are regression-tested, while external-referrer browser runtime, mobile/responsive, keyboard/screen-reader, and repeated identical-detail history remain unverified",
+  },
+  {
+    id: "AUDIT-P1-050",
+    severity: "P1",
+    rootCause:
+      "When the approved public catalogue had no exact organizer match, the Web organizer loader continued into Event CRUD using the deployment module mode. A public unknown slug could therefore be reclassified as a private-store failure and, if a private event matched the slug, could project private event-derived organizer data. The route-state page also resolved language only for success and rendered fixed English copy for Chinese users.",
+    decision:
+      "Make the default public route a terminal exact catalogue boundary: exact public match returns a stripped organizer projection; a miss returns PUBLIC_ORGANIZER_NOT_FOUND without constructing or calling Event CRUD. Keep mock/live service scenarios only behind explicit mode/scenario input. Represent route-state semantics in one bilingual table and project every success/failure state through the server-resolved language.",
+    files:
+      "repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts; repos/orbits/app/(app)/app/o/[slug]/page.tsx; repos/orbits/tests/pages/app-organizer-public-live-route-services.test.ts",
+    regression:
+      "Focused Organizer tests passed 7/7, including an unknown default slug under an intentionally unconfigured live private store, explicit mock success, explicit live failure, exact catalogue success/private-field stripping, and zh/en state projection. The exact production build passed. Browser runtime changed an English storage failure into a bilingual public-only not-found state, exposed both dedicated evidence IDs, showed no badge/event fallback, and recovered to all 13 events.",
+    status:
+      "fixed and runtime-verified for exact and unknown production public slugs, Chinese/English not-found presentation, evidence disclosure, and catalogue recovery; Japanese-specific copy, guest session, populated unrelated private-store tracing, responsive/assistive traversal, explicit scenario runtime, and timeout remain unverified",
   },
 ];
 
