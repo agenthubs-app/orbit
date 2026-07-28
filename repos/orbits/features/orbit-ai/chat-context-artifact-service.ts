@@ -10,6 +10,21 @@ import type {
   ChatMessageThreadPayload,
 } from "../chat/contract";
 import { createChatConversationMessageService } from "../chat/service-factory";
+import type {
+  ContactDetail,
+  ContactDetailEvidence,
+  ContactDetailTagStatusResult,
+  ContactDetailTagStatusService,
+} from "../contacts/detail-contract";
+import type {
+  ContactsListSearchResult,
+  ContactsListSearchAndFilterService,
+} from "../contacts/service";
+import type { ContactListItemContract } from "../../shared/contract/contacts";
+import {
+  createContactDetailTagStatusService,
+  createContactsListSearchAndFilterService,
+} from "../contacts/service-factory";
 import {
   type OrbitAgentArtifactGeneratedView,
   type OrbitAgentArtifactPayload,
@@ -113,6 +128,8 @@ interface FollowupContextResolution {
 }
 
 interface ChatContextArtifactData {
+  contact: ContactDetail | null;
+  contactEvidence: readonly ContactDetailEvidence[];
   evidenceIds: readonly string[];
   generation: OrbitAgentFollowupContextGenerationResult | null;
   generatedAt: string;
@@ -525,6 +542,18 @@ function publicSourceLabel(sourceLabel: string, locale: ArtifactLocale) {
   });
 }
 
+function artifactSourceLabel(
+  data: ChatContextArtifactData,
+  locale: ArtifactLocale,
+) {
+  return data.contact
+    ? localize(locale, {
+        en: "This account's relationship records",
+        zh: "当前账户的人脉记录",
+      })
+    : publicSourceLabel(data.sourceLabel, locale);
+}
+
 function isPromiseLike<TResult>(result: TResult | Promise<TResult>): result is Promise<TResult> {
   const maybePromise = result as { then?: unknown };
 
@@ -564,6 +593,8 @@ function dataForThread(input: {
   const { thread } = input;
 
   return {
+    contact: null,
+    contactEvidence: [],
     evidenceIds: evidenceIdsFor(thread.messages, thread.provenance.evidenceIds),
     generation: input.generation,
     generatedAt: thread.provenance.collectedAt,
@@ -590,6 +621,8 @@ function dataForFailure(
   resolution: FollowupContextResolution = emptyResolution(),
 ): ChatContextArtifactData {
   return {
+    contact: null,
+    contactEvidence: [],
     evidenceIds: evidenceIdsFor([], failure.error.evidenceIds),
     generation: null,
     generatedAt: failure.error.provenance.collectedAt,
@@ -611,6 +644,8 @@ function dataForUnresolved(
   resolution: FollowupContextResolution,
 ): ChatContextArtifactData {
   return {
+    contact: null,
+    contactEvidence: [],
     evidenceIds: evidenceIdsFor([], listResult.data.provenance.evidenceIds),
     generation: null,
     generatedAt: listResult.data.provenance.collectedAt,
@@ -625,6 +660,204 @@ function dataForUnresolved(
     thread: null,
     toolStatus: "planned",
   };
+}
+
+function uniqueEvidenceIds(values: readonly string[]): readonly string[] {
+  const evidenceIds = Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean)),
+  );
+
+  return evidenceIds.length > 0
+    ? evidenceIds
+    : ["evidence:orbit-agent:relationship-context:empty"];
+}
+
+function contactGenerationFor(
+  contact: ContactDetail,
+  locale: ArtifactLocale,
+): OrbitAgentFollowupContextGenerationResult {
+  const interactionDate =
+    fullDateLabel(contact.lastInteraction.occurredAt, locale) ||
+    contact.lastInteraction.occurredAt;
+  const evidenceCount = contact.evidence.length;
+  const evidenceSummary = contact.evidence
+    .map((evidence) => {
+      const date =
+        fullDateLabel(evidence.capturedAt, locale) || evidence.capturedAt;
+      return `${date}: ${evidence.excerpt}`;
+    })
+    .join("；");
+
+  return {
+    confidenceLabel:
+      evidenceCount > 0
+        ? localize(locale, {
+            en: `${evidenceCount} source-backed interaction records`,
+            zh: `${evidenceCount} 条有来源的互动记录`,
+          })
+        : localize(locale, {
+            en: "Relationship record needs review",
+            zh: "关系记录需要复核",
+          }),
+    privacyNote: localize(locale, {
+      en: "Loaded only from this signed-in account's relationship records.",
+      zh: "仅从当前登录账户的人脉记录中读取。",
+    }),
+    recommendedFollowup: contact.nextAction,
+    relationshipContext: localize(locale, {
+      en: `${contact.relationshipContext} Latest interaction (${interactionDate}): ${contact.lastInteraction.summary}`,
+      zh: `${contact.relationshipContext} 最近一次互动（${interactionDate}）：${contact.lastInteraction.summary}`,
+    }),
+    summary: localize(locale, {
+      en: `${contact.displayName} is ${contact.role} at ${contact.organization}. Relationship context: ${contact.relationshipContext} Complete interaction evidence (${evidenceCount} records): ${evidenceSummary || "none recorded"}. Suggested next step: ${contact.nextAction}`,
+      zh: `${contact.displayName}是${contact.organization}的${contact.role}。当前关系：${contact.relationshipContext} 全部互动证据（${evidenceCount} 条）：${evidenceSummary || "暂无记录"}。建议下一步：${contact.nextAction}`,
+    }),
+  };
+}
+
+function dataForContactDetail(input: {
+  contact: ContactDetail;
+  generatedAt: string;
+  matchedBy: string;
+  source: string;
+  sourceLabel: string;
+  candidateCount: number;
+  locale: ArtifactLocale;
+}): ChatContextArtifactData {
+  const evidenceIds = uniqueEvidenceIds([
+    ...input.contact.evidence.map((evidence) => evidence.evidenceId),
+    ...input.contact.lastInteraction.evidenceIds,
+    ...input.contact.publicProfile.evidenceIds,
+  ]);
+
+  return {
+    contact: input.contact,
+    contactEvidence: input.contact.evidence,
+    evidenceIds,
+    generation: contactGenerationFor(input.contact, input.locale),
+    generatedAt: input.generatedAt,
+    liveDatabaseReadExecuted: input.contact.databaseReadExecuted,
+    messages: [],
+    resolution: {
+      candidateCount: input.candidateCount,
+      matchedBy: input.matchedBy,
+      score: 1,
+      selectedConversationId: null,
+      state: "resolved",
+    },
+    source: input.source,
+    sourceLabel: input.sourceLabel,
+    state: "success",
+    summary: contactGenerationFor(input.contact, input.locale).summary,
+    thread: null,
+    toolStatus: "completed",
+  };
+}
+
+function dataForContactLookupFailure(input: {
+  evidenceIds: readonly string[];
+  generatedAt: string;
+  liveDatabaseReadExecuted: boolean;
+  matchedBy: string;
+  source: string;
+  sourceLabel: string;
+  summary: string;
+  candidateCount?: number;
+}): ChatContextArtifactData {
+  return {
+    contact: null,
+    contactEvidence: [],
+    evidenceIds: uniqueEvidenceIds(input.evidenceIds),
+    generation: null,
+    generatedAt: input.generatedAt,
+    liveDatabaseReadExecuted: input.liveDatabaseReadExecuted,
+    messages: [],
+    resolution: {
+      candidateCount: input.candidateCount ?? 0,
+      matchedBy: input.matchedBy,
+      score: 0,
+      selectedConversationId: null,
+      state: "missing",
+    },
+    source: input.source,
+    sourceLabel: input.sourceLabel,
+    state: "failure",
+    summary: input.summary,
+    thread: null,
+    toolStatus: "failed",
+  };
+}
+
+function explicitContactIdFor(
+  request: OrbitAgentArtifactTaskRequest,
+  query: string,
+): string | null {
+  const fromArguments = readText(request.toolArguments?.contactId);
+
+  if (fromArguments) return fromArguments;
+
+  const labeled = query.match(
+    /(?:联系人\s*ID|contact\s*ID|ID)\s*[:：]\s*([a-z0-9][a-z0-9:_-]+)/i,
+  );
+
+  return readText(labeled?.[1]);
+}
+
+function requestedContactNames(
+  request: OrbitAgentArtifactTaskRequest,
+): readonly string[] {
+  return uniqueText([
+    readText(request.toolArguments?.contactName),
+    readText(request.toolArguments?.displayName),
+    readText(request.toolArguments?.participantName),
+    readText(request.toolArguments?.personName),
+  ]);
+}
+
+function selectActorContact(input: {
+  contacts: readonly ContactListItemContract[];
+  query: string;
+  request: OrbitAgentArtifactTaskRequest;
+}): {
+  contact: ContactListItemContract | null;
+  matchedBy: string;
+} {
+  const explicitContactId = explicitContactIdFor(input.request, input.query);
+
+  if (explicitContactId) {
+    return {
+      contact:
+        input.contacts.find(
+          (contact) =>
+            normalizeSearchText(contact.id) ===
+            normalizeSearchText(explicitContactId),
+        ) ?? null,
+      matchedBy: "contactId",
+    };
+  }
+
+  for (const requestedName of requestedContactNames(input.request)) {
+    const matches = input.contacts.filter(
+      (contact) =>
+        normalizeSearchText(contact.displayName) ===
+        normalizeSearchText(requestedName),
+    );
+
+    if (matches.length === 1) {
+      return { contact: matches[0] ?? null, matchedBy: "contactName" };
+    }
+  }
+
+  const normalizedQuery = normalizeSearchText(input.query);
+  const identityMatches = input.contacts.filter((contact) =>
+    [contact.displayName, contact.organization]
+      .map(normalizeSearchText)
+      .some((identity) => identity.length >= 2 && normalizedQuery.includes(identity)),
+  );
+
+  return identityMatches.length === 1
+    ? { contact: identityMatches[0] ?? null, matchedBy: "actorScopedQuery" }
+    : { contact: null, matchedBy: identityMatches.length > 1 ? "ambiguousQuery" : "none" };
 }
 
 function dataForThreadResult(input: {
@@ -1115,12 +1348,12 @@ function presentationFor(
   const defaults: OrbitAgentArtifactPresentation = {
     preferredSurface: "side_panel",
     subtitle: localize(locale, {
-      en: "Loaded from the Chat conversation service",
-      zh: "来自 Chat 会话服务",
+      en: "Loaded from source-backed relationship records",
+      zh: "来自有来源的人脉记录",
     }),
     title: localize(locale, {
-      en: "Relationship chat context",
-      zh: "关系聊天上下文",
+      en: "Relationship context",
+      zh: "关系上下文",
     }),
     widthHint: "half",
   };
@@ -1199,6 +1432,88 @@ function contextItemFor(
   data: ChatContextArtifactData,
   locale: ArtifactLocale,
 ) {
+  if (data.contact) {
+    const contact = data.contact;
+
+    return {
+      actions: [
+        {
+          actionId: `chat:confirm-followup:${contact.id}`,
+          label: localize(locale, {
+            en: "Confirm and generate follow-up suggestions",
+            zh: "确认并生成跟进建议",
+          }),
+          requiresConfirmation: true,
+        },
+        {
+          actionId: `chat:defer-followup:${contact.id}`,
+          label: localize(locale, {
+            en: "Not now",
+            zh: "暂不继续",
+          }),
+          requiresConfirmation: false,
+        },
+        {
+          actionId: `chat:review-context:${contact.id}`,
+          label: localize(locale, {
+            en: "Review relationship context",
+            zh: "复核关系上下文",
+          }),
+          requiresConfirmation: true,
+        },
+      ],
+      body: data.generation?.relationshipContext ?? contact.relationshipContext,
+      confidenceLabel:
+        data.generation?.confidenceLabel ?? contact.status,
+      evidenceIds: data.evidenceIds,
+      id: `chat-context:${contact.id}`,
+      metadata: [
+        {
+          label: localize(locale, { en: "Contact", zh: "联系人" }),
+          value: contact.displayName,
+        },
+        {
+          label: localize(locale, { en: "Organization", zh: "组织" }),
+          value: contact.organization,
+        },
+        {
+          label: localize(locale, { en: "Role", zh: "职位" }),
+          value: contact.role,
+        },
+        {
+          label: localize(locale, { en: "Stage", zh: "阶段" }),
+          value: contact.status,
+        },
+        {
+          label: localize(locale, { en: "Source", zh: "来源" }),
+          value: artifactSourceLabel(data, locale),
+        },
+        {
+          label: localize(locale, { en: "Resolution score", zh: "匹配分" }),
+          value: data.resolution.score.toFixed(2),
+        },
+        {
+          label: localize(locale, { en: "Matched by", zh: "匹配方式" }),
+          value: data.resolution.matchedBy,
+        },
+        {
+          label: localize(locale, { en: "Privacy", zh: "隐私范围" }),
+          value:
+            data.generation?.privacyNote ??
+            localize(locale, {
+              en: "This account only",
+              zh: "仅当前账户",
+            }),
+        },
+      ],
+      reason:
+        data.generation?.privacyNote ?? contact.relationshipContext,
+      subtitle:
+        data.generation?.recommendedFollowup ?? contact.nextAction,
+      title: contact.displayName,
+    };
+  }
+
   const context = data.thread?.oneToOneContext;
 
   if (!context) {
@@ -1281,6 +1596,47 @@ function contextItemFor(
   };
 }
 
+function contactEvidenceItemFor(
+  evidence: ContactDetailEvidence,
+  locale: ArtifactLocale,
+) {
+  return {
+    actions: [],
+    body: evidence.excerpt,
+    confidenceLabel: localize(locale, {
+      en: "Source-backed",
+      zh: "来源已绑定",
+    }),
+    evidenceIds: [evidence.evidenceId],
+    id: `relationship-evidence:${evidence.evidenceId}`,
+    metadata: [
+      {
+        label: localize(locale, { en: "Date", zh: "时间" }),
+        value:
+          fullDateLabel(evidence.capturedAt, locale) || evidence.capturedAt,
+      },
+      {
+        label: localize(locale, { en: "Channel", zh: "渠道" }),
+        value: evidence.source.label,
+      },
+      {
+        label: localize(locale, { en: "Evidence ID", zh: "证据 ID" }),
+        value: evidence.evidenceId,
+      },
+    ],
+    reason: localize(locale, {
+      en: "This interaction is read from the signed-in account's relationship evidence.",
+      zh: "这条互动来自当前登录账户的人脉证据。",
+    }),
+    subtitle:
+      fullDateLabel(evidence.capturedAt, locale) || evidence.capturedAt,
+    title: localize(locale, {
+      en: "Interaction record",
+      zh: "互动记录",
+    }),
+  };
+}
+
 function unresolvedContextItemFor(
   data: ChatContextArtifactData,
   locale: ArtifactLocale,
@@ -1333,6 +1689,10 @@ function unresolvedContextItemFor(
 }
 
 function emptyStateFor(data: ChatContextArtifactData, locale: ArtifactLocale): string | undefined {
+  if (data.contact) {
+    return undefined;
+  }
+
   if (data.messages.length > 0) {
     return undefined;
   }
@@ -1368,8 +1728,8 @@ function generatedViewFor(
     sections: [
       {
         body: localize(locale, {
-          en: `Source: ${publicSourceLabel(data.sourceLabel, locale)}`,
-          zh: `来源：${publicSourceLabel(data.sourceLabel, locale)}`,
+          en: `Source: ${artifactSourceLabel(data, locale)}`,
+          zh: `来源：${artifactSourceLabel(data, locale)}`,
         }),
         items: contextItem ? [contextItem] : [unresolvedContextItemFor(data, locale)],
         title: localize(locale, {
@@ -1378,10 +1738,16 @@ function generatedViewFor(
         }),
       },
       {
-        items: data.messages.slice(-5).map((message) => messageItemFor(message, locale)),
+        items: data.contact
+          ? data.contactEvidence.map((evidence) =>
+              contactEvidenceItemFor(evidence, locale),
+            )
+          : data.messages.slice(-5).map((message) =>
+              messageItemFor(message, locale),
+            ),
         title: localize(locale, {
-          en: "Recent messages",
-          zh: "最近消息",
+          en: data.contact ? "Interaction evidence" : "Recent messages",
+          zh: data.contact ? "互动证据" : "最近消息",
         }),
       },
     ],
@@ -1415,10 +1781,15 @@ function toolTraceFor(
                 en: `Orbit AI scored relationship context resolution at ${data.resolution.score.toFixed(2)} via ${data.resolution.matchedBy}; the side panel remains pending until the accepted threshold is met without ambiguity.`,
                 zh: `Orbit AI 通过 ${data.resolution.matchedBy} 将关系上下文匹配分评为 ${data.resolution.score.toFixed(2)}；在无歧义并达到阈值前，右侧面板保持待复核状态。`,
               })
-          : localize(locale, {
-              en: `Orbit AI resolved relationship chat context at ${data.resolution.score.toFixed(2)} via ${data.resolution.matchedBy}, then generated review-only follow-up context without sending messages, opening transport, or executing external actions.`,
-              zh: `Orbit AI 通过 ${data.resolution.matchedBy} 以 ${data.resolution.score.toFixed(2)} 匹配到关系聊天上下文，并生成只供复核的跟进上下文；未发送消息、未打开传输层、未执行外部动作。`,
-            }),
+          : data.contact
+            ? localize(locale, {
+                en: `Orbit AI resolved an actor-scoped contact at ${data.resolution.score.toFixed(2)} via ${data.resolution.matchedBy}, loaded its relationship evidence, and executed no external action.`,
+                zh: `Orbit AI 通过 ${data.resolution.matchedBy} 在当前账户内以 ${data.resolution.score.toFixed(2)} 定位联系人并读取关系证据；未执行任何外部动作。`,
+              })
+            : localize(locale, {
+                en: `Orbit AI resolved relationship chat context at ${data.resolution.score.toFixed(2)} via ${data.resolution.matchedBy}, then generated review-only follow-up context without sending messages, opening transport, or executing external actions.`,
+                zh: `Orbit AI 通过 ${data.resolution.matchedBy} 以 ${data.resolution.score.toFixed(2)} 匹配到关系聊天上下文，并生成只供复核的跟进上下文；未发送消息、未打开传输层、未执行外部动作。`,
+              }),
       status: data.toolStatus,
       toolCallId: "toolcall:relationship-chat-context:live-chat",
       toolName: "chat.context",
@@ -1435,7 +1806,9 @@ function provenanceFor(
     generatedAt: data.generatedAt || fallbackGeneratedAt,
     generationMethod: "artifact-producer-generated-view",
     source: data.source || ORBIT_AGENT_CHAT_CONTEXT_ARTIFACT_SOURCE,
-    sourceModules: ["orbit-ai", "chat"],
+    sourceModules: data.contact
+      ? ["orbit-ai", "contacts"]
+      : ["orbit-ai", "chat"],
     toolCalls: toolTraceFor(data, locale),
   };
 }
@@ -1496,6 +1869,8 @@ function resultFor(input: {
             en: "Clarify the contact, organization, or conversation before drafting, sending, scheduling, or taking any external action.",
             zh: "请先澄清联系人、组织或会话，再决定是否起草、发送、安排日程或执行外部动作。",
           })
+        : input.data.contact
+          ? input.data.contact.nextAction
         : input.data.messages.length > 0
         ? localize(input.locale, {
             en: "Review chat evidence before drafting, sending, scheduling, or taking any external action.",
@@ -1553,6 +1928,108 @@ function success(payload: OrbitAgentArtifactPayload): OrbitAgentArtifactResultEn
     data: payload,
     success: true,
   };
+}
+
+async function resultForActorScopedContact(input: {
+  actorId: string;
+  contactDetailService: ContactDetailTagStatusService;
+  contactsService: ContactsListSearchAndFilterService;
+  query: string;
+  request: OrbitAgentArtifactTaskRequest;
+}): Promise<OrbitAgentArtifactResultEnvelope> {
+  const listResult: ContactsListSearchResult = await input.contactsService.listContacts({
+    actorId: input.actorId,
+  });
+
+  if (listResult.success === false) {
+    return success(
+      payloadFor({
+        data: dataForContactLookupFailure({
+          evidenceIds: listResult.error.evidenceIds,
+          generatedAt: listResult.error.provenance.collectedAt,
+          liveDatabaseReadExecuted:
+            listResult.error.provenance.databaseQueryExecuted,
+          matchedBy: "actorScopedContacts",
+          source: listResult.error.provenance.source,
+          sourceLabel: listResult.error.provenance.sourceLabel,
+          summary: listResult.error.message,
+        }),
+        query: input.query,
+        request: input.request,
+      }),
+    );
+  }
+
+  const selection = selectActorContact({
+    contacts: listResult.data.contacts,
+    query: input.query,
+    request: input.request,
+  });
+
+  if (!selection.contact) {
+    return success(
+      payloadFor({
+        data: dataForContactLookupFailure({
+          candidateCount: listResult.data.contacts.length,
+          evidenceIds: listResult.data.provenance.evidenceIds,
+          generatedAt: listResult.data.provenance.collectedAt,
+          liveDatabaseReadExecuted:
+            listResult.data.provenance.databaseQueryExecuted,
+          matchedBy: selection.matchedBy,
+          source: listResult.data.provenance.source,
+          sourceLabel: listResult.data.provenance.sourceLabel,
+          summary:
+            selection.matchedBy === "ambiguousQuery"
+              ? "More than one contact in this account matched the request."
+              : "No contact in this account matched the request.",
+        }),
+        query: input.query,
+        request: input.request,
+      }),
+    );
+  }
+
+  const detailResult: ContactDetailTagStatusResult =
+    await input.contactDetailService.getContactDetail({
+      actorId: input.actorId,
+      contactId: selection.contact.id,
+    });
+
+  if (detailResult.success === false) {
+    return success(
+      payloadFor({
+        data: dataForContactLookupFailure({
+          candidateCount: listResult.data.contacts.length,
+          evidenceIds: detailResult.error.evidenceIds,
+          generatedAt: detailResult.error.provenance.collectedAt,
+          liveDatabaseReadExecuted:
+            detailResult.error.provenance.databaseReadExecuted,
+          matchedBy: selection.matchedBy,
+          source: detailResult.error.provenance.source,
+          sourceLabel: detailResult.error.provenance.sourceLabel,
+          summary: detailResult.error.message,
+        }),
+        query: input.query,
+        request: input.request,
+      }),
+    );
+  }
+
+  return success(
+    payloadFor({
+      data: dataForContactDetail({
+        candidateCount: listResult.data.contacts.length,
+        contact: detailResult.data.contact,
+        generatedAt: detailResult.data.provenance.collectedAt,
+        locale: normalizeLocale(input.request.locale),
+        matchedBy: selection.matchedBy,
+        source: detailResult.data.provenance.source,
+        sourceLabel: detailResult.data.provenance.sourceLabel,
+      }),
+      query: input.query,
+      request: input.request,
+    }),
+  );
 }
 
 function resultForSelectedConversation(input: {
@@ -1646,14 +2123,22 @@ function resultForSelectedConversation(input: {
 }
 
 export function createOrbitAgentChatContextArtifactService(input: {
+  actorId?: string | null;
   chatService?: ChatConversationMessageService;
+  contactDetailService?: ContactDetailTagStatusService;
+  contactsService?: ContactsListSearchAndFilterService;
   fallbackService?: OrbitAgentArtifactTaskService;
   followupContextGenerator?: OrbitAgentFollowupContextGenerator;
 } = {}): OrbitAgentArtifactTaskService {
+  const actorId = input.actorId?.trim() || null;
   const fallbackService =
     input.fallbackService ?? createOrbitAgentArtifactPreviewService();
   const chatService =
     input.chatService ?? createChatConversationMessageService();
+  const contactDetailService =
+    input.contactDetailService ?? createContactDetailTagStatusService("live");
+  const contactsService =
+    input.contactsService ?? createContactsListSearchAndFilterService("live");
   const followupContextGenerator =
     input.followupContextGenerator ?? defaultFollowupContextGenerator;
 
@@ -1667,6 +2152,16 @@ export function createOrbitAgentChatContextArtifactService(input: {
 
       if (!query) {
         return fallbackService.createArtifactTask(request);
+      }
+
+      if (actorId) {
+        return resultForActorScopedContact({
+          actorId,
+          contactDetailService,
+          contactsService,
+          query,
+          request,
+        });
       }
 
       const listResult = chatService.listConversations({

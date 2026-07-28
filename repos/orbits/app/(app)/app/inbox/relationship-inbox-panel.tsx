@@ -61,6 +61,7 @@ function clampRelationshipInboxWidth(
 
 interface NewThreadSeed {
   body?: string;
+  contactId?: string;
   recipient?: string;
   organization?: string;
   subject?: string;
@@ -124,36 +125,33 @@ async function fetchBadgeCount(language: OrbitLanguage): Promise<number> {
   }
 }
 
-// 用 message-draft-generator 生成首封规则草稿（subject + body），供发起新对话预填。
-// 所有语言都走同一个运行时边界；页面不再用本地模板伪装服务成功。
+// 用当前账户的人脉证据生成首封 AI 草稿（subject + body），供发起新对话预填。
+// 这里只生成可编辑草稿；接口不会调用邮件发送方，也不会创建外部副作用。
 export async function generateMessageDraft(input: {
+  contactId?: string;
   language: OrbitLanguage;
   recipientName: string;
   organization: string;
 }): Promise<{ subject: string; body: string } | null> {
   try {
-    const response = await fetch("/api/message-drafts", {
+    const response = await fetch("/api/chat/assist/email-draft", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        draftKind: "follow_up",
-        channel: "email",
-        contextNote:
-          input.language === "zh"
-            ? "The operator interface language is Chinese. Review and localize this rule-based draft before use."
-            : "Review this rule-based draft before use.",
+        contactId: input.contactId,
+        language: input.language,
         recipientName: input.recipientName,
         organization: input.organization,
       }),
     });
     const envelope = (await response.json()) as {
       success?: boolean;
-      data?: { drafts?: { subject?: string; body?: string }[] };
+      data?: { subject?: string; body?: string };
     };
     if (!response.ok || envelope.success !== true) {
       return null;
     }
-    const draft = envelope.data?.drafts?.[0];
+    const draft = envelope.data;
     if (!draft) {
       return null;
     }
@@ -571,6 +569,7 @@ function ThreadContextRail({
 // 全程草稿优先、不发送、无外部副作用。
 function NewThreadForm({
   initialBody,
+  initialContactId,
   initialRecipient,
   initialOrganization,
   initialSubject,
@@ -579,6 +578,7 @@ function NewThreadForm({
   t,
 }: {
   initialBody?: string;
+  initialContactId?: string;
   initialRecipient?: string;
   initialOrganization?: string;
   initialSubject?: string;
@@ -598,6 +598,7 @@ function NewThreadForm({
     setBusy("generating");
     setError(false);
     const draft = await generateMessageDraft({
+      contactId: initialContactId,
       language,
       recipientName: recipient,
       organization,
@@ -651,7 +652,7 @@ function NewThreadForm({
 
       <button className="btn btn-ghost btn-sm" disabled={!recipient.trim() || busy !== "idle"} onClick={onGenerate} type="button">
         <Icon name="sparkle" size={15} />
-        {busy === "generating" ? t({ en: "Generating…", zh: "生成中…" }) : t({ en: "Generate rule-based draft", zh: "生成规则草稿" })}
+        {busy === "generating" ? t({ en: "AI is drafting…", zh: "AI 起草中…" }) : t({ en: "Draft with AI", zh: "AI 起草邮件" })}
       </button>
 
       <label className="ri-new-label">{t({ en: "Subject", zh: "主题" })}</label>
@@ -846,6 +847,7 @@ function ThreadsTab({
         {composing ? (
           <NewThreadForm
             initialBody={newThreadSeed?.body}
+            initialContactId={newThreadSeed?.contactId}
             initialOrganization={newThreadSeed?.organization}
             initialRecipient={newThreadSeed?.recipient}
             initialSubject={newThreadSeed?.subject}

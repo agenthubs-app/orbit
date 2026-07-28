@@ -79,11 +79,11 @@ test("agent capability registry exposes trigger, permission, confirmation, and s
   assert.deepEqual(calendar.surfaces, ["chat", "today", "ledger"]);
 
   assert.deepEqual(preEventBrief.triggers, [
-    "chat",
     "scheduler",
     "domain_signal",
     "manual",
   ]);
+  assert.equal(preEventBrief.surfaces.includes("chat"), false);
   assert.equal(preEventBrief.userConfigurableAutomation, true);
 
   assert.equal(relationshipContext.confirmationPolicy, "none");

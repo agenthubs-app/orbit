@@ -101,28 +101,26 @@ test("contact detail card connection routes 起草邮件 into the inbox compose 
   );
 
   assert.match(source, /openRelationshipInboxCompose\(/);
+  assert.match(source, /contactId: contact\.id/);
   assert.match(source, /recipient: contact\.displayName/);
 });
 
-test("Chinese relationship inbox draft generation uses the runtime API without a local success fallback", async () => {
+test("Chinese relationship inbox draft generation uses the actor-scoped AI API without a local success fallback", async () => {
   const mod = await import("../../app/(app)/app/inbox/relationship-inbox-panel");
   const previousFetch = globalThis.fetch;
   let fetchRequested = false;
   globalThis.fetch = (async (input, init) => {
     fetchRequested = true;
-    assert.equal(String(input), "/api/message-drafts");
+    assert.equal(String(input), "/api/chat/assist/email-draft");
     assert.equal(init?.method, "POST");
+    assert.match(String(init?.body), /"contactId":"contact:sato"/);
     assert.match(String(init?.body), /"recipientName":"佐藤 健一"/);
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          drafts: [
-            {
-              subject: "关于北星食品的跟进",
-              body: "佐藤 健一，您好：\n\n这是运行时返回的规则草稿。",
-            },
-          ],
+          subject: "关于北星食品的跟进",
+          body: "佐藤 健一，您好：\n\n这是基于互动证据生成的人工智能草稿。",
         },
       }),
       { status: 200 },
@@ -131,6 +129,7 @@ test("Chinese relationship inbox draft generation uses the runtime API without a
 
   try {
     const draft = await mod.generateMessageDraft({
+      contactId: "contact:sato",
       language: "zh",
       organization: "北星食品",
       recipientName: "佐藤 健一",
@@ -146,7 +145,7 @@ test("Chinese relationship inbox draft generation uses the runtime API without a
   }
 });
 
-test("relationship inbox labels deterministic assists and local staging honestly", async () => {
+test("relationship inbox labels AI drafting and local staging honestly", async () => {
   const source = await import("node:fs").then((fs) =>
     fs.readFileSync(
       new URL(
@@ -157,7 +156,8 @@ test("relationship inbox labels deterministic assists and local staging honestly
     ),
   );
 
-  assert.doesNotMatch(source, /chineseDemoMessageDraft|AI rewrite|AI 生成草稿/);
+  assert.doesNotMatch(source, /chineseDemoMessageDraft|AI rewrite/);
+  assert.match(source, /AI 起草邮件/);
   assert.match(source, /Rule-based rewrite|规则改写/);
   assert.match(source, /Stage for review|暂存待复核/);
   assert.doesNotMatch(source, /fetchProactiveAlerts|From Orbit AI/);

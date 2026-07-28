@@ -282,6 +282,16 @@ async function persistNaturalLanguageActionProposals(
       data: {
         ...publicData,
         actionIds: proposed.actions.map((action) => action.actionId),
+        assistantMessage:
+          input.locale === "en"
+            ? `I prepared ${proposed.actions.length} reviewable action${proposed.actions.length === 1 ? "" : "s"}: ${proposed.actions
+                .map((action) => action.title)
+                .join(", ")}. Nothing has been saved or executed yet; confirm each action before Orbit writes it.`
+            : `已生成 ${proposed.actions.length} 项待确认操作：${proposed.actions
+                .map((action) => action.title)
+                .join("、")}。目前尚未保存或执行；请逐项复核并确认后，Orbit 才会写入。`,
+        nextAction:
+          "Review the proposed actions and explicitly confirm only the operations you want Orbit to execute.",
         runId: proposed.runId ?? undefined,
       },
     };

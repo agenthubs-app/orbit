@@ -642,6 +642,7 @@ function systemInstruction(): string {
     "Each non-general intent must use exactly one matching tool, except action_proposal, which must use an empty toolRequests array and one or more actionRequests. general_chat must use both arrays empty.",
     "Only action_proposal may contain actionRequests. Every other intent must return an empty actionRequests array.",
     "Every action request must set requiresUserConfirmation=true. Planning an action never means it was executed.",
+    "For relative dates such as 今天/明天/today/tomorrow, use currentLocalDate in defaultTimeZone from the planner input. Do not derive the user's calendar date from the UTC date portion of currentTimeIso.",
     "Supported natural-language writes:",
     "- create an internal follow-up task -> followups.createTask with arguments.title and optional ISO arguments.dueAt.",
     "- create an internal reminder -> notifications.createReminder with arguments.title and required ISO arguments.dueAt.",
@@ -698,6 +699,16 @@ function systemInstruction(): string {
 }
 
 function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
+  const currentTime = new Date();
+  const defaultTimeZone =
+    process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo";
+  const currentLocalDate = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: defaultTimeZone,
+    year: "numeric",
+  }).format(currentTime);
+
   return JSON.stringify({
     conversationHistory: (input.history ?? []).slice(-8),
     locale: input.locale ?? "zh",
@@ -737,8 +748,9 @@ function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
         },
       ],
     },
-    currentTimeIso: new Date().toISOString(),
-    defaultTimeZone: process.env.ORBIT_DEFAULT_TIME_ZONE ?? "Asia/Tokyo",
+    currentLocalDate,
+    currentTimeIso: currentTime.toISOString(),
+    defaultTimeZone,
   });
 }
 

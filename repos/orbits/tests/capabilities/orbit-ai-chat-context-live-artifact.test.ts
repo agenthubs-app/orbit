@@ -51,9 +51,251 @@ test("live Agent artifacts bind contact and Event reads to the server actor", ()
     /createOrbitAgentFollowupReviewArtifactService\(\{\s*actorId,/,
   );
   assert.match(
+    liveArtifactSource,
+    /createOrbitAgentChatContextArtifactService\(\{\s*actorId,/,
+  );
+  assert.match(
     conversationRouteSource,
     /createOrbitAgentConversationServiceForActor\(agentContext\.actorId\)/,
   );
+});
+
+test("chat.context uses actor-scoped contact evidence before any workspace-wide chat fallback", async () => {
+  const calls: string[] = [];
+  const serviceModule = await import(
+    "../../features/orbit-ai/chat-context-artifact-service"
+  );
+  const service = serviceModule.createOrbitAgentChatContextArtifactService({
+    actorId: "actor:test-account",
+    chatService: {
+      getMessageThread() {
+        throw new Error("Actor-scoped contact context must not read global chat.");
+      },
+      listConversations() {
+        throw new Error("Actor-scoped contact context must not read global chat.");
+      },
+    } as never,
+    contactsService: {
+      listContacts(input: { actorId?: string | null } = {}) {
+        calls.push(`list:${input.actorId}`);
+
+        return {
+          success: true,
+          data: {
+            state: "success",
+            query: "",
+            appliedFilters: {
+              query: "",
+              sourceFilters: [],
+              statusFilters: [],
+              tagFilters: [],
+              valueFilters: [],
+            },
+            availableFilters: {
+              sources: [],
+              statuses: [],
+              tags: [],
+              values: [],
+            },
+            contacts: [
+              {
+                id: "contact:lin-mei",
+                displayName: "林玫",
+                role: "投资合伙人",
+                organization: "港湾创投",
+                location: "东京",
+                profileSnippet: "关注人工智能早期项目",
+                relationshipContext: "双方已有多次有效交流。",
+                lastInteractionAt: "2026-07-25T09:00:00.000Z",
+                nextAction: "发送项目清单。",
+                source: {
+                  type: "event_import",
+                  id: "source:event",
+                  label: "东京人工智能合作伙伴交流会",
+                  evidenceId: "evidence:lin-mei:1",
+                },
+                evidence: [],
+                tags: [],
+                value: {
+                  score: 90,
+                  valueTypes: ["venture_capital"],
+                  rationale: "投资合作",
+                  evidenceIds: ["evidence:lin-mei:1"],
+                },
+                status: "active",
+                databaseQueryExecuted: true,
+                searchIndexReadExecuted: false,
+                externalNetworkRequested: false,
+                aiProviderRequested: false,
+                calendarProviderRequested: false,
+                emailProviderRequested: false,
+                notificationDelivered: false,
+              },
+            ],
+            summary: "1 contact",
+            provenance: {
+              source: "test:contacts",
+              sourceLabel: "Actor-scoped Contacts",
+              evidenceIds: ["evidence:lin-mei:1"],
+              collectedAt: "2026-07-28T00:00:00.000Z",
+              privacy: "live-contacts-list-search-filter",
+              generationMethod: "live-store-query",
+              searchIndexReadExecuted: false,
+              databaseQueryExecuted: true,
+              externalNetworkRequested: false,
+              deviceRequested: false,
+              aiProviderRequested: false,
+              calendarProviderRequested: false,
+              emailProviderRequested: false,
+              notificationDelivered: false,
+            },
+            nextAction: "Review contact.",
+          },
+        };
+      },
+      searchContacts() {
+        throw new Error("The bounded list is sufficient for identity resolution.");
+      },
+    } as never,
+    contactDetailService: {
+      async getContactDetail(input: {
+        actorId?: string | null;
+        contactId: string;
+      }) {
+        calls.push(`detail:${input.actorId}:${input.contactId}`);
+
+        return {
+          success: true,
+          data: {
+            state: "success",
+            contact: {
+              id: "contact:lin-mei",
+              displayName: "林玫",
+              role: "投资合伙人",
+              organization: "港湾创投",
+              location: "东京",
+              relationshipContext: "双方已有多次有效交流。",
+              publicProfile: {
+                bio: "关注人工智能早期项目",
+                selfIntroduction: "",
+                industry: "风险投资",
+                offering: [],
+                seeking: [],
+                topics: [],
+                conversationPrompts: [],
+                source: {
+                  type: "event_import",
+                  id: "source:event",
+                  label: "东京人工智能合作伙伴交流会",
+                  evidenceId: "evidence:lin-mei:1",
+                },
+                evidenceIds: ["evidence:lin-mei:1"],
+              },
+              source: {
+                type: "event_import",
+                id: "source:event",
+                label: "东京人工智能合作伙伴交流会",
+                evidenceId: "evidence:lin-mei:1",
+              },
+              evidence: [
+                {
+                  evidenceId: "evidence:lin-mei:1",
+                  source: {
+                    type: "calendar_signal",
+                    id: "source:calendar",
+                    label: "Calendar signal",
+                    evidenceId: "evidence:lin-mei:1",
+                  },
+                  field: "relationship_context",
+                  excerpt: "电话复盘了三家人工智能项目。",
+                  capturedAt: "2026-07-25T09:00:00.000Z",
+                  createdBy: "mock-contact-detail-tag-status-service",
+                },
+              ],
+              tags: [],
+              status: "active",
+              notes: [],
+              lastInteraction: {
+                interactionId: "interaction:lin-mei",
+                channel: "calendar_signal",
+                occurredAt: "2026-07-25T09:00:00.000Z",
+                summary: "电话复盘了三家人工智能项目。",
+                source: {
+                  type: "calendar_signal",
+                  id: "source:calendar",
+                  label: "Calendar signal",
+                  evidenceId: "evidence:lin-mei:1",
+                },
+                evidenceIds: ["evidence:lin-mei:1"],
+                calendarProviderRequested: false,
+                emailProviderRequested: false,
+                notificationDelivered: false,
+                externalNetworkRequested: false,
+                productionAuditLogWriteExecuted: false,
+              },
+              nextAction: "发送项目清单。",
+              updatedAt: "2026-07-25T09:00:00.000Z",
+              tagWriteExecuted: false,
+              statusWriteExecuted: false,
+              noteWriteExecuted: false,
+              productionAuditLogWriteExecuted: false,
+              databaseReadExecuted: true,
+              databaseWriteExecuted: false,
+              externalNetworkRequested: false,
+              deviceRequested: false,
+              aiProviderRequested: false,
+              calendarProviderRequested: false,
+              emailProviderRequested: false,
+              notificationDelivered: false,
+            },
+            editableTagOptions: [],
+            editableStatusOptions: [],
+            summary: "Loaded.",
+            provenance: {
+              source: "test:contacts",
+              sourceLabel: "Actor-scoped Contacts",
+              evidenceIds: ["evidence:lin-mei:1"],
+              collectedAt: "2026-07-28T00:00:00.000Z",
+              privacy: "demo-contact-detail-tag-status-only",
+              generationMethod: "live-store-query",
+              databaseReadExecuted: true,
+              databaseWriteExecuted: false,
+              productionAuditLogWriteExecuted: false,
+              externalNetworkRequested: false,
+              deviceRequested: false,
+              aiProviderRequested: false,
+              calendarProviderRequested: false,
+              emailProviderRequested: false,
+              notificationDelivered: false,
+            },
+            nextAction: "Review.",
+          },
+        };
+      },
+    } as never,
+  });
+
+  const result = await service.createArtifactTask({
+    kind: "relationship_chat_context",
+    locale: "zh",
+    query: "总结林玫的关系和互动证据。ID: contact:lin-mei",
+    toolArguments: { contactId: "contact:lin-mei" },
+  });
+  const generated = JSON.stringify(result);
+
+  assert.equal(result.success, true);
+  assert.deepEqual(calls, [
+    "list:actor:test-account",
+    "detail:actor:test-account:contact:lin-mei",
+  ]);
+  assert.match(generated, /电话复盘了三家人工智能项目/);
+  assert.match(generated, /发送项目清单/);
+  assert.match(generated, /互动证据/);
+  assert.doesNotMatch(generated, /没有关系会话达到/);
+  assert.deepEqual(result.data?.result.provenance.sourceModules, [
+    "orbit-ai",
+    "contacts",
+  ]);
 });
 
 test("chat.context artifact reads source-backed live chat conversations", async () => {

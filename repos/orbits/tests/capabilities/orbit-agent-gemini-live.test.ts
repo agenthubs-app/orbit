@@ -1389,6 +1389,88 @@ test("live Orbit Agent does not treat explicitly prohibited side effects as requ
   assert.equal(boundary, null);
 });
 
+test("live Orbit Agent distinguishes internal Orbit schedule from external calendar permissions", async () => {
+  const runtime = await importProjectModule<{
+    createLiveOrbitAgentLocalBoundaryPayload: (
+      message: string,
+    ) => {
+      assistantMessage?: string;
+      provenance?: { source?: string };
+    } | null;
+  }>("features/orbit-ai/live-agent-runtime.ts");
+
+  const internalSchedule = runtime.createLiveOrbitAgentLocalBoundaryPayload(
+    "把 Tokyo AI 产品圆桌加入 Orbit 应用内日程，只生成待确认方案。",
+  );
+  assert.ok(internalSchedule);
+  assert.match(internalSchedule.assistantMessage ?? "", /应用内日程|不需要外部日历权限/);
+  assert.doesNotMatch(internalSchedule.assistantMessage ?? "", /连接 Gmail/);
+
+  const externalCalendar = runtime.createLiveOrbitAgentLocalBoundaryPayload(
+    "把 Tokyo AI 产品圆桌同步到 Google Calendar。",
+  );
+  assert.ok(externalCalendar);
+  assert.match(externalCalendar.assistantMessage ?? "", /权限授权|Google/);
+});
+
+test("live Orbit Agent routes page-only capabilities explicitly instead of hallucinating another action", async () => {
+  const runtime = await importProjectModule<{
+    createLiveOrbitAgentLocalBoundaryPayload: (
+      message: string,
+    ) => {
+      assistantMessage?: string;
+      proposedToolIntents?: readonly unknown[];
+      provenance?: { safety?: { domainToolCallsExecuted?: boolean } };
+    } | null;
+  }>("features/orbit-ai/live-agent-runtime.ts");
+
+  const cases = [
+    {
+      prompt: "把联系人林玫归档，只生成待确认方案。",
+      expected: /归档|没有把它伪装成任务/,
+    },
+    {
+      prompt: "把这条会面记录保存到东京人工智能合作伙伴交流会：林玫重点关注客户续费数据。",
+      expected: /会面笔记|不会创建写操作|会后工作流/,
+    },
+    {
+      prompt: "保存 Tokyo AI 产品圆桌的活动目标：认识两位企业服务创始人。",
+      expected: /活动目标|没有把它误当成 Agent 记忆/,
+    },
+    {
+      prompt: "接受林玫的引荐请求。",
+      expected: /双方同意状态|具体请求/,
+    },
+    {
+      prompt: "为林玫和佐藤提出两个会面时间段。",
+      expected: /双方已同意|不会编造可用时间/,
+    },
+    {
+      prompt: "运行 event_matchmaking_v1，为 Tokyo AI 产品圆桌做活动撮合。",
+      expected: /真实报名人|不会用普通活动推荐替代/,
+    },
+    {
+      prompt: "为林玫和佐藤健司创建一条双方同意前不共享联系方式的引荐请求。",
+      expected: /真实活动参与者|双方同意/,
+    },
+    {
+      prompt: "启动“东京 AI 落地伙伴报名会”的会前准备工作流。",
+      expected: /会前简报|真实活动|活动详情/,
+    },
+  ] as const;
+
+  for (const item of cases) {
+    const boundary = runtime.createLiveOrbitAgentLocalBoundaryPayload(item.prompt);
+    assert.ok(boundary, item.prompt);
+    assert.match(boundary.assistantMessage ?? "", item.expected);
+    assert.equal(boundary.proposedToolIntents?.length, 0);
+    assert.equal(
+      boundary.provenance?.safety?.domainToolCallsExecuted,
+      false,
+    );
+  }
+});
+
 test("live Orbit Agent allows investor relationship work while retaining professional-advice boundaries", async () => {
   const runtime = await importProjectModule<{
     createLiveOrbitAgentLocalBoundaryPayload: (

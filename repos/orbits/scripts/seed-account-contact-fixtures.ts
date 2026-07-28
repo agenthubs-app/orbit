@@ -48,8 +48,8 @@ const fixtures: readonly FixtureDefinition[] = [
     conversationPrompts: ["最近日本企业客户最愿意为哪类人工智能能力付费？", "种子轮团队进入日本市场时最容易低估什么？"],
     interactionHistory: [
       "电话复盘了三家人工智能项目，林玫重点询问客户续费数据并建议暂缓推荐其中一家。",
-      "在东京人工智能合作伙伴交流会上首次深入交谈，确认双方都关注制造业效率工具。",
       "会后邮件分享了港湾创投的投资阶段、单笔规模和项目筛选标准。",
+      "在东京人工智能合作伙伴交流会上首次深入交谈，确认双方都关注制造业效率工具。",
     ],
     stage: "active",
     sourceType: "event_import",

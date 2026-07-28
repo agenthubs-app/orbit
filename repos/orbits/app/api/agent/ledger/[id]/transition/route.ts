@@ -95,7 +95,8 @@ export async function POST(
   const agentContext = await resolveAgentRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const service = createAgentLedgerForRequest(agentContext);
-  const result = await service.applyTransition(await readInput(request, id));
+  const input = await readInput(request, id);
+  let result = await service.applyTransition(input);
 
   if (result.success === false) {
     const appError = agentLedgerFailureToAppError(result);
@@ -107,6 +108,38 @@ export async function POST(
         status: getHttpStatusForAppErrorCode(appError.code),
       },
     );
+  }
+
+  // In live mode a confirmed internal action must not remain indefinitely in
+  // "approved" merely because no separately scheduled worker happened to run.
+  // Process this action's durable outbox now, then return the authoritative
+  // post-execution entry. The runtime still enforces permission, idempotency,
+  // receipts, retries, and compensation for every operation.
+  if (mode === "live" && input.transition === "confirm") {
+    await agentContext.runtime.processOutbox({
+      actionId: id,
+      limit: 20,
+      workerId: `ledger-confirm:${agentContext.actorId ?? "server"}`,
+    });
+    const refreshed = await service.listEntries();
+    if (refreshed.success === true) {
+      const entry = refreshed.data.entries.find(
+        (candidate) => candidate.entryId === id,
+      );
+      if (entry) {
+        result = {
+          success: true,
+          data: {
+            ...result.data,
+            entry,
+            nextAction:
+              entry.status === "completed"
+                ? "The confirmed operations completed and are recorded in the Agent Ledger."
+                : "The confirmed operations were processed; review the recorded result before retrying any failed operation.",
+          },
+        };
+      }
+    }
   }
 
   return NextResponse.json(success(result.data), {

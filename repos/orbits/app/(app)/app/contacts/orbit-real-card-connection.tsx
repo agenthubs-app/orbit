@@ -309,6 +309,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
   // "起草邮件"进入关系收件箱的发起新对话流程，预填当前联系人。
   const draftEmail = () => {
     openRelationshipInboxCompose({
+      contactId: contact.id,
       recipient: contact.displayName,
       organization: contact.company,
     });

@@ -357,6 +357,13 @@ function isSensitiveContactShareRequest(message: string): boolean {
 }
 
 function isExternalPermissionRequest(message: string): boolean {
+  const internalOrbitSchedule =
+    /(?:Orbit|应用内|應用內|内部|內部).{0,12}(?:日程|日历|日曆|schedule)/i.test(
+      message,
+    ) &&
+    !/(?:Google|Outlook|Microsoft|谷歌|微软|微軟|Gmail)/i.test(message);
+  if (internalOrbitSchedule) return false;
+
   const accessVerb =
     /(?:连接|接入|授权|读取|同步|导入|匯入|访问|開啟|开启|connect|authorize|read|sync|import|access)/i;
   const externalSource =
@@ -736,6 +743,161 @@ function stateChangeBoundaryPayload(message: string): OrbitAgentConversationPayl
   });
 }
 
+type ChatPageCapability =
+  | "archive_contacts"
+  | "create_intro_request"
+  | "event_matchmaking"
+  | "pre_event_brief"
+  | "respond_intro_request"
+  | "save_event_brief"
+  | "save_event_goal"
+  | "save_meeting_note"
+  | "schedule_event"
+  | "select_meeting_slots";
+
+function chatPageCapability(message: string): ChatPageCapability | null {
+  if (
+    /(?:提出|建议|建議|选择|選擇|安排|propose|select|schedule).{0,18}(?:会面时间|會面時間|时间段|時段|meeting slots?)/i.test(
+      message,
+    )
+  ) {
+    return "select_meeting_slots";
+  }
+  if (
+    /(?:活动撮合|活動撮合|人脉撮合|人脈撮合|活动撮合工作流|活動撮合工作流|event matchmaking|event_matchmaking_v1)/i.test(
+      message,
+    )
+  ) {
+    return "event_matchmaking";
+  }
+  if (
+    /(?:创建|建立|发起|发送|發送|create|send).{0,36}(?:引荐请求|引薦請求|介绍请求|介紹請求|introduction request)/i.test(
+      message,
+    )
+  ) {
+    return "create_intro_request";
+  }
+  if (
+    /(?:接受|同意|拒绝|拒絕|回复|回覆|respond to|accept|decline).{0,18}(?:引荐|引薦|介绍请求|介紹請求|introduction request)/i.test(
+      message,
+    )
+  ) {
+    return "respond_intro_request";
+  }
+  if (
+    /(?:归档|歸檔|archive).{0,18}(?:联系人|聯絡人|contact)/i.test(message) ||
+    /(?:联系人|聯絡人|contact).{0,18}(?:归档|歸檔|archive)/i.test(message)
+  ) {
+    return "archive_contacts";
+  }
+  if (
+    /(?:保存|记录|記錄|save|record).{0,18}(?:会面笔记|會面筆記|会面记录|會面記錄|会议记录|會議記錄|meeting note)/i.test(
+      message,
+    ) ||
+    /(?:会面笔记|會面筆記|会面记录|會面記錄|会议记录|會議記錄|meeting note).{0,18}(?:保存|记录|記錄|save|record)/i.test(
+      message,
+    )
+  ) {
+    return "save_meeting_note";
+  }
+  if (
+    /(?:保存|生成|建立|启动|啟動|save|generate|start).{0,48}(?:会前简报|會前簡報|会前准备|會前準備|活动简报|活動簡報|pre-event brief)/i.test(
+      message,
+    ) ||
+    /pre_event_brief_v1/i.test(message)
+  ) {
+    return /(?:保存|save)/i.test(message)
+      ? "save_event_brief"
+      : "pre_event_brief";
+  }
+  if (
+    /(?:保存|设置|設定|save|set).{0,18}(?:活动目标|活動目標|event goal)/i.test(
+      message,
+    )
+  ) {
+    return "save_event_goal";
+  }
+  if (
+    /(?:加入|添加|加到|add).{0,18}(?:Orbit|应用内|應用內).{0,12}(?:日程|schedule)/i.test(
+      message,
+    )
+  ) {
+    return "schedule_event";
+  }
+
+  return null;
+}
+
+function chatPageCapabilityBoundaryPayload(
+  message: string,
+  capability: ChatPageCapability,
+): OrbitAgentConversationPayload {
+  const copy: Record<
+    ChatPageCapability,
+    { assistant: string; nextAction: string }
+  > = {
+    archive_contacts: {
+      assistant:
+        "归档会改变联系人状态，当前 Agent 聊天不能安全解析并确认联系人 ID，因此没有把它伪装成任务，也没有写入。请打开该联系人详情，在可见的归档确认流程中操作。",
+      nextAction: "Open the verified contact detail and use its archive confirmation flow.",
+    },
+    create_intro_request: {
+      assistant:
+        "引荐请求必须绑定真实活动参与者并保留双方同意。当前 Agent 聊天不能在缺少参与者身份校验时创建请求，因此没有发送、没有披露联系方式。请在活动的撮合页选择双方后确认。",
+      nextAction: "Open the event matchmaking surface, verify both participants, then review the introduction request.",
+    },
+    event_matchmaking: {
+      assistant:
+        "活动撮合必须读取该活动的真实报名人、目标和同意状态。当前 Agent 聊天尚未接入这套参与者上下文，因此不会用普通活动推荐替代，也不会编造匹配结果。请在活动详情的“人脉撮合”中运行。",
+      nextAction: "Open the selected event's matchmaking panel and rank verified participants there.",
+    },
+    pre_event_brief: {
+      assistant:
+        "会前简报必须绑定一个真实活动及其报名人。当前 Agent 聊天尚未接入完整活动参与者上下文，因此没有生成无依据简报或保存操作。请打开对应活动详情，在“会前准备”中生成并复核。",
+      nextAction: "Open the verified event detail and run the pre-event brief workflow.",
+    },
+    respond_intro_request: {
+      assistant:
+        "接受或拒绝引荐会改变双方同意状态。当前 Agent 聊天不接受脱离请求记录的文字确认，因此没有更改状态。请打开“人脉 > 引荐”，进入具体请求后操作。",
+      nextAction: "Open the exact introduction request and respond from its consent-aware detail.",
+    },
+    save_event_brief: {
+      assistant:
+        "保存会前简报必须绑定真实活动和可复核内容。当前 Agent 聊天没有可靠的活动 ID 解析，因此没有保存，也没有改写成其它动作。请在活动详情的会前准备中生成并确认保存。",
+      nextAction: "Open the verified event detail and review the pre-event brief before saving.",
+    },
+    save_event_goal: {
+      assistant:
+        "活动目标必须写入明确的活动记录。当前 Agent 聊天不能仅凭名称安全确定活动 ID，因此没有保存，也没有把它误当成 Agent 记忆。请打开对应活动详情后确认目标。",
+      nextAction: "Open the verified event detail and save the goal from its confirmation control.",
+    },
+    save_meeting_note: {
+      assistant:
+        "单独保存会面笔记需要明确活动、联系人和已确认内容。当前请求没有进入可校验的会后工作流，因此没有保存，也没有写入 Agent 记忆。请使用“会后跟进”，并提供“联系人：…；活动：…；会面内容：…”。",
+      nextAction: "Provide verified contact, event, and meeting-note fields to the post-event follow-up workflow.",
+    },
+    schedule_event: {
+      assistant:
+        "这是 Orbit 应用内日程，不需要外部日历权限。但写入前仍必须绑定真实活动 ID；当前 Agent 聊天无法只凭名称安全确定记录，所以没有添加。请在活动详情点击“加入 Orbit 日程”并确认。",
+      nextAction: "Open the verified event detail and confirm Add to Orbit Schedule.",
+    },
+    select_meeting_slots: {
+      assistant:
+        "会面时间只能在双方已同意引荐后提出。当前 Agent 聊天没有读取具体引荐请求及双方同意状态，因此不会编造可用时间，也没有创建预约。请打开“人脉 > 引荐”的具体记录后选择时间。",
+      nextAction: "Open the accepted introduction request and propose slots from its consent-aware detail.",
+    },
+  };
+  const selected = copy[capability];
+
+  return localBoundaryPayload({
+    assistant: selected.assistant,
+    label: "Orbit Agent verified page-capability boundary",
+    message,
+    nextAction: selected.nextAction,
+    source: "local:orbit-agent-state-change-boundary",
+  });
+}
+
 export function createLiveOrbitAgentLocalBoundaryPayload(
   message: string,
 ): OrbitAgentConversationPayload | null {
@@ -756,6 +918,10 @@ export function createLiveOrbitAgentLocalBoundaryPayload(
     return professionalAdviceBoundaryPayload(message);
   }
   const actionRequest = requestedActionText(message);
+  const pageCapability = chatPageCapability(actionRequest);
+  if (pageCapability) {
+    return chatPageCapabilityBoundaryPayload(message, pageCapability);
+  }
 
   if (
     isRelationshipStateMutationRequest(actionRequest) &&

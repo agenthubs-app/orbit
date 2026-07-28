@@ -256,6 +256,11 @@ const styles = `
   font-weight: 850;
   padding: 6px 10px;
 }
+.agent-report__status--limited {
+  background: #fff7df;
+  border-color: #ead28c;
+  color: #8a5a00;
+}
 .agent-report__findings { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .agent-report__finding { border-radius: 18px; padding: 20px; }
 .agent-report__finding h3 { align-items: center; display: flex; font-size: 16px; gap: 9px; margin: 0 0 14px; }
@@ -340,7 +345,8 @@ export default function AgentFunctionalTestReportPage() {
           <aside className="agent-report__verdict" aria-label="验收结论">
             <strong>{AGENT_EVALUATION_SUMMARY.passed}/{AGENT_EVALUATION_SUMMARY.cases}</strong>
             <p>
-              计划内实验通过。只读结果均有证据；写入均受确认或工作流门保护；外部日历额外受权限控制。
+              {AGENT_EVALUATION_SUMMARY.passed} 项通过，
+              {AGENT_EVALUATION_SUMMARY.limited} 项受限。受限项保留真实原因和正确入口，不再把技术可达冒充业务完成。
             </p>
           </aside>
         </header>
@@ -456,7 +462,15 @@ export default function AgentFunctionalTestReportPage() {
                   <span className="agent-report__case-title">
                     {testCase.category} · {testCase.experiment}
                   </span>
-                  <span className="agent-report__status">通过</span>
+                  <span
+                    className={`agent-report__status${
+                      testCase.status === "limited"
+                        ? " agent-report__status--limited"
+                        : ""
+                    }`}
+                  >
+                    {testCase.status === "limited" ? "受限" : "通过"}
+                  </span>
                 </summary>
                 <div className="agent-report__case-body">
                   <div>
