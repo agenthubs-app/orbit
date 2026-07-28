@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "9806a5570d232fee03442f5eeb4602a2a833fa61",
-  "deterministicSourceTime": "2026-07-29T05:00:09+09:00",
+  "generatedFromCommit": "c449237998136ab3e4888030d63b2d06ea8d77e8",
+  "deterministicSourceTime": "2026-07-29T05:13:53+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -29,15 +29,15 @@
     "developmentRoutes": 8,
     "dynamicRoutes": 16,
     "overlayImplementations": 7,
-    "overlayRouteInstances": 47,
-    "interactionRouteInstances": 2797,
+    "overlayRouteInstances": 49,
+    "interactionRouteInstances": 2848,
     "interactionsRuntimeVerified": 67,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 86,
+    "surfacesWithRuntimeEvidence": 87,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 40,
-    "documentedRemediations": 37
+    "documentedVerificationCases": 41,
+    "documentedRemediations": 38
   },
   "surfaces": [
     {
@@ -80098,18 +80098,605 @@
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
-        "api": [],
-        "live": [],
-        "mockOrFixture": [],
-        "persistence": [],
-        "external": []
+        "api": [
+          "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "repos/orbits/features/audit/provenance-contract.ts",
+          "repos/orbits/features/auth/service.ts",
+          "repos/orbits/features/chat/contract.ts",
+          "repos/orbits/features/dashboard/contract.ts",
+          "repos/orbits/features/dashboard/distribution-contract.ts",
+          "repos/orbits/features/dashboard/opportunity-contract.ts",
+          "repos/orbits/features/notifications/contract.ts",
+          "repos/orbits/features/orbit-ai/proactive-contract.ts",
+          "repos/orbits/shared/contract/envelope.ts"
+        ],
+        "live": [
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/audit/live-provenance-audit-service.ts",
+          "repos/orbits/features/audit/service-factory.ts",
+          "repos/orbits/features/audit/storage/source-consistency-provenance-audit-live-record-provider.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
+          "repos/orbits/features/dashboard/live-distribution-service.ts",
+          "repos/orbits/features/dashboard/live-opportunity-service.ts",
+          "repos/orbits/features/dashboard/live-service.ts",
+          "repos/orbits/features/dashboard/service-factory.ts",
+          "repos/orbits/features/dashboard/storage/dashboard-live-record-provider.ts",
+          "repos/orbits/features/dashboard/storage/network-distribution-live-record-provider.ts",
+          "repos/orbits/features/dashboard/storage/opportunity-live-record-provider.ts",
+          "repos/orbits/shared/storage/configured-live-record-store.ts",
+          "repos/orbits/shared/storage/postgres-live-record-store.ts"
+        ],
+        "mockOrFixture": [
+          "repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-service-factory.ts",
+          "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "repos/orbits/app/(app)/app/dashboard/page.tsx",
+          "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
+          "repos/orbits/features/audit/mock-provenance-audit-service.ts",
+          "repos/orbits/features/audit/provenance-contract.ts",
+          "repos/orbits/features/audit/provenance-fixtures.ts",
+          "repos/orbits/features/audit/service-factory.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/service.ts",
+          "repos/orbits/features/chat/contract.ts",
+          "repos/orbits/features/dashboard/contract.ts",
+          "repos/orbits/features/dashboard/dashboard-aggregate-mock/hybrid-service.ts",
+          "repos/orbits/features/dashboard/distribution-contract.ts",
+          "repos/orbits/features/dashboard/distribution-fixtures.ts",
+          "repos/orbits/features/dashboard/fixtures.ts",
+          "repos/orbits/features/dashboard/mock-distribution-service.ts",
+          "repos/orbits/features/dashboard/mock-opportunity-service.ts",
+          "repos/orbits/features/dashboard/mock-service.ts",
+          "repos/orbits/features/dashboard/opportunity-contract.ts",
+          "repos/orbits/features/dashboard/opportunity-fixtures.ts",
+          "repos/orbits/features/dashboard/service-factory.ts",
+          "repos/orbits/features/dashboard/summary.ts",
+          "repos/orbits/features/notifications/contract.ts",
+          "repos/orbits/features/orbit-ai/proactive-contract.ts",
+          "repos/orbits/shared/config/feature-mode.ts",
+          "repos/orbits/shared/domain/contracts.ts",
+          "repos/orbits/shared/domain/source-types.ts",
+          "repos/orbits/shared/local-remote-store/orbit-database.ts",
+          "repos/orbits/shared/local-remote-store/store.ts",
+          "repos/orbits/shared/mock/fixtures.ts",
+          "repos/orbits/shared/mock/generated-relationship-fixtures.ts",
+          "repos/orbits/shared/services/module-mode.ts",
+          "repos/orbits/shared/ui/primitives.tsx"
+        ],
+        "persistence": [
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/audit/live-provenance-audit-service.ts",
+          "repos/orbits/features/audit/provenance-contract.ts",
+          "repos/orbits/features/audit/provenance-fixtures.ts",
+          "repos/orbits/features/audit/storage/source-consistency-provenance-audit-live-record-provider.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
+          "repos/orbits/features/chat/contract.ts",
+          "repos/orbits/features/dashboard/contract.ts",
+          "repos/orbits/features/dashboard/dashboard-aggregate-mock/hybrid-service.ts",
+          "repos/orbits/features/dashboard/distribution-contract.ts",
+          "repos/orbits/features/dashboard/distribution-fixtures.ts",
+          "repos/orbits/features/dashboard/fixtures.ts",
+          "repos/orbits/features/dashboard/live-distribution-service.ts",
+          "repos/orbits/features/dashboard/live-opportunity-service.ts",
+          "repos/orbits/features/dashboard/live-service.ts",
+          "repos/orbits/features/dashboard/opportunity-contract.ts",
+          "repos/orbits/features/dashboard/opportunity-fixtures.ts",
+          "repos/orbits/features/dashboard/service-factory.ts",
+          "repos/orbits/features/dashboard/storage/dashboard-live-record-provider.ts",
+          "repos/orbits/features/dashboard/storage/network-distribution-live-record-provider.ts",
+          "repos/orbits/features/dashboard/storage/opportunity-live-record-provider.ts",
+          "repos/orbits/features/notifications/contract.ts",
+          "repos/orbits/features/orbit-ai/proactive-contract.ts",
+          "repos/orbits/shared/local-remote-store/orbit-database.ts",
+          "repos/orbits/shared/local-remote-store/store.ts",
+          "repos/orbits/shared/mock/generated-relationship-fixtures.ts",
+          "repos/orbits/shared/storage/configured-live-record-store.ts",
+          "repos/orbits/shared/storage/live-database-config.ts",
+          "repos/orbits/shared/storage/postgres-live-record-store.ts"
+        ],
+        "external": [
+          "repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model.ts",
+          "repos/orbits/app/(app)/app/inbox/inbox-panel-view-model.ts",
+          "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "repos/orbits/app/(app)/app/orbit-language-server.ts",
+          "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+          "repos/orbits/app/(app)/app/orbit-reference-styles.tsx",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/audit/live-provenance-audit-service.ts",
+          "repos/orbits/features/audit/provenance-contract.ts",
+          "repos/orbits/features/audit/provenance-fixtures.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/oauth-providers.ts",
+          "repos/orbits/features/auth/service.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
+          "repos/orbits/features/chat/contract.ts",
+          "repos/orbits/features/dashboard/contract.ts",
+          "repos/orbits/features/dashboard/dashboard-aggregate-mock/hybrid-service.ts",
+          "repos/orbits/features/dashboard/distribution-contract.ts",
+          "repos/orbits/features/dashboard/distribution-fixtures.ts",
+          "repos/orbits/features/dashboard/fixtures.ts",
+          "repos/orbits/features/dashboard/live-distribution-service.ts",
+          "repos/orbits/features/dashboard/live-opportunity-service.ts",
+          "repos/orbits/features/dashboard/live-service.ts",
+          "repos/orbits/features/dashboard/opportunity-contract.ts",
+          "repos/orbits/features/dashboard/opportunity-fixtures.ts",
+          "repos/orbits/features/dashboard/storage/dashboard-live-record-provider.ts",
+          "repos/orbits/features/notifications/contract.ts",
+          "repos/orbits/features/orbit-ai/proactive-contract.ts",
+          "repos/orbits/shared/contract/source.ts",
+          "repos/orbits/shared/domain/contracts.ts",
+          "repos/orbits/shared/domain/source-types.ts",
+          "repos/orbits/shared/mock/fixtures.ts",
+          "repos/orbits/shared/mock/generated-relationship-fixtures.ts"
+        ]
       },
       "goal": "dashboard product surface; exact user goal requires runtime verification",
-      "visibleContent": [],
+      "visibleContent": [
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 398,
+          "tag": "h2",
+          "text": "Relationship health / 关系健康"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 402,
+          "tag": "h3",
+          "text": "{priority.title}"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 425,
+          "tag": "h3",
+          "text": "{gap.label}"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 448,
+          "tag": "h2",
+          "text": "Where to build next / 下一步补哪里"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 487,
+          "tag": "h2",
+          "text": "Industry concentration / 行业集中度"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 519,
+          "tag": "h2",
+          "text": "What changed / 发生了什么"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 525,
+          "tag": "h3",
+          "text": "{item.label}"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 563,
+          "tag": "h1",
+          "text": "Keep the right relationships moving. / 让关键关系持续推进。"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 568,
+          "tag": "aside",
+          "text": "t({ en: \"Network coverage score\", zh: \"网络覆盖评分\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 586,
+          "tag": "section",
+          "text": "t({ en: \"Dashboard metrics\", zh: \"仪表盘指标\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 598,
+          "tag": "h2",
+          "text": "Review state / 复核状态"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 642,
+          "tag": "h2",
+          "text": "Current workspace / 当前工作区"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 646,
+          "tag": "h3",
+          "text": "Contacts / 联系人"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 652,
+          "tag": "h3",
+          "text": "Connections / 关系"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+          "line": 658,
+          "tag": "h3",
+          "text": "Events represented / 关联活动"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/dashboard/page.tsx",
+          "line": 33,
+          "tag": "StateView",
+          "text": "routeState.copy.title"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 300,
+          "tag": "EmptyState",
+          "text": "t({ en: \"Loading\", zh: \"加载中\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 306,
+          "tag": "EmptyState",
+          "text": "t({ en: \"All clear\", zh: \"暂无提醒\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 323,
+          "tag": "button",
+          "text": "t({ en: \"Dismiss\", zh: \"忽略\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 367,
+          "tag": "span",
+          "text": "`${thread.unreadCount} unread`"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 429,
+          "tag": "label",
+          "text": "Draft reply / 回复草稿"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 430,
+          "tag": "textarea",
+          "text": "t({ en: \"Write a reply…\", zh: \"写一条回复…\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 470,
+          "tag": "button",
+          "text": "t({ en: \"Back to list\", zh: \"返回列表\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 641,
+          "tag": "button",
+          "text": "t({ en: \"Back to list\", zh: \"返回列表\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 647,
+          "tag": "label",
+          "text": "Recipient / 收件人"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 648,
+          "tag": "input",
+          "text": "t({ en: \"Contact name\", zh: \"联系人姓名\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 650,
+          "tag": "label",
+          "text": "Organization / 公司/组织"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 651,
+          "tag": "input",
+          "text": "t({ en: \"Optional\", zh: \"选填\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 658,
+          "tag": "label",
+          "text": "Subject / 主题"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 659,
+          "tag": "input",
+          "text": "t({ en: \"Thread title\", zh: \"对话标题\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 661,
+          "tag": "label",
+          "text": "Message / 正文"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 662,
+          "tag": "textarea",
+          "text": "t({ en: \"Write the first message…\", zh: \"写下第一条消息…\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 738,
+          "tag": "EmptyState",
+          "text": "t({ en: \"Loading\", zh: \"加载中\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 744,
+          "tag": "EmptyState",
+          "text": "t({ en: \"Mailbox not connected\", zh: \"邮箱尚未连接\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 801,
+          "tag": "button",
+          "text": "t({ en: \"New conversation\", zh: \"发起新对话\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 812,
+          "tag": "input",
+          "text": "t({ en: \"Search conversation history\", zh: \"搜索对话历史\", })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 812,
+          "tag": "input",
+          "text": "t({ en: \"Search conversations\", zh: \"搜索对话\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 834,
+          "tag": "EmptyState",
+          "text": "t({ en: \"No matches\", zh: \"没有匹配对话\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 874,
+          "tag": "EmptyState",
+          "text": "t({ en: \"Choose a conversation\", zh: \"选择对话\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1070,
+          "tag": "div",
+          "text": "t({ en: \"Relationship inbox\", zh: \"关系收件箱\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1094,
+          "tag": "h2",
+          "text": "Inbox / 收件箱"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1101,
+          "tag": "button",
+          "text": "t({ en: \"Close\", zh: \"关闭\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1112,
+          "tag": "button",
+          "text": "t({ en: \"Resize inbox. Use left and right arrow keys.\", zh: \"调整收件箱宽度，可使用左右方向键。\", })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1112,
+          "tag": "button",
+          "text": "t({ en: \"Drag to resize · Double-click to reset\", zh: \"拖动调整宽度 · 双击恢复默认\", })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1380,
+          "tag": "button",
+          "text": "t({ en: \"Open inbox\", zh: \"打开收件箱\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
+          "line": 98,
+          "tag": "button",
+          "text": "backLabel ?? t({ en: \"Back\", zh: \"返回\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
+          "line": 162,
+          "tag": "div",
+          "text": "label ?? t({ en: \"Dialog\", zh: \"对话框\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
+          "line": 193,
+          "tag": "button",
+          "text": "t({ en: \"Close\", zh: \"关闭\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 80,
+          "tag": "span",
+          "text": "t({ en: \"Checking sign-in status\", zh: \"正在确认登录状态\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 127,
+          "tag": "button",
+          "text": "t({ en: \"Account menu\", zh: \"账号菜单\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 221,
+          "tag": "button",
+          "text": "t(entry.aria)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 353,
+          "tag": "a",
+          "text": "Orbit"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 363,
+          "tag": "nav",
+          "text": "t({ en: \"Primary\", zh: \"主导航\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 381,
+          "tag": "button",
+          "text": "menuOpen ? t({ en: \"Close menu\", zh: \"关闭菜单\" }) : t({ en: \"Open menu\", zh: \"打开菜单\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 394,
+          "tag": "button",
+          "text": "t({ en: \"Close menu\", zh: \"关闭菜单\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 395,
+          "tag": "nav",
+          "text": "t({ en: \"Primary\", zh: \"主导航\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+          "line": 149,
+          "tag": "button",
+          "text": "ariaLabel"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+          "line": 149,
+          "tag": "button",
+          "text": "title ?? ariaLabel"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+          "line": 211,
+          "tag": "span",
+          "text": "title"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+          "line": 356,
+          "tag": "label",
+          "text": "{label}"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+          "line": 360,
+          "tag": "label",
+          "text": "{label}"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
+          "line": 183,
+          "tag": "h2",
+          "text": "{title}"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
+          "line": 206,
+          "tag": "label",
+          "text": "{label} {children} {helper && <small>{helper}</small>}"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 197,
+          "tag": "WorkbenchSurface",
+          "text": "title"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 199,
+          "tag": "div",
+          "text": "Relationship state guidance"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 201,
+          "tag": "div",
+          "text": "Screen purpose"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 205,
+          "tag": "div",
+          "text": "Available relationship context"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 209,
+          "tag": "div",
+          "text": "Safe next step"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 216,
+          "tag": "details",
+          "text": "State source details"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 218,
+          "tag": "div",
+          "text": "State source evidence"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 234,
+          "tag": "div",
+          "text": "Recovery actions"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 249,
+          "tag": "a",
+          "text": "ariaLabel"
+        },
+        {
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 263,
+          "tag": "p",
+          "text": "Next step:"
+        }
+      ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-actor-scoped-relationship-dashboard-entry-verified",
       "exitBehavior": "not-runtime-verified",
-      "nextSurfaces": [],
+      "nextSurfaces": [
+        "action.href",
+        "alert.href",
+        "preserveHref(\"/\")",
+        "preserveHref(\"/app/agent\")",
+        "preserveHref(\"/app/profile\")",
+        "preserveHref(\"/app/settings\")",
+        "preserveHref(`/app/account/login?next=${encodeURIComponent(nextPath)}`)",
+        "preserveHref(`/app/account/signup?next=${encodeURIComponent(nextPath)}`)",
+        "preserveHref(item.href)",
+        "preserveHref(meHref)",
+        "preserveHref(productHref(href))"
+      ],
       "backCloseBehavior": "not-runtime-verified",
       "responsive": {
         "desktop": "not-runtime-verified",
@@ -80122,28 +80709,1616 @@
         "focusManagement": "not-runtime-verified"
       },
       "routeParameters": {
-        "queryParameters": [],
-        "hashEvidenceFiles": [],
+        "queryParameters": [
+          "4636af91-bda9-4959-bb19-8ab1c003d4e6",
+          "lang",
+          "orbit-lang",
+          "orbitVisualSeed",
+          "searchParams",
+          "x-orbit-lang"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/app/(app)/app/orbit-language-context.tsx",
+          "repos/orbits/app/(app)/app/orbit-language-core.ts"
+        ],
         "deepLinkEvidenceFiles": [
           "repos/orbits/app/(app)/app/dashboard/page.tsx"
         ]
       },
       "states": {
-        "loading": false,
-        "empty": false,
-        "success": false,
-        "failure": false,
-        "offline": false,
-        "unauthenticated": false,
-        "forbidden": false,
-        "unavailable": false,
-        "partialFailure": false,
+        "loading": true,
+        "empty": true,
+        "success": true,
+        "failure": true,
+        "offline": true,
+        "unauthenticated": true,
+        "forbidden": true,
+        "unavailable": true,
+        "partialFailure": true,
         "timeout": false,
-        "duplicateSubmission": false
+        "duplicateSubmission": true
       },
-      "interactions": [],
-      "overlays": [],
+      "interactions": [
+        {
+          "interactionId": "web:/app/dashboard#interaction-1",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 316,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "{alert.title} {[alert.contactName, alert.organization].filter(Boolean).join(\" · \")} {alert.dueLabel}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "alert.href",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-2",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 323,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Dismiss\", zh: \"忽略\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => dismiss(alert.id)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "dismiss"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-3",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 351,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "{thread.participantName} {formatOrbitDateTime(thread.lastCorrespondenceAt, language)} {thread.subject} {thread.preview} {<span aria-label={`${thread.unreadCount} unread`} className=\"ri-row-unread\"> {thread.unreadCount} </span>} / {null}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onOpen"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-4",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 420,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "Edit draft / 继续编辑",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setStaged(false)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setStaged"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-5",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 430,
+          "controlType": "field",
+          "tag": "textarea",
+          "visibleName": "t({ en: \"Write a reply…\", zh: \"写一条回复…\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onchange",
+              "expression": "(event) => setBody(event.target.value)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setBody"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-6",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 441,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "Rewriting… / 改写中… / Rule-based rewrite / 规则改写",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": "rewriting || !body.trim()",
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onRewrite"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-7",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 445,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "Stage for review / 暂存待复核",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": "!body.trim()",
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setStaged(true)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setStaged"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-8",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 470,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Back to list\", zh: \"返回列表\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onBack"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-9",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 641,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Back to list\", zh: \"返回列表\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onCancel"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-10",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 648,
+          "controlType": "field",
+          "tag": "input",
+          "visibleName": "t({ en: \"Contact name\", zh: \"联系人姓名\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onchange",
+              "expression": "(event) => setRecipient(event.target.value)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setRecipient"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-11",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 651,
+          "controlType": "field",
+          "tag": "input",
+          "visibleName": "t({ en: \"Optional\", zh: \"选填\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onchange",
+              "expression": "(event) => setOrganization(event.target.value)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setOrganization"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-12",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 653,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "AI is drafting… / AI 起草中… / Draft with AI / AI 起草邮件",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": "!recipient.trim() || busy !== \"idle\"",
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onGenerate"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-13",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 659,
+          "controlType": "field",
+          "tag": "input",
+          "visibleName": "t({ en: \"Thread title\", zh: \"对话标题\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onchange",
+              "expression": "(event) => setSubject(event.target.value)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setSubject"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-14",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 662,
+          "controlType": "field",
+          "tag": "textarea",
+          "visibleName": "t({ en: \"Write the first message…\", zh: \"写下第一条消息…\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onchange",
+              "expression": "(event) => setBody(event.target.value)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setBody"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-15",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 673,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "Creating… / 创建中… / Create thread (confirm) / 创建对话（确认）",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": "!canCreate",
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onCreate"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "present-static-signal",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-16",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 752,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "Prepare a local draft / 准备本地草稿",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setComposing(true)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setComposing"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-17",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 801,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"New conversation\", zh: \"发起新对话\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setComposing(true)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setComposing"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-18",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 812,
+          "controlType": "field",
+          "tag": "input",
+          "visibleName": "t({\n              en: \"Search conversation history\",\n              zh: \"搜索对话历史\",\n            })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onchange",
+              "expression": "(event) => setSearch(event.target.value)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setSearch"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-19",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 826,
+          "controlType": "callback-control",
+          "tag": "ThreadRow",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onopen",
+              "expression": "() => openThread(thread.conversationId)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "openThread"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-20",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 848,
+          "controlType": "callback-control",
+          "tag": "NewThreadForm",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "oncancel",
+              "expression": "() => {\n              setComposing(false);\n              onNewThreadConsumed?.();\n            }"
+            },
+            {
+              "event": "oncreated",
+              "expression": "(entry) => {\n              setCreated((previous) => [entry, ...previous]);\n              setComposing(false);\n              setOpenId(entry.detail.conversationId);\n              onNewThreadConsumed?.();\n            }"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setComposing",
+            "setCreated",
+            "setOpenId"
+          ],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "present-static-signal",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-21",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1065,
+          "controlType": "callback-control",
+          "tag": "div",
+          "visibleName": null,
+          "accessibleNameEvidence": "intentionally-hidden-pointer-target",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onClose"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-22",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1101,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Close\", zh: \"关闭\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onClose"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-23",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1112,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({\n            en: \"Resize inbox. Use left and right arrow keys.\",\n            zh: \"调整收件箱宽度，可使用左右方向键。\",\n          })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onkeydown",
+              "expression": "resizePanelFromKeyboard"
+            },
+            {
+              "event": "onpointerdown",
+              "expression": "startPanelResize"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-24",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1142,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "{item.label}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setTab(item.id)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setTab"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-25",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1380,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Open inbox\", zh: \"打开收件箱\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => {\n          setSeed(null);\n          setOpen(true);\n        }"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setSeed",
+            "setOpen"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "present-static-signal",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-26",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1430,
+          "controlType": "callback-control",
+          "tag": "RelationshipInboxPanel",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclose",
+              "expression": "() => setOpen(false)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setOpen"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-27",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
+          "line": 98,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "backLabel ?? t({ en: \"Back\", zh: \"返回\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onBack"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-28",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
+          "line": 161,
+          "controlType": "callback-control",
+          "tag": "div",
+          "visibleName": null,
+          "accessibleNameEvidence": "intentionally-hidden-pointer-target",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onClose"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-29",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
+          "line": 193,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Close\", zh: \"关闭\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onClose"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-30",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 100,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Sign in / 登录",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(`/app/account/login?next=${encodeURIComponent(nextPath)}`)",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-31",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 106,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Sign up / 注册",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(`/app/account/signup?next=${encodeURIComponent(nextPath)}`)",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-32",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 127,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Account menu\", zh: \"账号菜单\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setMenuOpen((current) => !current)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setMenuOpen"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-33",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 162,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Profile / 个人资料",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(\"/app/profile\")",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-34",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 170,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Settings / 设置",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(\"/app/settings\")",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-35",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 178,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "Sign out / 退出登录",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => {\n              setMenuOpen(false);\n              void signOut({ callbackUrl: preserveHref(\"/app\") });\n            }"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setMenuOpen",
+            "signOut",
+            "preserveHref"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-36",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 221,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t(entry.aria)",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setLanguage(entry.code)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setLanguage"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-37",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 258,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Me / 我的",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(meHref)",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-38",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 265,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Settings / 设置",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(\"/app/settings\")",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-39",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 280,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Sign in / 登录",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(`/app/account/login?next=${encodeURIComponent(nextPath)}`)",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-40",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 286,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Sign up / 注册",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(`/app/account/signup?next=${encodeURIComponent(nextPath)}`)",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-41",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 353,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "Orbit",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(\"/\")",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-42",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 364,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "iOrbit",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(\"/app/agent\")",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-43",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 366,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "{label}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(productHref(href))",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-44",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 381,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "menuOpen ? t({ en: \"Close menu\", zh: \"关闭菜单\" }) : t({ en: \"Open menu\", zh: \"打开菜单\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setMenuOpen((open) => !open)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setMenuOpen"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-45",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 394,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Close menu\", zh: \"关闭菜单\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setMenuOpen(false)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setMenuOpen"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-46",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+          "line": 397,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "{item.label}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "preserveHref(item.href)",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-47",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+          "line": 149,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "ariaLabel",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onClick"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-48",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
+          "line": 217,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "{children}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-49",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
+          "line": 225,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "{children}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-50",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 217,
+          "controlType": "disclosure",
+          "tag": "summary",
+          "visibleName": "{bilingualText(\"来源详情\", \"Source details\")}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/dashboard#interaction-51",
+          "surfaceId": "web:/app/dashboard",
+          "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
+          "line": 249,
+          "controlType": "link",
+          "tag": "a",
+          "visibleName": "ariaLabel",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [],
+          "href": "action.href",
+          "downstreamCallHints": [],
+          "readWrite": "navigation",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        }
+      ],
+      "overlays": [
+        {
+          "overlayInstanceId": "web:/app/dashboard#overlay-repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx:1070",
+          "parentSurfaceId": "web:/app/dashboard",
+          "trigger": "reachable from route source; exact control requires runtime verification",
+          "enterExitBehavior": "not-runtime-verified",
+          "implementationId": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx:1070",
+          "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "line": 1070,
+          "kind": "dialog",
+          "visibleName": "t({ en: \"Relationship inbox\", zh: \"关系收件箱\" })",
+          "runtimeStatus": "not-runtime-verified"
+        },
+        {
+          "overlayInstanceId": "web:/app/dashboard#overlay-repos/orbits/app/(app)/app/orbit-account-shell.tsx:162",
+          "parentSurfaceId": "web:/app/dashboard",
+          "trigger": "reachable from route source; exact control requires runtime verification",
+          "enterExitBehavior": "not-runtime-verified",
+          "implementationId": "repos/orbits/app/(app)/app/orbit-account-shell.tsx:162",
+          "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
+          "line": 162,
+          "kind": "dialog",
+          "visibleName": "label ?? t({ en: \"Dialog\", zh: \"对话框\" })",
+          "runtimeStatus": "not-runtime-verified"
+        }
+      ],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
@@ -80153,8 +82328,13 @@
         "repos/orbits/tests/ui/orbit-modal-standard.test.ts",
         "repos/orbits/tests/ui/orbit-p2-gates.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the canonical dashboard entry rendered the relationship dashboard instead of redirecting into the unrelated Party surface",
+        "the authenticated zero-contact actor produced zero contacts, relations, events, opportunities, dormant relationships, follow-ups, and distribution buckets",
+        "the empty denominator produced a coverage score of 0 rather than the previous false 100",
+        "the next-action and current-goal regions used explicit Chinese zero-data guidance without inventing an opportunity, dormant contact, or relationship goal"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-actor-scoped-relationship-dashboard"
     },
     {
       "surfaceId": "web:/app/events",
@@ -136782,6 +138962,15 @@
       "actual": "Dashboard rendered a real-record prerequisite and its add action opened the fail-closed import hub. Graph stayed at 0 contacts / 0 events while zoom moved 100% → 120% → 100%. Pipeline kept all three groups at zero with no mutation controls. Introductions kept all counts at zero, cycled all filters truthfully, opened a non-sending disabled composer, and initially exposed a blank picker; after repair the picker required two source-backed contacts and linked to the import hub. Cancel returned to the unchanged ledger.",
       "evidence": "Authenticated production browser traversal across four surfaces and ten interactions; Contacts subroute/live tests 11/11; Web lint and Next TypeScript; exact-origin production build",
       "conclusion": "pass for the exercised zero-data dashboard, graph navigation/zoom, introduction filters/composer/picker recovery, and read-only pipeline; populated dashboard metrics, graph nodes/edges, contact detail navigation, introduction creation/readback, and pipeline rows remain pending real actor data"
+    },
+    {
+      "id": "web-dashboard-route-and-zero-data-truth-2026-07-29",
+      "target": "Authenticated canonical Web Dashboard → actor-scoped relationship aggregate and zero-data presentation",
+      "testData": "Audit actor with zero contacts, relationship edges, events, opportunities, dormant relationships, follow-ups, operations, and distribution records",
+      "expected": "The canonical dashboard entry must render its own product surface, resolve every live source beneath the authenticated actor, and preserve an empty denominator as zero without fabricated goals or next actions",
+      "actual": "Runtime first redirected /app/dashboard into the unrelated Party surface. After restoring the canonical route and actor-scoping the retained live service bundle, the page rendered the relationship dashboard with every source-backed count at zero. Coverage changed from the restored service's false 100 to 0, and the action/goal regions rendered explicit Chinese no-data guidance instead of English opportunity claims.",
+      "evidence": "Authenticated production browser before/after DOM; focused Dashboard aggregate, distribution, opportunity, provenance, page, and route tests 10/10; Web lint; exact-origin production build",
+      "conclusion": "pass for the canonical route identity, authenticated empty actor aggregate, zero coverage denominator, and no-data action/goal presentation; populated multi-account isolation, metric calculations, opportunity navigation, and follow-up readback remain pending real actor records"
     }
   ],
   "remediations": [
@@ -137117,6 +139306,15 @@
       "files": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx; repos/orbits/tests/pages/app-contacts-subroutes-live-route-services.test.ts",
       "regression": "Contacts subroute/live tests 11/11, Web lint, Next TypeScript, and exact-origin production build passed. Runtime reproduced the blank picker before repair, then rendered 还没有可选择的联系人, the two-contact prerequisite, and 添加联系人; the recovery link opened the import hub without creating data.",
       "status": "fixed and runtime-verified for the zero-contact picker and recovery link; populated no-search-match copy is source-tested, while successful two-contact selection and draft readback remain pending real actor data"
+    },
+    {
+      "id": "AUDIT-P1-038",
+      "severity": "P1",
+      "rootCause": "The canonical /app/dashboard entry had been replaced with a redirect to the unrelated Party experience even though product design, navigation, AI actions, and the retained dashboard model all identified it as the relationship dashboard. The retained live service factory was deployment-global, so restoring the page without repairing composition would have crossed actor boundaries. Its zero-contact aggregate also treated an empty coverage denominator as 100 and emitted opportunity-oriented English actions with no supporting relationship data.",
+      "decision": "Restore the real dashboard page behind canonical authentication, derive one actor-scoped service bundle before every live read, and pass the same actor through aggregate and summary composition. Define empty relationship coverage as 0, emit no current-goal match without an opportunity or dormant contact, and render localized prerequisite guidance when the actor has no relationship data.",
+      "files": "repos/orbits/app/(app)/app/dashboard/page.tsx; repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-service-factory.ts; repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model.ts; repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-view-model-adapter.ts; repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx; repos/orbits/features/dashboard/live-distribution-service.ts; repos/orbits/features/dashboard/live-opportunity-service.ts; focused Dashboard tests",
+      "regression": "Focused Dashboard tests 10/10, Web lint, and exact-origin production build passed. Authenticated runtime changed the Party redirect into the canonical relationship dashboard; the empty actor rendered all counts at zero, coverage 0, no fabricated current goal, and localized no-data next-action guidance.",
+      "status": "fixed and runtime-verified for route identity, the exercised empty actor, zero denominator, and no-data presentation; populated multi-account browser isolation, metric calculations, opportunity navigation, and follow-up readback remain pending real actor data"
     }
   ],
   "externalLimitations": []

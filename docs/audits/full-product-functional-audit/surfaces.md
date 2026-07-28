@@ -71,7 +71,7 @@
 | `web:/app/contacts/intros` | web | production | `/app/contacts/intros` | `web:/app/contacts` |  | 2 | 94 | 3 | runtime-partially-verified-web-empty-introduction-ledger-and-picker |
 | `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 2 | 77 | 4 | runtime-partially-verified-external-capability-restricted |
 | `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 2 | 95 | 3 | runtime-partially-verified-web-empty-read-only-pipeline |
-| `web:/app/dashboard` | web | production | `/app/dashboard` | `web:/app` |  | 0 | 0 | 8 | inventory-complete-runtime-verification-pending |
+| `web:/app/dashboard` | web | production | `/app/dashboard` | `web:/app` |  | 2 | 51 | 9 | runtime-partially-verified-web-actor-scoped-relationship-dashboard |
 | `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 36 | 28 | runtime-partially-verified-browser-base-state |
 | `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 2 | 84 | 24 | runtime-partially-verified-browser-base-state |
 | `web:/app/events/[id]/register` | web | production | `/app/events/[id]/register` | `web:/app/events/[id]` | id | 1 | 30 | 5 | runtime-partially-verified-live-event-registration |

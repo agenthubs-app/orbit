@@ -726,6 +726,22 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-web-empty-read-only-pipeline",
     },
   ],
+  [
+    "web:/app/dashboard",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-relationship-dashboard-entry-verified",
+      runtimeEvidence: [
+        "the canonical dashboard entry rendered the relationship dashboard instead of redirecting into the unrelated Party surface",
+        "the authenticated zero-contact actor produced zero contacts, relations, events, opportunities, dormant relationships, follow-ups, and distribution buckets",
+        "the empty denominator produced a coverage score of 0 rather than the previous false 100",
+        "the next-action and current-goal regions used explicit Chinese zero-data guidance without inventing an opportunity, dormant contact, or relationship goal",
+      ],
+      verificationCase: "web-dashboard-route-and-zero-data-truth-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-actor-scoped-relationship-dashboard",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -2094,6 +2110,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for the exercised zero-data dashboard, graph navigation/zoom, introduction filters/composer/picker recovery, and read-only pipeline; populated dashboard metrics, graph nodes/edges, contact detail navigation, introduction creation/readback, and pipeline rows remain pending real actor data",
   },
+  {
+    id: "web-dashboard-route-and-zero-data-truth-2026-07-29",
+    target:
+      "Authenticated canonical Web Dashboard → actor-scoped relationship aggregate and zero-data presentation",
+    testData:
+      "Audit actor with zero contacts, relationship edges, events, opportunities, dormant relationships, follow-ups, operations, and distribution records",
+    expected:
+      "The canonical dashboard entry must render its own product surface, resolve every live source beneath the authenticated actor, and preserve an empty denominator as zero without fabricated goals or next actions",
+    actual:
+      "Runtime first redirected /app/dashboard into the unrelated Party surface. After restoring the canonical route and actor-scoping the retained live service bundle, the page rendered the relationship dashboard with every source-backed count at zero. Coverage changed from the restored service's false 100 to 0, and the action/goal regions rendered explicit Chinese no-data guidance instead of English opportunity claims.",
+    evidence:
+      "Authenticated production browser before/after DOM; focused Dashboard aggregate, distribution, opportunity, provenance, page, and route tests 10/10; Web lint; exact-origin production build",
+    conclusion:
+      "pass for the canonical route identity, authenticated empty actor aggregate, zero coverage denominator, and no-data action/goal presentation; populated multi-account isolation, metric calculations, opportunity navigation, and follow-up readback remain pending real actor records",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2610,6 +2641,20 @@ const AUDIT_REMEDIATIONS = [
       "Contacts subroute/live tests 11/11, Web lint, Next TypeScript, and exact-origin production build passed. Runtime reproduced the blank picker before repair, then rendered 还没有可选择的联系人, the two-contact prerequisite, and 添加联系人; the recovery link opened the import hub without creating data.",
     status:
       "fixed and runtime-verified for the zero-contact picker and recovery link; populated no-search-match copy is source-tested, while successful two-contact selection and draft readback remain pending real actor data",
+  },
+  {
+    id: "AUDIT-P1-038",
+    severity: "P1",
+    rootCause:
+      "The canonical /app/dashboard entry had been replaced with a redirect to the unrelated Party experience even though product design, navigation, AI actions, and the retained dashboard model all identified it as the relationship dashboard. The retained live service factory was deployment-global, so restoring the page without repairing composition would have crossed actor boundaries. Its zero-contact aggregate also treated an empty coverage denominator as 100 and emitted opportunity-oriented English actions with no supporting relationship data.",
+    decision:
+      "Restore the real dashboard page behind canonical authentication, derive one actor-scoped service bundle before every live read, and pass the same actor through aggregate and summary composition. Define empty relationship coverage as 0, emit no current-goal match without an opportunity or dormant contact, and render localized prerequisite guidance when the actor has no relationship data.",
+    files:
+      "repos/orbits/app/(app)/app/dashboard/page.tsx; repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-service-factory.ts; repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model.ts; repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-view-model-adapter.ts; repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx; repos/orbits/features/dashboard/live-distribution-service.ts; repos/orbits/features/dashboard/live-opportunity-service.ts; focused Dashboard tests",
+    regression:
+      "Focused Dashboard tests 10/10, Web lint, and exact-origin production build passed. Authenticated runtime changed the Party redirect into the canonical relationship dashboard; the empty actor rendered all counts at zero, coverage 0, no fabricated current goal, and localized no-data next-action guidance.",
+    status:
+      "fixed and runtime-verified for route identity, the exercised empty actor, zero denominator, and no-data presentation; populated multi-account browser isolation, metric calculations, opportunity navigation, and follow-up readback remain pending real actor data",
   },
 ];
 

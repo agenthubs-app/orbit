@@ -164,7 +164,7 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
 
   assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 86);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 87);
   assert.equal(inventory.summary.interactionsRuntimeVerified, 67);
   assert.equal(
     inventory.surfaces.find(
@@ -224,6 +224,12 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
       (surface) => surface.surfaceId === "web:/app/today",
     )?.verificationConclusion,
     "runtime-partially-verified-web-today-meeting-service-boundary",
+  );
+  assert.equal(
+    inventory.surfaces.find(
+      (surface) => surface.surfaceId === "web:/app/dashboard",
+    )?.verificationConclusion,
+    "runtime-partially-verified-web-actor-scoped-relationship-dashboard",
   );
   for (const [surfaceId, verificationConclusion] of [
     [
