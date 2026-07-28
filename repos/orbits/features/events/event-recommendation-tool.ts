@@ -187,6 +187,7 @@ function localizedDescriptionsFor(description: string): {
 
 function eventText(event: EventRecord): string {
   return [
+    event.id,
     event.title,
     event.description,
     event.venue,
@@ -197,6 +198,19 @@ function eventText(event: EventRecord): string {
   ]
     .join(" ")
     .toLowerCase();
+}
+
+function isDirectEventReference(query: string, event: EventRecord): boolean {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) return false;
+
+  const eventId = event.id.trim().toLocaleLowerCase();
+  const title = event.title.trim().toLocaleLowerCase();
+
+  return (
+    (eventId.length > 0 && normalizedQuery.includes(eventId)) ||
+    (title.length > 0 && normalizedQuery.includes(title))
+  );
 }
 
 function databaseReadExecuted(provenance: EventCrudImportProvenance): boolean {
@@ -367,8 +381,14 @@ function resultForList(
   // 没有时（纯正则/测试路径）保持可用性列表行为，不做整体过滤。
   const requireTokenMatch = modelGuided && tokens.length > 0;
   const databaseQueryExecuted = databaseReadExecuted(listResult.data.provenance);
-  const rankedCandidates = listResult.data.events
-    .filter((event) => event.status !== "cancelled")
+  const directlyReferencedEvents = listResult.data.events.filter((event) =>
+    isDirectEventReference(query, event),
+  );
+  const eventsToRank =
+    directlyReferencedEvents.length > 0
+      ? directlyReferencedEvents
+      : listResult.data.events.filter((event) => event.status !== "cancelled");
+  const rankedCandidates = eventsToRank
     .map((event) =>
       candidateFor({
         databaseQueryExecuted,
@@ -380,13 +400,19 @@ function resultForList(
       }),
     )
     .sort(compareCandidates);
-  const exactCandidates = requireTokenMatch
-    ? rankedCandidates.filter((candidate) => candidate.matchedTokens.length > 0)
-    : rankedCandidates;
+  const exactCandidates =
+    directlyReferencedEvents.length > 0
+      ? rankedCandidates
+      : requireTokenMatch
+        ? rankedCandidates.filter(
+            (candidate) => candidate.matchedTokens.length > 0,
+          )
+        : rankedCandidates;
   // 模型给出的宽泛搜索词可能和真实活动文本没有字面重合。此时不能把
   // “没有精确词命中”误报成“账号没有活动”；保留按时间、状态和关系上下文
   // 排好序的真实活动作为可复核候选，并在 summary 中明确这是近似结果。
   const usedClosestAvailableFallback =
+    directlyReferencedEvents.length === 0 &&
     requireTokenMatch &&
     exactCandidates.length === 0 &&
     rankedCandidates.length > 0;
@@ -406,7 +432,9 @@ function resultForList(
     state: candidates.length > 0 ? "success" : "empty",
     summary:
       candidates.length > 0
-        ? usedClosestAvailableFallback
+        ? directlyReferencedEvents.length > 0
+          ? `${candidates.length} specifically referenced event(s) were found in Events data.`
+          : usedClosestAvailableFallback
           ? `No exact search-term match was found; showing ${candidates.length} closest available event(s) from live Events data for review.`
           : `${candidates.length} event(s) matched the request from live Events data.`
         : "No live Events records matched this request.",

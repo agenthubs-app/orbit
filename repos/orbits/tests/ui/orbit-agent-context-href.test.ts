@@ -29,7 +29,7 @@ test("contact context entry preserves the real entity identity and safety bounda
   assert.match(prompt, /不要执行任何外部操作/);
 });
 
-test("event context entry asks for fit and preparation without executing", () => {
+test("event context entry asks for current status and next steps without executing", () => {
   const prompt = agentPrompt(
     agentHrefForContext({
       details: "Tokyo · Aug 4",
@@ -42,6 +42,8 @@ test("event context entry asks for fit and preparation without executing", () =>
 
   assert.match(prompt, /event_signup_02/);
   assert.match(prompt, /fit with my goals and network/);
+  assert.match(prompt, /current status/);
+  assert.match(prompt, /appropriate next step or preparation/);
   assert.match(prompt, /Do not perform any external action/);
 });
 

@@ -354,7 +354,17 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
   const codeUpper = String(event.code || "").toUpperCase();
   const sceneAsset = getDemoEventSceneAsset(event.id);
   const askAgentHref = agentHrefForContext({
-    details: [event.venue, time.date].filter(Boolean).join(" · "),
+    details: [
+      event.status === "ended"
+        ? t({ en: "Ended", zh: "已结束" })
+        : event.status === "active"
+          ? t({ en: "In progress", zh: "进行中" })
+          : t({ en: "Upcoming", zh: "即将开始" }),
+      event.venue,
+      time.date,
+    ]
+      .filter(Boolean)
+      .join(" · "),
     id: event.id,
     kind: "event",
     label: name,

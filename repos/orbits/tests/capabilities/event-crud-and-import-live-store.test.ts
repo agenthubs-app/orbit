@@ -313,6 +313,41 @@ test("events recommendation tool includes the approved public catalogue when act
   );
 });
 
+test("events recommendation tool returns a specifically referenced ended catalogue event", async () => {
+  const tool = createEventsRecommendationTool({
+    actorId,
+    eventService: createLiveEventCrudAndImportService({
+      provider: {
+        source: "live-store:empty-actor-events",
+        sourceLabel: "Empty actor event store",
+        listEvents: () => [],
+        getEvent: () => null,
+        createManualEvent: () => {
+          throw new Error("Recommendation reads must not create events.");
+        },
+      },
+    }),
+    now: () => Date.parse("2026-07-28T00:00:00.000Z"),
+  });
+
+  const result = await tool.recommend({
+    query:
+      "请基于活动“东京餐饮入境客增长会” · ID: event_01，说明当前状态和下一步。",
+    toolArguments: {
+      domains: ["restaurant", "food_beverage"],
+      searchTerms: "restaurant inbound growth",
+      limit: 5,
+    },
+  });
+
+  assert.equal(result.state, "success");
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0]?.eventId, "event_01");
+  assert.equal(result.candidates[0]?.title, "东京餐饮入境客增长会");
+  assert.equal(result.candidates[0]?.upcoming, false);
+  assert.match(result.summary, /specifically referenced event/i);
+});
+
 test("live event list hides legacy fixture and diagnostic records by default", async () => {
   const records: LiveEventStoreRecord[] = [
     {
