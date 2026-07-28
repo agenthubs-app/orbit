@@ -14,7 +14,7 @@ import {
   type AsyncConversationStagePayload,
   type AsyncConversationStageResult,
   type AsyncConversationThread,
-  type AsyncConversationWorkspacePayload,
+  type AsyncConversationWorkspaceSuccessPayload,
   type AsyncConversationWorkspaceResult,
   type ChatConversationListPayload,
   type ChatConversationListResult,
@@ -388,7 +388,7 @@ const asyncConversationProvenance: AsyncConversationProvenance = {
 };
 
 type AsyncConversationRecord = Omit<
-  AsyncConversationWorkspacePayload,
+  AsyncConversationWorkspaceSuccessPayload,
   "currentUser" | "inbox" | "provenance" | "sideEffects" | "state"
 >;
 
@@ -626,6 +626,20 @@ function asyncFailure(
         "A subject and body are required before staging a new relationship conversation from a draft.",
       recovery:
         "Generate or write a draft subject and body before creating a new conversation thread.",
+    },
+    ASYNC_CONVERSATION_ACTOR_REQUIRED: {
+      appCode: "UNAUTHORIZED",
+      message:
+        "An authenticated actor is required for live relationship conversations.",
+      recovery:
+        "Sign in before reading or saving actor-scoped relationship conversation records.",
+    },
+    ASYNC_CONVERSATION_LIVE_STORE_UNCONFIGURED: {
+      appCode: "SERVICE_UNAVAILABLE",
+      message:
+        "The live relationship conversation store is not configured.",
+      recovery:
+        "Configure the Orbit live database before using live relationship conversations.",
     },
   };
 

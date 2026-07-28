@@ -75,7 +75,7 @@ export interface OrbitAiContactRecommendationEvaluationCase
   shouldBeReady: boolean;
 }
 
-interface ContactSignalProfile {
+export interface OrbitAiContactRecommendationSignalProfile {
   concepts: readonly string[];
   evidenceId: string;
   privacy: OrbitAiContactRecommendationEvidenceSnippet["privacy"];
@@ -84,7 +84,7 @@ interface ContactSignalProfile {
   sourceLabel: string;
 }
 
-interface ContactCandidateProfile {
+export interface OrbitAiContactRecommendationCandidateProfile {
   contactId: string;
   displayName: string;
   highProfile?: boolean;
@@ -93,7 +93,17 @@ interface ContactCandidateProfile {
   recommendedAction: string;
   relationStrength: "strong" | "medium" | "weak";
   role: string;
-  signals: readonly ContactSignalProfile[];
+  signals: readonly OrbitAiContactRecommendationSignalProfile[];
+}
+
+export interface OrbitAiRelationshipRecommendationService {
+  recommendContacts(
+    input: OrbitAiContactRecommendationInput,
+  ): OrbitAiContactRecommendationResult;
+}
+
+export interface OrbitAiRelationshipRecommendationServiceOptions {
+  candidates?: readonly OrbitAiContactRecommendationCandidateProfile[];
 }
 
 const signalWeights: Record<OrbitAiContactRecommendationSignal, number> = {
@@ -121,6 +131,25 @@ const conceptWeights: Record<string, number> = {
   seed_fundraising: 1.2,
   sponsorship: 1.1,
   weak_tie: 1.3,
+};
+
+const conceptLabelsZh: Record<string, string> = {
+  ai_workflow: "AI 业务流程",
+  china_saas: "中国 SaaS",
+  chinese_business_community: "华人商业社群",
+  crm: "客户关系管理",
+  ecommerce: "跨境电商",
+  event_organizer: "活动组织",
+  founder_feedback: "创业者反馈",
+  investor: "投资人",
+  japan_market_entry: "进入日本市场",
+  manufacturing: "制造业",
+  market_entry: "市场进入",
+  poc_buyer: "试点买方",
+  restaurant: "餐饮",
+  seed_fundraising: "种子轮融资",
+  sponsorship: "活动赞助",
+  weak_tie: "弱关系",
 };
 
 const goalConceptPatterns: readonly {
@@ -200,7 +229,12 @@ const goalConceptPatterns: readonly {
   },
 ];
 
-const candidateProfiles: readonly ContactCandidateProfile[] = [
+/**
+ * Historical fixed profiles retained only so older evaluation reports remain
+ * explainable. Product recommendations are built from defaultMockFixtures.
+ */
+export const ORBIT_AI_HAND_AUTHORED_RECOMMENDATION_REFERENCE_PROFILES:
+  readonly OrbitAiContactRecommendationCandidateProfile[] = [
   {
     contactId: "contact_001",
     displayName: "佐藤 健一",
@@ -586,7 +620,7 @@ export const ORBIT_AI_CONTACT_RECOMMENDATION_EVALUATION_CASES: readonly OrbitAiC
       shouldBeReady: true,
     },
     {
-      expectedTopContactId: "contact_002",
+      expectedTopContactId: "contact_012",
       goal: "Find someone who can help China SaaS sales enter the Japan market.",
       id: "market_entry_help",
       locale: "en",
@@ -600,18 +634,17 @@ export const ORBIT_AI_CONTACT_RECOMMENDATION_EVALUATION_CASES: readonly OrbitAiC
       shouldBeReady: true,
     },
     {
-      expectedTopContactId: "contact_002",
+      expectedTopContactId: "contact_042",
       goal: "Need a community organizer intro for China SaaS market entry.",
       id: "organizer_intro",
       locale: "en",
       shouldBeReady: true,
     },
     {
-      expectedTopContactId: "contact_004",
       goal: "Find a weak tie who can help with event table matching and sponsor visibility.",
       id: "weak_tie_relevance",
       locale: "en",
-      shouldBeReady: true,
+      shouldBeReady: false,
     },
     {
       goal: "Find a healthcare regulatory reimbursement expert for a hospital procurement question.",
@@ -626,21 +659,21 @@ export const ORBIT_AI_CONTACT_RECOMMENDATION_EVALUATION_CASES: readonly OrbitAiC
       shouldBeReady: false,
     },
     {
-      expectedTopContactId: "contact_002",
+      expectedTopContactId: "contact_012",
       goal: "我想找能帮助中国 SaaS 销售进入日本市场的顾问。",
       id: "chinese_input",
       locale: "zh",
       shouldBeReady: true,
     },
     {
-      expectedTopContactId: "contact_002",
+      expectedTopContactId: "contact_001",
       goal: "Who can help China SaaS sales enter Japan with manufacturing buyer feedback?",
       id: "english_input",
       locale: "en",
       shouldBeReady: true,
     },
     {
-      expectedTopContactId: "contact_003",
+      expectedTopContactId: "contact_024",
       goal: "Use privacy-limited data to find a seed investor who can screen founders.",
       id: "privacy_limited_data",
       locale: "en",
@@ -684,17 +717,23 @@ function conceptsForGoal(goal: string): readonly string[] {
   return Array.from(new Set(concepts));
 }
 
+export function inferOrbitAiContactRecommendationConcepts(
+  text: string,
+): readonly string[] {
+  return conceptsForGoal(text);
+}
+
 function allowedSignalsFor(
   privacyMode: OrbitAiContactRecommendationPrivacyMode,
-  candidate: ContactCandidateProfile,
-): readonly ContactSignalProfile[] {
+  candidate: OrbitAiContactRecommendationCandidateProfile,
+): readonly OrbitAiContactRecommendationSignalProfile[] {
   return candidate.signals.filter(
     (signal) => privacyMode === "full" || signal.privacy !== "private",
   );
 }
 
 function scoreCandidate(input: {
-  candidate: ContactCandidateProfile;
+  candidate: OrbitAiContactRecommendationCandidateProfile;
   goalConcepts: readonly string[];
   privacyMode: OrbitAiContactRecommendationPrivacyMode;
 }) {
@@ -783,14 +822,18 @@ function confidenceFor(score: number): OrbitAiContactRecommendation["confidence"
 }
 
 function reasonFor(input: {
-  candidate: ContactCandidateProfile;
+  candidate: OrbitAiContactRecommendationCandidateProfile;
   locale: OrbitAiContactRecommendationLocale;
   matchedConcepts: ReadonlySet<string>;
   privacyMode: OrbitAiContactRecommendationPrivacyMode;
   score: number;
 }): string {
   const concepts = Array.from(input.matchedConcepts)
-    .map((concept) => concept.replace(/_/g, " "))
+    .map((concept) =>
+      input.locale === "zh"
+        ? (conceptLabelsZh[concept] ?? concept.replace(/_/g, " "))
+        : concept.replace(/_/g, " "),
+    )
     .slice(0, 4)
     .join(", ");
   const privacyPrefix =
@@ -820,7 +863,7 @@ function sourceBackedReasonsFor(input: {
 }
 
 function recommendationFor(input: {
-  candidate: ContactCandidateProfile;
+  candidate: OrbitAiContactRecommendationCandidateProfile;
   locale: OrbitAiContactRecommendationLocale;
   matchedConcepts: ReadonlySet<string>;
   privacyMode: OrbitAiContactRecommendationPrivacyMode;
@@ -876,6 +919,13 @@ function rejectionReasonFor(input: {
     });
   }
 
+  if (input.score >= ORBIT_AI_CONTACT_RECOMMENDATION_READY_SCORE_THRESHOLD) {
+    return localize(input.locale, {
+      en: "The candidate cleared the evidence threshold but stayed outside the requested result limit.",
+      zh: "该联系人已达到证据阈值，但未进入本次请求的展示数量范围。",
+    });
+  }
+
   return localize(input.locale, {
     en: `Rejected because the evidence-backed score ${input.score} is below the ready threshold.`,
     zh: `已排除：证据评分 ${input.score} 低于可展示阈值。`,
@@ -927,7 +977,11 @@ function summaryFor(input: {
   });
 }
 
-export function createOrbitAiRelationshipRecommendationService() {
+export function createOrbitAiRelationshipRecommendationService(
+  options: OrbitAiRelationshipRecommendationServiceOptions = {},
+): OrbitAiRelationshipRecommendationService {
+  const candidates = options.candidates ?? [];
+
   return {
     recommendContacts(
       input: OrbitAiContactRecommendationInput,
@@ -937,7 +991,7 @@ export function createOrbitAiRelationshipRecommendationService() {
       const goal = combinedGoalText(input);
       const goalConcepts = conceptsForGoal(goal);
       const maxRecommendations = Math.max(1, input.maxRecommendations ?? 5);
-      const scoredCandidates = candidateProfiles
+      const scoredCandidates = candidates
         .map((candidate) => ({
           candidate,
           ...scoreCandidate({

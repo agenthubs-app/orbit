@@ -45,10 +45,12 @@ test("relationship inbox API returns a correspondence workspace envelope", async
   assert.equal(body.data.draftReply.externalSendStatus, "not_requested");
 });
 
-test("relationship inbox hides mock history in live mode but allows a local unsent draft", async () => {
+test("relationship inbox requires an authenticated actor in live mode", async () => {
   await withRelationshipInboxMode("live", async () => {
-    const route = await import("../../app/api/chat/relationship-inbox/route");
-    const getResponse = await route.GET(
+    const handler = await import("../../app/api/chat/relationship-inbox/handler");
+    const getResponse = await handler.createRelationshipInboxGetHandler(
+      async () => null,
+    )(
       new Request("https://orbit.local/api/chat/relationship-inbox"),
     );
     const getBody = (await getResponse.json()) as {
@@ -59,13 +61,14 @@ test("relationship inbox hides mock history in live mode but allows a local unse
       };
     };
 
-    assert.equal(getResponse.status, 503);
+    assert.equal(getResponse.status, 401);
     assert.equal(getBody.success, false);
-    assert.equal(getBody.error.code, "SERVICE_UNAVAILABLE");
-    assert.equal(getBody.error.context?.availableModes, "mock");
+    assert.equal(getBody.error.code, "UNAUTHORIZED");
     assert.equal(getBody.error.context?.mode, "live");
 
-    const postResponse = await route.POST(
+    const postResponse = await handler.createRelationshipInboxPostHandler(
+      async () => null,
+    )(
       new Request("https://orbit.local/api/chat/relationship-inbox", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -79,27 +82,12 @@ test("relationship inbox hides mock history in live mode but allows a local unse
 
     const postBody = (await postResponse.json()) as {
       success: boolean;
-      data: {
-        sideEffects: {
-          externalMessageSent: boolean;
-          savedRecordCreated: boolean;
-          networkRequestMade: boolean;
-        };
-        thread: {
-          messages: readonly { occurredAt: string }[];
-        };
-      };
+      error: { code: string };
     };
 
-    assert.equal(postResponse.status, 200);
-    assert.equal(postBody.success, true);
-    assert.equal(postBody.data.sideEffects.externalMessageSent, false);
-    assert.equal(postBody.data.sideEffects.savedRecordCreated, false);
-    assert.equal(postBody.data.sideEffects.networkRequestMade, false);
-    assert.ok(
-      Date.now() - Date.parse(postBody.data.thread.messages[0]?.occurredAt ?? "") <
-        10_000,
-    );
+    assert.equal(postResponse.status, 401);
+    assert.equal(postBody.success, false);
+    assert.equal(postBody.error.code, "UNAUTHORIZED");
   });
 });
 

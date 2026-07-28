@@ -17,6 +17,7 @@ import {
   ORBIT_AI_CONTACT_RECOMMENDATION_READY_SCORE_THRESHOLD,
   type OrbitAiContactRecommendation,
   type OrbitAiContactRecommendationResult,
+  type OrbitAiRelationshipRecommendationService,
 } from "./contact-recommendation-service";
 import {
   createContactRecommendationMatcher,
@@ -396,8 +397,8 @@ function evidenceBodyForGoalRecommendation(
 ): string {
   const snippets = recommendation.evidenceSnippets
     .slice(0, 3)
-    .map((snippet) => `${snippet.sourceLabel}: ${snippet.snippet}`)
-    .join(" ");
+    .map((snippet) => `${snippet.sourceLabel}：${snippet.snippet}`)
+    .join("\n");
 
   return localize(locale, {
     en: `Evidence snippets: ${snippets}`,
@@ -431,7 +432,7 @@ function generatedViewForGoalRecommendation(
     metadata: [
       {
         label: localize(locale, { en: "Contact", zh: "联系人" }),
-        value: recommendation.contactId,
+        value: recommendation.displayName,
       },
       {
         label: localize(locale, { en: "Organization", zh: "组织" }),
@@ -447,7 +448,16 @@ function generatedViewForGoalRecommendation(
       },
       {
         label: localize(locale, { en: "Privacy", zh: "隐私范围" }),
-        value: result.privacyMode,
+        value:
+          result.privacyMode === "limited"
+            ? localize(locale, {
+                en: "Privacy-limited evidence",
+                zh: "仅使用隐私受限证据",
+              })
+            : localize(locale, {
+                en: "Signed-in account evidence",
+                zh: "当前账户内的关系证据",
+              }),
       },
     ],
     reason: recommendation.whyThisPerson,
@@ -711,6 +721,7 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
   fallbackService?: OrbitAgentArtifactTaskService;
   matcher?: ContactRecommendationMatcher;
   normalizationService?: OrbitContactSearchTermExtractor;
+  relationshipRecommendationService?: OrbitAiRelationshipRecommendationService;
 } = {}): OrbitAgentArtifactTaskService {
   const fallbackService =
     input.fallbackService ?? createOrbitAgentArtifactPreviewService();
@@ -748,7 +759,8 @@ export function createOrbitAgentContactRecommendationArtifactService(input: {
         !shouldUseLegacyRelationshipMatcher(combinedQueryContext)
       ) {
         const recommendationResult =
-          createOrbitAiRelationshipRecommendationService().recommendContacts({
+          (input.relationshipRecommendationService ??
+            createOrbitAiRelationshipRecommendationService()).recommendContacts({
             contextMessages: request.contextMessages,
             goal: query,
             locale: request.locale,

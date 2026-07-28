@@ -355,7 +355,7 @@ test("mock Orbit Agent conversation passes locale into recommendation artifacts"
   const service = serviceModule.createMockOrbitAgentConversationService();
   const result = service.sendMessage({
     locale: "zh",
-    message: "帮我推荐几个应该联系的人脉。",
+    message: "帮我在人脉里找可在日本中小制造业试点 AI 业务自动化的买方。",
   });
   const renderedResultText = JSON.stringify({
     artifacts: result.data?.artifacts,
@@ -371,10 +371,10 @@ test("mock Orbit Agent conversation passes locale into recommendation artifacts"
       ?.actions[0]?.label,
     "查看人脉",
   );
-  assert.equal(
+  assert.deepEqual(
     result.data?.artifacts[0]?.result.generatedView?.sections[0]?.items[0]
-      ?.metadata[1]?.label,
-    "最近联系",
+      ?.metadata.map((entry) => entry.label),
+    ["联系人", "组织", "来源", "匹配分", "隐私范围"],
   );
   assert.match(result.data?.assistantMessage ?? "", /人脉推荐/);
   assert.equal(

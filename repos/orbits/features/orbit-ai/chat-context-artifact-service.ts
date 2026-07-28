@@ -269,6 +269,36 @@ function readableRelationshipStage(stage: string, locale: ArtifactLocale) {
   return localize(locale, stages[stage] ?? { en: "Needs review", zh: "需要复核" });
 }
 
+function readableResolutionMethod(method: string, locale: ArtifactLocale) {
+  const methods: Record<string, Record<ArtifactLocale, string>> = {
+    actorScopedContacts: {
+      en: "Signed-in account contact evidence",
+      zh: "当前账户的联系人证据",
+    },
+    actorScopedQuery: {
+      en: "Signed-in account identity match",
+      zh: "当前账户内的身份匹配",
+    },
+    contactId: { en: "Exact contact ID", zh: "精确联系人编号" },
+    contactName: { en: "Exact contact name", zh: "精确联系人姓名" },
+    conversationId: { en: "Exact saved conversation", zh: "精确保存会话" },
+    query: { en: "Contact and organization terms", zh: "联系人和组织关键词" },
+    query_terms: { en: "Relationship context terms", zh: "关系上下文关键词" },
+    toolArguments: {
+      en: "Confirmed request fields",
+      zh: "请求中已确认的字段",
+    },
+  };
+
+  return localize(
+    locale,
+    methods[method] ?? {
+      en: "Reviewable relationship evidence",
+      zh: "可复核的关系证据",
+    },
+  );
+}
+
 function readableMessageBody(value: string, locale: ArtifactLocale) {
   const generatedRecord = value.match(/^最近跟进记录[:：]\s*(.+?)。?$/);
 
@@ -1482,7 +1512,7 @@ function contextItemFor(
         },
         {
           label: localize(locale, { en: "Stage", zh: "阶段" }),
-          value: contact.status,
+          value: readableRelationshipStage(contact.status, locale),
         },
         {
           label: localize(locale, { en: "Source", zh: "来源" }),
@@ -1494,7 +1524,7 @@ function contextItemFor(
         },
         {
           label: localize(locale, { en: "Matched by", zh: "匹配方式" }),
-          value: data.resolution.matchedBy,
+          value: readableResolutionMethod(data.resolution.matchedBy, locale),
         },
         {
           label: localize(locale, { en: "Privacy", zh: "隐私范围" }),
@@ -1562,7 +1592,7 @@ function contextItemFor(
       },
       {
         label: localize(locale, { en: "Stage", zh: "阶段" }),
-        value: context.relationshipStage,
+        value: readableRelationshipStage(context.relationshipStage, locale),
       },
       {
         label: localize(locale, { en: "Source", zh: "来源" }),
@@ -1578,7 +1608,7 @@ function contextItemFor(
       },
       {
         label: localize(locale, { en: "Matched by", zh: "匹配方式" }),
-        value: data.resolution.matchedBy,
+        value: readableResolutionMethod(data.resolution.matchedBy, locale),
       },
       {
         label: localize(locale, { en: "Privacy", zh: "隐私范围" }),
@@ -1666,7 +1696,7 @@ function unresolvedContextItemFor(
       },
       {
         label: localize(locale, { en: "Matched by", zh: "匹配方式" }),
-        value: data.resolution.matchedBy,
+        value: readableResolutionMethod(data.resolution.matchedBy, locale),
       },
       {
         label: localize(locale, { en: "Candidates", zh: "候选" }),

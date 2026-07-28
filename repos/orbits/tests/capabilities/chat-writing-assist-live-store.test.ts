@@ -7,6 +7,7 @@ import {
   resolveChatWritingAssistService,
 } from "../../features/chat/service-factory";
 import { createStorageChatWritingAssistProvider } from "../../features/chat/storage/chat-writing-assist-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -18,6 +19,11 @@ test("live chat writing assist drafts from generated chat graph without AI, send
     store,
     workspaceId,
   });
+  const expectedConversation = defaultMockFixtures.conversations[0];
+  const expectedContact = defaultMockFixtures.contacts.find((contact) =>
+    expectedConversation.participantContactIds.includes(contact.id),
+  );
+  assert.ok(expectedContact);
 
   const service = createLiveChatWritingAssistService({
     provider: createStorageChatWritingAssistProvider({
@@ -28,28 +34,43 @@ test("live chat writing assist drafts from generated chat graph without AI, send
   });
 
   const followup = await service.draftFollowup({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
   });
 
   assert.equal(followup.success, true);
   assert.equal(followup.data.state, "success");
   assert.equal(followup.data.assists.length, 1);
   assert.equal(followup.data.assists[0]?.kind, "follow_up_draft");
-  assert.equal(followup.data.assists[0]?.conversationId, "conversation_001");
-  assert.equal(followup.data.assists[0]?.participantName, "山田 千尋");
-  assert.equal(followup.data.assists[0]?.organization, "Morning Light Foods");
-  assert.match(
-    followup.data.assists[0]?.originalText ?? "",
-    /AI workflow PoC buyer in Japanese SMB manufacturing/,
+  assert.equal(
+    followup.data.assists[0]?.conversationId,
+    expectedConversation.id,
   );
-  assert.match(followup.data.assists[0]?.suggestedText ?? "", /山田 千尋/);
+  assert.equal(
+    followup.data.assists[0]?.participantName,
+    expectedContact.displayName,
+  );
+  assert.equal(
+    followup.data.assists[0]?.organization,
+    expectedContact.organization,
+  );
+  assert.equal(
+    followup.data.assists[0]?.originalText,
+    defaultMockFixtures.connections.find(
+      (connection) => connection.contactId === expectedContact.id,
+    )?.summary,
+  );
   assert.match(
     followup.data.assists[0]?.suggestedText ?? "",
-    /Morning Light Foods/,
+    new RegExp(expectedContact.displayName),
   );
   assert.match(
     followup.data.assists[0]?.suggestedText ?? "",
-    /AI workflow PoC buyer in Japanese SMB manufacturing/,
+    new RegExp(expectedContact.organization ?? ""),
+  );
+  assert.ok(
+    (followup.data.assists[0]?.suggestedText ?? "").includes(
+      followup.data.assists[0]?.originalText ?? "",
+    ),
   );
   assert.equal(followup.data.assists[0]?.source.generatedBy, "live-store-query");
   assert.equal(followup.data.assists[0]?.generatedBy, "live-store-query");
@@ -94,15 +115,15 @@ test("live chat writing assist drafts from generated chat graph without AI, send
   assert.equal(followup.data.provenance.externalNetworkRequested, false);
 
   const rewrite = await service.rewritePolitely({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
     sourceText: "send me the AI workflow PoC buyer notes",
   });
   const appointment = await service.suggestAppointment({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
     preferredWindow: "Thursday morning",
   });
   const greeting = await service.createQuickGreeting({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
   });
 
   assert.equal(rewrite.success, true);
@@ -111,7 +132,10 @@ test("live chat writing assist drafts from generated chat graph without AI, send
     rewrite.data.assists[0]?.originalText,
     "send me the AI workflow PoC buyer notes",
   );
-  assert.match(rewrite.data.assists[0]?.suggestedText ?? "", /山田 千尋/);
+  assert.match(
+    rewrite.data.assists[0]?.suggestedText ?? "",
+    new RegExp(expectedContact.displayName),
+  );
   assert.match(
     rewrite.data.assists[0]?.suggestedText ?? "",
     /AI workflow PoC buyer/,
@@ -124,14 +148,17 @@ test("live chat writing assist drafts from generated chat graph without AI, send
   );
   assert.equal(greeting.success, true);
   assert.equal(greeting.data.assists[0]?.kind, "quick_greeting");
-  assert.match(greeting.data.assists[0]?.suggestedText ?? "", /山田 千尋/);
+  assert.match(
+    greeting.data.assists[0]?.suggestedText ?? "",
+    new RegExp(expectedContact.displayName),
+  );
 
   const empty = await service.draftFollowup({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
     scenario: "empty",
   });
   const pending = await service.rewritePolitely({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
     scenario: "pending",
   });
   const missingContext = await service.draftFollowup({});
@@ -141,7 +168,7 @@ test("live chat writing assist drafts from generated chat graph without AI, send
   const unconfigured = await createLiveChatWritingAssistService({
     provider: null,
   }).draftFollowup({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
   });
 
   assert.equal(empty.success, true);

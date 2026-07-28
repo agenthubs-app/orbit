@@ -103,6 +103,43 @@ function parseDraftJson(text: string): { body: string; subject: string } | null 
   return subject && body ? { body, subject } : null;
 }
 
+const unsupportedDraftClaimPatterns: readonly {
+  category: string;
+  pattern: RegExp;
+}[] = [
+  {
+    category: "attachment_not_in_record",
+    pattern:
+      /附件|附上|随附|詳見附件|详见附件|附件中|\battachment\b|\battached\b|\benclosed\b/i,
+  },
+  {
+    category: "message_already_sent",
+    pattern:
+      /已(?:经)?(?:发送|寄出|发出)|我(?:已经|已)?(?:发送|寄出)|\b(?:i|we)(?:'ve| have)?\s+(?:sent|emailed)\b|\bsent you\b/i,
+  },
+  {
+    category: "meeting_already_booked",
+    pattern:
+      /已(?:经)?(?:预约|预订|預訂|安排)|\b(?:i|we)(?:'ve| have)?\s+(?:booked|scheduled)\b/i,
+  },
+  {
+    category: "work_already_completed",
+    pattern:
+      /已经完成|已完成|\b(?:i|we)(?:'ve| have)\s+completed\b/i,
+  },
+];
+
+function unsupportedDraftClaims(draft: {
+  body: string;
+  subject: string;
+}): readonly string[] {
+  const text = `${draft.subject}\n${draft.body}`;
+
+  return unsupportedDraftClaimPatterns
+    .filter((entry) => entry.pattern.test(text))
+    .map((entry) => entry.category);
+}
+
 function evidenceIdsFor(contact: ContactDetail): readonly string[] {
   return Array.from(
     new Set([
@@ -256,16 +293,22 @@ export function createAiEmailDraftService(
         input.purpose?.trim() ||
         contact.nextAction ||
         (language === "zh" ? "基于最近互动进行自然跟进" : "Follow up naturally on the latest interaction");
-      const modelResult = await runOrbitAgentModelText({
+      const sourceBackedModelInput = modelInputFor({
+        contact,
+        language,
+        purpose,
+      });
+      const systemInstruction = [
+        "You draft concise, professional relationship emails using only the supplied Orbit relationship record.",
+        "Do not invent meetings, commitments, dates, metrics, attachments, or shared history.",
+        "Prefer the latest interaction and recommended next action when they are supported by the record.",
+        "The result is a draft only: do not claim that anything was sent, booked, attached, or completed.",
+        'Return strict JSON only with exactly two string fields: {"subject":"...","body":"..."}.',
+      ].join(" ");
+      let modelResult = await runOrbitAgentModelText({
         config: options.modelConfig,
-        systemInstruction: [
-          "You draft concise, professional relationship emails using only the supplied Orbit relationship record.",
-          "Do not invent meetings, commitments, dates, metrics, attachments, or shared history.",
-          "Prefer the latest interaction and recommended next action when they are supported by the record.",
-          "The result is a draft only: do not claim that anything was sent, booked, attached, or completed.",
-          'Return strict JSON only with exactly two string fields: {"subject":"...","body":"..."}.',
-        ].join(" "),
-        userText: modelInputFor({ contact, language, purpose }),
+        systemInstruction,
+        userText: sourceBackedModelInput,
       });
 
       if (modelResult.success === false) {
@@ -278,14 +321,46 @@ export function createAiEmailDraftService(
         };
       }
 
-      const draft = parseDraftJson(modelResult.text);
+      let draft = parseDraftJson(modelResult.text);
+      let unsupportedClaims = draft ? unsupportedDraftClaims(draft) : [];
 
-      if (!draft) {
+      if (draft && unsupportedClaims.length > 0) {
+        modelResult = await runOrbitAgentModelText({
+          config: options.modelConfig,
+          systemInstruction: `${systemInstruction} A previous attempt was rejected by the safety validator. Regenerate from the supplied record without any rejected claim category.`,
+          userText: JSON.stringify(
+            {
+              relationshipRecord: JSON.parse(sourceBackedModelInput),
+              rejectedClaimCategories: unsupportedClaims,
+            },
+            null,
+            2,
+          ),
+        });
+
+        if (modelResult.success === false) {
+          return {
+            success: false,
+            error: {
+              code: modelResult.error.code,
+              message: modelResult.error.message,
+            },
+          };
+        }
+
+        draft = parseDraftJson(modelResult.text);
+        unsupportedClaims = draft ? unsupportedDraftClaims(draft) : [];
+      }
+
+      if (!draft || unsupportedClaims.length > 0) {
         return {
           success: false,
           error: {
             code: "MODEL_OUTPUT_INVALID",
-            message: "The AI response did not contain a valid reviewable email draft.",
+            message:
+              unsupportedClaims.length > 0
+                ? "The AI draft made claims that were not supported by the relationship record."
+                : "The AI response did not contain a valid reviewable email draft.",
           },
         };
       }

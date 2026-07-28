@@ -347,6 +347,8 @@ export const ASYNC_CONVERSATION_ERROR_CODES = [
   "ASYNC_CONVERSATION_NOT_FOUND",
   "ASYNC_CONVERSATION_ACTION_NOT_FOUND",
   "ASYNC_CONVERSATION_DRAFT_CONTEXT_REQUIRED",
+  "ASYNC_CONVERSATION_ACTOR_REQUIRED",
+  "ASYNC_CONVERSATION_LIVE_STORE_UNCONFIGURED",
 ] as const;
 
 export type AsyncConversationErrorCode =
@@ -363,6 +365,8 @@ export type AsyncConversationExternalSendStatus = "not_requested";
 export type AsyncConversationActionStatus = "staged_local_preview";
 
 export interface AsyncConversationInput {
+  actorDisplayName?: string | null;
+  actorId?: string | null;
   conversationId?: string | null;
   userId?: string | null;
 }
@@ -376,7 +380,7 @@ export interface AsyncConversationNoSideEffects {
   externalMessageSent: false;
   notificationDelivered: false;
   calendarEntryCreated: false;
-  savedRecordCreated: false;
+  savedRecordCreated: boolean;
   networkRequestMade: false;
 }
 
@@ -499,11 +503,15 @@ export interface AsyncConversationProvenance {
   source: string;
   sourceLabel: string;
   evidenceIds: readonly string[];
-  generatedBy: "mock-async-conversation-service";
-  privacy: "local-relationship-correspondence-preview";
+  generatedBy:
+    | "mock-async-conversation-service"
+    | "live-async-conversation-service";
+  privacy:
+    | "local-relationship-correspondence-preview"
+    | "actor-scoped-live-relationship-correspondence";
 }
 
-export interface AsyncConversationWorkspacePayload {
+export interface AsyncConversationWorkspaceSuccessPayload {
   state: "success";
   currentUser: AsyncConversationCurrentUser;
   inbox: AsyncConversationInbox;
@@ -512,12 +520,32 @@ export interface AsyncConversationWorkspacePayload {
   nextActions: readonly AsyncConversationNextAction[];
   contact: AsyncConversationContactContext;
   connection: AsyncConversationConnectionContext;
-  event: AsyncConversationEventContext;
-  schedule: AsyncConversationScheduleContext;
-  followUpTask: AsyncConversationFollowUpTaskContext;
+  event: AsyncConversationEventContext | null;
+  schedule: AsyncConversationScheduleContext | null;
+  followUpTask: AsyncConversationFollowUpTaskContext | null;
   sideEffects: AsyncConversationNoSideEffects;
   provenance: AsyncConversationProvenance;
 }
+
+export interface AsyncConversationWorkspaceEmptyPayload {
+  state: "empty";
+  currentUser: AsyncConversationCurrentUser;
+  inbox: AsyncConversationInbox;
+  selectedThread: null;
+  draftReply: null;
+  nextActions: readonly [];
+  contact: null;
+  connection: null;
+  event: null;
+  schedule: null;
+  followUpTask: null;
+  sideEffects: AsyncConversationNoSideEffects;
+  provenance: AsyncConversationProvenance;
+}
+
+export type AsyncConversationWorkspacePayload =
+  | AsyncConversationWorkspaceSuccessPayload
+  | AsyncConversationWorkspaceEmptyPayload;
 
 export interface AsyncConversationStage {
   actionId: string;
@@ -571,6 +599,8 @@ export type AsyncConversationStageResult =
 // 这是 draft→thread 的写入入口：draft-generator 生成首封 → 确认 → 成为线程第一条。
 // mock-first：只生成本地 staged 线程，不发送、不落库、不触发任何外部副作用。
 export interface AsyncConversationCreateFromDraftInput {
+  actorDisplayName?: string | null;
+  actorId?: string | null;
   contactId?: string | null;
   participantName?: string | null;
   organization?: string | null;
@@ -581,7 +611,7 @@ export interface AsyncConversationCreateFromDraftInput {
 }
 
 export interface AsyncConversationCreatePayload {
-  state: "staged_created";
+  state: "staged_created" | "saved_draft_created";
   thread: AsyncConversationThread;
   inboxItem: AsyncConversationInboxItem;
   noSideEffectStatement: string;

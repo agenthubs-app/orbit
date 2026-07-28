@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -70,7 +71,7 @@ test("/app/agent consumes GET q prompts and renders linked contact recommendatio
   assert.equal(artifact?.task.kind, "contact_recommendations");
   assert.equal(artifact?.task.query, prompt);
   assert.ok(items.length >= 3);
-  assert.equal(first?.title, "佐藤 健一");
+  assert.equal(first?.title, defaultMockFixtures.contacts[0]?.displayName);
   assert.match(first?.reason ?? "", /why this person/i);
   assert.match(first?.body ?? "", /Evidence/i);
   assert.match(first?.confidenceLabel ?? "", /confidence/i);
@@ -79,7 +80,7 @@ test("/app/agent consumes GET q prompts and renders linked contact recommendatio
   assert.equal(first?.actions[0]?.requiresConfirmation, true);
   assert.equal(
     first?.metadata.find((item) => item.label === "Contact")?.value,
-    "contact_001",
+    defaultMockFixtures.contacts[0]?.displayName,
   );
   assert.ok(
     first?.metadata.find((item) => item.label === "Score")?.value,

@@ -354,6 +354,7 @@ export interface ConversationDTO {
   id: OrbitId;
   participantContactIds: readonly OrbitId[];
   channel: "email" | "calendar" | "chat" | "note";
+  subject?: string;
   source: SourceReferenceDTO;
   evidenceIds: EvidenceIdList;
   updatedAt: IsoDateTimeString;

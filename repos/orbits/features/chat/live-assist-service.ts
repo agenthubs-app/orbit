@@ -352,13 +352,14 @@ function originalTextFor(input: {
 function suggestedTextFor(input: {
   kind: ChatWritingAssistKind;
   organization: string;
+  originalText: string;
   participantName: string;
   preferredWindow: string;
   topic: string;
 }): string {
   switch (input.kind) {
     case "polite_rewrite":
-      return `Hi ${input.participantName}, thanks for the context. I will follow up with the ${input.topic} notes for ${input.organization} and keep the next step concrete.`;
+      return `Hi ${input.participantName}, could you please help with this request: “${input.originalText}”? Thank you.`;
     case "follow_up_draft":
       return `Hi ${input.participantName}, following up on ${input.topic}: I reviewed the latest chat context for ${input.organization}. Would it help if I send a concise next-step note for the PoC review?`;
     case "appointment_suggestion":
@@ -399,6 +400,13 @@ function buildAssist(input: {
     conversation: input.conversation,
     messages: input.messages,
   });
+  const originalText = originalTextFor({
+    connection: input.connection,
+    kind: input.kind,
+    messages: input.messages,
+    request: input.request,
+    topic,
+  });
 
   return {
     assistId: `live-chat-assist-${input.kind.replaceAll("_", "-")}-${
@@ -409,16 +417,11 @@ function buildAssist(input: {
     conversationId: input.conversation.id,
     participantName,
     organization,
-    originalText: originalTextFor({
-      connection: input.connection,
-      kind: input.kind,
-      messages: input.messages,
-      request: input.request,
-      topic,
-    }),
+    originalText,
     suggestedText: suggestedTextFor({
       kind: input.kind,
       organization,
+      originalText,
       participantName,
       preferredWindow,
       topic,

@@ -7,6 +7,7 @@ import {
   resolveChatConversationMessageService,
 } from "../../features/chat/service-factory";
 import { createStorageChatConversationMessageProvider } from "../../features/chat/storage/chat-conversation-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -31,7 +32,10 @@ test("live chat conversation service reads and records generated messages withou
 
   assert.equal(listed.success, true);
   assert.equal(listed.data.state, "success");
-  assert.equal(listed.data.conversations.length, 6);
+  assert.equal(
+    listed.data.conversations.length,
+    defaultMockFixtures.conversations.length,
+  );
   assert.equal(
     listed.data.provenance.source,
     `live-record-store:chat-conversation-message:${workspaceId}`,
@@ -58,11 +62,28 @@ test("live chat conversation service reads and records generated messages withou
   assert.equal(listed.data.provenance.deviceRequested, false);
 
   const firstConversation = listed.data.conversations[0];
+  const fixtureConversation = defaultMockFixtures.conversations.find(
+    (conversation) => conversation.id === firstConversation?.conversationId,
+  );
+  const fixtureContact = defaultMockFixtures.contacts.find(
+    (contact) =>
+      contact.id === fixtureConversation?.participantContactIds[0],
+  );
+  const fixtureMessages = defaultMockFixtures.messages
+    .filter(
+      (message) =>
+        message.conversationId === firstConversation?.conversationId,
+    )
+    .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
 
-  assert.equal(firstConversation?.conversationId, "conversation_001");
-  assert.equal(firstConversation?.participantContactId, "contact_012");
-  assert.equal(firstConversation?.participantName, "山田 千尋");
-  assert.equal(firstConversation?.organization, "Morning Light Foods");
+  assert.ok(fixtureConversation);
+  assert.ok(fixtureContact);
+  assert.equal(
+    firstConversation?.participantContactId,
+    fixtureConversation.participantContactIds[0],
+  );
+  assert.equal(firstConversation?.participantName, fixtureContact.displayName);
+  assert.equal(firstConversation?.organization, fixtureContact.organization);
   assert.equal(firstConversation?.source.generatedBy, "live-store-query");
   assert.equal(firstConversation?.liveDatabaseReadExecuted, true);
   assert.equal(firstConversation?.liveDatabaseWriteExecuted, false);
@@ -71,17 +92,18 @@ test("live chat conversation service reads and records generated messages withou
   assert.equal(firstConversation?.productionMessageStorageRequested, false);
 
   const thread = await service.getMessageThread({
-    conversationId: "conversation_001",
+    conversationId: firstConversation?.conversationId,
   });
 
   assert.equal(thread.success, true);
-  assert.equal(thread.data.conversation.conversationId, "conversation_001");
-  assert.equal(thread.data.messages.length, 14);
-  assert.equal(thread.data.messages[0]?.messageId, "message_0001");
   assert.equal(
-    thread.data.messages[0]?.body,
-    "Follow up about AI workflow PoC buyer in Japanese SMB manufacturing with a concrete next step.",
+    thread.data.conversation.conversationId,
+    firstConversation?.conversationId,
   );
+  assert.equal(thread.data.messages.length, fixtureMessages.length);
+  assert.equal(thread.data.messages[0]?.messageId, fixtureMessages[0]?.id);
+  assert.equal(thread.data.messages[0]?.body, fixtureMessages[0]?.body);
+  assert.match(thread.data.messages[0]?.body ?? "", /[\u3400-\u9fff]/u);
   assert.equal(thread.data.messages[0]?.senderRole, "orbit_user");
   assert.equal(thread.data.messages[0]?.deliveryState, "mock_recorded_locally");
   assert.equal(thread.data.messages[0]?.source.generatedBy, "live-store-query");
@@ -93,11 +115,11 @@ test("live chat conversation service reads and records generated messages withou
 
   const sent = await service.sendMessage({
     body: "Live storage note for source-evidence review.",
-    conversationId: "conversation_001",
+    conversationId: firstConversation?.conversationId,
   });
 
   assert.equal(sent.success, true);
-  assert.equal(sent.data.conversationId, "conversation_001");
+  assert.equal(sent.data.conversationId, firstConversation?.conversationId);
   assert.equal(sent.data.message.body, "Live storage note for source-evidence review.");
   assert.equal(sent.data.message.senderRole, "orbit_user");
   assert.equal(sent.data.message.deliveryState, "mock_recorded_locally");
@@ -115,7 +137,7 @@ test("live chat conversation service reads and records generated messages withou
   assert.equal(sent.data.provenance.externalNetworkRequested, false);
   assert.equal(sent.data.provenance.aiProviderRequested, false);
   assert.equal(sent.data.provenance.notificationDelivered, false);
-  assert.equal(sent.data.messages.length, 15);
+  assert.equal(sent.data.messages.length, fixtureMessages.length + 1);
 
   const savedMessage = store.getRecord({
     collectionName: "messages",
@@ -129,7 +151,7 @@ test("live chat conversation service reads and records generated messages withou
   assert.equal(savedMessage?.targetId, sent.data.message.messageId);
 
   const reread = await service.getMessageThread({
-    conversationId: "conversation_001",
+    conversationId: firstConversation?.conversationId,
   });
 
   assert.equal(reread.success, true);
@@ -139,7 +161,7 @@ test("live chat conversation service reads and records generated messages withou
   const missingId = await service.getMessageThread({});
   const missingBody = await service.sendMessage({
     body: " ",
-    conversationId: "conversation_001",
+    conversationId: firstConversation?.conversationId,
   });
   const missingConversation = await service.sendMessage({
     body: "Hi",

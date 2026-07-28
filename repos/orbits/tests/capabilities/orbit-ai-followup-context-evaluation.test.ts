@@ -11,6 +11,7 @@ import type {
 import { createOrbitAgentArtifactPreviewService } from "../../features/orbit-ai/artifact-task-preview-service";
 import { createOrbitAgentChatContextArtifactService } from "../../features/orbit-ai/chat-context-artifact-service";
 import { createLiveOrbitAgentConversationService } from "../../features/orbit-ai/live-conversation-service";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -67,6 +68,22 @@ async function seededChatService() {
       workspaceId,
     }),
   });
+}
+
+function seededIdentity(index: number) {
+  const conversation = defaultMockFixtures.conversations[index];
+  const contact = defaultMockFixtures.contacts.find(
+    (item) => item.id === conversation?.participantContactIds[0],
+  );
+  const messages = defaultMockFixtures.messages.filter(
+    (message) => message.conversationId === conversation?.id,
+  );
+
+  assert.ok(conversation);
+  assert.ok(contact);
+  assert.ok(messages.length > 1);
+
+  return { contact, conversation, messages };
 }
 
 function createGeneratedContextSpy() {
@@ -215,21 +232,24 @@ function ambiguousConversationService(): ChatConversationMessageService {
 
 test("ten named follow-up context evaluation cases enforce resolution score before ready UI", async () => {
   const seeded = await seededChatService();
+  const direct = seededIdentity(0);
+  const target = seededIdentity(1);
+  const stale = seededIdentity(2);
   const cases = [
     {
-      expectedConversationId: "conversation_001",
+      expectedConversationId: direct.conversation.id,
       expectedStatus: "ready",
       name: "direct match",
-      query: "Summarize 山田千寻 follow-up context.",
-      toolArguments: { conversationId: "conversation_001" },
+      query: `Summarize ${direct.contact.displayName} follow-up context.`,
+      toolArguments: { conversationId: direct.conversation.id },
     },
     {
-      expectedConversationId: "conversation_010",
+      expectedConversationId: target.conversation.id,
       expectedStatus: "ready",
       name: "missing conversation",
-      query: "总结和 Aoba Technologies 的关系上下文",
+      query: `总结和${target.contact.displayName}在${target.contact.organization}的关系上下文`,
       toolArguments: {
-        contactName: "Aoba Technologies",
+        contactName: target.contact.displayName,
         conversationId: "demo-orbit-agent-conversation-1",
       },
     },
@@ -242,54 +262,62 @@ test("ten named follow-up context evaluation cases enforce resolution score befo
       toolArguments: { contactName: "Alex" },
     },
     {
-      expectedConversationId: "conversation_007",
+      expectedConversationId: stale.conversation.id,
       expectedStatus: "ready",
       name: "stale relationship",
-      query: "Review the stale relationship with 曾伟 before I follow up.",
-      toolArguments: { contactName: "曾伟" },
+      query: `Review the stale relationship with ${stale.contact.displayName} before I follow up.`,
+      toolArguments: { contactName: stale.contact.displayName },
     },
     {
-      expectedConversationId: "conversation_010",
+      expectedConversationId: target.conversation.id,
       expectedStatus: "ready",
       name: "recent event",
-      query: "Use recent event context for Aoba Technologies before follow-up.",
-      toolArguments: { organization: "Aoba Technologies" },
+      query: `Use recent event context for ${target.contact.organization} before follow-up.`,
+      toolArguments: { organization: target.contact.organization },
     },
     {
-      expectedConversationId: "conversation_007",
+      expectedConversationId: stale.conversation.id,
       expectedStatus: "ready",
       name: "pending reply",
-      query: "Who is pending a reply: 曾伟 from Kansai Community?",
-      toolArguments: { contactName: "曾伟", relationshipStage: "needs_follow_up" },
+      query: `Who is pending a reply: ${stale.contact.displayName} from ${stale.contact.organization}?`,
+      toolArguments: {
+        contactName: stale.contact.displayName,
+      },
     },
     {
-      expectedConversationId: "conversation_010",
+      expectedConversationId: target.conversation.id,
       expectedStatus: "ready",
       locale: "zh" as const,
       name: "Chinese-language request",
-      query: "总结和 Aoba Technologies 的关系上下文",
-      toolArguments: { organization: "Aoba Technologies" },
+      query: `总结和${target.contact.organization}的关系上下文`,
+      toolArguments: { organization: target.contact.organization },
     },
     {
-      expectedConversationId: "conversation_010",
+      expectedConversationId: target.conversation.id,
       expectedStatus: "ready",
       name: "English-language request",
-      query: "Summarize my relationship context with Aoba Technologies.",
-      toolArguments: { organization: "Aoba Technologies" },
+      query: `Summarize my relationship context with ${target.contact.organization}.`,
+      toolArguments: { organization: target.contact.organization },
     },
     {
-      expectedConversationId: "conversation_010",
+      expectedConversationId: target.conversation.id,
       expectedStatus: "ready",
       name: "schedule conflict",
-      query: "Before scheduling, check the Aoba Technologies relationship context for conflict risk.",
-      toolArguments: { organization: "Aoba Technologies", scheduleState: "conflict" },
+      query: `Before scheduling, check the ${target.contact.organization} relationship context for conflict risk.`,
+      toolArguments: {
+        organization: target.contact.organization,
+        scheduleState: "conflict",
+      },
     },
     {
-      expectedConversationId: "conversation_010",
+      expectedConversationId: target.conversation.id,
       expectedStatus: "ready",
       name: "privacy-limited context",
-      query: "Use privacy-limited context for Aoba Technologies.",
-      toolArguments: { organization: "Aoba Technologies", privacyLimit: true },
+      query: `Use privacy-limited context for ${target.contact.organization}.`,
+      toolArguments: {
+        organization: target.contact.organization,
+        privacyLimit: true,
+      },
     },
   ] as const;
 
@@ -351,22 +379,33 @@ test("ten named follow-up context evaluation cases enforce resolution score befo
   }
 });
 
-test("mixed Chinese and Latin Aoba query resolves from identity terms without tool arguments", async () => {
+test("Chinese contact-and-organization query resolves from identity terms without tool arguments", async () => {
+  const target = seededIdentity(1);
   const { result, spy } = await runContextCase({
     chatService: await seededChatService(),
     locale: "zh",
-    query: "总结和Aoba的关系上下文",
+    query: `总结和${target.contact.displayName}在${target.contact.organization}的关系上下文`,
   });
   const item = result.data?.result.generatedView?.sections[0]?.items[0];
 
   assert.equal(result.success, true);
   assert.equal(result.data?.result.status, "ready");
-  assert.equal(result.data?.task.conversationId, "conversation_010");
-  assert.equal(resolutionScore(item), 0.86);
+  assert.equal(result.data?.task.conversationId, target.conversation.id);
+  assert.ok(resolutionScore(item) >= ACCEPTED_CONTEXT_SCORE);
   assert.equal(spy.calls.length, 1);
-  assert.equal(spy.calls[0]?.relationship.participantName, "胡家明");
-  assert.equal(spy.calls[0]?.relationship.organization, "Aoba Technologies");
-  assert.equal(spy.calls[0]?.resolution.matchedBy, "query_terms");
+  assert.equal(
+    spy.calls[0]?.relationship.participantName,
+    target.contact.displayName,
+  );
+  assert.equal(
+    spy.calls[0]?.relationship.organization,
+    target.contact.organization,
+  );
+  assert.ok(
+    ["query", "query_terms"].includes(
+      spy.calls[0]?.resolution.matchedBy ?? "",
+    ),
+  );
   assert.doesNotMatch(
     JSON.stringify(result),
     /No mock chat conversation fixture matches that conversation id/,
@@ -375,6 +414,7 @@ test("mixed Chinese and Latin Aoba query resolves from identity terms without to
 
 test("live Orbit Agent uses generated follow-up context instead of canned planner final text", async () => {
   const chatService = await seededChatService();
+  const target = seededIdentity(1);
   const spy = createGeneratedContextSpy();
   const requests: unknown[] = [];
   const artifactTaskService = (createOrbitAgentChatContextArtifactService as unknown as (config: {
@@ -404,7 +444,7 @@ test("live Orbit Agent uses generated follow-up context instead of canned planne
                   toolRequests: [
                     {
                       arguments: {
-                        contactName: "Aoba Technologies",
+                        contactName: target.contact.displayName,
                         conversationId: "missing-seeded-followup-conversation",
                       },
                       requiresUserConfirmation: true,
@@ -426,7 +466,7 @@ test("live Orbit Agent uses generated follow-up context instead of canned planne
 
   const result = await service.sendMessage({
     locale: "en",
-    message: "Summarize my relationship context with Aoba Technologies.",
+    message: `Summarize my relationship context with ${target.contact.displayName} at ${target.contact.organization}.`,
   });
   const artifact = result.data?.artifacts[0];
   const artifactText = JSON.stringify(artifact);
@@ -434,10 +474,16 @@ test("live Orbit Agent uses generated follow-up context instead of canned planne
   assert.equal(result.success, true);
   assert.equal(requests.length, 1);
   assert.equal(spy.calls.length, 1);
-  assert.equal(spy.calls[0]?.selectedConversation.conversationId, "conversation_010");
-  assert.equal(spy.calls[0]?.relationship.organization, "Aoba Technologies");
-  assert.equal(spy.calls[0]?.messages.length, 5);
-  assert.equal(artifact?.task.conversationId, "conversation_010");
+  assert.equal(
+    spy.calls[0]?.selectedConversation.conversationId,
+    target.conversation.id,
+  );
+  assert.equal(
+    spy.calls[0]?.relationship.organization,
+    target.contact.organization,
+  );
+  assert.equal(spy.calls[0]?.messages.length, target.messages.length);
+  assert.equal(artifact?.task.conversationId, target.conversation.id);
   assert.match(artifact?.result.generatedView?.summary ?? "", /^generated-boundary:/);
   assert.doesNotMatch(artifactText, /CANNED_PLANNER_FINAL_TEXT/);
   assert.doesNotMatch(

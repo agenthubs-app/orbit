@@ -4,6 +4,7 @@
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createHybridChatConversationMessageService } from "./chat-conversation-and-message-mock/hybrid-service";
 import { createLiveChatWritingAssistService } from "./live-assist-service";
+import { createLiveAsyncRelationshipConversationService } from "./live-async-service";
 import { createLiveChatConversationMessageService } from "./live-service";
 import { createLiveChatPrivacyControlsService } from "./live-privacy-service";
 import { createLiveChatSummaryExtractionService } from "./live-summary-service";
@@ -16,6 +17,7 @@ import { createConfiguredStorageChatConversationMessageProvider } from "./storag
 import { createConfiguredStorageChatPrivacyControlsProvider } from "./storage/chat-privacy-controls-live-record-provider";
 import { createConfiguredStorageChatSummaryExtractionProvider } from "./storage/chat-summary-live-record-provider";
 import { createConfiguredStorageChatWritingAssistProvider } from "./storage/chat-writing-assist-live-record-provider";
+import { createConfiguredStorageAsyncRelationshipConversationProvider } from "./storage/async-relationship-conversation-live-record-provider";
 import type { ChatWritingAssistService } from "./assist-contract";
 import type { ChatPrivacyControlsService } from "./privacy-contract";
 import type {
@@ -77,6 +79,16 @@ export const asyncRelationshipConversationServiceFactory =
   createModuleServiceFactory<AsyncRelationshipConversationService>({
     capabilityId: "async-relationship-conversation",
     implementations: {
+      hybrid: () =>
+        createLiveAsyncRelationshipConversationService({
+          provider:
+            createConfiguredStorageAsyncRelationshipConversationProvider(),
+        }),
+      live: () =>
+        createLiveAsyncRelationshipConversationService({
+          provider:
+            createConfiguredStorageAsyncRelationshipConversationProvider(),
+        }),
       mock: () => createMockAsyncRelationshipConversationService(),
     },
   });

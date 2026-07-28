@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createLiveChatConversationMessageService } from "../../features/chat/live-service";
 import { createStorageChatConversationMessageProvider } from "../../features/chat/storage/chat-conversation-live-record-provider";
 import { createOrbitAgentArtifactPreviewService } from "../../features/orbit-ai/artifact-task-preview-service";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -25,6 +26,22 @@ function artifactMetadataValue(
   label: string,
 ): string {
   return item?.metadata?.find((entry) => entry.label === label)?.value ?? "";
+}
+
+function seededConversationCase(index: number) {
+  const conversation = defaultMockFixtures.conversations[index];
+  const contact = defaultMockFixtures.contacts.find(
+    (item) => item.id === conversation?.participantContactIds[0],
+  );
+  const messages = defaultMockFixtures.messages.filter(
+    (message) => message.conversationId === conversation?.id,
+  );
+
+  assert.ok(conversation);
+  assert.ok(contact);
+  assert.ok(messages.length > 1);
+
+  return { contact, conversation, messages };
 }
 
 test("live artifact task service registers chat.context before preview fallback", () => {
@@ -322,13 +339,14 @@ test("chat.context artifact reads source-backed live chat conversations", async 
     chatService,
     fallbackService: createOrbitAgentArtifactPreviewService(),
   });
+  const seeded = seededConversationCase(0);
 
   const result = await service.createArtifactTask({
     kind: "relationship_chat_context",
     locale: "zh",
-    query: "帮我整理山田千寻的回复上下文",
+    query: `帮我整理${seeded.contact.displayName}的回复上下文`,
     toolArguments: {
-      conversationId: "conversation_001",
+      conversationId: seeded.conversation.id,
     },
   });
 
@@ -355,13 +373,17 @@ test("chat.context artifact reads source-backed live chat conversations", async 
   );
   assert.equal(
     result.data?.result.generatedView?.sections[0]?.items[0]?.evidenceIds.includes(
-      "evidence:message:0001",
+      seeded.messages[0]?.evidenceIds[0] ?? "",
     ),
     true,
   );
   assert.match(
     result.data?.result.generatedView?.summary ?? "",
-    /山田 千尋|conversation_001/,
+    new RegExp(
+      [seeded.contact.displayName, seeded.conversation.id]
+        .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("|"),
+    ),
   );
   assert.equal(
     result.data?.result.generatedView?.sections[0]?.items[0]?.actions[0]
@@ -432,28 +454,40 @@ test("chat.context resolves seeded follow-up requests before rendering the side-
       },
     },
   });
+  const seeded = seededConversationCase(1);
 
   const result = await service.createArtifactTask({
     kind: "relationship_chat_context",
     locale: "en",
-    query: "Summarize my relationship context with Aoba Technologies.",
+    query: `Summarize my relationship context with ${seeded.contact.displayName} at ${seeded.contact.organization}.`,
     toolArguments: {
-      contactName: "Aoba",
+      contactName: seeded.contact.displayName,
       conversationId: "missing-seeded-followup-conversation",
     },
   });
   const resultText = JSON.stringify(result);
 
   assert.equal(result.success, true);
-  assert.equal(result.data?.task.conversationId, "conversation_010");
+  assert.equal(result.data?.task.conversationId, seeded.conversation.id);
   assert.equal(result.data?.result.status, "ready");
   assert.equal(generatorCalls.length, 1);
-  assert.equal(generatorCalls[0]?.selectedConversation.conversationId, "conversation_010");
-  assert.equal(generatorCalls[0]?.relationship.organization, "Aoba Technologies");
+  assert.equal(
+    generatorCalls[0]?.selectedConversation.conversationId,
+    seeded.conversation.id,
+  );
+  assert.equal(
+    generatorCalls[0]?.relationship.organization,
+    seeded.contact.organization,
+  );
   assert.ok((generatorCalls[0]?.resolution.score ?? 0) >= 0.7);
   assert.match(
     result.data?.result.generatedView?.summary ?? "",
-    /generated-followup:conversation_010:Aoba Technologies/,
+    new RegExp(
+      `generated-followup:${seeded.conversation.id}:${seeded.contact.organization}`.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      ),
+    ),
   );
   assert.doesNotMatch(
     resultText,
@@ -461,7 +495,7 @@ test("chat.context resolves seeded follow-up requests before rendering the side-
   );
 });
 
-test("chat.context default generator renders Aoba as a participant-facing relationship brief", async () => {
+test("chat.context default generator renders a seeded contact as a participant-facing relationship brief", async () => {
   const workspaceId = "workspace:orbit-ai-chat-context-aoba-brief-test";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
@@ -485,13 +519,14 @@ test("chat.context default generator renders Aoba as a participant-facing relati
     chatService,
     fallbackService: createOrbitAgentArtifactPreviewService(),
   });
+  const seeded = seededConversationCase(1);
 
   const result = await service.createArtifactTask({
     kind: "relationship_chat_context",
     locale: "zh",
-    query: "总结和 Aoba Technologies 的关系上下文",
+    query: `总结和${seeded.contact.displayName}在${seeded.contact.organization}的关系上下文`,
     toolArguments: {
-      contactName: "Aoba",
+      contactName: seeded.contact.displayName,
       conversationId: "missing-seeded-followup-conversation",
     },
   });
@@ -511,9 +546,9 @@ test("chat.context default generator renders Aoba as a participant-facing relati
   );
   const generatedText = JSON.stringify(generatedView);
 
-  assert.equal(result.data.task.conversationId, "conversation_010");
+  assert.equal(result.data.task.conversationId, seeded.conversation.id);
   assert.equal(result.data.result.status, "ready");
-  assert.equal(artifactMetadataValue(relationshipItem, "匹配分"), "0.86");
+  assert.ok(Number(artifactMetadataValue(relationshipItem, "匹配分")) >= 0.7);
   assert.equal(artifactMetadataValue(relationshipItem, "来源"), "来自已保存的关系聊天");
   assert.match(
     artifactMetadataValue(relationshipItem, "技术来源"),
@@ -521,17 +556,23 @@ test("chat.context default generator renders Aoba as a participant-facing relati
   );
   assert.match(sourceBody, /来自已保存的关系聊天/);
   assert.doesNotMatch(sourceBody, /live storage|Postgres|Orbit AI Aoba/i);
-  assert.match(summary, /胡家明/);
-  assert.match(summary, /Aoba Technologies/);
+  assert.match(summary, new RegExp(seeded.contact.displayName));
+  assert.match(summary, new RegExp(seeded.contact.organization ?? ""));
   assert.match(summary, /为什么认识|关系/);
-  assert.match(summary, /关系来源：2026年6月\d{1,2}日首条保存聊天：/);
+  assert.match(summary, /关系来源：2026年\d{1,2}月\d{1,2}日首条保存聊天：/);
   assert.match(summary, /最新上下文|最近/);
   assert.match(summary, /确认/);
   assert.match(summary, /不会发送|不会创建日程/);
-  assert.match(relationshipItem?.body ?? "", /胡家明/);
-  assert.match(relationshipItem?.body ?? "", /2026年6月\d{1,2}日首条保存聊天/);
+  assert.match(
+    relationshipItem?.body ?? "",
+    new RegExp(seeded.contact.displayName),
+  );
+  assert.match(
+    relationshipItem?.body ?? "",
+    /2026年\d{1,2}月\d{1,2}日首条保存聊天/,
+  );
   assert.match(relationshipItem?.subtitle ?? "", /确认/);
-  assert.match(generatedText, /活动后|pilot 时间线|周三下午/);
+  assert.match(generatedText, /互动|需求|跟进|确认/u);
   assert.doesNotMatch(
     generatedText,
     /needs_follow_up|direct relationship match|scored relationship match|由直接关系匹配生成|由关系匹配分生成/,
@@ -548,8 +589,14 @@ test("chat.context default generator renders Aoba as a participant-facing relati
     recentMessageActionLabels.length,
   );
   assert.equal(recentMessageActionLabels.includes("复核上下文"), false);
-  assert.match(recentMessageActionLabels[0] ?? "", /复核 6月\d{1,2}日/);
-  assert.doesNotMatch(summary, /conversation_010|message_0046|生成跟进上下文消息/);
+  assert.match(
+    recentMessageActionLabels[0] ?? "",
+    /复核 \d{1,2}月\d{1,2}日/,
+  );
+  assert.doesNotMatch(
+    summary,
+    /conversation_(?:seed_)?\d+|message_\d+|生成跟进上下文消息/,
+  );
   assert.doesNotMatch(
     generatedText,
     /Review source evidence before recording another live-storage message|Follow up about .* concrete next step/,

@@ -7,6 +7,7 @@ import {
   resolveChatPrivacyControlsService,
 } from "../../features/chat/service-factory";
 import { createStorageChatPrivacyControlsProvider } from "../../features/chat/storage/chat-privacy-controls-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -26,16 +27,24 @@ test("live chat privacy controls read generated chat context without AI, deletio
       workspaceId,
     }),
   });
+  const fixtureConversation = defaultMockFixtures.conversations[0];
+  const fixtureContact = defaultMockFixtures.contacts.find(
+    (contact) =>
+      contact.id === fixtureConversation?.participantContactIds[0],
+  );
+
+  assert.ok(fixtureConversation);
+  assert.ok(fixtureContact);
 
   const controls = await service.getPrivacyControls({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
   });
 
   assert.equal(controls.success, true);
   assert.equal(controls.data.state, "success");
-  assert.equal(controls.data.conversationId, "conversation_001");
-  assert.equal(controls.data.participantName, "山田 千尋");
-  assert.equal(controls.data.organization, "Morning Light Foods");
+  assert.equal(controls.data.conversationId, fixtureConversation.id);
+  assert.equal(controls.data.participantName, fixtureContact.displayName);
+  assert.equal(controls.data.organization, fixtureContact.organization);
   assert.equal(controls.data.analysisOptIn.enabled, true);
   assert.equal(controls.data.analysisOptIn.status, "opted_in");
   assert.equal(controls.data.analysisOptIn.source.generatedBy, "live-store-query");
@@ -101,22 +110,22 @@ test("live chat privacy controls read generated chat context without AI, deletio
   assert.equal(controls.data.provenance.deviceRequested, false);
 
   const toggleOff = await service.setAnalysisOptIn({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
     enabled: false,
   });
   const toggleOn = await service.setAnalysisOptIn({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
     enabled: true,
   });
   const deleted = await service.requestAnalysisDeletion({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
   });
   const blockedShare = await service.prepareSensitiveShare({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
     confirmed: false,
   });
   const confirmedShare = await service.prepareSensitiveShare({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
     confirmed: true,
   });
 
@@ -153,11 +162,11 @@ test("live chat privacy controls read generated chat context without AI, deletio
   );
 
   const empty = await service.getPrivacyControls({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
     scenario: "empty",
   });
   const pending = await service.getPrivacyControls({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
     scenario: "pending",
   });
   const missingId = await service.getPrivacyControls({
@@ -167,12 +176,12 @@ test("live chat privacy controls read generated chat context without AI, deletio
     conversationId: "missing-conversation",
   });
   const missingToggleValue = await service.setAnalysisOptIn({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
   });
   const unconfigured = await createLiveChatPrivacyControlsService({
     provider: null,
   }).getPrivacyControls({
-    conversationId: "conversation_001",
+    conversationId: fixtureConversation.id,
   });
 
   assert.equal(empty.success, true);

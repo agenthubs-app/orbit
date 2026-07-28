@@ -110,13 +110,21 @@ export function toInboxPanelViewModel(
   payload: AsyncConversationWorkspacePayload,
   language: OrbitLanguage = "zh",
 ): InboxPanelViewModel {
+  if (payload.state === "empty") {
+    return {
+      title: payload.inbox.title,
+      currentUserName: payload.currentUser.displayName,
+      threads: [],
+      selected: null,
+    };
+  }
+
   const selectedId = payload.selectedThread.conversationId;
   const sideEffects = payload.sideEffects;
   const noExternalSideEffect =
     sideEffects.externalMessageSent === false &&
     sideEffects.notificationDelivered === false &&
     sideEffects.calendarEntryCreated === false &&
-    sideEffects.savedRecordCreated === false &&
     sideEffects.networkRequestMade === false;
 
   return {
@@ -172,7 +180,6 @@ export function toCreatedThread(
     sideEffects.externalMessageSent === false &&
     sideEffects.notificationDelivered === false &&
     sideEffects.calendarEntryCreated === false &&
-    sideEffects.savedRecordCreated === false &&
     sideEffects.networkRequestMade === false;
 
   // 用户新建的线程内容由用户输入（通常已是中文），localization 对未知 id 原样返回。

@@ -16,6 +16,7 @@ import type { ChatConversationMessageService } from "../chat/service";
 import { createOrbitAgentChatContextArtifactService } from "./chat-context-artifact-service";
 import { createOrbitAgentContactRecommendationArtifactService } from "./contact-recommendation-artifact-service";
 import { createOrbitAgentEventRecommendationArtifactService } from "./event-recommendation-artifact-service";
+import { createMockOrbitAiRelationshipRecommendationService } from "./mock-contact-recommendation-service";
 import {
   ORBIT_AGENT_CONVERSATION_ERROR_DEFINITIONS,
   type OrbitAgentConversationErrorCode,
@@ -911,6 +912,8 @@ function artifactPayloadForMessage(
       : artifactRequest.kind === "contact_recommendations"
         ? createOrbitAgentContactRecommendationArtifactService({
             fallbackService: createMockOrbitAgentArtifactTaskService(),
+            relationshipRecommendationService:
+              createMockOrbitAiRelationshipRecommendationService(),
           })
       : artifactRequest.kind === "event_recommendations"
         ? createOrbitAgentEventRecommendationArtifactService({

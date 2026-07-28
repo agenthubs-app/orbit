@@ -7,6 +7,7 @@ import {
   resolveChatSummaryExtractionService,
 } from "../../features/chat/service-factory";
 import { createStorageChatSummaryExtractionProvider } from "../../features/chat/storage/chat-summary-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -18,6 +19,22 @@ test("live chat summary extraction reads generated chat graph without AI or prof
     store,
     workspaceId,
   });
+  const expectedConversation = defaultMockFixtures.conversations[0];
+  const expectedContact = defaultMockFixtures.contacts.find((contact) =>
+    expectedConversation.participantContactIds.includes(contact.id),
+  );
+  const expectedConnection = defaultMockFixtures.connections.find(
+    (connection) => connection.contactId === expectedContact?.id,
+  );
+  const expectedMessageCount = defaultMockFixtures.messages.filter(
+    (message) => message.conversationId === expectedConversation.id,
+  ).length;
+  const expectedFirstMessage = defaultMockFixtures.messages.find(
+    (message) => message.conversationId === expectedConversation.id,
+  );
+  assert.ok(expectedContact);
+  assert.ok(expectedConnection);
+  assert.ok(expectedFirstMessage);
 
   const service = createLiveChatSummaryExtractionService({
     provider: createStorageChatSummaryExtractionProvider({
@@ -28,18 +45,22 @@ test("live chat summary extraction reads generated chat graph without AI or prof
   });
 
   const summary = await service.summarizeConversation({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
   });
 
   assert.equal(summary.success, true);
   assert.equal(summary.data.state, "success");
-  assert.equal(summary.data.conversationId, "conversation_001");
-  assert.equal(summary.data.participantName, "山田 千尋");
-  assert.equal(summary.data.organization, "Morning Light Foods");
-  assert.match(summary.data.summary?.narrative ?? "", /14 source-backed messages/);
+  assert.equal(summary.data.conversationId, expectedConversation.id);
+  assert.equal(summary.data.participantName, expectedContact.displayName);
+  assert.equal(summary.data.organization, expectedContact.organization);
   assert.match(
     summary.data.summary?.narrative ?? "",
-    /AI workflow PoC buyer in Japanese SMB manufacturing/,
+    new RegExp(`${expectedMessageCount} source-backed messages`),
+  );
+  assert.ok(
+    (summary.data.summary?.narrative ?? "").includes(
+      expectedFirstMessage.body,
+    ),
   );
   assert.equal(summary.data.summary?.source.generatedBy, "live-store-query");
   assert.equal(summary.data.summary?.generatedBy, "live-store-query");
@@ -48,14 +69,17 @@ test("live chat summary extraction reads generated chat graph without AI or prof
   assert.equal(summary.data.summary?.liveDatabaseReadExecuted, true);
   assert.equal(summary.data.summary?.liveDatabaseWriteExecuted, false);
   assert.equal(summary.data.summary?.automaticProfileMutationExecuted, false);
-  assert.equal(summary.data.extractedNeeds[0]?.contactId, "contact_012");
+  assert.equal(summary.data.extractedNeeds[0]?.contactId, expectedContact.id);
   assert.equal(summary.data.extractedNeeds[0]?.priority, "high");
   assert.equal(summary.data.extractedNeeds[0]?.generatedBy, "live-store-query");
-  assert.equal(summary.data.extractedTasks[0]?.title, "Review live chat follow-up for 山田 千尋");
+  assert.equal(
+    summary.data.extractedTasks[0]?.title,
+    `Review live chat follow-up for ${expectedContact.displayName}`,
+  );
   assert.equal(summary.data.extractedTasks[0]?.liveDatabaseWriteExecuted, false);
   assert.equal(
     summary.data.relationshipProfileUpdates[0]?.connectionId,
-    "connection_0001",
+    expectedConnection.id,
   );
   assert.equal(
     summary.data.confirmationRequiredProfileSuggestions[0]?.confirmationRequired,
@@ -79,7 +103,7 @@ test("live chat summary extraction reads generated chat graph without AI or prof
   assert.equal(summary.data.provenance.automaticProfileMutationExecuted, false);
 
   const extraction = await service.extractConversationSignals({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
   });
 
   assert.equal(extraction.success, true);
@@ -96,11 +120,11 @@ test("live chat summary extraction reads generated chat graph without AI or prof
   );
 
   const empty = await service.summarizeConversation({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
     scenario: "empty",
   });
   const pending = await service.extractConversationSignals({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
     scenario: "pending",
   });
   const missingId = await service.summarizeConversation({});
@@ -110,7 +134,7 @@ test("live chat summary extraction reads generated chat graph without AI or prof
   const unconfigured = await createLiveChatSummaryExtractionService({
     provider: null,
   }).summarizeConversation({
-    conversationId: "conversation_001",
+    conversationId: expectedConversation.id,
   });
 
   assert.equal(empty.success, true);
