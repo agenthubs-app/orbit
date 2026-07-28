@@ -68,7 +68,11 @@ test("QR scan live service derives connection drafts from qr_scan contacts witho
   assert.equal(scan.data.scan.externalLookupExecuted, false);
   assert.equal(scan.data.scan.databaseWriteExecuted, false);
   assert.equal(scan.data.draft?.id, LIVE_DRAFT_ID);
-  assert.equal(scan.data.draft?.displayName, "佐藤 健一");
+  assert.equal(
+    scan.data.draft?.displayName,
+    defaultMockFixtures.contacts.find((contact) => contact.id === "contact_001")
+      ?.displayName,
+  );
   assert.equal(scan.data.draft?.source.type, "qr_scan");
   assert.equal(scan.data.draft?.contactWriteExecuted, false);
   assert.equal(scan.data.draft?.connectionWriteExecuted, false);

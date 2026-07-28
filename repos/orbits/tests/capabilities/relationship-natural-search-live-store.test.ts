@@ -11,6 +11,7 @@ import {
 } from "../../features/search/service-factory";
 import { createStorageConnectionEvidenceProvider } from "../../features/connections/storage/connection-live-record-provider";
 import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -33,10 +34,15 @@ test("live relationship natural search reads generated relationship graph from s
     provider,
   });
 
+  const expectedContact = defaultMockFixtures.contacts.find(
+    (contact) => contact.id === "contact_012",
+  );
+  assert.ok(expectedContact);
+
   const result = await service.queryRelationships({
     followUpStatusFilters: ["needs_follow_up"],
     industryFilters: ["enterprise_saas"],
-    query: "Japan market entry advisor China SaaS sales",
+    query: "中国 SaaS 销售进入日本市场的顾问",
     sourceFilters: ["manual"],
     valueTypeFilters: ["knowledge_exchange"],
   });
@@ -51,26 +57,60 @@ test("live relationship natural search reads generated relationship graph from s
   assert.equal(result.data.provenance.semanticSearchExecuted, false);
   assert.equal(result.data.provenance.aiProviderRequested, false);
 
-  const sato = result.data.results.find(
-    (item) => item.id === "relationship-search-result:connection_0012",
+  const matchingAdvisor = result.data.results.find(
+    (item) => item.contactId === "contact_012",
   );
 
-  assert.ok(sato);
-  assert.equal(sato.contactId, "contact_001");
-  assert.equal(sato.displayName, "佐藤 健一");
-  assert.equal(sato.organization, "North Star Foods");
-  assert.equal(sato.industry, "enterprise_saas");
-  assert.equal(sato.followUpStatus, "needs_follow_up");
-  assert.deepEqual(sato.value.valueTypes, [
+  assert.ok(matchingAdvisor);
+  assert.equal(matchingAdvisor.contactId, "contact_012");
+  assert.equal(matchingAdvisor.displayName, expectedContact.displayName);
+  assert.equal(matchingAdvisor.organization, expectedContact.organization);
+  assert.equal(matchingAdvisor.industry, "enterprise_saas");
+  assert.equal(matchingAdvisor.followUpStatus, "needs_follow_up");
+  assert.deepEqual(matchingAdvisor.value.valueTypes, [
     "knowledge_exchange",
     "community_context",
   ]);
-  assert.equal(sato.source.type, "manual");
-  assert.equal(sato.source.evidenceId, "evidence:connection:0012");
-  assert.equal(sato.databaseQueryExecuted, true);
-  assert.equal(sato.semanticSearchExecuted, false);
-  assert.match(sato.relationshipContext, /Japan market entry advisor/);
-  assert.match(sato.evidence[0]?.excerpt ?? "", /Relationship context for 佐藤 健一/);
+  assert.equal(matchingAdvisor.source.type, "manual");
+  assert.match(matchingAdvisor.source.evidenceId, /^evidence:connection:/);
+  assert.equal(matchingAdvisor.databaseQueryExecuted, true);
+  assert.equal(matchingAdvisor.semanticSearchExecuted, false);
+  assert.ok(
+    matchingAdvisor.relationshipContext.includes(expectedContact.displayName),
+  );
+  assert.match(matchingAdvisor.relationshipContext, /中国\s*SaaS/);
+  assert.match(
+    matchingAdvisor.evidence[0]?.excerpt ?? "",
+    new RegExp(expectedContact.displayName),
+  );
+  assert.match(matchingAdvisor.evidence[0]?.excerpt ?? "", /中国\s*SaaS/);
+
+  const chineseNameResult = await service.queryRelationships({
+    query: defaultMockFixtures.contacts[0]?.displayName,
+  });
+  const chineseContextResult = await service.queryRelationships({
+    query: "日本市场顾问",
+  });
+  const chineseNonsenseResult = await service.queryRelationships({
+    query: "火星量子医疗不存在",
+  });
+
+  assert.equal(chineseNameResult.success, true);
+  assert.deepEqual(
+    chineseNameResult.data.results.map((item) => item.contactId),
+    ["contact_001"],
+  );
+  assert.equal(chineseContextResult.success, true);
+  assert.ok(
+    chineseContextResult.data.results.length > 0,
+    "Chinese relationship context must be searchable",
+  );
+  assert.equal(chineseNonsenseResult.success, true);
+  assert.deepEqual(
+    chineseNonsenseResult.data.results,
+    [],
+    "A non-empty unmatched Chinese query must never degrade into an unfiltered list",
+  );
 });
 
 test("actor-scoped relationship search never returns another actor's graph", async () => {

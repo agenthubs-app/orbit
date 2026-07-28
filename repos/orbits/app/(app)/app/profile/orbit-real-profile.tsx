@@ -2,10 +2,7 @@
 
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 
-import type {
-  ProfileDocumentExtractionKind,
-  ProfileDocumentExtractionPayload,
-} from "../../../../features/profile/extraction-contract";
+import type { ProfileDocumentExtractionPayload } from "../../../../features/profile/extraction-contract";
 import type {
   ManualProfileUpdateInput,
   ProfilePayload,
@@ -19,7 +16,7 @@ import { ORBIT_Z } from "../orbit-z";
 type Translate = (copy: { en: string; zh: string }) => string;
 
 type TagField = "offering" | "seeking" | "topics";
-type Method = "ai" | "scan" | "manual";
+type Method = "text" | "manual";
 type NoticeKind = "error" | "info" | "success";
 
 interface ApiEnvelope<TData> {
@@ -238,7 +235,6 @@ function ProfileMethods({
   extractText,
   extracting,
   method,
-  onFilePick,
   onTextExtract,
   setExtractText,
   setMethod,
@@ -247,7 +243,6 @@ function ProfileMethods({
   extractText: string;
   extracting: boolean;
   method: Method;
-  onFilePick: (file: File) => void;
   onTextExtract: () => void;
   setExtractText: (value: string) => void;
   setMethod: (value: Method) => void;
@@ -255,13 +250,11 @@ function ProfileMethods({
 }) {
   const methods = [
     ["manual", "user", t({ en: "Manual entry", zh: "手动填写" })],
-    ["ai", "sparkle", t({ en: "AI text extract", zh: "AI 文本提取" })],
-    ["scan", "search", t({ en: "Card scan", zh: "名片扫描" })],
+    ["text", "sparkle", t({ en: "Structured text extract", zh: "结构化文本提取" })],
   ] as const;
   const helper = {
-    ai: t({ en: "Paste a bio below; extraction uses the company and title already filled in. Results only fill the form — save after confirming.", zh: "在下方粘贴简介，会结合已填写的公司和职位提取。结果只填入表单，确认后再保存。" }),
+    text: t({ en: "Paste text with explicit labels such as Name, Company, Title, Market, and Goal. Only stated fields are extracted; review before saving.", zh: "粘贴带有“姓名、公司、职位、市场、关系目标”等明确标签的文本。只提取原文明确写出的字段，保存前请复核。" }),
     manual: t({ en: "Fill in the sections below field by field.", zh: "直接在下方各区块逐项填写。" }),
-    scan: t({ en: "Upload a business card or resume photo; results only fill the form — save after confirming.", zh: "上传名片或简历照片自动识别。结果只填入表单，确认后再保存。" }),
   }[method];
 
   return (
@@ -298,9 +291,17 @@ function ProfileMethods({
             </button>
           );
         })}
+        <a
+          className="btn btn-ghost btn-sm"
+          href="/app/contacts/new"
+          style={{ textDecoration: "none" }}
+        >
+          <Icon name="download" size={15} />
+          {t({ en: "Scan/import in Import hub", zh: "到导入中心扫描/导入" })}
+        </a>
       </div>
       <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.5, margin: "10px 0 0" }}>{helper}</p>
-      {method === "ai" ? (
+      {method === "text" ? (
         <div style={{ marginTop: 12 }}>
           <textarea className="field" onChange={(event) => setExtractText(event.target.value)} placeholder={t({ en: "Paste your business, experience, focus areas, or who you want to meet", zh: "粘贴业务、经历、关注方向或希望认识的人" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={extractText} />
           <button className="btn btn-dark btn-sm" disabled={extracting} onClick={onTextExtract} style={{ marginTop: 10 }} type="button">
@@ -308,31 +309,6 @@ function ProfileMethods({
             {extracting ? t({ en: "Extracting…", zh: "提取中…" }) : t({ en: "Extract to form", zh: "提取到表单" })}
           </button>
         </div>
-      ) : null}
-      {method === "scan" ? (
-        <label style={{ alignItems: "center", background: "var(--surface-2)", border: "1.5px dashed var(--border-strong)", borderRadius: "var(--r-md)", cursor: extracting ? "wait" : "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, marginTop: 12, padding: "14px 16px", position: "relative", textAlign: "left", width: "100%" }}>
-          <input
-            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
-            aria-label={t({ en: "Choose a business card or resume file", zh: "选择名片或简历文件" })}
-            disabled={extracting}
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
-              if (file) onFilePick(file);
-              event.currentTarget.value = "";
-            }}
-            style={{ height: 1, opacity: 0, position: "absolute", width: 1 }}
-            type="file"
-          />
-          <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }}>
-            <Icon name="search" size={18} />
-          </span>
-          <span style={{ minWidth: 0 }}>
-            <span style={{ color: "var(--ink)", display: "block", fontSize: 14, fontWeight: 600 }}>
-              {extracting ? t({ en: "Extracting…", zh: "正在提取…" }) : t({ en: "Tap to upload a business card or resume", zh: "点击上传名片或简历" })}
-            </span>
-            <span style={{ color: "var(--text-3)", display: "block", fontSize: 12.5, marginTop: 2 }}>{t({ en: "JPG / PNG / PDF", zh: "支持 JPG / PNG / PDF" })}</span>
-          </span>
-        </label>
       ) : null}
     </div>
   );
@@ -447,7 +423,6 @@ function EditSections({
     extractText: string;
     extracting: boolean;
     method: Method;
-    onFilePick: (file: File) => void;
     onTextExtract: () => void;
     setExtractText: (value: string) => void;
     setMethod: (value: Method) => void;
@@ -596,7 +571,6 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   }
 
   async function extractProfile(
-    kind: ProfileDocumentExtractionKind,
     input: { fileName: string; mimeType: string; text?: string },
   ) {
     if (extracting) return;
@@ -604,11 +578,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
     setMessage("");
 
     try {
-      const endpoint =
-        kind === "resume"
-          ? "/api/profile/extractions/resume"
-          : "/api/profile/extractions/business-card";
-      const response = await fetch(endpoint, {
+      const response = await fetch("/api/profile/extractions/resume", {
         body: JSON.stringify(input),
         headers: { "content-type": "application/json" },
         method: "POST",
@@ -667,17 +637,10 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
       return;
     }
 
-    await extractProfile("resume", {
+    await extractProfile({
       fileName: "pasted-profile.txt",
       mimeType: "text/plain",
       text,
-    });
-  }
-
-  async function onFilePick(file: File) {
-    await extractProfile("business-card", {
-      fileName: file.name,
-      mimeType: file.type || "application/octet-stream",
     });
   }
 
@@ -755,7 +718,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
     }
   }
 
-  const extractProps = { extractText, extracting, method, onFilePick, onTextExtract, setExtractText, setMethod, t };
+  const extractProps = { extractText, extracting, method, onTextExtract, setExtractText, setMethod, t };
   const editProps = { extractProps, profile, selectRenderKey, t, toggleTag, update, viewModel };
   const alert = message ? (
     <div role={messageKind === "error" ? "alert" : "status"} style={{ background: messageKind === "error" ? "var(--danger-soft, #fff1f2)" : messageKind === "success" ? "var(--live-soft)" : "var(--surface-2)", borderRadius: "var(--r-sm)", color: messageKind === "error" ? "var(--danger, #C2410C)" : messageKind === "success" ? "var(--live-text)" : "var(--text-2)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createLivePostEventContactReviewService } from "../../features/events/post-event-review/live-service";
 import { createGeneratedPostEventContactReviewProvider } from "../../features/events/post-event-review/storage/generated-post-event-review-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -31,7 +32,7 @@ test("live post-event review generates contact drafts from generated attendees a
 
   assert.equal(review.success, true);
   assert.equal(review.data.event.id, "event_01");
-  assert.match(review.data.event.title, /東京インバウンド飲食店成長会/);
+  assert.equal(review.data.event.title, defaultMockFixtures.events[0]?.name);
   assert.equal(review.data.contacts.length, 2);
   assert.equal(review.data.contacts[0]?.status, "needs_review");
   assert.match(review.data.contacts[0]?.summary.headline ?? "", /post-event review/);

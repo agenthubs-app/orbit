@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createLiveWantConnectService } from "../../features/events/want-connect/live-service";
 import { createGeneratedWantConnectProvider } from "../../features/events/want-connect/storage/generated-want-connect-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -31,7 +32,7 @@ test("live want-connect generates on-site match context from generated attendees
 
   assert.equal(matches.success, true);
   assert.equal(matches.data.event.id, "event_01");
-  assert.match(matches.data.event.name, /東京インバウンド飲食店成長会/);
+  assert.equal(matches.data.event.name, defaultMockFixtures.events[0]?.name);
   assert.equal(matches.data.matches.length, 1);
   assert.deepEqual(matches.data.matches[0]?.participantContactIds, [
     "contact:operator",

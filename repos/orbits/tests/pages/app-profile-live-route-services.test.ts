@@ -122,8 +122,10 @@ test("profile editor uses API extraction and save readback instead of timed succ
   assert.match(profileSource, /cache: "no-store"/);
   assert.match(profileSource, /profileReadbackMatches/);
   assert.match(profileSource, /\/api\/profile\/extractions\/resume/);
-  assert.match(profileSource, /\/api\/profile\/extractions\/business-card/);
-  assert.match(profileSource, /type="file"/);
+  assert.match(profileSource, /Structured text extract/);
+  assert.match(profileSource, /href="\/app\/contacts\/new"/);
+  assert.doesNotMatch(profileSource, /type="file"/);
+  assert.doesNotMatch(profileSource, /AI text extract/);
   assert.match(profileSource, /Your profile was not changed/);
   assert.doesNotMatch(profileSource, /fakeExtract|window\.setTimeout/);
   assert.doesNotMatch(profileSource, /setMessage\(t\(\{ en: "Saved\."/);

@@ -105,22 +105,26 @@ test("live contacts service reads generated contacts from shared live storage", 
   );
 
   assert.ok(sato);
-  assert.equal(sato.displayName, "佐藤 健一");
-  assert.equal(sato.organization, "North Star Foods");
+  assert.equal(sato.displayName, defaultMockFixtures.contacts[0]?.displayName);
+  assert.equal(sato.organization, defaultMockFixtures.contacts[0]?.organization);
   assert.equal(sato.source.type, "qr_scan");
   assert.deepEqual(sato.evidence.map((evidence) => evidence.evidenceId), [
     "evidence:contact:001",
   ]);
   assert.equal(sato.databaseQueryExecuted, true);
   assert.equal(sato.searchIndexReadExecuted, false);
-  assert.ok(sato.value.valueTypes.includes("knowledge_exchange"));
-  assert.match(sato.relationshipContext, /佐藤 健一 matches/);
+  assert.ok(sato.value.valueTypes.includes("referral_path"));
+  assert.match(sato.relationshipContext, new RegExp(sato.displayName));
+  assert.match(
+    sato.relationshipContext,
+    new RegExp(defaultMockFixtures.contacts[0]?.organization ?? ""),
+  );
 
   const searchResult = await service.searchContacts({
     actorId,
-    query: "North Star Foods",
+    query: defaultMockFixtures.contacts[0]?.organization,
     sourceFilters: ["qr_scan"],
-    valueFilters: ["knowledge_exchange"],
+    valueFilters: ["referral_path"],
   });
 
   assert.equal(searchResult.success, true);

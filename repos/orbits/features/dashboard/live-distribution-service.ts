@@ -34,7 +34,7 @@ export interface LiveNetworkDistributionAnalyticsServiceOptions {
 interface IndustryDefinition {
   bucketId: string;
   label: string;
-  suffix: string;
+  suffixes: readonly string[];
 }
 
 const emptyEvidenceId = "evidence:network-distribution-live-empty";
@@ -53,36 +53,36 @@ const supportedScenarios = new Set<NetworkDistributionAnalyticsScenario>([
 const industryDefinitions: readonly IndustryDefinition[] = [
   {
     bucketId: "industry:foods",
-    label: "Food operators",
-    suffix: "Foods",
+    label: "餐饮与食品",
+    suffixes: ["Foods", "餐饮"],
   },
   {
     bucketId: "industry:technologies",
-    label: "Technology companies",
-    suffix: "Technologies",
+    label: "科技公司",
+    suffixes: ["Technologies", "科技"],
   },
   {
     bucketId: "industry:partners",
-    label: "Partner and advisory firms",
-    suffix: "Partners",
+    label: "合作伙伴与顾问机构",
+    suffixes: ["Partners", "伙伴"],
   },
   {
     bucketId: "industry:community",
-    label: "Community groups",
-    suffix: "Community",
+    label: "社群组织",
+    suffixes: ["Community", "社群"],
   },
   {
     bucketId: "industry:capital",
-    label: "Capital and investors",
-    suffix: "Capital",
+    label: "资本与投资机构",
+    suffixes: ["Capital", "资本"],
   },
 ];
 
 const valueTypeLabels: Record<NetworkRelationshipValueType, string> = {
-  commercial_opportunity: "Commercial opportunity",
-  strategic_fit: "Strategic fit",
-  referral_path: "Referral path",
-  investor_access: "Investor access",
+  commercial_opportunity: "商业机会",
+  strategic_fit: "战略匹配",
+  referral_path: "引荐路径",
+  investor_access: "投资人触达",
 };
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
@@ -259,7 +259,9 @@ function contactsForIndustry(
   definition: IndustryDefinition,
 ): readonly ContactDTO[] {
   return graph.contacts.filter((contact) =>
-    contact.organization?.endsWith(definition.suffix),
+    definition.suffixes.some((suffix) =>
+      contact.organization?.endsWith(suffix),
+    ),
   );
 }
 
@@ -285,7 +287,7 @@ function industryDistribution(
         evidenceIds:
           evidenceIds.length > 0
             ? evidenceIds
-            : [`evidence:network-distribution:${definition.suffix}`],
+            : [`evidence:network-distribution:${definition.bucketId}`],
       };
     })
     .filter((bucket) => bucket.contactCount > 0);
@@ -304,7 +306,7 @@ function hasInvestorAccess(
   const contact = contactsById.get(connection.contactId);
   const searchable = `${contact?.role ?? ""} ${contact?.organization ?? ""}`;
 
-  return /investor|capital/i.test(searchable);
+  return /investor|capital|投资|资本/i.test(searchable);
 }
 
 function valueTypesForConnection(

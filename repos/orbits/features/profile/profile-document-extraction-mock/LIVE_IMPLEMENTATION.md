@@ -4,7 +4,8 @@
 
 - Keep `features/profile/extraction-contract.ts` as the shared DTO and error-code contract for resume and business-card extraction.
 - Keep `features/profile/mock-extraction-service.ts` as the mock boundary used by tests, dev routes, and demos.
-- `features/profile/live-extraction-service.ts` implements the same `ProfileDocumentExtractionService` interface as an explicit live policy provider. It returns empty resume/business-card payloads with `live-policy-no-op` provenance and does not call OCR, parsing, AI, storage, or external networks.
+- `features/profile/live-extraction-service.ts` implements the same `ProfileDocumentExtractionService` interface with deterministic, field-labelled text extraction. It returns field-level excerpts for explicit text such as `姓名：` or `Company:` and does not guess from unlabeled prose.
+- Image-only resume/business-card requests remain an explicit `live-policy-no-op` and direct the user to the contact Import hub because this route does not upload document bytes.
 - Future real extraction should add provider adapters under this capability folder, for example `features/profile/profile-document-extraction-mock/providers/ocr-provider.ts`, `pdf-parser-provider.ts`, and `profile-extractor-provider.ts`.
 - The route handlers `app/api/profile/extractions/resume/route.ts` and `app/api/profile/extractions/business-card/route.ts` must continue to return the shared API envelope.
 

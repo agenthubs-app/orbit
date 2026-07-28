@@ -7,6 +7,7 @@ import {
 } from "../../features/recommendations/service-factory";
 import { createLiveEventValueRecommendationService } from "../../features/recommendations/live-event-value-service";
 import { createStorageEventValueRecommendationProvider } from "../../features/recommendations/storage/event-value-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -87,9 +88,9 @@ test("live event value recommendations rank sourced events from shared storage",
   assert.equal(recommendations.data.state, "success");
   assert.equal(recommendations.data.recommendations.length, 2);
   assert.equal(recommendations.data.recommendations[0]?.eventId, "event_02");
-  assert.match(
-    recommendations.data.recommendations[0]?.title ?? "",
-    /日中AI業務自動化PoC/,
+  assert.equal(
+    recommendations.data.recommendations[0]?.title,
+    defaultMockFixtures.events.find((event) => event.id === "event_02")?.name,
   );
   assert.equal(
     recommendations.data.recommendations[0]?.generatedBy,

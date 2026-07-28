@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createLiveEventGoalAndReadinessService } from "../../features/events/goal-readiness/live-service";
 import { createGeneratedEventGoalReadinessProvider } from "../../features/events/goal-readiness/storage/generated-goal-readiness-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -31,7 +32,7 @@ test("live event goal readiness generates readiness payloads from generated even
 
   assert.equal(readiness.success, true);
   assert.equal(readiness.data.event.id, "event_01");
-  assert.match(readiness.data.event.title, /東京インバウンド飲食店成長会/);
+  assert.equal(readiness.data.event.title, defaultMockFixtures.events[0]?.name);
   assert.equal(readiness.data.suggestedGoals.length, 3);
   assert.equal(readiness.data.goal?.selectedSuggestionId, "goal:live:event_01:storage_pilot");
   assert.equal(readiness.data.preparationState.preEventBriefReady, true);

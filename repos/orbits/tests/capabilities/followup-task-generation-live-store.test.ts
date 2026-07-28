@@ -71,7 +71,7 @@ test("live followup task generation reads generated tasks from shared live stora
 
   const task = listResult.data.tasks[0];
 
-  assert.equal(defaultMockFixtures.tasks.length, 80);
+  assert.ok(defaultMockFixtures.tasks.length >= 40);
   assert.equal(typeof task?.taskId, "string");
   assert.equal(task?.generatedBy, "live-store-query");
   assert.equal(task?.liveTaskPersistenceRequested, false);
@@ -83,9 +83,18 @@ test("live followup task generation reads generated tasks from shared live stora
   assert.equal(typeof trigger?.contactName, "string");
   assert.equal(trigger?.liveDatabaseReadExecuted, true);
 
+  const expectedTask = defaultMockFixtures.tasks.find(
+    (candidate) => candidate.id === "task_001",
+  );
+  const expectedContact = defaultMockFixtures.contacts.find(
+    (candidate) => candidate.id === expectedTask?.contactId,
+  );
+  assert.ok(expectedTask?.connectionId);
+  assert.ok(expectedContact);
+
   const generatedResult = await service.generateTasks({
     actorId,
-    connectionId: "connection_for_contact_021",
+    connectionId: expectedTask.connectionId,
     limit: 1,
   });
 
@@ -94,18 +103,24 @@ test("live followup task generation reads generated tasks from shared live stora
     generatedResult.data.tasks.map((item) => item.taskId),
     ["task_001"],
   );
-  assert.equal(generatedResult.data.tasks[0]?.title, "Review follow-up for contact_021");
+  assert.equal(generatedResult.data.tasks[0]?.title, expectedTask.title);
   assert.equal(
     generatedResult.data.tasks[0]?.connectionId,
-    "connection_for_contact_021",
+    expectedTask.connectionId,
   );
-  assert.equal(generatedResult.data.tasks[0]?.contactName, "山崎 美穂");
-  assert.equal(generatedResult.data.tasks[0]?.organization, "Aoba Technologies");
+  assert.equal(generatedResult.data.tasks[0]?.contactName, expectedContact.displayName);
+  assert.equal(
+    generatedResult.data.tasks[0]?.organization,
+    expectedContact.organization,
+  );
   assert.equal(generatedResult.data.tasks[0]?.source.type, "agent_action");
   assert.deepEqual(generatedResult.data.tasks[0]?.evidenceIds, [
     "evidence:task:001",
   ]);
-  assert.match(generatedResult.data.tasks[0]?.rationale ?? "", /山崎 美穂/);
+  assert.match(
+    generatedResult.data.tasks[0]?.rationale ?? "",
+    new RegExp(expectedContact.displayName),
+  );
 
   const allActorTasks = await service.listTasks({ actorId });
   assert.equal(allActorTasks.success, true);

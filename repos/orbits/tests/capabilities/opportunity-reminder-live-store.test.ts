@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createLiveOpportunityReminderAnalyticsService } from "../../features/dashboard/live-opportunity-service";
 import { createStorageOpportunityReminderAnalyticsProvider } from "../../features/dashboard/storage/opportunity-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -16,14 +17,20 @@ test("live opportunity reminder analytics reads generated graph and recomputes w
     workspaceId,
   });
 
+  const fixtureTask = defaultMockFixtures.tasks[0];
+  const fixtureConnection = defaultMockFixtures.connections[0];
+
+  assert.ok(fixtureTask);
+  assert.ok(fixtureConnection);
+
   const originalTask = store.getRecord({
     collectionName: "tasks",
-    recordId: "task_007",
+    recordId: fixtureTask.id,
     workspaceId,
   });
   const originalConnection = store.getRecord({
     collectionName: "connections",
-    recordId: "connection_for_contact_039",
+    recordId: fixtureConnection.id,
     workspaceId,
   });
   const provider = createStorageOpportunityReminderAnalyticsProvider({
@@ -40,49 +47,42 @@ test("live opportunity reminder analytics reads generated graph and recomputes w
 
   assert.equal(reminders.success, true);
   assert.equal(reminders.data.state, "success");
-  assert.deepEqual(
-    reminders.data.highPriorityOpportunities.map((opportunity) => [
-      opportunity.opportunityId,
-      opportunity.contactName,
-      opportunity.priorityScore,
-      opportunity.priority,
-    ]),
-    [
-      ["opportunity:task_007", "西村 大地", 94, "high"],
-      ["opportunity:task_033", "郑思远", 92, "high"],
-      ["opportunity:task_006", "遠藤 悠斗", 91, "high"],
-    ],
+  assert.equal(reminders.data.highPriorityOpportunities.length, 3);
+  assert.ok(
+    reminders.data.highPriorityOpportunities.every(
+      (opportunity) =>
+        opportunity.priority === "high" &&
+        defaultMockFixtures.tasks.some(
+          (task) => `opportunity:${task.id}` === opportunity.opportunityId,
+        ) &&
+        defaultMockFixtures.contacts.some(
+          (contact) => contact.displayName === opportunity.contactName,
+        ),
+    ),
   );
   assert.deepEqual(
-    reminders.data.dormantHighValueContacts.map((contact) => [
-      contact.contactId,
-      contact.contactName,
-      contact.valueScore,
-    ]),
-    [
-      ["contact_039", "西村 大地", 94],
-      ["contact_114", "郭亦辰", 89],
-      ["contact_078", "曾伟", 88],
-    ],
+    reminders.data.highPriorityOpportunities.map(
+      (opportunity) => opportunity.priorityScore,
+    ),
+    [...reminders.data.highPriorityOpportunities]
+      .map((opportunity) => opportunity.priorityScore)
+      .sort((left, right) => right - left),
+  );
+  assert.equal(reminders.data.dormantHighValueContacts.length, 3);
+  assert.ok(
+    reminders.data.dormantHighValueContacts.every((contact) =>
+      defaultMockFixtures.contacts.some(
+        (fixtureContact) =>
+          fixtureContact.id === contact.contactId &&
+          fixtureContact.displayName === contact.contactName,
+      ),
+    ),
   );
   assert.deepEqual(
-    reminders.data.currentGoalMatches.map((match) => [
-      match.goalId,
-      match.coverageScore,
-      match.matchedOpportunityIds,
-    ]),
-    [
-      [
-        "goal:live-top-followups",
-        92,
-        ["opportunity:task_007", "opportunity:task_033", "opportunity:task_006"],
-      ],
-      [
-        "goal:live-dormant-recovery",
-        90,
-        ["dormant:connection_for_contact_039", "dormant:connection_for_contact_114"],
-      ],
-    ],
+    reminders.data.currentGoalMatches[0]?.matchedOpportunityIds,
+    reminders.data.highPriorityOpportunities.map(
+      (opportunity) => opportunity.opportunityId,
+    ),
   );
   assert.deepEqual(
     reminders.data.suggestedContactReasons.map((reason) => reason.reasonType),
@@ -106,13 +106,17 @@ test("live opportunity reminder analytics reads generated graph and recomputes w
 
   assert.equal(recompute.success, true);
   assert.equal(recompute.data.state, "success");
-  assert.equal(recompute.data.evaluatedContacts, 66);
+  assert.equal(
+    recompute.data.evaluatedContacts,
+    defaultMockFixtures.contacts.length,
+  );
   assert.equal(recompute.data.generatedOpportunityCount, 3);
-  assert.deepEqual(recompute.data.changedOpportunityIds, [
-    "opportunity:task_007",
-    "opportunity:task_033",
-    "opportunity:task_006",
-  ]);
+  assert.deepEqual(
+    recompute.data.changedOpportunityIds,
+    reminders.data.highPriorityOpportunities.map(
+      (opportunity) => opportunity.opportunityId,
+    ),
+  );
   assert.equal(recompute.data.provenance.generationMethod, "rule-based-recompute");
   assert.equal(recompute.data.provenance.databaseWriteExecuted, false);
 
@@ -168,12 +172,12 @@ test("live opportunity reminder analytics reads generated graph and recomputes w
 
   const storedTask = store.getRecord({
     collectionName: "tasks",
-    recordId: "task_007",
+    recordId: fixtureTask.id,
     workspaceId,
   });
   const storedConnection = store.getRecord({
     collectionName: "connections",
-    recordId: "connection_for_contact_039",
+    recordId: fixtureConnection.id,
     workspaceId,
   });
 

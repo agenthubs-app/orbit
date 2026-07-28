@@ -23,6 +23,7 @@ import {
   createMemoryLiveRecordStore,
   type LiveRecord,
 } from "../../shared/storage/live-record-store";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
 const liveRecord: LiveEventStoreRecord = {
   id: "event:live:operator-dinner",
@@ -305,9 +306,10 @@ test("events recommendation tool includes the approved public catalogue when act
   assert.equal(result.candidates[0]?.upcoming, true);
   assert.equal(result.candidates[1]?.upcoming, true);
   assert.match(result.sourceLabel, /public event catalogue/i);
-  assert.match(
-    result.candidates.map((candidate) => candidate.title).join(" "),
-    /東京AI実装パートナー申込会|日中投資家・創業者申込サロン/,
+  assert.ok(
+    result.candidates.some((candidate) =>
+      defaultMockFixtures.events.some((event) => event.name === candidate.title),
+    ),
   );
 });
 

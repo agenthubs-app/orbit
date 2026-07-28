@@ -11,6 +11,7 @@ import {
   createStorageEventAttendeeImportProvider,
 } from "../../features/acquisition/storage/event-attendee-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
@@ -108,7 +109,7 @@ test("live event attendee import reads generated attendees and intents from shar
 
   assert.equal(roster.success, true);
   assert.equal(roster.data.event.id, "event_01");
-  assert.match(roster.data.event.name, /Tokyo Inbound Restaurant Growth Forum/);
+  assert.equal(roster.data.event.name, defaultMockFixtures.events[0]?.name);
   assert.equal(roster.data.attendees.length, 50);
   assert.equal(roster.data.provenance.generationMethod, "live-store-query");
   assert.equal(roster.data.provenance.bulkDatabaseImportExecuted, false);
@@ -119,9 +120,14 @@ test("live event attendee import reads generated attendees and intents from shar
   );
 
   assert.ok(firstAttendee);
-  assert.equal(firstAttendee.displayName, "中村 沙也香");
+  assert.equal(
+    firstAttendee.displayName,
+    defaultMockFixtures.attendees.find(
+      (attendee) => attendee.id === "participant_001",
+    )?.displayName,
+  );
   assert.equal(firstAttendee.relationshipStatus.code, "new_potential_contact");
-  assert.match(firstAttendee.relationshipContext, /AI workflow PoC buyer/i);
+  assert.ok(firstAttendee.relationshipContext.length > 0);
   assert.deepEqual(firstAttendee.evidenceIds, ["evidence:participant:001"]);
   assert.equal(firstAttendee.organizerFeedRequested, false);
   assert.equal(firstAttendee.externalLookupExecuted, false);

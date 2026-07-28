@@ -6,7 +6,7 @@
 - `features/profile/service-factory.ts` resolves manual profile, document extraction, and profile signal review services in `mock`, `hybrid`, or `live` mode.
 - `features/profile/live-service.ts` reads generated `profiles` and `accounts` records from shared live storage and upserts explicit manual profile edits.
 - `features/profile/live-signal-service.ts` reads generated profile, contact, connection, message, interaction-memory, and evidence records to produce review-only profile update suggestions.
-- `features/profile/live-extraction-service.ts` is an explicit live policy provider. It returns empty resume/business-card extraction payloads with `live-policy-no-op` provenance until an approved OCR, parser, or AI extraction provider exists.
+- `features/profile/live-extraction-service.ts` extracts only explicitly labelled profile text and returns field-level evidence for review. Image OCR remains unavailable in this form and is routed to the contact Import hub; image-only API requests return an honest `live-policy-no-op`.
 - `app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts` composes the three profile child services into the `/app/profile` route bundle.
 - `app/api/profile/route.ts` and `app/api/profile/update-suggestions/route.ts` are the API evidence surfaces that should keep returning the shared success/failure envelope.
 

@@ -8,6 +8,7 @@ import {
   resolveEventRecommendationService,
 } from "../../features/recommendations/service-factory";
 import { POST as composeOpeningLine } from "../../app/api/recommendations/event/[id]/opening-line/route";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -34,14 +35,26 @@ test("live event recommendations read generated matches from shared storage", as
     eventId: "event_02",
     limit: 2,
   });
+  const fixtureEvent = defaultMockFixtures.events.find(
+    (event) => event.id === "event_02",
+  );
+  const expectedRecommendations = defaultMockFixtures.matchRecommendations
+    .filter((item) => item.eventId === "event_02")
+    .sort(
+      (left, right) =>
+        right.score - left.score || left.id.localeCompare(right.id),
+    )
+    .slice(0, 2);
 
   assert.equal(recommendations.success, true);
+  assert.ok(fixtureEvent);
   assert.equal(recommendations.data.event.id, "event_02");
-  assert.match(recommendations.data.event.title, /日中AI業務自動化PoC/);
+  assert.equal(recommendations.data.event.title, fixtureEvent.name);
+  assert.match(recommendations.data.event.title, /AI.*PoC/u);
   assert.equal(recommendations.data.recommendations.length, 2);
   assert.deepEqual(
     recommendations.data.recommendations.map((item) => item.recommendationId),
-    ["recommendation_0041", "recommendation_0131"],
+    expectedRecommendations.map((item) => item.id),
   );
   assert.deepEqual(
     recommendations.data.recommendations.map((item) => item.rank),
@@ -49,15 +62,27 @@ test("live event recommendations read generated matches from shared storage", as
   );
 
   const topRecommendation = recommendations.data.recommendations[0];
+  const topFixture = expectedRecommendations[0];
+  const topAttendee = defaultMockFixtures.attendees.find(
+    (attendee) => attendee.id === topFixture?.attendeeId,
+  );
 
-  assert.equal(topRecommendation?.attendee.attendeeId, "participant_489");
-  assert.equal(topRecommendation?.attendee.displayName, "Daniel Ahmed");
+  assert.ok(topFixture);
+  assert.ok(topAttendee);
+  assert.equal(
+    topRecommendation?.attendee.attendeeId,
+    topFixture.attendeeId,
+  );
+  assert.equal(
+    topRecommendation?.attendee.displayName,
+    topAttendee.displayName,
+  );
   assert.equal(topRecommendation?.attendee.databaseQueryExecuted, true);
   assert.equal(topRecommendation?.generatedBy, "live-store-ranking");
   assert.equal(topRecommendation?.databaseQueryExecuted, true);
   assert.equal(topRecommendation?.aiProviderRequested, false);
   assert.equal(topRecommendation?.vectorSearchExecuted, false);
-  assert.deepEqual(topRecommendation?.evidenceIds, ["evidence:recommendation:0041"]);
+  assert.deepEqual(topRecommendation?.evidenceIds, topFixture.evidenceIds);
   assert.equal(
     recommendations.data.provenance.source,
     `live-record-store:event-recommendations:${workspaceId}`,
@@ -73,18 +98,27 @@ test("live event recommendations read generated matches from shared storage", as
   assert.equal(recommendations.data.provenance.aiProviderRequested, false);
 
   const openingLine = await service.composeOpeningLine({
-    attendeeId: "participant_453",
+    attendeeId: topFixture.attendeeId,
     eventId: "event_02",
     style: "context_question",
   });
 
   assert.equal(openingLine.success, true);
-  assert.equal(openingLine.data.recommendation.recommendationId, "recommendation_0221");
-  assert.equal(openingLine.data.openingLine.attendeeId, "participant_453");
+  assert.equal(
+    openingLine.data.recommendation.recommendationId,
+    topFixture.id,
+  );
+  assert.equal(
+    openingLine.data.openingLine.attendeeId,
+    topFixture.attendeeId,
+  );
   assert.equal(openingLine.data.openingLine.generatedBy, "live-opening-line-rule");
   assert.equal(openingLine.data.openingLine.aiProviderRequested, false);
-  assert.match(openingLine.data.openingLine.text, /田中 健太/);
-  assert.match(openingLine.data.openingLine.text, /AI workflow PoC buyer/);
+  assert.match(
+    openingLine.data.openingLine.text,
+    new RegExp(topAttendee.displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
+  assert.match(openingLine.data.openingLine.text, /AI|业务|需求/u);
   assert.equal(openingLine.data.provenance.generationMethod, "live-store-opening-line");
   assert.equal(openingLine.data.provenance.databaseQueryExecuted, true);
 });

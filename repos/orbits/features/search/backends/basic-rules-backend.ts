@@ -198,13 +198,39 @@ function suggestionsScenarioResult(
 }
 
 function queryTokens(query?: string | null): string[] {
-  return (
-    query
-      ?.toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .map((token) => token.trim())
-      .filter(Boolean) ?? []
-  );
+  const normalizedQuery = query?.normalize("NFKC").toLowerCase().trim();
+
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  const segmentedWords = [
+    ...new Intl.Segmenter("zh", { granularity: "word" }).segment(
+      normalizedQuery,
+    ),
+  ]
+    .filter((segment) => segment.isWordLike)
+    .map((segment) => segment.segment.trim())
+    .filter(Boolean);
+
+  if (segmentedWords.length > 0) {
+    return segmentedWords;
+  }
+
+  const segments =
+    normalizedQuery.match(/\p{Script=Han}+|[\p{L}\p{N}]+/gu) ?? [];
+
+  return segments.flatMap((segment) => {
+    if (!/^\p{Script=Han}+$/u.test(segment) || [...segment].length <= 2) {
+      return segment;
+    }
+
+    const characters = [...segment];
+
+    return characters
+      .slice(0, -1)
+      .map((character, index) => `${character}${characters[index + 1]}`);
+  });
 }
 
 function itemSearchText(item: RelationshipNaturalSearchResultItem): string {
@@ -293,6 +319,33 @@ function buildStorePayload(
     buildRelationshipNaturalSearchPayload(input);
 }
 
+function dedupeRelationshipResults(
+  results: readonly RelationshipNaturalSearchResultItem[],
+): readonly RelationshipNaturalSearchResultItem[] {
+  const resultByContact = new Map<
+    string,
+    RelationshipNaturalSearchResultItem
+  >();
+
+  for (const result of results) {
+    const current = resultByContact.get(result.contactId);
+
+    if (
+      !current ||
+      result.matchScore.value > current.matchScore.value ||
+      (result.matchScore.value === current.matchScore.value &&
+        result.value.score > current.value.score) ||
+      (result.matchScore.value === current.matchScore.value &&
+        result.value.score === current.value.score &&
+        result.id.localeCompare(current.id) < 0)
+    ) {
+      resultByContact.set(result.contactId, result);
+    }
+  }
+
+  return [...resultByContact.values()];
+}
+
 function runRelationshipNaturalSearch(
   store: RelationshipSearchStore,
   input: RelationshipNaturalSearchInput = {},
@@ -309,13 +362,14 @@ function runRelationshipNaturalSearch(
     return unsupported;
   }
 
-  if (!hasSearchInput(input)) {
-    return success(store.readScenarioPayloads().success);
-  }
-
-  const matchingResults = store
-    .readRelationshipResults()
-    .filter((item) => matchesRelationshipSearchInput(item, input));
+  const allResults = store.readRelationshipResults();
+  const matchingResults = dedupeRelationshipResults(
+    hasSearchInput(input)
+      ? allResults.filter((item) =>
+          matchesRelationshipSearchInput(item, input),
+        )
+      : allResults,
+  );
 
   return success(
     buildStorePayload(store, {

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createLiveEventAttendeeRosterService } from "../../features/events/attendee-roster/live-service";
 import { createGeneratedEventAttendeeRosterProvider } from "../../features/events/attendee-roster/storage/generated-attendee-roster-live-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -31,10 +32,15 @@ test("live event attendee roster generates roster payloads from generated attend
 
   assert.equal(roster.success, true);
   assert.equal(roster.data.event.id, "event_01");
-  assert.match(roster.data.event.name, /東京インバウンド飲食店成長会/);
+  assert.equal(roster.data.event.name, defaultMockFixtures.events[0]?.name);
   assert.equal(roster.data.attendees.length, 50);
   assert.equal(roster.data.attendees[0]?.attendeeId, "participant_001");
-  assert.equal(roster.data.attendees[0]?.displayName, "中村 沙也香");
+  assert.equal(
+    roster.data.attendees[0]?.displayName,
+    defaultMockFixtures.attendees.find(
+      (attendee) => attendee.id === "participant_001",
+    )?.displayName,
+  );
   assert.equal(roster.data.attendees[0]?.organizerFeedRequested, false);
   assert.equal(roster.data.attendees[0]?.externalLookupExecuted, false);
   assert.equal(roster.data.attendees[0]?.databaseWriteExecuted, false);

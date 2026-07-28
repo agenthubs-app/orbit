@@ -7,6 +7,7 @@ import {
   createReminderScheduleNotificationService,
   resolveReminderScheduleNotificationService,
 } from "../../features/notifications/service-factory";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -41,11 +42,30 @@ test("live reminder notification service reads generated notifications without d
   });
 
   const listed = await service.listNotifications({ actorId });
+  const expectedNotification = defaultMockFixtures.notifications[0];
+  const expectedTask = defaultMockFixtures.tasks.find(
+    (task) => task.title === expectedNotification.title,
+  );
+  const expectedConnection = defaultMockFixtures.connections.find(
+    (connection) => connection.id === expectedTask?.connectionId,
+  );
+  const expectedContact = defaultMockFixtures.contacts.find(
+    (contact) => contact.id === expectedTask?.contactId,
+  );
+  assert.ok(expectedTask);
+  assert.ok(expectedConnection);
+  assert.ok(expectedContact);
 
   assert.equal(listed.success, true);
   assert.equal(listed.data.state, "success");
-  assert.equal(listed.data.reminders.length, 40);
-  assert.equal(listed.data.notificationQueue.length, 40);
+  assert.equal(
+    listed.data.reminders.length,
+    defaultMockFixtures.notifications.length,
+  );
+  assert.equal(
+    listed.data.notificationQueue.length,
+    defaultMockFixtures.notifications.length,
+  );
   assert.equal(
     listed.data.provenance.source,
     `live-record-store:reminder-schedule-notification:${workspaceId}`,
@@ -72,12 +92,12 @@ test("live reminder notification service reads generated notifications without d
   const firstReminder = listed.data.reminders[0];
   const firstQueueEntry = listed.data.notificationQueue[0];
 
-  assert.equal(firstReminder?.reminderId, "notification_001");
-  assert.equal(firstReminder?.followupTaskId, "task_001");
-  assert.equal(firstReminder?.connectionId, "connection_for_contact_021");
-  assert.equal(firstReminder?.contactName, "山崎 美穂");
-  assert.equal(firstReminder?.organization, "Aoba Technologies");
-  assert.equal(firstReminder?.title, "Review follow-up for contact_021");
+  assert.equal(firstReminder?.reminderId, expectedNotification.id);
+  assert.equal(firstReminder?.followupTaskId, expectedTask.id);
+  assert.equal(firstReminder?.connectionId, expectedConnection.id);
+  assert.equal(firstReminder?.contactName, expectedContact.displayName);
+  assert.equal(firstReminder?.organization, expectedContact.organization);
+  assert.equal(firstReminder?.title, expectedTask.title);
   assert.equal(firstReminder?.source.generatedBy, "live-store-query");
   assert.equal(firstReminder?.generatedBy, "live-store-query");
   assert.equal(firstReminder?.pushNotificationRequested, false);
@@ -86,8 +106,8 @@ test("live reminder notification service reads generated notifications without d
   assert.equal(firstReminder?.cronJobRequested, false);
   assert.equal(firstReminder?.notificationProviderRequested, false);
   assert.equal(firstReminder?.externalNetworkRequested, false);
-  assert.equal(firstQueueEntry?.queueEntryId, "notification_001");
-  assert.deepEqual(firstQueueEntry?.reminderIds, ["notification_001"]);
+  assert.equal(firstQueueEntry?.queueEntryId, expectedNotification.id);
+  assert.deepEqual(firstQueueEntry?.reminderIds, [expectedNotification.id]);
   assert.equal(firstQueueEntry?.channel, "in_app");
   assert.equal(firstQueueEntry?.status, "live_queued");
   assert.equal(firstQueueEntry?.pushNotificationRequested, false);
@@ -111,7 +131,7 @@ test("live reminder notification service reads generated notifications without d
   );
   assert.equal(
     highPriority.data.reminders.some(
-      (reminder) => reminder.reminderId === "notification_001",
+      (reminder) => reminder.reminderId === expectedNotification.id,
     ),
     true,
   );

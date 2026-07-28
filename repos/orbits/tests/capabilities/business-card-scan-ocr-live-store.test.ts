@@ -93,7 +93,11 @@ test("business card scan live service derives OCR drafts from business-card cont
   assert.equal(scan.data.ocr.ocrProviderCalled, false);
   assert.equal(scan.data.ocr.aiExtractionExecuted, false);
   assert.equal(scan.data.draft?.id, LIVE_DRAFT_ID);
-  assert.equal(scan.data.draft?.displayName, "山田 千尋");
+  assert.equal(
+    scan.data.draft?.displayName,
+    defaultMockFixtures.contacts.find((contact) => contact.id === "contact_012")
+      ?.displayName,
+  );
   assert.equal(scan.data.draft?.source.type, "business_card_ocr");
   assert.equal(scan.data.draft?.contactWriteExecuted, false);
   assert.equal(
@@ -107,7 +111,11 @@ test("business card scan live service derives OCR drafts from business-card cont
 
   assert.equal(lookup.success, true);
   assert.equal(lookup.data.id, LIVE_DRAFT_ID);
-  assert.equal(lookup.data.displayName, "山田 千尋");
+  assert.equal(
+    lookup.data.displayName,
+    defaultMockFixtures.contacts.find((contact) => contact.id === "contact_012")
+      ?.displayName,
+  );
   assert.equal(lookup.data.contactWriteExecuted, false);
   assert.equal(foreignScan.success, true);
   assert.equal(foreignScan.data.state, "empty");

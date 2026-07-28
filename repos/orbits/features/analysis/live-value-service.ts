@@ -223,19 +223,6 @@ function evidenceForConnection(input: {
     : input.evidence.filter((evidence) => defaultIds.includes(evidence.id));
 }
 
-function factorForEvidence(
-  evidence: RelationshipEvidenceDTO,
-): RelationshipValuePriorityFactor {
-  return {
-    label:
-      contributionFor(evidence) === "follow_up_urgency"
-        ? "Evidence confirms follow-up urgency"
-        : "Evidence confirms business context",
-    points: 5,
-    evidenceIds: [evidence.id],
-  };
-}
-
 function scoreFor(input: {
   connection: ConnectionDTO;
   evidence: readonly RelationshipEvidenceDTO[];
@@ -244,22 +231,77 @@ function scoreFor(input: {
   factors: readonly RelationshipValuePriorityFactor[];
   value: number;
 } {
-  const base = input.connection.businessRelevanceScore ?? 40;
-  const stagePoints = 0;
-  const evidencePoints = input.evidence.length * 5;
-  const value = Math.min(100, base + stagePoints + evidencePoints);
+  const businessRelevancePoints = Math.round(
+    (input.connection.businessRelevanceScore ?? 40) * 0.45,
+  );
+  const relationshipStrengthPoints = Math.round(
+    (input.connection.relationshipStrength ?? 0) * 0.25,
+  );
+  const trustPoints = {
+    unverified: 0,
+    emerging: 4,
+    warm: 8,
+    trusted: 12,
+  }[input.connection.trustLevel ?? "unverified"];
+  const stagePoints = {
+    captured: 3,
+    reviewing: 6,
+    active: 7,
+    needs_follow_up: 10,
+    nurture: 2,
+    archived: 0,
+  }[input.connection.stage];
+  const averageEvidenceConfidence =
+    input.evidence.length > 0
+      ? input.evidence.reduce(
+          (total, evidence) => total + evidence.confidence,
+          0,
+        ) / input.evidence.length
+      : 0;
+  const evidenceQualityPoints = Math.round(
+    Math.max(0, Math.min(1, averageEvidenceConfidence)) * 10,
+  );
+  const value = Math.min(
+    100,
+    businessRelevancePoints +
+      relationshipStrengthPoints +
+      trustPoints +
+      stagePoints +
+      evidenceQualityPoints,
+  );
   const factors: RelationshipValuePriorityFactor[] = [
     {
-      label: "Generated relationship relevance score",
-      points: base,
+      label: "Business relevance",
+      points: businessRelevancePoints,
       evidenceIds: input.connection.evidenceIds,
+    },
+    {
+      label: "Relationship strength",
+      points: relationshipStrengthPoints,
+      evidenceIds: input.connection.evidenceIds,
+    },
+    {
+      label: `Trust level: ${input.connection.trustLevel ?? "unverified"}`,
+      points: trustPoints,
+      evidenceIds: input.connection.evidenceIds,
+    },
+    {
+      label: `Relationship stage: ${input.connection.stage}`,
+      points: stagePoints,
+      evidenceIds: input.connection.evidenceIds,
+    },
+    {
+      label: "Source evidence quality",
+      points: evidenceQualityPoints,
+      evidenceIds: input.evidence.map((evidence) => evidence.id),
     },
   ];
 
-  factors.push(...input.evidence.map(factorForEvidence));
-
   return {
-    calculation: `live rule: base ${base} + stage ${stagePoints} + evidence ${evidencePoints}`,
+    calculation:
+      `live calibrated rule: relevance ${businessRelevancePoints} + ` +
+      `strength ${relationshipStrengthPoints} + trust ${trustPoints} + ` +
+      `stage ${stagePoints} + evidence quality ${evidenceQualityPoints}`,
     factors,
     value,
   };
@@ -308,7 +350,7 @@ function assessment(input: {
       summary: `${input.contact.displayName} has relationship value because ${input.connection.summary}`,
       evidence,
       limitations: [
-        "Live rule scoring reads generated relationship records only; it does not use email, calendar, notification, or AI providers.",
+        "This explainable rule is calibrated against local semantic golden cases, not observed production outcomes; it does not call email, calendar, notification, or AI providers.",
       ],
     },
     suggestedNextAction: suggestedNextAction(input.connection),

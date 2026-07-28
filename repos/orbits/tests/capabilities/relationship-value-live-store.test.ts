@@ -9,6 +9,7 @@ import {
   type LiveRecordListQuery,
 } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
 function activeRecord(input: {
   collectionName: string;
@@ -76,7 +77,7 @@ test("live relationship value scoring reads generated graph and recomputes witho
 
   const originalConnection = store.getRecord({
     collectionName: "connections",
-    recordId: "connection_0007",
+    recordId: "connection_0012",
     workspaceId,
   });
   const connectionSummary = originalConnection?.payload.summary;
@@ -98,28 +99,31 @@ test("live relationship value scoring reads generated graph and recomputes witho
   });
 
   const value = await service.getRelationshipValue({
-    connectionId: "connection_0007",
+    connectionId: "connection_0012",
   });
 
   assert.equal(value.success, true);
   assert.equal(value.data.state, "success");
-  assert.equal(value.data.assessment?.connectionId, "connection_0007");
-  assert.equal(value.data.assessment?.contactId, "contact_078");
-  assert.equal(value.data.assessment?.contactDisplayName, "曾伟");
+  assert.equal(value.data.assessment?.connectionId, "connection_0012");
+  assert.equal(value.data.assessment?.contactId, "contact_012");
+  const expectedContact = defaultMockFixtures.contacts.find(
+    (contact) => contact.id === "contact_012",
+  );
+  assert.equal(value.data.assessment?.contactDisplayName, expectedContact?.displayName);
   assert.equal(value.data.assessment?.relationshipValueType, "community_bridge");
-  assert.equal(value.data.assessment?.priorityScore.value, 62);
+  assert.equal(value.data.assessment?.priorityScore.value, 61);
   assert.equal(value.data.assessment?.priorityScore.band, "medium");
   assert.equal(
     value.data.assessment?.rationale.summary ?? "",
-    `曾伟 has relationship value because ${connectionSummary}`,
+    `${expectedContact?.displayName} has relationship value because ${connectionSummary}`,
   );
   assert.equal(
     value.data.assessment?.suggestedNextAction.label,
     `Follow up about ${suggestedAction}`,
   );
   assert.deepEqual(value.data.assessment?.sourceEvidenceIds, [
-    "evidence:connection:0007",
-    "evidence:contact:078",
+    "evidence:connection:0012",
+    "evidence:contact:012",
   ]);
   assert.equal(
     value.data.provenance.source,
@@ -135,14 +139,14 @@ test("live relationship value scoring reads generated graph and recomputes witho
   assert.equal(value.data.provenance.aiProviderRequested, false);
 
   const recomputed = await service.recomputeRelationshipValue({
-    connectionId: "connection_0007",
-    evidenceIds: ["evidence:connection:0007"],
+    connectionId: "connection_0012",
+    evidenceIds: ["evidence:connection:0012"],
   });
 
   assert.equal(recomputed.success, true);
-  assert.equal(recomputed.data.assessment?.priorityScore.value, 57);
+  assert.equal(recomputed.data.assessment?.priorityScore.value, 60);
   assert.deepEqual(recomputed.data.provenance.evidenceIds, [
-    "evidence:connection:0007",
+    "evidence:connection:0012",
   ]);
   assert.equal(
     recomputed.data.nextAction,
@@ -158,7 +162,7 @@ test("live relationship value scoring reads generated graph and recomputes witho
 
   const storedConnection = store.getRecord({
     collectionName: "connections",
-    recordId: "connection_0007",
+    recordId: "connection_0012",
     workspaceId,
   });
 

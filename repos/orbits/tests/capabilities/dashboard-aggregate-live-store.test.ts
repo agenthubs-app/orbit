@@ -47,8 +47,20 @@ test("live dashboard aggregate reads generated relationship graph from shared li
     defaultMockFixtures.events.length,
   );
   assert.equal(aggregate.data.pendingFollowups.count, defaultMockFixtures.tasks.length);
-  assert.equal(aggregate.data.highValueCount, 240);
-  assert.equal(aggregate.data.dormantContacts.count, 13);
+  assert.equal(
+    aggregate.data.highValueCount,
+    defaultMockFixtures.connections.filter(
+      (connection) =>
+        (connection.businessRelevanceScore ??
+          connection.relationshipStrength ??
+          Math.min(95, 60 + connection.valueTypes.length * 10)) >= 70,
+    ).length,
+  );
+  assert.equal(
+    aggregate.data.dormantContacts.count,
+    defaultMockFixtures.contacts.filter((contact) => contact.stage === "nurture")
+      .length,
+  );
   assert.equal(aggregate.data.recentActivity.length, 3);
   assert.equal(aggregate.data.provenance.source, `live-record-store:dashboard:${workspaceId}`);
   assert.equal(aggregate.data.provenance.sourceLabel, "Dashboard memory live storage");
@@ -64,8 +76,8 @@ test("live dashboard aggregate reads generated relationship graph from shared li
   );
 
   assert.ok(sato);
-  assert.equal(sato.name, "佐藤 健一");
-  assert.equal(sato.organization, "North Star Foods");
+  assert.equal(sato.name, defaultMockFixtures.contacts[0]?.displayName);
+  assert.equal(sato.organization, defaultMockFixtures.contacts[0]?.organization);
   assert.deepEqual(sato.evidenceIds, ["evidence:contact:001"]);
 
   const summary = await service.getDashboardSummary();

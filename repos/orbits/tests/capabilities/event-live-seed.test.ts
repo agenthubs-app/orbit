@@ -65,7 +65,7 @@ test("events live seed writes all mock event datasets into live record storage",
   assert.ok(generatedEventRecord);
   const generatedEventTitle = generatedEventRecord.payload.title;
   assert.equal(typeof generatedEventTitle, "string");
-  assert.match(generatedEventTitle, /東京インバウンド飲食店成長会/);
+  assert.equal(generatedEventTitle, defaultMockFixtures.events[0]?.name);
   assert.equal(generatedEventRecord.sourceType, "event_import");
   assert.equal(generatedEventRecord.userId, actorId);
 
@@ -87,7 +87,10 @@ test("events live seed writes all mock event datasets into live record storage",
     events.data.events.some(
       (event) =>
         event.id === "event_signup_01" &&
-        event.title.includes("関西越境ビジネス申込テスト会"),
+        event.title ===
+          defaultMockFixtures.events.find(
+            (fixture) => fixture.id === "event_signup_01",
+          )?.name,
     ),
   );
   assert.equal(

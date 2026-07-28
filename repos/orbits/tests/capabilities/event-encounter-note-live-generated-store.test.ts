@@ -4,6 +4,7 @@ import test from "node:test";
 import { createLiveEventEncounterNoteService } from "../../features/events/encounter-note/live-service";
 import { createGeneratedEventEncounterNoteProvider } from "../../features/events/encounter-note/storage/generated-encounter-note-live-record-provider";
 import { EVENT_WORK_RECORD_COLLECTIONS } from "../../features/events/storage/event-work-record-provider";
+import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -54,7 +55,7 @@ test("live event encounter note generates a note base from generated attendees a
 
   assert.equal(captured.success, true);
   assert.equal(captured.data.event.id, "event_01");
-  assert.match(captured.data.event.name, /東京インバウンド飲食店成長会/);
+  assert.equal(captured.data.event.name, defaultMockFixtures.events[0]?.name);
   assert.equal(captured.data.participant?.contactId, "contact_078");
   assert.equal(captured.data.note?.text, "Discussed Osaka restaurant CRM pilot timing and bilingual channel fit.");
   assert.equal(captured.data.provenance.source, `live-record-store:event-encounter-note:${workspaceId}`);

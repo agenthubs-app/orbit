@@ -5,6 +5,7 @@ import type {
 } from "../../../shared/domain/contracts";
 import {
   isRelationshipStage,
+  isRelationshipTrustLevel,
   isRelationshipValueType,
   isSourceType,
 } from "../../../shared/domain/source-types";
@@ -159,6 +160,9 @@ function connectionFromRecord(
       typeof payload.relationshipStrength === "number"
         ? payload.relationshipStrength
         : undefined,
+    trustLevel: isRelationshipTrustLevel(payload.trustLevel)
+      ? payload.trustLevel
+      : undefined,
     businessRelevanceScore:
       typeof payload.businessRelevanceScore === "number"
         ? payload.businessRelevanceScore

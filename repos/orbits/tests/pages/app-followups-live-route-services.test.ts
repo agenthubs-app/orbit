@@ -369,19 +369,21 @@ test("generated follow-up seed tasks cover a dense next-three-month calendar", (
   const dueDays = new Set(dueDates.map((dueAt) => dueAt.slice(0, 10)));
   const dueMonths = new Set(dueDates.map((dueAt) => dueAt.slice(0, 7)));
   const contactIds = new Set(tasks.map((task) => task.contactId));
+  const generatedAtMs = Date.parse(defaultMockFixtures.generatedAt);
+  const firstDueAtMs = Math.min(...dueDates.map((dueAt) => Date.parse(dueAt)));
+  const lastDueAtMs = Math.max(...dueDates.map((dueAt) => Date.parse(dueAt)));
+  const dayMs = 24 * 60 * 60 * 1000;
 
   assert.equal(tasks.length, 80);
   assert.ok(contactIds.size >= 40);
   assert.ok(dueDays.size >= 70);
-  assert.ok(dueMonths.has("2026-07"));
-  assert.ok(dueMonths.has("2026-08"));
-  assert.ok(dueMonths.has("2026-09"));
+  assert.ok(dueMonths.size >= 3);
   assert.ok(
-    dueDates.every((dueAt) => dueAt >= "2026-07-10T00:00:00+09:00"),
-    "generated follow-up tasks should start after the current July 9 demo date",
+    firstDueAtMs > generatedAtMs,
+    "generated follow-up tasks should start after fixture generation",
   );
   assert.ok(
-    dueDates.every((dueAt) => dueAt <= "2026-10-09T23:59:59+09:00"),
+    lastDueAtMs <= generatedAtMs + 91 * dayMs,
     "generated follow-up tasks should stay inside the next three months",
   );
 });

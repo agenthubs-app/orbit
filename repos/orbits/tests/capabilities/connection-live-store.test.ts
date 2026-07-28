@@ -102,11 +102,19 @@ test("live connection evidence service reads generated relationship graph from s
   const connection = listResult.data.connections.find(
     (item) => item.id === "connection_0012",
   );
+  const fixtureConnection = defaultMockFixtures.connections.find(
+    (item) => item.id === "connection_0012",
+  );
+  const fixtureContact = defaultMockFixtures.contacts.find(
+    (item) => item.id === fixtureConnection?.contactId,
+  );
 
   assert.ok(connection);
-  assert.equal(connection.contactId, "contact_001");
-  assert.equal(connection.displayName, "佐藤 健一");
-  assert.equal(connection.relationshipStage, "needs_follow_up");
+  assert.ok(fixtureConnection);
+  assert.ok(fixtureContact);
+  assert.equal(connection.contactId, fixtureConnection.contactId);
+  assert.equal(connection.displayName, fixtureContact.displayName);
+  assert.equal(connection.relationshipStage, fixtureConnection.stage);
   assert.equal(connection.databaseReadExecuted, true);
   assert.equal(connection.databaseWriteExecuted, false);
   assert.ok(connection.evidenceTimeline.length > 0);
@@ -117,8 +125,14 @@ test("live connection evidence service reads generated relationship graph from s
 
   assert.equal(detailResult.success, true);
   assert.equal(detailResult.data.connection?.id, "connection_0012");
-  assert.equal(detailResult.data.connection?.displayName, "佐藤 健一");
-  assert.equal(detailResult.data.evidenceTimeline[0]?.evidenceId, "evidence:connection:0012");
+  assert.equal(
+    detailResult.data.connection?.displayName,
+    fixtureContact.displayName,
+  );
+  assert.equal(
+    detailResult.data.evidenceTimeline[0]?.evidenceId,
+    fixtureConnection.evidenceIds[0],
+  );
 
   const missingResult = await service.getConnection({
     connectionId: "missing-connection",

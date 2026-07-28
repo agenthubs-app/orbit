@@ -135,11 +135,13 @@ test("the approved public catalogue enters registration with honest time status"
   const { loadEventForRegistration } = await import(
     "../../features/events/registration/event-loader"
   );
-  const endedEvent = await loadEventForRegistration("event_signup_01");
-  const upcomingEvent = await loadEventForRegistration("event_signup_02");
+  const endedEvent = await loadEventForRegistration("event_01");
+  const upcomingEvent = await loadEventForRegistration("event_signup_01");
 
   assert.equal(endedEvent?.status, "cancelled");
   assert.equal(upcomingEvent?.status, "imported");
+  assert.ok(Date.parse(endedEvent?.endsAt ?? "") < Date.now());
+  assert.ok(Date.parse(upcomingEvent?.endsAt ?? "") > Date.now());
   assert.equal(
     upcomingEvent?.sourceMetadata.provider,
     "orbit-public-event-catalogue",

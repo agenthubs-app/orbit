@@ -99,7 +99,11 @@ test("business card review live service derives review drafts from business-card
   assert.equal(lookup.success, true);
   assert.equal(lookup.data.state, "success");
   assert.equal(lookup.data.reviewDraft?.id, LIVE_DRAFT_ID);
-  assert.equal(lookup.data.reviewDraft?.displayName, "山田 千尋");
+  assert.equal(
+    lookup.data.reviewDraft?.displayName,
+    defaultMockFixtures.contacts.find((contact) => contact.id === "contact_012")
+      ?.displayName,
+  );
   assert.equal(lookup.data.reviewDraft?.source.type, "business_card_ocr");
   assert.equal(lookup.data.reviewDraft?.ocrProviderCalled, false);
   assert.equal(lookup.data.reviewDraft?.contactWriteExecuted, false);
